@@ -152,8 +152,8 @@ def test_ge_schema_runtimebatchrequest_sqlite_config():
         datasource_name="sqlite_data",
         expectation_suite_name="sqlite.movies",
         data_connector_name="sqlite_data_connector",
+        is_runtime=True,
         batch_request_config=BatchRequestConfig(
-            runtime_parameters={"query": "SELECT * FROM movies"},
             batch_identifiers={
                 "pipeline_stage": "validation",
             },
@@ -163,7 +163,7 @@ def test_ge_schema_runtimebatchrequest_sqlite_config():
     @task
     def my_task(sqlite_db: GreatExpectationsType[str, ge_config]) -> int:
         # read sqlite query results into a pandas DataFrame
-        con = sqlite3.connect(os.path.join("data", sqlite_db))
+        con = sqlite3.connect(os.path.join("data/movies.sqlite"))
         df = pd.read_sql_query("SELECT * FROM movies", con)
         con.close()
 
@@ -172,10 +172,34 @@ def test_ge_schema_runtimebatchrequest_sqlite_config():
 
     @workflow
     def my_wf() -> int:
-        return my_task(sqlite_db="movies.sqlite")
+        return my_task(sqlite_db="SELECT * FROM movies")
 
     result = my_wf()
     assert result == 2736
+
+
+def test_ge_runtimebatchrequest_pandas_config():
+    ge_config = GreatExpectationsFlyteConfig(
+        datasource_name="my_pandas_datasource",
+        expectation_suite_name="test.demo",
+        data_connector_name="my_runtime_data_connector",
+        is_runtime=True,
+        batch_request_config=BatchRequestConfig(
+            batch_identifiers={
+                "pipeline_stage": "validation",
+            },
+        ),
+    )
+
+    @task
+    def my_task(pandas_df: GreatExpectationsType[FlyteSchema, ge_config]) -> int:
+        return len(pandas_df)
+
+    @workflow
+    def runtime_pandas_wf(df: pd.DataFrame):
+        my_task(pandas_df=df)
+
+    runtime_pandas_wf(df=pd.read_csv("data/yellow_tripdata_sample_2019-01.csv"))
 
 
 def test_ge_schema_checkpoint_params():

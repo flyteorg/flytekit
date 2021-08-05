@@ -67,6 +67,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         expectation_suite_name: str,
         data_connector_name: str,
         inputs: Dict[str, Type],
+        is_runtime: bool = False,
         outputs: Optional[Dict[str, Type]] = None,
         local_file_path: str = None,
         checkpoint_params: Optional[Dict[str, Union[str, List[str]]]] = None,
@@ -79,6 +80,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         self._expectation_suite_name = expectation_suite_name
         self._batch_request_config = task_config
         self._context_root_dir = context_root_dir
+        self._is_runtime = is_runtime
         """
         local_file_path is a must in two scenarios:
         * When using FlyteSchema
@@ -88,7 +90,6 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         self._local_file_path = local_file_path
         self._checkpoint_params = checkpoint_params
 
-        inputs.update({self._RUNTIME_VAR_NAME: (bool, False)})
         outputs = {"result": Dict[Any, Any]}
 
         super(GreatExpectationsTask, self).__init__(
@@ -102,19 +103,15 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
     def execute(self, **kwargs) -> Any:
         context = ge.data_context.DataContext(self._context_root_dir)
 
-        if len(self.python_interface.inputs.keys()) != 2:
-            raise RuntimeError("Expected one input argument to validate the dataset")
+        if len(self.python_interface.inputs.keys()) != 1:
+            raise TypeError("Expected one input argument to validate the dataset")
 
-        runtime_check = False
-        if self._RUNTIME_VAR_NAME in kwargs:
-            runtime_check = kwargs[self._RUNTIME_VAR_NAME]
-
-        dataset_key = list(set(self.python_interface.inputs.keys()) - set(["runtime"]))[0]
+        dataset_key = list(self.python_interface.inputs.keys())[0]
         dataset = kwargs[dataset_key]
         datatype = self.python_interface.inputs[dataset_key]
 
         if not issubclass(datatype, (FlyteFile, FlyteSchema, str)):
-            raise RuntimeError("'dataset' has to have FlyteFile/FlyteSchema/str datatype")
+            raise TypeError("'dataset' has to have FlyteFile/FlyteSchema/str datatype")
 
         # FlyteFile
         if issubclass(datatype, FlyteFile):
@@ -148,7 +145,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
 
         # FlyteSchema
         # convert schema to parquet file
-        if issubclass(datatype, FlyteSchema) and not runtime_check:
+        if issubclass(datatype, FlyteSchema) and not self._is_runtime:
             if not self._local_file_path:
                 raise ValueError("local_file_path is missing!")
 
@@ -173,13 +170,13 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
 
         # minimalistic batch request
         final_batch_request = {
-            "data_asset_name": "random_string" if runtime_check else dataset,
+            "data_asset_name": "random_string" if self._is_runtime else dataset,
             "datasource_name": self._datasource_name,
             "data_connector_name": self._data_connector_name,
         }
 
         # Great Expectations' RuntimeBatchRequest
-        if self._batch_request_config and (self._batch_request_config.runtime_parameters or runtime_check):
+        if self._batch_request_config and (self._batch_request_config.runtime_parameters or self._is_runtime):
             final_batch_request.update(
                 {
                     "runtime_parameters": self._batch_request_config.runtime_parameters
@@ -190,10 +187,12 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                 }
             )
 
-            if runtime_check and issubclass(datatype, str):
+            if self._is_runtime and issubclass(datatype, str):
                 final_batch_request["runtime_parameters"]["query"] = dataset
-            elif runtime_check and issubclass(datatype, FlyteSchema):
+            elif self._is_runtime and issubclass(datatype, FlyteSchema):
                 final_batch_request["runtime_parameters"]["batch_data"] = dataset.open().all()
+            else:
+                raise AssertionError("Can only use runtime_parameters for query(str)/schema data")
 
         # Great Expectations' BatchRequest
         elif self._batch_request_config:

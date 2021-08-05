@@ -41,6 +41,7 @@ class GreatExpectationsFlyteConfig(object):
     datasource_name: str
     expectation_suite_name: str
     data_connector_name: str
+    is_runtime: bool = False
     """
     local_file_path is a must in two scenrios:
     * When using FlyteSchema
@@ -70,7 +71,7 @@ class GreatExpectationsType(object):
             GreatExpectationsFlyteConfig(datasource_name="", data_connector_name="", expectation_suite_name=""),
         )
 
-    def __class_getitem__(cls, config: Tuple[Type, Type[GreatExpectationsFlyteConfig]]) -> Any:
+    def __class_getitem__(cls, config: Tuple[Type, GreatExpectationsFlyteConfig]) -> Any:
         if not (isinstance(config, tuple) or len(config) != 2):
             raise AssertionError("GreatExpectationsType must have both datatype and GreatExpectationsFlyteConfig")
 
@@ -140,13 +141,14 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
         # FlyteSchema
         if lv.scalar.schema:
-            if not ge_conf.local_file_path:
-                raise ValueError("local_file_path is missing!")
+            if not ge_conf.is_runtime:
+                if not ge_conf.local_file_path:
+                    raise ValueError("local_file_path is missing!")
 
-            # copy parquet file to user-given directory
-            ctx.file_access.get_data(lv.scalar.schema.uri, ge_conf.local_file_path, is_multipart=True)
+                # copy parquet file to user-given directory
+                ctx.file_access.get_data(lv.scalar.schema.uri, ge_conf.local_file_path, is_multipart=True)
 
-            temp_dataset = os.path.basename(ge_conf.local_file_path)
+                temp_dataset = os.path.basename(ge_conf.local_file_path)
 
             def downloader(x, y):
                 ctx.file_access.get_data(x, y, is_multipart=True)
@@ -198,20 +200,29 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
         # minimalistic batch request
         final_batch_request = {
-            "data_asset_name": dataset,
+            "data_asset_name": "random_string" if ge_conf.is_runtime else dataset,
             "datasource_name": ge_conf.datasource_name,
             "data_connector_name": ge_conf.data_connector_name,
         }
 
         # Great Expectations' RuntimeBatchRequest
-        if batch_request_conf and batch_request_conf["runtime_parameters"]:
+        if batch_request_conf and (batch_request_conf["runtime_parameters"] or ge_conf.is_runtime):
             final_batch_request.update(
                 {
-                    "runtime_parameters": batch_request_conf["runtime_parameters"],
+                    "runtime_parameters": batch_request_conf["runtime_parameters"]
+                    if batch_request_conf["runtime_parameters"]
+                    else {},
                     "batch_identifiers": batch_request_conf["batch_identifiers"],
                     "batch_spec_passthrough": batch_request_conf["batch_spec_passthrough"],
                 }
             )
+
+            if ge_conf.is_runtime and lv.scalar.primitive:
+                final_batch_request["runtime_parameters"]["query"] = dataset
+            elif ge_conf.is_runtime and lv.scalar.schema:
+                final_batch_request["runtime_parameters"]["batch_data"] = return_dataset
+            else:
+                raise AssertionError("Can only use runtime_parameters for query(str)/schema data")
 
         # Great Expectations' BatchRequest
         elif batch_request_conf:

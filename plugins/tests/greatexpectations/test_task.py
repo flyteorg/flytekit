@@ -1,7 +1,6 @@
 import os
 import sqlite3
 import typing
-from typing_extensions import runtime
 
 import pandas as pd
 import pytest
@@ -40,7 +39,7 @@ def test_ge_simple_task():
             != invalid_result["statistics"]["successful_expectations"]
         )
 
-    assert task_object.python_interface.inputs == {"dataset": str, "runtime": bool}
+    assert task_object.python_interface.inputs == {"dataset": str}
 
 
 def test_ge_batchrequest_pandas_config():
@@ -93,6 +92,7 @@ def test_ge_runtimebatchrequest_sqlite_config():
         inputs=kwtypes(dataset=str),
         expectation_suite_name="sqlite.movies",
         data_connector_name="sqlite_data_connector",
+        is_runtime=True,
         task_config=BatchRequestConfig(
             batch_identifiers={
                 "pipeline_stage": "validation",
@@ -102,7 +102,7 @@ def test_ge_runtimebatchrequest_sqlite_config():
 
     @workflow
     def runtime_sqlite_wf():
-        task_object(dataset="SELECT * FROM movies", runtime=True)
+        task_object(dataset="SELECT * FROM movies")
 
     runtime_sqlite_wf()
 
@@ -114,6 +114,7 @@ def test_ge_runtimebatchrequest_pandas_config():
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
         data_connector_name="my_runtime_data_connector",
+        is_runtime=True,
         task_config=BatchRequestConfig(
             batch_identifiers={
                 "pipeline_stage": "validation",
@@ -123,7 +124,7 @@ def test_ge_runtimebatchrequest_pandas_config():
 
     @workflow
     def runtime_pandas_wf(df: pd.DataFrame):
-        task_object(dataset=df, runtime=True)
+        task_object(dataset=df)
 
     runtime_pandas_wf(df=pd.read_csv("data/yellow_tripdata_sample_2019-01.csv"))
 
@@ -144,13 +145,13 @@ def test_ge_with_task():
 
     @workflow
     def valid_wf(dataset: str = "yellow_tripdata_sample_2019-01.csv") -> int:
-        task_object(dataset=dataset, runtime=False)
+        task_object(dataset=dataset)
         return my_task(csv_file=dataset)
 
     @pytest.mark.xfail(strict=True)
     @workflow
     def invalid_wf(dataset: str = "yellow_tripdata_sample_2019-02.csv") -> int:
-        task_object(dataset=dataset, runtime=False)
+        task_object(dataset=dataset)
         return my_task(csv_file=dataset)
 
     valid_result = valid_wf()
@@ -170,7 +171,7 @@ def test_ge_workflow():
 
     @workflow
     def valid_wf(dataset: str = "yellow_tripdata_sample_2019-01.csv") -> None:
-        task_object(dataset=dataset, runtime=False)
+        task_object(dataset=dataset)
 
     valid_wf()
 
@@ -221,7 +222,7 @@ def test_ge_remote_flytefile_with_task():
 
     @workflow
     def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
-        task_object(dataset=dataset, runtime=False)
+        task_object(dataset=dataset)
         return my_task(dataset=dataset)
 
     result = my_wf(
@@ -257,7 +258,7 @@ def test_ge_local_flytefile_with_task():
 
     @workflow
     def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
-        task_object(dataset=dataset, runtime=False)
+        task_object(dataset=dataset)
         return my_task(dataset=dataset)
 
     result = my_wf(dataset="data/yellow_tripdata_sample_2019-01.csv")
@@ -275,7 +276,7 @@ def test_ge_local_flytefile_workflow():
 
     @workflow
     def valid_wf(dataset: FlyteFile[typing.TypeVar("csv")] = "data/yellow_tripdata_sample_2019-01.csv") -> None:
-        task_object(dataset=dataset, runtime=False)
+        task_object(dataset=dataset)
 
     valid_wf()
 
@@ -296,7 +297,7 @@ def test_ge_remote_flytefile_workflow():
             typing.TypeVar("csv")
         ] = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv",
     ) -> None:
-        task_object(dataset=dataset, runtime=False)
+        task_object(dataset=dataset)
 
     valid_wf()
 
@@ -328,8 +329,8 @@ def test_ge_flytefile_multiple_args():
         dataset_one: FlyteFile = "data/yellow_tripdata_sample_2019-01.csv",
         dataset_two: FlyteFile = "data/yellow_tripdata_sample_2019-02.csv",
     ) -> (int, int):
-        task_object_one(dataset=dataset_one, runtime=False)
-        task_object_two(dataset=dataset_two, runtime=False)
+        task_object_one(dataset=dataset_one)
+        task_object_two(dataset=dataset_two)
         return get_file_name(dataset_one=dataset_one, dataset_two=dataset_two)
 
     assert wf() == (10000, 10000)
@@ -365,7 +366,7 @@ def test_ge_flyteschema_with_task():
 
     @workflow
     def valid_wf(dataframe: pd.DataFrame) -> int:
-        task_object(dataset=dataframe, runtime=False)
+        task_object(dataset=dataframe)
         return my_task(dataframe=dataframe)
 
     df = pd.read_csv("data/yellow_tripdata_sample_2019-01.csv")
@@ -385,7 +386,7 @@ def test_ge_flyteschema_sqlite():
 
     @workflow
     def my_wf(dataset: FlyteSchema):
-        task_object(dataset=dataset, runtime=False)
+        task_object(dataset=dataset)
 
     con = sqlite3.connect(os.path.join("data", "movies.sqlite"))
     df = pd.read_sql_query("SELECT * FROM movies", con)
@@ -405,7 +406,7 @@ def test_ge_flyteschema_workflow():
 
     @workflow
     def my_wf(dataframe: pd.DataFrame):
-        task_object(dataset=dataframe, runtime=False)
+        task_object(dataset=dataframe)
 
     df = pd.read_csv("data/yellow_tripdata_sample_2019-01.csv")
     my_wf(dataframe=df)
