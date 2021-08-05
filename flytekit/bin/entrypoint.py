@@ -226,7 +226,25 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
-    if cloud_provider == _constants.CloudProvider.AWS:
+    # This rather ugly condition will be going away with #559. We first check the raw output prefix, and if missing,
+    # we fall back to the logic of checking the cloud provider. The reason we have to check for the existence of the
+    # raw_output_data_prefix arg first is because it may be set to None by execute_task_cmd. That is there to support
+    # the corner case of a really old propeller that is still not filling in the raw output prefix template.
+    if raw_output_data_prefix:
+        if raw_output_data_prefix.startswith("s3:/"):
+            file_access = _data_proxy.FileAccessProvider(
+                local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+                remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
+            )
+        elif raw_output_data_prefix.startswith("gs:/"):
+            file_access = _data_proxy.FileAccessProvider(
+                local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+                remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
+            )
+        elif raw_output_data_prefix.startswith("file") or raw_output_data_prefix.startswith("/"):
+            # A fake remote using the local disk will automatically be created
+            file_access = _data_proxy.FileAccessProvider(local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get())
+    elif cloud_provider == _constants.CloudProvider.AWS:
         file_access = _data_proxy.FileAccessProvider(
             local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
             remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),

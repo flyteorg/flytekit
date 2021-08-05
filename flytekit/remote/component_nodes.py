@@ -9,6 +9,8 @@ from flytekit.remote import identifier as _identifier
 
 
 class FlyteTaskNode(_workflow_model.TaskNode):
+    """A class encapsulating a task that a Flyte node needs to execute."""
+
     def __init__(self, flyte_task: "flytekit.remote.tasks.task.FlyteTask"):
         self._flyte_task = flyte_task
         super(FlyteTaskNode, self).__init__(None)
@@ -56,6 +58,8 @@ class FlyteTaskNode(_workflow_model.TaskNode):
 
 
 class FlyteWorkflowNode(_workflow_model.WorkflowNode):
+    """A class encapsulating a workflow that a Flyte node needs to execute."""
+
     def __init__(
         self,
         flyte_workflow: "flytekit.remote.workflow.FlyteWorkflow" = None,
