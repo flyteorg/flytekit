@@ -1,6 +1,7 @@
 import os
 import pathlib
 import shutil
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -172,3 +173,15 @@ def test_dont_convert_remotes():
             lm = LiteralMap(literals={"in1": lit})
             wf = dyn.dispatch_execute(ctx, lm)
             assert wf.nodes[0].inputs[0].binding.scalar.blob.uri == "s3://anything"
+
+
+def test_download_caching():
+    mock_downloader = MagicMock()
+    f = FlyteDirectory("test", mock_downloader)
+    assert not f.downloaded
+    os.fspath(f)
+    assert f.downloaded
+    assert mock_downloader.call_count == 1
+    for _ in range(10):
+        os.fspath(f)
+    assert mock_downloader.call_count == 1
