@@ -81,8 +81,9 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         """
         This function should be called by os.listdir as well.
         """
-        self._downloader()
-        self._downloaded = True
+        if not self._downloaded:
+            self._downloader()
+            self._downloaded = True
         return self._path
 
     @classmethod
