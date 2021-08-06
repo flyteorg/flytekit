@@ -7,10 +7,18 @@ from setuptools import find_packages, setup  # noqa
 
 MIN_PYTHON_VERSION = (3, 7)
 CURRENT_PYTHON = sys.version_info[:2]
-if CURRENT_PYTHON < MIN_PYTHON_VERSION:
-    print("Minimum Python version is {}, but you are on {}".format(MIN_PYTHON_VERSION, CURRENT_PYTHON))
+if CURRENT_PYTHON == (3, 6):
+    print(
+        f"Flytekit native typed API is supported for python versions {MIN_PYTHON_VERSION}+, Python 3.6 is supported"
+        f" only for legacy Flytekit API. This will be deprecated when Python 3.6 reaches end of life (Dec 23rd, 2021),"
+        f" we recommend migrating to the new API"
+    )
+elif CURRENT_PYTHON < MIN_PYTHON_VERSION:
+    print(
+        f"Flytekit API is only supported for Python version is {MIN_PYTHON_VERSION}+. Detected you are on"
+        f" version {CURRENT_PYTHON}, installation will not proceed!"
+    )
     sys.exit(-1)
-
 
 spark = ["pyspark>=2.4.0,<3.0.0"]
 spark3 = ["pyspark>=3.0.0"]
@@ -94,7 +102,7 @@ setup(
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.6",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",

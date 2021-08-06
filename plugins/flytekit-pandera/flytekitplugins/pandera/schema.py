@@ -34,15 +34,20 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             schema = pandera.DataFrameSchema()
         return schema
 
+    @staticmethod
+    def _get_pandas_type(pandera_dtype: pandera.dtypes.DataType):
+        return pandera_dtype.type.type
+
     def _get_col_dtypes(self, t: Type[pandera.typing.DataFrame]):
-        return {k: v.pandas_dtype for k, v in self._pandera_schema(t).columns.items()}
+        return {k: self._get_pandas_type(v.dtype) for k, v in self._pandera_schema(t).columns.items()}
 
     def _get_schema_type(self, t: Type[pandera.typing.DataFrame]) -> SchemaType:
         converted_cols: typing.List[SchemaType.SchemaColumn] = []
         for k, col in self._pandera_schema(t).columns.items():
-            if col.pandas_dtype not in self._SUPPORTED_TYPES:
-                raise AssertionError(f"type {v} is currently not supported by the pandera schema")
-            converted_cols.append(SchemaType.SchemaColumn(name=k, type=self._SUPPORTED_TYPES[col.pandas_dtype]))
+            pandas_type = self._get_pandas_type(col.dtype)
+            if pandas_type not in self._SUPPORTED_TYPES:
+                raise AssertionError(f"type {pandas_type} is currently not supported by the flytekit-pandera plugin")
+            converted_cols.append(SchemaType.SchemaColumn(name=k, type=self._SUPPORTED_TYPES[pandas_type]))
         return SchemaType(columns=converted_cols)
 
     def get_literal_type(self, t: Type[pandera.typing.DataFrame]) -> LiteralType:
