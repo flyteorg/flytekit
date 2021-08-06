@@ -102,7 +102,7 @@ flake8-black==0.2.3
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flyteidl==0.19.18
+flyteidl==0.19.19
     # via
     #   -c requirements.txt
     #   flytekit
