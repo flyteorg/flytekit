@@ -149,8 +149,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
     def __fspath__(self):
         # This is where a delayed downloading of the file will happen
-        self._downloader()
-        self._downloaded = True
+        if not self._downloaded:
+            self._downloader()
+            self._downloaded = True
         return self._path
 
     def __eq__(self, other):
