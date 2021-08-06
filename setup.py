@@ -11,11 +11,13 @@ if CURRENT_PYTHON == (3, 6):
     print(
         f"Flytekit native typed API is supported for python versions {MIN_PYTHON_VERSION}+, Python 3.6 is supported"
         f" only for legacy Flytekit API. This will be deprecated when Python 3.6 reaches end of life (Dec 23rd, 2021),"
-        f" we recommend migrating to the new API")
+        f" we recommend migrating to the new API"
+    )
 elif CURRENT_PYTHON < MIN_PYTHON_VERSION:
     print(
         f"Flytekit API is only supported for Python version is {MIN_PYTHON_VERSION}+. Detected you are on"
-        f" version {CURRENT_PYTHON}, installation will not proceed!")
+        f" version {CURRENT_PYTHON}, installation will not proceed!"
+    )
     sys.exit(-1)
 
 spark = ["pyspark>=2.4.0,<3.0.0"]
