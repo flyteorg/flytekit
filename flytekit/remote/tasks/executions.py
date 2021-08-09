@@ -3,9 +3,9 @@ from typing import Any, Dict, Optional
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact_mixin
-from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models.admin import task_execution as _task_execution_model
 from flytekit.models.core import execution as _execution_models
+from flytekit.remote.shared import RemoteClient
 
 
 class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.ExecutionArtifact):
@@ -61,15 +61,14 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
             )
         return self.closure.error
 
-    def get_child_executions(self, filters=None):
+    def get_child_executions(self, remote: RemoteClient, filters=None):
         from flytekit.remote import nodes as _nodes
 
         if not self.is_parent:
             raise _user_exceptions.FlyteAssertion("Only task executions marked with 'is_parent' have child executions.")
-        client = _flyte_engine.get_client()
         models = {
             v.id.node_id: v
-            for v in _iterate_node_executions(client, task_execution_identifier=self.id, filters=filters)
+            for v in _iterate_node_executions(remote.client, task_execution_identifier=self.id, filters=filters)
         }
 
         return {k: _nodes.FlyteNodeExecution.promote_from_model(v) for k, v in models.items()}
@@ -83,14 +82,14 @@ class FlyteTaskExecution(_task_execution_model.TaskExecution, _artifact_mixin.Ex
             is_parent=base_model.is_parent,
         )
 
-    def sync(self):
+    def sync(self, remote: RemoteClient):
         """
         Syncs the state of the underlying execution artifact with the state observed by the platform.
         """
-        self._sync_closure()
+        self._sync_closure(remote)
 
-    def _sync_closure(self):
+    def _sync_closure(self, remote: RemoteClient):
         """
         Syncs the closure of the underlying execution artifact with the state observed by the platform.
         """
-        self._closure = _flyte_engine.get_client().get_task_execution(self.id).closure
+        self._closure = remote.client.get_task_execution(self.id).closure

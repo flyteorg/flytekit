@@ -58,6 +58,10 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
     def resource_type(self):
         return _identifier_model.ResourceType.WORKFLOW
 
+    @property
+    def flyte_nodes(self):
+        return self._flyte_nodes
+
     def get_sub_workflows(self) -> List["FlyteWorkflow"]:
         result = []
         for node in self.nodes:
