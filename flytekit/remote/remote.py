@@ -52,7 +52,7 @@ from flytekit.models.execution import (
 from flytekit.remote.identifier import Identifier, WorkflowExecutionIdentifier
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.launch_plan import FlyteLaunchPlan
-from flytekit.remote.nodes import FlyteNode, FlyteNodeExecution
+from flytekit.remote.nodes import FlyteNodeExecution
 from flytekit.remote.tasks.executions import FlyteTaskExecution
 from flytekit.remote.tasks.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
