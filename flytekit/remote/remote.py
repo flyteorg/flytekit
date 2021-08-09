@@ -17,7 +17,6 @@ from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.loggers import remote_logger
-from flytekit.remote.shared import RemoteClient
 
 try:
     from functools import singledispatchmethod
@@ -100,7 +99,7 @@ def _get_entity_identifier(
     )
 
 
-class FlyteRemote(RemoteClient):
+class FlyteRemote(object):
     """Main entrypoint for programmatically accessing a Flyte remote backend.
 
     The term 'remote' is synonymous with 'backend' or 'deployment' and refers to a hosted instance of the
