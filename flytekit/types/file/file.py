@@ -24,29 +24,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
     in or return a file.
 
-    There are a few possible types on the Python side that can be specified:
-
-    * :class:`python:typing.IO`
-      Usually this takes the form of TextIO or BinaryIO. For now we only support these derived classes. This is what
-      open() will generally return. For example, ::
-
-        def get_read_file_handle() -> TextIO:
-            fh = open(__file__, 'r')
-            return fh
-
-        def get_bin_read_file_handle() -> BinaryIO:
-            fh = open(__file__, 'rb')
-            return fh
-
-      Note: issubclass(type(fh), typing.Text/BinaryIO) is False for some reason, nevertheless the type checker passes.
-
-      If you specify either of these, as an input, Flyte will open a filehandle to the data, before the task runs, and pass
-      that handle as the argument to your function. If you specify it as an output, Flyte will read() the data after the
-      task completes, and write it to Flyte's configurable Blob store. On the backend, Flyte's type system for file and
-      file-like objects include a str based "format" as part of the type. For TextIO and BinaryIO, the format will be
-      "TextIO" and "BinaryIO". These IO types have a higher likelihood of being subject to change before an official,
-      release. The PathLike types will not.
-
     * :class:`python:os.PathLike`
       This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
 
