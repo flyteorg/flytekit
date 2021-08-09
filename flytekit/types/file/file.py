@@ -95,18 +95,18 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     To specify non-default behavior:
 
     * Copy the s3 path to a new location.
-      ``FlyteFilePath("s3://bucket/path", remote_path=True)``
+      ``FlyteFile("s3://bucket/path", remote_path=True)``
 
     * Copy the s3 path to a specific location.
-      ``FlyteFilePath("s3://bucket/path", remote_path="s3://other-bucket/path")``
+      ``FlyteFile("s3://bucket/path", remote_path="s3://other-bucket/path")``
 
     * Copy local path to a specific location.
-      ``FlyteFilePath("/tmp/local_file", remote_path="s3://other-bucket/path")``
+      ``FlyteFile("/tmp/local_file", remote_path="s3://other-bucket/path")``
 
     * Do not copy local path, this will copy the string into the literal. For example, let's say your docker image has a
       thousand files in it, and you want to tell the next task, which file to look at. (Bad example, you shouldn't have
       that many files in your image.)
-      ``FlyteFilePath("/tmp/local_file", remote_path=False)``
+      ``FlyteFile("/tmp/local_file", remote_path=False)``
 
     * However, we have a shorthand.
       "file:///tmp/local_file" is treated as "remote" and is by default not copied.
