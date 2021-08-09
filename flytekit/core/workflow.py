@@ -174,14 +174,13 @@ class WorkflowBase(object):
         workflow_metadata: WorkflowMetadata,
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
-        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         self._name = name
         self._workflow_metadata = workflow_metadata
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
-        self._interface = transform_interface_to_typed_interface(python_interface, docstring)
+        self._interface = transform_interface_to_typed_interface(python_interface, python_interface.docstring)
         self._inputs = {}
         self._unbound_inputs = set()
         self._nodes = []
@@ -646,7 +645,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     ):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
-        native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
+        native_interface = transform_signature_to_interface(inspect.signature(workflow_function), docstring=docstring)
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
@@ -657,7 +656,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata=metadata,
             workflow_metadata_defaults=default_metadata,
             python_interface=native_interface,
-            docstring=docstring,
         )
 
     @property

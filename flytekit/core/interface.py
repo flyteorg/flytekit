@@ -25,6 +25,7 @@ class Interface(object):
         inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
         outputs: typing.Optional[typing.Dict[str, Type]] = None,
         output_tuple_name: Optional[str] = None,
+        docstring: Optional[Docstring] = None,
     ):
         """
         :param outputs: Output variables and their types as a dictionary
@@ -79,6 +80,7 @@ class Interface(object):
                     ...  # See runs_before
 
             self._output_tuple_class = Output
+        self._docstring = docstring
 
     @property
     def output_tuple(self) -> Optional[Type[collections.namedtuple]]:
@@ -113,6 +115,10 @@ class Interface(object):
     def outputs(self) -> typing.Dict[str, type]:
         return self._outputs
 
+    @property
+    def docstring(self) -> Optional[Docstring]:
+        return self._docstring
+
     def remove_inputs(self, vars: List[str]) -> Interface:
         """
         This method is useful in removing some variables from the Flyte backend inputs specification, as these are
@@ -125,7 +131,7 @@ class Interface(object):
         for v in vars:
             if v in new_inputs:
                 del new_inputs[v]
-        return Interface(new_inputs, self._outputs)
+        return Interface(new_inputs, self._outputs, docstring=self.docstring)
 
     def with_inputs(self, extra_inputs: Dict[str, Type]) -> Interface:
         """
@@ -139,7 +145,7 @@ class Interface(object):
             if k in new_inputs:
                 raise ValueError(f"Input {k} cannot be added as it already exists in the interface")
             new_inputs[k] = v
-        return Interface(new_inputs, self._outputs)
+        return Interface(new_inputs, self._outputs, docstring=self.docstring)
 
     def with_outputs(self, extra_outputs: Dict[str, Type]) -> Interface:
         """
@@ -164,7 +170,10 @@ def transform_inputs_to_parameters(
     """
     if interface is None or interface.inputs_with_defaults is None:
         return _interface_models.ParameterMap({})
-    inputs_vars = transform_variable_map(interface.inputs)
+    if interface.docstring is None:
+        inputs_vars = transform_variable_map(interface.inputs)
+    else:
+        inputs_vars = transform_variable_map(interface.inputs, interface.docstring.input_descriptions)
     params = {}
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
@@ -233,7 +242,7 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
+def transform_signature_to_interface(signature: inspect.Signature, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -258,7 +267,7 @@ def transform_signature_to_interface(signature: inspect.Signature) -> Interface:
             if hasattr(return_annotation, "__name__") and return_annotation.__name__ != "":
                 custom_name = return_annotation.__name__
 
-    return Interface(inputs, outputs, output_tuple_name=custom_name)
+    return Interface(inputs, outputs, output_tuple_name=custom_name, docstring=docstring)
 
 
 def transform_variable_map(
