@@ -199,7 +199,9 @@ def transform_interface_to_typed_interface(
         input_descriptions = output_descriptions = {}
     else:
         input_descriptions = interface.docstring.input_descriptions
-        output_descriptions = remap_shared_output_descriptions(interface.docstring.output_descriptions, interface.outputs)
+        output_descriptions = remap_shared_output_descriptions(
+            interface.docstring.output_descriptions, interface.outputs
+        )
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
