@@ -14,6 +14,7 @@ SOURCES = {
     "flytekitplugins-kfpytorch": "flytekit-kf-pytorch",
     "flytekitplugins-awssagemaker": "flytekit-aws-sagemaker",
     "flytekitplugins-kftensorflow": "flytekit-kf-tensorflow",
+    "flytekitplugins-kfmpi": "flytekit-kf-mpi",
     "flytekitplugins-pandera": "flytekit-pandera",
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",

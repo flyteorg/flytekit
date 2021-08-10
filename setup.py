@@ -99,6 +99,7 @@ setup(
         "scripts/flytekit_build_image.sh",
         "scripts/flytekit_venv",
         "scripts/flytekit_sagemaker_runner.py",
+        "scripts/flytekit_mpi_runner.py",
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
