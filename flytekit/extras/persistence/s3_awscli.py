@@ -85,9 +85,9 @@ class S3Persistence(DataPersistence):
         """
         splits a valid s3 uri into bucket and key
         """
-        path = path[len("s3://"):]
+        path = path[len("s3://") :]
         first_slash = path.index("/")
-        return path[:first_slash], path[first_slash + 1:]
+        return path[:first_slash], path[first_slash + 1 :]
 
     def exists(self, remote_path):
         """
