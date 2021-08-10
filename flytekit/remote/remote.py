@@ -1021,13 +1021,15 @@ class FlyteRemote(object):
             if node.id == node_execution.id.node_id:
                 if node.task_node is not None:
                     return node.task_node.flyte_task.interface
-                elif node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
+                elif node.workflow_node is not None and node.workflow_node.sub_workflow_ref is not None:
                     # Fetch the launch plan this node launched, and from there fetch the referenced workflow and use its
                     # interface.
-                    lp = self.client.get_launch_plan(node.workflow_node.launchplan_ref)
-                    workflow_id = lp.spec.workflow_id
+                    sub_workflow_ref = node.workflow_node.sub_workflow_ref
                     workflow = self.fetch_workflow(
-                        workflow_id.project, workflow_id.domain, workflow_id.name, workflow_id.version
+                        sub_workflow_ref.project,
+                        sub_workflow_ref.domain,
+                        sub_workflow_ref.name,
+                        sub_workflow_ref.version,
                     )
                     return workflow.interface
 
