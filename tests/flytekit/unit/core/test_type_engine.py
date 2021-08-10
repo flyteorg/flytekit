@@ -198,6 +198,13 @@ def test_protos():
     with pytest.raises(AssertionError):
         TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
 
+    default_proto = errors_pb2.ContainerError()
+    lit = TypeEngine.to_literal(ctx, default_proto, errors_pb2.ContainerError, lt)
+    assert lit.scalar
+    assert lit.scalar.generic is not None
+    new_python_val = TypeEngine.to_python_value(ctx, lit, errors_pb2.ContainerError)
+    assert new_python_val == default_proto
+
 
 def test_guessing_basic():
     b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)

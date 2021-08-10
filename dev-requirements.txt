@@ -38,7 +38,7 @@ cffi==1.14.6
     #   bcrypt
     #   cryptography
     #   pynacl
-charset-normalizer==2.0.3
+charset-normalizer==2.0.4
     # via
     #   -c requirements.txt
     #   requests
@@ -73,7 +73,7 @@ dirhash==0.2.1
     # via
     #   -c requirements.txt
     #   flytekit
-distro==1.5.0
+distro==1.6.0
     # via docker-compose
 docker[ssh]==5.0.0
     # via docker-compose
@@ -81,7 +81,7 @@ docker-compose==1.29.2
     # via
     #   pytest-docker
     #   pytest-flyte
-docker-image-py==0.1.10
+docker-image-py==0.1.12
     # via
     #   -c requirements.txt
     #   flytekit
@@ -89,7 +89,7 @@ dockerpty==0.4.1
     # via docker-compose
 docopt==0.6.2
     # via docker-compose
-docstring-parser==0.9.1
+docstring-parser==0.10
     # via
     #   -c requirements.txt
     #   flytekit
@@ -102,11 +102,11 @@ flake8-black==0.2.3
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flyteidl==0.19.14
+flyteidl==0.19.19
     # via
     #   -c requirements.txt
     #   flytekit
-grpcio==1.38.1
+grpcio==1.39.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -114,13 +114,13 @@ idna==3.2
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.6.1
+importlib-metadata==4.6.3
     # via
     #   -c requirements.txt
     #   keyring
 iniconfig==1.1.1
     # via pytest
-isort==5.9.2
+isort==5.9.3
     # via
     #   -r dev-requirements.in
     #   flake8-isort
@@ -179,7 +179,7 @@ packaging==21.0
     # via
     #   -c requirements.txt
     #   pytest
-pandas==1.3.0
+pandas==1.3.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -243,9 +243,9 @@ python-dateutil==2.8.1
     #   croniter
     #   flytekit
     #   pandas
-python-dotenv==0.18.0
+python-dotenv==0.19.0
     # via docker-compose
-python-json-logger==2.0.1
+python-json-logger==2.0.2
     # via
     #   -c requirements.txt
     #   flytekit
@@ -262,7 +262,7 @@ pyyaml==5.4.1
     # via
     #   -c requirements.txt
     #   docker-compose
-regex==2021.7.6
+regex==2021.8.3
     # via
     #   -c requirements.txt
     #   black
@@ -322,7 +322,7 @@ toml==0.10.2
     #   flake8-black
     #   mypy
     #   pytest
-tomli==1.0.4
+tomli==1.2.1
     # via
     #   -c requirements.txt
     #   black

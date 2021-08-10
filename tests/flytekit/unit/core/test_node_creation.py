@@ -175,7 +175,8 @@ def test_resource_overrides():
     def my_wf(a: typing.List[str]) -> typing.List[str]:
         mappy = map_task(t1)
         map_node = create_node(mappy, a=a).with_overrides(
-            requests=Resources(cpu="1", mem="100"), limits=Resources(cpu="2", mem="200")
+            requests=Resources(cpu="1", mem="100", ephemeral_storage="500Mi"),
+            limits=Resources(cpu="2", mem="200", ephemeral_storage="1Gi"),
         )
         return map_node.o0
 
@@ -192,9 +193,11 @@ def test_resource_overrides():
     assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
     ]
 
     assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "200"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "1Gi"),
     ]

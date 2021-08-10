@@ -47,3 +47,19 @@ DEFAULT_STORAGE_REQUEST = _config_common.FlyteStringConfigurationEntry("resource
 If not specified explicitly when constructing a task, this request will be applied as the default. Follows Kubernetes
 storage request/limit format.
 """
+
+DEFAULT_EPHEMERAL_STORAGE_LIMIT = _config_common.FlyteStringConfigurationEntry(
+    "resources", "default_ephemeral_storage_limit"
+)
+"""
+If not specified explicitly when constructing a task, this limit will be applied as the default. Follows Kubernetes
+ephemeral storage request/limit format.
+"""
+
+DEFAULT_EPHEMERAL_STORAGE_REQUEST = _config_common.FlyteStringConfigurationEntry(
+    "resources", "default_ephemeral_storage_request"
+)
+"""
+If not specified explicitly when constructing a task, this request will be applied as the default. Follows Kubernetes
+ephemeral storage request/limit format.
+"""

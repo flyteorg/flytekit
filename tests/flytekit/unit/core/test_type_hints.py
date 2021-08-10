@@ -1055,7 +1055,10 @@ def test_environment():
 
 
 def test_resources():
-    @task(requests=Resources(cpu="1"), limits=Resources(cpu="2", mem="400M"))
+    @task(
+        requests=Resources(cpu="1", ephemeral_storage="500Mi"),
+        limits=Resources(cpu="2", mem="400M", ephemeral_storage="501Mi"),
+    )
     def t1(a: int) -> str:
         a = a + 2
         return "now it's " + str(a)
@@ -1082,9 +1085,11 @@ def test_resources():
     ):
         task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
         assert task_spec.template.container.resources.requests == [
-            _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
+            _resource_models.ResourceEntry(_resource_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
+            _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1"),
         ]
         assert task_spec.template.container.resources.limits == [
+            _resource_models.ResourceEntry(_resource_models.ResourceName.EPHEMERAL_STORAGE, "501Mi"),
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
             _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
         ]
