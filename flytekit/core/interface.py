@@ -35,6 +35,7 @@ class Interface(object):
         :param output_tuple_name: This is used to store the name of a typing.NamedTuple when the task or workflow
             returns one. This is also used as a proxy for better or for worse for the presence of a tuple return type,
             primarily used when handling one-element NamedTuples.
+        :param docstring: Docstring of the annotated @task or @workflow from which the interface derives from.
         """
         self._inputs = {}
         if inputs:
