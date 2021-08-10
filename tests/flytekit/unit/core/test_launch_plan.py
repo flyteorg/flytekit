@@ -385,3 +385,30 @@ def test_lp_nodes():
         == identifier_models.ResourceType.LAUNCH_PLAN
     )
     assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "my_sub_wf_lp1"
+
+
+def test_lp_with_docstring():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @workflow
+    def wf(a: int) -> (str, str):
+        """
+        sample workflow
+
+        Parameters
+        ----------
+        a : str
+            foo
+
+        Returns
+        -------
+        out1, out2 : tuple
+            ramen
+        """
+        x, y = t1(a=a)
+        return x, y
+    lp = launch_plan.LaunchPlan.get_or_create(workflow=wf)
+    assert lp.parameters.parameters["a"].var.description == "foo"
