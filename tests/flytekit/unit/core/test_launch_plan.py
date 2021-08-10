@@ -410,5 +410,6 @@ def test_lp_with_docstring():
         """
         x, y = t1(a=a)
         return x, y
+
     lp = launch_plan.LaunchPlan.get_or_create(workflow=wf)
     assert lp.parameters.parameters["a"].var.description == "foo"

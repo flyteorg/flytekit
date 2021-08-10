@@ -191,6 +191,7 @@ def test_parameters_with_docstring():
         :return: ramen
         """
         ...
+
     our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
     params = transform_inputs_to_parameters(ctx, our_interface)
     assert params.parameters["a"].var.description == "foo"
