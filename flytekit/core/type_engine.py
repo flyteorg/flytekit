@@ -270,7 +270,7 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
         return Literal(scalar=Scalar(generic=struct))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        if not (lv and lv.scalar and lv.scalar.generic):
+        if not (lv and lv.scalar and lv.scalar.generic is not None):
             raise AssertionError("Can only covert a generic literal to a Protobuf")
 
         pb_obj = expected_python_type()
@@ -797,6 +797,7 @@ def _register_default_type_transformers():
     TypeEngine.register(PathLikeTransformer())
     TypeEngine.register(BinaryIOTransformer())
     TypeEngine.register(EnumTransformer())
+    TypeEngine.register(ProtobufTransformer())
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.
@@ -810,5 +811,3 @@ def _register_default_type_transformers():
 
 
 _register_default_type_transformers()
-
-TypeEngine.register(ProtobufTransformer())
