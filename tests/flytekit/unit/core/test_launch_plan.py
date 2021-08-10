@@ -394,7 +394,7 @@ def test_lp_with_docstring():
         return a, "world-" + str(a)
 
     @workflow
-    def wf(a: int) -> (str, str):
+    def wf_with_docstring(a: int) -> (str, str):
         """
         sample workflow
 
@@ -411,5 +411,5 @@ def test_lp_with_docstring():
         x, y = t1(a=a)
         return x, y
 
-    lp = launch_plan.LaunchPlan.get_or_create(workflow=wf)
+    lp = launch_plan.LaunchPlan.get_or_create(workflow=wf_with_docstring)
     assert lp.parameters.parameters["a"].var.description == "foo"
