@@ -188,7 +188,6 @@ def transform_inputs_to_parameters(
 
 def transform_interface_to_typed_interface(
     interface: typing.Optional[Interface],
-    docstring: Optional[Docstring] = None,
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
@@ -196,11 +195,11 @@ def transform_interface_to_typed_interface(
     if interface is None:
         return None
 
-    if docstring is None:
+    if interface.docstring is None:
         input_descriptions = output_descriptions = {}
     else:
-        input_descriptions = docstring.input_descriptions
-        output_descriptions = remap_shared_output_descriptions(docstring.output_descriptions, interface.outputs)
+        input_descriptions = interface.docstring.input_descriptions
+        output_descriptions = remap_shared_output_descriptions(interface.docstring.output_descriptions, interface.outputs)
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)

@@ -210,8 +210,8 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z))
-    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    typed_interface = transform_interface_to_typed_interface(our_interface)
     assert typed_interface.inputs.get("a").description == "foo"
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("o1").description == "ramen"
@@ -235,8 +235,8 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z))
-    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    typed_interface = transform_interface_to_typed_interface(our_interface)
     assert typed_interface.inputs.get("a").description == "foo"
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("o0").description == "ramen"
@@ -263,8 +263,8 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z))
-    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    typed_interface = transform_interface_to_typed_interface(our_interface)
     assert typed_interface.inputs.get("a").description == "foo"
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("x_str").description == "description for x_str"

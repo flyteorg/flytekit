@@ -180,7 +180,7 @@ class WorkflowBase(object):
         self._workflow_metadata = workflow_metadata
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
-        self._interface = transform_interface_to_typed_interface(python_interface, python_interface.docstring)
+        self._interface = transform_interface_to_typed_interface(python_interface)
         self._inputs = {}
         self._unbound_inputs = set()
         self._nodes = []

@@ -38,7 +38,6 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
         secret_requests: Optional[List[Secret]] = None,
-        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         """
@@ -75,7 +74,6 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             name=name,
             task_config=task_config,
             security_ctx=sec_ctx,
-            docstring=docstring,
             **kwargs,
         )
         self._container_image = container_image

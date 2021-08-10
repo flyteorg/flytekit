@@ -373,7 +373,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         """
@@ -391,7 +390,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface, docstring),
+            interface=transform_interface_to_typed_interface(interface),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
