@@ -443,7 +443,7 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
 
 def test_setup_bad_prefix():
     with pytest.raises(TypeError):
-        with setup_execution("qwerty") as ctx:
+        with setup_execution("qwerty"):
             ...
 
 

@@ -234,7 +234,7 @@ def setup_execution(
             _logging.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
             raise
     else:
-        raise Exception(f"No raw output prefix detected. Please upgrade your version of Propeller to 0.4.0 or later.")
+        raise Exception("No raw output prefix detected. Please upgrade your version of Propeller to 0.4.0 or later.")
 
     with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
