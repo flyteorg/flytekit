@@ -32,7 +32,7 @@ class GreatExpectationsFlyteConfig(object):
         datasource_name: tell where your data lives and how to get it
         expectation_suite_name: suite which consists of the data expectations
         data_connector_name: connector to identify data batches
-        is_runtime: do you want to create data batches at runtime?
+        data_asset_name: name of the data asset (to be used for RuntimeBatchRequest)
         local_file_path: dataset file path useful for FlyteFile and FlyteSchema
         checkpoint_params: optional SimpleCheckpoint parameters
         batch_request_config: batchrequest config
@@ -42,14 +42,14 @@ class GreatExpectationsFlyteConfig(object):
     datasource_name: str
     expectation_suite_name: str
     data_connector_name: str
-    is_runtime: bool = False
+    data_asset_name: Optional[str] = None
     """
     local_file_path is a must in two scenrios:
     * When using FlyteSchema
     * When using FlyteFile for remote paths
     This is because base directory which has the dataset file 'must' be given in GreatExpectations' config file
     """
-    local_file_path: str = None
+    local_file_path: Optional[str] = None
     checkpoint_params: Optional[Dict[str, Union[str, List[str]]]] = None
     batch_request_config: BatchRequestConfig = None
     context_root_dir: str = "./great_expectations"
@@ -134,6 +134,28 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
         ge_conf = GreatExpectationsFlyteConfig(**conf_dict)
 
+        # fetch the data context
+        context = ge.data_context.DataContext(ge_conf.context_root_dir)
+
+        # determine the type of data connector
+        selected_datasource = list(filter(lambda x: x["name"] == ge_conf.datasource_name, context.list_datasources()))
+
+        if not selected_datasource:
+            raise ValueError("Datasource doesn't exist!")
+
+        data_connector_class_lookup = {
+            data_connector_name: data_connector_class["class_name"]
+            for data_connector_name, data_connector_class in selected_datasource[0]["data_connectors"].items()
+        }
+
+        specified_data_connector_class = data_connector_class_lookup[ge_conf.data_connector_name]
+
+        is_runtime = False
+        if specified_data_connector_class == "RuntimeDataConnector":
+            is_runtime = True
+            if not ge_conf.data_asset_name:
+                raise ValueError("data_asset_name has to be given in a RuntimeBatchRequest")
+
         # file path for FlyteSchema and FlyteFile
         temp_dataset = ""
 
@@ -144,7 +166,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         if lv.scalar.schema:
 
             # if data batch is to be genearated, skip copying the parquet file
-            if not ge_conf.is_runtime:
+            if not is_runtime:
                 if not ge_conf.local_file_path:
                     raise ValueError("local_file_path is missing!")
 
@@ -198,18 +220,15 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
         batch_request_conf = ge_conf.batch_request_config
 
-        # fetch the data context
-        context = ge.data_context.DataContext(ge_conf.context_root_dir)
-
         # minimalistic batch request
         final_batch_request = {
-            "data_asset_name": "random_string" if ge_conf.is_runtime else dataset,
+            "data_asset_name": ge_conf.data_asset_name if is_runtime else dataset,
             "datasource_name": ge_conf.datasource_name,
             "data_connector_name": ge_conf.data_connector_name,
         }
 
         # Great Expectations' RuntimeBatchRequest
-        if batch_request_conf and (batch_request_conf["runtime_parameters"] or ge_conf.is_runtime):
+        if batch_request_conf and (batch_request_conf["runtime_parameters"] or is_runtime):
             final_batch_request.update(
                 {
                     "runtime_parameters": batch_request_conf["runtime_parameters"]
@@ -220,9 +239,9 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 }
             )
 
-            if ge_conf.is_runtime and lv.scalar.primitive:
+            if is_runtime and lv.scalar.primitive:
                 final_batch_request["runtime_parameters"]["query"] = dataset
-            elif ge_conf.is_runtime and lv.scalar.schema:
+            elif is_runtime and lv.scalar.schema:
                 final_batch_request["runtime_parameters"]["batch_data"] = return_dataset
             else:
                 raise AssertionError("Can only use runtime_parameters for query(str)/schema data")

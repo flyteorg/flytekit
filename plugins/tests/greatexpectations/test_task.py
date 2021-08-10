@@ -92,7 +92,7 @@ def test_ge_runtimebatchrequest_sqlite_config():
         inputs=kwtypes(dataset=str),
         expectation_suite_name="sqlite.movies",
         data_connector_name="sqlite_data_connector",
-        is_runtime=True,
+        data_asset_name="sqlite_data",
         task_config=BatchRequestConfig(
             batch_identifiers={
                 "pipeline_stage": "validation",
@@ -114,7 +114,7 @@ def test_ge_runtimebatchrequest_pandas_config():
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
         data_connector_name="my_runtime_data_connector",
-        is_runtime=True,
+        data_asset_name="pandas_data",
         task_config=BatchRequestConfig(
             batch_identifiers={
                 "pipeline_stage": "validation",
