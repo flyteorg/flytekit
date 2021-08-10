@@ -39,6 +39,7 @@ from flytekit.core.promise import (
     Promise,
     VoidPromise,
     create_and_link_node,
+    create_native_named_tuple,
     create_task_output,
     translate_inputs_to_literals,
 )
@@ -227,7 +228,7 @@ class Task(object):
         #  - Promises or native constants
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
-        #  Also alongwith promises and constants, there could be dictionary or list of promises or constants
+        #  Also along with promises and constants, there could be dictionary or list of promises or constants
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
@@ -265,11 +266,17 @@ class Task(object):
         #     function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
         #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
         #     task output as an input, things probably will fail pretty obviously.
+        # Sanity checks
+        # Only keyword args allowed
         if len(args) > 0:
             raise _user_exceptions.FlyteAssertion(
                 f"When calling tasks, only keyword args are supported. "
                 f"Aborting execution as detected {len(args)} positional args {args}"
             )
+        # Make sure arguments are part of interface
+        for k, v in kwargs.items():
+            if k not in self.interface.inputs:
+                raise ValueError(f"Received unexpected keyword argument {k}")
 
         ctx = FlyteContextManager.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
@@ -286,16 +293,37 @@ class Task(object):
                     return create_task_output(vals, self.python_interface)
             return self._local_execute(ctx, **kwargs)
         else:
-            logger.warning("task run without context - executing raw function")
-            new_user_params = self.pre_execute(ctx.user_space_params)
+            logger.info("Task run without context - executing raw function")
             with FlyteContextManager.with_context(
                 ctx.with_execution_state(
-                    ctx.execution_state.with_params(
-                        mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, user_space_params=new_user_params
-                    )
+                    ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
                 )
-            ):
-                return self.execute(**kwargs)
+            ) as child_ctx:
+                result = self._local_execute(child_ctx, **kwargs)
+
+            expected_outputs = len(self.python_interface.outputs)
+            if expected_outputs == 0:
+                if result is None or isinstance(result, VoidPromise):
+                    return None
+                else:
+                    raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
+
+            if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
+                return create_native_named_tuple(ctx, result, self.python_interface)
+
+            raise ValueError(
+                f"expected outputs and actual outputs do not match. Result {result} Python interface: {self.python_interface}"
+            )
+
+            # new_user_params = self.pre_execute(ctx.user_space_params)
+            # with FlyteContextManager.with_context(
+            #     ctx.with_execution_state(
+            #         ctx.execution_state.with_params(
+            #             mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, user_space_params=new_user_params
+            #         )
+            #     )
+            # ) as ctx:
+            # return self.execute(**kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")

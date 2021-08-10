@@ -235,6 +235,12 @@ class WorkflowBase(object):
             interruptible=self.workflow_metadata_defaults.interruptible,
         )
 
+    def compile(self, ctx: FlyteContext, *args, **kwargs):
+        """
+        Generates a node that encapsulates this task in a workflow definition.
+        """
+        return create_and_link_node(ctx, entity=self, **kwargs)
+
     def __call__(self, *args, **kwargs):
         """
         The call pattern for Workflows is close to, but not exactly, the call pattern for Tasks. For local execution,
@@ -245,8 +251,14 @@ class WorkflowBase(object):
         From execute, different things happen for the two Workflow styles. For PythonFunctionWorkflows, the Python
         function is run, for the ImperativeWorkflow, each node is run one at a time.
         """
+        # Sanity checks
+        # Only keyword args allowed
         if len(args) > 0:
             raise AssertionError("Only Keyword Arguments are supported for Workflow executions")
+        # Make sure arguments are part of interface
+        for k, v in kwargs.items():
+            if k not in self.interface.inputs:
+                raise ValueError(f"Received unexpected keyword argument {k}")
 
         ctx = FlyteContextManager.current_context()
 
@@ -256,7 +268,7 @@ class WorkflowBase(object):
 
         # The first condition is compilation.
         if ctx.compilation_state is not None:
-            return create_and_link_node(ctx, entity=self, **input_kwargs)
+            return self.compile(ctx, *args, **kwargs)
 
         # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
         # The context specifying the local workflow execution has already been set.
@@ -277,16 +289,6 @@ class WorkflowBase(object):
 
         # Last is starting a local workflow execution
         else:
-            # Run some sanity checks
-            # Even though the _local_execute call generally expects inputs to be Promises, we don't have to do the
-            # conversion here in this loop. The reason is because we don't prevent users from specifying inputs
-            # as direct scalars, which means there's another Promise-generating loop inside _local_execute too
-            for k, v in input_kwargs.items():
-                if k not in self.interface.inputs:
-                    raise ValueError(f"Received unexpected keyword argument {k}")
-                if isinstance(v, Promise):
-                    raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
-
             with FlyteContextManager.with_context(
                 ctx.with_execution_state(
                     ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
@@ -304,7 +306,9 @@ class WorkflowBase(object):
             if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
                 return create_native_named_tuple(ctx, result, self.python_interface)
 
-            raise ValueError("expected outputs and actual outputs do not match")
+            raise ValueError(
+                f"expected outputs and actual outputs do not match. Result {result} Python interface: {self.python_interface}"
+            )
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
