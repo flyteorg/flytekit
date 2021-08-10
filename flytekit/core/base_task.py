@@ -33,7 +33,6 @@ from flytekit.core.context_manager import (
     FlyteEntities,
     SerializationSettings,
 )
-from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.promise import (
     Promise,
