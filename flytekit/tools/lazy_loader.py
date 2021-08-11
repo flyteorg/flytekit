@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import importlib as _importlib
 import sys as _sys
 import types as _types
@@ -9,7 +7,7 @@ from typing import List
 class LazyLoadPlugin(object):
     LAZY_LOADING_PLUGINS = {}
 
-    def __init__(self, plugin_name, plugin_requirements, related_modules: List[_LazyLoadModule]):
+    def __init__(self, plugin_name, plugin_requirements, related_modules: "List[_LazyLoadModule]"):
         """
         :param Text plugin_name:
         :param list[Text] plugin_requirements:
@@ -111,7 +109,7 @@ class _LazyLoadModule(_types.ModuleType):
         return m
 
     @classmethod
-    def tag_with_plugin(cls, p: LazyLoadPlugin):
+    def tag_with_plugin(cls, p: "LazyLoadPlugin"):
         """
         :param LazyLoadPlugin p:
         """
