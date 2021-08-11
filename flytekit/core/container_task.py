@@ -98,4 +98,6 @@ class ContainerTask(PythonTask):
             cpu_limit=self.resources.limits.cpu,
             memory_request=self.resources.requests.mem,
             memory_limit=self.resources.limits.mem,
+            ephemeral_storage_request=self.resources.requests.ephemeral_storage,
+            ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
         )

@@ -322,7 +322,7 @@ toml==0.10.2
     #   flake8-black
     #   mypy
     #   pytest
-tomli==1.2.0
+tomli==1.2.1
     # via
     #   -c requirements.txt
     #   black

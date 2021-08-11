@@ -27,10 +27,12 @@ def _get_container_definition(
     args: List[str],
     data_loading_config: _task_models.DataLoadingConfig,
     storage_request: str = None,
+    ephemeral_storage_request: str = None,
     cpu_request: str = None,
     gpu_request: str = None,
     memory_request: str = None,
     storage_limit: str = None,
+    ephemeral_storage_limit: str = None,
     cpu_limit: str = None,
     gpu_limit: str = None,
     memory_limit: str = None,
@@ -38,6 +40,8 @@ def _get_container_definition(
 ) -> _task_models.Container:
     storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
     storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
+    ephemeral_storage_limit = ephemeral_storage_limit or _resource_config.DEFAULT_EPHEMERAL_STORAGE_LIMIT.get()
+    ephemeral_storage_request = ephemeral_storage_request or _resource_config.DEFAULT_EPHEMERAL_STORAGE_REQUEST.get()
     cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
     cpu_request = cpu_request or _resource_config.DEFAULT_CPU_REQUEST.get()
     gpu_limit = gpu_limit or _resource_config.DEFAULT_GPU_LIMIT.get()
@@ -49,6 +53,12 @@ def _get_container_definition(
     if storage_request:
         requests.append(
             _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
+        )
+    if ephemeral_storage_request:
+        requests.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
+            )
         )
     if cpu_request:
         requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
@@ -62,6 +72,12 @@ def _get_container_definition(
     limits = []
     if storage_limit:
         limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit))
+    if ephemeral_storage_limit:
+        limits.append(
+            _task_models.Resources.ResourceEntry(
+                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
+            )
+        )
     if cpu_limit:
         limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
     if gpu_limit:
