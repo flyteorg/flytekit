@@ -12,6 +12,10 @@ from flytekit.models import task as _task_models
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 
 
+def _sanitize_resource_name(resource: _task_models.Resources.ResourceEntry) -> str:
+    return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
+
+
 class Pod(object):
     def __init__(
         self,
@@ -83,9 +87,9 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
                 limits, requests = {}, {}
                 for resource in sdk_default_container.resources.limits:
-                    limits[_core_task.Resources.ResourceName.Name(resource.name).lower()] = resource.value
+                    limits[_sanitize_resource_name(resource)] = resource.value
                 for resource in sdk_default_container.resources.requests:
-                    requests[_core_task.Resources.ResourceName.Name(resource.name).lower()] = resource.value
+                    requests[_sanitize_resource_name(resource)] = resource.value
 
                 resource_requirements = V1ResourceRequirements(limits=limits, requests=requests)
                 if len(limits) > 0 or len(requests) > 0:
