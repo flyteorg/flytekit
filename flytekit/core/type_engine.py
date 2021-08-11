@@ -290,16 +290,18 @@ class TypeEngine(typing.Generic[T]):
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()
 
     @classmethod
-    def register(cls, transformer: TypeTransformer):
+    def register(cls, transformer: TypeTransformer, additional_types: typing.Optional[typing.List[Type]] = None):
         """
         This should be used for all types that respond with the right type annotation when you use type(...) function
         """
-        if transformer.python_type in cls._REGISTRY:
-            existing = cls._REGISTRY[transformer.python_type]
-            raise ValueError(
-                f"Transformer {existing.name} for type {transformer.python_type} is already registered."
-                f" Cannot override with {transformer.name}"
-            )
+        types = [transformer.python_type, *(additional_types or [])]
+        for t in types:
+            if t in cls._REGISTRY:
+                existing = cls._REGISTRY[t]
+                raise ValueError(
+                    f"Transformer {existing.name} for type {t} is already registered."
+                    f" Cannot override with {transformer.name}"
+                )
         cls._REGISTRY[transformer.python_type] = transformer
 
     @classmethod
@@ -320,7 +322,7 @@ class TypeEngine(typing.Generic[T]):
             if v is of type data class, use the dataclass transformer
 
         Step 4:
-            Walk the inheritance hierarchy of v and  find a transformer that matches the first base class.
+            Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
             This is potentially non-deterministic - will depend on the registration pattern.
 
             TODO lets make this deterministic by using an ordered dict
