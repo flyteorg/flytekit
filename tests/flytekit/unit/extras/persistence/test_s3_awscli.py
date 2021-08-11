@@ -30,13 +30,17 @@ def test_retries(mock_subprocess, mock_delay, mock_check):
 
 def test_extra_args():
     assert s3_awscli._extra_args({}) == []
-    assert s3_awscli._extra_args({"ContentType": "ct"}) == ['--content-type', 'ct']
-    assert s3_awscli._extra_args({"ContentEncoding": "ec"}) == ['--content-encoding', 'ec']
-    assert s3_awscli._extra_args({"ACL": "acl"}) == ['--acl', 'acl']
-    assert s3_awscli._extra_args({"ContentType": "ct", "ContentEncoding": "ec", "ACL": "acl"}) == ['--content-type',
-                                                                                                   'ct',
-                                                                                                   '--content-encoding',
-                                                                                                   'ec', '--acl', 'acl']
+    assert s3_awscli._extra_args({"ContentType": "ct"}) == ["--content-type", "ct"]
+    assert s3_awscli._extra_args({"ContentEncoding": "ec"}) == ["--content-encoding", "ec"]
+    assert s3_awscli._extra_args({"ACL": "acl"}) == ["--acl", "acl"]
+    assert s3_awscli._extra_args({"ContentType": "ct", "ContentEncoding": "ec", "ACL": "acl"}) == [
+        "--content-type",
+        "ct",
+        "--content-encoding",
+        "ec",
+        "--acl",
+        "acl",
+    ]
 
 
 @mock.patch("flytekit.extras.persistence.s3_awscli._update_cmd_config_and_execute")
@@ -44,7 +48,8 @@ def test_put(mock_exec):
     proxy = S3Persistence()
     proxy.put("/test", "s3://my-bucket/k1")
     mock_exec.assert_called_with(
-        ['aws', 's3', 'cp', '--acl', 'bucket-owner-full-control', '/test', 's3://my-bucket/k1'])
+        ["aws", "s3", "cp", "--acl", "bucket-owner-full-control", "/test", "s3://my-bucket/k1"]
+    )
 
 
 @mock.patch("flytekit.extras.persistence.s3_awscli._update_cmd_config_and_execute")
@@ -52,20 +57,19 @@ def test_put_recursive(mock_exec):
     proxy = S3Persistence()
     proxy.put("/test", "s3://my-bucket/k1", True)
     mock_exec.assert_called_with(
-        ['aws', 's3', 'cp', '--recursive', '--acl', 'bucket-owner-full-control', '/test', 's3://my-bucket/k1'])
+        ["aws", "s3", "cp", "--recursive", "--acl", "bucket-owner-full-control", "/test", "s3://my-bucket/k1"]
+    )
 
 
 @mock.patch("flytekit.extras.persistence.s3_awscli._update_cmd_config_and_execute")
 def test_get(mock_exec):
     proxy = S3Persistence()
     proxy.get("s3://my-bucket/k1", "/test")
-    mock_exec.assert_called_with(
-        ['aws', 's3', 'cp', 's3://my-bucket/k1', '/test'])
+    mock_exec.assert_called_with(["aws", "s3", "cp", "s3://my-bucket/k1", "/test"])
 
 
 @mock.patch("flytekit.extras.persistence.s3_awscli._update_cmd_config_and_execute")
 def test_get_recursive(mock_exec):
     proxy = S3Persistence()
     proxy.get("s3://my-bucket/k1", "/test", True)
-    mock_exec.assert_called_with(
-        ['aws', 's3', 'cp', '--recursive', 's3://my-bucket/k1', '/test'])
+    mock_exec.assert_called_with(["aws", "s3", "cp", "--recursive", "s3://my-bucket/k1", "/test"])
