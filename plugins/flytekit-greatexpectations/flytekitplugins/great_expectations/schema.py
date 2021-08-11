@@ -165,7 +165,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         # FlyteSchema
         if lv.scalar.schema:
 
-            # if data batch is to be genearated, skip copying the parquet file
+            # if data batch is to be generated, skip copying the parquet file
             if not is_runtime:
                 if not ge_conf.local_file_path:
                     raise ValueError("local_file_path is missing!")
