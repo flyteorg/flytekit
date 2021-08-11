@@ -262,7 +262,7 @@ class WorkflowBase(object):
 
         # The first condition is compilation.
         if ctx.compilation_state is not None:
-            return create_and_link_node(ctx, entity=self, **kwargs)
+            return create_and_link_node(ctx, entity=self, **input_kwargs)
 
         # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
         # The context specifying the local workflow execution has already been set.
