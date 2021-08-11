@@ -235,12 +235,6 @@ class WorkflowBase(object):
             interruptible=self.workflow_metadata_defaults.interruptible,
         )
 
-    def compile(self, ctx: FlyteContext, *args, **kwargs):
-        """
-        Generates a node that encapsulates this task in a workflow definition.
-        """
-        return create_and_link_node(ctx, entity=self, **kwargs)
-
     def __call__(self, *args, **kwargs):
         """
         The call pattern for Workflows is close to, but not exactly, the call pattern for Tasks. For local execution,
@@ -268,7 +262,7 @@ class WorkflowBase(object):
 
         # The first condition is compilation.
         if ctx.compilation_state is not None:
-            return self.compile(ctx, *args, **kwargs)
+            return create_and_link_node(ctx, entity=self, **kwargs)
 
         # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
         # The context specifying the local workflow execution has already been set.
