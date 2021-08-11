@@ -6,11 +6,11 @@ import typing
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.loggers import logger
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.loggers import logger
 
 
 def noop():
@@ -201,7 +201,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         if self._downloader is not noop:
             self._downloader()
         else:
-           raise ValueError(f"Attempting to trigger download on non-downloadable file {self}")
+            raise ValueError(f"Attempting to trigger download on non-downloadable file {self}")
 
     def __repr__(self):
         return self._path
@@ -255,15 +255,29 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                 should_upload = False
             # If the type that's given is a simpler type, we also don't upload, but print a warning too.
             if issubclass(python_type, pathlib.Path) or python_type is os.PathLike:
-                logger.warning(f"Converting from a FlyteFile Python instance to a Blob Flyte object, but only a {python_type} was specified. Since a simpler type was specified, we'll skip uploading!")
+                logger.warning(
+                    f"Converting from a FlyteFile Python instance to a Blob Flyte object, but only a {python_type} was specified. Since a simpler type was specified, we'll skip uploading!"
+                )
                 should_upload = False
 
             # Set the remote destination if one was given instead of triggering a random one below
             remote_path = python_val.remote_path or None
 
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
+            if isinstance(python_val, pathlib.Path) and not python_val.is_file():
+                raise ValueError(f"Error converting pathlib.Path {python_val} because it's not a file.")
+            if isinstance(python_val, str):
+                p = pathlib.Path(python_val)
+                if not p.is_file():
+                    raise ValueError(f"Error converting {python_val} because it's not a file.")
+
             source_path = str(python_val)
-            if ctx.file_access.is_remote(source_path) or issubclass(python_type, pathlib.Path) or python_type is os.PathLike:
+            # See comments above and the usage table
+            if (
+                ctx.file_access.is_remote(source_path)
+                or issubclass(python_type, pathlib.Path)
+                or python_type is os.PathLike
+            ):
                 should_upload = False
         else:
             raise AssertionError(f"Expected FlyteFile or os.PathLike object, received {type(python_val)}")
