@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, List, Optional
 
 from joblib import Memory
 
@@ -9,21 +9,22 @@ CACHE_LOCATION = "/tmp/cache-location"
 
 class LocalCache(object):
     _memory: Optional[Memory] = None
-    _initialized = False
+    _initialized: bool = False
 
     @staticmethod
     def initialize():
         LocalCache._memory = Memory(CACHE_LOCATION, verbose=5)
         LocalCache._initialized = True
 
-    # TODO: type this properly
     @staticmethod
-    def cache(func, ignore=None):
+    def cache(func: Callable, ignore: Optional[List[str]] = None):
         if not LocalCache._initialized:
             LocalCache.initialize()
         return LocalCache._memory.cache(func, ignore=ignore)
 
-    # TODO: type this properly
     @staticmethod
     def clear():
+        # No need to clear an uninitialized cache
+        if not LocalCache._initialized:
+            return
         LocalCache._memory.clear()
