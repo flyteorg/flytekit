@@ -218,12 +218,15 @@ class Task(object):
         """
         return None
 
-    def _local_dispatch_execute(
+    def _dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap, cache_version: str
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
-        TODO: explain why we need this wrapper.
+        Thin wrapper around the actual call to 'dispatch_execute'.
         """
+        # The local cache uses the function signature (and an ignore list) to calculate the cache key. In other
+        # words, we need the cache version to be present in the signature so that we can respect the current
+        # semantics where changing the cache version of a cached Task creates a separate entry in the cache.
         return self.dispatch_execute(ctx, input_literal_map)
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
@@ -245,13 +248,14 @@ class Task(object):
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
-        # TODO: improve comment
-        # if metadata.cache is set, check memoized version including cache_version
+        # if metadata.cache is set, check memoized version
         if self._metadata.cache:
-            dispatch_execute = LocalCache.cache(self._local_dispatch_execute, ignore=["self", "ctx"])
+            # The cache key is composed only of '(input_literal_map, cache_version)', i.e. all other parameters
+            # passed to the call to 'dispatch_execute' are ignored
+            dispatch_execute_func = LocalCache.cache(self._dispatch_execute, ignore=["self", "ctx"])
         else:
-            dispatch_execute = self._local_dispatch_execute
-        outputs_literal_map = dispatch_execute(ctx, input_literal_map, self._metadata.cache_version)
+            dispatch_execute_func = self._dispatch_execute
+        outputs_literal_map = dispatch_execute_func(ctx, input_literal_map, self._metadata.cache_version)
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
