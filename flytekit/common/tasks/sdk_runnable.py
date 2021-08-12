@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import copy as _copy
 import enum
 import logging as _logging
@@ -109,13 +107,13 @@ class ExecutionParameters(object):
     @dataclass(init=False)
     class Builder(object):
         stats: taggable.TaggableStats
-        execution_date: datetime
+        execution_date: typing.Optional[datetime]
         logging: _logging
-        execution_id: str
+        execution_id: typing.Optional[str]
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, _common_utils.AutoDeletingTempDir]
 
-        def __init__(self, current: typing.Optional[ExecutionParameters] = None):
+        def __init__(self, current: "typing.Optional[ExecutionParameters]" = None):
             self.stats = current.stats if current else None
             self.execution_date = current.execution_date if current else None
             self.working_dir = current.working_directory if current else None
@@ -123,11 +121,11 @@ class ExecutionParameters(object):
             self.logging = current.logging if current else None
             self.attrs = current._attrs if current else {}
 
-        def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
+        def add_attr(self, key: str, v: typing.Any) -> "ExecutionParameters.Builder":
             self.attrs[key] = v
             return self
 
-        def build(self) -> ExecutionParameters:
+        def build(self) -> "ExecutionParameters":
             if not isinstance(self.working_dir, _common_utils.AutoDeletingTempDir):
                 pathlib.Path(self.working_dir).mkdir(parents=True, exist_ok=True)
             return ExecutionParameters(
@@ -140,10 +138,10 @@ class ExecutionParameters(object):
             )
 
     @staticmethod
-    def new_builder(current: ExecutionParameters = None) -> Builder:
+    def new_builder(current: "ExecutionParameters" = None) -> "Builder":
         return ExecutionParameters.Builder(current=current)
 
-    def builder(self) -> Builder:
+    def builder(self) -> "Builder":
         return ExecutionParameters.Builder(current=self)
 
     def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
