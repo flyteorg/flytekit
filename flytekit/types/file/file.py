@@ -102,7 +102,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     +=============+===============+=============================================+======================================+
     | str or      | path matches  | Blob object is returned with uri set to the given path. No uploading happens.      |
     | pathlib.Path| http(s)/s3/gs |                                                                                    |
-    |             |---------------+---------------------------------------------+--------------------------------------|
+    |             +---------------+---------------------------------------------+--------------------------------------+
     |             | path matches  | Contents of file are uploaded to the Flyte  | No warning is logged since only a    |
     |             | /local/path   | blob store (S3, GCS, etc.), in a bucket     | string is given (as opposed to a     |
     |             |               | determined by the raw_output_data_prefix    | FlyteFile). Blob object is returned  |
@@ -113,7 +113,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     +-------------+---------------+---------------------------------------------+--------------------------------------+
     | FlyteFile   | path matches  | Blob object is returned with uri set to the given path.                            |
     |             | http(s)/s3/gs | Nothing is uploaded.                                                               |
-    |             |---------------+---------------------------------------------+--------------------------------------|
+    |             +---------------+---------------------------------------------+--------------------------------------+
     |             | path matches  | Contents of file are uploaded to the Flyte  | Warning is logged since you're       |
     |             | /local/path   | blob store (S3, GCS, etc.), in a bucket     | passing a more complex object (a     |
     |             |               | determined by the raw_output_data_prefix    | FlyteFile) and expecting a simpler   |
@@ -124,7 +124,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     |             |               |                                             |                                      |
     +-------------+---------------+---------------------------------------------+--------------------------------------+
 
-    As mentioned above, since Flyte file types have a string embedded in it as part of the type, you can add a
+    Since Flyte file types have a string embedded in it as part of the type, you can add a
     format by specifying a string after the class like so. ::
 
         def t2() -> flytekit_typing.FlyteFile["csv"]:
@@ -135,29 +135,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             with open("/tmp/local_file.csv", "w") as fh:
                 fh.write(results)
             return "/tmp/local_file.csv"
-
-    How are these files handled?
-
-    S3, http, https are all treated as remote - the behavior should be the same, they are never copied unless
-    explicitly told to do so.
-
-    Local paths always get uploaded, unless explicitly told not to do so.
-
-    To specify non-default behavior:
-
-    * Copy the S3 path to a specific location.
-      ``FlyteFile("s3://bucket/path", remote_path="s3://other-bucket/path")``
-
-    * Copy local path to a specific location.
-      ``FlyteFile("/tmp/local_file", remote_path="s3://other-bucket/path")``
-
-    * Do not copy local path, this will copy the string into the literal. For example, let's say your docker image has a
-      thousand files in it, and you want to tell the next task, which file to look at. (Bad example, you shouldn't have
-      that many files in your image.)
-      ``FlyteFile("/tmp/local_file", remote_path=False)``
-
-    * However, we have a shorthand.
-      "file:///tmp/local_file" is treated as "remote" and is by default not copied.
     """
 
     @classmethod
