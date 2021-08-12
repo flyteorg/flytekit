@@ -253,8 +253,6 @@ class Task(object):
         # TODO: improve comment
         # if metadata.cache is set, check memoized version including cache_version
         if self._metadata.cache:
-            # TODO: do I need to ignore self?
-            # TODO: probably need a wrapper to indicate it's going to pull from the cache. A log message here might be enough?
             dispatch_execute = memory.cache(self._local_dispatch_execute, ignore=['self', 'ctx'])
         else:
             dispatch_execute = self._local_dispatch_execute
