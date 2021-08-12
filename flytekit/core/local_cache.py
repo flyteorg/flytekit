@@ -8,7 +8,7 @@ CACHE_LOCATION = "/tmp/cache-location"
 
 
 class LocalCache(object):
-    _memory: Optional[Memory] = None
+    _memory: Memory
     _initialized: bool = False
 
     @staticmethod
