@@ -24,7 +24,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
-    in or return a file. There is pathlib.Path of course, which is usable, but it made more sense to create a standalone
+    in or return a file. There is ``pathlib.Path`` of course, which is usable, but it made more sense to create a standalone
     type esp. since we can add on additional properties.
 
     Files (and directories) differ from the primitive types like floats and string in that flytekit typically uploads
@@ -59,6 +59,35 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
       "http://www.google.com" as a ``FlyteFile``, obviously it doesn't make sense for us to try to upload that to the
       Flyte blob store. So no remote paths are uploaded. flytekit considers a path remote if it starts with ``s3://``,
       ``gs://``, ``http(s)://``, or even ``file://``.
+
+
+
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+    | Header 1    | Header 1      | Heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeader 2   | Heeeeeeeeeeeeeeeeeeeeeeeeeeeeader 3  |
+    +=============+===============+=============================================+======================================+
+    | body row 111| body row 1111 | coooooooooooooooooooooooooooooooooolumn 2   | coooooooooooooooooooooooooooolumn 3  |
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+    | body row 222| body row 2222 | Ceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeells may span                            columns.|
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+    | body row 333| body row 3333 | Ceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeells may  | -                            Cells   |
+    +-------------+---------------+ sppppppppppppppppppppppppppppppppppan rows. | -                            contain |
+    | body row 444| body row 4444 |                                             | -                            blocks. |
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+
+
+
+
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+    | Header 1    | Header 1      | Heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeader 2   | Heeeeeeeeeeeeeeeeeeeeeeeeeeeeader 3  |
+    +=============+===============+=============================================+======================================+
+    | body row 111| body row 1111 | coooooooooooooooooooooooooooooooooolumn 2   | coooooooooooooooooooooooooooolumn 3  |
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+    | body row 222| body row 2222 | Ceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeells may span                            columns.|
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+    | body row 333| body row 3333 | Ceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeells may  | -                            Cells   |
+    +-------------+---------------+ sppppppppppppppppppppppppppppppppppan rows. | -                            contain |
+    | body row 444| body row 4444 |                                             | -                            blocks. |
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
 
     * :class:`python:os.PathLike`
       This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
@@ -97,20 +126,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
     Local paths always get uploaded, unless explicitly told not to do so.
 
-    If you specify a path as a string, you get the default behavior, not possible to override. To override, you must use
-    the FlyteFile class.
-
-    More succinctly, regardless of whether it is input or output, these rules apply:
-      - ``"s3://bucket/path"`` -> will never get uploaded
-      - ``"https://a.b.com/path"`` -> will never get uploaded
-      - ``"/tmp/local_file"`` -> will always get uploaded
-
     To specify non-default behavior:
 
-    * Copy the s3 path to a new location.
-      ``FlyteFile("s3://bucket/path", remote_path=True)``
-
-    * Copy the s3 path to a specific location.
+    * Copy the S3 path to a specific location.
       ``FlyteFile("s3://bucket/path", remote_path="s3://other-bucket/path")``
 
     * Copy local path to a specific location.
@@ -256,7 +274,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             # If the type that's given is a simpler type, we also don't upload, but print a warning too.
             if issubclass(python_type, pathlib.Path) or python_type is os.PathLike:
                 logger.warning(
-                    f"Converting from a FlyteFile Python instance to a Blob Flyte object, but only a {python_type} was specified. Since a simpler type was specified, we'll skip uploading!"
+                    f"Converting from a FlyteFile Python instance to a Blob Flyte object, but only a {python_type} was"
+                    f" specified. Since a simpler type was specified, we'll skip uploading!"
                 )
                 should_upload = False
 
@@ -305,7 +324,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # The rest of the logic is only for FlyteFile types.
         if not issubclass(expected_python_type, FlyteFile):
-            raise TypeError(f"wrong type")
+            raise TypeError(f"None of os.PathLike, pathlib.Path, or FlyteFile specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
