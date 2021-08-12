@@ -23,8 +23,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
-from joblib import Memory
-
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import (
@@ -37,6 +35,7 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
+from flytekit.core.local_cache import LocalCache
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
@@ -54,10 +53,6 @@ from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
-
-# TODO: move the definition of `memory` to a separate file
-CACHE_LOCATION = "/tmp/cache-location"
-memory = Memory(CACHE_LOCATION, verbose=0)
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -253,7 +248,7 @@ class Task(object):
         # TODO: improve comment
         # if metadata.cache is set, check memoized version including cache_version
         if self._metadata.cache:
-            dispatch_execute = memory.cache(self._local_dispatch_execute, ignore=["self", "ctx"])
+            dispatch_execute = LocalCache.cache(self._local_dispatch_execute, ignore=["self", "ctx"])
         else:
             dispatch_execute = self._local_dispatch_execute
         outputs_literal_map = dispatch_execute(ctx, input_literal_map, self._metadata.cache_version)
