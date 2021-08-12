@@ -122,7 +122,6 @@ class S3Persistence(DataPersistence):
                 raise ex
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
-        print("Called GET in the new world!!!!")
         S3Persistence._check_binary()
 
         if not from_path.startswith("s3://"):
@@ -135,7 +134,6 @@ class S3Persistence(DataPersistence):
         return _update_cmd_config_and_execute(cmd)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
-        print("Called PUT in the new world!!!!")
         extra_args = {
             "ACL": "bucket-owner-full-control",
         }
@@ -152,7 +150,6 @@ class S3Persistence(DataPersistence):
         return _update_cmd_config_and_execute(cmd)
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
-        print("Called CONSTRUCT in the new world!!!!")
         paths = list(paths)  # make type check happy
         if add_prefix:
             paths = paths.insert(0, self.default_prefix)
