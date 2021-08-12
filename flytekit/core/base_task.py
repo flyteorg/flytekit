@@ -53,6 +53,12 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
+from joblib import Memory
+
+# TODO: move the definition of `memory` to a separate file
+CACHE_LOCATION = '/tmp/cache-location'
+memory = Memory(CACHE_LOCATION, verbose=0)
+
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
     """
@@ -217,6 +223,14 @@ class Task(object):
         """
         return None
 
+    def _local_dispatch_execute(
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap, cache_version: str
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+        """
+        TODO: explain why we need this wrapper.
+        """
+        return self.dispatch_execute(ctx, input_literal_map)
+
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         """
         This code is used only in the case when we want to dispatch_execute with outputs from a previous node
@@ -236,7 +250,15 @@ class Task(object):
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
-        outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+        # TODO: improve comment
+        # if metadata.cache is set, check memoized version including cache_version
+        if self._metadata.cache:
+            # TODO: do I need to ignore self?
+            # TODO: probably need a wrapper to indicate it's going to pull from the cache. A log message here might be enough?
+            dispatch_execute = memory.cache(self._local_dispatch_execute, ignore=['self', 'ctx'])
+        else:
+            dispatch_execute = self._local_dispatch_execute
+        outputs_literal_map = dispatch_execute(ctx, input_literal_map, self._metadata.cache_version)
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special

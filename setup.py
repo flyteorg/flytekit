@@ -93,6 +93,7 @@ setup(
         "docker-image-py>=0.1.10",
         "singledispatchmethod; python_version < '3.8.0'",
         "docstring-parser>=0.9.0",
+        "joblib>=1.0.0",
     ],
     extras_require=extras_require,
     scripts=[
