@@ -224,9 +224,6 @@ class Task(object):
         """
         Thin wrapper around the actual call to 'dispatch_execute'.
         """
-        # The local cache uses the function signature (and an ignore list) to calculate the cache key. In other
-        # words, we need the cache version to be present in the signature so that we can respect the current
-        # semantics where changing the cache version of a cached Task creates a separate entry in the cache.
         return self.dispatch_execute(ctx, input_literal_map)
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
@@ -255,6 +252,9 @@ class Task(object):
             dispatch_execute_func = LocalCache.cache(self._dispatch_execute, ignore=["self", "ctx"])
         else:
             dispatch_execute_func = self._dispatch_execute
+        # The local cache uses the function signature (and an ignore list) to calculate the cache key. In other
+        # words, we need the cache version to be present in the function signature so that we can respect the current
+        # cache semantics where changing the cache version of a cached Task creates a separate entry in the cache.
         outputs_literal_map = dispatch_execute_func(ctx, input_literal_map, self._metadata.cache_version)
         outputs_literals = outputs_literal_map.literals
 
