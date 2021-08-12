@@ -60,55 +60,72 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
       Flyte blob store. So no remote paths are uploaded. flytekit considers a path remote if it starts with ``s3://``,
       ``gs://``, ``http(s)://``, or even ``file://``.
 
+    -----------
 
+    **Converting from a Flyte literal value to a Python instance of FlyteFile**
 
     +-------------+---------------+---------------------------------------------+--------------------------------------+
-    | Header 1    | Header 1      | Heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeader 2   | Heeeeeeeeeeeeeeeeeeeeeeeeeeeeader 3  |
+    |             |               |              Expected Python type                                                  |
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+    | Type of Flyte IDL Literal   | FlyteFile                                   |  os.PathLike or pathlib.Path         |
     +=============+===============+=============================================+======================================+
-    | body row 111| body row 1111 | coooooooooooooooooooooooooooooooooolumn 2   | coooooooooooooooooooooooooooolumn 3  |
-    +-------------+---------------+---------------------------------------------+--------------------------------------+
-    | body row 222| body row 2222 | Ceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeells may span                            columns.|
-    +-------------+---------------+---------------------------------------------+--------------------------------------+
-    | body row 333| body row 3333 | Ceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeells may  | -                            Cells   |
-    +-------------+---------------+ sppppppppppppppppppppppppppppppppppan rows. | -                            contain |
-    | body row 444| body row 4444 |                                             | -                            blocks. |
+    | Blob        | uri matches   | FlyteFile object stores the original string |                                      |
+    |             | http(s)/s3/gs | path, but points to a local file instead.   |                                      |
+    |             |               |                                             |                                      |
+    |             |               | * [fn] downloader: function that writes to  |                                      |
+    |             |               |   path when open'ed.                        |                                      |
+    |             |               | * [fn] trigger_download: will trigger       | Basically this signals Flyte should  |
+    |             |               |   download                                  | stay out of the way. You still get   |
+    |             |               | * path: randomly generated local path that  | a FlyteFile object                   |
+    |             |               |   will not exist until downloaded           |                                      |
+    |             |               | * remote_path: None                         | * [fn] downloader: noop function,    |
+    |             |               | * remote_source: original http/s3/gs path   |   even if it's http/s3/gs            |
+    |             |               |                                             | * [fn] trigger_download: raises      |
+    |             +---------------+---------------------------------------------+   exception                          |
+    |             | uri matches   | FlyteFile object just wraps the string      | * path: just the given path          |
+    |             | /local/path   |                                             | * remote_path: None                  |
+    |             |               | * [fn] downloader: noop function            | * remote_source: None                |
+    |             |               | * [fn] trigger_download: raises exception   |                                      |
+    |             |               | * path: just the given path                 |                                      |
+    |             |               | * remote_path: None                         |                                      |
+    |             |               | * remote_source: None                       |                                      |
     +-------------+---------------+---------------------------------------------+--------------------------------------+
 
+    -----------
 
-
+    **Converting from a Python value (FlyteFile, str, or pathlib.Path) to a Flyte literal**
 
     +-------------+---------------+---------------------------------------------+--------------------------------------+
-    | Header 1    | Header 1      | Heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeader 2   | Heeeeeeeeeeeeeeeeeeeeeeeeeeeeader 3  |
+    |             |               |                               Expected Python type                                 |
+    +-------------+---------------+---------------------------------------------+--------------------------------------+
+    | Type of Python value        | FlyteFile                                   |  os.PathLike or pathlib.Path         |
     +=============+===============+=============================================+======================================+
-    | body row 111| body row 1111 | coooooooooooooooooooooooooooooooooolumn 2   | coooooooooooooooooooooooooooolumn 3  |
+    | str or      | path matches  | Blob object is returned with uri set to the given path. No uploading happens.      |
+    | pathlib.Path| http(s)/s3/gs |                                                                                    |
+    |             |---------------+---------------------------------------------+--------------------------------------|
+    |             | path matches  | Contents of file are uploaded to the Flyte  | No warning is logged since only a    |
+    |             | /local/path   | blob store (S3, GCS, etc.), in a bucket     | string is given (as opposed to a     |
+    |             |               | determined by the raw_output_data_prefix    | FlyteFile). Blob object is returned  |
+    |             |               | setting.                                    | with uri set to just the given path. |
+    |             |               | Blob object is returned with uri pointing   | No uploading happens.                |
+    |             |               | to the blob store location.                 |                                      |
+    |             |               |                                             |                                      |
     +-------------+---------------+---------------------------------------------+--------------------------------------+
-    | body row 222| body row 2222 | Ceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeells may span                            columns.|
+    | FlyteFile   | path matches  | Blob object is returned with uri set to the given path.                            |
+    |             | http(s)/s3/gs | Nothing is uploaded.                                                               |
+    |             |---------------+---------------------------------------------+--------------------------------------|
+    |             | path matches  | Contents of file are uploaded to the Flyte  | Warning is logged since you're       |
+    |             | /local/path   | blob store (S3, GCS, etc.), in a bucket     | passing a more complex object (a     |
+    |             |               | determined by the raw_output_data_prefix    | FlyteFile) and expecting a simpler   |
+    |             |               | setting. If remote_path is given, then that | interface (os.PathLike). Blob object |
+    |             |               | is used instead of the random path. Blob    | is returned with uri set to just the |
+    |             |               | object is returned with uri pointing to     | given path. No uploading happens.    |
+    |             |               | the blob store location.                    |                                      |
+    |             |               |                                             |                                      |
     +-------------+---------------+---------------------------------------------+--------------------------------------+
-    | body row 333| body row 3333 | Ceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeells may  | -                            Cells   |
-    +-------------+---------------+ sppppppppppppppppppppppppppppppppppan rows. | -                            contain |
-    | body row 444| body row 4444 |                                             | -                            blocks. |
-    +-------------+---------------+---------------------------------------------+--------------------------------------+
 
-    * :class:`python:os.PathLike`
-      This is just a path on the filesystem accessible from the Python process. This is a native Python abstract class.
-
-      .. code-block:: python
-
-          def path_task() -> os.PathLike:
-              return '/tmp/xyz.txt'
-
-      If you specify a PathLike as an input, the task will receive a PathLike at task start, and you can open() it as
-      normal. However, since we want to control when files are downloaded, Flyte provides its own PathLike object::
-
-        from flytekit import types as flytekit_typing
-
-        def t1(in1: flytekit_typing.FlyteFile) -> str:
-            with open(in1, 'r') as fh:
-                lines = fh.readlines()
-                return "".join(lines)
-
-      As mentioned above, since Flyte file types have a string embedded in it as part of the type, you can add a
-      format by specifying a string after the class like so. ::
+    As mentioned above, since Flyte file types have a string embedded in it as part of the type, you can add a
+    format by specifying a string after the class like so. ::
 
         def t2() -> flytekit_typing.FlyteFile["csv"]:
             from random import sample
