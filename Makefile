@@ -88,3 +88,8 @@ update_version:
 
 	grep "$(PLACEHOLDER)" "setup.py"
 	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
+
+# TODO
+.PHONY: clear-cache
+clear-cache:
+	python -m 'from flytekit.core.local_cache import LocalCache; LocalCache.clear()'
