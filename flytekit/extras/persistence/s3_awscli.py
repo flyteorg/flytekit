@@ -91,7 +91,7 @@ class S3Persistence(DataPersistence):
 
     def exists(self, remote_path):
         """
-        Given a remoet path of the format s3://, checks if the remote file exists
+        Given a remote path of the format s3://, checks if the remote file exists
         """
         S3Persistence._check_binary()
 
