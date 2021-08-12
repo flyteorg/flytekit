@@ -134,27 +134,30 @@ Secrets and SecurityContext
 
 """
 
-
+import sys
 import flytekit.plugins  # This will be deprecated, these are the old plugins, the new plugins live in plugins/
-from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
-from flytekit.core.condition import conditional
-from flytekit.core.container_task import ContainerTask
-from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
-from flytekit.core.dynamic_workflow_task import dynamic
-from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.map_task import map_task
-from flytekit.core.notification import Email, PagerDuty, Slack
-from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
-from flytekit.core.reference import get_reference_entity
-from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, WorkflowReference
-from flytekit.core.resources import Resources
-from flytekit.core.schedule import CronSchedule, FixedRate
-from flytekit.core.task import Secret, reference_task, task
-from flytekit.core.workflow import ImperativeWorkflow as Workflow
-from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
-from flytekit.loggers import logger
-from flytekit.types import schema
+
+CURRENT_PYTHON = sys.version_info[:2]
+if not CURRENT_PYTHON == (3, 6):
+    from flytekit.core.base_sql_task import SQLTask
+    from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
+    from flytekit.core.condition import conditional
+    from flytekit.core.container_task import ContainerTask
+    from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
+    from flytekit.core.dynamic_workflow_task import dynamic
+    from flytekit.core.launch_plan import LaunchPlan
+    from flytekit.core.map_task import map_task
+    from flytekit.core.notification import Email, PagerDuty, Slack
+    from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
+    from flytekit.core.reference import get_reference_entity
+    from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, WorkflowReference
+    from flytekit.core.resources import Resources
+    from flytekit.core.schedule import CronSchedule, FixedRate
+    from flytekit.core.task import Secret, reference_task, task
+    from flytekit.core.workflow import ImperativeWorkflow as Workflow
+    from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
+    from flytekit.loggers import logger
+    from flytekit.types import schema
 
 __version__ = "0.0.0+develop"
 
