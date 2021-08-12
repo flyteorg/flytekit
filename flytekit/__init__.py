@@ -162,7 +162,7 @@ if not CURRENT_PYTHON == (3, 6):
 __version__ = "0.0.0+develop"
 
 
-def current_context() -> ExecutionParameters:
+def current_context() -> "ExecutionParameters":
     """
     Use this method to get a handle of specific parameters available in a flyte task.
 
