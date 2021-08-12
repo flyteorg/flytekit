@@ -21,6 +21,7 @@ def test_single_task_workflow():
     assert check_evenness(n=1) is False
     assert check_evenness(n=8) is True
 
+
 def test_shared_tasks_in_two_separate_workflows():
     @task(cache=True, cache_version="0.0.1")
     def is_even(n: int) -> bool:
