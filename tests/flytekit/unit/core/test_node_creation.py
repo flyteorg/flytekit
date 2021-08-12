@@ -203,9 +203,7 @@ def test_resource_limits_override():
     @workflow
     def my_wf(a: typing.List[str]) -> typing.List[str]:
         mappy = map_task(t1)
-        map_node = mappy(a=a).with_overrides(
-            limits=(Resources(cpu="2", mem="200", ephemeral_storage="1Gi")),
-        )
+        map_node = mappy(a=a).with_overrides(limits=Resources(cpu="2", mem="200", ephemeral_storage="1Gi"))
         return map_node
 
     serialization_settings = context_manager.SerializationSettings(
@@ -235,7 +233,7 @@ def test_resources_override():
         mappy = map_task(t1)
         map_node = mappy(a=a).with_overrides(
             requests=Resources(cpu="1", mem="100", ephemeral_storage="500Mi"),
-            limits=(Resources(cpu="2", mem="200", ephemeral_storage="1Gi")),
+            limits=Resources(cpu="2", mem="200", ephemeral_storage="1Gi"),
         )
         return map_node
 
