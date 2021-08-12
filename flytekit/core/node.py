@@ -86,8 +86,8 @@ class Node(object):
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
         if "requests" in kwargs or "limits" in kwargs:
-            requests = _convert_resource_overrides(kwargs["requests"], "requests")
-            limits = _convert_resource_overrides(kwargs["limits"], "limits")
+            requests = _convert_resource_overrides(kwargs.get("requests"), "requests")
+            limits = _convert_resource_overrides(kwargs.get("limits"), "limits")
             self._resources = _resources_model(requests=requests, limits=limits)
         return self
 
