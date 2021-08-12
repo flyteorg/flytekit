@@ -6,6 +6,7 @@ def test_single_task_workflow():
     @task(cache=True, cache_version="v1")
     def is_even(n: int) -> bool:
         import time
+
         time.sleep(2)
         return n % 2 == 0
 
@@ -26,6 +27,7 @@ def test_shared_tasks_in_two_separate_workflows():
     @task(cache=True, cache_version="0.0.1")
     def is_even(n: int) -> bool:
         import time
+
         time.sleep(2)
         return n % 2 == 0
 
