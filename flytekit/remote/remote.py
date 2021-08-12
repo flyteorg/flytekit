@@ -1046,7 +1046,7 @@ class FlyteRemote(object):
 
         # dynamically generated nodes won't have a corresponding node in the compiled workflow closure.
         # in that case, we fetch the interface from the underlying task execution they ran
-        if not node_execution.metadata.is_parent_node and len(node_execution.task_executions) > 0:
+        if len(node_execution.task_executions) > 0:
             # if not a parent node, assume a task execution node
             task_id = node_execution.task_executions[0].id.task_id
             task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
