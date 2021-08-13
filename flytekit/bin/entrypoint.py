@@ -5,13 +5,13 @@ import logging as _logging
 import os as _os
 import pathlib
 import random as _random
+import sys
 import traceback as _traceback
 from typing import List
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
@@ -23,16 +23,6 @@ from flytekit.configuration import TemporaryConfiguration as _TemporaryConfigura
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.core.base_task import IgnoreOutputs, PythonTask
-from flytekit.core.context_manager import (
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-    SerializationSettings,
-    get_image_config,
-)
-from flytekit.core.map_task import MapPythonTask
-from flytekit.core.promise import VoidPromise
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
@@ -46,6 +36,20 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
+
+CURRENT_PYTHON = sys.version_info[:2]
+if not CURRENT_PYTHON == (3, 6):
+    from flytekit import PythonFunctionTask
+    from flytekit.core.base_task import IgnoreOutputs, PythonTask
+    from flytekit.core.context_manager import (
+        ExecutionState,
+        FlyteContext,
+        FlyteContextManager,
+        SerializationSettings,
+        get_image_config,
+    )
+    from flytekit.core.map_task import MapPythonTask
+    from flytekit.core.promise import VoidPromise
 
 
 def _compute_array_job_index():
