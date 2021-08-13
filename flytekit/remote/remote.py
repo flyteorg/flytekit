@@ -41,8 +41,7 @@ from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
-from flytekit.models.core.execution import NodeExecutionPhase
-from flytekit.models.core.identifier import NodeExecutionIdentifier, ResourceType
+from flytekit.models.core.identifier import ResourceType
 from flytekit.models.execution import (
     ExecutionMetadata,
     ExecutionSpec,
