@@ -10,6 +10,7 @@ from flytekit.clis.sdk_in_container.launch_plan import launch_plans
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
+from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
@@ -110,6 +111,7 @@ main.add_command(fast_register)
 main.add_command(serialize)
 main.add_command(launch_plans)
 main.add_command(package)
+main.add_command(local_cache)
 
 if __name__ == "__main__":
     main()
