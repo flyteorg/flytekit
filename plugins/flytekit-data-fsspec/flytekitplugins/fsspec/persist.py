@@ -16,7 +16,7 @@ class FSSpecPersistence(DataPersistence):
             print("Setting protocol to file")
             protocol = "file"
         print(f"Protocol: {protocol}")
-        return fsspec.filesystem(protocol)
+        return fsspec.filesystem(protocol, auto_mkdir=True)
 
     def exists(self, path: str) -> bool:
         print("FSSPEC Exists")
