@@ -2,9 +2,9 @@ from typing import Callable, List, Optional
 
 from joblib import Memory
 
-# TODO: read from config
 # Location in the file system where serialized objects will be stored
-CACHE_LOCATION = "/tmp/cache-location"
+# TODO: read from config
+CACHE_LOCATION = "~/.flyte/local-cache"
 
 
 class LocalCache(object):
