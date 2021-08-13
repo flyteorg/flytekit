@@ -29,6 +29,8 @@ This package contains things that are useful when extending Flytekit.
    PythonCustomizedContainerTask
    ExecutableTemplateShimTask
    ShimTaskExecutor
+   DataPersistence
+   DataPersistencePlugin
 """
 
 from flytekit.common.translator import get_serializable
@@ -43,3 +45,4 @@ from flytekit.core.python_customized_container_task import PythonCustomizedConta
 from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.task import TaskPlugins
 from flytekit.core.type_engine import DictTransformer, T, TypeEngine, TypeTransformer
+from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
