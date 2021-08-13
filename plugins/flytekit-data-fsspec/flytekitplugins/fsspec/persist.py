@@ -1,3 +1,4 @@
+import os
 import typing
 
 import fsspec
@@ -11,14 +12,16 @@ from flytekit.extend import DataPersistence, DataPersistencePlugins
 def s3_setup_args():
     kwargs = {}
     if _aws_config.S3_ACCESS_KEY_ID.get() is not None:
-        env[_aws_config.S3_ACCESS_KEY_ID_ENV_NAME] = _aws_config.S3_ACCESS_KEY_ID.get()
+        os.environ[_aws_config.S3_ACCESS_KEY_ID_ENV_NAME] = _aws_config.S3_ACCESS_KEY_ID.get()
 
     if _aws_config.S3_SECRET_ACCESS_KEY.get() is not None:
-        env[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
+        os.environ[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
 
+    # S3fs takes this as a special arg
     if _aws_config.S3_ENDPOINT.get() is not None:
         cmd.insert(1, aws.S3_ENDPOINT.get())
         kwargs["endpoint-url"] = _aws_config.S3_ENDPOINT.get()
+
     return kwargs
 
 
