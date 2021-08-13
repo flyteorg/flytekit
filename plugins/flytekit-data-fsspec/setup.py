@@ -31,5 +31,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={'flytekit.plugins': ['fsspec=flytekitplugins.fsspec']},
+    entry_points={"flytekit.plugins": ["fsspec=flytekitplugins.fsspec"]},
 )

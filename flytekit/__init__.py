@@ -135,6 +135,7 @@ Secrets and SecurityContext
 """
 
 import sys
+
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
@@ -211,7 +212,7 @@ def load_implicit_plugins():
        # etc
 
     """
-    discovered_plugins = entry_points(group='flytekit.plugins')
+    discovered_plugins = entry_points(group="flytekit.plugins")
     for p in discovered_plugins:
         p.load()
 

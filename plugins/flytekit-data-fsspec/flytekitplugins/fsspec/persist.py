@@ -6,7 +6,6 @@ from flytekit.extend import DataPersistence, DataPersistencePlugins
 
 
 class FSSpecPersistence(DataPersistence):
-
     def __init__(self):
         super(FSSpecPersistence, self).__init__(name="fsspec-persistence", default_prefix=None)
 
