@@ -24,7 +24,6 @@ class LocalCache(object):
 
     @staticmethod
     def clear():
-        # No need to clear an uninitialized cache
         if not LocalCache._initialized:
-            return
+            LocalCache.initialize()
         LocalCache._memory.clear()
