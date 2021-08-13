@@ -7,7 +7,6 @@ from typing import Callable, Dict, List, Optional, TypeVar
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
-from flytekit.core.docstring import Docstring
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance
@@ -38,7 +37,6 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
         secret_requests: Optional[List[Secret]] = None,
-        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         """
@@ -75,7 +73,6 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             name=name,
             task_config=task_config,
             security_ctx=sec_ctx,
-            docstring=docstring,
             **kwargs,
         )
         self._container_image = container_image
@@ -161,10 +158,12 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             data_loading_config=None,
             environment=env,
             storage_request=self.resources.requests.storage,
+            ephemeral_storage_request=self.resources.requests.ephemeral_storage,
             cpu_request=self.resources.requests.cpu,
             gpu_request=self.resources.requests.gpu,
             memory_request=self.resources.requests.mem,
             storage_limit=self.resources.limits.storage,
+            ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
             cpu_limit=self.resources.limits.cpu,
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
