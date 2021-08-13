@@ -1,5 +1,5 @@
-fsspec data plugin for flytekit
-=================================
+fsspec data plugin for flytekit - Experiemental
+=================================================
 
 This plugin provides an implementation of the data persistence layer in flytekit, that uses fsspec. Once this plugin
 is installed, it overrides all default implementation of dataplugins and provides ones supported by fsspec. this plugin

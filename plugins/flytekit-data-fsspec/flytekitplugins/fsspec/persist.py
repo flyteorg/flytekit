@@ -1,3 +1,5 @@
+import typing
+
 import fsspec
 from fsspec.core import split_protocol
 from fsspec.registry import known_implementations
@@ -6,16 +8,24 @@ from flytekit.extend import DataPersistence, DataPersistencePlugins
 
 
 class FSSpecPersistence(DataPersistence):
-    def __init__(self):
-        super(FSSpecPersistence, self).__init__(name="fsspec-persistence", default_prefix=None)
+    def __init__(self, default_prefix=None):
+        super(FSSpecPersistence, self).__init__(name="fsspec-persistence", default_prefix=default_prefix)
+        self.default_protocol = self._get_protocol(default_prefix)
+
+    @staticmethod
+    def _get_protocol(path: typing.Optional[str] = None):
+        if path:
+            protocol, _ = split_protocol(path)
+            if protocol is None and path.startswith("/"):
+                print("Setting protocol to file")
+                protocol = "file"
+        else:
+            protocol = "file"
+        return protocol
 
     @staticmethod
     def _get_filesystem(path: str) -> fsspec.AbstractFileSystem:
-        protocol, _ = split_protocol(path)
-        if protocol is None and path.startswith("/"):
-            print("Setting protocol to file")
-            protocol = "file"
-        print(f"Protocol: {protocol}")
+        protocol = FSSpecPersistence._get_protocol(path)
         return fsspec.filesystem(protocol, auto_mkdir=True)
 
     def exists(self, path: str) -> bool:
@@ -39,7 +49,7 @@ class FSSpecPersistence(DataPersistence):
             paths = paths.insert(0, self.default_prefix)
         path = f"{'/'.join(paths)}"
         if add_protocol:
-            raise AssertionError("Fsspec supports multiple protocols, so cannot add one protocol!")
+            return f"{self.default_protocol}://{path}"
         return path
 
 
