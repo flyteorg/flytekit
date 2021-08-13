@@ -19,7 +19,6 @@ def s3_setup_args():
 
     # S3fs takes this as a special arg
     if _aws_config.S3_ENDPOINT.get() is not None:
-        cmd.insert(1, aws.S3_ENDPOINT.get())
         kwargs["endpoint-url"] = _aws_config.S3_ENDPOINT.get()
 
     return kwargs
