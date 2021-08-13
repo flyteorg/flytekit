@@ -4,7 +4,22 @@ import fsspec
 from fsspec.core import split_protocol
 from fsspec.registry import known_implementations
 
+from flytekit.configuration import aws as _aws_config
 from flytekit.extend import DataPersistence, DataPersistencePlugins
+
+
+def s3_setup_args():
+    kwargs = {}
+    if _aws_config.S3_ACCESS_KEY_ID.get() is not None:
+        env[_aws_config.S3_ACCESS_KEY_ID_ENV_NAME] = _aws_config.S3_ACCESS_KEY_ID.get()
+
+    if _aws_config.S3_SECRET_ACCESS_KEY.get() is not None:
+        env[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
+
+    if _aws_config.S3_ENDPOINT.get() is not None:
+        cmd.insert(1, aws.S3_ENDPOINT.get())
+        kwargs["endpoint-url"] = _aws_config.S3_ENDPOINT.get()
+    return kwargs
 
 
 class FSSpecPersistence(DataPersistence):
@@ -26,7 +41,12 @@ class FSSpecPersistence(DataPersistence):
     @staticmethod
     def _get_filesystem(path: str) -> fsspec.AbstractFileSystem:
         protocol = FSSpecPersistence._get_protocol(path)
-        return fsspec.filesystem(protocol, auto_mkdir=True)
+        kwargs = {}
+        if protocol == "file":
+            kwargs = {"auto_mkdir": True}
+        if protocol == "s3":
+            kwargs = s3_setup_args()
+        return fsspec.filesystem(protocol, **kwargs)
 
     def exists(self, path: str) -> bool:
         print("FSSPEC Exists")
