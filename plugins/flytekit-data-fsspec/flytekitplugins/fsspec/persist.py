@@ -63,6 +63,8 @@ class FSSpecPersistence(DataPersistence):
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         print(f"FSSPEC put - {from_path} {to_path}")
         fs = self._get_filesystem(to_path)
+        if recursive and not to_path.endswith("/"):
+            to_path += "/"
         return fs.put(from_path, to_path, recursive=recursive)
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
