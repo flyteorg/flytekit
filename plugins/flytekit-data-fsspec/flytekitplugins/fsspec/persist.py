@@ -53,7 +53,7 @@ class FSSpecPersistence(DataPersistence):
     @staticmethod
     def recursive_paths(f: str, t: str) -> (str, str):
         if not f.endswith("*"):
-            f = os.path.join(p, "*")
+            f = os.path.join(f, "*")
         if not t.endswith("/"):
             t += "/"
         return f, t
