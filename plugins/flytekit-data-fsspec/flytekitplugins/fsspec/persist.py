@@ -51,10 +51,12 @@ class FSSpecPersistence(DataPersistence):
         return fsspec.filesystem(protocol, **kwargs)
 
     @staticmethod
-    def recursive_paths(p: str) -> str:
-        if not p.endswith("*"):
-            return os.path.join(p, "*")
-        return p
+    def recursive_paths(f: str, t: str) -> (str, str):
+        if not f.endswith("*"):
+            f = os.path.join(p, "*")
+        if not t.endswith("/"):
+            t += "/"
+        return f, t
 
     def exists(self, path: str) -> bool:
         print("FSSPEC Exists")
@@ -65,15 +67,13 @@ class FSSpecPersistence(DataPersistence):
         print(f"FSSPEC get - {from_path} {to_path}")
         fs = self._get_filesystem(from_path)
         if recursive:
-            to_path = self.recursive_paths(to_path)
-            from_path = self.recursive_paths(from_path)
+            from_path, to_path = self.recursive_paths(from_path, to_path)
         return fs.get(from_path, to_path, recursive=recursive)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         fs = self._get_filesystem(to_path)
         if recursive:
-            to_path = self.recursive_paths(to_path)
-            from_path = self.recursive_paths(from_path)
+            from_path, to_path = self.recursive_paths(from_path, to_path)
         print(f"FSSPEC put - {from_path} -> {to_path}, {recursive}")
         return fs.put(from_path, to_path, recursive=recursive)
 
