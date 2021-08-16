@@ -76,3 +76,27 @@ def test_shared_tasks_in_two_separate_workflows():
     assert check_oddness_wf2(n=42) is False
     assert check_oddness_wf2(n=99) is True
     assert n_cached_task_calls == 2
+
+# TODO add test with typing.List[str]
+
+def test_sql_task():
+    sql = SQLTask(
+        "my-query",
+        query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
+        inputs=kwtypes(ds=datetime.datetime),
+        outputs=kwtypes(results=FlyteSchema),
+        metadata=TaskMetadata(retries=2),
+    )
+
+    @task(cache=True, cache_version="NaN")
+    def t1() -> datetime.datetime:
+        return datetime.datetime.now()
+
+    @workflow
+    def my_wf() -> FlyteSchema:
+        dt = t1()
+        return sql(ds=dt)
+
+    with task_mock(sql) as mock:
+        mock.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
