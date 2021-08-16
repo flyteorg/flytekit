@@ -383,5 +383,5 @@ def test_bad_return():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(AssertionError) as ve:
+    with pytest.raises(AssertionError):
         wf1()
