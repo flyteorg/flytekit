@@ -28,8 +28,9 @@ def s3_setup_args():
 class FSSpecPersistence(DataPersistence):
     """
     This DataPersistence plugin uses fsspec to perform the IO.
-    NOTE: This does not work because of a bug in fsspec - https://github.com/intake/filesystem_spec/issues/724.
-    We will fix this as soon as the upstream bug is fixed.
+    NOTE: The put is not as performant as it can be for multiple files because of -
+    https://github.com/intake/filesystem_spec/issues/724. Once this bug is fixed, we can remove the `HACK` in the put
+    method
     """
 
     def __init__(self, default_prefix=None):
