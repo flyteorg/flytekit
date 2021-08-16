@@ -14,7 +14,6 @@ from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
     ListTransformer,
-    PathLikeTransformer,
     SimpleTransformer,
     TypeEngine,
 )
@@ -22,7 +21,7 @@ from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
 
 def test_type_engine():
@@ -53,7 +52,7 @@ def test_type_resolution():
 
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
-    assert type(TypeEngine.get_transformer(os.PathLike)) == PathLikeTransformer
+    assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
 
 
 def test_file_formats_getting_literal_type():

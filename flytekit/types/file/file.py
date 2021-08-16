@@ -67,7 +67,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     +-------------+---------------+---------------------------------------------+--------------------------------------+
     |             |               |              Expected Python type                                                  |
     +-------------+---------------+---------------------------------------------+--------------------------------------+
-    | Type of Flyte IDL Literal   | FlyteFile                                   |  os.PathLike or pathlib.Path         |
+    | Type of Flyte IDL Literal   | FlyteFile                                   |  os.PathLike                         |
     +=============+===============+=============================================+======================================+
     | Blob        | uri matches   | FlyteFile object stores the original string |                                      |
     |             | http(s)/s3/gs | path, but points to a local file instead.   |                                      |
@@ -76,16 +76,16 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     |             |               |   path when open'ed.                        |                                      |
     |             |               | * [fn] trigger_download: will trigger       | Basically this signals Flyte should  |
     |             |               |   download                                  | stay out of the way. You still get   |
-    |             |               | * path: randomly generated local path that  | a FlyteFile object                   |
-    |             |               |   will not exist until downloaded           |                                      |
-    |             |               | * remote_path: None                         | * [fn] downloader: noop function,    |
-    |             |               | * remote_source: original http/s3/gs path   |   even if it's http/s3/gs            |
-    |             |               |                                             | * [fn] trigger_download: raises      |
-    |             +---------------+---------------------------------------------+   exception                          |
-    |             | uri matches   | FlyteFile object just wraps the string      | * path: just the given path          |
-    |             | /local/path   |                                             | * remote_path: None                  |
-    |             |               | * [fn] downloader: noop function            | * remote_source: None                |
-    |             |               | * [fn] trigger_download: raises exception   |                                      |
+    |             |               | * path: randomly generated local path that  | a FlyteFile object (which implements |
+    |             |               |   will not exist until downloaded           | the os.PathLike interface)           |
+    |             |               | * remote_path: None                         |                                      |
+    |             |               | * remote_source: original http/s3/gs path   | * [fn] downloader: noop function,    |
+    |             |               |                                             |   even if it's http/s3/gs            |
+    |             +---------------+---------------------------------------------+ * [fn] trigger_download: raises      |
+    |             | uri matches   | FlyteFile object just wraps the string      |   exception                          |
+    |             | /local/path   |                                             | * path: just the given path          |
+    |             |               | * [fn] downloader: noop function            | * remote_path: None                  |
+    |             |               | * [fn] trigger_download: raises exception   | * remote_source: None                |
     |             |               | * path: just the given path                 |                                      |
     |             |               | * remote_path: None                         |                                      |
     |             |               | * remote_source: None                       |                                      |
@@ -98,7 +98,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     +-------------+---------------+---------------------------------------------+--------------------------------------+
     |             |               |                               Expected Python type                                 |
     +-------------+---------------+---------------------------------------------+--------------------------------------+
-    | Type of Python value        | FlyteFile                                   |  os.PathLike or pathlib.Path         |
+    | Type of Python value        | FlyteFile                                   |  os.PathLike                         |
     +=============+===============+=============================================+======================================+
     | str or      | path matches  | Blob object is returned with uri set to the given path. No uploading happens.      |
     | pathlib.Path| http(s)/s3/gs |                                                                                    |
@@ -128,12 +128,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     format by specifying a string after the class like so. ::
 
         def t2() -> flytekit_typing.FlyteFile["csv"]:
-            from random import sample
-            sequence = [i for i in range(20)]
-            subset = sample(sequence, 5)
-            results = ",".join([str(x) for x in subset])
-            with open("/tmp/local_file.csv", "w") as fh:
-                fh.write(results)
             return "/tmp/local_file.csv"
     """
 
@@ -230,13 +224,15 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
     @staticmethod
-    def get_format(t: typing.Type[FlyteFile]) -> str:
+    def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
+        if t is os.PathLike:
+            return ""
         return t.extension()
 
     def _blob_type(self, format: str) -> _core_types.BlobType:
         return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE)
 
-    def get_literal_type(self, t: typing.Type[FlyteFile]) -> LiteralType:
+    def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
@@ -250,6 +246,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         should_upload = True
 
         if python_val is None:
+            raise AssertionError("None value cannot be converted to a file.")
+
+        if not (python_type is os.PathLike or issubclass(python_type, FlyteFile)):
             raise AssertionError("None value cannot be converted to a file.")
 
         # information used by all cases
@@ -268,8 +267,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             # blob store doesn't make sense.
             if python_val.remote_path is False or ctx.file_access.is_remote(source_path):
                 should_upload = False
-            # If the type that's given is a simpler type, we also don't upload, but print a warning too.
-            if issubclass(python_type, pathlib.Path) or python_type is os.PathLike:
+            # If the type that's given is a simpler type, we also don't upload, and print a warning too.
+            if python_type is os.PathLike:
                 logger.warning(
                     f"Converting from a FlyteFile Python instance to a Blob Flyte object, but only a {python_type} was"
                     f" specified. Since a simpler type was specified, we'll skip uploading!"
@@ -280,24 +279,23 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             remote_path = python_val.remote_path or None
 
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
-            # If it's a pathlib.Path then it needs to be a locally accessible file.
-            if isinstance(python_val, pathlib.Path) and not python_val.is_file():
-                raise ValueError(f"Error converting pathlib.Path {python_val} because it's not a file.")
-
-            # If it's a string pointing to a local destination, then make sure it's a file.
-            if isinstance(python_val, str) and not ctx.file_access.is_remote(python_val):
-                p = pathlib.Path(python_val)
-                if not p.is_file():
-                    raise ValueError(f"Error converting {python_val} because it's not a file.")
-
             source_path = str(python_val)
-            # See comments above and the usage table
-            if (
-                ctx.file_access.is_remote(source_path)
-                or issubclass(python_type, pathlib.Path)
-                or python_type is os.PathLike
-            ):
+            if issubclass(python_type, FlyteFile):
+                if ctx.file_access.is_remote(source_path):
+                    should_upload = False
+                else:
+                    if isinstance(python_val, pathlib.Path) and not python_val.is_file():
+                        raise ValueError(f"Error converting pathlib.Path {python_val} because it's not a file.")
+
+                    # If it's a string pointing to a local destination, then make sure it's a file.
+                    if isinstance(python_val, str):
+                        p = pathlib.Path(python_val)
+                        if not p.is_file():
+                            raise ValueError(f"Error converting {python_val} because it's not a file.")
+            # python_type must be os.PathLike - see check at beginning of function
+            else:
                 should_upload = False
+
         else:
             raise AssertionError(f"Expected FlyteFile or os.PathLike object, received {type(python_val)}")
 
@@ -318,13 +316,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         uri = lv.scalar.blob.uri
 
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
-        # Don't use the issubclass for the PathLike check because FlyteFile does actually subclass it
-        if expected_python_type is os.PathLike or issubclass(expected_python_type, pathlib.Path):
-            return expected_python_type(uri)
+        # Using is instead of issubclass because FlyteFile does actually subclass it
+        if expected_python_type is os.PathLike:
+            return FlyteFile(uri)
 
         # The rest of the logic is only for FlyteFile types.
         if not issubclass(expected_python_type, FlyteFile):
-            raise TypeError(f"None of os.PathLike, pathlib.Path, or FlyteFile specified {expected_python_type}")
+            raise TypeError(f"Neither os.PathLike nor FlyteFile specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
@@ -344,4 +342,4 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return ff
 
 
-TypeEngine.register(FlyteFilePathTransformer(), additional_types=[pathlib.Path])
+TypeEngine.register(FlyteFilePathTransformer(), additional_types=[os.PathLike])

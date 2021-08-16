@@ -645,55 +645,6 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
         return open(local_path, "rb")
 
 
-class PathLikeTransformer(TypeTransformer[os.PathLike]):
-    """
-    Handler for os.PathLike
-    """
-
-    def __init__(self):
-        super().__init__(name="os.PathLike", t=os.PathLike)
-
-    def _blob_type(self) -> _core_types.BlobType:
-        return _core_types.BlobType(
-            format=mimetypes.types_map[".bin"],
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
-        )
-
-    def get_literal_type(self, t: Type[os.PathLike]) -> LiteralType:
-        return _type_models.LiteralType(
-            blob=self._blob_type(),
-        )
-
-    def to_literal(
-        self, ctx: FlyteContext, python_val: os.PathLike, python_type: Type[os.PathLike], expected: LiteralType
-    ) -> Literal:
-        # TODO we could guess the mimetype and allow the format to be changed at runtime. thus a non existent format
-        #      could be replaced with a guess format?
-
-        rpath = ctx.file_access.get_random_remote_path()
-
-        # For remote values, say https://raw.github.com/demo_data.csv, we will not upload to Flyte's store (S3/GCS)
-        # and just return a literal with a uri equal to the path given
-        if ctx.file_access.is_remote(python_val):
-            return Literal(scalar=Scalar(blob=Blob(metadata=BlobMetadata(expected.blob), uri=python_val)))
-
-        # For local files, we'll upload for the user.
-        ctx.file_access.put_data(python_val, rpath, is_multipart=False)
-        return Literal(scalar=Scalar(blob=Blob(metadata=BlobMetadata(expected.blob), uri=rpath)))
-
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[os.PathLike]) -> os.PathLike:
-        # TODO rename to get_auto_local_path()
-        local_destination_path = ctx.file_access.get_random_local_path()
-        uri = lv.scalar.blob.uri
-        # If the uri is just a local path like /tmp/file_name, we just return
-        if not ctx.file_access.is_remote(uri):
-            return uri
-
-        # Since no delayed downloading is possible with strings, always download immediately.
-        ctx.file_access.get_data(lv.scalar.blob.uri, local_destination_path, is_multipart=False)
-        return local_destination_path
-
-
 class EnumTransformer(TypeTransformer[enum.Enum]):
     """
     Enables converting a python type enum.Enum to LiteralType.EnumType
@@ -796,7 +747,6 @@ def _register_default_type_transformers():
     TypeEngine.register(ListTransformer())
     TypeEngine.register(DictTransformer())
     TypeEngine.register(TextIOTransformer())
-    TypeEngine.register(PathLikeTransformer())
     TypeEngine.register(BinaryIOTransformer())
     TypeEngine.register(EnumTransformer())
 

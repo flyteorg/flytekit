@@ -1,6 +1,9 @@
 import os
 import pathlib
+import tempfile
 from unittest.mock import MagicMock
+
+import pytest
 
 import flytekit
 from flytekit.core import context_manager
@@ -13,6 +16,18 @@ from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file.file import FlyteFile
+
+
+# Fixture that ensures a dummy local file
+@pytest.fixture
+def local_dummy_file():
+    fd, path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, "w") as tmp:
+            tmp.write("Hello world")
+        yield path
+    finally:
+        os.remove(path)
 
 
 def test_file_type_in_workflow_with_bad_format():
@@ -266,37 +281,61 @@ def test_download_caching():
     assert mock_downloader.call_count == 1
 
 
-def test_pathlib_to_literal_str():
+def test_returning_a_pathlib_path(local_dummy_file):
     @task
-    def t1(a: pathlib.Path):
-        Path()
-        print("-------=====")
-        print(type(a))
+    def t1() -> FlyteFile:
+        return pathlib.Path(local_dummy_file)
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> FlyteFile:
+        return t1()
+
+    wf_out = wf1()
+    assert isinstance(wf_out, FlyteFile)
+    with open(wf_out, "r") as fh:
+        assert fh.read() == "Hello world"
+
+    @task
+    def t2() -> os.PathLike:
+        return pathlib.Path(local_dummy_file)
+
+    # TODO: Remove this
+    @workflow
+    def wf2() -> os.PathLike:
+        return t2()
+
+    wf_out = wf2()
+    assert isinstance(wf_out, FlyteFile)
+    with open(wf_out, "r") as fh:
+        assert fh.read() == "Hello world"
+
+
+def test_output_type_pathlike(local_dummy_file):
+    @task
+    def t1() -> os.PathLike:
+        return FlyteFile(local_dummy_file)
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> os.PathLike:
+        return t1()
+
+    wf_out = wf1()
+    assert isinstance(wf_out, FlyteFile)
+    with open(wf_out, "r") as fh:
+        assert fh.read() == "Hello world"
+
+
+def test_input_type_pathlike(local_dummy_file):
+    @task
+    def t1(a: os.PathLike):
+        assert isinstance(a, FlyteFile)
+        with open(a, "r") as fh:
+            assert fh.read() == "Hello world"
 
     @workflow
-    def my_wf(a: pathlib.Path):
-        f = t1(a=a)
-        return f
+    def my_wf(a: FlyteFile):
+        t1(a=a)
 
-    ctx = context_manager.FlyteContextManager.current_context()
-    fn = ctx.file_access.local_access.get_random_path()
-    with open(fn, "w") as fh:
-        fh.write("Hello World\n")
-    print(fn)
-    res = my_wf(a=fn)
-
-
-def test_pathlib_to_literal_str_remote():
-    ...
-
-
-def test_pathlib_to_literal_pathlib_local():
-    ...
-
-
-def test_pathlib_to_literal_ff_remote():
-    ...
-
-
-def test_pathlib_to_literal_ff_local():
-    ...
+    my_wf(a=local_dummy_file)
