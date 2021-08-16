@@ -96,9 +96,9 @@ setup(
     ],
     extras_require=extras_require,
     scripts=[
-        "scripts/flytekit_build_image.sh",
-        "scripts/flytekit_venv",
-        "scripts/flytekit_sagemaker_runner.py",
+        "flytekit_scripts/flytekit_build_image.sh",
+        "flytekit_scripts/flytekit_venv",
+        "flytekit_scripts/flytekit_sagemaker_runner.py",
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
