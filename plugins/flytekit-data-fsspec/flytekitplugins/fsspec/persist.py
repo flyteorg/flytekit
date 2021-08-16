@@ -1,5 +1,4 @@
 import os
-import tempfile
 import typing
 
 import fsspec
