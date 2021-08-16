@@ -210,8 +210,11 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return self._remote_source
 
     def trigger_download(self):
+        if self._downloaded:
+            return
         if self._downloader is not noop:
             self._downloader()
+            self._downloaded = True
         else:
             raise ValueError(f"Attempting to trigger download on non-downloadable file {self}")
 
