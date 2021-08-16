@@ -369,7 +369,7 @@ def test_returning_folder_instead_of_file():
     def wf2() -> FlyteFile:
         return t2()
 
-    with pytest.raises(AssertionError) as ve:
+    with pytest.raises(AssertionError):
         wf2()
 
 
