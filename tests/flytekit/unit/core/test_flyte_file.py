@@ -357,7 +357,7 @@ def test_returning_folder_instead_of_file():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(AssertionError) as ve:
+    with pytest.raises(AssertionError):
         wf1()
 
     @task
