@@ -340,3 +340,43 @@ def test_input_type_pathlike(local_dummy_file):
         t1(a=a)
 
     my_wf(a=local_dummy_file)
+
+
+def test_returning_folder_instead_of_file():
+    @task
+    def t1() -> FlyteFile:
+        return pathlib.Path(tempfile.gettempdir())
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> FlyteFile:
+        return t1()
+
+    with pytest.raises(AssertionError) as ve:
+        wf1()
+
+    @task
+    def t2() -> FlyteFile:
+        return tempfile.gettempdir()
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf2() -> FlyteFile:
+        return t2()
+
+    with pytest.raises(AssertionError) as ve:
+        wf2()
+
+
+def test_bad_return():
+    @task
+    def t1() -> FlyteFile:
+        return 1
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> FlyteFile:
+        return t1()
+
+    with pytest.raises(AssertionError) as ve:
+        wf1()

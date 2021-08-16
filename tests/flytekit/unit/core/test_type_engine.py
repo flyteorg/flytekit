@@ -93,6 +93,24 @@ def test_file_format_getting_python_value():
     assert pv.extension() == "txt"
 
 
+def test_file_non_downloadable():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+
+    ctx = FlyteContext.current_context()
+
+    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
+    lv = Literal(
+        scalar=Scalar(
+            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri="/usr/local/bin/file")
+        )
+    )
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
+    assert isinstance(pv, FlyteFile)
+    with pytest.raises(ValueError):
+        pv.trigger_download()
+
+
 def test_dict_transformer():
     d = DictTransformer()
 
