@@ -277,9 +277,12 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             remote_path = python_val.remote_path or None
 
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
+            # If it's a pathlib.Path then it needs to be a locally accessible file.
             if isinstance(python_val, pathlib.Path) and not python_val.is_file():
                 raise ValueError(f"Error converting pathlib.Path {python_val} because it's not a file.")
-            if isinstance(python_val, str):
+
+            # If it's a string pointing to a local destination, then make sure it's a file.
+            if isinstance(python_val, str) and not ctx.file_access.is_remote(python_val):
                 p = pathlib.Path(python_val)
                 if not p.is_file():
                     raise ValueError(f"Error converting {python_val} because it's not a file.")
