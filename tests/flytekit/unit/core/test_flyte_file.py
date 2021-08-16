@@ -334,6 +334,7 @@ def test_input_type_pathlike(local_dummy_file):
         with open(a, "r") as fh:
             assert fh.read() == "Hello world"
 
+    # TODO: Remove this - only here to trigger type engine
     @workflow
     def my_wf(a: FlyteFile):
         t1(a=a)

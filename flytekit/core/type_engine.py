@@ -5,7 +5,6 @@ import datetime as _datetime
 import enum
 import json as _json
 import mimetypes
-import os
 import typing
 from abc import ABC, abstractmethod
 from typing import Type
@@ -25,7 +24,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
