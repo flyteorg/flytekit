@@ -302,7 +302,7 @@ class TypeEngine(typing.Generic[T]):
                     f"Transformer {existing.name} for type {t} is already registered."
                     f" Cannot override with {transformer.name}"
                 )
-        cls._REGISTRY[transformer.python_type] = transformer
+            cls._REGISTRY[t] = transformer
 
     @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:

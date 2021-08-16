@@ -1,4 +1,5 @@
 import os
+import pathlib
 from unittest.mock import MagicMock
 
 import flytekit
@@ -263,3 +264,39 @@ def test_download_caching():
     for _ in range(10):
         os.fspath(f)
     assert mock_downloader.call_count == 1
+
+
+def test_pathlib_to_literal_str():
+    @task
+    def t1(a: pathlib.Path):
+        Path()
+        print("-------=====")
+        print(type(a))
+
+    @workflow
+    def my_wf(a: pathlib.Path):
+        f = t1(a=a)
+        return f
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    fn = ctx.file_access.local_access.get_random_path()
+    with open(fn, "w") as fh:
+        fh.write("Hello World\n")
+    print(fn)
+    res = my_wf(a=fn)
+
+
+def test_pathlib_to_literal_str_remote():
+    ...
+
+
+def test_pathlib_to_literal_pathlib_local():
+    ...
+
+
+def test_pathlib_to_literal_ff_remote():
+    ...
+
+
+def test_pathlib_to_literal_ff_local():
+    ...
