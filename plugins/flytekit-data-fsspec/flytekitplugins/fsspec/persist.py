@@ -1,4 +1,5 @@
 import os
+import tempfile
 import typing
 
 import fsspec
@@ -25,6 +26,12 @@ def s3_setup_args():
 
 
 class FSSpecPersistence(DataPersistence):
+    """
+    This DataPersistence plugin uses fsspec to perform the IO.
+    NOTE: This does not work because of a bug in fsspec - https://github.com/intake/filesystem_spec/issues/724.
+    We will fix this as soon as the upstream bug is fixed.
+    """
+
     def __init__(self, default_prefix=None):
         super(FSSpecPersistence, self).__init__(name="fsspec-persistence", default_prefix=default_prefix)
         self.default_protocol = self._get_protocol(default_prefix)
@@ -59,12 +66,10 @@ class FSSpecPersistence(DataPersistence):
         return f, t
 
     def exists(self, path: str) -> bool:
-        print("FSSPEC Exists")
         fs = self._get_filesystem(path)
         return fs.exists(path)
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
-        print(f"FSSPEC get - {from_path} {to_path}")
         fs = self._get_filesystem(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
@@ -74,7 +79,18 @@ class FSSpecPersistence(DataPersistence):
         fs = self._get_filesystem(to_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
-        print(f"FSSPEC put - {from_path} -> {to_path}, {recursive}")
+            # BEGIN HACK!
+            # Once https://github.com/intake/filesystem_spec/issues/724 is fixed, delete the special recursive handling
+            from fsspec.implementations.local import LocalFileSystem
+            from fsspec.utils import other_paths
+
+            lfs = LocalFileSystem()
+            lpaths = lfs.expand_path(from_path, recursive=recursive)
+            rpaths = other_paths(lpaths, to_path)
+            for l, r in zip(lpaths, rpaths):
+                fs.put_file(l, r)
+            return
+            # END OF HACK!!
         return fs.put(from_path, to_path, recursive=recursive)
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
