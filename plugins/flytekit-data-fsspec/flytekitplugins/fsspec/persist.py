@@ -7,6 +7,7 @@ from fsspec.registry import known_implementations
 
 from flytekit.configuration import aws as _aws_config
 from flytekit.extend import DataPersistence, DataPersistencePlugins
+from flytekit.loggers import logger
 
 
 def s3_setup_args():
@@ -104,7 +105,7 @@ class FSSpecPersistence(DataPersistence):
 
 
 def _register():
-    print("Registering fsspec known implementations and overriding all default implementations for persistence.")
+    logger.info("Registering fsspec known implementations and overriding all default implementations for persistence.")
     DataPersistencePlugins.register_plugin("/", FSSpecPersistence, force=True)
     for k, v in known_implementations.items():
         DataPersistencePlugins.register_plugin(f"{k}://", FSSpecPersistence, force=True)
