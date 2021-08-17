@@ -11,12 +11,7 @@ from flytekit.common.exceptions.user import FlyteValidationException, FlyteValue
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import (
-    CompilationState,
-    FlyteContext,
-    FlyteContextManager,
-    FlyteEntities,
-)
+from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
