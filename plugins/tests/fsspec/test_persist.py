@@ -2,7 +2,6 @@ import os
 import pathlib
 import tempfile
 
-import fsspec
 from flytekitplugins.fsspec.persist import FSSpecPersistence, s3_setup_args
 from fsspec.implementations.local import LocalFileSystem
 
