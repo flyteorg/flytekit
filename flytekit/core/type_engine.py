@@ -346,7 +346,9 @@ class TypeEngine(typing.Generic[T]):
         for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
-            if isinstance(python_type, base_type) or (inspect.isclass(python_type) and issubclass(python_type, base_type)):
+            if isinstance(python_type, base_type) or (
+                inspect.isclass(python_type) and issubclass(python_type, base_type)
+            ):
                 return cls._REGISTRY[base_type]
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
