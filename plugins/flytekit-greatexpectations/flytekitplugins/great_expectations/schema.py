@@ -126,7 +126,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         self, is_runtime: bool, ctx: FlyteContext, ge_conf: GreatExpectationsFlyteConfig, lv: Literal
     ) -> (FlyteSchema, str):
         temp_dataset = ""
-        
+
         # if data batch is to be generated, skip copying the parquet file
         if not is_runtime:
             if not ge_conf.local_file_path:
