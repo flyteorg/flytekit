@@ -6,6 +6,7 @@ import pandera
 
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
+from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import FlyteSchema, PandasSchemaWriter, SchemaFormat, SchemaOpenMode
@@ -65,7 +66,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             w = PandasSchemaWriter(
                 local_dir=local_dir, cols=self._get_col_dtypes(python_type), fmt=SchemaFormat.PARQUET
             )
-            w.write(python_val)
+            w.write(self._pandera_schema(python_type)(python_val))
             remote_path = ctx.file_access.get_random_remote_directory()
             ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
