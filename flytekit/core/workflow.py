@@ -12,9 +12,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import (
-    BranchEvalMode,
     CompilationState,
-    ExecutionState,
     FlyteContext,
     FlyteContextManager,
     FlyteEntities,
@@ -33,8 +31,6 @@ from flytekit.core.promise import (
     Promise,
     VoidPromise,
     binding_from_python_std,
-    create_and_link_node,
-    create_native_named_tuple,
     create_task_output,
     executable_artifact_call_handler,
     translate_inputs_to_literals,

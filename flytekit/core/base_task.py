@@ -23,11 +23,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import (
-    BranchEvalMode,
-    ExecutionState,
     FlyteContext,
     FlyteContextManager,
     FlyteEntities,
@@ -39,7 +36,6 @@ from flytekit.core.promise import (
     Promise,
     VoidPromise,
     create_and_link_node,
-    create_native_named_tuple,
     create_task_output,
     executable_artifact_call_handler,
     translate_inputs_to_literals,
