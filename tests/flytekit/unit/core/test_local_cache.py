@@ -31,6 +31,7 @@ def test_to_confirm_that_cache_keys_include_function_name():
     This test confirms that the function name is part of the cache key. It does so by defining 2 tasks with
     identical parameters and metadata (i.e. cache=True and cache version).
     """
+
     @task(cache=True, cache_version="v1")
     def f1(n: int) -> int:
         global n_cached_task_calls
