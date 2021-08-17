@@ -24,14 +24,18 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
-    in or return a file. There is ``pathlib.Path`` of course, which is usable, but it made more sense to create a standalone
-    type esp. since we can add on additional properties.
+    in or return a file. There is ``pathlib.Path`` of course, (which is usable in flytekit as a return value, though
+    not a return type), but it made more sense to create a new type esp. since we can add on additional properties.
 
     Files (and directories) differ from the primitive types like floats and string in that flytekit typically uploads
     the contents of the files to the blob store connected with your Flyte installation. That is, the Python native
     literal that represents a file is typically just the path to the file on the local filesystem. However in Flyte,
     an instance of a file is represented by a :py:class:`Blob <flytekit.models.literals.Blob>` literal,
     with the ``uri`` field set to the location in the Flyte blob store (AWS/GCS etc.).
+
+    We decided to not support ``pathlib.Path`` as an input/output type because if you wanted the automatic
+    upload/download behavior, you should just use the ``FlyteFile`` type. If you do not, then a ``str`` works just as
+    well.
 
     The prefix for where uploads go is set by the raw output data prefix setting, which should be set at registration
     time. See the flytectl option for more information.
@@ -44,12 +48,11 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     that represents files, the :py:class:`Blob <flytekit.models.core.types.BlobType>` type.
 
     Whether or not the uploading happens, and the behavior of the translation between Python native values and Flyte
-    literal values depends on a few things.
+    literal values depends on a few things:
 
     * The declared Python type in the signature. These can be
       * :class:`python:flytekit.FlyteFile`
       * :class:`python:os.PathLike`
-      * :class:`python:pathlib.Path`
       Note that ``os.PathLike`` is only a type in Python, you can't instantiate it.
     * The type of the Python native value we're returning. These can be
       * :py:class:`flytekit.FlyteFile`
@@ -249,7 +252,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             raise AssertionError("None value cannot be converted to a file.")
 
         if not (python_type is os.PathLike or issubclass(python_type, FlyteFile)):
-            raise AssertionError("None value cannot be converted to a file.")
+            raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")
 
         # information used by all cases
         meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))

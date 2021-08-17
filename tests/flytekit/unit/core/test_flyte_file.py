@@ -295,6 +295,7 @@ def test_returning_a_pathlib_path(local_dummy_file):
     assert isinstance(wf_out, FlyteFile)
     with open(wf_out, "r") as fh:
         assert fh.read() == "Hello world"
+    assert wf_out._downloaded
 
     # Remove the file, then call trigger_download again, it should not because _downloaded was already set.
     os.remove(wf_out.path)
