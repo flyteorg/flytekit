@@ -220,8 +220,9 @@ class Task(object):
 
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         """
-        This code is used only in the case when we want to dispatch_execute with outputs from a previous node
-        For regular execution, dispatch_execute is invoked directly.
+        This function is used only in the local execution path and is responsible for calling dispatch execute.
+        Use this function when calling a task with native values (or Promises containing Flyte literals derived from
+        Python native values).
         """
         # Unwrap the kwargs values. After this, we essentially have a LiteralMap
         # The reason why we need to do this is because the inputs during local execute can be of 2 types
@@ -307,7 +308,7 @@ class Task(object):
                 if result is None or isinstance(result, VoidPromise):
                     return None
                 else:
-                    raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
+                    raise Exception(f"Task local execution expected 0 outputs but something received {result}")
 
             if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
                 return create_native_named_tuple(ctx, result, self.python_interface)
@@ -315,16 +316,6 @@ class Task(object):
             raise ValueError(
                 f"expected outputs and actual outputs do not match. Result {result} Python interface: {self.python_interface}"
             )
-
-            # new_user_params = self.pre_execute(ctx.user_space_params)
-            # with FlyteContextManager.with_context(
-            #     ctx.with_execution_state(
-            #         ctx.execution_state.with_params(
-            #             mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, user_space_params=new_user_params
-            #         )
-            #     )
-            # ) as ctx:
-            # return self.execute(**kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
