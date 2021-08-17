@@ -26,7 +26,16 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Uni
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
 from flytekit.core.docstring import Docstring
+from flytekit.core.context_manager import (
+    BranchEvalMode,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+    SerializationSettings,
+)
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
+from flytekit.core.local_cache import LocalCache
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
@@ -210,6 +219,14 @@ class Task(object):
         """
         return None
 
+    def _dispatch_execute(
+        self, ctx: FlyteContext, task_name: str, input_literal_map: _literal_models.LiteralMap, cache_version: str
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+        """
+        Thin wrapper around the actual call to 'dispatch_execute'.
+        """
+        return self.dispatch_execute(ctx, input_literal_map)
+
     def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         """
         This function is used only in the local execution path and is responsible for calling dispatch execute.
@@ -231,7 +248,17 @@ class Task(object):
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
-        outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+        # if metadata.cache is set, check memoized version
+        if self._metadata.cache:
+            # The cache key is composed of '(task name, input_literal_map, cache_version)', i.e. all other parameters
+            # passed to the call to 'dispatch_execute' are ignored
+            dispatch_execute_func = LocalCache.cache(self._dispatch_execute, ignore=["self", "ctx"])
+        else:
+            dispatch_execute_func = self._dispatch_execute
+        # The local cache uses the function signature (and an ignore list) to calculate the cache key. In other
+        # words, we need the cache version to be present in the function signature so that we can respect the current
+        # cache semantics where changing the cache version of a cached Task creates a separate entry in the cache.
+        outputs_literal_map = dispatch_execute_func(ctx, self.name, input_literal_map, self._metadata.cache_version)
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -328,7 +355,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         """
@@ -346,7 +372,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface, docstring),
+            interface=transform_interface_to_typed_interface(interface),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()

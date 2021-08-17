@@ -2,7 +2,7 @@ import os
 import sys
 from unittest import mock
 
-from scripts.flytekit_sagemaker_runner import run as _flyte_sagemaker_run
+from flytekit_scripts.flytekit_sagemaker_runner import run as _flyte_sagemaker_run
 
 cmd = []
 cmd.extend(["--__FLYTE_ENV_VAR_env1__", "val1"])
