@@ -24,11 +24,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
-from flytekit.core.docstring import Docstring
 from flytekit.core.context_manager import (
-    BranchEvalMode,
-    ExecutionState,
     FlyteContext,
     FlyteContextManager,
     FlyteEntities,
