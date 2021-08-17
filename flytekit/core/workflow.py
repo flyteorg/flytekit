@@ -238,81 +238,12 @@ class WorkflowBase(object):
 
     def __call__(self, *args, **kwargs):
         """
-        cfhcfbg
+        Workflow needs to fill in default arguments before invoking the call handler.
         """
-        # Get default agruements and override with kwargs passed in
+        # Get default arguments and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
         return executable_artifact_call_handler(self, *args, **input_kwargs)
-
-    def old_call(self, *args, **kwargs):
-        """
-        The call pattern for Workflows is close to, but not exactly, the call pattern for Tasks. For local execution,
-        it goes
-
-        __call__ -> _local_execute -> execute
-
-        From execute, different things happen for the two Workflow styles. For PythonFunctionWorkflows, the Python
-        function is run, for the ImperativeWorkflow, each node is run one at a time.
-        """
-        # Sanity checks
-        # Only keyword args allowed
-        if len(args) > 0:
-            raise AssertionError("Only Keyword Arguments are supported for Workflow executions")
-        # Make sure arguments are part of interface
-        for k, v in kwargs.items():
-            if k not in self.interface.inputs:
-                raise ValueError(f"Received unexpected keyword argument {k}")
-
-        ctx = FlyteContextManager.current_context()
-
-        # Get default agruements and override with kwargs passed in
-        input_kwargs = self.python_interface.default_inputs_as_kwargs
-        input_kwargs.update(kwargs)
-
-        # The first condition is compilation.
-        if ctx.compilation_state is not None:
-            return create_and_link_node(ctx, entity=self, **input_kwargs)
-
-        # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
-        # The context specifying the local workflow execution has already been set.
-        elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        ):
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                if self.interface:
-                    output_names = list(self.interface.outputs.keys())
-                    if len(output_names) == 0:
-                        return VoidPromise(self.name)
-                    vals = [Promise(var, None) for var in output_names]
-                    return create_task_output(vals, self.python_interface)
-                else:
-                    return None
-            # We are already in a local execution, just continue the execution context
-            return self._local_execute(ctx, **input_kwargs)
-
-        # Last is starting a local workflow execution
-        else:
-            with FlyteContextManager.with_context(
-                ctx.with_execution_state(
-                    ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
-                )
-            ) as child_ctx:
-                result = self._local_execute(child_ctx, **input_kwargs)
-
-            expected_outputs = len(self.python_interface.outputs)
-            if expected_outputs == 0:
-                if result is None or isinstance(result, VoidPromise):
-                    return None
-                else:
-                    raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
-
-            if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
-                return create_native_named_tuple(ctx, result, self.python_interface)
-
-            raise ValueError(
-                f"expected outputs and actual outputs do not match. Result {result} Python interface: {self.python_interface}"
-            )
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")

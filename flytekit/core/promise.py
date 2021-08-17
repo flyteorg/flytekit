@@ -805,17 +805,19 @@ class LocallyExecutable(Protocol):
 
 
 def executable_artifact_call_handler(entity: Union[SupportsNodeCreation, LocallyExecutable], *args, **kwargs):
-    # When a Task is () aka __called__, there are three things we may do:
-    #  a. Task Execution Mode - just run the Python function as Python normally would. Flyte steps completely
-    #     out of the way.
-    #  b. Compilation Mode - this happens when the function is called as part of a workflow (potentially
-    #     dynamic task?). Instead of running the user function, produce promise objects and create a node.
-    #  c. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
-    #     and everything should be able to be passed through naturally, we'll want to wrap output values of the
-    #     function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
-    #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
-    #     task output as an input, things probably will fail pretty obviously.
-
+    """
+    This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
+    workflow). When one of these entities is () aka __called__, there are three things we may do:
+    #. Compilation Mode - this happens when the function is called as part of a workflow (potentially
+       dynamic task?). Instead of running the user function, produce promise objects and create a node.
+    #. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
+       and everything should be able to be passed through naturally, we'll want to wrap output values of the
+       function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
+       nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
+       task output as an input, things probably will fail pretty obviously.
+    #. Start a local execution - This means that we're not already in a local workflow execution, which means that
+       we should expect inputs to be native Python values and that we should return Python native values.
+    """
     # Sanity checks
     # Only keyword args allowed
     if len(args) > 0:
