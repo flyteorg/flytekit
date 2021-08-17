@@ -5,6 +5,8 @@ from joblib import Memory
 # Location in the file system where serialized objects will be stored
 # TODO: read from config
 CACHE_LOCATION = "~/.flyte/local-cache"
+# TODO: read from config
+CACHE_VERBOSITY=5
 
 
 class LocalCache(object):
@@ -13,7 +15,7 @@ class LocalCache(object):
 
     @staticmethod
     def initialize():
-        LocalCache._memory = Memory(CACHE_LOCATION, verbose=5)
+        LocalCache._memory = Memory(CACHE_LOCATION, verbose=CACHE_VERBOSITY)
         LocalCache._initialized = True
 
     @staticmethod
