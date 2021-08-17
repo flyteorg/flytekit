@@ -6,7 +6,7 @@ from joblib import Memory
 # TODO: read from config
 CACHE_LOCATION = "~/.flyte/local-cache"
 # TODO: read from config
-CACHE_VERBOSITY=5
+CACHE_VERBOSITY = 5
 
 
 class LocalCache(object):
