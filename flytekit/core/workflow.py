@@ -36,6 +36,7 @@ from flytekit.core.promise import (
     create_and_link_node,
     create_native_named_tuple,
     create_task_output,
+    executable_artifact_call_handler,
     translate_inputs_to_literals,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
@@ -236,6 +237,15 @@ class WorkflowBase(object):
         )
 
     def __call__(self, *args, **kwargs):
+        """
+        cfhcfbg
+        """
+        # Get default agruements and override with kwargs passed in
+        input_kwargs = self.python_interface.default_inputs_as_kwargs
+        input_kwargs.update(kwargs)
+        return executable_artifact_call_handler(self, *args, **input_kwargs)
+
+    def old_call(self, *args, **kwargs):
         """
         The call pattern for Workflows is close to, but not exactly, the call pattern for Tasks. For local execution,
         it goes

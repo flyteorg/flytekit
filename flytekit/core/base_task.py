@@ -41,6 +41,7 @@ from flytekit.core.promise import (
     create_and_link_node,
     create_native_named_tuple,
     create_task_output,
+    executable_artifact_call_handler,
     translate_inputs_to_literals,
 )
 from flytekit.core.tracker import TrackedInstance
@@ -258,6 +259,9 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):
+        return executable_artifact_call_handler(self, *args, **kwargs)
+
+    def old__call(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:
         #  a. Task Execution Mode - just run the Python function as Python normally would. Flyte steps completely
         #     out of the way.

@@ -12,7 +12,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
@@ -775,7 +775,7 @@ def create_and_link_node(
         )
     )
 
-    non_sdk_node = Node(
+    flytekit_node = Node(
         # TODO: Better naming, probably a derivative of the function name.
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
         metadata=entity.construct_node_metadata(),
@@ -783,7 +783,7 @@ def create_and_link_node(
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,
     )
-    ctx.compilation_state.add_node(non_sdk_node)
+    ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
         return VoidPromise(entity.name)
@@ -793,7 +793,75 @@ def create_and_link_node(
     for output_name, output_var_model in typed_interface.outputs.items():
         # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
         #  is currently just a static str
-        node_outputs.append(Promise(output_name, NodeOutput(node=non_sdk_node, var=output_name)))
+        node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
     return create_task_output(node_outputs, interface)
+
+
+class LocallyExecutable(Protocol):
+    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+        ...
+
+
+def executable_artifact_call_handler(entity: Union[SupportsNodeCreation, LocallyExecutable], *args, **kwargs):
+    # When a Task is () aka __called__, there are three things we may do:
+    #  a. Task Execution Mode - just run the Python function as Python normally would. Flyte steps completely
+    #     out of the way.
+    #  b. Compilation Mode - this happens when the function is called as part of a workflow (potentially
+    #     dynamic task?). Instead of running the user function, produce promise objects and create a node.
+    #  c. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
+    #     and everything should be able to be passed through naturally, we'll want to wrap output values of the
+    #     function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
+    #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
+    #     task output as an input, things probably will fail pretty obviously.
+
+    # Sanity checks
+    # Only keyword args allowed
+    if len(args) > 0:
+        raise _user_exceptions.FlyteAssertion(
+            f"When calling tasks, only keyword args are supported. "
+            f"Aborting execution as detected {len(args)} positional args {args}"
+        )
+    # Make sure arguments are part of interface
+    for k, v in kwargs.items():
+        if k not in entity.python_interface.inputs:
+            raise ValueError(f"Received unexpected keyword argument {k}")
+
+    ctx = FlyteContextManager.current_context()
+
+    if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
+        return create_and_link_node(ctx, entity=entity, **kwargs)
+    elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+            if len(entity.python_interface.inputs) > 0 or len(entity.python_interface.outputs) > 0:
+                output_names = list(entity.python_interface.outputs.keys())
+                if len(output_names) == 0:
+                    return VoidPromise(entity.name)
+                vals = [Promise(var, None) for var in output_names]
+                return create_task_output(vals, entity.python_interface)
+            else:
+                return None
+        return entity._local_execute(ctx, **kwargs)
+    else:
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+            )
+        ) as child_ctx:
+            result = entity._local_execute(child_ctx, **kwargs)
+
+        expected_outputs = len(entity.python_interface.outputs)
+        if expected_outputs == 0:
+            if result is None or isinstance(result, VoidPromise):
+                return None
+            else:
+                raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
+
+        if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
+            return create_native_named_tuple(ctx, result, entity.python_interface)
+
+        raise ValueError(
+            f"Expected outputs and actual outputs do not match. Result {result}. "
+            f"Python interface: {entity.python_interface}"
+        )
