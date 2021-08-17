@@ -117,8 +117,62 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             return FlyteSchemaTransformer().to_literal(ctx, python_val, datatype, expected)
         elif issubclass(datatype, FlyteFile):
             return FlyteFilePathTransformer().to_literal(ctx, python_val, datatype, expected)
+        elif issubclass(datatype, str):
+            return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val)))
+        else:
+            raise TypeError(f"{datatype} is not a supported type")
 
-        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val)))
+    def _flyte_schema(
+        self, is_runtime: bool, ctx: FlyteContext, ge_conf: GreatExpectationsFlyteConfig, lv: Literal
+    ) -> (FlyteSchema, str):
+        temp_dataset = ""
+        
+        # if data batch is to be generated, skip copying the parquet file
+        if not is_runtime:
+            if not ge_conf.local_file_path:
+                raise ValueError("local_file_path is missing!")
+
+            # copy parquet file to user-given directory
+            ctx.file_access.get_data(lv.scalar.schema.uri, ge_conf.local_file_path, is_multipart=True)
+
+            temp_dataset = os.path.basename(ge_conf.local_file_path)
+
+        def downloader(x, y):
+            ctx.file_access.get_data(x, y, is_multipart=True)
+
+        return (
+            FlyteSchema(
+                local_path=ctx.file_access.get_random_local_directory(),
+                remote_path=lv.scalar.schema.uri,
+                downloader=downloader,
+                supported_mode=SchemaOpenMode.READ,
+            )
+            .open()
+            .all()
+        ), temp_dataset
+
+    def _flyte_file(self, ctx: FlyteContext, ge_conf: GreatExpectationsFlyteConfig, lv: Literal) -> (FlyteFile, str):
+        uri = lv.scalar.blob.uri
+
+        # check if the file is remote
+        if ctx.file_access.is_remote(uri):
+            if not ge_conf.local_file_path:
+                raise ValueError("local_file_path is missing!")
+
+            if os.path.isdir(ge_conf.local_file_path):
+                local_path = os.path.join(ge_conf.local_file_path, os.path.basename(uri))
+            else:
+                local_path = ge_conf.local_file_path
+
+            # download the file into local_file_path
+            ctx.file_access.get_data(
+                remote_path=uri,
+                local_path=local_path,
+            )
+
+        temp_dataset = os.path.basename(uri)
+
+        return FlyteFile(uri), temp_dataset
 
     def to_python_value(
         self,
@@ -164,54 +218,11 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
         # FlyteSchema
         if lv.scalar.schema:
-
-            # if data batch is to be generated, skip copying the parquet file
-            if not is_runtime:
-                if not ge_conf.local_file_path:
-                    raise ValueError("local_file_path is missing!")
-
-                # copy parquet file to user-given directory
-                ctx.file_access.get_data(lv.scalar.schema.uri, ge_conf.local_file_path, is_multipart=True)
-
-                temp_dataset = os.path.basename(ge_conf.local_file_path)
-
-            def downloader(x, y):
-                ctx.file_access.get_data(x, y, is_multipart=True)
-
-            return_dataset = (
-                FlyteSchema(
-                    local_path=ctx.file_access.get_random_local_directory(),
-                    remote_path=lv.scalar.schema.uri,
-                    downloader=downloader,
-                    supported_mode=SchemaOpenMode.READ,
-                )
-                .open()
-                .all()
-            )
+            return_dataset, temp_dataset = self._flyte_schema(is_runtime=is_runtime, ctx=ctx, ge_conf=ge_conf, lv=lv)
 
         # FlyteFile
         if lv.scalar.blob:
-            uri = lv.scalar.blob.uri
-
-            # check if the file is remote
-            if ctx.file_access.is_remote(uri):
-                if not ge_conf.local_file_path:
-                    raise ValueError("local_file_path is missing!")
-
-                if os.path.isdir(ge_conf.local_file_path):
-                    local_path = os.path.join(ge_conf.local_file_path, os.path.basename(uri))
-                else:
-                    local_path = ge_conf.local_file_path
-
-                # download the file into local_file_path
-                ctx.file_access.get_data(
-                    remote_path=uri,
-                    local_path=local_path,
-                )
-
-            temp_dataset = os.path.basename(uri)
-
-            return_dataset = FlyteFile(uri)
+            return_dataset, temp_dataset = self._flyte_file(ctx=ctx, ge_conf=ge_conf, lv=lv)
 
         if lv.scalar.primitive:
             dataset = return_dataset = lv.scalar.primitive.string_value

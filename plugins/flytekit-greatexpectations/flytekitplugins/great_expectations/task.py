@@ -42,6 +42,8 @@ class BatchRequestConfig(object):
 class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
     """
     This task can be used to validate your data.
+    You can use this when you want to validate your data within the task or workflow.
+    If you want to validate your data as and when the type is given, use the `GreatExpectationsType`.
 
     Args:
         name: name of the task
@@ -101,6 +103,62 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             **kwargs,
         )
 
+    def _flyte_file(self, dataset) -> str:
+        # str
+        # if the file is remote, download the file into local_file_path
+        if issubclass(type(dataset), str):
+            if FlyteContext.current_context().file_access.is_remote(dataset):
+                if not self._local_file_path:
+                    raise ValueError("local_file_path is missing!")
+
+                if os.path.isdir(self._local_file_path):
+                    local_path = os.path.join(self._local_file_path, os.path.basename(dataset))
+                else:
+                    local_path = self._local_file_path
+
+                FlyteContext.current_context().file_access.get_data(
+                    remote_path=dataset,
+                    local_path=local_path,
+                )
+
+        # _SpecificFormatClass
+        # if the file is remote, copy the downloaded file to the user specified local_file_path
+        else:
+            if dataset.remote_source:
+                if not self._local_file_path:
+                    raise ValueError("local_file_path is missing!")
+                shutil.copy(dataset, self._local_file_path)
+
+        dataset = os.path.basename(dataset)
+
+        return dataset
+
+    def _flyte_schema(self, dataset) -> str:
+        if not self._local_file_path:
+            raise ValueError("local_file_path is missing!")
+
+        # FlyteSchema
+        if type(dataset) is FlyteSchema:
+            # copy parquet file to user-given directory
+            FlyteContext.current_context().file_access.get_data(
+                dataset.remote_path, self._local_file_path, is_multipart=True
+            )
+
+        # DataFrame (Pandas, Spark, etc.)
+        else:
+            if not os.path.exists(self._local_file_path):
+                os.makedirs(self._local_file_path, exist_ok=True)
+
+            schema = FlyteSchema(
+                local_path=self._local_file_path,
+            )
+            writer = schema.open(type(dataset))
+            writer.write(dataset)
+
+        dataset = os.path.basename(self._local_file_path)
+
+        return dataset
+
     def execute(self, **kwargs) -> Any:
         context = ge.data_context.DataContext(self._context_root_dir)
 
@@ -135,58 +193,12 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
 
         # FlyteFile
         if issubclass(datatype, FlyteFile):
-
-            # str
-            # if the file is remote, download the file into local_file_path
-            if issubclass(type(dataset), str):
-                if FlyteContext.current_context().file_access.is_remote(dataset):
-                    if not self._local_file_path:
-                        raise ValueError("local_file_path is missing!")
-
-                    if os.path.isdir(self._local_file_path):
-                        local_path = os.path.join(self._local_file_path, os.path.basename(dataset))
-                    else:
-                        local_path = self._local_file_path
-
-                    FlyteContext.current_context().file_access.get_data(
-                        remote_path=dataset,
-                        local_path=local_path,
-                    )
-
-            # _SpecificFormatClass
-            # if the file is remote, copy the downloaded file to the user specified local_file_path
-            else:
-                if dataset.remote_source:
-                    if not self._local_file_path:
-                        raise ValueError("local_file_path is missing!")
-                    shutil.copy(dataset, self._local_file_path)
-
-            dataset = os.path.basename(dataset)
+            dataset = self._flyte_file(dataset)
 
         # FlyteSchema
         # convert schema to parquet file
         if issubclass(datatype, FlyteSchema) and not is_runtime:
-            if not self._local_file_path:
-                raise ValueError("local_file_path is missing!")
-
-            # FlyteSchema
-            if type(dataset) is FlyteSchema:
-                # copy parquet file to user-given directory
-                FlyteContext.current_context().file_access.get_data(
-                    dataset.remote_path, self._local_file_path, is_multipart=True
-                )
-
-            # DataFrame (Pandas, Spark, etc.)
-            else:
-                if not os.path.exists(self._local_file_path):
-                    os.makedirs(self._local_file_path, exist_ok=True)
-
-                schema = FlyteSchema(
-                    local_path=self._local_file_path,
-                )
-                writer = schema.open(type(dataset))
-                writer.write(dataset)
-            dataset = os.path.basename(self._local_file_path)
+            dataset = self._flyte_schema(dataset)
 
         # minimalistic batch request
         final_batch_request = {

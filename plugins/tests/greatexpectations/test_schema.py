@@ -8,7 +8,7 @@ from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectat
 from great_expectations.exceptions import ValidationError
 
 from flytekit import task, workflow
-from flytekit.types.file import FlyteFile
+from flytekit.types.file import CSVFile
 from flytekit.types.schema import FlyteSchema
 
 if "tests/greatexpectations" not in os.getcwd():
@@ -282,11 +282,11 @@ def test_ge_schema_remote_flytefile():
     )
 
     @task
-    def my_task(dataset: GreatExpectationsType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
+    def my_task(dataset: GreatExpectationsType[CSVFile, ge_config]) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
-    def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+    def my_wf(dataset: CSVFile) -> int:
         return my_task(dataset=dataset)
 
     result = my_wf(
@@ -304,7 +304,7 @@ def test_ge_schema_remote_flytefile_literal():
     )
 
     @task
-    def my_task(dataset: GreatExpectationsType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
+    def my_task(dataset: GreatExpectationsType[CSVFile, ge_config]) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
@@ -325,11 +325,11 @@ def test_ge_local_flytefile():
     )
 
     @task
-    def my_task(dataset: GreatExpectationsType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
+    def my_task(dataset: GreatExpectationsType[CSVFile, ge_config]) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
-    def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+    def my_wf(dataset: CSVFile) -> int:
         return my_task(dataset=dataset)
 
     result = my_wf(dataset="data/yellow_tripdata_sample_2019-01.csv")
@@ -344,7 +344,7 @@ def test_ge_local_flytefile_literal():
     )
 
     @task
-    def my_task(dataset: GreatExpectationsType[FlyteFile[typing.TypeVar("csv")], ge_config]) -> int:
+    def my_task(dataset: GreatExpectationsType[CSVFile, ge_config]) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow

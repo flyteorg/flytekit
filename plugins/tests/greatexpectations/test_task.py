@@ -8,7 +8,7 @@ from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectat
 from great_expectations.exceptions import ValidationError
 
 from flytekit import kwtypes, task, workflow
-from flytekit.types.file import FlyteFile
+from flytekit.types.file import CSVFile, FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 if "tests/greatexpectations" not in os.getcwd():
@@ -195,7 +195,7 @@ def test_ge_remote_flytefile():
     task_object = GreatExpectationsTask(
         name="test9",
         datasource_name="data",
-        inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
+        inputs=kwtypes(dataset=FlyteFile),
         expectation_suite_name="test.demo",
         data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp",
@@ -210,18 +210,18 @@ def test_ge_remote_flytefile_with_task():
     task_object = GreatExpectationsTask(
         name="test10",
         datasource_name="data",
-        inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
+        inputs=kwtypes(dataset=CSVFile),
         expectation_suite_name="test.demo",
         data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp",
     )
 
     @task
-    def my_task(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+    def my_task(dataset: CSVFile) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
-    def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+    def my_wf(dataset: CSVFile) -> int:
         task_object(dataset=dataset)
         return my_task(dataset=dataset)
 
@@ -235,7 +235,7 @@ def test_ge_local_flytefile():
     task_object = GreatExpectationsTask(
         name="test11",
         datasource_name="data",
-        inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
+        inputs=kwtypes(dataset=CSVFile),
         expectation_suite_name="test.demo",
         data_connector_name="data_example_data_connector",
     )
@@ -247,17 +247,17 @@ def test_ge_local_flytefile_with_task():
     task_object = GreatExpectationsTask(
         name="test12",
         datasource_name="data",
-        inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
+        inputs=kwtypes(dataset=CSVFile),
         expectation_suite_name="test.demo",
         data_connector_name="data_example_data_connector",
     )
 
     @task
-    def my_task(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+    def my_task(dataset: CSVFile) -> int:
         return len(pd.read_csv(dataset))
 
     @workflow
-    def my_wf(dataset: FlyteFile[typing.TypeVar("csv")]) -> int:
+    def my_wf(dataset: CSVFile) -> int:
         task_object(dataset=dataset)
         return my_task(dataset=dataset)
 
@@ -269,13 +269,13 @@ def test_ge_local_flytefile_workflow():
     task_object = GreatExpectationsTask(
         name="test13",
         datasource_name="data",
-        inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
+        inputs=kwtypes(dataset=CSVFile),
         expectation_suite_name="test.demo",
         data_connector_name="data_example_data_connector",
     )
 
     @workflow
-    def valid_wf(dataset: FlyteFile[typing.TypeVar("csv")] = "data/yellow_tripdata_sample_2019-01.csv") -> None:
+    def valid_wf(dataset: CSVFile = "data/yellow_tripdata_sample_2019-01.csv") -> None:
         task_object(dataset=dataset)
 
     valid_wf()
@@ -285,7 +285,7 @@ def test_ge_remote_flytefile_workflow():
     task_object = GreatExpectationsTask(
         name="test14",
         datasource_name="data",
-        inputs=kwtypes(dataset=FlyteFile[typing.TypeVar("csv")]),
+        inputs=kwtypes(dataset=CSVFile),
         expectation_suite_name="test.demo",
         data_connector_name="data_flytetype_data_connector",
         local_file_path="/tmp",
@@ -293,9 +293,7 @@ def test_ge_remote_flytefile_workflow():
 
     @workflow
     def valid_wf(
-        dataset: FlyteFile[
-            typing.TypeVar("csv")
-        ] = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv",
+        dataset: CSVFile = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv",
     ) -> None:
         task_object(dataset=dataset)
 

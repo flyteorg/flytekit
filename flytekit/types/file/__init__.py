@@ -79,3 +79,9 @@ SVGImageFile = FlyteFile[typing.TypeVar("svg")]
     Can be used to receive or return an SVGImage. The underlying type is a FlyteFile, type. This is just a
     decoration and useful for attaching content type information with the file and automatically documenting code.
 """
+
+CSVFile = FlyteFile[typing.TypeVar("csv")]
+"""
+    Can be used to receive or return a CSVFile. The underlying type is a FlyteFile, type. This is just a
+    decoration and useful for attaching content type information with the file and automatically documenting code.
+"""
