@@ -1,17 +1,17 @@
 import datetime
 import typing
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json
-from pytest import fixture
 
 import pandas
+from dataclasses_json import dataclass_json
+from pytest import fixture
 
 from flytekit import SQLTask, kwtypes
 from flytekit.core.local_cache import LocalCache
 from flytekit.core.task import TaskMetadata, task
+from flytekit.core.testing import task_mock
 from flytekit.core.workflow import workflow
 from flytekit.types.schema import FlyteSchema
-from flytekit.core.testing import patch, task_mock
 
 # Global counter used to validate number of calls to cache
 n_cached_task_calls = 0
@@ -24,6 +24,7 @@ def setup():
 
     LocalCache.initialize()
     LocalCache.clear()
+
 
 def test_1():
     @task(cache=True, cache_version="v1")
@@ -49,6 +50,7 @@ def test_1():
     # This is demonstrating that calls to f1 and f2 are cached by input parameters.
     assert wf(n=1) == (1, 2)
     assert 1 == 2
+
 
 def test_single_task_workflow():
     @task(cache=True, cache_version="v1")
@@ -110,7 +112,9 @@ def test_shared_tasks_in_two_separate_workflows():
     assert check_oddness_wf2(n=99) is True
     assert n_cached_task_calls == 2
 
+
 # TODO add test with typing.List[str]
+
 
 def test_sql_task():
     sql = SQLTask(
@@ -142,6 +146,7 @@ def test_sql_task():
         assert n_cached_task_calls == 1
         assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
         assert n_cached_task_calls == 1
+
 
 def test_wf_custom_types():
     @dataclass_json
