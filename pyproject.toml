@@ -6,7 +6,7 @@ profile = "black"
 line_length = 120
 
 [tool.pytest.ini_options]
-norecursedirs = ["common", "workflows", "spark"]
+norecursedirs = ["common", "workflows", "spark", "flytekit-data-fsspec"]
 log_cli = true
 log_cli_level = 20
 
