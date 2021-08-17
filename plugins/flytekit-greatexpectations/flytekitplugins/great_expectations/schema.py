@@ -103,6 +103,8 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             return FlyteFilePathTransformer().get_literal_type(datatype)
         elif issubclass(datatype, FlyteSchema):
             return FlyteSchemaTransformer().get_literal_type(datatype)
+        else:
+            raise TypeError(f"{datatype} is not a supported type")
 
     def to_literal(
         self,
@@ -180,8 +182,12 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         lv: Literal,
         expected_python_type: Type[GreatExpectationsType],
     ) -> GreatExpectationsType:
-        if not (lv and lv.scalar and (lv.scalar.primitive or lv.scalar.schema or lv.scalar.blob)):
-            raise AssertionError("Can only validate a literal value")
+        if not (
+            lv
+            and lv.scalar
+            and ((lv.scalar.primitive and lv.scalar.primitive.string_value) or lv.scalar.schema or lv.scalar.blob)
+        ):
+            raise AssertionError("Can only validate a literal string/FlyteFile/FlyteSchema value")
 
         # fetch the configuration
         conf_dict = GreatExpectationsTypeTransformer.get_config(expected_python_type)[1].to_dict()
