@@ -78,7 +78,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandera.typing.DataFrame]
     ) -> pandera.typing.DataFrame:
         if not (lv and lv.scalar and lv.scalar.schema):
-            raise AssertionError("Can only covert a literal schema to a pandera schema")
+            raise AssertionError("Can only convert a literal schema to a pandera schema")
 
         def downloader(x, y):
             ctx.file_access.download_directory(x, y)
