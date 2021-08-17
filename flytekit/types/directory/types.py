@@ -15,6 +15,10 @@ from flytekit.models.types import LiteralType
 T = typing.TypeVar("T")
 
 
+def noop():
+    ...
+
+
 class FlyteDirectory(os.PathLike, typing.Generic[T]):
     """
     .. warning::
@@ -68,17 +72,8 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     | Type of Python value              | FlyteDirectory                                                               |
     +===================+===============+==============================================================================+
     | str or            | path matches  | Blob object is returned with uri set to the given path.                      |
-    | pathlib.Path      | http(s)/s3/gs | Nothing is uploaded.                                                         |
-    |                   +---------------+------------------------------------------------------------------------------+
-    |                   | path matches  | Contents of file are uploaded to the Flyte blob store (S3, GCS, etc.), in    |
-    |                   | /local/path   | a bucket determined by the raw_output_data_prefix setting. If                |
-    |                   |               | remote_path is given, then that is used instead of the random path. Blob     |
-    |                   |               | object is returned with uri pointing to the blob store location.             |
-    |                   |               |                                                                              |
-    +-------------------+---------------+------------------------------------------------------------------------------+
-    | FlyteDirectory    | path matches  | Blob object is returned with uri set to the                                  |
-    |                   | http(s)/s3/gs | Nothing is uploaded.                                                         |
-    |                   +---------------+------------------------------------------------------------------------------+
+    | pathlib.Path or   | http(s)/s3/gs | Nothing is uploaded.                                                         |
+    | FlyteDirectory    +---------------+------------------------------------------------------------------------------+
     |                   | path matches  | Contents of file are uploaded to the Flyte blob store (S3, GCS, etc.), in    |
     |                   | /local/path   | a bucket determined by the raw_output_data_prefix setting. If                |
     |                   |               | remote_path is given, then that is used instead of the random path. Blob     |
@@ -122,9 +117,6 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
             until a user actually calls open().
         :param remote_directory: If the user wants to return something and also specify where it should be uploaded to.
         """
-
-        def noop():
-            ...
 
         self._path = path
         self._downloader = downloader or noop
