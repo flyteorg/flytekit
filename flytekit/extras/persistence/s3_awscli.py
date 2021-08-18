@@ -3,41 +3,42 @@ import os as _os
 import re as _re
 import string as _string
 import time
+import typing
 from shutil import which as shell_which
 from typing import Dict, List, Optional
 
-from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
-from flytekit.configuration import aws as _aws_config
+from flytekit.common.exceptions.user import FlyteUserException
+from flytekit.configuration import aws
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
-from flytekit.tools import subprocess as _subprocess
+from flytekit.tools import subprocess
 
 
 def _update_cmd_config_and_execute(cmd: List[str]):
     env = _os.environ.copy()
 
-    if _aws_config.ENABLE_DEBUG.get():
+    if aws.ENABLE_DEBUG.get():
         cmd.insert(1, "--debug")
 
-    if _aws_config.S3_ENDPOINT.get() is not None:
-        cmd.insert(1, _aws_config.S3_ENDPOINT.get())
-        cmd.insert(1, _aws_config.S3_ENDPOINT_ARG_NAME)
+    if aws.S3_ENDPOINT.get() is not None:
+        cmd.insert(1, aws.S3_ENDPOINT.get())
+        cmd.insert(1, aws.S3_ENDPOINT_ARG_NAME)
 
-    if _aws_config.S3_ACCESS_KEY_ID.get() is not None:
-        env[_aws_config.S3_ACCESS_KEY_ID_ENV_NAME] = _aws_config.S3_ACCESS_KEY_ID.get()
+    if aws.S3_ACCESS_KEY_ID.get() is not None:
+        env[aws.S3_ACCESS_KEY_ID_ENV_NAME] = aws.S3_ACCESS_KEY_ID.get()
 
-    if _aws_config.S3_SECRET_ACCESS_KEY.get() is not None:
-        env[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
+    if aws.S3_SECRET_ACCESS_KEY.get() is not None:
+        env[aws.S3_SECRET_ACCESS_KEY_ENV_NAME] = aws.S3_SECRET_ACCESS_KEY.get()
 
     retry = 0
     while True:
         try:
-            return _subprocess.check_call(cmd, env=env)
+            return subprocess.check_call(cmd, env=env)
         except Exception as e:
             logging.error(f"Exception when trying to execute {cmd}, reason: {str(e)}")
             retry += 1
-            if retry > _aws_config.RETRIES.get():
+            if retry > aws.RETRIES.get():
                 raise
-            secs = _aws_config.BACKOFF_SECONDS.get()
+            secs = aws.BACKOFF_SECONDS.get()
             logging.info(f"Sleeping before retrying again, after {secs} seconds")
             time.sleep(secs)
             logging.info("Retrying again")
@@ -78,10 +79,10 @@ class S3Persistence(DataPersistence):
         Make sure that the AWS cli is present
         """
         if not shell_which(S3Persistence._AWS_CLI):
-            raise _FlyteUserException("AWS CLI not found! Please install it with `pip install awscli`.")
+            raise FlyteUserException("AWS CLI not found! Please install it with `pip install awscli`.")
 
     @staticmethod
-    def _split_s3_path_to_bucket_and_key(path: str) -> (str, str):
+    def _split_s3_path_to_bucket_and_key(path: str) -> typing.Tuple[str, str]:
         """
         splits a valid s3 uri into bucket and key
         """
@@ -149,7 +150,7 @@ class S3Persistence(DataPersistence):
         cmd += [from_path, to_path]
         return _update_cmd_config_and_execute(cmd)
 
-    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths: str) -> str:
         paths = list(paths)  # make type check happy
         if add_prefix:
             paths = paths.insert(0, self.default_prefix)

@@ -59,7 +59,7 @@ class FSSpecPersistence(DataPersistence):
         return fsspec.filesystem(protocol, **kwargs)
 
     @staticmethod
-    def recursive_paths(f: str, t: str) -> (str, str):
+    def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
         if not f.endswith("*"):
             f = os.path.join(f, "*")
         if not t.endswith("/"):

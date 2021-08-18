@@ -1,9 +1,9 @@
 import os
 import pathlib
 
-import requests as _requests
+import requests
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.common.exceptions import user
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.loggers import logger
 
@@ -29,9 +29,9 @@ class HttpPersistence(DataPersistence):
         super(HttpPersistence, self).__init__(name="http/https", *args, **kwargs)
 
     def exists(self, path: str):
-        rsp = _requests.head(path)
+        rsp = requests.head(path)
         if rsp.status_code not in self.ALLOWED_CODES:
-            raise _user_exceptions.FlyteValueException(
+            raise user.FlyteValueException(
                 rsp.status_code,
                 f"Data at {path} could not be checked for existence. Expected one of: {self.ALLOWED_CODES}",
             )
@@ -39,12 +39,10 @@ class HttpPersistence(DataPersistence):
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         if recursive:
-            raise _user_exceptions.FlyteAssertion(
-                "Reading data recursively from HTTP endpoint is not currently supported."
-            )
-        rsp = _requests.get(from_path)
+            raise user.FlyteAssertion("Reading data recursively from HTTP endpoint is not currently supported.")
+        rsp = requests.get(from_path)
         if rsp.status_code != self._HTTP_OK:
-            raise _user_exceptions.FlyteValueException(
+            raise user.FlyteValueException(
                 rsp.status_code,
                 "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK),
             )
@@ -56,10 +54,10 @@ class HttpPersistence(DataPersistence):
             writer.write(rsp.content)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
-        raise _user_exceptions.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
+        raise user.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
-        raise _user_exceptions.FlyteAssertion(
+        raise user.FlyteAssertion(
             "There are multiple ways of creating http links / paths, this is not supported by the persistence layer"
         )
 

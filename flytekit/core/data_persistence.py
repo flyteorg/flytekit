@@ -27,7 +27,7 @@ import os
 import pathlib
 import typing
 from abc import abstractmethod
-from distutils import dir_util as _dir_util
+from distutils import dir_util
 from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
@@ -92,7 +92,7 @@ class DataPersistence(object):
         pass
 
     @abstractmethod
-    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths: str) -> str:
         """
         if add_protocol is true then <protocol> is prefixed else
         Constructs a path in the format <base><delim>*args
@@ -209,24 +209,25 @@ class DiskPersistence(DataPersistence):
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
-                _dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+                dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
             else:
                 copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
-                _dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+                dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
             else:
                 # Emulate s3's flat storage by automatically creating directory path
                 self._make_local_path(os.path.dirname(self.strip_file_header(to_path)))
-                # Write the object to a local file in the sandbox
+                # Write the object to a local file in the temp local folder
                 copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
-    def construct_path(self, _: bool, add_prefix: bool, *args) -> str:
+    def construct_path(self, _: bool, add_prefix: bool, *args: str) -> str:
         # Ignore add_protocol for now. Only complicates things
         if add_prefix:
-            return os.path.join(self.default_prefix, *args)
+            prefix = self.default_prefix if self.default_prefix else ""
+            return os.path.join(prefix, *args)
         return os.path.join(*args)
 
 
@@ -237,6 +238,10 @@ class FileAccessProvider(object):
     """
 
     def __init__(self, local_sandbox_dir: Union[str, os.PathLike], raw_output_prefix: str):
+        """
+        Args:
+            local_sandbox_dir: A local temporary working directory, that should be used to store data
+        """
         # Local access
         if local_sandbox_dir is None or local_sandbox_dir == "":
             raise ValueError("FileAccessProvider needs to be created with a valid local_sandbox_dir")

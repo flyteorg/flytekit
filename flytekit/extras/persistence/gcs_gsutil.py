@@ -2,15 +2,15 @@ import os
 import typing
 from shutil import which as shell_which
 
-from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
-from flytekit.configuration import gcp as _gcp_config
+from flytekit.common.exceptions.user import FlyteUserException
+from flytekit.configuration import gcp
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
-from flytekit.tools import subprocess as _subprocess
+from flytekit.tools import subprocess
 
 
 def _update_cmd_config_and_execute(cmd):
     env = os.environ.copy()
-    return _subprocess.check_call(cmd, env=env)
+    return subprocess.check_call(cmd, env=env)
 
 
 def _amend_path(path):
@@ -41,7 +41,7 @@ class GCSPersistence(DataPersistence):
         Make sure that the `gsutil` cli is present
         """
         if not shell_which(GCSPersistence._GS_UTIL_CLI):
-            raise _FlyteUserException("gsutil (gcloud cli) not found! Please install using `pip install gsutil`.")
+            raise FlyteUserException("gsutil (gcloud cli) not found! Please install using `pip install gsutil`.")
 
     @staticmethod
     def _maybe_with_gsutil_parallelism(*gsutil_args):
@@ -52,7 +52,7 @@ class GCSPersistence(DataPersistence):
         https://cloud.google.com/storage/docs/boto-gsutil
         """
         cmd = [GCSPersistence._GS_UTIL_CLI]
-        if _gcp_config.GSUTIL_PARALLELISM.get():
+        if gcp.GSUTIL_PARALLELISM.get():
             cmd.append("-m")
         cmd.extend(gsutil_args)
 

@@ -47,10 +47,10 @@ __version__ = "0.0.0+develop"
 setup(
     name="flytekit",
     version=__version__,
-    maintainer="Flyte Org",
+    maintainer="Flyte Contributors",
     maintainer_email="admin@flyte.org",
     packages=find_packages(exclude=["tests*"]),
-    url="https://github.com/lyft/flytekit",
+    url="https://github.com/flyteorg/flytekit",
     description="Flyte SDK for Python",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
