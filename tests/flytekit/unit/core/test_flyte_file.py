@@ -297,10 +297,11 @@ def test_returning_a_pathlib_path(local_dummy_file):
         assert fh.read() == "Hello world"
     assert wf_out._downloaded
 
-    # Remove the file, then call trigger_download again, it should not because _downloaded was already set.
+    # Remove the file, then call download again, it should not because _downloaded was already set.
     os.remove(wf_out.path)
-    wf_out.trigger_download()
+    p = wf_out.download()
     assert not os.path.exists(wf_out.path)
+    assert p == wf_out.path
 
     @task
     def t2() -> os.PathLike:

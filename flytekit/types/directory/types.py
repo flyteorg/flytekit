@@ -45,7 +45,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     | Blob        | http(s)/s3/gs | path, but points to a local file instead.                                          |
     |             |               |                                                                                    |
     |             |               | * [fn] downloader: function that writes to path when open'ed.                      |
-    |             |               | * [fn] trigger_download: will trigger download                                     |
+    |             |               | * [fn] download: will trigger download                                             |
     |             |               | * path: randomly generated local path that will not exist until downloaded         |
     |             |               | * remote_path: None                                                                |
     |             |               | * remote_source: original http/s3/gs path                                          |
@@ -54,7 +54,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     |             | uri matches   | FlyteDirectory object just wraps the string                                        |
     |             | /local/path   |                                                                                    |
     |             |               | * [fn] downloader: noop function                                                   |
-    |             |               | * [fn] trigger_download: raises exception                                          |
+    |             |               | * [fn] download: raises exception                                                  |
     |             |               | * path: just the given path                                                        |
     |             |               | * remote_path: None                                                                |
     |             |               | * remote_source: None                                                              |
@@ -175,12 +175,13 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         """
         return self._remote_source
 
-    def trigger_download(self):
+    def download(self) -> str:
         if self._downloaded:
-            return
+            return self.path
         if self._downloader is not noop:
             self._downloader()
             self._downloaded = True
+            return self.path
         else:
             raise ValueError(f"Attempting to trigger download on non-downloadable folder {self}")
 

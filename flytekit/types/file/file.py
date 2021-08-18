@@ -77,18 +77,18 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     |             |               |                                             |                                      |
     |             |               | * [fn] downloader: function that writes to  |                                      |
     |             |               |   path when open'ed.                        |                                      |
-    |             |               | * [fn] trigger_download: will trigger       | Basically this signals Flyte should  |
+    |             |               | * [fn] download: will trigger               | Basically this signals Flyte should  |
     |             |               |   download                                  | stay out of the way. You still get   |
     |             |               | * path: randomly generated local path that  | a FlyteFile object (which implements |
     |             |               |   will not exist until downloaded           | the os.PathLike interface)           |
     |             |               | * remote_path: None                         |                                      |
     |             |               | * remote_source: original http/s3/gs path   | * [fn] downloader: noop function,    |
     |             |               |                                             |   even if it's http/s3/gs            |
-    |             +---------------+---------------------------------------------+ * [fn] trigger_download: raises      |
+    |             +---------------+---------------------------------------------+ * [fn] download: raises              |
     |             | uri matches   | FlyteFile object just wraps the string      |   exception                          |
     |             | /local/path   |                                             | * path: just the given path          |
     |             |               | * [fn] downloader: noop function            | * remote_path: None                  |
-    |             |               | * [fn] trigger_download: raises exception   | * remote_source: None                |
+    |             |               | * [fn] download: raises exception           | * remote_source: None                |
     |             |               | * path: just the given path                 |                                      |
     |             |               | * remote_path: None                         |                                      |
     |             |               | * remote_source: None                       |                                      |
@@ -206,12 +206,13 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         """
         return self._remote_source
 
-    def trigger_download(self):
+    def download(self) -> str:
         if self._downloaded:
-            return
+            return self.path
         if self._downloader is not noop:
             self._downloader()
             self._downloaded = True
+            return self.path
         else:
             raise ValueError(f"Attempting to trigger download on non-downloadable file {self}")
 

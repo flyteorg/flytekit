@@ -109,7 +109,7 @@ def test_file_non_downloadable():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
     assert isinstance(pv, FlyteFile)
     with pytest.raises(ValueError):
-        pv.trigger_download()
+        pv.download()
 
 
 def test_dir_non_downloadable():
@@ -127,7 +127,7 @@ def test_dir_non_downloadable():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteDirectory)
     assert isinstance(pv, FlyteDirectory)
     with pytest.raises(ValueError):
-        pv.trigger_download()
+        pv.download()
 
 
 def test_dict_transformer():

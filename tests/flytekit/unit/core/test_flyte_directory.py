@@ -217,7 +217,7 @@ def test_returning_a_pathlib_path(local_dummy_directory):
     with open(os.path.join(wf_out.path, "file"), "r") as fh:
         assert fh.read() == "Hello world"
 
-    # Remove the file, then call trigger_download again, it should not because _downloaded was already set.
+    # Remove the file, then call download again, it should not because _downloaded was already set.
     shutil.rmtree(wf_out)
-    wf_out.trigger_download()
+    wf_out.download()
     assert not os.path.exists(wf_out.path)
