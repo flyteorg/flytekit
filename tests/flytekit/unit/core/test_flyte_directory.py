@@ -221,3 +221,25 @@ def test_returning_a_pathlib_path(local_dummy_directory):
     shutil.rmtree(wf_out)
     wf_out.download()
     assert not os.path.exists(wf_out.path)
+
+
+def test_fd_with_local_remote(local_dummy_directory):
+    temp_dir = tempfile.TemporaryDirectory()
+    print(temp_dir)
+    try:
+
+        @task
+        def t1() -> FlyteDirectory:
+            return FlyteDirectory(local_dummy_directory, remote_directory=temp_dir.name)
+
+        # TODO: Remove this - only here to trigger type engine
+        @workflow
+        def wf1() -> FlyteDirectory:
+            return t1()
+
+        wf_out = wf1()
+        files = os.listdir(temp_dir.name)
+        assert len(files) == 1  # the pytest fixture has one file in it.
+        assert wf_out.path == temp_dir.name
+    finally:
+        temp_dir.cleanup()

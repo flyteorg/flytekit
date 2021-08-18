@@ -38,7 +38,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
 
     **Converting from a Flyte literal value to a Python instance of FlyteDirectory**
 
-    +-------------+---------------+------------------------------------------------------------------------------------+
+    +-----------------------------+------------------------------------------------------------------------------------+
     | Type of Flyte IDL Literal   |    FlyteDirectory                                                                  |
     +=============+===============+====================================================================================+
     | Multipart   | uri matches   | FlyteDirectory object stores the original string                                   |
@@ -50,7 +50,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     |             |               | * remote_path: None                                                                |
     |             |               | * remote_source: original http/s3/gs path                                          |
     |             |               |                                                                                    |
-    |             +---------------+------------------------------------------------------------------------------------|
+    |             +---------------+------------------------------------------------------------------------------------+
     |             | uri matches   | FlyteDirectory object just wraps the string                                        |
     |             | /local/path   |                                                                                    |
     |             |               | * [fn] downloader: noop function                                                   |
@@ -63,12 +63,8 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     -----------
 
     **Converting from a Python value (FlyteDirectory, str, or pathlib.Path) to a Flyte literal**
-                                          Contents of file are uploaded to the Flyte blob store (S3, GCS, etc.), in
-                                          a bucket determined by the raw_output_data_prefix setting. If
-                                          remote_path is given, then that is used instead of the random path. Blob
-                                          object is returned with uri pointing to the blob store location.
 
-    +-------------------+---------------+------------------------------------------------------------------------------+
+    +-----------------------------------+------------------------------------------------------------------------------+
     | Type of Python value              | FlyteDirectory                                                               |
     +===================+===============+==============================================================================+
     | str or            | path matches  | Blob object is returned with uri set to the given path.                      |
