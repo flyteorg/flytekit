@@ -30,7 +30,7 @@ This package contains things that are useful when extending Flytekit.
    ExecutableTemplateShimTask
    ShimTaskExecutor
    DataPersistence
-   DataPersistencePlugin
+   DataPersistencePlugins
 """
 
 from flytekit.common.translator import get_serializable
