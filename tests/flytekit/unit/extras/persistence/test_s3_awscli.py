@@ -17,7 +17,7 @@ def test_construct_path():
 
 @mock.patch("flytekit.extras.persistence.s3_awscli.S3Persistence._check_binary")
 @mock.patch("flytekit.configuration.aws.BACKOFF_SECONDS")
-@mock.patch("flytekit.extras.persistence.s3_awscli._subprocess")
+@mock.patch("flytekit.extras.persistence.s3_awscli.subprocess")
 def test_retries(mock_subprocess, mock_delay, mock_check):
     mock_delay.get.return_value = 0
     mock_subprocess.check_call.side_effect = Exception("test exception (404)")
