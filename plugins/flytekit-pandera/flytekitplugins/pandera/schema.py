@@ -65,7 +65,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             w = PandasSchemaWriter(
                 local_dir=local_dir, cols=self._get_col_dtypes(python_type), fmt=SchemaFormat.PARQUET
             )
-            w.write(python_val)
+            w.write(self._pandera_schema(python_type)(python_val))
             remote_path = ctx.file_access.get_random_remote_directory()
             ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
@@ -78,7 +78,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandera.typing.DataFrame]
     ) -> pandera.typing.DataFrame:
         if not (lv and lv.scalar and lv.scalar.schema):
-            raise AssertionError("Can only covert a literal schema to a pandera schema")
+            raise AssertionError("Can only convert a literal schema to a pandera schema")
 
         def downloader(x, y):
             ctx.file_access.download_directory(x, y)
