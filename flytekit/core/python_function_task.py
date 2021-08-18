@@ -260,7 +260,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
     def dynamic_execute(self, task_function: Callable, **kwargs) -> Any:
         """
-        By the time this function is invoked, the _local_execute function should have unwrapped the Promises and Flyte
+        By the time this function is invoked, the local_execute function should have unwrapped the Promises and Flyte
         literal wrappers so that the kwargs we are working with here are now Python native literal values. This
         function is also expected to return Python native literal values.
 

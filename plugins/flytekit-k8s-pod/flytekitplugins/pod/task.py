@@ -119,7 +119,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
         raise _user_exceptions.FlyteUserException("Local execute is not currently supported for pod tasks")
 
 

@@ -1,3 +1,7 @@
+import os
+import pathlib
+import tempfile
+
 import pytest
 from flytekitplugins.awssagemaker.hpo import (
     HPOJob,
@@ -60,20 +64,26 @@ def test_hpo_for_builtin():
     }
 
     with pytest.raises(NotImplementedError):
-        hpo(
-            static_hyperparameters={},
-            train="",
-            validation="",
-            hyperparameter_tuning_job_config=HyperparameterTuningJobConfig(
-                tuning_strategy=1,
-                tuning_objective=HyperparameterTuningObjective(
-                    objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
-                    metric_name="x",
+        with tempfile.TemporaryDirectory() as tmp:
+            x = pathlib.Path(os.path.join(tmp, "x"))
+            y = pathlib.Path(os.path.join(tmp, "y"))
+            x.mkdir(parents=True, exist_ok=True)
+            y.mkdir(parents=True, exist_ok=True)
+
+            hpo(
+                static_hyperparameters={},
+                train=f"{x}",  # file transformer doesn't handle pathlib.Path yet
+                validation=f"{y}",  # file transformer doesn't handle pathlib.Path yet
+                hyperparameter_tuning_job_config=HyperparameterTuningJobConfig(
+                    tuning_strategy=1,
+                    tuning_objective=HyperparameterTuningObjective(
+                        objective_type=HyperparameterTuningObjectiveType.MINIMIZE,
+                        metric_name="x",
+                    ),
+                    training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
                 ),
-                training_job_early_stopping_type=TrainingJobEarlyStoppingType.OFF,
-            ),
-            x=ParameterRangeOneOf(param=IntegerParameterRange(10, 1, 1)),
-        )
+                x=ParameterRangeOneOf(param=IntegerParameterRange(10, 1, 1)),
+            )
 
 
 def test_hpoconfig_transformer():

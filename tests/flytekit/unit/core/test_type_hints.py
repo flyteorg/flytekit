@@ -844,7 +844,7 @@ def test_wf_typed_schema():
     assert result_df.all().all()
 
     df = t2(s=w.as_readonly())
-    assert df is not None
+    df = df.open(override_mode=SchemaOpenMode.READ).all()
     result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
     assert result_df.all().all()
 
@@ -1106,7 +1106,7 @@ def test_wf_explicitly_returning_empty_task():
 
     @workflow
     def my_subwf():
-        return t1()  # This forces the wf _local_execute to handle VoidPromises
+        return t1()  # This forces the wf local_execute to handle VoidPromises
 
     assert my_subwf() is None
 
