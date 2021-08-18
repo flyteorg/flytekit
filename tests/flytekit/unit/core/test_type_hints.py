@@ -1106,7 +1106,7 @@ def test_wf_explicitly_returning_empty_task():
 
     @workflow
     def my_subwf():
-        return t1()  # This forces the wf _local_execute to handle VoidPromises
+        return t1()  # This forces the wf local_execute to handle VoidPromises
 
     assert my_subwf() is None
 

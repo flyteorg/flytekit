@@ -238,7 +238,7 @@ class WorkflowBase(object):
     def execute(self, **kwargs):
         raise Exception("Should not be called")
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
         for k, v in kwargs.items():
@@ -380,7 +380,7 @@ class ImperativeWorkflow(WorkflowBase):
 
     def execute(self, **kwargs):
         """
-        Called by _local_execute. This function is how local execution for imperative workflows runs. Because when an
+        Called by local_execute. This function is how local execution for imperative workflows runs. Because when an
         entity is added using the add_entity function, all inputs to that entity should've been already declared, we
         can just iterate through the nodes in order and we shouldn't run into any dependency issues. That is, we force
         the user to declare entities already in a topological sort. To keep track of outputs, we create a map to
@@ -395,7 +395,7 @@ class ImperativeWorkflow(WorkflowBase):
         intermediate_node_outputs = {GLOBAL_START_NODE: {}}  # type: Dict[Node, Dict[str, Promise]]
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
-        # _local_execute should've already ensured that all the values in kwargs are Promise objects
+        # local_execute should've already ensured that all the values in kwargs are Promise objects
         for k, v in kwargs.items():
             intermediate_node_outputs[GLOBAL_START_NODE][k] = v
 
@@ -680,8 +680,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def execute(self, **kwargs):
         """
         This function is here only to try to streamline the pattern between workflows and tasks. Since tasks
-        call execute from dispatch_execute which is in _local_execute, workflows should also call an execute inside
-        _local_execute. This makes mocking cleaner.
+        call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
+        local_execute. This makes mocking cleaner.
         """
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 

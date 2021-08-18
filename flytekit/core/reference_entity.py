@@ -142,9 +142,9 @@ class ReferenceEntity(object):
         # After the execute has been successfully completed
         return outputs_literal_map
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         """
-        Please see the _local_execute comments in the main task.
+        Please see the local_execute comments in the main task.
         """
         # Unwrap the kwargs values. After this, we essentially have a LiteralMap
         # The reason why we need to do this is because the inputs during local execute can be of 2 types
@@ -206,7 +206,7 @@ class ReferenceEntity(object):
         ):
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 return
-            return self._local_execute(ctx, **kwargs)
+            return self.local_execute(ctx, **kwargs)
         else:
             logger.debug("Reference entity - running raw execute")
             return self.execute(**kwargs)

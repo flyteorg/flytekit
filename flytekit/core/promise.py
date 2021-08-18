@@ -800,14 +800,15 @@ def create_and_link_node(
 
 
 class LocallyExecutable(Protocol):
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         ...
 
 
 def executable_artifact_call_handler(entity: Union[SupportsNodeCreation, LocallyExecutable], *args, **kwargs):
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
-    workflow). When one of these entities is () aka __called__, there are three things we may do:
+    workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
+    method. When one of these entities is () aka __called__, there are three things we may do:
     #. Compilation Mode - this happens when the function is called as part of a workflow (potentially
        dynamic task?). Instead of running the user function, produce promise objects and create a node.
     #. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
@@ -844,14 +845,14 @@ def executable_artifact_call_handler(entity: Union[SupportsNodeCreation, Locally
                 return create_task_output(vals, entity.python_interface)
             else:
                 return None
-        return entity._local_execute(ctx, **kwargs)
+        return entity.local_execute(ctx, **kwargs)
     else:
         with FlyteContextManager.with_context(
             ctx.with_execution_state(
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
             )
         ) as child_ctx:
-            result = entity._local_execute(child_ctx, **kwargs)
+            result = entity.local_execute(child_ctx, **kwargs)
 
         expected_outputs = len(entity.python_interface.outputs)
         if expected_outputs == 0:
