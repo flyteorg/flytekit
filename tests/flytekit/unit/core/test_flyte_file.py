@@ -274,3 +274,11 @@ def test_file_guess():
     fft = transformer.guess_python_type(lt)
     assert issubclass(fft, FlyteFile)
     assert fft.extension() == "txt"
+
+    lt = transformer.get_literal_type(FlyteFile)
+    assert lt.blob.format == ""
+    assert lt.blob.dimensionality == 0
+
+    fft = transformer.guess_python_type(lt)
+    assert issubclass(fft, FlyteFile)
+    assert fft.extension() == ""
