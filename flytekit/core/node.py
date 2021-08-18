@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import typing
 from typing import Any, List
 
@@ -86,9 +87,26 @@ class Node(object):
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
         if "requests" in kwargs or "limits" in kwargs:
-            requests = _convert_resource_overrides(kwargs["requests"], "requests")
-            limits = _convert_resource_overrides(kwargs["limits"], "limits")
+            requests = _convert_resource_overrides(kwargs.get("requests"), "requests")
+            limits = _convert_resource_overrides(kwargs.get("limits"), "limits")
             self._resources = _resources_model(requests=requests, limits=limits)
+        if "timeout" in kwargs:
+            timeout = kwargs["timeout"]
+            if timeout is None:
+                self._metadata._timeout = datetime.timedelta()
+            elif isinstance(timeout, int):
+                self._metadata._timeout = datetime.timedelta(seconds=timeout)
+            elif isinstance(timeout, datetime.timedelta):
+                self._metadata._timeout = timeout
+            else:
+                raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+        if "retries" in kwargs:
+            retries = kwargs["retries"]
+            self._metadata._retries = (
+                _literal_models.RetryStrategy(0) if retries is None else _literal_models.RetryStrategy(retries)
+            )
+        if "interruptible" in kwargs:
+            self._metadata._interruptible = kwargs["interruptible"]
         return self
 
 

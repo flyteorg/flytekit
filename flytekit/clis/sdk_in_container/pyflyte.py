@@ -7,6 +7,7 @@ import click
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.clis.sdk_in_container.fast_register import fast_register
 from flytekit.clis.sdk_in_container.launch_plan import launch_plans
+from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.serialize import serialize
@@ -110,6 +111,7 @@ main.add_command(fast_register)
 main.add_command(serialize)
 main.add_command(launch_plans)
 main.add_command(package)
+main.add_command(local_cache)
 
 if __name__ == "__main__":
     main()
