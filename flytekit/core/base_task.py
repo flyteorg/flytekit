@@ -524,7 +524,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 try:
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
-                    raise AssertionError(f"failed to convert return value for var {k} with error: {e}") from e
+                    raise AssertionError(f"failed to convert return value for var {k} with error {type(e)}: {e}") from e
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
