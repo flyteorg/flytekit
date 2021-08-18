@@ -27,7 +27,7 @@ from flytekit.core.promise import (
     VoidPromise,
     binding_from_python_std,
     create_task_output,
-    executable_artifact_call_handler,
+    flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
@@ -233,7 +233,7 @@ class WorkflowBase(object):
         # Get default arguments and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
-        return executable_artifact_call_handler(self, *args, **input_kwargs)
+        return flyte_entity_call_handler(self, *args, **input_kwargs)
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")

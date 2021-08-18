@@ -804,7 +804,7 @@ class LocallyExecutable(Protocol):
         ...
 
 
-def executable_artifact_call_handler(entity: Union[SupportsNodeCreation, LocallyExecutable], *args, **kwargs):
+def flyte_entity_call_handler(entity: Union[SupportsNodeCreation, LocallyExecutable], *args, **kwargs):
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate

@@ -32,7 +32,7 @@ from flytekit.core.promise import (
     VoidPromise,
     create_and_link_node,
     create_task_output,
-    executable_artifact_call_handler,
+    flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
 from flytekit.core.tracker import TrackedInstance
@@ -268,7 +268,7 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):
-        return executable_artifact_call_handler(self, *args, **kwargs)
+        return flyte_entity_call_handler(self, *args, **kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
