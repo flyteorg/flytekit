@@ -345,5 +345,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         return ff
 
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[T]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+        ):
+            return FlyteFile[literal_type.blob.format]
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
 
 TypeEngine.register(FlyteFilePathTransformer(), additional_types=[os.PathLike])

@@ -98,7 +98,12 @@ def test_pod_task_deserialization():
 def test_pod_task():
     pod = Pod(pod_spec=get_pod_spec(), primary_container_name="a container")
 
-    @task(task_config=pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"})
+    @task(
+        task_config=pod,
+        requests=Resources(cpu="10"),
+        limits=Resources(ephemeral_storage="1Gi", gpu="2"),
+        environment={"FOO": "bar"},
+    )
     def simple_pod_task(i: int):
         pass
 
@@ -141,7 +146,7 @@ def test_pod_task():
     assert primary_container["volumeMounts"][0]["name"] == "volume mount"
     assert primary_container["resources"] == {
         "requests": {"cpu": "10"},
-        "limits": {"gpu": "2"},
+        "limits": {"ephemeral-storage": "1Gi", "gpu": "2"},
     }
     assert primary_container["env"] == [{"name": "FOO", "value": "bar"}]
     assert pod_spec["containers"][1]["name"] == "another container"
@@ -155,7 +160,10 @@ def test_dynamic_pod_task():
         return a + 10
 
     @dynamic(
-        task_config=dynamic_pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"}
+        task_config=dynamic_pod,
+        requests=Resources(cpu="10"),
+        limits=Resources(ephemeral_storage="1Gi", gpu="2"),
+        environment={"FOO": "bar"},
     )
     def dynamic_pod_task(a: int) -> List[int]:
         s = []
@@ -180,7 +188,7 @@ def test_dynamic_pod_task():
     assert isinstance(dynamic_pod_task.task_config, Pod)
     assert primary_container["resources"] == {
         "requests": {"cpu": "10"},
-        "limits": {"gpu": "2"},
+        "limits": {"ephemeral-storage": "1Gi", "gpu": "2"},
     }
 
     config = dynamic_pod_task.get_config(

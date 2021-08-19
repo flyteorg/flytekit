@@ -75,6 +75,7 @@ class AwsS3Proxy(_common_data.DataProxy):
             path (_get_shard_path), use this prefix instead as a base. This code assumes that the
             path passed in is correct. That is, an S3 path won't be passed in when running on GCP.
         """
+        super().__init__(name="awscli-s3")
         self._raw_output_data_prefix_override = raw_output_data_prefix_override
 
     @property

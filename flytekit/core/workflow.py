@@ -11,14 +11,7 @@ from flytekit.common.exceptions.user import FlyteValidationException, FlyteValue
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import (
-    BranchEvalMode,
-    CompilationState,
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-    FlyteEntities,
-)
+from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
@@ -33,9 +26,8 @@ from flytekit.core.promise import (
     Promise,
     VoidPromise,
     binding_from_python_std,
-    create_and_link_node,
-    create_native_named_tuple,
     create_task_output,
+    flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
@@ -174,14 +166,13 @@ class WorkflowBase(object):
         workflow_metadata: WorkflowMetadata,
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
-        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         self._name = name
         self._workflow_metadata = workflow_metadata
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
-        self._interface = transform_interface_to_typed_interface(python_interface, docstring)
+        self._interface = transform_interface_to_typed_interface(python_interface)
         self._inputs = {}
         self._unbound_inputs = set()
         self._nodes = []
@@ -237,79 +228,17 @@ class WorkflowBase(object):
 
     def __call__(self, *args, **kwargs):
         """
-        The call pattern for Workflows is close to, but not exactly, the call pattern for Tasks. For local execution,
-        it goes
-
-        __call__ -> _local_execute -> execute
-
-        From execute, different things happen for the two Workflow styles. For PythonFunctionWorkflows, the Python
-        function is run, for the ImperativeWorkflow, each node is run one at a time.
+        Workflow needs to fill in default arguments before invoking the call handler.
         """
-        if len(args) > 0:
-            raise AssertionError("Only Keyword Arguments are supported for Workflow executions")
-
-        ctx = FlyteContextManager.current_context()
-
-        # Get default agruements and override with kwargs passed in
+        # Get default arguments and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
-
-        # The first condition is compilation.
-        if ctx.compilation_state is not None:
-            return create_and_link_node(ctx, entity=self, **input_kwargs)
-
-        # This condition is hit when this workflow (self) is being called as part of a parent's workflow local run.
-        # The context specifying the local workflow execution has already been set.
-        elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        ):
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                if self.interface:
-                    output_names = list(self.interface.outputs.keys())
-                    if len(output_names) == 0:
-                        return VoidPromise(self.name)
-                    vals = [Promise(var, None) for var in output_names]
-                    return create_task_output(vals, self.python_interface)
-                else:
-                    return None
-            # We are already in a local execution, just continue the execution context
-            return self._local_execute(ctx, **input_kwargs)
-
-        # Last is starting a local workflow execution
-        else:
-            # Run some sanity checks
-            # Even though the _local_execute call generally expects inputs to be Promises, we don't have to do the
-            # conversion here in this loop. The reason is because we don't prevent users from specifying inputs
-            # as direct scalars, which means there's another Promise-generating loop inside _local_execute too
-            for k, v in input_kwargs.items():
-                if k not in self.interface.inputs:
-                    raise ValueError(f"Received unexpected keyword argument {k}")
-                if isinstance(v, Promise):
-                    raise ValueError(f"Received a promise for a workflow call, when expecting a native value for {k}")
-
-            with FlyteContextManager.with_context(
-                ctx.with_execution_state(
-                    ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
-                )
-            ) as child_ctx:
-                result = self._local_execute(child_ctx, **input_kwargs)
-
-            expected_outputs = len(self.python_interface.outputs)
-            if expected_outputs == 0:
-                if result is None or isinstance(result, VoidPromise):
-                    return None
-                else:
-                    raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
-
-            if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
-                return create_native_named_tuple(ctx, result, self.python_interface)
-
-            raise ValueError("expected outputs and actual outputs do not match")
+        return flyte_entity_call_handler(self, *args, **input_kwargs)
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
         for k, v in kwargs.items():
@@ -451,7 +380,7 @@ class ImperativeWorkflow(WorkflowBase):
 
     def execute(self, **kwargs):
         """
-        Called by _local_execute. This function is how local execution for imperative workflows runs. Because when an
+        Called by local_execute. This function is how local execution for imperative workflows runs. Because when an
         entity is added using the add_entity function, all inputs to that entity should've been already declared, we
         can just iterate through the nodes in order and we shouldn't run into any dependency issues. That is, we force
         the user to declare entities already in a topological sort. To keep track of outputs, we create a map to
@@ -466,7 +395,7 @@ class ImperativeWorkflow(WorkflowBase):
         intermediate_node_outputs = {GLOBAL_START_NODE: {}}  # type: Dict[Node, Dict[str, Promise]]
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
-        # _local_execute should've already ensured that all the values in kwargs are Promise objects
+        # local_execute should've already ensured that all the values in kwargs are Promise objects
         for k, v in kwargs.items():
             intermediate_node_outputs[GLOBAL_START_NODE][k] = v
 
@@ -646,7 +575,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     ):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
-        native_interface = transform_signature_to_interface(inspect.signature(workflow_function))
+        native_interface = transform_signature_to_interface(inspect.signature(workflow_function), docstring=docstring)
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
@@ -657,7 +586,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata=metadata,
             workflow_metadata_defaults=default_metadata,
             python_interface=native_interface,
-            docstring=docstring,
         )
 
     @property
@@ -752,8 +680,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def execute(self, **kwargs):
         """
         This function is here only to try to streamline the pattern between workflows and tasks. Since tasks
-        call execute from dispatch_execute which is in _local_execute, workflows should also call an execute inside
-        _local_execute. This makes mocking cleaner.
+        call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
+        local_execute. This makes mocking cleaner.
         """
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 

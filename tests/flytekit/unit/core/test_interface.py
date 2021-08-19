@@ -179,6 +179,25 @@ def test_parameters_and_defaults():
     assert params.parameters["b"].default.scalar.primitive.string_value == "eleven"
 
 
+def test_parameters_with_docstring():
+    ctx = context_manager.FlyteContext.current_context()
+
+    def z(a: int, b: str) -> typing.Tuple[int, str]:
+        """
+        function z
+
+        :param a: foo
+        :param b: bar
+        :return: ramen
+        """
+        ...
+
+    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert params.parameters["a"].var.description == "foo"
+    assert params.parameters["b"].var.description == "bar"
+
+
 def test_transform_interface_to_typed_interface_with_docstring():
     # sphinx style
     def z(a: int, b: str) -> typing.Tuple[int, str]:
@@ -191,8 +210,8 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z))
-    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    typed_interface = transform_interface_to_typed_interface(our_interface)
     assert typed_interface.inputs.get("a").description == "foo"
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("o1").description == "ramen"
@@ -216,8 +235,8 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z))
-    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    typed_interface = transform_interface_to_typed_interface(our_interface)
     assert typed_interface.inputs.get("a").description == "foo"
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("o0").description == "ramen"
@@ -244,8 +263,8 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z))
-    typed_interface = transform_interface_to_typed_interface(our_interface, Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    typed_interface = transform_interface_to_typed_interface(our_interface)
     assert typed_interface.inputs.get("a").description == "foo"
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("x_str").description == "description for x_str"

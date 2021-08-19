@@ -75,4 +75,5 @@ Expected output:
    extend
    tasks.extend
    types.extend
+   data.extend
    contributing

@@ -55,6 +55,9 @@ def test_type_resolution():
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
 
+    with pytest.raises(ValueError):
+        TypeEngine.get_transformer(typing.Any)
+
 
 def test_file_formats_getting_literal_type():
     transformer = TypeEngine.get_transformer(FlyteFile)
@@ -233,6 +236,13 @@ def test_protos():
     l0 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
     with pytest.raises(AssertionError):
         TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
+
+    default_proto = errors_pb2.ContainerError()
+    lit = TypeEngine.to_literal(ctx, default_proto, errors_pb2.ContainerError, lt)
+    assert lit.scalar
+    assert lit.scalar.generic is not None
+    new_python_val = TypeEngine.to_python_value(ctx, lit, errors_pb2.ContainerError)
+    assert new_python_val == default_proto
 
 
 def test_guessing_basic():

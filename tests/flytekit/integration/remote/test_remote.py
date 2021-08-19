@@ -123,6 +123,21 @@ def test_fetch_execute_launch_plan_with_subworkflows(flyteclient, flyte_workflow
     subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
 
 
+@pytest.mark.skip(reason="Subworkflow and child workflow fetch is currently not implemented fully")
+def test_fetch_execute_launch_plan_with_child_workflows(flyteclient, flyte_workflows_register):
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.child_workflow.parent_wf", version=f"v{VERSION}")
+    execution = remote.execute(flyte_launch_plan, {"a": 3}, wait=True)
+
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 3}
+    assert execution.node_executions["n0"].outputs["o0"] == 6
+    assert execution.node_executions["n1"].inputs == {"a": 6}
+    assert execution.node_executions["n1"].outputs["o0"] == 12
+    assert execution.node_executions["n2"].inputs == {"a": 6, "b": 12}
+    assert execution.node_executions["n2"].outputs["o0"] == 18
+
+
 def test_fetch_execute_workflow(flyteclient, flyte_workflows_register):
     remote = FlyteRemote.from_config(PROJECT, "development")
     flyte_workflow = remote.fetch_workflow(name="workflows.basic.hello_world.my_wf", version=f"v{VERSION}")

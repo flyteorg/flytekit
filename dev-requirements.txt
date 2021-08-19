@@ -128,6 +128,10 @@ jinja2==3.0.1
     # via
     #   -c requirements.txt
     #   pytest-flyte
+joblib==1.0.1
+    # via
+    #   -c requirements.txt
+    #   flytekit
 jsonschema==3.2.0
     # via
     #   -c requirements.txt
@@ -274,7 +278,7 @@ requests==2.26.0
     #   docker-compose
     #   flytekit
     #   responses
-responses==0.13.3
+responses==0.13.4
     # via
     #   -c requirements.txt
     #   flytekit
@@ -345,7 +349,7 @@ websocket-client==0.59.0
     # via
     #   docker
     #   docker-compose
-wheel==0.36.2
+wheel==0.37.0
     # via
     #   -c requirements.txt
     #   flytekit

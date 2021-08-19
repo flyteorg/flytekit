@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import datetime as _datetime
 import enum
+import inspect
 import json as _json
 import mimetypes
 import typing
@@ -269,8 +270,8 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
         return Literal(scalar=Scalar(generic=struct))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        if not (lv and lv.scalar and lv.scalar.generic):
-            raise AssertionError("Can only covert a generic literal to a Protobuf")
+        if not (lv and lv.scalar and lv.scalar.generic is not None):
+            raise AssertionError("Can only convert a generic literal to a Protobuf")
 
         pb_obj = expected_python_type()
         dictionary = _MessageToDict(lv.scalar.generic)
@@ -346,7 +347,9 @@ class TypeEngine(typing.Generic[T]):
         for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
-            if isinstance(python_type, base_type) or issubclass(python_type, base_type):
+            if isinstance(python_type, base_type) or (
+                inspect.isclass(python_type) and issubclass(python_type, base_type)
+            ):
                 return cls._REGISTRY[base_type]
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
@@ -748,6 +751,7 @@ def _register_default_type_transformers():
     TypeEngine.register(TextIOTransformer())
     TypeEngine.register(BinaryIOTransformer())
     TypeEngine.register(EnumTransformer())
+    TypeEngine.register(ProtobufTransformer())
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.
@@ -761,5 +765,3 @@ def _register_default_type_transformers():
 
 
 _register_default_type_transformers()
-
-TypeEngine.register(ProtobufTransformer())
