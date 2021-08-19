@@ -154,7 +154,7 @@ from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.loggers import logger
-from flytekit.types import schema
+from flytekit.types import directory, file, schema
 
 __version__ = "0.0.0+develop"
 
