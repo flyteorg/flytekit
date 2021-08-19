@@ -1,9 +1,10 @@
 import os
 import pathlib
+import uuid
 import shutil
 import tempfile
 from unittest.mock import MagicMock
-
+import typing
 import pytest
 
 import flytekit
@@ -219,3 +220,27 @@ def test_fd_with_local_remote(local_dummy_directory):
         assert wf_out.path == temp_dir.name
     finally:
         temp_dir.cleanup()
+
+
+def test_fd_dynamic():
+
+    @task
+    def do_copy(to_write: str, path_to_write: str) -> FlyteDirectory:
+        working_dir = flytekit.current_context().working_directory
+        tmp_dir = os.path.join(working_dir, uuid.uuid1().hex)
+
+        pathlib.Path(tmp_dir).mkdir(parents=True, exist_ok=True)
+        with open(os.path.join(tmp_dir, "file.txt"), "w") as writer:
+            writer.write(to_write)
+        return FlyteDirectory(tmp_dir, remote_directory=path_to_write)
+
+    @dynamic
+    def write_words_to_file(things_to_write: typing.List[str]) -> str:
+        out_folder = context_manager.FlyteContextManager.current_context().file_access.get_random_remote_directory()
+        for word in things_to_write:
+            do_copy(to_write=word, path_to_write=out_folder)
+
+        return out_folder
+
+    p = write_words_to_file(things_to_write=["hello", "world"])
+    print(p)
