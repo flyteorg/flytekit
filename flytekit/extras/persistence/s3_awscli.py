@@ -154,7 +154,7 @@ class S3Persistence(DataPersistence):
         paths = list(paths)  # make type check happy
         if add_prefix:
             paths = paths.insert(0, self.default_prefix)
-        path = f"{'/'.join(paths)}"
+        path = "/".join(paths)
         if add_protocol:
             return f"{self.PROTOCOL}{path}"
         return path
