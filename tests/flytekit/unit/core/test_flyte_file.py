@@ -263,3 +263,22 @@ def test_download_caching():
     for _ in range(10):
         os.fspath(f)
     assert mock_downloader.call_count == 1
+
+
+def test_file_guess():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+    lt = transformer.get_literal_type(FlyteFile["txt"])
+    assert lt.blob.format == "txt"
+    assert lt.blob.dimensionality == 0
+
+    fft = transformer.guess_python_type(lt)
+    assert issubclass(fft, FlyteFile)
+    assert fft.extension() == "txt"
+
+    lt = transformer.get_literal_type(FlyteFile)
+    assert lt.blob.format == ""
+    assert lt.blob.dimensionality == 0
+
+    fft = transformer.guess_python_type(lt)
+    assert issubclass(fft, FlyteFile)
+    assert fft.extension() == ""
