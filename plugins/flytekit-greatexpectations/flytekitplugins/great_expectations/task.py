@@ -104,30 +104,26 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         )
 
     def _flyte_file(self, dataset) -> str:
-        # str
-        # if the file is remote, download the file into local_file_path
-        if issubclass(type(dataset), str):
-            if FlyteContext.current_context().file_access.is_remote(dataset):
-                if not self._local_file_path:
-                    raise ValueError("local_file_path is missing!")
+        if not self._local_file_path:
+            raise ValueError("local_file_path is missing!")
 
-                if os.path.isdir(self._local_file_path):
-                    local_path = os.path.join(self._local_file_path, os.path.basename(dataset))
-                else:
-                    local_path = self._local_file_path
+        # str and remote
+        if issubclass(type(dataset), str) and FlyteContext.current_context().file_access.is_remote(dataset):
+            # download the file into local_file_path
+            if os.path.isdir(self._local_file_path):
+                local_path = os.path.join(self._local_file_path, os.path.basename(dataset))
+            else:
+                local_path = self._local_file_path
 
-                FlyteContext.current_context().file_access.get_data(
-                    remote_path=dataset,
-                    local_path=local_path,
-                )
-
+            FlyteContext.current_context().file_access.get_data(
+                remote_path=dataset,
+                local_path=local_path,
+            )
         # _SpecificFormatClass
-        # if the file is remote, copy the downloaded file to the user specified local_file_path
+        elif not issubclass(type(dataset), str) and dataset.remote_source:
+            shutil.copy(dataset, self._local_file_path)
         else:
-            if dataset.remote_source:
-                if not self._local_file_path:
-                    raise ValueError("local_file_path is missing!")
-                shutil.copy(dataset, self._local_file_path)
+            raise ValueError("Local FlyteFiles are not supported; use the string datatype instead")
 
         dataset = os.path.basename(dataset)
 

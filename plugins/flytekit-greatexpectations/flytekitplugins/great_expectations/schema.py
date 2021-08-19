@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import shutil
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -154,13 +155,12 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         ), temp_dataset
 
     def _flyte_file(self, ctx: FlyteContext, ge_conf: GreatExpectationsFlyteConfig, lv: Literal) -> (FlyteFile, str):
+        if not ge_conf.local_file_path:
+            raise ValueError("local_file_path is missing!")
+
         uri = lv.scalar.blob.uri
 
-        # check if the file is remote
         if ctx.file_access.is_remote(uri):
-            if not ge_conf.local_file_path:
-                raise ValueError("local_file_path is missing!")
-
             if os.path.isdir(ge_conf.local_file_path):
                 local_path = os.path.join(ge_conf.local_file_path, os.path.basename(uri))
             else:
@@ -171,6 +171,8 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 remote_path=uri,
                 local_path=local_path,
             )
+        else:
+            raise ValueError("Local FlyteFiles are not supported; use the string datatype instead")
 
         temp_dataset = os.path.basename(uri)
 
