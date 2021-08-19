@@ -234,13 +234,16 @@ def test_fd_dynamic():
             writer.write(to_write)
         return FlyteDirectory(tmp_dir, remote_directory=path_to_write)
 
+    out_folder = context_manager.FlyteContextManager.current_context().file_access.get_random_remote_directory()
+
     @dynamic
     def write_words_to_file(things_to_write: typing.List[str]) -> str:
-        out_folder = context_manager.FlyteContextManager.current_context().file_access.get_random_remote_directory()
+        print(f"==========================----------------------------------------------- {out_folder}")
         for word in things_to_write:
             do_copy(to_write=word, path_to_write=out_folder)
 
         return out_folder
 
-    p = write_words_to_file(things_to_write=["hello", "world"])
-    print(p)
+    write_words_to_file(things_to_write=["hello", "world"])
+
+    assert len(os.listdir(out_folder)) == 1
