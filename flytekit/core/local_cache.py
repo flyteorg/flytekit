@@ -10,6 +10,10 @@ CACHE_VERBOSITY = 5
 
 
 class LocalCache(object):
+    """
+    This class implements a persistent local store. This functionality is used to provide an interface
+    for local task executions similar to the one used by remote task executions.
+    """
     _memory: Memory
     _initialized: bool = False
 

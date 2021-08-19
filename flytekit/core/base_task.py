@@ -240,7 +240,7 @@ class Task(object):
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
-        if self._metadata.cache:
+        if self.metadata.cache:
             # The cache key is composed of '(task name, input_literal_map, cache_version)', i.e. all other parameters
             # passed to the call to 'dispatch_execute' are ignored
             dispatch_execute_func = LocalCache.cache(self._dispatch_execute, ignore=["self", "ctx"])
