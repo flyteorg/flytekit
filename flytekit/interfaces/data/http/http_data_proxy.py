@@ -10,6 +10,9 @@ class HttpFileProxy(_common_data.DataProxy):
     _HTTP_FORBIDDEN = 403
     _HTTP_NOT_FOUND = 404
 
+    def __init__(self):
+        super(HttpFileProxy, self).__init__(name="http")
+
     def exists(self, path):
         """
         :param Text path: the path of the file

@@ -1,0 +1,1 @@
+from .persist import FSSpecPersistence

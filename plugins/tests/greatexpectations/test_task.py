@@ -230,59 +230,9 @@ def test_ge_remote_flytefile_with_task():
     assert result == 10000
 
 
-def test_ge_local_flytefile():
-    task_object = GreatExpectationsTask(
-        name="test11",
-        datasource_name="data",
-        inputs=kwtypes(dataset=CSVFile),
-        expectation_suite_name="test.demo",
-        data_connector_name="data_example_data_connector",
-    )
-
-    task_object.execute(dataset="yellow_tripdata_sample_2019-01.csv")
-
-
-def test_ge_local_flytefile_with_task():
-    task_object = GreatExpectationsTask(
-        name="test12",
-        datasource_name="data",
-        inputs=kwtypes(dataset=CSVFile),
-        expectation_suite_name="test.demo",
-        data_connector_name="data_example_data_connector",
-    )
-
-    @task
-    def my_task(dataset: CSVFile) -> int:
-        return len(pd.read_csv(dataset))
-
-    @workflow
-    def my_wf(dataset: CSVFile) -> int:
-        task_object(dataset=dataset)
-        return my_task(dataset=dataset)
-
-    result = my_wf(dataset="data/yellow_tripdata_sample_2019-01.csv")
-    assert result == 10000
-
-
-def test_ge_local_flytefile_workflow():
-    task_object = GreatExpectationsTask(
-        name="test13",
-        datasource_name="data",
-        inputs=kwtypes(dataset=CSVFile),
-        expectation_suite_name="test.demo",
-        data_connector_name="data_example_data_connector",
-    )
-
-    @workflow
-    def valid_wf(dataset: CSVFile = "data/yellow_tripdata_sample_2019-01.csv") -> None:
-        task_object(dataset=dataset)
-
-    valid_wf()
-
-
 def test_ge_remote_flytefile_workflow():
     task_object = GreatExpectationsTask(
-        name="test14",
+        name="test11",
         datasource_name="data",
         inputs=kwtypes(dataset=CSVFile),
         expectation_suite_name="test.demo",
@@ -301,18 +251,20 @@ def test_ge_remote_flytefile_workflow():
 
 def test_ge_flytefile_multiple_args():
     task_object_one = GreatExpectationsTask(
-        name="test15",
+        name="test12",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile),
         expectation_suite_name="test.demo",
-        data_connector_name="data_example_data_connector",
+        data_connector_name="data_flytetype_data_connector",
+        local_file_path="/tmp",
     )
     task_object_two = GreatExpectationsTask(
-        name="test6",
+        name="test13",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile),
         expectation_suite_name="test1.demo",
-        data_connector_name="data_example_data_connector",
+        data_connector_name="data_flytetype_data_connector",
+        local_file_path="/tmp",
     )
 
     @task
@@ -323,8 +275,8 @@ def test_ge_flytefile_multiple_args():
 
     @workflow
     def wf(
-        dataset_one: FlyteFile = "data/yellow_tripdata_sample_2019-01.csv",
-        dataset_two: FlyteFile = "data/yellow_tripdata_sample_2019-02.csv",
+        dataset_one: FlyteFile = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv",
+        dataset_two: FlyteFile = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-02.csv",
     ) -> (int, int):
         task_object_one(dataset=dataset_one)
         task_object_two(dataset=dataset_two)
@@ -335,7 +287,7 @@ def test_ge_flytefile_multiple_args():
 
 def test_ge_flyteschema():
     task_object = GreatExpectationsTask(
-        name="test16",
+        name="test14",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
@@ -349,7 +301,7 @@ def test_ge_flyteschema():
 
 def test_ge_flyteschema_with_task():
     task_object = GreatExpectationsTask(
-        name="test17",
+        name="test15",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
@@ -373,7 +325,7 @@ def test_ge_flyteschema_with_task():
 
 def test_ge_flyteschema_sqlite():
     task_object = GreatExpectationsTask(
-        name="test18",
+        name="test16",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="sqlite.movies",
@@ -393,7 +345,7 @@ def test_ge_flyteschema_sqlite():
 
 def test_ge_flyteschema_workflow():
     task_object = GreatExpectationsTask(
-        name="test19",
+        name="test17",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",

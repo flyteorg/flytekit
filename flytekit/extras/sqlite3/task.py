@@ -116,7 +116,7 @@ class SQLite3TaskExecutor(ShimTaskExecutor[SQLite3Task]):
             ctx = FlyteContext.current_context()
             file_ext = os.path.basename(tt.custom["uri"])
             local_path = os.path.join(temp_dir, file_ext)
-            ctx.file_access.download(tt.custom["uri"], local_path)
+            ctx.file_access.get_data(tt.custom["uri"], local_path)
             if tt.custom["compressed"]:
                 local_path = unarchive_file(local_path, temp_dir)
 

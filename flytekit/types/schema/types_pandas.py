@@ -139,7 +139,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         if not (lv and lv.scalar and lv.scalar.schema):
             return pandas.DataFrame()
         local_dir = ctx.file_access.get_random_local_directory()
-        ctx.file_access.download_directory(lv.scalar.schema.uri, local_dir)
+        ctx.file_access.get_data(lv.scalar.schema.uri, local_dir, is_multipart=True)
         r = PandasSchemaReader(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
         return r.all()
 
