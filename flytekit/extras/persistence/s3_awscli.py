@@ -153,7 +153,7 @@ class S3Persistence(DataPersistence):
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths: str) -> str:
         paths = list(paths)  # make type check happy
         if add_prefix:
-            paths = paths.insert(0, self.default_prefix)
+            paths.insert(0, self.default_prefix)
         path = "/".join(paths)
         if add_protocol:
             return f"{self.PROTOCOL}{path}"
