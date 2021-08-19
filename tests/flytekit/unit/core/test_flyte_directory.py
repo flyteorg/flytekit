@@ -225,7 +225,6 @@ def test_returning_a_pathlib_path(local_dummy_directory):
 
 def test_fd_with_local_remote(local_dummy_directory):
     temp_dir = tempfile.TemporaryDirectory()
-    print(temp_dir)
     try:
 
         @task
