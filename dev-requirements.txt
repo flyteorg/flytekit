@@ -19,6 +19,8 @@ attrs==20.3.0
     #   pytest
     #   pytest-docker
     #   scantree
+backports.entry-points-selectable==1.1.0
+    # via virtualenv
 bcrypt==3.2.0
     # via
     #   -c requirements.txt
@@ -38,6 +40,8 @@ cffi==1.14.6
     #   bcrypt
     #   cryptography
     #   pynacl
+cfgv==3.3.0
+    # via pre-commit
 charset-normalizer==2.0.4
     # via
     #   -c requirements.txt
@@ -57,6 +61,7 @@ cryptography==3.4.7
     # via
     #   -c requirements.txt
     #   paramiko
+    #   secretstorage
 dataclasses-json==0.5.4
     # via
     #   -c requirements.txt
@@ -73,6 +78,8 @@ dirhash==0.2.1
     # via
     #   -c requirements.txt
     #   flytekit
+distlib==0.3.2
+    # via virtualenv
 distro==1.6.0
     # via docker-compose
 docker[ssh]==5.0.0
@@ -93,6 +100,8 @@ docstring-parser==0.10
     # via
     #   -c requirements.txt
     #   flytekit
+filelock==3.0.12
+    # via virtualenv
 flake8==3.9.2
     # via
     #   -r dev-requirements.in
@@ -102,7 +111,7 @@ flake8-black==0.2.3
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flyteidl==0.19.19
+flyteidl==0.19.25
     # via
     #   -c requirements.txt
     #   flytekit
@@ -110,11 +119,13 @@ grpcio==1.39.0
     # via
     #   -c requirements.txt
     #   flytekit
+identify==2.2.13
+    # via pre-commit
 idna==3.2
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.6.3
+importlib-metadata==4.6.4
     # via
     #   -c requirements.txt
     #   keyring
@@ -124,6 +135,11 @@ isort==5.9.3
     # via
     #   -r dev-requirements.in
     #   flake8-isort
+jeepney==0.7.1
+    # via
+    #   -c requirements.txt
+    #   keyring
+    #   secretstorage
 jinja2==3.0.1
     # via
     #   -c requirements.txt
@@ -136,7 +152,7 @@ jsonschema==3.2.0
     # via
     #   -c requirements.txt
     #   docker-compose
-keyring==23.0.1
+keyring==23.1.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -174,7 +190,9 @@ natsort==7.1.1
     # via
     #   -c requirements.txt
     #   flytekit
-numpy==1.21.1
+nodeenv==1.6.0
+    # via pre-commit
+numpy==1.21.2
     # via
     #   -c requirements.txt
     #   pandas
@@ -183,7 +201,7 @@ packaging==21.0
     # via
     #   -c requirements.txt
     #   pytest
-pandas==1.3.1
+pandas==1.3.2
     # via
     #   -c requirements.txt
     #   flytekit
@@ -196,8 +214,12 @@ pathspec==0.9.0
     #   -c requirements.txt
     #   black
     #   scantree
+platformdirs==2.2.0
+    # via virtualenv
 pluggy==0.13.1
     # via pytest
+pre-commit==2.14.0
+    # via -r dev-requirements.in
 protobuf==3.17.3
     # via
     #   -c requirements.txt
@@ -266,6 +288,7 @@ pyyaml==5.4.1
     # via
     #   -c requirements.txt
     #   docker-compose
+    #   pre-commit
 regex==2021.8.3
     # via
     #   -c requirements.txt
@@ -290,6 +313,10 @@ scantree==0.0.1
     # via
     #   -c requirements.txt
     #   dirhash
+secretstorage==3.3.1
+    # via
+    #   -c requirements.txt
+    #   keyring
 six==1.16.0
     # via
     #   -c requirements.txt
@@ -303,6 +330,7 @@ six==1.16.0
     #   python-dateutil
     #   responses
     #   scantree
+    #   virtualenv
     #   websocket-client
 sortedcontainers==2.4.0
     # via
@@ -325,6 +353,7 @@ toml==0.10.2
     #   coverage
     #   flake8-black
     #   mypy
+    #   pre-commit
     #   pytest
 tomli==1.2.1
     # via
@@ -345,6 +374,8 @@ urllib3==1.26.6
     #   flytekit
     #   requests
     #   responses
+virtualenv==20.7.2
+    # via pre-commit
 websocket-client==0.59.0
     # via
     #   docker

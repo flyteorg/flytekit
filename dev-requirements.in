@@ -10,3 +10,4 @@ isort
 mock
 pytest
 mypy
+pre-commit
