@@ -44,7 +44,6 @@ test: lint ## Run tests
 	pytest tests/flytekit/unit
 	pytest tests/scripts
 	pytest plugins/tests
-	find **/*.sh ! -path "boilerplate/*" -exec shellcheck {} \;
 
 .PHONY: unit_test
 unit_test:
