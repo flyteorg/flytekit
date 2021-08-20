@@ -18,4 +18,3 @@ The point of running this script, or rather the reason for having any Flyte-rela
 * Capture and handle error reporting. Exceptions thrown in the course of task execution are captured and uploaded to the Flyte control plane for display in the Console.
 * Set up of helper utilities like the ``statsd`` handle, logging and logging levels, etc.
 * Ensure configuration options about the Flyte backend, which are passed through by the Flyte engine, are properly loaded in Python memory.
-

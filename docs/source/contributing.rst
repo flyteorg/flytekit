@@ -108,4 +108,3 @@ Releasing
 ===========
 
 Currently, flytekit and all its plugins share one common version. To release, contact a member of the flytekit repo maintainers or committers, and request a release. We will create a GitHub release off of master, which will automatically publish a Pypi package.
-
