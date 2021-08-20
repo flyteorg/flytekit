@@ -65,9 +65,7 @@ def test_pandera_dataframe_type_hints():
     def wf_invalid_output(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
         return transform2_noop(df=transform1(df=df))
 
-    with pytest.raises(
-        AssertionError, match="^failed to convert return value for var o0 with error .+: column 'col4' not in dataframe"
-    ):
+    with pytest.raises(pandera.errors.SchemaError, match="column 'col4' not in dataframe"):
         wf_invalid_output(df=valid_df)
 
 

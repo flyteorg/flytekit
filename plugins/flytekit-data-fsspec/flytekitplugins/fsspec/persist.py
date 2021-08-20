@@ -97,8 +97,8 @@ class FSSpecPersistence(DataPersistence):
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
         paths = list(paths)  # make type check happy
         if add_prefix:
-            paths = paths.insert(0, self.default_prefix)
-        path = f"{'/'.join(paths)}"
+            paths.insert(0, self.default_prefix)
+        path = "/".join(paths)
         if add_protocol:
             return f"{self.default_protocol}://{path}"
         return path
