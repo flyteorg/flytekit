@@ -234,7 +234,9 @@ class Task(object):
         # if metadata.cache is set, check memoized version
         if self.metadata.cache:
             # TODO: how to get a nice `native_inputs` here?
-            logger.info(f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}")
+            logger.info(
+                f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+            )
             outputs_literal_map = LocalCache.get(self.name, self.metadata.cache_version, input_literal_map)
             # The cache returns None iff the key does not exist in the cache
             if outputs_literal_map is None:
