@@ -247,6 +247,8 @@ class Task(object):
                 logger.info(
                     f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
                 )
+            else:
+                logger.info("Cache hit")
         else:
             outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
