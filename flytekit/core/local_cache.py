@@ -1,35 +1,45 @@
-from typing import Callable, List, Optional
+from typing import Optional
 
-from joblib import Memory
+from diskcache import Cache
 
-# Location in the file system where serialized objects will be stored
+from flytekit.models.literals import LiteralMap
+
+# Location on the filesystem where serialized objects will be stored
 # TODO: read from config
 CACHE_LOCATION = "~/.flyte/local-cache"
-# TODO: read from config
-CACHE_VERBOSITY = 5
 
 
-class LocalCache(object):
+def _calculate_cache_key(task_name: str, cache_version: str, input_literal_map: LiteralMap) -> str:
+    return f"{task_name}-{cache_version}-{hash(input_literal_map)}"
+
+
+class LocalTaskCache(object):
     """
-    This class implements a persistent local store. This functionality is used to provide an interface
-    for local task executions similar to the one used by remote task executions.
+    This class implements a persistent store able to cache the result of local task executions.
     """
-    _memory: Memory
+
+    _cache: Cache
     _initialized: bool = False
 
     @staticmethod
     def initialize():
-        LocalCache._memory = Memory(CACHE_LOCATION, verbose=CACHE_VERBOSITY)
-        LocalCache._initialized = True
-
-    @staticmethod
-    def cache(func: Callable, ignore: Optional[List[str]] = None):
-        if not LocalCache._initialized:
-            LocalCache.initialize()
-        return LocalCache._memory.cache(func, ignore=ignore)
+        LocalTaskCache._cache = Cache(CACHE_LOCATION)
+        LocalTaskCache._initialized = True
 
     @staticmethod
     def clear():
-        if not LocalCache._initialized:
-            LocalCache.initialize()
-        LocalCache._memory.clear()
+        if not LocalTaskCache._initialized:
+            LocalTaskCache.initialize()
+        LocalTaskCache._cache.clear()
+
+    @staticmethod
+    def get(task_name: str, cache_version: str, input_literal_map: LiteralMap) -> Optional[LiteralMap]:
+        if not LocalTaskCache._initialized:
+            LocalTaskCache.initialize()
+        return LocalTaskCache._cache.get(_calculate_cache_key(task_name, cache_version, input_literal_map))
+
+    @staticmethod
+    def set(task_name: str, cache_version: str, input_literal_map: LiteralMap, value: LiteralMap) -> None:
+        if not LocalTaskCache._initialized:
+            LocalTaskCache.initialize()
+        LocalTaskCache._cache.add(_calculate_cache_key(task_name, cache_version, input_literal_map), value)
