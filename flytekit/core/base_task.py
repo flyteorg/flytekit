@@ -26,7 +26,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Uni
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
-from flytekit.core.local_cache import LocalCache
+from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
@@ -210,14 +210,6 @@ class Task(object):
         """
         return None
 
-    def _dispatch_execute(
-        self, ctx: FlyteContext, task_name: str, input_literal_map: _literal_models.LiteralMap, cache_version: str
-    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
-        """
-        Thin wrapper around the actual call to 'dispatch_execute'.
-        """
-        return self.dispatch_execute(ctx, input_literal_map)
-
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         """
         This function is used only in the local execution path and is responsible for calling dispatch execute.
@@ -240,16 +232,25 @@ class Task(object):
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
-        if self._metadata.cache:
-            # The cache key is composed of '(task name, input_literal_map, cache_version)', i.e. all other parameters
-            # passed to the call to 'dispatch_execute' are ignored
-            dispatch_execute_func = LocalCache.cache(self._dispatch_execute, ignore=["self", "ctx"])
+        if self.metadata.cache:
+            # TODO: how to get a nice `native_inputs` here?
+            logger.info(
+                f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+            )
+            outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
+            # The cache returns None iff the key does not exist in the cache
+            if outputs_literal_map is None:
+                logger.info("Cache miss, task will be executed now")
+                outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+                # TODO: need `native_inputs`
+                LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
+                logger.info(
+                    f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+                )
+            else:
+                logger.info("Cache hit")
         else:
-            dispatch_execute_func = self._dispatch_execute
-        # The local cache uses the function signature (and an ignore list) to calculate the cache key. In other
-        # words, we need the cache version to be present in the function signature so that we can respect the current
-        # cache semantics where changing the cache version of a cached Task creates a separate entry in the cache.
-        outputs_literal_map = dispatch_execute_func(ctx, self.name, input_literal_map, self._metadata.cache_version)
+            outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special

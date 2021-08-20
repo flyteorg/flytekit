@@ -7,7 +7,7 @@ from dataclasses_json import dataclass_json
 from pytest import fixture
 
 from flytekit import SQLTask, kwtypes
-from flytekit.core.local_cache import LocalCache
+from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import task_mock
 from flytekit.core.workflow import workflow
@@ -22,8 +22,8 @@ def setup():
     global n_cached_task_calls
     n_cached_task_calls = 0
 
-    LocalCache.initialize()
-    LocalCache.clear()
+    LocalTaskCache.initialize()
+    LocalTaskCache.clear()
 
 
 def test_to_confirm_that_cache_keys_include_function_name():

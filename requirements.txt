@@ -10,12 +10,6 @@ ansiwrap==0.8.4
     # via papermill
 appdirs==1.4.4
     # via black
-appnope==0.1.2
-    # via
-    #   ipykernel
-    #   ipython
-async-generator==1.10
-    # via nbclient
 attrs==20.3.0
     # via
     #   -r requirements.in
@@ -29,9 +23,9 @@ black==21.7b0
     # via papermill
 bleach==4.0.0
     # via nbconvert
-boto3==1.18.19
+boto3==1.18.25
     # via sagemaker-training
-botocore==1.21.19
+botocore==1.21.25
     # via
     #   boto3
     #   s3transfer
@@ -53,7 +47,9 @@ click==7.1.2
 croniter==1.0.15
     # via flytekit
 cryptography==3.4.7
-    # via paramiko
+    # via
+    #   paramiko
+    #   secretstorage
 dataclasses-json==0.5.4
     # via flytekit
 decorator==5.0.9
@@ -66,15 +62,18 @@ deprecated==1.2.12
     # via flytekit
 dirhash==0.2.1
     # via flytekit
+diskcache==5.2.1
+    # via flytekit
 docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.10
     # via flytekit
 entrypoints==0.3
     # via
+    #   jupyter-client
     #   nbconvert
     #   papermill
-flyteidl==0.19.19
+flyteidl==0.19.25
     # via flytekit
 gevent==21.8.0
     # via sagemaker-training
@@ -86,7 +85,7 @@ hmsclient==0.1.1
     # via flytekit
 idna==3.2
     # via requests
-importlib-metadata==4.6.3
+importlib-metadata==4.6.4
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
@@ -100,17 +99,19 @@ ipython-genutils==0.2.0
     #   traitlets
 jedi==0.18.0
     # via ipython
+jeepney==0.7.1
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.0.1
     # via nbconvert
 jmespath==0.10.0
     # via
     #   boto3
     #   botocore
-joblib==1.0.1
-    # via flytekit
 jsonschema==3.2.0
     # via nbformat
-jupyter-client==6.1.12
+jupyter-client==7.0.1
     # via
     #   ipykernel
     #   nbclient
@@ -123,7 +124,7 @@ jupyterlab-pygments==0.1.2
     # via nbconvert
 k8s-proto==0.0.3
     # via flytekit
-keyring==23.0.1
+keyring==23.1.0
     # via flytekit
 markupsafe==2.0.1
     # via jinja2
@@ -146,7 +147,7 @@ mypy-extensions==0.4.3
     #   typing-inspect
 natsort==7.1.1
     # via flytekit
-nbclient==0.5.3
+nbclient==0.5.4
     # via
     #   nbconvert
     #   papermill
@@ -158,8 +159,10 @@ nbformat==5.1.3
     #   nbconvert
     #   papermill
 nest-asyncio==1.5.1
-    # via nbclient
-numpy==1.21.1
+    # via
+    #   jupyter-client
+    #   nbclient
+numpy==1.21.2
     # via
     #   flytekit
     #   pandas
@@ -168,7 +171,7 @@ numpy==1.21.1
     #   scipy
 packaging==21.0
     # via bleach
-pandas==1.3.1
+pandas==1.3.2
     # via flytekit
 pandocfilters==1.4.3
     # via nbconvert
@@ -206,7 +209,7 @@ pyarrow==3.0.0
     # via flytekit
 pycparser==2.20
     # via cffi
-pygments==2.9.0
+pygments==2.10.0
     # via
     #   ipython
     #   jupyterlab-pygments
@@ -261,6 +264,8 @@ scantree==0.0.1
     # via dirhash
 scipy==1.7.1
     # via sagemaker-training
+secretstorage==3.3.1
+    # via keyring
 six==1.16.0
     # via
     #   bcrypt
@@ -296,7 +301,7 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.62.0
+tqdm==4.62.1
     # via papermill
 traitlets==5.0.5
     # via
