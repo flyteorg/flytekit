@@ -642,7 +642,7 @@ class FlyteContextManager(object):
         try:
             yield ctx
         finally:
-            # NOTE: Why? Do we have a loop here to ensure that we are popping all context upto the previously recorded
+            # NOTE: Why? Do we have a loop here to ensure that we are popping all context up to the previously recorded
             # length? This is because it is possible that a conditional context may have leaked. Because of the syntax
             # of conditionals, if a conditional section fails to evaluate / compile, the context is not removed from the
             # stack. This is because context managers cannot be used in the conditional section.

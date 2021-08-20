@@ -1,6 +1,6 @@
 """
 Notifications are primarily used when defining Launch Plans (also can be used when launching executions) and will trigger
-the Flyte platform to send emails when a workflow run reaches certain stages (fails or suceeds, etc.).
+the Flyte platform to send emails when a workflow run reaches certain stages (fails or succeeds, etc.).
 
 .. note::
 

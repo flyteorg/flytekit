@@ -120,7 +120,7 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         if base_model.launchplan_ref is not None:
             return cls(flyte_launch_plan=_launch_plan.FlyteLaunchPlan.fetch(*fetch_args))
         elif base_model.sub_workflow_ref is not None:
-            # the workflow tempaltes for sub-workflows should have been included in the original response
+            # the workflow templates for sub-workflows should have been included in the original response
             if base_model.reference in sub_workflows:
                 return cls(
                     flyte_workflow=_workflow.FlyteWorkflow.promote_from_model(

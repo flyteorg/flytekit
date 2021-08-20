@@ -390,7 +390,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     if len(cs.cases) == 0:
         raise AssertionError("Illegal Condition block, with no if-else cases")
     if len(cs.cases) < 2:
-        raise AssertionError("Atleast an if/else is required. Dangling If is not allowed")
+        raise AssertionError("At least an if/else is required. Dangling If is not allowed")
     all_promises: typing.List[Promise] = []
     first_case, promises = to_case_block(cs.cases[0])
     all_promises.extend(promises)

@@ -81,7 +81,7 @@ class FlyteScopedException(Exception):
         :rtype: int
         """
         if self._kind is not None:
-            # If kind is overriden, return it.
+            # If kind is overridden, return it.
             return self._kind
         elif isinstance(self._exc_value, FlyteScopedException):
             # Otherwise, go lower in the scope to find the kind of exception.

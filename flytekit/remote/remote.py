@@ -160,7 +160,7 @@ class FlyteRemote(object):
         image_config: typing.Optional[ImageConfig] = None,
         raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
     ):
-        """Initilize a FlyteRemote object.
+        """Initialize a FlyteRemote object.
 
         :param flyte_admin_url: url pointing to the remote backend.
         :param insecure: whether or not the enable SSL.

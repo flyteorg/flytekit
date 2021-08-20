@@ -121,7 +121,7 @@ class DataPersistencePlugins(object):
         Registers the supplied plugin for the specified protocol if one does not already exist.
         If one exists and force is default or False, then a TypeError is raised.
         If one does not exist then it is registered
-        If one exists, but force == True then the existing plugin is overriden
+        If one exists, but force == True then the existing plugin is overridden
         """
         if protocol in cls._PLUGINS:
             p = cls._PLUGINS[protocol]
@@ -164,7 +164,7 @@ class DataPersistencePlugins(object):
 class DiskPersistence(DataPersistence):
     """
     The simplest form of persistence that is available with default flytekit - Disk-based persistence.
-    This will store all data locally and retreive the data from local. This is helpful for local execution and simulating
+    This will store all data locally and retrieve the data from local. This is helpful for local execution and simulating
     runs.
     """
 

@@ -41,7 +41,7 @@ class SecretsManager(object):
       - If not then try the file where the name matches lower case
         ``configuration.SECRETS_DEFAULT_DIR/<group>/configuration.SECRETS_FILE_PREFIX<key>``
 
-    All configuration values can always be overriden by injecting an environment variable
+    All configuration values can always be overridden by injecting an environment variable
     """
 
     def __init__(self):

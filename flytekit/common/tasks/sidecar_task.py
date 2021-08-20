@@ -79,7 +79,7 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
 
     def reconcile_partial_pod_spec_and_task(self, pod_spec, primary_container_name, annotations=None, labels=None):
         """
-        Assigns the custom field as a the reconciled primary container and pod spec defintion.
+        Assigns the custom field as a the reconciled primary container and pod spec definition.
         :param _sdk_runnable.SdkRunnableTask sdk_runnable_task:
         :param generated_pb2.PodSpec pod_spec:
         :param Text primary_container_name:

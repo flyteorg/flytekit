@@ -329,7 +329,7 @@ def get_serializable_branch_node(
     # We have to iterate through the blocks to convert the nodes from the internal Node type to the Node model type.
     # This was done to avoid having to create our own IfElseBlock object (i.e. condition.py just uses the model
     # directly) even though the node there is of the wrong type (our type instead of the model type).
-    # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
+    # TODO this should be cleaned up instead of mutation, we probably should just create a new object
     first = to_serializable_case(entity_mapping, settings, entity._ifelse_block.case)
     other = to_serializable_cases(entity_mapping, settings, entity._ifelse_block.other)
     else_node_model = None
