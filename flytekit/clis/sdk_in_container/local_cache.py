@@ -1,6 +1,6 @@
 import click
 
-from flytekit.core.local_cache import LocalCache
+from flytekit.core.local_cache import LocalTaskCache
 
 
 @click.group("local-cache")
@@ -16,7 +16,7 @@ def clear_local_cache():
     """
     This command will remove all stored objects from local cache.
     """
-    LocalCache.clear()
+    LocalTaskCache.clear()
 
 
 local_cache.add_command(clear_local_cache)

@@ -26,7 +26,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Uni
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
-from flytekit.core.local_cache import LocalCache
+from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
@@ -237,13 +237,13 @@ class Task(object):
             logger.info(
                 f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
             )
-            outputs_literal_map = LocalCache.get(self.name, self.metadata.cache_version, input_literal_map)
+            outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
             # The cache returns None iff the key does not exist in the cache
             if outputs_literal_map is None:
                 logger.info("Cache miss, task will be executed now")
                 outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
-                LocalCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
+                LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
                 logger.info(
                     f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
                 )
