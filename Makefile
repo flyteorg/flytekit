@@ -26,10 +26,10 @@ setup: install-piptools ## Install requirements
 setup-spark2: install-piptools ## Install requirements
 	pip-sync requirements-spark2.txt dev-requirements.txt
 
-.PHONY: fmt
-fmt: ## Format code with black and isort
-	black .
-	isort .
+# .PHONY: fmt
+# fmt: ## Format code with black and isort
+# 	black .
+# 	isort .
 
 .PHONY: lint
 lint: ## Run linters
@@ -37,7 +37,7 @@ lint: ## Run linters
 	mypy flytekit/types || true
 	mypy tests/flytekit/unit/core || true
 	mypy plugins || true
-	flake8 .
+	pre-commit run --all-files
 
 .PHONY: test
 test: lint ## Run tests
