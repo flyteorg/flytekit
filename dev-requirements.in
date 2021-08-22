@@ -1,12 +1,7 @@
 -c requirements.txt
 
 git+git://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
-black
 coverage[toml]
-flake8
-flake8-black
-flake8-isort
-isort
 mock
 pytest
 mypy
