@@ -68,12 +68,12 @@ dirhash==0.2.1
     # via
     #   -c requirements.txt
     #   flytekit
-distlib==0.3.2
-    # via virtualenv
 diskcache==5.2.1
     # via
     #   -c requirements.txt
     #   flytekit
+distlib==0.3.2
+    # via virtualenv
 distro==1.6.0
     # via docker-compose
 docker[ssh]==5.0.0
@@ -117,11 +117,6 @@ importlib-metadata==4.6.4
 iniconfig==1.1.1
     # via pytest
 jeepney==0.7.1
-    # via
-    #   -c requirements.txt
-    #   keyring
-    #   secretstorage
-jinja2==3.0.1
     # via
     #   -c requirements.txt
     #   keyring
