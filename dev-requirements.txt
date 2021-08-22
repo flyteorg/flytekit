@@ -70,6 +70,10 @@ dirhash==0.2.1
     #   flytekit
 distlib==0.3.2
     # via virtualenv
+diskcache==5.2.1
+    # via
+    #   -c requirements.txt
+    #   flytekit
 distro==1.6.0
     # via docker-compose
 docker[ssh]==5.0.0
@@ -120,11 +124,12 @@ jeepney==0.7.1
 jinja2==3.0.1
     # via
     #   -c requirements.txt
-    #   pytest-flyte
-joblib==1.0.1
+    #   keyring
+    #   secretstorage
+jinja2==3.0.1
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   pytest-flyte
 jsonschema==3.2.0
     # via
     #   -c requirements.txt

@@ -75,6 +75,8 @@ deprecated==1.2.12
     # via flytekit
 dirhash==0.2.1
     # via flytekit
+diskcache==5.2.1
+    # via flytekit
 docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.10
@@ -131,8 +133,6 @@ jmespath==0.10.0
     # via
     #   boto3
     #   botocore
-joblib==1.0.1
-    # via flytekit
 jsonschema==3.2.0
     # via nbformat
 jupyter-client==7.0.1
