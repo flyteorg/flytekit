@@ -70,7 +70,7 @@ class TaskMetadata(object):
     See the :std:ref:`IDL <idl:protos/docs/core/core:taskmetadata>` for the protobuf definition.
 
     Args:
-        cache (bool): Indicates if caching should be enabled
+        cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`
         cache_version (str): Version to be used for the cached value
         interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with
             lower QoS guarantees that can include pre-emption. This can reduce the monetary cost executions incur at the
