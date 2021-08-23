@@ -1,6 +1,7 @@
 import typing
 
 import six as _six
+from collections import OrderedDict
 from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
@@ -81,7 +82,7 @@ class VariableMap(_common.FlyteIdlEntity):
         :param dict[Text, Variable] pb2_object:
         :rtype: VariableMap
         """
-        return cls({v.name: Variable.from_flyte_idl(v.var) for v in pb2_object.variables})
+        return cls(OrderedDict((v.name, Variable.from_flyte_idl(v.var)) for v in pb2_object.variables))
 
 
 class TypedInterface(_common.FlyteIdlEntity):
@@ -118,8 +119,8 @@ class TypedInterface(_common.FlyteIdlEntity):
         :param proto:
         """
         return cls(
-            inputs={v.name: Variable.from_flyte_idl(v.var) for v in proto.inputs.variables},
-            outputs={v.name: Variable.from_flyte_idl(v.var) for v in proto.outputs.variables},
+            inputs=OrderedDict((v.name, Variable.from_flyte_idl(v.var)) for v in proto.inputs.variables),
+            outputs=OrderedDict((v.name, Variable.from_flyte_idl(v.var)) for v in proto.outputs.variables)
         )
 
 
@@ -219,4 +220,4 @@ class ParameterMap(_common.FlyteIdlEntity):
         :param flyteidl.core.interface_pb2.ParameterMap pb2_object:
         :rtype: ParameterMap
         """
-        return cls(parameters={v.name: Parameter.from_flyte_idl(v.var) for v in pb2_object.parameters})
+        return cls(parameters=OrderedDict((v.name, Parameter.from_flyte_idl(v.var)) for v in pb2_object.parameters))
