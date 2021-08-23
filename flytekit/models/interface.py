@@ -73,7 +73,7 @@ class VariableMap(_common.FlyteIdlEntity):
         """
         :rtype: dict[Text, Variable]
         """
-        return _interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.variables)})
+        return _interface_pb2.VariableMap(variables=[_interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.variables)])
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -81,7 +81,7 @@ class VariableMap(_common.FlyteIdlEntity):
         :param dict[Text, Variable] pb2_object:
         :rtype: VariableMap
         """
-        return cls({k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(pb2_object.variables)})
+        return cls({v.name: Variable.from_flyte_idl(v.var) for v in pb2_object.variables})
 
 
 class TypedInterface(_common.FlyteIdlEntity):
@@ -106,9 +106,9 @@ class TypedInterface(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self) -> _interface_pb2.TypedInterface:
         return _interface_pb2.TypedInterface(
-            inputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.inputs)}),
+            inputs=_interface_pb2.VariableMap(variables=[_interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.inputs)]),
             outputs=_interface_pb2.VariableMap(
-                variables={k: v.to_flyte_idl() for k, v in _six.iteritems(self.outputs)}
+                variables=[_interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.outputs)]
             ),
         )
 
@@ -118,8 +118,8 @@ class TypedInterface(_common.FlyteIdlEntity):
         :param proto:
         """
         return cls(
-            inputs={k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(proto.inputs.variables)},
-            outputs={k: Variable.from_flyte_idl(v) for k, v in _six.iteritems(proto.outputs.variables)},
+            inputs={v.name: Variable.from_flyte_idl(v.var) for v in proto.inputs.variables},
+            outputs={v.name: Variable.from_flyte_idl(v.var) for v in proto.outputs.variables},
         )
 
 
@@ -211,13 +211,12 @@ class ParameterMap(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.interface_pb2.ParameterMap
         """
         return _interface_pb2.ParameterMap(
-            parameters={k: v.to_flyte_idl() for k, v in _six.iteritems(self.parameters)},
+            parameters=[_interface_pb2.ParameterMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.parameters)]
         )
-
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
         :param flyteidl.core.interface_pb2.ParameterMap pb2_object:
         :rtype: ParameterMap
         """
-        return cls(parameters={k: Parameter.from_flyte_idl(v) for k, v in _six.iteritems(pb2_object.parameters)})
+        return cls(parameters={v.name: Parameter.from_flyte_idl(v.var) for v in pb2_object.parameters})

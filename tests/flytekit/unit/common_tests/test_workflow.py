@@ -366,8 +366,8 @@ def test_workflow_serialization():
     serialized = w.serialize()
     assert isinstance(serialized, _workflow_pb2.WorkflowSpec)
     assert len(serialized.template.nodes) == 6
-    assert len(serialized.template.interface.inputs.variables.keys()) == 2
-    assert len(serialized.template.interface.outputs.variables.keys()) == 2
+    assert len(serialized.template.interface.inputs.variables) == 2
+    assert len(serialized.template.interface.outputs.variables) == 2
 
 
 def test_workflow_disable_default_launch_plan():
