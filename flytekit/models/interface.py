@@ -1,7 +1,7 @@
 import typing
+from collections import OrderedDict
 
 import six as _six
-from collections import OrderedDict
 from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
@@ -74,7 +74,11 @@ class VariableMap(_common.FlyteIdlEntity):
         """
         :rtype: dict[Text, Variable]
         """
-        return _interface_pb2.VariableMap(variables=[_interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.variables)])
+        return _interface_pb2.VariableMap(
+            variables=[
+                _interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.variables)
+            ]
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -107,9 +111,17 @@ class TypedInterface(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self) -> _interface_pb2.TypedInterface:
         return _interface_pb2.TypedInterface(
-            inputs=_interface_pb2.VariableMap(variables=[_interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.inputs)]),
+            inputs=_interface_pb2.VariableMap(
+                variables=[
+                    _interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl())
+                    for k, v in _six.iteritems(self.inputs)
+                ]
+            ),
             outputs=_interface_pb2.VariableMap(
-                variables=[_interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.outputs)]
+                variables=[
+                    _interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl())
+                    for k, v in _six.iteritems(self.outputs)
+                ]
             ),
         )
 
@@ -120,7 +132,7 @@ class TypedInterface(_common.FlyteIdlEntity):
         """
         return cls(
             inputs=OrderedDict((v.name, Variable.from_flyte_idl(v.var)) for v in proto.inputs.variables),
-            outputs=OrderedDict((v.name, Variable.from_flyte_idl(v.var)) for v in proto.outputs.variables)
+            outputs=OrderedDict((v.name, Variable.from_flyte_idl(v.var)) for v in proto.outputs.variables),
         )
 
 
@@ -212,8 +224,12 @@ class ParameterMap(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.interface_pb2.ParameterMap
         """
         return _interface_pb2.ParameterMap(
-            parameters=[_interface_pb2.ParameterMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.parameters)]
+            parameters=[
+                _interface_pb2.ParameterMapEntry(name=k, var=v.to_flyte_idl())
+                for k, v in _six.iteritems(self.parameters)
+            ]
         )
+
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
