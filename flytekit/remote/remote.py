@@ -1065,8 +1065,4 @@ class FlyteRemote(object):
             task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
             return task.interface
 
-        import ipdb
-
-        ipdb.set_trace()
-
         remote_logger.info("failed to find node interface from entity definition closure")
