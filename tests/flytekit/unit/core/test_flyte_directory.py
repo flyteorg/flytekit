@@ -1,6 +1,7 @@
 import os
 import pathlib
 import shutil
+import tempfile
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,6 +16,18 @@ from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
+
+
+# Fixture that ensures a dummy local file
+@pytest.fixture
+def local_dummy_directory():
+    temp_dir = tempfile.TemporaryDirectory()
+    try:
+        with open(os.path.join(temp_dir.name, "file"), "w") as tmp:
+            tmp.write("Hello world")
+        yield temp_dir.name
+    finally:
+        temp_dir.cleanup()
 
 
 def test_engine():
@@ -185,6 +198,50 @@ def test_download_caching():
     for _ in range(10):
         os.fspath(f)
     assert mock_downloader.call_count == 1
+
+
+def test_returning_a_pathlib_path(local_dummy_directory):
+    @task
+    def t1() -> FlyteDirectory:
+        return pathlib.Path(local_dummy_directory)
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> FlyteDirectory:
+        return t1()
+
+    wf_out = wf1()
+    assert isinstance(wf_out, FlyteDirectory)
+    os.listdir(wf_out)
+    assert wf_out._downloaded
+    with open(os.path.join(wf_out.path, "file"), "r") as fh:
+        assert fh.read() == "Hello world"
+
+    # Remove the file, then call download again, it should not because _downloaded was already set.
+    shutil.rmtree(wf_out)
+    wf_out.download()
+    assert not os.path.exists(wf_out.path)
+
+
+def test_fd_with_local_remote(local_dummy_directory):
+    temp_dir = tempfile.TemporaryDirectory()
+    try:
+
+        @task
+        def t1() -> FlyteDirectory:
+            return FlyteDirectory(local_dummy_directory, remote_directory=temp_dir.name)
+
+        # TODO: Remove this - only here to trigger type engine
+        @workflow
+        def wf1() -> FlyteDirectory:
+            return t1()
+
+        wf_out = wf1()
+        files = os.listdir(temp_dir.name)
+        assert len(files) == 1  # the pytest fixture has one file in it.
+        assert wf_out.path == temp_dir.name
+    finally:
+        temp_dir.cleanup()
 
 
 def test_directory_guess():
