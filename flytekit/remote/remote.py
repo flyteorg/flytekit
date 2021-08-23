@@ -351,10 +351,23 @@ class FlyteRemote(object):
         )
         admin_workflow = self.client.get_workflow(workflow_id)
         compiled_wf = admin_workflow.closure.compiled_workflow
+
+        base_model = compiled_wf.primary.template
+        sub_workflows = {sw.template.id: sw.template for sw in compiled_wf.sub_workflows}
+        tasks = {t.template.id: t.template for t in compiled_wf.tasks}
+
+        node_launch_plans = {}
+        for node in FlyteWorkflow.get_non_system_nodes(base_model.nodes):
+            if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
+                node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
+                    node.workflow_node.launchplan_ref
+                ).spec
+
         flyte_workflow = FlyteWorkflow.promote_from_model(
             base_model=compiled_wf.primary.template,
-            sub_workflows={sw.template.id: sw.template for sw in compiled_wf.sub_workflows},
-            tasks={t.template.id: t.template for t in compiled_wf.tasks},
+            sub_workflows=sub_workflows,
+            node_launch_plans=node_launch_plans,
+            tasks=tasks,
         )
         flyte_workflow._id = workflow_id
         return flyte_workflow
@@ -383,7 +396,7 @@ class FlyteRemote(object):
             version,
         )
         admin_launch_plan = self.client.get_launch_plan(launch_plan_id)
-        flyte_launch_plan = FlyteLaunchPlan.promote_from_model(admin_launch_plan.spec)
+        flyte_launch_plan = FlyteLaunchPlan.promote_from_model(launch_plan_id, admin_launch_plan.spec)
         flyte_launch_plan._id = launch_plan_id
 
         wf_id = flyte_launch_plan.workflow_id
@@ -1051,5 +1064,9 @@ class FlyteRemote(object):
             task_id = node_execution.task_executions[0].id.task_id
             task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
             return task.interface
+
+        import ipdb
+
+        ipdb.set_trace()
 
         remote_logger.info("failed to find node interface from entity definition closure")

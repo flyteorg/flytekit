@@ -11,6 +11,7 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.utils import _dnsify
 from flytekit.core.promise import NodeOutput
 from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import node_execution as _node_execution_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import execution as _execution_models
@@ -65,6 +66,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         cls,
         model: _workflow_model.Node,
         sub_workflows: Optional[Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate]],
+        node_launch_plans: Optional[Dict[_identifier.Identifier, _launch_plan_model.LaunchPlanSpec]],
         tasks: Optional[Dict[_identifier.Identifier, _task_model.TaskTemplate]],
     ) -> "FlyteNode":
         id = model.id
@@ -77,7 +79,10 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             flyte_task_node = _component_nodes.FlyteTaskNode.promote_from_model(model.task_node, tasks)
         elif model.workflow_node is not None:
             flyte_workflow_node = _component_nodes.FlyteWorkflowNode.promote_from_model(
-                model.workflow_node, sub_workflows, tasks
+                model.workflow_node,
+                sub_workflows,
+                node_launch_plans,
+                tasks,
             )
         else:
             raise _system_exceptions.FlyteSystemException("Bad Node model, neither task nor workflow detected.")

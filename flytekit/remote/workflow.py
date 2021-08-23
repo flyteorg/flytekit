@@ -4,6 +4,7 @@ from flytekit.common import constants as _constants
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
@@ -106,13 +107,15 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         cls,
         base_model: _workflow_models.WorkflowTemplate,
         sub_workflows: Optional[Dict[_identifier.Identifier, _workflow_models.WorkflowTemplate]] = None,
+        node_launch_plans: Optional[Dict[_identifier.Identifier, _launch_plan_models.LaunchPlanSpec]] = None,
         tasks: Optional[Dict[_identifier.Identifier, _task_models.TaskTemplate]] = None,
     ) -> "FlyteWorkflow":
         base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes)
         sub_workflows = sub_workflows or {}
         tasks = tasks or {}
         node_map = {
-            n.id: _nodes.FlyteNode.promote_from_model(n, sub_workflows, tasks) for n in base_model_non_system_nodes
+            node.id: _nodes.FlyteNode.promote_from_model(node, sub_workflows, node_launch_plans, tasks)
+            for node in base_model_non_system_nodes
         }
 
         # Set upstream nodes for each node
