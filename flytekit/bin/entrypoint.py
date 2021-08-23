@@ -86,8 +86,8 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
 
 
 def _dispatch_execute(
-    ctx: FlyteContext,
-    task_def: PythonTask,
+    ctx: "FlyteContext",
+    task_def: "PythonTask",
     inputs_path: str,
     output_prefix: str,
 ):
@@ -300,8 +300,8 @@ def setup_execution(
 
 
 def _handle_annotated_task(
-    ctx: FlyteContext,
-    task_def: PythonTask,
+    ctx: "FlyteContext",
+    task_def: "PythonTask",
     inputs: str,
     output_prefix: str,
 ):
