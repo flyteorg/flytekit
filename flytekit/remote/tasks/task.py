@@ -1,5 +1,4 @@
 from flytekit.common.mixins import hash as _hash_mixin
-from flytekit.core.interface import Interface
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.remote import identifier as _identifier
