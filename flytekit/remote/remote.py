@@ -706,9 +706,14 @@ class FlyteRemote(object):
             domain=resolved_identifiers.domain,
             execution_name=execution_name,
             wait=wait,
-            labels=entity.labels if isinstance(entity, FlyteLaunchPlan) else None,
-            annotations=entity.annotations if isinstance(entity, FlyteLaunchPlan) else None,
-            auth_role=entity.auth_role if isinstance(entity, FlyteLaunchPlan) else None,
+            labels=entity.labels if isinstance(entity, FlyteLaunchPlan) and entity.labels.values else None,
+            annotations=entity.annotations
+            if isinstance(entity, FlyteLaunchPlan) and entity.annotations.values
+            else None,
+            auth_role=entity.auth_role
+            if isinstance(entity, FlyteLaunchPlan)
+            and (entity.auth_role.assumable_iam_role or entity.auth_role.kubernetes_service_account)
+            else None,
         )
 
     @execute.register
