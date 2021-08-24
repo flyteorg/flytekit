@@ -1,4 +1,5 @@
 from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.core.interface import Interface
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.remote import identifier as _identifier
@@ -19,6 +20,7 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
             task_type_version=task_type_version,
             config=config,
         )
+        # _python_interface = None
 
     @property
     def interface(self) -> _interfaces.TypedInterface:
@@ -31,6 +33,13 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
     @property
     def entity_type_text(self) -> str:
         return "Task"
+
+    @property
+    def guessed_python_interface(self) -> Interface:
+        """
+        Returns this task's python interface.
+        """
+        return self._python_interface
 
     @classmethod
     def promote_from_model(cls, base_model: _task_model.TaskTemplate) -> "FlyteTask":

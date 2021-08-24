@@ -574,7 +574,7 @@ class FlyteRemote(object):
 
     def _execute(
         self,
-        flyte_id: Identifier,
+        entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
         project: str,
         domain: str,
@@ -600,7 +600,7 @@ class FlyteRemote(object):
             disable_all = None
 
         with self.remote_context() as ctx:
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs)
+            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, entity.guessed_python_interface)
         try:
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -612,7 +612,7 @@ class FlyteRemote(object):
                 domain,
                 execution_name,
                 ExecutionSpec(
-                    flyte_id,
+                    entity.id,
                     ExecutionMetadata(
                         ExecutionMetadata.ExecutionMode.MANUAL,
                         "placeholder",  # TODO: get principle
@@ -678,7 +678,7 @@ class FlyteRemote(object):
     @execute.register(FlyteLaunchPlan)
     def _(
         self,
-        entity,
+        entity: typing.Union[FlyteTask, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
@@ -696,8 +696,9 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(
             entity, project, domain, entity.id.name, entity.id.version
         )
+        entity._python_interface = TypeEngine.guess_python_types(entity.interface.inputs)
         return self._execute(
-            entity.id,
+            entity,
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
@@ -755,8 +756,10 @@ class FlyteRemote(object):
         resolved_identifiers_dict = asdict(resolved_identifiers)
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
+            # TODO: verify fetched task matches entity
         except Exception:
             flyte_task: FlyteTask = self.register(entity, **resolved_identifiers_dict)
+        flyte_task._python_interface = TypeEngine.guess_python_type(entity.interface)
         return self.execute(
             flyte_task,
             inputs,

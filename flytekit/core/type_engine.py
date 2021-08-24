@@ -407,17 +407,18 @@ class TypeEngine(typing.Generic[T]):
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 
     @classmethod
-    def dict_to_literal_map(cls, ctx: FlyteContext, d: typing.Dict[str, typing.Any]) -> LiteralMap:
+    def dict_to_literal_map(cls, ctx: FlyteContext, d: typing.Dict[str, typing.Any], m: typing.Dict[str, type]) -> LiteralMap:
         """
         Given a dictionary mapping string keys to python values, convert to a LiteralMap.
         """
         literal_map = {}
         for k, v in d.items():
+            python_type=m.get(k, type(v))
             literal_map[k] = TypeEngine.to_literal(
                 ctx=ctx,
                 python_val=v,
-                python_type=type(v),
-                expected=TypeEngine.to_literal_type(type(v)),
+                python_type=python_type,
+                expected=TypeEngine.to_literal_type(python_type),
             )
         return LiteralMap(literal_map)
 
