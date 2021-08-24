@@ -1,6 +1,7 @@
 import pytest
 from mock import MagicMock, patch
 
+from flytekit.models import common as common_models
 from flytekit.models.admin.workflow import Workflow
 from flytekit.models.core.identifier import (
     Identifier,
@@ -131,3 +132,36 @@ def test_get_node_execution_interface(mock_insecure, mock_url):
         NodeExecution(node_exec_id, None, None, NodeExecutionMetaData(None, True, None)), flyte_workflow
     )
     assert actual_interface == expected_interface
+
+
+@patch("flytekit.remote.workflow_execution.FlyteWorkflowExecution.promote_from_model")
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url, mock_wf_exec):
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = True
+    mock_wf_exec.return_value = True
+    mock_client = MagicMock()
+
+    remote = FlyteRemote.from_config("p1", "d1")
+    remote._client = mock_client
+
+    def x(*args, **kwargs):
+        execution_spec = args[3]
+        assert execution_spec.auth_role.kubernetes_service_account == "svc"
+        assert execution_spec.labels == common_models.Labels({"a": "my_label_value"})
+        assert execution_spec.annotations == common_models.Annotations({"b": "my_annotation_value"})
+
+    mock_client.create_execution.side_effect = x
+
+    mock_flyte_id = Identifier(1, "proj", "dom", "name", "123")
+
+    remote._execute(
+        mock_flyte_id,
+        inputs={},
+        project="proj",
+        domain="dev",
+        labels=common_models.Labels({"a": "my_label_value"}),
+        annotations=common_models.Annotations({"b": "my_annotation_value"}),
+        auth_role=common_models.AuthRole(kubernetes_service_account="svc"),
+    )
