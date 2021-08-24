@@ -62,13 +62,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
     def flyte_nodes(self) -> List[_nodes.FlyteNode]:
         return self._flyte_nodes
 
-    # @property
-    # def guessed_python_interface(self) -> Interface:
-    #     """
-    #     Returns this workflow's python interface.
-    #     """
-    #     return self._python_interface
-
     def get_sub_workflows(self) -> List["FlyteWorkflow"]:
         result = []
         for node in self.nodes:

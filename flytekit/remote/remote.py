@@ -600,7 +600,8 @@ class FlyteRemote(object):
             disable_all = None
 
         with self.remote_context() as ctx:
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, entity.guessed_python_interface)
+            python_types = TypeEngine.guess_python_types(entity.interface.inputs)
+            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, python_types)
         try:
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -696,7 +697,6 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(
             entity, project, domain, entity.id.name, entity.id.version
         )
-        entity._python_interface = TypeEngine.guess_python_types(entity.interface.inputs)
         return self._execute(
             entity,
             inputs,
@@ -756,10 +756,8 @@ class FlyteRemote(object):
         resolved_identifiers_dict = asdict(resolved_identifiers)
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
-            # TODO: verify fetched task matches entity
         except Exception:
             flyte_task: FlyteTask = self.register(entity, **resolved_identifiers_dict)
-        flyte_task._python_interface = TypeEngine.guess_python_type(entity.interface)
         return self.execute(
             flyte_task,
             inputs,
