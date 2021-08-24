@@ -407,7 +407,9 @@ class TypeEngine(typing.Generic[T]):
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 
     @classmethod
-    def dict_to_literal_map(cls, ctx: FlyteContext, d: typing.Dict[str, typing.Any], guessed_python_types: typing.Dict[str, type] = None) -> LiteralMap:
+    def dict_to_literal_map(
+        cls, ctx: FlyteContext, d: typing.Dict[str, typing.Any], guessed_python_types: typing.Dict[str, type] = None
+    ) -> LiteralMap:
         """
         Given a dictionary mapping string keys to python values and a dictionary containing guessed types for such string keys,
         convert to a LiteralMap.
@@ -419,7 +421,7 @@ class TypeEngine(typing.Generic[T]):
             # The guessed type takes precedence over the type returned by the python runtime. This is needed
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
-            python_type=guessed_python_types.get(k, type(v))
+            python_type = guessed_python_types.get(k, type(v))
             literal_map[k] = TypeEngine.to_literal(
                 ctx=ctx,
                 python_val=v,
