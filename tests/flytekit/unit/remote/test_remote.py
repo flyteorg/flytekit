@@ -2,10 +2,19 @@ import pytest
 from mock import MagicMock, patch
 
 from flytekit.models.admin.workflow import Workflow
-from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
+from flytekit.models.core.identifier import (
+    Identifier,
+    NodeExecutionIdentifier,
+    ResourceType,
+    WorkflowExecutionIdentifier,
+)
 from flytekit.models.execution import Execution
+from flytekit.models.interface import TypedInterface, Variable
 from flytekit.models.launch_plan import LaunchPlan
+from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
 from flytekit.models.task import Task
+from flytekit.models.types import LiteralType, SimpleType
+from flytekit.remote import FlyteWorkflow
 from flytekit.remote.remote import FlyteRemote
 
 CLIENT_METHODS = {
@@ -90,3 +99,35 @@ def test_remote_fetch_workflow_execution(mock_insecure, mock_url, mock_client_ma
     remote._client = mock_client
     flyte_workflow_execution = remote.fetch_workflow_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
+
+
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_get_node_execution_interface(mock_insecure, mock_url):
+    expected_interface = TypedInterface(
+        {"in1": Variable(LiteralType(simple=SimpleType.STRING), "in1 description")},
+        {"out1": Variable(LiteralType(simple=SimpleType.INTEGER), "out1 description")},
+    )
+
+    node_exec_id = NodeExecutionIdentifier("node_id", WorkflowExecutionIdentifier("p1", "d1", "exec_name"))
+
+    mock_node = MagicMock()
+    mock_node.id = node_exec_id.node_id
+    task_node = MagicMock()
+    flyte_task = MagicMock()
+    flyte_task.interface = expected_interface
+    task_node.flyte_task = flyte_task
+    mock_node.task_node = task_node
+
+    flyte_workflow = FlyteWorkflow([mock_node], None, None, None, None, None)
+
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = True
+    mock_client = MagicMock()
+
+    remote = FlyteRemote.from_config("p1", "d1")
+    remote._client = mock_client
+    actual_interface = remote._get_node_execution_interface(
+        NodeExecution(node_exec_id, None, None, NodeExecutionMetaData(None, True, None)), flyte_workflow
+    )
+    assert actual_interface == expected_interface

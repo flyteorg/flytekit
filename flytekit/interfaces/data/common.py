@@ -1,7 +1,11 @@
-import abc as _abc
+class DataProxy(object):
+    def __init__(self, name: str):
+        self._name = name
 
+    @property
+    def name(self) -> str:
+        return self._name
 
-class DataProxy(object, metaclass=_abc.ABCMeta):
     def exists(self, path):
         """
         :param path:

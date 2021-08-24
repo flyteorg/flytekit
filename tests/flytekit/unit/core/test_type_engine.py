@@ -14,7 +14,6 @@ from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
     ListTransformer,
-    PathLikeTransformer,
     SimpleTransformer,
     TypeEngine,
 )
@@ -22,7 +21,8 @@ from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
 
 def test_type_engine():
@@ -53,7 +53,10 @@ def test_type_resolution():
 
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
-    assert type(TypeEngine.get_transformer(os.PathLike)) == PathLikeTransformer
+    assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
+
+    with pytest.raises(ValueError):
+        TypeEngine.get_transformer(typing.Any)
 
 
 def test_file_formats_getting_literal_type():
@@ -92,6 +95,42 @@ def test_file_format_getting_python_value():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile["txt"])
     assert isinstance(pv, FlyteFile)
     assert pv.extension() == "txt"
+
+
+def test_file_non_downloadable():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+
+    ctx = FlyteContext.current_context()
+
+    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
+    lv = Literal(
+        scalar=Scalar(
+            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri="/usr/local/bin/file")
+        )
+    )
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
+    assert isinstance(pv, FlyteFile)
+    with pytest.raises(ValueError):
+        pv.download()
+
+
+def test_dir_non_downloadable():
+    transformer = TypeEngine.get_transformer(FlyteDirectory)
+
+    ctx = FlyteContext.current_context()
+
+    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
+    lv = Literal(
+        scalar=Scalar(
+            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri="/usr/local/bin/")
+        )
+    )
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteDirectory)
+    assert isinstance(pv, FlyteDirectory)
+    with pytest.raises(ValueError):
+        pv.download()
 
 
 def test_dict_transformer():
@@ -197,6 +236,13 @@ def test_protos():
     l0 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
     with pytest.raises(AssertionError):
         TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
+
+    default_proto = errors_pb2.ContainerError()
+    lit = TypeEngine.to_literal(ctx, default_proto, errors_pb2.ContainerError, lt)
+    assert lit.scalar
+    assert lit.scalar.generic is not None
+    new_python_val = TypeEngine.to_python_value(ctx, lit, errors_pb2.ContainerError)
+    assert new_python_val == default_proto
 
 
 def test_guessing_basic():

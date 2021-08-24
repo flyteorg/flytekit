@@ -19,6 +19,7 @@ SOURCES = {
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-athena": "flytekit-aws-athena",
+    "flytekitplugins-great_expectations": "flytekit-greatexpectations",
 }
 
 

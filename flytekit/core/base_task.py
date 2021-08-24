@@ -23,23 +23,16 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.core.context_manager import (
-    BranchEvalMode,
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-    FlyteEntities,
-    SerializationSettings,
-)
-from flytekit.core.docstring import Docstring
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
+from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
     create_and_link_node,
     create_task_output,
+    flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
 from flytekit.core.tracker import TrackedInstance
@@ -77,7 +70,7 @@ class TaskMetadata(object):
     See the :std:ref:`IDL <idl:protos/docs/core/core:taskmetadata>` for the protobuf definition.
 
     Args:
-        cache (bool): Indicates if caching should be enabled
+        cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`
         cache_version (str): Version to be used for the cached value
         interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with
             lower QoS guarantees that can include pre-emption. This can reduce the monetary cost executions incur at the
@@ -217,17 +210,19 @@ class Task(object):
         """
         return None
 
-    def _local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         """
-        This code is used only in the case when we want to dispatch_execute with outputs from a previous node
-        For regular execution, dispatch_execute is invoked directly.
+        This function is used only in the local execution path and is responsible for calling dispatch execute.
+        Use this function when calling a task with native values (or Promises containing Flyte literals derived from
+        Python native values).
         """
         # Unwrap the kwargs values. After this, we essentially have a LiteralMap
         # The reason why we need to do this is because the inputs during local execute can be of 2 types
         #  - Promises or native constants
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
-        #  Also alongwith promises and constants, there could be dictionary or list of promises or constants
+        #  Also along with promises and constants, there could be dictionary or list of promises or constants
+
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
@@ -236,7 +231,26 @@ class Task(object):
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
-        outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+        # if metadata.cache is set, check memoized version
+        if self.metadata.cache:
+            # TODO: how to get a nice `native_inputs` here?
+            logger.info(
+                f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+            )
+            outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
+            # The cache returns None iff the key does not exist in the cache
+            if outputs_literal_map is None:
+                logger.info("Cache miss, task will be executed now")
+                outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+                # TODO: need `native_inputs`
+                LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
+                logger.info(
+                    f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+                )
+            else:
+                logger.info("Cache hit")
+        else:
+            outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -255,47 +269,7 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):
-        # When a Task is () aka __called__, there are three things we may do:
-        #  a. Task Execution Mode - just run the Python function as Python normally would. Flyte steps completely
-        #     out of the way.
-        #  b. Compilation Mode - this happens when the function is called as part of a workflow (potentially
-        #     dynamic task?). Instead of running the user function, produce promise objects and create a node.
-        #  c. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
-        #     and everything should be able to be passed through naturally, we'll want to wrap output values of the
-        #     function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
-        #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
-        #     task output as an input, things probably will fail pretty obviously.
-        if len(args) > 0:
-            raise _user_exceptions.FlyteAssertion(
-                f"When calling tasks, only keyword args are supported. "
-                f"Aborting execution as detected {len(args)} positional args {args}"
-            )
-
-        ctx = FlyteContextManager.current_context()
-        if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-            return self.compile(ctx, *args, **kwargs)
-        elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        ):
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                if self.interface:
-                    output_names = list(self.interface.outputs.keys())
-                    if len(output_names) == 0:
-                        return VoidPromise(self.name)
-                    vals = [Promise(var, None) for var in output_names]
-                    return create_task_output(vals, self.python_interface)
-            return self._local_execute(ctx, **kwargs)
-        else:
-            logger.warning("task run without context - executing raw function")
-            new_user_params = self.pre_execute(ctx.user_space_params)
-            with FlyteContextManager.with_context(
-                ctx.with_execution_state(
-                    ctx.execution_state.with_params(
-                        mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, user_space_params=new_user_params
-                    )
-                )
-            ):
-                return self.execute(**kwargs)
+        return flyte_entity_call_handler(self, *args, **kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
@@ -373,7 +347,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        docstring: Optional[Docstring] = None,
         **kwargs,
     ):
         """
@@ -391,7 +364,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface, docstring),
+            interface=transform_interface_to_typed_interface(interface),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
@@ -526,7 +499,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 try:
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
-                    raise AssertionError(f"failed to convert return value for var {k}") from e
+                    logger.error(f"failed to convert return value for var {k} with error {type(e)}: {e}")
+                    raise e
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed

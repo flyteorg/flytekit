@@ -1,4 +1,5 @@
 import os
+import pathlib
 import tempfile
 
 import pytest
@@ -48,14 +49,13 @@ def test_builtin_training():
     assert trainer.python_interface.outputs.keys() == {"model"}
 
     with tempfile.TemporaryDirectory() as tmp:
-        x = os.path.join(tmp, "x")
-        y = os.path.join(tmp, "y")
-        with open(x, "w") as f:
-            f.write("test")
-        with open(y, "w") as f:
-            f.write("test")
+        x = pathlib.Path(os.path.join(tmp, "x"))
+        y = pathlib.Path(os.path.join(tmp, "y"))
+        x.mkdir(parents=True, exist_ok=True)
+        y.mkdir(parents=True, exist_ok=True)
         with pytest.raises(NotImplementedError):
-            trainer(static_hyperparameters={}, train=x, validation=y)
+            # Type engine doesn't support pathlib.Path yet
+            trainer(static_hyperparameters={}, train=f"{x}", validation=f"{y}")
 
     assert trainer.get_custom(_get_reg_settings()) == {
         "algorithmSpecification": {"algorithmName": "XGBOOST"},

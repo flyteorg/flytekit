@@ -30,22 +30,43 @@ def test_pandera_dataframe_type_hints():
     def transform2(df: pandera.typing.DataFrame[IntermediateSchema]) -> pandera.typing.DataFrame[OutSchema]:
         return df.assign(col4="foo")
 
-    @workflow
-    def my_wf() -> pandera.typing.DataFrame[OutSchema]:
-        df = pandas.DataFrame({"col1": [1, 2, 3], "col2": [10.0, 11.0, 12.0]})
-        return transform2(df=transform1(df=df))
+    valid_df = pandas.DataFrame({"col1": [1, 2, 3], "col2": [10.0, 11.0, 12.0]})
 
     @workflow
-    def invalid_wf() -> pandera.typing.DataFrame[OutSchema]:
-        df = pandas.DataFrame({"col1": [1, 2, 3], "col2": list("abc")})
-        return transform2(df=transform1(df=df))
+    def my_wf() -> pandera.typing.DataFrame[OutSchema]:
+        return transform2(df=transform1(df=valid_df))
 
     result = my_wf()
     assert isinstance(result, pandas.DataFrame)
 
-    # raise error at runtime on invalid types
+    # raise error when defining workflow using invalid data
+    invalid_df = pandas.DataFrame({"col1": [1, 2, 3], "col2": list("abc")})
+
     with pytest.raises(pandera.errors.SchemaError):
-        invalid_wf()
+
+        @workflow
+        def invalid_wf() -> pandera.typing.DataFrame[OutSchema]:
+            return transform2(df=transform1(df=invalid_df))
+
+    # raise error when executing workflow with invalid input
+    @workflow
+    def wf_with_df_input(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
+        return transform2(df=transform1(df=df))
+
+    with pytest.raises(pandera.errors.SchemaError, match="^expected series 'col2' to have type float64, got object"):
+        wf_with_df_input(df=invalid_df)
+
+    # raise error when executing workflow with invalid output
+    @task
+    def transform2_noop(df: pandera.typing.DataFrame[IntermediateSchema]) -> pandera.typing.DataFrame[OutSchema]:
+        return df
+
+    @workflow
+    def wf_invalid_output(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
+        return transform2_noop(df=transform1(df=df))
+
+    with pytest.raises(pandera.errors.SchemaError, match="column 'col4' not in dataframe"):
+        wf_invalid_output(df=valid_df)
 
 
 @pytest.mark.parametrize(
