@@ -103,6 +103,10 @@ def test_upstream():
     def t2(a: dict) -> str:
         return " ".join([v for k, v in a.items()])
 
+    @task
+    def t3() -> str:
+        return "hello"
+
     @workflow
     def my_wf(a: int) -> str:
         return t2(a=t1(a=a))
@@ -117,3 +121,21 @@ def test_upstream():
 
     assert len(fwf.flyte_nodes[0].upstream_nodes) == 0
     assert len(fwf.flyte_nodes[1].upstream_nodes) == 1
+
+    @workflow
+    def parent(a: int) -> (str, str):
+        first = my_wf(a=a)
+        second = t3()
+        return first, second
+
+    serialized = OrderedDict()
+    wf_spec = get_serializable(serialized, serialization_settings, parent)
+    sub_wf_dict = {s.id: s for s in wf_spec.sub_workflows}
+    task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
+
+    fwf = FlyteWorkflow.promote_from_model(
+        wf_spec.template, sub_workflows=sub_wf_dict, node_launch_plans={}, tasks=task_templates
+    )
+    # Test upstream nodes don't get confused by subworkflows
+    assert len(fwf.flyte_nodes[0].upstream_nodes) == 0
+    assert len(fwf.flyte_nodes[1].upstream_nodes) == 0
