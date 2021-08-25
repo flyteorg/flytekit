@@ -580,6 +580,9 @@ class FlyteRemote(object):
         domain: str,
         execution_name: typing.Optional[str] = None,
         wait: bool = False,
+        labels: typing.Optional[common_models.Labels] = None,
+        annotations: typing.Optional[common_models.Annotations] = None,
+        auth_role: typing.Optional[common_models.AuthRole] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -621,9 +624,9 @@ class FlyteRemote(object):
                     ),
                     notifications=notifications,
                     disable_all=disable_all,
-                    labels=self.labels,
-                    annotations=self.annotations,
-                    auth_role=self.auth_role,
+                    labels=labels or self.labels,
+                    annotations=annotations or self.annotations,
+                    auth_role=auth_role or self.auth_role,
                 ),
                 literal_inputs,
             )
@@ -704,6 +707,14 @@ class FlyteRemote(object):
             domain=resolved_identifiers.domain,
             execution_name=execution_name,
             wait=wait,
+            labels=entity.labels if isinstance(entity, FlyteLaunchPlan) and entity.labels.values else None,
+            annotations=entity.annotations
+            if isinstance(entity, FlyteLaunchPlan) and entity.annotations.values
+            else None,
+            auth_role=entity.auth_role
+            if isinstance(entity, FlyteLaunchPlan)
+            and (entity.auth_role.assumable_iam_role or entity.auth_role.kubernetes_service_account)
+            else None,
         )
 
     @execute.register
