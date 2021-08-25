@@ -1,4 +1,6 @@
 import os
+import pathlib
+import tempfile
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,6 +16,18 @@ from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file.file import FlyteFile
+
+
+# Fixture that ensures a dummy local file
+@pytest.fixture
+def local_dummy_file():
+    fd, path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, "w") as tmp:
+            tmp.write("Hello world")
+        yield path
+    finally:
+        os.remove(path)
 
 
 def test_file_type_in_workflow_with_bad_format():
@@ -260,6 +274,114 @@ def test_download_caching():
     for _ in range(10):
         os.fspath(f)
     assert mock_downloader.call_count == 1
+
+
+def test_returning_a_pathlib_path(local_dummy_file):
+    @task
+    def t1() -> FlyteFile:
+        return pathlib.Path(local_dummy_file)
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> FlyteFile:
+        return t1()
+
+    wf_out = wf1()
+    assert isinstance(wf_out, FlyteFile)
+    with open(wf_out, "r") as fh:
+        assert fh.read() == "Hello world"
+    assert wf_out._downloaded
+
+    # Remove the file, then call download again, it should not because _downloaded was already set.
+    os.remove(wf_out.path)
+    p = wf_out.download()
+    assert not os.path.exists(wf_out.path)
+    assert p == wf_out.path
+
+    @task
+    def t2() -> os.PathLike:
+        return pathlib.Path(local_dummy_file)
+
+    # TODO: Remove this
+    @workflow
+    def wf2() -> os.PathLike:
+        return t2()
+
+    wf_out = wf2()
+    assert isinstance(wf_out, FlyteFile)
+    with open(wf_out, "r") as fh:
+        assert fh.read() == "Hello world"
+
+
+def test_output_type_pathlike(local_dummy_file):
+    @task
+    def t1() -> os.PathLike:
+        return FlyteFile(local_dummy_file)
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> os.PathLike:
+        return t1()
+
+    wf_out = wf1()
+    assert isinstance(wf_out, FlyteFile)
+    with open(wf_out, "r") as fh:
+        assert fh.read() == "Hello world"
+
+
+def test_input_type_pathlike(local_dummy_file):
+    @task
+    def t1(a: os.PathLike):
+        assert isinstance(a, FlyteFile)
+        with open(a, "r") as fh:
+            assert fh.read() == "Hello world"
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def my_wf(a: FlyteFile):
+        t1(a=a)
+
+    my_wf(a=local_dummy_file)
+
+
+def test_returning_folder_instead_of_file():
+    @task
+    def t1() -> FlyteFile:
+        return pathlib.Path(tempfile.gettempdir())
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> FlyteFile:
+        return t1()
+
+    with pytest.raises(ValueError):
+        wf1()
+
+    @task
+    def t2() -> FlyteFile:
+        return tempfile.gettempdir()
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf2() -> FlyteFile:
+        return t2()
+
+    with pytest.raises(ValueError):
+        wf2()
+
+
+def test_bad_return():
+    @task
+    def t1() -> FlyteFile:
+        return 1
+
+    # TODO: Remove this - only here to trigger type engine
+    @workflow
+    def wf1() -> FlyteFile:
+        return t1()
+
+    with pytest.raises(AssertionError):
+        wf1()
 
 
 def test_file_guess():
