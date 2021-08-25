@@ -1,9 +1,8 @@
-import typing
 import datetime
-from flytekit.common.types.containers import List
 import os
 import pathlib
 import time
+import typing
 
 import pytest
 
