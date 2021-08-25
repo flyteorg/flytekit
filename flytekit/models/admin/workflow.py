@@ -19,14 +19,14 @@ class WorkflowSpec(_common.FlyteIdlEntity):
     @property
     def template(self):
         """
-        :rtype: flytekit.models.core.workflow.WorkflowTemplate.WorkflowTemplate
+        :rtype: flytekit.models.core.workflow.WorkflowTemplate
         """
         return self._template
 
     @property
     def sub_workflows(self):
         """
-        :rtype: list[flytekit.models.core.workflow.WorkflowTemplate.WorkflowTemplate]
+        :rtype: list[flytekit.models.core.workflow.WorkflowTemplate]
         """
         return self._sub_workflows
 

@@ -397,7 +397,6 @@ class FlyteRemote(object):
         )
         admin_launch_plan = self.client.get_launch_plan(launch_plan_id)
         flyte_launch_plan = FlyteLaunchPlan.promote_from_model(launch_plan_id, admin_launch_plan.spec)
-        flyte_launch_plan._id = launch_plan_id
 
         wf_id = flyte_launch_plan.workflow_id
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)

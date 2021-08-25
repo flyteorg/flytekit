@@ -65,18 +65,14 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
 
     def get_sub_workflows(self) -> List["FlyteWorkflow"]:
         result = []
-        for node in self.nodes:
+        for node in self.flyte_nodes:
             if node.workflow_node is not None and node.workflow_node.sub_workflow_ref is not None:
-                if (
-                    node.executable_flyte_object is not None
-                    and node.executable_flyte_object.entity_type_text == "Workflow"
-                ):
-                    result.append(node.executable_flyte_object)
-                    result.extend(node.executable_flyte_object.get_sub_workflows())
+                if node.flyte_entity is not None and node.flyte_entity.entity_type_text == "Workflow":
+                    result.append(node.flyte_entity)
+                    result.extend(node.flyte_entity.get_sub_workflows())
                 else:
                     raise _system_exceptions.FlyteSystemException(
-                        "workflow node with subworkflow found but bad executable "
-                        "object {}".format(node.executable_flyte_object)
+                        "workflow node with subworkflow found but bad executable " "object {}".format(node.flyte_entity)
                     )
 
             # get subworkflows in conditional branches
@@ -91,7 +87,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
                     ],
                 )
                 for leaf_node in leaf_nodes:
-                    exec_flyte_obj = leaf_node.executable_flyte_object
+                    exec_flyte_obj = leaf_node.flyte_entity
                     if exec_flyte_obj is not None and exec_flyte_obj.entity_type_text == "Workflow":
                         result.append(exec_flyte_obj)
                         result.extend(exec_flyte_obj.get_sub_workflows())
@@ -123,7 +119,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             current = node_map[n.id]
             for upstream_id in current.upstream_node_ids:
                 upstream_node = node_map[upstream_id]
-                current << upstream_node
+                current._upstream.append(upstream_node)
 
         # No inputs/outputs specified, see the constructor for more information on the overrides.
         return cls(

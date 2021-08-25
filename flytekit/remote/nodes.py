@@ -1,5 +1,5 @@
 import logging as _logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import flytekit
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
@@ -30,9 +30,9 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         upstream_nodes,
         bindings,
         metadata,
-        flyte_task: "flytekit.remote.tasks.task.FlyteTask" = None,
-        flyte_workflow: "flytekit.remote.workflow.FlyteWorkflow" = None,
-        flyte_launch_plan=None,
+        flyte_task: Optional["FlyteTask"] = None,
+        flyte_workflow: Optional["FlyteWorkflow"] = None,
+        flyte_launch_plan: Optional["FlyteLaunchPlan"] = None,
         flyte_branch=None,
         parameter_mapping=True,
     ):
@@ -42,6 +42,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 "An Flyte node must have one underlying entity specified at once.  Received the following "
                 "entities: {}".format(non_none_entities)
             )
+        self._flyte_entity = flyte_task or flyte_workflow or flyte_launch_plan or flyte_branch
 
         workflow_node = None
         if flyte_workflow is not None:
@@ -60,6 +61,10 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             branch_node=flyte_branch,
         )
         self._upstream = upstream_nodes
+
+    @property
+    def flyte_entity(self) -> Union["FlyteTask", "FlyteWorkflow", "FlyteLaunchPlan"]:
+        return self._flyte_entity
 
     @classmethod
     def promote_from_model(
@@ -84,8 +89,11 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 node_launch_plans,
                 tasks,
             )
+        # TODO: Implement branch node https://github.com/flyteorg/flyte/issues/1116
         else:
-            raise _system_exceptions.FlyteSystemException("Bad Node model, neither task nor workflow detected.")
+            raise _system_exceptions.FlyteSystemException(
+                f"Bad Node model, neither task nor workflow detected, node: {model}"
+            )
 
         # When WorkflowTemplate models (containing node models) are returned by Admin, they've been compiled with a
         # start node. In order to make the promoted FlyteWorkflow look the same, we strip the start-node text back out.
