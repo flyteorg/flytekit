@@ -4,6 +4,7 @@ from flytekit.common import constants as _constants
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
@@ -64,18 +65,14 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
 
     def get_sub_workflows(self) -> List["FlyteWorkflow"]:
         result = []
-        for node in self.nodes:
+        for node in self.flyte_nodes:
             if node.workflow_node is not None and node.workflow_node.sub_workflow_ref is not None:
-                if (
-                    node.executable_flyte_object is not None
-                    and node.executable_flyte_object.entity_type_text == "Workflow"
-                ):
-                    result.append(node.executable_flyte_object)
-                    result.extend(node.executable_flyte_object.get_sub_workflows())
+                if node.flyte_entity is not None and node.flyte_entity.entity_type_text == "Workflow":
+                    result.append(node.flyte_entity)
+                    result.extend(node.flyte_entity.get_sub_workflows())
                 else:
                     raise _system_exceptions.FlyteSystemException(
-                        "workflow node with subworkflow found but bad executable "
-                        "object {}".format(node.executable_flyte_object)
+                        "workflow node with subworkflow found but bad executable " "object {}".format(node.flyte_entity)
                     )
 
             # get subworkflows in conditional branches
@@ -90,7 +87,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
                     ],
                 )
                 for leaf_node in leaf_nodes:
-                    exec_flyte_obj = leaf_node.executable_flyte_object
+                    exec_flyte_obj = leaf_node.flyte_entity
                     if exec_flyte_obj is not None and exec_flyte_obj.entity_type_text == "Workflow":
                         result.append(exec_flyte_obj)
                         result.extend(exec_flyte_obj.get_sub_workflows())
@@ -106,21 +103,23 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         cls,
         base_model: _workflow_models.WorkflowTemplate,
         sub_workflows: Optional[Dict[_identifier.Identifier, _workflow_models.WorkflowTemplate]] = None,
+        node_launch_plans: Optional[Dict[_identifier.Identifier, _launch_plan_models.LaunchPlanSpec]] = None,
         tasks: Optional[Dict[_identifier.Identifier, _task_models.TaskTemplate]] = None,
     ) -> "FlyteWorkflow":
         base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes)
         sub_workflows = sub_workflows or {}
         tasks = tasks or {}
         node_map = {
-            n.id: _nodes.FlyteNode.promote_from_model(n, sub_workflows, tasks) for n in base_model_non_system_nodes
+            node.id: _nodes.FlyteNode.promote_from_model(node, sub_workflows, node_launch_plans, tasks)
+            for node in base_model_non_system_nodes
         }
 
         # Set upstream nodes for each node
         for n in base_model_non_system_nodes:
             current = node_map[n.id]
-            for upstream_id in current.upstream_node_ids:
+            for upstream_id in n.upstream_node_ids:
                 upstream_node = node_map[upstream_id]
-                current << upstream_node
+                current._upstream.append(upstream_node)
 
         # No inputs/outputs specified, see the constructor for more information on the overrides.
         return cls(

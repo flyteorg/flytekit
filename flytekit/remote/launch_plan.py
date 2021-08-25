@@ -11,17 +11,20 @@ from flytekit.remote import interface as _interface
 class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
     """A class encapsulating a remote Flyte launch plan."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, id, *args, **kwargs):
         super(FlyteLaunchPlan, self).__init__(*args, **kwargs)
         # Set all the attributes we expect this class to have
-        self._id = None
+        self._id = id
 
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
 
     @classmethod
-    def promote_from_model(cls, model: _launch_plan_models.LaunchPlanSpec) -> "FlyteLaunchPlan":
+    def promote_from_model(
+        cls, id: _identifier.Identifier, model: _launch_plan_models.LaunchPlanSpec
+    ) -> "FlyteLaunchPlan":
         return cls(
+            id=id,
             workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
             default_inputs=_interface_models.ParameterMap(model.default_inputs.parameters),
             fixed_inputs=model.fixed_inputs,
