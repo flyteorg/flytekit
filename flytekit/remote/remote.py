@@ -603,7 +603,7 @@ class FlyteRemote(object):
             disable_all = None
 
         with self.remote_context() as ctx:
-            python_types = TypeEngine.guess_python_types(entity.interface.inputs)
+            python_types = entity.guessed_python_interface
             literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, python_types)
         try:
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
@@ -700,6 +700,8 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(
             entity, project, domain, entity.id.name, entity.id.version
         )
+        if entity.guessed_python_interface is None:
+            entity.guessed_python_interface = TypeEngine.guess_python_types(entity.interface.inputs)
         return self._execute(
             entity,
             inputs,
@@ -738,8 +740,11 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(
             entity, project, domain, entity.id.name, entity.id.version
         )
+        launch_plan = self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version)
+        if entity.guessed_python_interface is not None:
+            launch_plan.guessed_python_interface = entity.guessed_python_interface
         return self.execute(
-            self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version),
+            launch_plan,
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
@@ -769,6 +774,7 @@ class FlyteRemote(object):
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except Exception:
             flyte_task: FlyteTask = self.register(entity, **resolved_identifiers_dict)
+        flyte_task.guessed_python_interface = entity.python_interface.inputs
         return self.execute(
             flyte_task,
             inputs,
@@ -797,6 +803,7 @@ class FlyteRemote(object):
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
         except Exception:
             flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
+        flyte_workflow.guessed_python_interface = entity.python_interface.inputs
         return self.execute(
             flyte_workflow,
             inputs,
@@ -825,6 +832,7 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
         except Exception:
             flyte_launchplan: FlyteLaunchPlan = self.register(entity, **resolved_identifiers_dict)
+        flyte_launchplan.guessed_python_interface = entity.python_interface.inputs
         return self.execute(
             flyte_launchplan,
             inputs,

@@ -19,6 +19,8 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
 
+        self._python_interface = None
+
     @classmethod
     def promote_from_model(cls, model: _launch_plan_models.LaunchPlanSpec) -> "FlyteLaunchPlan":
         return cls(
@@ -67,6 +69,14 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
     @property
     def entity_type_text(self) -> str:
         return "Launch Plan"
+
+    @property
+    def guessed_python_interface(self):
+        return self._python_interface
+
+    @guessed_python_interface.setter
+    def guessed_python_interface(self, value):
+        self._python_interface = value
 
     @_exception_scopes.system_entry_point
     def update(self, state: _launch_plan_models.LaunchPlanState):

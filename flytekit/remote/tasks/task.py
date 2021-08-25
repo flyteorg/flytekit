@@ -19,6 +19,7 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
             task_type_version=task_type_version,
             config=config,
         )
+        self._python_interface = None
 
     @property
     def interface(self) -> _interfaces.TypedInterface:
@@ -31,6 +32,14 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
     @property
     def entity_type_text(self) -> str:
         return "Task"
+
+    @property
+    def guessed_python_interface(self):
+        return self._python_interface
+
+    @guessed_python_interface.setter
+    def guessed_python_interface(self, value):
+        self._python_interface = value
 
     @classmethod
     def promote_from_model(cls, base_model: _task_model.TaskTemplate) -> "FlyteTask":

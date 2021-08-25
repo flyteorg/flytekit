@@ -41,6 +41,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             outputs=output_bindings,
         )
         self._flyte_nodes = nodes
+        self._python_interface = None
 
     @property
     def upstream_entities(self):
@@ -61,6 +62,14 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
     @property
     def flyte_nodes(self) -> List[_nodes.FlyteNode]:
         return self._flyte_nodes
+
+    @property
+    def guessed_python_interface(self):
+        return self._python_interface
+
+    @guessed_python_interface.setter
+    def guessed_python_interface(self, value):
+        self._python_interface = value
 
     def get_sub_workflows(self) -> List["FlyteWorkflow"]:
         result = []
