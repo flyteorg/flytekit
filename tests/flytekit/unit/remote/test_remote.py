@@ -187,10 +187,10 @@ def test_underscore_execute_fall_back_remote_attributes(mock_insecure, mock_url,
 
     mock_client.create_execution.side_effect = local_assertions
 
-    mock_flyte_id = Identifier(1, "proj", "dom", "name", "123")
+    mock_entity = MagicMock()
 
     remote._execute(
-        mock_flyte_id,
+        mock_entity,
         inputs={},
         project="proj",
         domain="dev",
