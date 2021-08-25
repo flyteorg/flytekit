@@ -117,7 +117,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         # Set upstream nodes for each node
         for n in base_model_non_system_nodes:
             current = node_map[n.id]
-            for upstream_id in current.upstream_node_ids:
+            for upstream_id in n.upstream_node_ids:
                 upstream_node = node_map[upstream_id]
                 current._upstream.append(upstream_node)
 

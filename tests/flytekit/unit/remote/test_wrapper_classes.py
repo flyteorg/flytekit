@@ -1,3 +1,4 @@
+import typing
 from collections import OrderedDict
 
 import pytest
@@ -91,3 +92,28 @@ def test_wf_promote_subwf_lps():
     assert len(flyte_subwfs) == 0
     # The resource type will be different, so just check the name
     assert fwf.nodes[0].workflow_node.launchplan_ref.name == list(lp_specs.values())[0].workflow_id.name
+
+
+def test_upstream():
+    @task
+    def t1(a: int) -> typing.Dict[str, str]:
+        return {"a": str(a)}
+
+    @task
+    def t2(a: dict) -> str:
+        return " ".join([v for k, v in a.items()])
+
+    @workflow
+    def my_wf(a: int) -> str:
+        return t2(a=t1(a=a))
+
+    serialized = OrderedDict()
+    wf_spec = get_serializable(serialized, serialization_settings, my_wf)
+    task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
+
+    fwf = FlyteWorkflow.promote_from_model(
+        wf_spec.template, sub_workflows={}, node_launch_plans={}, tasks=task_templates
+    )
+
+    assert len(fwf.flyte_nodes[0].upstream_nodes) == 0
+    assert len(fwf.flyte_nodes[1].upstream_nodes) == 1
