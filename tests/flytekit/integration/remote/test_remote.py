@@ -213,6 +213,7 @@ def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_reg
     execution = remote.execute(launch_plan, inputs={"xs": [-1.1, 0.12345]}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == "[-1.1, 0.12345]"
 
+
 def test_execute_sqlite3_task(flyteclient, flyte_workflows_register, flyte_remote_env):
     remote = FlyteRemote.from_config(PROJECT, "development")
 

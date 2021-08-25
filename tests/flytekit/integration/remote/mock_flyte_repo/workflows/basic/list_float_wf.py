@@ -8,7 +8,6 @@ def concat_list(xs: typing.List[float]) -> str:
     return f'[{", ".join([str(x) for x in xs])}]'
 
 
-
 @workflow
 def my_wf(xs: typing.List[float]) -> str:
     return concat_list(xs=xs)
