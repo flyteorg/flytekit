@@ -2,13 +2,6 @@ export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose
 
-.SILENT: help
-.PHONY: help
-help:
-	echo Available recipes:
-	cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' | awk 'BEGIN { FS = ":.*?## " } { cnt++; a[cnt] = $$1; b[cnt] = $$2; if (length($$1) > max) max = length($$1) } END { for (i = 1; i <= cnt; i++) printf "  $(shell tput setaf 6)%-*s$(shell tput setaf 0) %s\n", max, a[i], b[i] }'
-	tput sgr0
-
 .PHONY: install-piptools
 install-piptools:
 	pip install -U pip-tools
@@ -23,7 +16,7 @@ setup: install-piptools ## Install requirements
 	pip-sync requirements.txt dev-requirements.txt
 
 .PHONY: setup-spark2
-setup-spark2: install-piptools ## Install requirements
+setup-spark2: install-piptools ## Install requirements for spark
 	pip-sync requirements-spark2.txt dev-requirements.txt
 
 .PHONY: fmt
@@ -40,14 +33,14 @@ lint: ## Run linters
 	flake8 .
 
 .PHONY: test
-test: lint ## Run tests
+test: lint ## Run all tests
 	pytest tests/flytekit/unit
 	pytest tests/scripts
 	pytest plugins/tests
 	find **/*.sh ! -path "boilerplate/*" -exec shellcheck {} \;
 
 .PHONY: unit_test
-unit_test:
+unit_test: ## Run unit tests
 	pytest tests/flytekit/unit
 	pytest tests/scripts
 	pytest plugins/tests
@@ -80,7 +73,7 @@ coverage:
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
 
 .PHONY: update_version
-update_version:
+update_version: ## Update version of flytekit package
 	# ensure the placeholder is there. If grep doesn't find the placeholder
 	# it exits with exit code 1 and github actions aborts the build. 
 	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
@@ -88,3 +81,10 @@ update_version:
 
 	grep "$(PLACEHOLDER)" "setup.py"
 	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
+
+.SILENT: help
+.PHONY: help
+help:
+	@grep -E '^[[:alnum:]_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+.DEFAULT_GOAL := help
