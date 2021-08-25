@@ -1,4 +1,7 @@
+from typing import Optional
+
 from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.core.interface import Interface
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.remote import identifier as _identifier
@@ -34,11 +37,13 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
         return "Task"
 
     @property
-    def guessed_python_interface(self):
+    def guessed_python_interface(self) -> Optional[Interface]:
         return self._python_interface
 
     @guessed_python_interface.setter
     def guessed_python_interface(self, value):
+        if self._python_interface is not None:
+            return
         self._python_interface = value
 
     @classmethod

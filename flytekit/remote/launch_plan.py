@@ -1,5 +1,8 @@
+from typing import Optional
+
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.core.interface import Interface
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
@@ -71,11 +74,13 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         return "Launch Plan"
 
     @property
-    def guessed_python_interface(self):
+    def guessed_python_interface(self) -> Optional[Interface]:
         return self._python_interface
 
     @guessed_python_interface.setter
     def guessed_python_interface(self, value):
+        if self._python_interface is not None:
+            return
         self._python_interface = value
 
     @_exception_scopes.system_entry_point

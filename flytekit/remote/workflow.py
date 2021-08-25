@@ -4,6 +4,7 @@ from flytekit.common import constants as _constants
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.core.interface import Interface
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
@@ -64,11 +65,13 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         return self._flyte_nodes
 
     @property
-    def guessed_python_interface(self):
+    def guessed_python_interface(self) -> Optional[Interface]:
         return self._python_interface
 
     @guessed_python_interface.setter
     def guessed_python_interface(self, value):
+        if self._python_interface is not None:
+            return
         self._python_interface = value
 
     def get_sub_workflows(self) -> List["FlyteWorkflow"]:
