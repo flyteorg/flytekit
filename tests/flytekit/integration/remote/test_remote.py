@@ -1,7 +1,9 @@
 import datetime
+import json
 import os
 import pathlib
 import time
+import typing
 
 import pytest
 
@@ -123,7 +125,6 @@ def test_fetch_execute_launch_plan_with_subworkflows(flyteclient, flyte_workflow
     subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
 
 
-@pytest.mark.skip(reason="Subworkflow and child workflow fetch is currently not implemented fully")
 def test_fetch_execute_launch_plan_with_child_workflows(flyteclient, flyte_workflows_register):
     remote = FlyteRemote.from_config(PROJECT, "development")
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.child_workflow.parent_wf", version=f"v{VERSION}")
@@ -185,6 +186,66 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     execution = remote.execute(launch_plan, inputs={"a": 14, "b": "foobar"}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
+
+
+def test_fetch_execute_launch_plan_list_of_floats(flyteclient, flyte_workflows_register):
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.list_float_wf.my_wf", version=f"v{VERSION}")
+    xs: typing.List[float] = [42.24, 999.1, 0.0001]
+    execution = remote.execute(flyte_launch_plan, inputs={"xs": xs}, wait=True)
+    assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
+
+
+def test_fetch_execute_task_list_of_floats(flyteclient, flyte_workflows_register):
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    flyte_task = remote.fetch_task(name="workflows.basic.list_float_wf.concat_list", version=f"v{VERSION}")
+    xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
+    execution = remote.execute(flyte_task, {"xs": xs}, wait=True)
+    assert execution.outputs["o0"] == "[0.1, 0.2, 0.3, 0.4, -99999.7]"
+
+
+def test_fetch_execute_task_convert_dict(flyteclient, flyte_workflows_register):
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    flyte_task = remote.fetch_task(name="workflows.basic.dict_str_wf.convert_to_string", version=f"v{VERSION}")
+    d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
+    execution = remote.execute(flyte_task, {"d": d}, wait=True)
+    assert json.loads(execution.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
+
+
+def test_execute_python_workflow_dict_of_string_to_string(flyteclient, flyte_workflows_register, flyte_remote_env):
+    """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
+    from mock_flyte_repo.workflows.basic.dict_str_wf import my_wf
+
+    # make sure the task name is the same as the name used during registration
+    my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
+
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
+    execution = remote.execute(my_wf, inputs={"d": d}, version=f"v{VERSION}", wait=True)
+    assert json.loads(execution.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
+
+    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    execution = remote.execute(
+        launch_plan, inputs={"d": {"k2": "vvvv", "abc": "def"}}, version=f"v{VERSION}", wait=True
+    )
+    assert json.loads(execution.outputs["o0"]) == {"k2": "vvvv", "abc": "def"}
+
+
+def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_register, flyte_remote_env):
+    """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
+    from mock_flyte_repo.workflows.basic.list_float_wf import my_wf
+
+    # make sure the task name is the same as the name used during registration
+    my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
+
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    xs: typing.List[float] = [42.24, 999.1, 0.0001]
+    execution = remote.execute(my_wf, inputs={"xs": xs}, version=f"v{VERSION}", wait=True)
+    assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
+
+    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    execution = remote.execute(launch_plan, inputs={"xs": [-1.1, 0.12345]}, version=f"v{VERSION}", wait=True)
+    assert execution.outputs["o0"] == "[-1.1, 0.12345]"
 
 
 def test_execute_sqlite3_task(flyteclient, flyte_workflows_register, flyte_remote_env):

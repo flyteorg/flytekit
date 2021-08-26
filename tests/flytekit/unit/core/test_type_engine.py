@@ -417,3 +417,47 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+@pytest.mark.parametrize(
+    "python_value,python_types,expected_literal_map",
+    [
+        (
+            {"a": [1, 2, 3]},
+            {"a": typing.List[int]},
+            LiteralMap(
+                literals={
+                    "a": Literal(
+                        collection=LiteralCollection(
+                            literals=[
+                                Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                                Literal(scalar=Scalar(primitive=Primitive(integer=2))),
+                                Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                            ]
+                        )
+                    )
+                }
+            ),
+        ),
+        (
+            {"p1": {"k1": "v1", "k2": "2"}},
+            {"p1": typing.Dict[str, str]},
+            LiteralMap(
+                literals={
+                    "p1": Literal(
+                        map=LiteralMap(
+                            literals={
+                                "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
+                                "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
+                            },
+                        )
+                    )
+                }
+            ),
+        ),
+    ],
+)
+def test_dict_to_literal_map(python_value, python_types, expected_literal_map):
+    ctx = FlyteContext.current_context()
+
+    assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
