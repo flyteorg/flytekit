@@ -53,7 +53,6 @@ cryptography==3.4.8
     # via
     #   -c requirements.txt
     #   paramiko
-    #   secretstorage
 dataclasses-json==0.5.5
     # via
     #   -c requirements.txt
@@ -118,11 +117,6 @@ importlib-metadata==4.7.1
     #   keyring
 iniconfig==1.1.1
     # via pytest
-jeepney==0.7.1
-    # via
-    #   -c requirements.txt
-    #   keyring
-    #   secretstorage
 jinja2==3.0.1
     # via
     #   -c requirements.txt
@@ -283,10 +277,6 @@ scantree==0.0.1
     # via
     #   -c requirements.txt
     #   dirhash
-secretstorage==3.3.1
-    # via
-    #   -c requirements.txt
-    #   keyring
 six==1.16.0
     # via
     #   -c requirements.txt
