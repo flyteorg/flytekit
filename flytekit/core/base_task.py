@@ -205,7 +205,7 @@ class Task(object):
     def get_input_types(self) -> Dict[str, type]:
         """
         Returns python native types for inputs. In case this is not a python native task (base class) and hence
-        returns a None. we could deduce the type from literal types, but that is not a required excercise
+        returns a None. we could deduce the type from literal types, but that is not a required exercise
         # TODO we could use literal type to determine this
         """
         return None
@@ -527,7 +527,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
         """
         Post execute is called after the execution has completed, with the user_params and can be used to clean-up,
-        or alter the outputs to match the intended tasks outputs. If not overriden, then this function is a No-op
+        or alter the outputs to match the intended tasks outputs. If not overridden, then this function is a No-op
 
         Args:
             rval is returned value from call to execute

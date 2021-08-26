@@ -45,7 +45,7 @@ T = TypeVar("T")
 class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
     """
     This class should be used as the base class for all Tasks that do not have a user defined function body, but have
-    a platform defined execute method. (Execute needs to be overriden). This base class ensures that the module loader
+    a platform defined execute method. (Execute needs to be overridden). This base class ensures that the module loader
     will invoke the right class automatically, by capturing the module name and variable in the module name.
 
     .. code-block: python
@@ -134,7 +134,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 raise ValueError(
                     "TaskFunction cannot be a nested/inner or local function. "
                     "It should be accessible at a module level for Flyte to execute it. Test modules with "
-                    "names begining with `test_` are allowed to have nested tasks. If you want to create your own tasks"
+                    "names beginning with `test_` are allowed to have nested tasks. If you want to create your own tasks"
                     "use the TaskResolverMixin"
                 )
         self._task_function = task_function

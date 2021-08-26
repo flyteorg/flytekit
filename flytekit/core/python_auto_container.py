@@ -138,7 +138,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     def reset_command_fn(self):
         """
         Resets the command which should be used in the container definition of this task to the default arguments.
-        This is useful when the command line is overriden at serialization time.
+        This is useful when the command line is overridden at serialization time.
         """
         self._get_command_fn = self.get_default_command
 

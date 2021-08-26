@@ -142,7 +142,7 @@ def _handle_rpc_error(retry=False):
                             if (retry is False) or i == (max_retries - 1):
                                 raise
                             else:
-                                # Retry: Start with 200ms wait-time and exponentially back-off upto 1 second.
+                                # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
                                 wait_time = min(200 * (2 ** i), max_wait_time)
                                 cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                                 time.sleep(wait_time / 1000)
@@ -475,7 +475,7 @@ class RawSynchronousFlyteClient(object):
     @_handle_rpc_error(retry=True)
     def list_launch_plans_paginated(self, resource_list_request):
         """
-        Lists Launch Plans for a given Identifer (project, domain, name)
+        Lists Launch Plans for a given Identifier (project, domain, name)
 
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanList

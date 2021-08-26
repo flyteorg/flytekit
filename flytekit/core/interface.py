@@ -56,7 +56,7 @@ class Interface(object):
                 This class can be used in two different places. For multivariate-return entities this class is used
                 to rewrap the outputs so that our with_overrides function can work.
                 For manual node creation, it's used during local execution as something that can be dereferenced.
-                See the create_node funciton for more information.
+                See the create_node function for more information.
                 """
 
                 def with_overrides(self, *args, **kwargs):

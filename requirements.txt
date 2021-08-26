@@ -21,11 +21,11 @@ bcrypt==3.2.0
     # via paramiko
 black==21.7b0
     # via papermill
-bleach==4.0.0
+bleach==4.1.0
     # via nbconvert
-boto3==1.18.25
+boto3==1.18.30
     # via sagemaker-training
-botocore==1.21.25
+botocore==1.21.30
     # via
     #   boto3
     #   s3transfer
@@ -46,11 +46,11 @@ click==7.1.2
     #   papermill
 croniter==1.0.15
     # via flytekit
-cryptography==3.4.7
+cryptography==3.4.8
     # via
     #   paramiko
     #   secretstorage
-dataclasses-json==0.5.4
+dataclasses-json==0.5.5
     # via flytekit
 decorator==5.0.9
     # via
@@ -85,7 +85,7 @@ hmsclient==0.1.1
     # via flytekit
 idna==3.2
     # via requests
-importlib-metadata==4.6.4
+importlib-metadata==4.7.1
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
@@ -189,7 +189,7 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-prompt-toolkit==3.0.19
+prompt-toolkit==3.0.20
     # via ipython
 protobuf==3.17.3
     # via
@@ -241,7 +241,7 @@ pyyaml==5.4.1
     # via papermill
 pyzmq==22.2.1
     # via jupyter-client
-regex==2021.8.3
+regex==2021.8.21
     # via
     #   black
     #   docker-image-py
@@ -285,8 +285,6 @@ sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0
     # via flytekit
-stringcase==1.2.0
-    # via dataclasses-json
 tenacity==8.0.1
     # via papermill
 testpath==0.5.0
@@ -301,7 +299,7 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.62.1
+tqdm==4.62.2
     # via papermill
 traitlets==5.0.5
     # via

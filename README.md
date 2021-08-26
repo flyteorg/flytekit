@@ -17,7 +17,7 @@ Python Library for easily authoring, testing, deploying, and interacting with Fl
 
 ## Installation
 
-Flytekit is the core extensible library to author Flyte workflows and tasks and interact with Flyte Backend services. Flyte plugins can be installed separately. 
+Flytekit is the core extensible library to author Flyte workflows and tasks and interact with Flyte Backend services. Flyte plugins can be installed separately.
 
 ### Base Installation
 
