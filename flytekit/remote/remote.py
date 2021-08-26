@@ -16,6 +16,7 @@ from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
+from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 
 try:
@@ -401,6 +402,10 @@ class FlyteRemote(object):
         wf_id = flyte_launch_plan.workflow_id
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         flyte_launch_plan._interface = workflow.interface
+        flyte_launch_plan.guessed_python_interface = Interface(
+            inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
+            outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
+        )
         return flyte_launch_plan
 
     def fetch_workflow_execution(
@@ -586,7 +591,7 @@ class FlyteRemote(object):
 
     def _execute(
         self,
-        flyte_id: Identifier,
+        entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
         project: str,
         domain: str,
@@ -615,7 +620,8 @@ class FlyteRemote(object):
             disable_all = None
 
         with self.remote_context() as ctx:
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs)
+            input_python_types = entity.guessed_python_interface.inputs
+            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, input_python_types)
         try:
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -627,7 +633,7 @@ class FlyteRemote(object):
                 domain,
                 execution_name,
                 ExecutionSpec(
-                    flyte_id,
+                    entity.id,
                     ExecutionMetadata(
                         ExecutionMetadata.ExecutionMode.MANUAL,
                         "placeholder",  # TODO: get principle
@@ -693,7 +699,7 @@ class FlyteRemote(object):
     @execute.register(FlyteLaunchPlan)
     def _(
         self,
-        entity,
+        entity: typing.Union[FlyteTask, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
@@ -712,7 +718,7 @@ class FlyteRemote(object):
             entity, project, domain, entity.id.name, entity.id.version
         )
         return self._execute(
-            entity.id,
+            entity,
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
@@ -749,8 +755,9 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(
             entity, project, domain, entity.id.name, entity.id.version
         )
+        launch_plan = self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version)
         return self.execute(
-            self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version),
+            launch_plan,
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
@@ -780,6 +787,7 @@ class FlyteRemote(object):
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except Exception:
             flyte_task: FlyteTask = self.register(entity, **resolved_identifiers_dict)
+        flyte_task.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_task,
             inputs,
@@ -808,6 +816,7 @@ class FlyteRemote(object):
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
         except Exception:
             flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
+        flyte_workflow.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_workflow,
             inputs,
@@ -836,6 +845,7 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
         except Exception:
             flyte_launchplan: FlyteLaunchPlan = self.register(entity, **resolved_identifiers_dict)
+        flyte_launchplan.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_launchplan,
             inputs,

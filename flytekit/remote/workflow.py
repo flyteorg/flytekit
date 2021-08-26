@@ -4,6 +4,8 @@ from flytekit.common import constants as _constants
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.core.interface import Interface
+from flytekit.core.type_engine import TypeEngine
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier_model
@@ -42,6 +44,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             outputs=output_bindings,
         )
         self._flyte_nodes = nodes
+        self._python_interface = None
 
     @property
     def upstream_entities(self):
@@ -62,6 +65,16 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
     @property
     def flyte_nodes(self) -> List[_nodes.FlyteNode]:
         return self._flyte_nodes
+
+    @property
+    def guessed_python_interface(self) -> Optional[Interface]:
+        return self._python_interface
+
+    @guessed_python_interface.setter
+    def guessed_python_interface(self, value):
+        if self._python_interface is not None:
+            return
+        self._python_interface = value
 
     def get_sub_workflows(self) -> List["FlyteWorkflow"]:
         result = []
@@ -122,7 +135,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
                 current._upstream.append(upstream_node)
 
         # No inputs/outputs specified, see the constructor for more information on the overrides.
-        return cls(
+        wf = cls(
             nodes=list(node_map.values()),
             id=_identifier.Identifier.promote_from_model(base_model.id),
             metadata=base_model.metadata,
@@ -130,6 +143,14 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             interface=_interfaces.TypedInterface.promote_from_model(base_model.interface),
             output_bindings=base_model.outputs,
         )
+
+        if wf.interface is not None:
+            wf.guessed_python_interface = Interface(
+                inputs=TypeEngine.guess_python_types(wf.interface.inputs),
+                outputs=TypeEngine.guess_python_types(wf.interface.outputs),
+            )
+
+        return wf
 
     def __call__(self, *args, **input_map):
         raise NotImplementedError
