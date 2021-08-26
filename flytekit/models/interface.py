@@ -1,7 +1,6 @@
 import typing
 from collections import OrderedDict
 
-import six as _six
 from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
@@ -76,7 +75,7 @@ class VariableMap(_common.FlyteIdlEntity):
         """
         return _interface_pb2.VariableMap(
             variables=[
-                _interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in _six.iteritems(self.variables)
+                _interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl()) for k, v in self.variables.items()
             ]
         )
 
@@ -114,13 +113,13 @@ class TypedInterface(_common.FlyteIdlEntity):
             inputs=_interface_pb2.VariableMap(
                 variables=[
                     _interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl())
-                    for k, v in _six.iteritems(self.inputs)
+                    for k, v in self.inputs.items()
                 ]
             ),
             outputs=_interface_pb2.VariableMap(
                 variables=[
                     _interface_pb2.VariableMapEntry(name=k, var=v.to_flyte_idl())
-                    for k, v in _six.iteritems(self.outputs)
+                    for k, v in self.outputs.items()
                 ]
             ),
         )
@@ -225,8 +224,8 @@ class ParameterMap(_common.FlyteIdlEntity):
         """
         return _interface_pb2.ParameterMap(
             parameters=[
-                _interface_pb2.ParameterMapEntry(name=k, var=v.to_flyte_idl())
-                for k, v in _six.iteritems(self.parameters)
+                _interface_pb2.ParameterMapEntry(name=k, parameter=v.to_flyte_idl())
+                for k, v in self.parameters.items()
             ]
         )
 
@@ -236,4 +235,4 @@ class ParameterMap(_common.FlyteIdlEntity):
         :param flyteidl.core.interface_pb2.ParameterMap pb2_object:
         :rtype: ParameterMap
         """
-        return cls(parameters=OrderedDict((v.name, Parameter.from_flyte_idl(v.var)) for v in pb2_object.parameters))
+        return cls(parameters=OrderedDict((v.name, Parameter.from_flyte_idl(v.parameter)) for v in pb2_object.parameters))

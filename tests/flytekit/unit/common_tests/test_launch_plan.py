@@ -342,7 +342,7 @@ def test_serialize():
     assert s.spec.auth_role.assumable_iam_role == "iam_role"
     assert len(s.spec.default_inputs.parameters) == 1
     assert s.spec.default_inputs.parameters[0].name == "default_input"
-    assert s.spec.default_inputs.parameters[0].var.default.scalar.primitive.integer == 5
+    assert s.spec.default_inputs.parameters[0].parameter.default.scalar.primitive.integer == 5
 
 
 def test_promote_from_model():
