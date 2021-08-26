@@ -31,7 +31,7 @@ cffi==1.14.6
     #   bcrypt
     #   cryptography
     #   pynacl
-cfgv==3.3.0
+cfgv==3.3.1
     # via pre-commit
 charset-normalizer==2.0.4
     # via
@@ -47,12 +47,12 @@ croniter==1.0.15
     # via
     #   -c requirements.txt
     #   flytekit
-cryptography==3.4.7
+cryptography==3.4.8
     # via
     #   -c requirements.txt
     #   paramiko
     #   secretstorage
-dataclasses-json==0.5.4
+dataclasses-json==0.5.5
     # via
     #   -c requirements.txt
     #   flytekit
@@ -110,7 +110,7 @@ idna==3.2
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.6.4
+importlib-metadata==4.7.1
     # via
     #   -c requirements.txt
     #   keyring
@@ -308,10 +308,6 @@ statsd==3.3.0
     # via
     #   -c requirements.txt
     #   flytekit
-stringcase==1.2.0
-    # via
-    #   -c requirements.txt
-    #   dataclasses-json
 texttable==1.6.4
     # via docker-compose
 toml==0.10.2
