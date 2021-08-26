@@ -28,7 +28,8 @@ setup-spark2: install-piptools ## Install requirements
 
 .PHONY: fmt
 fmt: ## Format code with black and isort
-	pre-commit run black --all-files || pre-commit run isort --all-files
+	pre-commit run black --all-files || true
+	pre-commit run isort --all-files || true
 
 .PHONY: lint
 lint: ## Run linters
