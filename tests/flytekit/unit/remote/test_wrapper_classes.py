@@ -100,7 +100,7 @@ def test_upstream():
         return {"a": str(a)}
 
     @task
-    def t2(a: dict) -> str:
+    def t2(a: typing.Dict[str, str]) -> str:
         return " ".join([v for k, v in a.items()])
 
     @task
