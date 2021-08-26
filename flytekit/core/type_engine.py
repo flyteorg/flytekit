@@ -21,6 +21,7 @@ from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.proto_handler import load_type_from_tag
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -277,6 +278,15 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
         dictionary = _MessageToDict(lv.scalar.generic)
         pb_obj = _ParseDict(dictionary, pb_obj)
         return pb_obj
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if (
+            literal_type.simple == SimpleType.STRUCT
+            and literal_type.metadata
+            and literal_type.metadata.get(self.PB_FIELD_KEY, "")
+        ):
+            tag = literal_type.metadata[self.PB_FIELD_KEY]
+            return load_type_from_tag(tag)
 
 
 class TypeEngine(typing.Generic[T]):
