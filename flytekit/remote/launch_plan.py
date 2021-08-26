@@ -1,5 +1,9 @@
+from typing import Optional
+
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.core.interface import Interface
+from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
@@ -11,17 +15,22 @@ from flytekit.remote import interface as _interface
 class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
     """A class encapsulating a remote Flyte launch plan."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, id, *args, **kwargs):
         super(FlyteLaunchPlan, self).__init__(*args, **kwargs)
         # Set all the attributes we expect this class to have
-        self._id = None
+        self._id = id
 
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
 
+        self._python_interface = None
+
     @classmethod
-    def promote_from_model(cls, model: _launch_plan_models.LaunchPlanSpec) -> "FlyteLaunchPlan":
-        return cls(
+    def promote_from_model(
+        cls, id: _identifier.Identifier, model: _launch_plan_models.LaunchPlanSpec
+    ) -> "FlyteLaunchPlan":
+        lp = cls(
+            id=id,
             workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
             default_inputs=_interface_models.ParameterMap(model.default_inputs.parameters),
             fixed_inputs=model.fixed_inputs,
@@ -31,6 +40,14 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
             auth_role=model.auth_role,
             raw_output_data_config=model.raw_output_data_config,
         )
+
+        if lp.interface is not None:
+            lp.guessed_python_interface = Interface(
+                inputs=TypeEngine.guess_python_types(lp.interface.inputs),
+                outputs=TypeEngine.guess_python_types(lp.interface.outputs),
+            )
+
+        return lp
 
     @property
     def id(self) -> _identifier.Identifier:
@@ -67,6 +84,16 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
     @property
     def entity_type_text(self) -> str:
         return "Launch Plan"
+
+    @property
+    def guessed_python_interface(self) -> Optional[Interface]:
+        return self._python_interface
+
+    @guessed_python_interface.setter
+    def guessed_python_interface(self, value):
+        if self._python_interface is not None:
+            return
+        self._python_interface = value
 
     @_exception_scopes.system_entry_point
     def update(self, state: _launch_plan_models.LaunchPlanState):

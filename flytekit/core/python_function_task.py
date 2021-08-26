@@ -114,7 +114,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
-        self._native_interface = transform_signature_to_interface(inspect.signature(task_function))
+        self._native_interface = transform_signature_to_interface(
+            inspect.signature(task_function), Docstring(callable_=task_function)
+        )
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
             task_type=task_type,
@@ -122,7 +124,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             interface=mutated_interface,
             task_config=task_config,
             task_resolver=task_resolver,
-            docstring=Docstring(callable_=task_function),
             **kwargs,
         )
 
@@ -259,7 +260,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
     def dynamic_execute(self, task_function: Callable, **kwargs) -> Any:
         """
-        By the time this function is invoked, the _local_execute function should have unwrapped the Promises and Flyte
+        By the time this function is invoked, the local_execute function should have unwrapped the Promises and Flyte
         literal wrappers so that the kwargs we are working with here are now Python native literal values. This
         function is also expected to return Python native literal values.
 

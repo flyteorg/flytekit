@@ -16,6 +16,9 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
+
+# from flytekit.interfaces.data.data_proxy import FileAccessProvider
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
@@ -23,7 +26,6 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -93,7 +95,7 @@ def test_engine_file_output():
         dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
     )
 
-    fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting")
+    fs = FileAccessProvider(local_sandbox_dir="/tmp/flytetesting", raw_output_prefix="/tmp/flyteraw")
     ctx = context_manager.FlyteContextManager.current_context()
 
     with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
@@ -844,7 +846,7 @@ def test_wf_typed_schema():
     assert result_df.all().all()
 
     df = t2(s=w.as_readonly())
-    assert df is not None
+    df = df.open(override_mode=SchemaOpenMode.READ).all()
     result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
     assert result_df.all().all()
 
@@ -1053,7 +1055,10 @@ def test_environment():
 
 
 def test_resources():
-    @task(requests=Resources(cpu="1"), limits=Resources(cpu="2", mem="400M"))
+    @task(
+        requests=Resources(cpu="1", ephemeral_storage="500Mi"),
+        limits=Resources(cpu="2", mem="400M", ephemeral_storage="501Mi"),
+    )
     def t1(a: int) -> str:
         a = a + 2
         return "now it's " + str(a)
@@ -1080,9 +1085,11 @@ def test_resources():
     ):
         task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
         assert task_spec.template.container.resources.requests == [
-            _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1")
+            _resource_models.ResourceEntry(_resource_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
+            _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1"),
         ]
         assert task_spec.template.container.resources.limits == [
+            _resource_models.ResourceEntry(_resource_models.ResourceName.EPHEMERAL_STORAGE, "501Mi"),
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "2"),
             _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
         ]
@@ -1101,7 +1108,7 @@ def test_wf_explicitly_returning_empty_task():
 
     @workflow
     def my_subwf():
-        return t1()  # This forces the wf _local_execute to handle VoidPromises
+        return t1()  # This forces the wf local_execute to handle VoidPromises
 
     assert my_subwf() is None
 

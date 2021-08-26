@@ -140,7 +140,7 @@ def create_node(
             logger.warning(f"Manual node creation cannot be used in branch logic {entity.name}")
             raise Exception("Being more restrictive for now and disallowing manual node creation in branch logic")
 
-        # This the output of __call__ under local execute conditions which means this is the output of _local_execute
+        # This the output of __call__ under local execute conditions which means this is the output of local_execute
         # which means this is the output of create_task_output with Promises containing values (or a VoidPromise)
         results = entity(**kwargs)
 

@@ -21,7 +21,6 @@ from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import (
@@ -31,13 +30,12 @@ from flytekit.core.context_manager import (
     SerializationSettings,
     get_image_config,
 )
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy
-from flytekit.interfaces.data.s3 import s3proxy as _s3proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -176,7 +174,7 @@ def _dispatch_execute(
     for k, v in output_file_dict.items():
         _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
 
-    ctx.file_access.upload_directory(ctx.execution_state.engine_dir, output_prefix)
+    ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
@@ -186,14 +184,13 @@ def setup_execution(
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
-    cloud_provider = _platform_config.CLOUD_PROVIDER.get()
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     _logging.getLogger().setLevel(log_level)
 
     ctx = FlyteContextManager.current_context()
 
     # Create directories
-    user_workspace_dir = ctx.file_access.local_access.get_random_directory()
+    user_workspace_dir = ctx.file_access.get_random_local_directory()
     _click.echo(f"Using user directory {user_workspace_dir}")
     pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
     from flytekit import __version__ as _api_version
@@ -226,39 +223,18 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
     )
 
-    # This rather ugly condition will be going away with #559. We first check the raw output prefix, and if missing,
-    # we fall back to the logic of checking the cloud provider. The reason we have to check for the existence of the
-    # raw_output_data_prefix arg first is because it may be set to None by execute_task_cmd. That is there to support
-    # the corner case of a really old propeller that is still not filling in the raw output prefix template.
+    # TODO: Remove this check for flytekit 1.0
     if raw_output_data_prefix:
-        if raw_output_data_prefix.startswith("s3:/"):
-            file_access = _data_proxy.FileAccessProvider(
+        try:
+            file_access = FileAccessProvider(
                 local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-                remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
+                raw_output_prefix=raw_output_data_prefix,
             )
-        elif raw_output_data_prefix.startswith("gs:/"):
-            file_access = _data_proxy.FileAccessProvider(
-                local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-                remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
-            )
-        elif raw_output_data_prefix.startswith("file") or raw_output_data_prefix.startswith("/"):
-            # A fake remote using the local disk will automatically be created
-            file_access = _data_proxy.FileAccessProvider(local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get())
-    elif cloud_provider == _constants.CloudProvider.AWS:
-        file_access = _data_proxy.FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            remote_proxy=_s3proxy.AwsS3Proxy(raw_output_data_prefix),
-        )
-    elif cloud_provider == _constants.CloudProvider.GCP:
-        file_access = _data_proxy.FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-            remote_proxy=_gcs_proxy.GCSProxy(raw_output_data_prefix),
-        )
-    elif cloud_provider == _constants.CloudProvider.LOCAL:
-        # A fake remote using the local disk will automatically be created
-        file_access = _data_proxy.FileAccessProvider(local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get())
+        except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
+            _logging.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
+            raise
     else:
-        raise Exception(f"Bad cloud provider {cloud_provider}")
+        raise Exception("No raw output prefix detected. Please upgrade your version of Propeller to 0.4.0 or later.")
 
     with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.

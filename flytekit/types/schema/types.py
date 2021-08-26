@@ -365,7 +365,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             raise AssertionError("Can only covert a literal schema to a FlyteSchema")
 
         def downloader(x, y):
-            ctx.file_access.download_directory(x, y)
+            ctx.file_access.get_data(x, y, is_multipart=True)
 
         return expected_python_type(
             local_path=ctx.file_access.get_random_local_directory(),

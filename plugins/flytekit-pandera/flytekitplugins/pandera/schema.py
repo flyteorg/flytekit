@@ -34,15 +34,20 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             schema = pandera.DataFrameSchema()
         return schema
 
+    @staticmethod
+    def _get_pandas_type(pandera_dtype: pandera.dtypes.DataType):
+        return pandera_dtype.type.type
+
     def _get_col_dtypes(self, t: Type[pandera.typing.DataFrame]):
-        return {k: v.pandas_dtype for k, v in self._pandera_schema(t).columns.items()}
+        return {k: self._get_pandas_type(v.dtype) for k, v in self._pandera_schema(t).columns.items()}
 
     def _get_schema_type(self, t: Type[pandera.typing.DataFrame]) -> SchemaType:
         converted_cols: typing.List[SchemaType.SchemaColumn] = []
         for k, col in self._pandera_schema(t).columns.items():
-            if col.pandas_dtype not in self._SUPPORTED_TYPES:
-                raise AssertionError(f"type {v} is currently not supported by the pandera schema")
-            converted_cols.append(SchemaType.SchemaColumn(name=k, type=self._SUPPORTED_TYPES[col.pandas_dtype]))
+            pandas_type = self._get_pandas_type(col.dtype)
+            if pandas_type not in self._SUPPORTED_TYPES:
+                raise AssertionError(f"type {pandas_type} is currently not supported by the flytekit-pandera plugin")
+            converted_cols.append(SchemaType.SchemaColumn(name=k, type=self._SUPPORTED_TYPES[pandas_type]))
         return SchemaType(columns=converted_cols)
 
     def get_literal_type(self, t: Type[pandera.typing.DataFrame]) -> LiteralType:
@@ -60,7 +65,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             w = PandasSchemaWriter(
                 local_dir=local_dir, cols=self._get_col_dtypes(python_type), fmt=SchemaFormat.PARQUET
             )
-            w.write(python_val)
+            w.write(self._pandera_schema(python_type)(python_val))
             remote_path = ctx.file_access.get_random_remote_directory()
             ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
@@ -73,10 +78,10 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandera.typing.DataFrame]
     ) -> pandera.typing.DataFrame:
         if not (lv and lv.scalar and lv.scalar.schema):
-            raise AssertionError("Can only covert a literal schema to a pandera schema")
+            raise AssertionError("Can only convert a literal schema to a pandera schema")
 
         def downloader(x, y):
-            ctx.file_access.download_directory(x, y)
+            ctx.file_access.get_data(x, y, is_multipart=True)
 
         df = FlyteSchema(
             local_path=ctx.file_access.get_random_local_directory(),

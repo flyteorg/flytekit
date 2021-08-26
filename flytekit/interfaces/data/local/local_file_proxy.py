@@ -27,6 +27,7 @@ class LocalFileProxy(_common_data.DataProxy):
         """
         :param Text sandbox:
         """
+        super().__init__(name="local")
         self._sandbox = sandbox
 
     @property

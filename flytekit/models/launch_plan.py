@@ -199,7 +199,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def auth_role(self):
         """
         The authorization method with which to execute the workflow.
-        :rtype: flytekit.models.common.Auth
+        :rtype: flytekit.models.common.AuthRole
         """
         return self._auth_role
 

@@ -3,12 +3,13 @@ import typing
 from collections import OrderedDict
 
 import mock
+import pytest
 import six
 from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
 
-from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd
+from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd, setup_execution
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import user as user_exceptions
@@ -21,6 +22,8 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
+from flytekit.extras.persistence.gcs_gsutil import GCSPersistence
+from flytekit.extras.persistence.s3_awscli import S3Persistence
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
@@ -183,8 +186,8 @@ def test_backwards_compatible_replacement(mock_legacy_execute_task):
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -212,8 +215,8 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -241,8 +244,8 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -279,8 +282,8 @@ def get_output_collector(results: OrderedDict):
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -316,8 +319,8 @@ def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_d
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -356,8 +359,8 @@ def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_d
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -400,8 +403,8 @@ def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.get_data")
-@mock.patch("flytekit.interfaces.data.data_proxy.FileAccessProvider.upload_directory")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.common.utils.write_proto_to_file")
 def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
@@ -436,3 +439,17 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
         assert ed.error.kind == error_models.ContainerError.Kind.RECOVERABLE
         assert "some system exception" in ed.error.message
         assert ed.error.origin == execution_models.ExecutionError.ErrorKind.SYSTEM
+
+
+def test_setup_bad_prefix():
+    with pytest.raises(TypeError):
+        with setup_execution("qwerty"):
+            ...
+
+
+def test_setup_cloud_prefix():
+    with setup_execution("s3://") as ctx:
+        assert isinstance(ctx.file_access._default_remote, S3Persistence)
+
+    with setup_execution("gs://") as ctx:
+        assert isinstance(ctx.file_access._default_remote, GCSPersistence)

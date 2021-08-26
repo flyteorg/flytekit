@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import typing
 from pathlib import Path
 
@@ -14,6 +15,10 @@ from flytekit.models.types import LiteralType
 T = typing.TypeVar("T")
 
 
+def noop():
+    ...
+
+
 class FlyteDirectory(os.PathLike, typing.Generic[T]):
     """
     .. warning::
@@ -25,13 +30,54 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     Please first read through the comments on the :py:class:`flytekit.types.file.FlyteFile` class as the
     implementation here is similar.
 
-    One thing to note is that the os.PathLike type that comes with Python was used as a stand-in for FlyteFile.
-    That is, if a task returns an os.PathLike, Flyte takes that to mean FlyteFile. There is no easy way to
-    distinguish an os.PathLike where the user means a File and where the user means a Directory. As such, if you
-    want to use a directory, you must declare all types as FlyteDirectory. You'll still be able to return a string
-    literal though instead of a full-fledged FlyteDirectory object assuming the str is a directory.
+    One thing to note is that the ``os.PathLike`` type that comes with Python was used as a stand-in for ``FlyteFile``.
+    That is, if a task's output signature is an ``os.PathLike``, Flyte takes that to mean ``FlyteFile``. There is no
+    easy way to distinguish an ``os.PathLike`` where the user means a File and where the user means a Directory. As
+    such, if you want to use a directory, you must declare all types as ``FlyteDirectory``. You'll still be able to
+    return a string literal though instead of a full-fledged ``FlyteDirectory`` object assuming the str is a directory.
 
-    Use cases as inputs ::
+    **Converting from a Flyte literal value to a Python instance of FlyteDirectory**
+
+    +-----------------------------+------------------------------------------------------------------------------------+
+    | Type of Flyte IDL Literal   |    FlyteDirectory                                                                  |
+    +=============+===============+====================================================================================+
+    | Multipart   | uri matches   | FlyteDirectory object stores the original string                                   |
+    | Blob        | http(s)/s3/gs | path, but points to a local file instead.                                          |
+    |             |               |                                                                                    |
+    |             |               | * [fn] downloader: function that writes to path when open'ed.                      |
+    |             |               | * [fn] download: will trigger download                                             |
+    |             |               | * path: randomly generated local path that will not exist until downloaded         |
+    |             |               | * remote_path: None                                                                |
+    |             |               | * remote_source: original http/s3/gs path                                          |
+    |             |               |                                                                                    |
+    |             +---------------+------------------------------------------------------------------------------------+
+    |             | uri matches   | FlyteDirectory object just wraps the string                                        |
+    |             | /local/path   |                                                                                    |
+    |             |               | * [fn] downloader: noop function                                                   |
+    |             |               | * [fn] download: raises exception                                                  |
+    |             |               | * path: just the given path                                                        |
+    |             |               | * remote_path: None                                                                |
+    |             |               | * remote_source: None                                                              |
+    +-------------+---------------+------------------------------------------------------------------------------------+
+
+    -----------
+
+    **Converting from a Python value (FlyteDirectory, str, or pathlib.Path) to a Flyte literal**
+
+    +-----------------------------------+------------------------------------------------------------------------------+
+    | Type of Python value              | FlyteDirectory                                                               |
+    +===================+===============+==============================================================================+
+    | str or            | path matches  | Blob object is returned with uri set to the given path.                      |
+    | pathlib.Path or   | http(s)/s3/gs | Nothing is uploaded.                                                         |
+    | FlyteDirectory    +---------------+------------------------------------------------------------------------------+
+    |                   | path matches  | Contents of file are uploaded to the Flyte blob store (S3, GCS, etc.), in    |
+    |                   | /local/path   | a bucket determined by the raw_output_data_prefix setting. If                |
+    |                   |               | remote_path is given, then that is used instead of the random path. Blob     |
+    |                   |               | object is returned with uri pointing to the blob store location.             |
+    |                   |               |                                                                              |
+    +-------------------+---------------+------------------------------------------------------------------------------+
+
+    As inputs ::
 
         def t1(in1: FlyteDirectory):
             ...
@@ -68,9 +114,6 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         :param remote_directory: If the user wants to return something and also specify where it should be uploaded to.
         """
 
-        def noop():
-            ...
-
         self._path = path
         self._downloader = downloader or noop
         self._downloaded = False
@@ -81,8 +124,9 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         """
         This function should be called by os.listdir as well.
         """
-        self._downloader()
-        self._downloaded = True
+        if not self._downloaded:
+            self._downloader()
+            self._downloaded = True
         return self._path
 
     @classmethod
@@ -127,6 +171,16 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         """
         return self._remote_source
 
+    def download(self) -> str:
+        if self._downloaded:
+            return self.path
+        if self._downloader is not noop:
+            self._downloader()
+            self._downloaded = True
+            return self.path
+        else:
+            raise ValueError(f"Attempting to trigger download on non-downloadable folder {self}")
+
     def __repr__(self):
         return self._path
 
@@ -164,49 +218,48 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
         remote_directory = None
         should_upload = True
+        meta = BlobMetadata(type=self._blob_type(format=self.get_format(python_type)))
 
         # There are two kinds of literals we handle, either an actual FlyteDirectory, or a string path to a directory.
         # Handle the FlyteDirectory case
         if isinstance(python_val, FlyteDirectory):
             # If the object has a remote source, then we just convert it back.
             if python_val._remote_source is not None:
-                meta = BlobMetadata(type=self._blob_type(format=self.get_format(python_type)))
                 return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=python_val._remote_source)))
 
             source_path = python_val.path
-            if python_val.remote_directory is False:
-                # If the user specified the remote_path to be False, that means no matter what, do not upload
+            # If the user specified the remote_path to be False, that means no matter what, do not upload. Also if the
+            # path given is already a remote path, say https://www.google.com, the concept of uploading to the Flyte
+            # blob store doesn't make sense.
+            if python_val.remote_directory is False or ctx.file_access.is_remote(source_path):
                 should_upload = False
-            else:
-                # Otherwise, if not an "" use the user-specified remote path instead of the random one
-                remote_directory = python_val.remote_directory or None
+
+            # Set the remote destination if one was given instead of triggering a random one below
+            remote_directory = python_val.remote_directory or None
 
         # Handle the string case
-        else:
-            if not (isinstance(python_val, os.PathLike) or isinstance(python_val, str)):
-                raise AssertionError(f"Expected FlyteDirectory or os.PathLike object, received {type(python_val)}")
+        elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
+            source_path = str(python_val)
 
-            source_path = python_val
-            # Only do this check if it's a local directory.
-            if not ctx.file_access.is_remote(source_path):
+            if ctx.file_access.is_remote(source_path):
+                should_upload = False
+            else:
                 p = Path(source_path)
                 if not p.is_dir():
-                    raise AssertionError(f"Expected a directory. {source_path} is not a directory")
-
-        # For remote values, say s3://some/extant/dir/, we will not upload to Flyte's store (S3/GCS)
-        # and just return a literal with a uri equal to the path given
-        if ctx.file_access.is_remote(source_path) or not should_upload:
-            meta = BlobMetadata(type=self._blob_type(format=self.get_format(python_type)))
-            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
-
-        # For local paths, we will upload to the Flyte store (note that for local execution, the remote store is just
-        # a subfolder), unless remote_path=False was given
+                    raise ValueError(f"Expected a directory. {source_path} is not a directory")
         else:
+            raise AssertionError(f"Expected FlyteDirectory or os.PathLike object, received {type(python_val)}")
+
+        # If we're uploading something, that means that the uri should always point to the upload destination.
+        if should_upload:
             if remote_directory is None:
                 remote_directory = ctx.file_access.get_random_remote_directory()
             ctx.file_access.put_data(source_path, remote_directory, is_multipart=True)
-            meta = BlobMetadata(type=self._blob_type(format=self.get_format(python_type)))
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
+
+        # If not uploading, then we can only take the original source path as the uri.
+        else:
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
@@ -214,7 +267,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
         uri = lv.scalar.blob.uri
 
-        # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
+        # This is a local file path, like /usr/local/my_dir, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
             return expected_python_type(uri)
@@ -231,6 +284,14 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         fd._remote_source = uri
 
         return fd
+
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[T]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
+        ):
+            return FlyteDirectory[literal_type.blob.format]
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
 TypeEngine.register(FlyteDirToMultipartBlobTransformer())

@@ -134,6 +134,12 @@ Secrets and SecurityContext
 
 """
 
+import sys
+
+if sys.version_info < (3, 10):
+    from importlib_metadata import entry_points
+else:
+    from importlib.metadata import entry_points
 
 import flytekit.plugins  # This will be deprecated, these are the old plugins, the new plugins live in plugins/
 from flytekit.core.base_sql_task import SQLTask
@@ -141,6 +147,7 @@ from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.map_task import map_task
@@ -153,8 +160,9 @@ from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
+from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
-from flytekit.types import schema
+from flytekit.types import directory, file, schema
 
 __version__ = "0.0.0+develop"
 
@@ -173,3 +181,41 @@ def current_context() -> ExecutionParameters:
     There are some special params, that should be available
     """
     return FlyteContextManager.current_context().execution_state.user_space_params
+
+
+def load_implicit_plugins():
+    """
+    This method allows loading all plugins that have the entrypoint specification. This uses the plugin loading
+    behavior as explained `here <>`_.
+
+    This is an opt in system and plugins that have an implicit loading requirement should add the implicit loading
+    entrypoint specification to their setup.py. The following example shows how we can autoload a module called fsspec
+    (whose init files contains the necessary plugin registration step)
+
+    .. code-block::
+
+        # note the group is always ``flytekit.plugins``
+        setup(
+        ...
+        entry_points={'flytekit.plugins’: 'fsspec=flytekitplugins.fsspec'},
+        ...
+        )
+
+    This works as long as the fsspec module has
+
+    .. code-block::
+
+       # For data persistence plugins
+       DataPersistencePlugins.register_plugin(f"{k}://", FSSpecPersistence, force=True)
+       # OR for type plugins
+       TypeEngine.register(PanderaTransformer())
+       # etc
+
+    """
+    discovered_plugins = entry_points(group="flytekit.plugins")
+    for p in discovered_plugins:
+        p.load()
+
+
+# Load all implicit plugins
+load_implicit_plugins()
