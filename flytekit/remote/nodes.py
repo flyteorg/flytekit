@@ -1,5 +1,5 @@
 import logging as _logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import flytekit
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
@@ -11,6 +11,7 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.utils import _dnsify
 from flytekit.core.promise import NodeOutput
 from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import node_execution as _node_execution_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import execution as _execution_models
@@ -29,9 +30,9 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         upstream_nodes,
         bindings,
         metadata,
-        flyte_task: "flytekit.remote.tasks.task.FlyteTask" = None,
-        flyte_workflow: "flytekit.remote.workflow.FlyteWorkflow" = None,
-        flyte_launch_plan=None,
+        flyte_task: Optional["FlyteTask"] = None,
+        flyte_workflow: Optional["FlyteWorkflow"] = None,
+        flyte_launch_plan: Optional["FlyteLaunchPlan"] = None,
         flyte_branch=None,
         parameter_mapping=True,
     ):
@@ -41,6 +42,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 "An Flyte node must have one underlying entity specified at once.  Received the following "
                 "entities: {}".format(non_none_entities)
             )
+        self._flyte_entity = flyte_task or flyte_workflow or flyte_launch_plan or flyte_branch
 
         workflow_node = None
         if flyte_workflow is not None:
@@ -60,11 +62,16 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         )
         self._upstream = upstream_nodes
 
+    @property
+    def flyte_entity(self) -> Union["FlyteTask", "FlyteWorkflow", "FlyteLaunchPlan"]:
+        return self._flyte_entity
+
     @classmethod
     def promote_from_model(
         cls,
         model: _workflow_model.Node,
         sub_workflows: Optional[Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate]],
+        node_launch_plans: Optional[Dict[_identifier.Identifier, _launch_plan_model.LaunchPlanSpec]],
         tasks: Optional[Dict[_identifier.Identifier, _task_model.TaskTemplate]],
     ) -> "FlyteNode":
         id = model.id
@@ -77,10 +84,16 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             flyte_task_node = _component_nodes.FlyteTaskNode.promote_from_model(model.task_node, tasks)
         elif model.workflow_node is not None:
             flyte_workflow_node = _component_nodes.FlyteWorkflowNode.promote_from_model(
-                model.workflow_node, sub_workflows, tasks
+                model.workflow_node,
+                sub_workflows,
+                node_launch_plans,
+                tasks,
             )
+        # TODO: Implement branch node https://github.com/flyteorg/flyte/issues/1116
         else:
-            raise _system_exceptions.FlyteSystemException("Bad Node model, neither task nor workflow detected.")
+            raise _system_exceptions.FlyteSystemException(
+                f"Bad Node model, neither task nor workflow detected, node: {model}"
+            )
 
         # When WorkflowTemplate models (containing node models) are returned by Admin, they've been compiled with a
         # start node. In order to make the promoted FlyteWorkflow look the same, we strip the start-node text back out.
