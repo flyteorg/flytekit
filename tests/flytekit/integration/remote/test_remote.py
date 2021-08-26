@@ -193,7 +193,7 @@ def test_fetch_execute_launch_plan_list_of_floats(flyteclient, flyte_workflows_r
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.list_float_wf.my_wf", version=f"v{VERSION}")
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(flyte_launch_plan, inputs={"xs": xs}, wait=True)
-    assert execution.outputs["o0"] == "'[42.24, 999.1, 0.0001]"
+    assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
 
 def test_fetch_execute_task_list_of_floats(flyteclient, flyte_workflows_register):
