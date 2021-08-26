@@ -287,6 +287,7 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
         ):
             tag = literal_type.metadata[self.PB_FIELD_KEY]
             return load_type_from_tag(tag)
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
 class TypeEngine(typing.Generic[T]):
