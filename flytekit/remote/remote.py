@@ -402,7 +402,10 @@ class FlyteRemote(object):
         wf_id = flyte_launch_plan.workflow_id
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         flyte_launch_plan._interface = workflow.interface
-        flyte_launch_plan.guessed_python_interface = Interface(inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs), outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs))
+        flyte_launch_plan.guessed_python_interface = Interface(
+            inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
+            outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
+        )
         return flyte_launch_plan
 
     def fetch_workflow_execution(

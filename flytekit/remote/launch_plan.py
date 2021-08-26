@@ -1,9 +1,9 @@
-from flytekit.core.type_engine import TypeEngine
 from typing import Optional
 
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core.interface import Interface
+from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
@@ -26,7 +26,9 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         self._python_interface = None
 
     @classmethod
-    def promote_from_model(cls, id: _identifier.Identifier, model: _launch_plan_models.LaunchPlanSpec) -> "FlyteLaunchPlan":
+    def promote_from_model(
+        cls, id: _identifier.Identifier, model: _launch_plan_models.LaunchPlanSpec
+    ) -> "FlyteLaunchPlan":
         lp = cls(
             id=id,
             workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
@@ -40,7 +42,10 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         )
 
         if lp.interface is not None:
-            lp.guessed_python_interface = Interface(inputs=TypeEngine.guess_python_types(lp.interface.inputs), outputs=TypeEngine.guess_python_types(lp.interface.outputs))
+            lp.guessed_python_interface = Interface(
+                inputs=TypeEngine.guess_python_types(lp.interface.inputs),
+                outputs=TypeEngine.guess_python_types(lp.interface.outputs),
+            )
 
         return lp
 

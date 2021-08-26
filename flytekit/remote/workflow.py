@@ -1,4 +1,3 @@
-from flytekit.core.type_engine import TypeEngine
 from typing import Dict, List, Optional
 
 from flytekit.common import constants as _constants
@@ -6,6 +5,7 @@ from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.core.interface import Interface
+from flytekit.core.type_engine import TypeEngine
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier_model
@@ -145,7 +145,10 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         )
 
         if wf.interface is not None:
-            wf.guessed_python_interface = Interface(inputs=TypeEngine.guess_python_types(wf.interface.inputs), outputs=TypeEngine.guess_python_types(wf.interface.outputs))
+            wf.guessed_python_interface = Interface(
+                inputs=TypeEngine.guess_python_types(wf.interface.inputs),
+                outputs=TypeEngine.guess_python_types(wf.interface.outputs),
+            )
 
         return wf
 
