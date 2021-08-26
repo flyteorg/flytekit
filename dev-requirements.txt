@@ -41,6 +41,8 @@ click==7.1.2
     # via
     #   -c requirements.txt
     #   flytekit
+codespell==2.1.0
+    # via -r dev-requirements.in
 coverage[toml]==5.5
     # via -r dev-requirements.in
 croniter==1.0.15

@@ -6,3 +6,4 @@ mock
 pytest
 mypy
 pre-commit
+codespell

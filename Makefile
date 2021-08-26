@@ -39,6 +39,11 @@ lint: ## Run linters
 	mypy plugins || true
 	pre-commit run --all-files
 
+.PHONY: spellcheck
+spellcheck:  ## Runs a spellchecker over all code and documentation
+codespell:
+	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
+
 .PHONY: test
 test: lint ## Run tests
 	pytest tests/flytekit/unit
