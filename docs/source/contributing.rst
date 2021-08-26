@@ -87,14 +87,32 @@ The Flyte developer experience team has put together an end-to-end testing frame
 
 
 ****************
+Pre-commit hooks
+****************
+
+We use `pre-commit <https://pre-commit.com/>`__ to automate linting and code formatting on every commit. Configured hooks include `black <https://github.com/psf/black>`__, `isort <https://github.com/PyCQA/isort>`__, and `flake8 <https://github.com/PyCQA/flake8>`__ and also linters to check for the validity of yaml files and ensuring that newlines are added to the end of files.
+
+We run all those hooks in CI, but if you want to run them locally on every commit, run `pre-commit install` after installing the dev environment requirements. In case you want to disable `pre-commit` hooks locally, for example, while you're iterating on some feature, run `pre-commit uninstall`. More info in https://pre-commit.com/.
+
+
+****************
 Formatting
 ****************
 
-We use `black <https://github.com/psf/black>`__ and `isort <https://github.com/timothycrosley/isort>`__ to autoformat code. Run the following command to execute the formatters ::
+We use `black <https://github.com/psf/black>`__ and `isort <https://github.com/PyCQA/isort>`__ to autoformat code, in fact they are just git hooks configured in `pre-commit`. Run the following command to execute the formatters ::
 
     source ~/.virtualenvs/flytekit/bin/activate
     make fmt
 
+
+****************
+Spell-checking
+****************
+
+We use `codespell <https://github.com/codespell-project/codespell>`__ to catch spelling mistakes in both code and documentation. Run the following command to spell-check changes ::
+
+    source ~/.virtualenvs/flytekit/bin/activate
+    make spellcheck
 
 ********************************
 Releases and Project Management
