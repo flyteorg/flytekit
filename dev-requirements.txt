@@ -53,12 +53,11 @@ croniter==1.0.15
     # via
     #   -c requirements.txt
     #   flytekit
-cryptography==3.4.7
+cryptography==3.4.8
     # via
     #   -c requirements.txt
     #   paramiko
-    #   secretstorage
-dataclasses-json==0.5.4
+dataclasses-json==0.5.5
     # via
     #   -c requirements.txt
     #   flytekit
@@ -107,7 +106,7 @@ flake8-black==0.2.3
     # via -r dev-requirements.in
 flake8-isort==4.0.0
     # via -r dev-requirements.in
-flyteidl==0.19.25
+git+https://github.com/flyteorg/flyteidl@9acedcb1720f3a5a4b3b668b2eafb698964e324a#egg=flyteidl
     # via
     #   -c requirements.txt
     #   flytekit
@@ -119,7 +118,7 @@ idna==3.2
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.6.4
+importlib-metadata==4.7.1
     # via
     #   -c requirements.txt
     #   keyring
@@ -129,11 +128,6 @@ isort==5.9.3
     # via
     #   -r dev-requirements.in
     #   flake8-isort
-jeepney==0.7.1
-    # via
-    #   -c requirements.txt
-    #   keyring
-    #   secretstorage
 jinja2==3.0.1
     # via
     #   -c requirements.txt
@@ -272,7 +266,7 @@ pyyaml==5.4.1
     # via
     #   -c requirements.txt
     #   docker-compose
-regex==2021.8.3
+regex==2021.8.21
     # via
     #   -c requirements.txt
     #   black
@@ -296,10 +290,6 @@ scantree==0.0.1
     # via
     #   -c requirements.txt
     #   dirhash
-secretstorage==3.3.1
-    # via
-    #   -c requirements.txt
-    #   keyring
 six==1.16.0
     # via
     #   -c requirements.txt
@@ -322,11 +312,7 @@ statsd==3.3.0
     # via
     #   -c requirements.txt
     #   flytekit
-stringcase==1.2.0
-    # via
-    #   -c requirements.txt
-    #   dataclasses-json
-testfixtures==6.18.0
+testfixtures==6.18.1
     # via flake8-isort
 texttable==1.6.4
     # via docker-compose

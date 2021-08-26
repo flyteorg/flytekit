@@ -10,6 +10,10 @@ ansiwrap==0.8.4
     # via papermill
 appdirs==1.4.4
     # via black
+appnope==0.1.2
+    # via
+    #   ipykernel
+    #   ipython
 attrs==20.3.0
     # via
     #   -r requirements-spark2.in
@@ -21,11 +25,11 @@ bcrypt==3.2.0
     # via paramiko
 black==21.7b0
     # via papermill
-bleach==4.0.0
+bleach==4.1.0
     # via nbconvert
-boto3==1.18.25
+boto3==1.18.30
     # via sagemaker-training
-botocore==1.21.25
+botocore==1.21.30
     # via
     #   boto3
     #   s3transfer
@@ -46,11 +50,9 @@ click==7.1.2
     #   papermill
 croniter==1.0.15
     # via flytekit
-cryptography==3.4.7
-    # via
-    #   paramiko
-    #   secretstorage
-dataclasses-json==0.5.4
+cryptography==3.4.8
+    # via paramiko
+dataclasses-json==0.5.5
     # via flytekit
 decorator==5.0.9
     # via
@@ -73,7 +75,7 @@ entrypoints==0.3
     #   jupyter-client
     #   nbconvert
     #   papermill
-flyteidl==0.19.25
+git+https://github.com/flyteorg/flyteidl@9acedcb1720f3a5a4b3b668b2eafb698964e324a#egg=flyteidl
     # via flytekit
 gevent==21.8.0
     # via sagemaker-training
@@ -85,7 +87,7 @@ hmsclient==0.1.1
     # via flytekit
 idna==3.2
     # via requests
-importlib-metadata==4.6.4
+importlib-metadata==4.7.1
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
@@ -99,10 +101,6 @@ ipython-genutils==0.2.0
     #   traitlets
 jedi==0.18.0
     # via ipython
-jeepney==0.7.1
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.0.1
     # via nbconvert
 jmespath==0.10.0
@@ -189,7 +187,7 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-prompt-toolkit==3.0.19
+prompt-toolkit==3.0.20
     # via ipython
 protobuf==3.17.3
     # via
@@ -241,7 +239,7 @@ pyyaml==5.4.1
     # via papermill
 pyzmq==22.2.1
     # via jupyter-client
-regex==2021.8.3
+regex==2021.8.21
     # via
     #   black
     #   docker-image-py
@@ -264,8 +262,6 @@ scantree==0.0.1
     # via dirhash
 scipy==1.7.1
     # via sagemaker-training
-secretstorage==3.3.1
-    # via keyring
 six==1.16.0
     # via
     #   bcrypt
@@ -285,8 +281,6 @@ sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0
     # via flytekit
-stringcase==1.2.0
-    # via dataclasses-json
 tenacity==8.0.1
     # via papermill
 testpath==0.5.0
@@ -301,7 +295,7 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.62.1
+tqdm==4.62.2
     # via papermill
 traitlets==5.0.5
     # via
