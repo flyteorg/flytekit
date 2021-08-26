@@ -1,3 +1,4 @@
+from flytekit.core.type_engine import TypeEngine
 from typing import Dict, List, Optional
 
 from flytekit.common import constants as _constants
@@ -135,7 +136,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
                 current << upstream_node
 
         # No inputs/outputs specified, see the constructor for more information on the overrides.
-        return cls(
+        wf = cls(
             nodes=list(node_map.values()),
             id=_identifier.Identifier.promote_from_model(base_model.id),
             metadata=base_model.metadata,
@@ -143,6 +144,11 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             interface=_interfaces.TypedInterface.promote_from_model(base_model.interface),
             output_bindings=base_model.outputs,
         )
+
+        if wf.interface is not None:
+            wf.guessed_python_interface = Interface(inputs=TypeEngine.guess_python_types(wf.interface.inputs), outputs=TypeEngine.guess_python_types(wf.interface.outputs))
+
+        return wf
 
     def __call__(self, *args, **input_map):
         raise NotImplementedError

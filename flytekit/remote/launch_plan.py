@@ -1,3 +1,4 @@
+from flytekit.core.type_engine import TypeEngine
 from typing import Optional
 
 from flytekit.common.exceptions import scopes as _exception_scopes
@@ -26,7 +27,7 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
 
     @classmethod
     def promote_from_model(cls, model: _launch_plan_models.LaunchPlanSpec) -> "FlyteLaunchPlan":
-        return cls(
+        lp = cls(
             workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
             default_inputs=_interface_models.ParameterMap(model.default_inputs.parameters),
             fixed_inputs=model.fixed_inputs,
@@ -36,6 +37,11 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
             auth_role=model.auth_role,
             raw_output_data_config=model.raw_output_data_config,
         )
+
+        if lp.interface is not None:
+            lp.guessed_python_interface = Interface(inputs=TypeEngine.guess_python_types(lp.interface.inputs), outputs=TypeEngine.guess_python_types(lp.interface.outputs))
+
+        return lp
 
     @property
     def id(self) -> _identifier.Identifier:

@@ -390,6 +390,7 @@ class FlyteRemote(object):
         wf_id = flyte_launch_plan.workflow_id
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         flyte_launch_plan._interface = workflow.interface
+        flyte_launch_plan.guessed_python_interface = Interface(inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs), outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs))
         return flyte_launch_plan
 
     def fetch_workflow_execution(
@@ -701,10 +702,6 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(
             entity, project, domain, entity.id.name, entity.id.version
         )
-        entity.guessed_python_interface = Interface(
-            inputs=TypeEngine.guess_python_types(entity.interface.inputs),
-            outputs=TypeEngine.guess_python_types(entity.interface.outputs),
-        )
         return self._execute(
             entity,
             inputs,
@@ -744,8 +741,6 @@ class FlyteRemote(object):
             entity, project, domain, entity.id.name, entity.id.version
         )
         launch_plan = self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version)
-        if entity.guessed_python_interface is not None:
-            launch_plan.guessed_python_interface = entity.guessed_python_interface
         return self.execute(
             launch_plan,
             inputs,

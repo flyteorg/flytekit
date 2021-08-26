@@ -189,6 +189,14 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     assert execution.outputs["o1"] == "foobarworld"
 
 
+def test_fetch_execute_launch_plan_list_of_floats(flyteclient, flyte_workflows_register):
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.list_float_wf.my_wf", version=f"v{VERSION}")
+    xs: typing.List[float] = [42.24, 999.1, 0.0001]
+    execution = remote.execute(flyte_launch_plan, inputs={"xs": xs}, wait=True)
+    assert execution.outputs["o0"] == "'[42.24, 999.1, 0.0001]"
+
+
 def test_fetch_execute_task_list_of_floats(flyteclient, flyte_workflows_register):
     remote = FlyteRemote.from_config(PROJECT, "development")
     flyte_task = remote.fetch_task(name="workflows.basic.list_float_wf.concat_list", version=f"v{VERSION}")
