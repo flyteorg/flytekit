@@ -39,7 +39,7 @@ Quickstart
    @workflow
    def my_workflow(x: int, y: int) -> int:
       return sum(x=square(z=x), y=square(z=y))
-   
+
    print(f"my_workflow output: {my_workflow(x=1, y=2)}")
 
 

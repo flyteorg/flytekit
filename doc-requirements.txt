@@ -334,7 +334,7 @@ sphinx==4.1.2
     #   sphinx-gallery
     #   sphinx-material
     #   sphinx-prompt
-    #   sphinxcontrib-youtube
+    #   sphinxcontrib-yt
 sphinx-autoapi==1.8.4
     # via -r doc-requirements.in
 sphinx-code-include==1.1.1
@@ -361,7 +361,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxcontrib-youtube==0.1.2
+sphinxcontrib-yt==0.2.2
     # via -r doc-requirements.in
 statsd==3.3.0
     # via flytekit

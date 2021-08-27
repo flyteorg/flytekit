@@ -8,10 +8,6 @@
     # via
     #   -c requirements.txt
     #   pytest-flyte
-appdirs==1.4.4
-    # via
-    #   -c requirements.txt
-    #   black
 attrs==20.3.0
     # via
     #   -c requirements.txt
@@ -19,15 +15,12 @@ attrs==20.3.0
     #   pytest
     #   pytest-docker
     #   scantree
+backports.entry-points-selectable==1.1.0
+    # via virtualenv
 bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
-black==21.7b0
-    # via
-    #   -c requirements.txt
-    #   -r dev-requirements.in
-    #   flake8-black
 certifi==2021.5.30
     # via
     #   -c requirements.txt
@@ -38,6 +31,8 @@ cffi==1.14.6
     #   bcrypt
     #   cryptography
     #   pynacl
+cfgv==3.3.1
+    # via pre-commit
 charset-normalizer==2.0.4
     # via
     #   -c requirements.txt
@@ -45,8 +40,9 @@ charset-normalizer==2.0.4
 click==7.1.2
     # via
     #   -c requirements.txt
-    #   black
     #   flytekit
+codespell==2.1.0
+    # via -r dev-requirements.in
 coverage[toml]==5.5
     # via -r dev-requirements.in
 croniter==1.0.15
@@ -77,6 +73,8 @@ diskcache==5.2.1
     # via
     #   -c requirements.txt
     #   flytekit
+distlib==0.3.2
+    # via virtualenv
 distro==1.6.0
     # via docker-compose
 docker[ssh]==5.0.0
@@ -97,16 +95,9 @@ docstring-parser==0.10
     # via
     #   -c requirements.txt
     #   flytekit
-flake8==3.9.2
-    # via
-    #   -r dev-requirements.in
-    #   flake8-black
-    #   flake8-isort
-flake8-black==0.2.3
-    # via -r dev-requirements.in
-flake8-isort==4.0.0
-    # via -r dev-requirements.in
-git+https://github.com/flyteorg/flyteidl@9acedcb1720f3a5a4b3b668b2eafb698964e324a#egg=flyteidl
+filelock==3.0.12
+    # via virtualenv
+flyteidl==0.19.25
     # via
     #   -c requirements.txt
     #   flytekit
@@ -114,6 +105,8 @@ grpcio==1.39.0
     # via
     #   -c requirements.txt
     #   flytekit
+identify==2.2.13
+    # via pre-commit
 idna==3.2
     # via
     #   -c requirements.txt
@@ -124,10 +117,6 @@ importlib-metadata==4.7.1
     #   keyring
 iniconfig==1.1.1
     # via pytest
-isort==5.9.3
-    # via
-    #   -r dev-requirements.in
-    #   flake8-isort
 jinja2==3.0.1
     # via
     #   -c requirements.txt
@@ -158,8 +147,6 @@ marshmallow-jsonschema==0.12.0
     # via
     #   -c requirements.txt
     #   flytekit
-mccabe==0.6.1
-    # via flake8
 mock==4.0.3
     # via -r dev-requirements.in
 mypy==0.910
@@ -167,13 +154,14 @@ mypy==0.910
 mypy-extensions==0.4.3
     # via
     #   -c requirements.txt
-    #   black
     #   mypy
     #   typing-inspect
 natsort==7.1.1
     # via
     #   -c requirements.txt
     #   flytekit
+nodeenv==1.6.0
+    # via pre-commit
 numpy==1.21.2
     # via
     #   -c requirements.txt
@@ -194,10 +182,13 @@ paramiko==2.7.2
 pathspec==0.9.0
     # via
     #   -c requirements.txt
-    #   black
     #   scantree
+platformdirs==2.2.0
+    # via virtualenv
 pluggy==0.13.1
     # via pytest
+pre-commit==2.14.0
+    # via -r dev-requirements.in
 protobuf==3.17.3
     # via
     #   -c requirements.txt
@@ -212,14 +203,10 @@ pyarrow==3.0.0
     # via
     #   -c requirements.txt
     #   flytekit
-pycodestyle==2.7.0
-    # via flake8
 pycparser==2.20
     # via
     #   -c requirements.txt
     #   cffi
-pyflakes==2.3.1
-    # via flake8
 pynacl==1.4.0
     # via
     #   -c requirements.txt
@@ -266,10 +253,10 @@ pyyaml==5.4.1
     # via
     #   -c requirements.txt
     #   docker-compose
+    #   pre-commit
 regex==2021.8.21
     # via
     #   -c requirements.txt
-    #   black
     #   docker-image-py
 requests==2.26.0
     # via
@@ -303,6 +290,7 @@ six==1.16.0
     #   python-dateutil
     #   responses
     #   scantree
+    #   virtualenv
     #   websocket-client
 sortedcontainers==2.4.0
     # via
@@ -312,20 +300,14 @@ statsd==3.3.0
     # via
     #   -c requirements.txt
     #   flytekit
-testfixtures==6.18.1
-    # via flake8-isort
 texttable==1.6.4
     # via docker-compose
 toml==0.10.2
     # via
     #   coverage
-    #   flake8-black
     #   mypy
+    #   pre-commit
     #   pytest
-tomli==1.2.1
-    # via
-    #   -c requirements.txt
-    #   black
 typing-extensions==3.10.0.0
     # via
     #   -c requirements.txt
@@ -341,6 +323,8 @@ urllib3==1.26.6
     #   flytekit
     #   requests
     #   responses
+virtualenv==20.7.2
+    # via pre-commit
 websocket-client==0.59.0
     # via
     #   docker

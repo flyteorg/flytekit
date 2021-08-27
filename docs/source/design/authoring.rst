@@ -84,7 +84,7 @@ This is the user exception tree. Feel free to raise any of these exception class
 Implementation
 ==============
 For those that want to dig a bit deeper, take a look at the :py:class:`flytekit.common.exceptions.scopes.FlyteScopedException` classes.
-There are also two decorators which you'll find interspersed througout the codebase.
+There are also two decorators which you'll find interspersed throughout the codebase.
 
 .. autofunction:: flytekit.common.exceptions.scopes.system_entry_point
 
