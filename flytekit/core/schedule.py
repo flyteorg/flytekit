@@ -60,9 +60,13 @@ class CronSchedule(_schedule_models.Schedule):
     _OFFSET_PATTERN = _re.compile("([-+]?)P([-+0-9YMWD]+)?(T([-+0-9HMS.,]+)?)?")
 
     def __init__(
-            self, cron_expression: str = None, schedule: str = None, offset: str = None,
-            kickoff_time_input_arg: str = None,
-            cron_expression_type: CronExpressionType = CronExpressionType.EXTENDED):
+        self,
+        cron_expression: str = None,
+        schedule: str = None,
+        offset: str = None,
+        kickoff_time_input_arg: str = None,
+        cron_expression_type: CronExpressionType = CronExpressionType.EXTENDED,
+    ):
         """
         :param str cron_expression: This should be a cron expression in AWS style.
         :param str schedule: This takes a cron alias (see ``_VALID_CRON_ALIASES``) or a croniter parseable schedule.
