@@ -18,7 +18,7 @@ from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
-from flytekit.models.admin import common as admin_common_models
+from flytekit.models.admin import common as admin_common_models, workflow as admin_workflow_models
 
 try:
     from functools import singledispatchmethod
@@ -427,7 +427,7 @@ class FlyteRemote(object):
 
     def _loop_paginated_call(
         self, client_endpoint: typing.Callable, *args, **kwargs
-    ) -> typing.List[typing.Union[Execution, task_models.Task]]:
+    ) -> typing.List[typing.Union[Execution, task_models.Task, admin_workflow_models.Workflow]]:
         results = []
         token = ""
         while True:
@@ -444,16 +444,17 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         limit: typing.Optional[int] = 100,
-    ) -> typing.List[Execution]:
-        return self._loop_paginated_call(
+    ) -> typing.List[FlyteWorkflowExecution]:
+        exec_models = self._loop_paginated_call(
             self.client.list_executions_paginated,
             project or self.default_project,
             domain or self.default_domain,
             limit,
             sort_by=MOST_RECENT_FIRST,
         )
+        return [FlyteWorkflowExecution.promote_from_model(e) for e in exec_models]
 
-    def recent_tasks_by_version(
+    def list_tasks_by_version(
         self,
         version: str,
         project: typing.Optional[str] = None,
@@ -472,7 +473,49 @@ class FlyteRemote(object):
             named_entity_id,
             filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
             limit=limit,
-            sort_by=MOST_RECENT_FIRST,
+        )
+
+    def list_workflows_by_version(
+        self,
+        version: str,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: typing.Optional[int] = 100,
+    ) -> typing.List[admin_workflow_models.Workflow]:
+        if not version:
+            raise ValueError("Must specify a version")
+
+        named_entity_id = common_models.NamedEntityIdentifier(
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+        )
+        admin_workflows = self._loop_paginated_call(
+            self.client.list_workflows_paginated,
+            named_entity_id,
+            filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
+            limit=limit,
+        )
+
+
+    def list_launch_plans_by_version(
+        self,
+        version: str,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: typing.Optional[int] = 100,
+    ) -> typing.List[task_models.Task]:
+        if not version:
+            raise ValueError("Must specify a version")
+
+        named_entity_id = common_models.NamedEntityIdentifier(
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+        )
+        return self._loop_paginated_call(
+            self.client.list_launch_plans_paginated,
+            named_entity_id,
+            filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
+            limit=limit,
         )
 
     ######################

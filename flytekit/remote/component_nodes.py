@@ -130,12 +130,6 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
                     )
                 )
 
-            # If not found for some reason, fetch it from Admin again. The reason there is a warning here but not for
-            # tasks is because sub-workflows should always be passed along. Ideally subworkflows are never even
-            # registered with Admin, so fetching from Admin ideelly doesn't return anything
-            _logging.warning(f"Your subworkflow with id {base_model.reference} is not included in the promote call.")
-            return cls(flyte_workflow=_workflow.FlyteWorkflow.fetch(*fetch_args))
-
         raise _system_exceptions.FlyteSystemException(
-            "Bad workflow node model, neither subworkflow nor launchplan specified."
+            f"Unable to promote WorkflowNode, model {base_model}, with subworkflows {sub_workflows} and tasks {tasks}"
         )
