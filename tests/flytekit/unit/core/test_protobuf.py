@@ -47,3 +47,17 @@ def test_bad_tag():
     with pytest.raises(ValueError):
         lt = LiteralType(simple=SimpleType.STRUCT, metadata={})
         TypeEngine.guess_python_type(lt)
+
+
+def test_workflow():
+    @task
+    def grab_catalog_artifact(artifact_id: str, artifact_name: str) -> catalog_pb2.CatalogArtifactTag:
+        return catalog_pb2.CatalogArtifactTag(artifact_id=artifact_id, name=artifact_name)
+
+    @workflow
+    def wf(artifact_id: str, artifact_name: str) -> catalog_pb2.CatalogArtifactTag:
+        return grab_catalog_artifact(artifact_id=artifact_id, artifact_name=artifact_name)
+
+    catalog_artifact = wf(artifact_id="id-1", artifact_name="some-name")
+    assert catalog_artifact.artifact_id == "id-1"
+    assert catalog_artifact.name == "some-name"
