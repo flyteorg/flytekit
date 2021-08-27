@@ -97,7 +97,7 @@ docstring-parser==0.10
     #   flytekit
 filelock==3.0.12
     # via virtualenv
-flyteidl==0.19.25
+git+https://github.com/flyteorg/flyteidl@9acedcb1720f3a5a4b3b668b2eafb698964e324a#egg=flyteidl
     # via
     #   -c requirements.txt
     #   flytekit
