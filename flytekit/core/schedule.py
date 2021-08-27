@@ -13,12 +13,15 @@ import croniter as _croniter
 from flytekit.models import schedule as _schedule_models
 
 
-# Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.
+# EXTENDED signals the AWS cron expression type
+# https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions
+# STANDARD signals the standard cron expression type https://en.wikipedia.org/wiki/Cron#CRON_expression
 class CronExpressionType(enum.Enum):
     EXTENDED = 1
     STANDARD = 2
 
 
+# Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.
 class CronSchedule(_schedule_models.Schedule):
     """
     Use this when you have a launch plan that you want to run on a cron expression. The syntax currently used for this
@@ -53,12 +56,12 @@ class CronSchedule(_schedule_models.Schedule):
         "@yearly",
     ]
 
-
     # Not a perfect regex but good enough and simple to reason about
     _OFFSET_PATTERN = _re.compile("([-+]?)P([-+0-9YMWD]+)?(T([-+0-9HMS.,]+)?)?")
 
     def __init__(
-        self, cron_expression: str = None, schedule: str = None, offset: str = None, kickoff_time_input_arg: str = None,
+            self, cron_expression: str = None, schedule: str = None, offset: str = None,
+            kickoff_time_input_arg: str = None,
             cron_expression_type: CronExpressionType = CronExpressionType.EXTENDED):
         """
         :param str cron_expression: This should be a cron expression in AWS style.
