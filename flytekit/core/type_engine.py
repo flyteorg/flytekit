@@ -21,6 +21,7 @@ from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -278,6 +279,16 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
         pb_obj = _ParseDict(dictionary, pb_obj)
         return pb_obj
 
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if (
+            literal_type.simple == SimpleType.STRUCT
+            and literal_type.metadata
+            and literal_type.metadata.get(self.PB_FIELD_KEY, "")
+        ):
+            tag = literal_type.metadata[self.PB_FIELD_KEY]
+            return load_type_from_tag(tag)
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
 
 class TypeEngine(typing.Generic[T]):
     """
@@ -407,17 +418,28 @@ class TypeEngine(typing.Generic[T]):
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 
     @classmethod
-    def dict_to_literal_map(cls, ctx: FlyteContext, d: typing.Dict[str, typing.Any]) -> LiteralMap:
+    def dict_to_literal_map(
+        cls,
+        ctx: FlyteContext,
+        d: typing.Dict[str, typing.Any],
+        guessed_python_types: typing.Optional[typing.Dict[str, type]] = None,
+    ) -> LiteralMap:
         """
-        Given a dictionary mapping string keys to python values, convert to a LiteralMap.
+        Given a dictionary mapping string keys to python values and a dictionary containing guessed types for such string keys,
+        convert to a LiteralMap.
         """
+        guessed_python_types = guessed_python_types or {}
         literal_map = {}
         for k, v in d.items():
+            # The guessed type takes precedence over the type returned by the python runtime. This is needed
+            # to account for the type erasure that happens in the case of built-in collection containers, such as
+            # `list` and `dict`.
+            python_type = guessed_python_types.get(k, type(v))
             literal_map[k] = TypeEngine.to_literal(
                 ctx=ctx,
                 python_val=v,
-                python_type=type(v),
-                expected=TypeEngine.to_literal_type(type(v)),
+                python_type=python_type,
+                expected=TypeEngine.to_literal_type(python_type),
             )
         return LiteralMap(literal_map)
 

@@ -38,7 +38,7 @@ run as a :std:ref:`subworkflow <cookbook:sphx_glr_download_auto_core_control_flo
         for i in range(a):
             s.append(t1(a=i))
         return s, 5
-        
+
 Note in the code block that we call the Python ``range`` operator on the input. This is typically not allowed in a
 workflow but it is here. You can even express dependencies between tasks.
 

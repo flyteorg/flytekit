@@ -583,9 +583,9 @@ def _flyte_cli(ctx, host, project, domain, name, insecure):
 @_idl_class_option
 def parse_proto(filename, proto_class):
     _welcome_message()
-    splitted = proto_class.split(".")
-    idl_module = ".".join(splitted[:-1])
-    idl_obj = splitted[-1]
+    split = proto_class.split(".")
+    idl_module = ".".join(split[:-1])
+    idl_obj = split[-1]
     mod = _importlib.import_module(idl_module)
     idl = getattr(mod, idl_obj)
     obj = _load_proto_from_file(idl, filename)
@@ -1272,7 +1272,7 @@ def recover_execution(urn, name, host, insecure):
         - downstream system failures (downstream services)
         - or simply to recover executions that failed because of retry exhaustion and should complete if tried again.
 
-    You can optionally assign a name to the recreated execution you trigger or let the system assing one.
+    You can optionally assign a name to the recreated execution you trigger or let the system assign one.
 
     Usage:
         $ flyte-cli recover-execution -u ex:flyteexamples:development:some-workflow:abc123 -n my_retry_name

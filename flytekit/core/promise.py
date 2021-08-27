@@ -231,7 +231,7 @@ class ComparisonExpression(object):
 class ConjunctionExpression(object):
     """
     A Conjunction Expression is an expression of the form either (A and B) or (A or B).
-    where A, B are two expressions (comparsion or conjunctions) and (and, or) are logical truth operators.
+    where A, B are two expressions (comparison or conjunctions) and (and, or) are logical truth operators.
 
     A conjunctionExpression evaluates to True or False depending on the logical operator and the truth values of
     each of the expressions A & B

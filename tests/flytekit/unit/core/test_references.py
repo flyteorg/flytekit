@@ -95,7 +95,7 @@ def test_ref_task_more():
         assert wf1(in1=["hello", "world"]) == "hello"
 
 
-@reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
+@reference_workflow(project="proj", domain="development", name="wf_name", version="abc")
 def ref_wf1(a: int) -> (str, str):
     ...
 

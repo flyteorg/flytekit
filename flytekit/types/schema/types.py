@@ -362,7 +362,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
         if not (lv and lv.scalar and lv.scalar.schema):
-            raise AssertionError("Can only covert a literal schema to a FlyteSchema")
+            raise AssertionError("Can only convert a literal schema to a FlyteSchema")
 
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)

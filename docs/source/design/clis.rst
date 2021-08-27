@@ -33,4 +33,3 @@ Pyflyte
 Unlike Flyte CLI, think of this CLI as code-aware, but not network-aware (the latter is not entirely true, but it's helpful to think of it that way).
 
 This CLI is what is responsible for the serialization (compilation) step in the registration flow. It will parse through user code, looking for tasks, workflows and launch plans, and compile them down to Protobuf files.
-

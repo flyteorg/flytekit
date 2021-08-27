@@ -10,6 +10,11 @@ certain operations in a python runtime environment.
 Since this section naturally deals with the control plane, this discussion is only relevant for those who have a Flyte
 backend set up and have access to it (a :std:ref:`local sandbox <flyte:deployment-sandbox>` will suffice as well).
 
+The video below features a demo of FlyteRemote, followed by all relevant information to create, fetch and execute FlyteRemote objects.
+
+..  youtube:: Vjukdg8LIh8
+
+
 ***************************
 Create a FlyteRemote Object
 ***************************

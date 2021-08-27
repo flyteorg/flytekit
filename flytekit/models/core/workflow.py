@@ -240,7 +240,7 @@ class Node(_common.FlyteIdlEntity):
         :param NodeMetadata metadata: Extra metadata about the node.
         :param list[flytekit.models.literals.Binding] inputs: Specifies how to bind the underlying
             interface's inputs.  All required inputs specified in the underlying interface must be fulfilled.
-        :param list[Text] upstream_node_ids: Specifies execution depdendency for this node ensuring it will
+        :param list[Text] upstream_node_ids: Specifies execution dependency for this node ensuring it will
             only get scheduled to run after all its upstream nodes have completed. This node will have
             an implicit dependency on any node that appears in inputs field.
         :param list[Alias] output_aliases: A node can define aliases for a subset of its outputs. This

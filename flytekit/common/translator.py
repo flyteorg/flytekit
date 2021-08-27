@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit.common import constants as _common_constants
 from flytekit.common.utils import _dnsify
@@ -329,7 +329,7 @@ def get_serializable_branch_node(
     # We have to iterate through the blocks to convert the nodes from the internal Node type to the Node model type.
     # This was done to avoid having to create our own IfElseBlock object (i.e. condition.py just uses the model
     # directly) even though the node there is of the wrong type (our type instead of the model type).
-    # TODO this should be cleaned up instead of mutation, we probaby should just create a new object
+    # TODO this should be cleaned up instead of mutation, we probably should just create a new object
     first = to_serializable_case(entity_mapping, settings, entity._ifelse_block.case)
     other = to_serializable_cases(entity_mapping, settings, entity._ifelse_block.other)
     else_node_model = None
@@ -397,3 +397,34 @@ def get_serializable(
     # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
     entity_mapping[entity] = cp_entity
     return cp_entity
+
+
+def gather_dependent_entities(
+    serialized: OrderedDict,
+) -> Tuple[
+    Dict[_identifier_model.Identifier, task_models.TaskTemplate],
+    Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec],
+    Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec],
+]:
+    """
+    The ``get_serializable`` function above takes in an ``OrderedDict`` that helps keep track of dependent entities.
+    For example, when serializing a workflow, all its tasks are also serialized. The ordered dict will also contain
+    serialized entities that aren't as useful though, like nodes and branches. This is just a small helper function
+    that will pull out the serialzed tasks, workflows, and launch plans. This function is primarily used for testing.
+
+    :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
+    :return:
+    """
+    task_templates: Dict[_identifier_model.Identifier, task_models.TaskTemplate] = {}
+    workflow_specs: Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec] = {}
+    launch_plan_specs: Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec] = {}
+
+    for cp_entity in serialized.values():
+        if isinstance(cp_entity, task_models.TaskSpec):
+            task_templates[cp_entity.template.id] = cp_entity.template
+        elif isinstance(cp_entity, _launch_plan_models.LaunchPlan):
+            launch_plan_specs[cp_entity.id] = cp_entity.spec
+        elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
+            workflow_specs[cp_entity.template.id] = cp_entity
+
+    return task_templates, workflow_specs, launch_plan_specs
