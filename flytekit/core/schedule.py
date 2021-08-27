@@ -5,6 +5,7 @@
 """
 
 import datetime
+import enum
 import re as _re
 
 import croniter as _croniter
@@ -13,6 +14,11 @@ from flytekit.models import schedule as _schedule_models
 
 
 # Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.
+class CronExpressionType(enum.Enum):
+    EXTENDED = 1
+    STANDARD = 2
+
+
 class CronSchedule(_schedule_models.Schedule):
     """
     Use this when you have a launch plan that you want to run on a cron expression. The syntax currently used for this
@@ -47,12 +53,13 @@ class CronSchedule(_schedule_models.Schedule):
         "@yearly",
     ]
 
+
     # Not a perfect regex but good enough and simple to reason about
     _OFFSET_PATTERN = _re.compile("([-+]?)P([-+0-9YMWD]+)?(T([-+0-9HMS.,]+)?)?")
 
     def __init__(
-        self, cron_expression: str = None, schedule: str = None, offset: str = None, kickoff_time_input_arg: str = None
-    ):
+        self, cron_expression: str = None, schedule: str = None, offset: str = None, kickoff_time_input_arg: str = None,
+            cron_expression_type: CronExpressionType = CronExpressionType.EXTENDED):
         """
         :param str cron_expression: This should be a cron expression in AWS style.
         :param str schedule: This takes a cron alias (see ``_VALID_CRON_ALIASES``) or a croniter parseable schedule.
@@ -77,7 +84,7 @@ class CronSchedule(_schedule_models.Schedule):
         if cron_expression is not None and offset is not None:
             raise AssertionError("Only `schedule` is supported when specifying `offset`.")
 
-        if cron_expression is not None:
+        if cron_expression is not None and cron_expression_type is CronExpressionType.EXTENDED:
             CronSchedule._validate_expression(cron_expression)
 
         if schedule is not None:

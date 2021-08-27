@@ -3,7 +3,7 @@ import datetime as _datetime
 import pytest as _pytest
 
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.schedule import CronSchedule, FixedRate
+from flytekit.core.schedule import CronSchedule, CronExpressionType, FixedRate
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.models import schedule as _schedule_models
@@ -13,6 +13,12 @@ def test_cron():
     obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
     assert obj.kickoff_time_input_arg == "abc"
     assert obj.cron_expression == "* * ? * * *"
+    assert obj == CronSchedule.from_flyte_idl(obj.to_flyte_idl())
+
+def test_cron_standard():
+    obj = CronSchedule("*/1 * * * *", kickoff_time_input_arg="abc", cron_expression_type=CronExpressionType.STANDARD)
+    assert obj.kickoff_time_input_arg == "abc"
+    assert obj.cron_expression == "*/1 * * * *"
     assert obj == CronSchedule.from_flyte_idl(obj.to_flyte_idl())
 
 
