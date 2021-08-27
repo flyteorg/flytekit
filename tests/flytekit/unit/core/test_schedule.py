@@ -15,6 +15,7 @@ def test_cron():
     assert obj.cron_expression == "* * ? * * *"
     assert obj == CronSchedule.from_flyte_idl(obj.to_flyte_idl())
 
+
 def test_cron_standard():
     obj = CronSchedule("*/1 * * * *", kickoff_time_input_arg="abc", cron_expression_type=CronExpressionType.STANDARD)
     assert obj.kickoff_time_input_arg == "abc"
