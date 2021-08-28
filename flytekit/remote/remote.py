@@ -19,7 +19,8 @@ from flytekit.configuration import sdk as sdk_config
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
-from flytekit.models.admin import common as admin_common_models, workflow as admin_workflow_models
+from flytekit.models.admin import common as admin_common_models
+from flytekit.models.admin import workflow as admin_workflow_models
 
 try:
     from functools import singledispatchmethod
@@ -364,6 +365,7 @@ class FlyteRemote(object):
         tasks = {t.template.id: t.template for t in compiled_wf.tasks}
 
         node_launch_plans = {}
+        # TODO: Inspect branch nodes for launch plans
         for node in FlyteWorkflow.get_non_system_nodes(base_model.nodes):
             if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
                 node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
@@ -477,7 +479,7 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         limit: typing.Optional[int] = 100,
-    ) -> typing.List[task_models.Task]:
+    ) -> typing.List[FlyteTask]:
         if not version:
             raise ValueError("Must specify a version")
 
@@ -485,55 +487,13 @@ class FlyteRemote(object):
             project=project or self.default_project,
             domain=domain or self.default_domain,
         )
-        return self._loop_paginated_call(
+        t_models: typing.List[task_models.Task] = self._loop_paginated_call(
             self.client.list_tasks_paginated,
             named_entity_id,
             filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
             limit=limit,
         )
-
-    def list_workflows_by_version(
-        self,
-        version: str,
-        project: typing.Optional[str] = None,
-        domain: typing.Optional[str] = None,
-        limit: typing.Optional[int] = 100,
-    ) -> typing.List[admin_workflow_models.Workflow]:
-        if not version:
-            raise ValueError("Must specify a version")
-
-        named_entity_id = common_models.NamedEntityIdentifier(
-            project=project or self.default_project,
-            domain=domain or self.default_domain,
-        )
-        admin_workflows = self._loop_paginated_call(
-            self.client.list_workflows_paginated,
-            named_entity_id,
-            filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
-            limit=limit,
-        )
-
-
-    def list_launch_plans_by_version(
-        self,
-        version: str,
-        project: typing.Optional[str] = None,
-        domain: typing.Optional[str] = None,
-        limit: typing.Optional[int] = 100,
-    ) -> typing.List[task_models.Task]:
-        if not version:
-            raise ValueError("Must specify a version")
-
-        named_entity_id = common_models.NamedEntityIdentifier(
-            project=project or self.default_project,
-            domain=domain or self.default_domain,
-        )
-        return self._loop_paginated_call(
-            self.client.list_launch_plans_paginated,
-            named_entity_id,
-            filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
-            limit=limit,
-        )
+        return [FlyteTask.promote_from_model(t.closure.compiled_task.template) for t in t_models]
 
     ######################
     # Serialize Entities #

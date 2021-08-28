@@ -3,6 +3,7 @@ from typing import Optional
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
+from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.remote import identifier as _identifier
@@ -63,9 +64,12 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
             t._id = _identifier.Identifier.promote_from_model(base_model.id)
 
         if t.interface is not None:
-            t.guessed_python_interface = Interface(
-                inputs=TypeEngine.guess_python_types(t.interface.inputs),
-                outputs=TypeEngine.guess_python_types(t.interface.outputs),
-            )
+            try:
+                t.guessed_python_interface = Interface(
+                    inputs=TypeEngine.guess_python_types(t.interface.inputs),
+                    outputs=TypeEngine.guess_python_types(t.interface.outputs),
+                )
+            except ValueError:
+                logger.warning(f"Could not infer Python types for FlyteTask {base_model.id}")
 
         return t
