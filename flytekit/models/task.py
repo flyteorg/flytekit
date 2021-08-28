@@ -313,7 +313,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         security_context=None,
         config=None,
         k8s_pod=None,
-        sql=None,
+        sql: _core_task.Sql = None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -336,7 +336,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         :param dict[str, str] config: For plugin tasks this represents additional configuration information to be used
             in tandem with the custom.
         :param K8sPod k8s_pod: Alternative to the container used to execute this task.
-        :param Sql sql: TODO: Add comment
+        :param Sql sql: This is used to execute query in FlytePropeller instead of running container or k8s_pod.
         """
         if (
             (container is not None and k8s_pod is not None)
@@ -433,7 +433,6 @@ class TaskTemplate(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
         """
-        print("\nkevin1 = ", self.sql)
         task_template = _core_task.TaskTemplate(
             id=self.id.to_flyte_idl(),
             type=self.type,
@@ -1020,7 +1019,8 @@ class Sql(_common.FlyteIdlEntity):
         return self._dialect
 
     def to_flyte_idl(self) -> _core_task.Sql:
-        return _core_task.Sql(statement=self.statement, dialect=self.dialect)
+        t = _core_task.Sql(statement=self.statement, dialect=self.dialect)
+        return t
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _core_task.Sql):

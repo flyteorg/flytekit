@@ -113,10 +113,10 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
             ),
         )
 
-    def get_sql(self, settings: SerializationSettings) -> None:
+    def get_sql(self, settings: SerializationSettings) -> _task_models.Sql:
         return None
 
-    def get_container(self, settings: SerializationSettings) -> None:
+    def get_container(self, settings: SerializationSettings) -> _task_models.Container:
         return None
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:

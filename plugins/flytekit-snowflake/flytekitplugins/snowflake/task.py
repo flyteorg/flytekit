@@ -48,7 +48,7 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
         :param name: Name of this task, should be unique in the project
         :param query_template: The actual query to run. We use Flyte's Golang templating format for Query templating.
           Refer to the templating documentation
-        :param task_config: AthenaConfig object
+        :param task_config: SnowflakeConfig object
         :param inputs: Name and type of inputs specified as an ordered dictionary
         :param output_schema_type: If some data is produced by this query, then you can specify the output schema type
         :param kwargs: All other args required by Parent type - SQLTask
