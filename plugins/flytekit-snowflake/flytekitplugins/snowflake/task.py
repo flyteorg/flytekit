@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Type
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.extend import SerializationSettings, SQLTask
+from flytekit.models import task as _task_model
 from flytekit.models.snowflake import SnowflakeQuery
 from flytekit.types.schema import FlyteSchema
 
@@ -13,6 +14,7 @@ class SnowflakeConfig(object):
     """
     SnowflakeConfig should be used to configure a Snowflake Task.
     """
+
     # The account to query against
     account: Optional[str] = None
     # The database to query against
@@ -78,3 +80,7 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
             database=self.task_config.database,
         )
         return MessageToDict(job.to_flyte_idl())
+
+    def get_sql(self, settings: SerializationSettings) -> _task_model.Sql:
+        sql = _task_model.Sql(statement=self.query_template, dialect=_task_model.Sql.Dialect.ANSI)
+        return sql.to_flyte_idl()

@@ -19,8 +19,9 @@ def test_serialization():
     snowflake_task = SnowflakeTask(
         name="flytekit.demo.snowflake_task.query",
         inputs=kwtypes(ds=str),
-        task_config=SnowflakeConfig(account="snowflake", warehouse="my_warehouse",
-                                    schema="my_schema", database="my_database"),
+        task_config=SnowflakeConfig(
+            account="snowflake", warehouse="my_warehouse", schema="my_schema", database="my_database"
+        ),
         query_template=query_template,
         # the schema literal's backend uri will be equal to the value of .raw_output_data
         output_schema_type=FlyteSchema,
@@ -39,11 +40,13 @@ def test_serialization():
         env={},
     )
     task_spec = get_serializable(OrderedDict(), serialization_settings, snowflake_task)
-    assert "{{ .rawOutputDataPrefix" in task_spec.template.custom["statement"]
-    assert "insert overwrite directory" in task_spec.template.custom["statement"]
-    assert "mnist" == task_spec.template.custom["schema"]
-    assert "my_catalog" == task_spec.template.custom["catalog"]
-    assert "my_wg" == task_spec.template.custom["routingGroup"]
+
+    assert "{{ .rawOutputDataPrefix" in task_spec.template.sql.statement
+    assert "insert overwrite directory" in task_spec.template.sql.statement
+    assert task_spec.template.sql.dialect == task_spec.template.sql.Dialect.ANSI
+    assert "my_warehouse" == task_spec.template.custom["warehouse"]
+    assert "my_schema" == task_spec.template.custom["schema"]
+    assert "my_database" == task_spec.template.custom["database"]
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1
 

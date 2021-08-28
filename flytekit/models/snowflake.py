@@ -53,10 +53,10 @@ class SnowflakeQuery(_common.FlyteIdlEntity):
         :rtype: _snowflake.SnowflakeQuery
         """
         return _snowflake.SnowflakeQuery(
-            routing_group=self._account,
-            catalog=self._warehouse,
+            account=self._account,
+            warehouse=self._warehouse,
             schema=self._schema,
-            statement=self._database,
+            database=self._database,
         )
 
     @classmethod
