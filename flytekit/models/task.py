@@ -313,7 +313,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         security_context=None,
         config=None,
         k8s_pod=None,
-        sql: _core_task.Sql = None,
+        sql=None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -343,7 +343,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             or (container is not None and sql is not None)
             or (k8s_pod is not None and sql is not None)
         ):
-            raise ValueError("At most one of container or k8s_pod can be set")
+            raise ValueError("At most one of container, k8s_pod or sql can be set")
         self._id = id
         self._type = type
         self._metadata = metadata

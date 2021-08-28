@@ -282,7 +282,6 @@ def test_pod_task_serialized():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     serialized = get_serializable(OrderedDict(), ssettings, simple_pod_task)
-    print(serialized)
     assert serialized.template.task_type_version == 2
     assert serialized.template.config["primary_container_name"] == "an undefined container"
     assert serialized.template.k8s_pod.metadata.labels == {"label": "foo"}

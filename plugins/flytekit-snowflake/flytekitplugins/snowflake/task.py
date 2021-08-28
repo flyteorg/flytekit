@@ -1,12 +1,14 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
 
-from google.protobuf.json_format import MessageToDict
-
 from flytekit.extend import SerializationSettings, SQLTask
 from flytekit.models import task as _task_model
-from flytekit.models.snowflake import SnowflakeQuery
 from flytekit.types.schema import FlyteSchema
+
+_ACCOUNT_FIELD = "account"
+_DATABASE_FIELD = "database"
+_SCHEMA_FIELD = "schema"
+_WAREHOUSE_FIELD = "warehouse"
 
 
 @dataclass
@@ -71,15 +73,13 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
         )
         self._output_schema_type = output_schema_type
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        # This task is executed using the snowflake handler in the backend.
-        job = SnowflakeQuery(
-            account=self.task_config.account,
-            warehouse=self.task_config.warehouse,
-            schema=self.task_config.schema,
-            database=self.task_config.database,
-        )
-        return MessageToDict(job.to_flyte_idl())
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return {
+            _ACCOUNT_FIELD: self.task_config.account,
+            _DATABASE_FIELD: self.task_config.database,
+            _SCHEMA_FIELD: self.task_config.schema,
+            _WAREHOUSE_FIELD: self.task_config.warehouse,
+        }
 
     def get_sql(self, settings: SerializationSettings) -> _task_model.Sql:
         sql = _task_model.Sql(statement=self.query_template, dialect=_task_model.Sql.Dialect.ANSI)
