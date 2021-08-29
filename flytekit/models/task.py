@@ -1019,8 +1019,7 @@ class Sql(_common.FlyteIdlEntity):
         return self._dialect
 
     def to_flyte_idl(self) -> _core_task.Sql:
-        t = _core_task.Sql(statement=self.statement, dialect=self.dialect)
-        return t
+        return _core_task.Sql(statement=self.statement, dialect=self.dialect)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _core_task.Sql):
