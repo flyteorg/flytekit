@@ -86,7 +86,7 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = _task_model.MPIJob(
-            workers_count=self.task_config.num_workers,
+            num_workers=self.task_config.num_workers,
             num_launcher_replicas=self.task_config.num_launcher_replicas,
             slots=self.task_config.slots,
         )
