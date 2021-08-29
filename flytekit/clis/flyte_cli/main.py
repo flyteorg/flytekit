@@ -1,3 +1,4 @@
+import configparser as _configparser
 import importlib as _importlib
 import os
 import os as _os
@@ -8,6 +9,7 @@ from typing import Callable, Dict, List, Tuple, Union
 import click as _click
 import requests as _requests
 import six as _six
+import yaml
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
@@ -485,6 +487,7 @@ _kubernetes_service_acct_option = _click.option(
 _output_location_prefix_option = _click.option(
     "-o", "--output-location-prefix", help="Custom output location prefix for offloaded types (files/schemas)"
 )
+_output_config_format = _click.option("-o", "--format", type=str, default="ini", help="Output config format (ini/yaml)")
 _files_argument = _click.argument(
     "files",
     type=_click.Path(exists=True),
@@ -1840,7 +1843,6 @@ def _extract_and_register(
     file_paths: List[str],
     patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
 ):
-
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
     flyte_entities_list = _extract_files(project, domain, version, file_paths, patches)
@@ -2318,13 +2320,19 @@ def list_matching_attributes(host, insecure, resource_type):
 @_flyte_cli.command("setup-config", cls=_click.Command)
 @_host_option
 @_insecure_option
-def setup_config(host, insecure):
+@_output_config_format
+def setup_config(host, insecure, format):
     """
     Set-up a default config file.
 
     """
     _welcome_message()
+    if format != "yaml" and format != "ini":
+        _click.secho("Unsupported generate this file format: {} ", format, fg="blue")
+        return
     config_file = _get_config_file_path()
+    if format == "yaml":
+        config_file += ".yaml"
     if _get_user_filepath_home() and _os.path.exists(config_file):
         _click.secho("Config file already exists at {}".format(_tt(config_file)), fg="blue")
         return
@@ -2342,26 +2350,30 @@ def setup_config(host, insecure):
     config_url = _urlparse.urljoin(full_host, "config/v1/flyte_client")
     response = _requests.get(config_url)
     data = response.json()
-    with open(config_file, "w+") as f:
-        f.write("[platform]")
-        f.write("\n")
-        f.write("url={}".format(host))
-        f.write("\n")
-        f.write("insecure={}".format(insecure))
-        f.write("\n\n")
 
-        f.write("[credentials]")
-        f.write("\n")
-        f.write("client_id={}".format(data["client_id"]))
-        f.write("\n")
-        f.write("redirect_uri={}".format(data["redirect_uri"]))
-        f.write("\n")
-        f.write("scopes={}".format(data["scopes"]))
-        f.write("\n")
-        f.write("authorization_metadata_key={}".format(data["authorization_metadata_key"]))
-        f.write("\n")
-        f.write("auth_mode=standard")
-        f.write("\n")
+    platform_config = {"uri": str(host), "insecure": str(insecure)}
+    credentials_config = {
+        "client_id": data["client_id"],
+        "redirect_uri": data["redirect_uri"],
+        "scopes": data["scopes"],
+        "authorization_metadata_key": data["authorization_metadata_key"],
+        "auth_mode": "standard",
+    }
+
+    if format == "ini":
+        with open(config_file, "w+") as f:
+            parser = _configparser.ConfigParser()
+            parser.add_section("platform")
+            for key in platform_config.keys():
+                parser.set("platform", key, platform_config[key])
+            parser.add_section("credentials")
+            for key in credentials_config.keys():
+                parser.set("credentials", key, credentials_config[key])
+            parser.write(f)
+    elif format == "yaml":
+        with open(config_file, "w+") as f:
+            data = {"platform": platform_config, "credentials": credentials_config}
+            yaml.dump(data, f, default_flow_style=False)
     set_flyte_config_file(config_file_path=config_file)
     _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg="blue")
 

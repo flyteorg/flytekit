@@ -1,5 +1,6 @@
 import mock as _mock
 import pytest
+import responses as _responses
 from click.testing import CliRunner as _CliRunner
 
 from flytekit.clis.flyte_cli import main as _main
@@ -105,3 +106,18 @@ def test_activate_project(mock_client):
     result = runner.invoke(_main._flyte_cli, ["activate-project", "-p", "foo", "-h", "a.b.com", "-i"])
     assert result.exit_code == 0
     mock_client().update_project.assert_called_with(_Project.active_project("foo"))
+
+
+@_responses.activate
+def test_setup_config():
+    runner = _CliRunner()
+    data = {
+        "client_id": "123abc123",
+        "redirect_uri": "http://localhost:53593/callback",
+        "scopes": "my_scopes",
+        "authorization_metadata_key": "fake_key",
+    }
+    _responses.add(_responses.GET, "http://flyte.company.com/config/v1/flyte_client", json=data, status=200)
+
+    result = runner.invoke(_main._flyte_cli, ["setup-config", "-h", "flyte.company.com", "-i", "-o", "yaml"])
+    assert result.exit_code == 0

@@ -2,6 +2,8 @@ import abc as _abc
 import configparser as _configparser
 import os as _os
 
+import yaml
+
 from flytekit.common.exceptions import user as _user_exceptions
 
 
@@ -29,7 +31,13 @@ class FlyteConfigurationFile(object):
     def _load_config(self):
         if self._config is None and self._location:
             config = _configparser.ConfigParser()
-            config.read(self._location)
+            file_extension = self._location.split(".")[-1]
+            if file_extension == "yaml" or file_extension == "yml":
+                with open(self._location) as f:
+                    config_dict = yaml.safe_load(f)
+                    config.read_dict(config_dict)
+            else:
+                config.read(self._location)
             if config.has_section("internal"):
                 raise _user_exceptions.FlyteAssertion(
                     "The config file '{}' cannot contain a section for internal "

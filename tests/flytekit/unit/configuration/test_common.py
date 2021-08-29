@@ -11,8 +11,14 @@ def test_file_loader_bad():
         common.CONFIGURATION_SINGLETON.get_string("a", "b")
 
 
-def test_file_loader_good():
+def test_ini_file_loader_good():
     set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
+    assert common.CONFIGURATION_SINGLETON.get_string("sdk", "workflow_packages") == "this.module,that.module"
+    assert common.CONFIGURATION_SINGLETON.get_string("auth", "assumable_iam_role") == "some_role"
+
+
+def test_yaml_file_loader_good():
+    set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.yaml"))
     assert common.CONFIGURATION_SINGLETON.get_string("sdk", "workflow_packages") == "this.module,that.module"
     assert common.CONFIGURATION_SINGLETON.get_string("auth", "assumable_iam_role") == "some_role"
 
