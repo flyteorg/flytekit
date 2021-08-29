@@ -41,7 +41,7 @@ def test_serialization():
     )
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, snowflake_task)
-    print(task_spec)
+
     assert "{{ .rawOutputDataPrefix" in task_spec.template.sql.statement
     assert "insert overwrite directory" in task_spec.template.sql.statement
     assert task_spec.template.sql.dialect == task_spec.template.sql.Dialect.ANSI
