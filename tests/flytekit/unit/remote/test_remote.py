@@ -1,6 +1,7 @@
-import pytest
 import random
 import typing
+
+import pytest
 from mock import MagicMock, patch
 
 from flytekit.models import common as common_models
