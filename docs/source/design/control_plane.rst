@@ -12,7 +12,7 @@ backend set up and have access to it (a :std:ref:`local sandbox <flyte:deploymen
 
 The video below features a demo of FlyteRemote, followed by all relevant information to create, fetch and execute FlyteRemote objects.
 
-..  youtube:: Vjukdg8LIh8
+..  youtube:: 1Dbj3t_1Ltg
 
 
 ***************************
