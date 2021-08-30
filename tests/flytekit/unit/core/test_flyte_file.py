@@ -41,7 +41,7 @@ def test_file_handling_remote_default_wf_input():
         length = t1(fname=fname)
         return length
 
-    assert my_wf._native_interface.inputs_with_defaults["fname"][1] == SAMPLE_DATA
+    assert my_wf.python_interface.inputs_with_defaults["fname"][1] == SAMPLE_DATA
     sample_lp = flytekit.LaunchPlan.create("test_launch_plan", my_wf)
     assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
 

@@ -262,6 +262,8 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     def to_literal(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Literal:
+        if python_val is None:
+            raise AssertionError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
         # TODO Perform assertion here

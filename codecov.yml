@@ -1,3 +1,7 @@
 ignore:
   - "flytekit/bin"
   - "test_*.py"
+  - "tests/flytekit/unit/core/test_node_creation.py"
+  - "flytekit/__init__.py"
+  - "flytekit/extend/__init__.py"
+  - "flytekit/testing/__init__.py"

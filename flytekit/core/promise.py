@@ -306,6 +306,9 @@ class Promise(object):
             self._promise_ready = False
             self._val = None
 
+    def __hash__(self):
+        return hash(id(self))
+
     def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
             return Promise(var=new_var, val=self.val)

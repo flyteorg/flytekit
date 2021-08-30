@@ -287,6 +287,7 @@ class SdkLaunchPlan(
         notification_overrides=None,
         label_overrides=None,
         annotation_overrides=None,
+        auth_role=None,
     ):
         """
         Executes the launch plan and returns the execution identifier.  This version of execution is meant for when
@@ -303,6 +304,7 @@ class SdkLaunchPlan(
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
+        :param flytekit.models.common.AuthRole auth_role:
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
@@ -330,6 +332,7 @@ class SdkLaunchPlan(
                     disable_all=disable_all,
                     labels=label_overrides,
                     annotations=annotation_overrides,
+                    auth_role=auth_role,
                 ),
                 literal_inputs,
             )
