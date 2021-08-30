@@ -111,7 +111,7 @@ idna==3.2
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.7.1
+importlib-metadata==4.8.1
     # via
     #   -c requirements.txt
     #   keyring
@@ -184,10 +184,12 @@ pathspec==0.9.0
     #   -c requirements.txt
     #   scantree
 platformdirs==2.2.0
-    # via virtualenv
-pluggy==0.13.1
+    # via
+    #   -c requirements.txt
+    #   virtualenv
+pluggy==1.0.0
     # via pytest
-pre-commit==2.14.0
+pre-commit==2.14.1
     # via -r dev-requirements.in
 protobuf==3.17.3
     # via
@@ -219,7 +221,7 @@ pyrsistent==0.18.0
     # via
     #   -c requirements.txt
     #   jsonschema
-pytest==6.2.4
+pytest==6.2.5
     # via
     #   -r dev-requirements.in
     #   pytest-docker
@@ -254,7 +256,7 @@ pyyaml==5.4.1
     #   -c requirements.txt
     #   docker-compose
     #   pre-commit
-regex==2021.8.21
+regex==2021.8.28
     # via
     #   -c requirements.txt
     #   docker-image-py
@@ -308,7 +310,7 @@ toml==0.10.2
     #   mypy
     #   pre-commit
     #   pytest
-typing-extensions==3.10.0.0
+typing-extensions==3.10.0.2
     # via
     #   -c requirements.txt
     #   mypy
