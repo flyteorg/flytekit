@@ -10,13 +10,11 @@ alabaster==0.7.12
     # via sphinx
 ansiwrap==0.8.4
     # via papermill
-appdirs==1.4.4
-    # via black
 appnope==0.1.2
     # via
     #   ipykernel
     #   ipython
-astroid==2.7.2
+astroid==2.7.3
     # via sphinx-autoapi
 attrs==21.2.0
     # via
@@ -33,13 +31,13 @@ beautifulsoup4==4.9.3
     #   furo
     #   sphinx-code-include
     #   sphinx-material
-black==21.7b0
+black==21.8b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.18.30
+boto3==1.18.32
     # via sagemaker-training
-botocore==1.21.30
+botocore==1.21.32
     # via
     #   boto3
     #   s3transfer
@@ -109,18 +107,16 @@ idna==3.2
     # via requests
 imagesize==1.2.0
     # via sphinx
-importlib-metadata==4.7.1
+importlib-metadata==4.8.1
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.5
     # via flytekit
-ipython==7.26.0
+ipython==7.27.0
     # via ipykernel
 ipython-genutils==0.2.0
-    # via
-    #   nbformat
-    #   traitlets
+    # via nbformat
 jedi==0.18.0
     # via ipython
 jinja2==3.0.1
@@ -134,7 +130,7 @@ jmespath==0.10.0
     #   botocore
 jsonschema==3.2.0
     # via nbformat
-jupyter-client==7.0.1
+jupyter-client==7.0.2
     # via
     #   ipykernel
     #   nbclient
@@ -218,6 +214,8 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
+platformdirs==2.2.0
+    # via black
 prompt-toolkit==3.0.20
     # via ipython
 protobuf==3.17.3
@@ -277,7 +275,7 @@ pyyaml==5.4.1
     #   sphinx-autoapi
 pyzmq==22.2.1
     # via jupyter-client
-regex==2021.8.21
+regex==2021.8.28
     # via
     #   black
     #   docker-image-py
@@ -383,7 +381,7 @@ tornado==6.1
     #   jupyter-client
 tqdm==4.62.2
     # via papermill
-traitlets==5.0.5
+traitlets==5.1.0
     # via
     #   ipykernel
     #   ipython
@@ -393,8 +391,10 @@ traitlets==5.0.5
     #   nbclient
     #   nbconvert
     #   nbformat
-typing-extensions==3.10.0.0
-    # via typing-inspect
+typing-extensions==3.10.0.2
+    # via
+    #   black
+    #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json
 unidecode==1.2.0
