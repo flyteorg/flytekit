@@ -492,7 +492,7 @@ _output_config_format = _click.option(
     "--format",
     type=_click.Choice(["INI", "YAML"], case_sensitive=False),
     default="INI",
-    help="Output config format " "(ini/yaml)",
+    help="Output config format (INI/YAML)",
 )
 _files_argument = _click.argument(
     "files",
