@@ -64,7 +64,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl@git+https://github.com/flyteorg/flyteidl@9acedcb1720f3a5a4b3b668b2eafb698964e324a#egg=flyteidl",
+        "flyteidl>=0.19.26,<1.0.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",
