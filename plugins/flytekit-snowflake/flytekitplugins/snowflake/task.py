@@ -32,7 +32,7 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
     This is the simplest form of a Snowflake Task, that can be used even for tasks that do not produce any output.
     """
 
-    # This task is executed using the presto handler in the backend.
+    # This task is executed using the snowflake handler in the backend.
     _TASK_TYPE = "snowflake"
 
     def __init__(
