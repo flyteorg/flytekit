@@ -35,18 +35,18 @@ def get_sample_task():
 def test__extract_files(load_mock):
     t = get_sample_task()
     with TemporaryConfiguration(
-            "",
-            internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
+        "",
+        internal_overrides={"image": "myflyteimage:v123", "project": "myflyteproject", "domain": "development"},
     ):
         task_spec = t.serialize()
 
     load_mock.side_effect = [task_spec]
     new_id, entity = _main._extract_pair("a", 1, "myproject", "development", "v", {})
     assert (
-            new_id
-            == _core_identifier.Identifier(
-        _core_identifier.ResourceType.TASK, "myproject", "development", "test_flyte_cli.my_task", "v"
-    ).to_flyte_idl()
+        new_id
+        == _core_identifier.Identifier(
+            _core_identifier.ResourceType.TASK, "myproject", "development", "test_flyte_cli.my_task", "v"
+        ).to_flyte_idl()
     )
     assert task_spec == entity
 

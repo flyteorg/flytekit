@@ -356,7 +356,7 @@ _host_option = _click.option(
     required=not bool(_HOST_URL),
     default=_HOST_URL,
     help="The URL for the Flyte Admin Service. If you intend for this to be consistent, set the FLYTE_PLATFORM_URL "
-         "environment variable to the desired URL and this will not need to be set.",
+    "environment variable to the desired URL and this will not need to be set.",
 )
 _token_option = _click.option(
     "-t",
@@ -418,7 +418,7 @@ _show_io_option = _click.option(
     is_flag=True,
     default=False,
     help="Set this flag to view inputs and outputs.  Pair with the --verbose flag to get the full textual description"
-         " inputs and outputs.",
+    " inputs and outputs.",
 )
 _verbose_option = _click.option(
     "--verbose",
@@ -490,8 +490,7 @@ _output_location_prefix_option = _click.option(
 _output_config_format = _click.option(
     "-o",
     "--format",
-    type=_click.Choice(["INI", "YAML"],
-                       case_sensitive=False),
+    type=_click.Choice(["INI", "YAML"], case_sensitive=False),
     default="INI",
     help="Output config format " "(ini/yaml)",
 )
@@ -518,9 +517,9 @@ class _FlyteSubCommand(_click.Command):
         prefix_args = []
         for param in self.params:
             if (
-                    param.name in type(self)._PASSABLE_ARGS
-                    and param.name in parent.params
-                    and parent.params[param.name] is not None
+                param.name in type(self)._PASSABLE_ARGS
+                and param.name in parent.params
+                and parent.params[param.name] is not None
             ):
                 prefix_args.extend([type(self)._PASSABLE_ARGS[param.name], _six.text_type(parent.params[param.name])])
 
@@ -545,7 +544,7 @@ class _FlyteSubCommand(_click.Command):
     type=str,
     default=None,
     help="[Optional] The host to pass to the sub-command (if applicable).  If set again in the sub-command, "
-         "the sub-command's parameter takes precedence.",
+    "the sub-command's parameter takes precedence.",
 )
 @_click.option(
     *_PROJECT_FLAGS,
@@ -553,7 +552,7 @@ class _FlyteSubCommand(_click.Command):
     type=str,
     default=None,
     help="[Optional] The project to pass to the sub-command (if applicable)  If set again in the sub-command, "
-         "the sub-command's parameter takes precedence.",
+    "the sub-command's parameter takes precedence.",
 )
 @_click.option(
     *_DOMAIN_FLAGS,
@@ -561,7 +560,7 @@ class _FlyteSubCommand(_click.Command):
     type=str,
     default=None,
     help="[Optional] The domain to pass to the sub-command (if applicable)  If set again in the sub-command, "
-         "the sub-command's parameter takes precedence.",
+    "the sub-command's parameter takes precedence.",
 )
 @_click.option(
     *_NAME_FLAGS,
@@ -569,7 +568,7 @@ class _FlyteSubCommand(_click.Command):
     type=str,
     default=None,
     help="[Optional] The name to pass to the sub-command (if applicable)  If set again in the sub-command, "
-         "the sub-command's parameter takes precedence.",
+    "the sub-command's parameter takes precedence.",
 )
 @_insecure_option
 @_click.group("flyte-cli")
@@ -985,17 +984,17 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
 @_sort_by_option
 @_optional_urns_only_option
 def list_launch_plan_versions(
-        project,
-        domain,
-        name,
-        host,
-        insecure,
-        token,
-        limit,
-        show_all,
-        filter,
-        sort_by,
-        urns_only,
+    project,
+    domain,
+    name,
+    host,
+    insecure,
+    token,
+    limit,
+    show_all,
+    filter,
+    sort_by,
+    urns_only,
 ):
     """
     List the versions of all the launch plans under the scope specified by {project, domain}.
@@ -1027,7 +1026,7 @@ def list_launch_plan_versions(
                     nl=False,
                 )
                 if l.spec.entity_metadata.schedule is not None and (
-                        l.spec.entity_metadata.schedule.cron_expression or l.spec.entity_metadata.schedule.rate
+                    l.spec.entity_metadata.schedule.cron_expression or l.spec.entity_metadata.schedule.rate
                 ):
                     _click.echo("{:30} ".format(_render_schedule_expr(l)), nl=False)
                     _click.secho(
@@ -1412,9 +1411,9 @@ def _get_io(node_executions, wf_execution, show_io, verbose):
         uris = [ne.input_uri for ne in node_executions]
         uris.extend([ne.closure.output_uri for ne in node_executions if ne.closure.output_uri is not None])
         if (
-                wf_execution is not None
-                and wf_execution.closure.outputs is not None
-                and wf_execution.closure.outputs.uri is not None
+            wf_execution is not None
+            and wf_execution.closure.outputs is not None
+            and wf_execution.closure.outputs.uri is not None
         ):
             uris.append(wf_execution.closure.outputs.uri)
 
@@ -1748,12 +1747,12 @@ _resource_map = {
 
 
 def _extract_pair(
-        object_file: str,
-        resource_type: int,
-        project: str,
-        domain: str,
-        version: str,
-        patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]],
+    object_file: str,
+    resource_type: int,
+    project: str,
+    domain: str,
+    version: str,
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]],
 ) -> Tuple[
     _identifier_pb2.Identifier,
     Union[_core_tasks_pb2.TaskTemplate, _core_workflow_pb2.WorkflowTemplate, _launch_plan_pb2.LaunchPlanSpec],
@@ -1779,11 +1778,11 @@ def _extract_pair(
 
 
 def _extract_files(
-        project: str,
-        domain: str,
-        version: str,
-        file_paths: List[str],
-        patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
+    project: str,
+    domain: str,
+    version: str,
+    file_paths: List[str],
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
 ):
     """
     :param file_paths:
@@ -1805,7 +1804,7 @@ def _extract_files(
 
 
 def _get_patch_launch_plan_fn(
-        assumable_iam_role: str = None, kubernetes_service_account: str = None, output_location_prefix: str = None
+    assumable_iam_role: str = None, kubernetes_service_account: str = None, output_location_prefix: str = None
 ) -> Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]:
     def patch_launch_plan(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
         """
@@ -1842,13 +1841,13 @@ def _get_patch_launch_plan_fn(
 
 
 def _extract_and_register(
-        host: str,
-        insecure: bool,
-        project: str,
-        domain: str,
-        version: str,
-        file_paths: List[str],
-        patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
+    host: str,
+    insecure: bool,
+    project: str,
+    domain: str,
+    version: str,
+    file_paths: List[str],
+    patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
 ):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
@@ -1884,15 +1883,15 @@ def _extract_and_register(
 @_output_location_prefix_option
 @_files_argument
 def register_files(
-        project,
-        domain,
-        version,
-        host,
-        insecure,
-        assumable_iam_role,
-        kubernetes_service_account,
-        output_location_prefix,
-        files,
+    project,
+    domain,
+    version,
+    host,
+    insecure,
+    assumable_iam_role,
+    kubernetes_service_account,
+    output_location_prefix,
+    files,
 ):
     """
     Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
@@ -1934,7 +1933,7 @@ def register_files(
     *_VERSION_FLAGS,
     required=False,
     help="Version to register entities with. This is normally computed deterministically from your code, but you can "
-         "override that here",
+    "override that here",
 )
 @_host_option
 @_insecure_option
@@ -1943,24 +1942,24 @@ def register_files(
     "--dest-dir",
     type=str,
     help="[Optional] The output directory for code which is downloaded during fast registration, "
-         "if the current working directory at the time of installation is not desired",
+    "if the current working directory at the time of installation is not desired",
 )
 @_assumable_iam_role_option
 @_kubernetes_service_acct_option
 @_output_location_prefix_option
 @_files_argument
 def fast_register_files(
-        project,
-        domain,
-        version,
-        host,
-        insecure,
-        additional_distribution_dir,
-        dest_dir,
-        assumable_iam_role,
-        kubernetes_service_account,
-        output_location_prefix,
-        files,
+    project,
+    domain,
+    version,
+    host,
+    insecure,
+    additional_distribution_dir,
+    dest_dir,
+    assumable_iam_role,
+    kubernetes_service_account,
+    output_location_prefix,
+    files,
 ):
     """
     Given a list of files, this will (after sorting the input list), attempt to register them against Flyte Admin.
