@@ -1,3 +1,5 @@
+import random
+
 import pytest
 from mock import MagicMock, patch
 
@@ -195,3 +197,28 @@ def test_underscore_execute_fall_back_remote_attributes(mock_insecure, mock_url,
         project="proj",
         domain="dev",
     )
+
+
+def _get_random_list():
+    rand_ints = [random.randint(0, 10) for x in range(0, 10)]
+
+    def rand_iterator(token):
+        if token == "":
+            return [rand_ints[0]], "1"
+
+        token_int = int(token)
+        if token_int == len(rand_ints):
+            return [], None  # make the iterator stop
+        else:
+            return [rand_ints[token_int]], f"{token_int + 1}"
+
+    return rand_iterator
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_looper(mock_client):
+    remote = FlyteRemote.from_config("p1", "d1")
+
+    looped = _get_random_list()
+    ll = remote._loop_paginated_call(looped)
+    assert len(ll) == 10
