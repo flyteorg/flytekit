@@ -1,9 +1,6 @@
 import random
-import typing
 
 import pytest
-from mock import MagicMock, patch
-
 from flytekit.models import common as common_models
 from flytekit.models.admin.workflow import Workflow
 from flytekit.models.core.identifier import (
@@ -20,6 +17,7 @@ from flytekit.models.task import Task
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote import FlyteWorkflow
 from flytekit.remote.remote import FlyteRemote
+from mock import MagicMock, patch
 
 CLIENT_METHODS = {
     ResourceType.WORKFLOW: "list_workflows_paginated",
