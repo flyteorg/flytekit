@@ -113,9 +113,6 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
             ),
         )
 
-    def get_sql(self, settings: SerializationSettings) -> _task_models.Sql:
-        return None
-
     def get_container(self, settings: SerializationSettings) -> _task_models.Container:
         return None
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Type
+from typing import Dict, Optional, Type
 
 from flytekit.extend import SerializationSettings, SQLTask
 from flytekit.models import task as _task_model
@@ -81,6 +81,6 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
             _WAREHOUSE_FIELD: self.task_config.warehouse,
         }
 
-    def get_sql(self, settings: SerializationSettings) -> _task_model.Sql:
+    def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
         sql = _task_model.Sql(statement=self.query_template, dialect=_task_model.Sql.Dialect.ANSI)
         return sql

@@ -286,9 +286,9 @@ class Task(object):
         """
         return None
 
-    def get_sql(self, settings: SerializationSettings) -> _task_model.Sql:
+    def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
         """
-        Returns the kubernetes pod definition (if any) that is used to run the task on hosted Flyte.
+        Returns the Sql definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
