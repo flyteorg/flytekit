@@ -532,8 +532,8 @@ class _FlyteSubCommand(_click.Command):
     required=False,
     type=str,
     default=None,
-    help="[Optional] The config to pass to the sub-command (if applicable).  If set again in the sub-command, "
-    "the sub-command's parameter takes precedence.",
+    help="[Optional] The filepath to the config file to pass to the sub-command (if applicable)."
+    "  If set again in the sub-command, the sub-command's parameter takes precedence.",
 )
 @_click.option(
     *_HOST_FLAGS,
