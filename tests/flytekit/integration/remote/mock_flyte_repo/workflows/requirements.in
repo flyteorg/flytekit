@@ -1,4 +1,4 @@
-flytekit>=0.17.0b0
+flytekit>=0.22.0b6
 wheel
 matplotlib
 opencv-python
