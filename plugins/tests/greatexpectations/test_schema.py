@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import typing
 
 import pandas as pd
 import pytest
