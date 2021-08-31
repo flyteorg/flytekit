@@ -340,7 +340,9 @@ def test_serialize():
         == _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "p", "d", "n", "v").to_flyte_idl()
     )
     assert s.spec.auth_role.assumable_iam_role == "iam_role"
-    assert s.spec.default_inputs.parameters["default_input"].default.scalar.primitive.integer == 5
+    assert len(s.spec.default_inputs.parameters) == 1
+    assert s.spec.default_inputs.parameters[0].name == "default_input"
+    assert s.spec.default_inputs.parameters[0].parameter.default.scalar.primitive.integer == 5
 
 
 def test_promote_from_model():

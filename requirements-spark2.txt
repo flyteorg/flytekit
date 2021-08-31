@@ -73,7 +73,7 @@ entrypoints==0.3
     #   jupyter-client
     #   nbconvert
     #   papermill
-flyteidl==0.19.25
+flyteidl==0.20.1
     # via flytekit
 gevent==21.8.0
     # via sagemaker-training
@@ -183,7 +183,7 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-platformdirs==2.2.0
+platformdirs==2.3.0
     # via black
 prompt-toolkit==3.0.20
     # via ipython
