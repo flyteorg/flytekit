@@ -105,3 +105,15 @@ def test_activate_project(mock_client):
     result = runner.invoke(_main._flyte_cli, ["activate-project", "-p", "foo", "-h", "a.b.com", "-i"])
     assert result.exit_code == 0
     mock_client().update_project.assert_called_with(_Project.active_project("foo"))
+
+
+def test_flyte_cli():
+    runner = _CliRunner()
+    result = runner.invoke(_main._flyte_cli, ["activate-project", "-p", "foo", "-i"])
+    assert "Using default config file at" in result.output
+    result = runner.invoke(_main._flyte_cli, ["-c", "~/.flyte/config", "activate-project", "-i"])
+    assert "Config file not found at ~/.flyte/config" in result.output
+    with _mock.patch("os.path.exists") as mock_exists:
+        mock_exists.return_value = True
+        result = runner.invoke(_main._flyte_cli, ["-c", "~/.flyte/config", "activate-project", "-i"])
+        assert "Using config file at ~/.flyte/config" in result.output
