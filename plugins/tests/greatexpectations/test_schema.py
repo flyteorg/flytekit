@@ -75,7 +75,7 @@ def test_ge_schema_multiple_args():
     @task
     def get_file_name(
         dataset_one: GreatExpectationsType[str, ge_config_one], dataset_two: GreatExpectationsType[str, ge_config_two]
-    ) -> (int, int):
+    ) -> typing.Tuple[int, int]:
         df_one = pd.read_csv(os.path.join("data", dataset_one))
         df_two = pd.read_csv(os.path.join("data", dataset_two))
         return len(df_one), len(df_two)
@@ -83,7 +83,7 @@ def test_ge_schema_multiple_args():
     @workflow
     def wf(
         dataset_one: str = "yellow_tripdata_sample_2019-01.csv", dataset_two: str = "yellow_tripdata_sample_2019-02.csv"
-    ) -> (int, int):
+    ) -> typing.Tuple[int, int]:
         return get_file_name(dataset_one=dataset_one, dataset_two=dataset_two)
 
     assert wf() == (10000, 10000)

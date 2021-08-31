@@ -47,7 +47,7 @@ def test_to_confirm_that_cache_keys_include_function_name():
         return n + 1
 
     @workflow
-    def wf(n: int) -> (int, int):
+    def wf(n: int) -> typing.Tuple[int, int]:
         n_f1 = f1(n=n)
         n_f2 = f2(n=n)
         return n_f1, n_f2

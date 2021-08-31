@@ -341,18 +341,18 @@ def test_serialization_nested_subwf():
         return a + 2
 
     @workflow
-    def leaf_subwf(a: int = 42) -> (int, int):
+    def leaf_subwf(a: int = 42) -> ().Tuple[int, int]:
         x = t1(a=a)
         u = t1(a=x)
         return x, u
 
     @workflow
-    def middle_subwf() -> (int, int):
+    def middle_subwf() -> typing.Tuple[int, int]:
         s1, s2 = leaf_subwf(a=50)
         return s2, s2
 
     @workflow
-    def parent_wf() -> (int, int, int, int):
+    def parent_wf() -> typing.Tuple[int, int, int, int]:
         m1, m2 = middle_subwf()
         l1, l2 = leaf_subwf()
         return m1, m2, l1, l2

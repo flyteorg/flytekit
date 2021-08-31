@@ -361,7 +361,7 @@ def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[_core_cond.Operand
     return _core_cond.Operand(primitive=v.scalar.primitive), None
 
 
-def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.ComparisonExpression, typing.List[Promise]):
+def transform_to_comp_expr(expr: ComparisonExpression) -> Tuple[_core_cond.ComparisonExpression, typing.List[Promise]]:
     o_lhs, b_lhs = transform_to_operand(expr.lhs)
     o_rhs, b_rhs = transform_to_operand(expr.rhs)
     return (
@@ -372,7 +372,7 @@ def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.Comparison
 
 def transform_to_boolexpr(
     expr: Union[ComparisonExpression, ConjunctionExpression]
-) -> (_core_cond.BooleanExpression, typing.List[Promise]):
+) -> Tuple[_core_cond.BooleanExpression, typing.List[Promise]]:
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)
         return _core_cond.BooleanExpression(conjunction=cexpr), promises
@@ -380,13 +380,13 @@ def transform_to_boolexpr(
     return _core_cond.BooleanExpression(comparison=cexpr), promises
 
 
-def to_case_block(c: Case) -> (Union[_core_wf.IfBlock], typing.List[Promise]):
+def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
     expr, promises = transform_to_boolexpr(c.expr)
     n = c.output_promise.ref.node
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
-def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlock, typing.List[Binding]):
+def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfElseBlock, typing.List[Binding]]:
     if len(cs.cases) == 0:
         raise AssertionError("Illegal Condition block, with no if-else cases")
     if len(cs.cases) < 2:
@@ -414,7 +414,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     )
 
 
-def to_branch_node(name: str, cs: ConditionalSection) -> (BranchNode, typing.List[Promise]):
+def to_branch_node(name: str, cs: ConditionalSection) -> Tuple[BranchNode, typing.List[Promise]]:
     blocks, promises = to_ifelse_block(name, cs)
     return BranchNode(name=name, ifelse_block=blocks), promises
 
