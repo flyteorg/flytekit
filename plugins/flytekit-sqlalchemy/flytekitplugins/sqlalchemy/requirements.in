@@ -1,2 +1,2 @@
-flytekit>=0.20.1
+flytekit>=0.22.0b6
 sqlalchemy
