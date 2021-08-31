@@ -18,6 +18,9 @@ from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
+from flytekit.models import filters as filter_models
+from flytekit.models.admin import common as admin_common_models
+from flytekit.models.admin import workflow as admin_workflow_models
 
 try:
     from functools import singledispatchmethod
@@ -39,9 +42,11 @@ from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
+from flytekit.models import task as task_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.execution import (
+    Execution,
     ExecutionMetadata,
     ExecutionSpec,
     NodeExecutionGetDataResponse,
@@ -58,6 +63,8 @@ from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.remote.workflow_execution import FlyteWorkflowExecution
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
+
+MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
 
 
 @dataclass
@@ -358,6 +365,7 @@ class FlyteRemote(object):
         tasks = {t.template.id: t.template for t in compiled_wf.tasks}
 
         node_launch_plans = {}
+        # TODO: Inspect branch nodes for launch plans
         for node in FlyteWorkflow.get_non_system_nodes(base_model.nodes):
             if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
                 node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
@@ -431,6 +439,61 @@ class FlyteRemote(object):
                 )
             )
         )
+
+    ######################
+    #  Listing Entities  #
+    ######################
+
+    def _loop_paginated_call(
+        self, client_endpoint: typing.Callable, *args, **kwargs
+    ) -> typing.List[typing.Union[Execution, task_models.Task, admin_workflow_models.Workflow]]:
+        results = []
+        token = ""
+        while True:
+            execs, next_token = client_endpoint(*args, token=token, **kwargs)
+            results.extend(execs)
+
+            if not next_token:
+                break
+            token = next_token
+        return results
+
+    def recent_executions(
+        self,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: typing.Optional[int] = 100,
+    ) -> typing.List[FlyteWorkflowExecution]:
+        exec_models = self._loop_paginated_call(
+            self.client.list_executions_paginated,
+            project or self.default_project,
+            domain or self.default_domain,
+            limit,
+            sort_by=MOST_RECENT_FIRST,
+        )
+        return [FlyteWorkflowExecution.promote_from_model(e) for e in exec_models]
+
+    def list_tasks_by_version(
+        self,
+        version: str,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: typing.Optional[int] = 100,
+    ) -> typing.List[FlyteTask]:
+        if not version:
+            raise ValueError("Must specify a version")
+
+        named_entity_id = common_models.NamedEntityIdentifier(
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+        )
+        t_models: typing.List[task_models.Task] = self._loop_paginated_call(
+            self.client.list_tasks_paginated,
+            named_entity_id,
+            filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
+            limit=limit,
+        )
+        return [FlyteTask.promote_from_model(t.closure.compiled_task.template) for t in t_models]
 
     ######################
     # Serialize Entities #

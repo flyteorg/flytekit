@@ -1,6 +1,5 @@
 import typing
 
-import six as _six
 from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
@@ -114,7 +113,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         return (
             [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
-            _six.text_type(identifier_list.token),
+            str(identifier_list.token),
         )
 
     def list_tasks_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
@@ -159,7 +158,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             pb.id.resource_type = _identifier.ResourceType.TASK
         return (
             [_task.Task.from_flyte_idl(task_pb2) for task_pb2 in task_list.tasks],
-            _six.text_type(task_list.token),
+            str(task_list.token),
         )
 
     def get_task(self, id):
@@ -243,7 +242,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         return (
             [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
-            _six.text_type(identifier_list.token),
+            str(identifier_list.token),
         )
 
     def list_workflows_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
@@ -288,7 +287,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             pb.id.resource_type = _identifier.ResourceType.WORKFLOW
         return (
             [_workflow.Workflow.from_flyte_idl(wf_pb2) for wf_pb2 in wf_list.workflows],
-            _six.text_type(wf_list.token),
+            str(wf_list.token),
         )
 
     def get_workflow(self, id):
@@ -398,7 +397,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         return (
             [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
-            _six.text_type(identifier_list.token),
+            str(identifier_list.token),
         )
 
     def list_launch_plans_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
@@ -443,7 +442,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             pb.id.resource_type = _identifier.ResourceType.LAUNCH_PLAN
         return (
             [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in lp_list.launch_plans],
-            _six.text_type(lp_list.token),
+            str(lp_list.token),
         )
 
     def list_active_launch_plans_paginated(self, project, domain, limit=100, token=None, sort_by=None):
@@ -487,7 +486,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             pb.id.resource_type = _identifier.ResourceType.LAUNCH_PLAN
         return (
             [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in lp_list.launch_plans],
-            _six.text_type(lp_list.token),
+            str(lp_list.token),
         )
 
     def update_launch_plan(self, id, state):
@@ -634,7 +633,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         return (
             [_execution.Execution.from_flyte_idl(pb) for pb in exec_list.executions],
-            _six.text_type(exec_list.token),
+            str(exec_list.token),
         )
 
     def terminate_execution(self, id, cause):
@@ -723,7 +722,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         return (
             [_node_execution.NodeExecution.from_flyte_idl(e) for e in exec_list.node_executions],
-            _six.text_type(exec_list.token),
+            str(exec_list.token),
         )
 
     def list_node_executions_for_task_paginated(
@@ -756,7 +755,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         return (
             [_node_execution.NodeExecution.from_flyte_idl(e) for e in exec_list.node_executions],
-            _six.text_type(exec_list.token),
+            str(exec_list.token),
         )
 
     ####################################################################################################################
@@ -818,7 +817,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         return (
             [_task_execution.TaskExecution.from_flyte_idl(e) for e in exec_list.task_executions],
-            _six.text_type(exec_list.token),
+            str(exec_list.token),
         )
 
     ####################################################################################################################
@@ -883,7 +882,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         return (
             [_project.Project.from_flyte_idl(pb) for pb in projects.projects],
-            _six.text_type(projects.token),
+            str(projects.token),
         )
 
     ####################################################################################################################
