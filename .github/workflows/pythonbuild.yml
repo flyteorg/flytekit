@@ -35,7 +35,6 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         make setup${{ matrix.spark-version-suffix }}
         make -C plugins install-all-dev
-        make setup${{ matrix.spark-version-suffix }}
         pip freeze
     - name: Lint
       run: |
