@@ -4,7 +4,7 @@ PLUGIN_NAME = "snowflake"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.21.5,<1.0.0"]
+plugin_requires = ["flytekit>=0.22.0,<1.0.0"]
 
 __version__ = "0.0.0+develop"
 
