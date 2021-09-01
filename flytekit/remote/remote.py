@@ -444,28 +444,14 @@ class FlyteRemote(object):
     #  Listing Entities  #
     ######################
 
-    def _loop_paginated_call(
-        self, client_endpoint: typing.Callable, *args, **kwargs
-    ) -> typing.List[typing.Union[Execution, task_models.Task, admin_workflow_models.Workflow]]:
-        results = []
-        token = ""
-        while True:
-            execs, next_token = client_endpoint(*args, token=token, **kwargs)
-            results.extend(execs)
-
-            if not next_token:
-                break
-            token = next_token
-        return results
-
     def recent_executions(
         self,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         limit: typing.Optional[int] = 100,
     ) -> typing.List[FlyteWorkflowExecution]:
-        exec_models = self._loop_paginated_call(
-            self.client.list_executions_paginated,
+        # Ignore token for now
+        exec_models, _ = self.client.list_executions_paginated(
             project or self.default_project,
             domain or self.default_domain,
             limit,
@@ -487,8 +473,8 @@ class FlyteRemote(object):
             project=project or self.default_project,
             domain=domain or self.default_domain,
         )
-        t_models: typing.List[task_models.Task] = self._loop_paginated_call(
-            self.client.list_tasks_paginated,
+        # Ignore token for now
+        t_models, _ = self.client.list_tasks_paginated(
             named_entity_id,
             filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
             limit=limit,

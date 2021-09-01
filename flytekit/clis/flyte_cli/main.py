@@ -686,6 +686,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
             break
         if not next_token:
             break
+        print(f"Token {next_token}")
         token = next_token
     _click.echo("")
 
