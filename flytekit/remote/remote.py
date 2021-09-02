@@ -20,7 +20,6 @@ from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
 from flytekit.models.admin import common as admin_common_models
-from flytekit.models.admin import workflow as admin_workflow_models
 
 try:
     from functools import singledispatchmethod
@@ -42,11 +41,9 @@ from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
-from flytekit.models import task as task_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.execution import (
-    Execution,
     ExecutionMetadata,
     ExecutionSpec,
     NodeExecutionGetDataResponse,
