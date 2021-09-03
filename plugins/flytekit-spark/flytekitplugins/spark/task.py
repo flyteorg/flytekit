@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 from google.protobuf.json_format import MessageToDict
+from pyspark.sql import SparkSession
 
 from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
@@ -87,7 +88,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             task_function=task_function,
             **kwargs,
         )
-        self.sess = None
+        self.sess: Optional[SparkSession] = None
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = _task_model.SparkJob(

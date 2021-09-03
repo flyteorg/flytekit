@@ -270,15 +270,15 @@ def test_subworkflow_condition_named_tuple():
 
     @task
     def t() -> nt:
-        return 5, "foo"
+        return nt(5, "foo")
 
     @workflow
     def wf1() -> nt:
-        return 3, "bar"
+        return nt(3, "bar")
 
     @workflow
     def branching(x: int) -> nt:
-        return conditional("test").if_(x == 2).then(t()).else_().then(wf1())
+        return nt(conditional("test").if_(x == 2).then(t()).else_().then(wf1()))
 
     assert branching(x=2) == (5, "foo")
     assert branching(x=3) == (3, "bar")
@@ -289,7 +289,9 @@ def test_subworkflow_condition_single_named_tuple():
 
     @task
     def t() -> nt:
-        return (5,)
+        return nt(
+            5,
+        )
 
     @workflow
     def wf1() -> nt:

@@ -136,9 +136,9 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     def __class_getitem__(cls, item: typing.Type) -> typing.Type[FlyteDirectory]:
         if item is None:
             return cls
-        item = str(item)
-        item = item.strip().lstrip("~").lstrip(".")
-        if item == "":
+        item_string = str(item)
+        item_string = item_string.strip().lstrip("~").lstrip(".")
+        if item_string == "":
             return cls
 
         class _SpecificFormatDirectoryClass(FlyteDirectory):
@@ -147,7 +147,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
 
             @classmethod
             def extension(cls) -> str:
-                return item
+                return item_string
 
         return _SpecificFormatDirectoryClass
 
@@ -169,7 +169,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         If this is an input to a task, and the original path is s3://something, flytekit will download the
         directory for the user. In case the user wants access to the original path, it will be here.
         """
-        return self._remote_source
+        return typing.cast(str, self._remote_source)
 
     def download(self) -> str:
         if self._downloaded:
@@ -285,7 +285,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
         return fd
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteDirectory[typing.Any]]:
         if (
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART

@@ -6,7 +6,7 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Type
+from typing import Optional, Type
 
 import numpy as _np
 
@@ -35,7 +35,7 @@ class SchemaOpenMode(Enum):
     WRITE = "w"
 
 
-def generate_ordered_files(directory: os.PathLike, n: int) -> typing.Generator[os.PathLike, None, None]:
+def generate_ordered_files(directory: os.PathLike, n: int) -> str:
     for i in range(n):
         yield os.path.join(directory, f"{i:05}")
 
@@ -249,7 +249,7 @@ class FlyteSchema(object):
 
     @property
     def remote_path(self) -> str:
-        return self._remote_path
+        return typing.cast(str, self._remote_path)
 
     @property
     def supported_mode(self) -> SchemaOpenMode:
@@ -377,7 +377,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if not literal_type.schema:
             raise ValueError(f"Cannot reverse {literal_type}")
-        columns = {}
+        columns: Optional[Type[T]] = None
         for literal_column in literal_type.schema.columns:
             if literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.INTEGER:
                 columns[literal_column.name] = int

@@ -495,7 +495,7 @@ class ListTransformer(TypeTransformer[T]):
                 return t.__args__[0]  # type: ignore
         raise ValueError("Only generic univariate typing.List[T] type is supported.")
 
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
+    def get_literal_type(self, t: Type[T]) -> typing.Optional[LiteralType]:
         """
         Only univariate Lists are supported in Flyte
         """
@@ -510,14 +510,14 @@ class ListTransformer(TypeTransformer[T]):
         lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[T]:
         st = self.get_sub_type(expected_python_type)
         return [TypeEngine.to_python_value(ctx, x, st) for x in lv.collection.literals]
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> typing.List[Type[typing.Any]]:
         if literal_type.collection_type:
             ct = TypeEngine.guess_python_type(literal_type.collection_type)
-            return typing.List[ct]
+            return [ct]
         raise ValueError(f"List transformer cannot reverse {literal_type}")
 
 
@@ -600,7 +600,7 @@ class DictTransformer(TypeTransformer[dict]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.map_value_type:
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
-            return typing.Dict[str, mt]
+            return typing.Dict[str, mt]  # type: ignore
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
 

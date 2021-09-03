@@ -51,7 +51,7 @@ class GreatExpectationsFlyteConfig(object):
     """
     local_file_path: Optional[str] = None
     checkpoint_params: Optional[Dict[str, Union[str, List[str]]]] = None
-    batch_request_config: BatchRequestConfig = None
+    batch_request_config: Optional[BatchRequestConfig] = None
     context_root_dir: str = "./great_expectations"
 
 
@@ -66,7 +66,7 @@ class GreatExpectationsType(object):
     """
 
     @classmethod
-    def config(cls) -> Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
+    def config(cls) -> Tuple[Type[str], GreatExpectationsFlyteConfig]:
         return (
             str,
             GreatExpectationsFlyteConfig(datasource_name="", data_connector_name="", expectation_suite_name=""),
@@ -80,7 +80,7 @@ class GreatExpectationsType(object):
             __origin__ = GreatExpectationsType
 
             @classmethod
-            def config(cls) -> Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
+            def config(cls) -> Tuple[Type, GreatExpectationsFlyteConfig]:
                 return config
 
         return _GreatExpectationsTypeClass
@@ -91,7 +91,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         super().__init__(name="GreatExpectations Transformer", t=GreatExpectationsType)
 
     @staticmethod
-    def get_config(t: Type[GreatExpectationsType]) -> Tuple[Type, Type[GreatExpectationsFlyteConfig]]:
+    def get_config(t: Type[GreatExpectationsType]) -> Tuple[Type, GreatExpectationsFlyteConfig]:
         return t.config()
 
     def get_literal_type(self, t: Type[GreatExpectationsType]) -> LiteralType:
@@ -182,7 +182,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         ctx: FlyteContext,
         lv: Literal,
         expected_python_type: Type[GreatExpectationsType],
-    ) -> GreatExpectationsType:
+    ) -> str:
         if not (
             lv
             and lv.scalar

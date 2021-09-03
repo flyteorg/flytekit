@@ -145,7 +145,9 @@ def test_wf1():
 
     @task
     def t3(a: int) -> nt:
-        return (a + 2,)
+        return nt(
+            a + 2,
+        )
 
     assert t3.python_interface.output_tuple_name == "SingleNT"
     assert t3.interface.outputs["t1_int_output"] is not None
@@ -241,13 +243,13 @@ def test_wf_output_mismatch():
 
         @workflow
         def my_wf2(a: int, b: str) -> int:
-            return a, b
+            return a, b  # type: ignore
 
     with pytest.raises(AssertionError):
 
         @workflow
         def my_wf3(a: int, b: str) -> int:
-            return (a,)
+            return (a,)  # type: ignore
 
     assert context_manager.FlyteContextManager.size() == 1
 

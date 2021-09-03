@@ -95,13 +95,13 @@ class FSSpecPersistence(DataPersistence):
         return fs.put(from_path, to_path, recursive=recursive)
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
-        paths = list(paths)  # make type check happy
+        path_list = list(paths)  # make type check happy
         if add_prefix:
-            paths.insert(0, self.default_prefix)  # type: ignore
-        path = "/".join(paths)
+            path_list.insert(0, self.default_prefix)  # type: ignore
+        path = "/".join(path_list)
         if add_protocol:
             return f"{self.default_protocol}://{path}"
-        return path
+        return typing.cast(str, path)
 
 
 def _register():

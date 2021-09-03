@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import typing
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, cast
 
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.node import Node
@@ -77,7 +77,7 @@ class ConditionalSection:
         self._cases.append(c)
         return self._cases[-1]
 
-    def end_branch(self) -> Union[Condition, Promise]:
+    def end_branch(self) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
         """
         This should be invoked after every branch has been visited.
         In case this is not local workflow execution then, we should check if this is the last case.
@@ -135,7 +135,7 @@ class ConditionalSection:
                 curr = curr.intersection(x)
         return curr
 
-    def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise], VoidPromise]:
+    def _compute_outputs(self, n: Node) -> Optional[Union[Promise, Tuple[Promise], VoidPromise]]:
         curr = self.compute_output_set()
         if curr is None:
             return VoidPromise(n.id)
@@ -146,7 +146,7 @@ class ConditionalSection:
 
 class LocalExecutedConditionalSection(ConditionalSection):
     def __init__(self, name: str):
-        self._selected_case = None
+        self._selected_case: Optional[Case] = None
         super().__init__(name=name)
 
     def start_branch(self, c: Case, last_case: bool = False) -> Case:
@@ -183,11 +183,11 @@ class LocalExecutedConditionalSection(ConditionalSection):
             if self._selected_case.output_promise is None and self._selected_case.err is None:
                 raise AssertionError("Bad conditional statements, did not resolve in a promise")
             elif self._selected_case.output_promise is not None:
-                return self._compute_outputs(self._selected_case.output_promise)
+                return typing.cast(Promise, self._compute_outputs(self._selected_case.output_promise))
             raise ValueError(self._selected_case.err)
         return self._condition
 
-    def _compute_outputs(self, selected_output_promise) -> Union[Promise, Tuple[Promise], VoidPromise]:
+    def _compute_outputs(self, selected_output_promise) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
         """
         For the local execution case only returns the least common set of outputs
         """
@@ -209,7 +209,7 @@ class SkippedConditionalSection(ConditionalSection):
     def __init__(self, name: str):
         super().__init__(name=name)
 
-    def end_branch(self) -> Union[Condition, Promise]:
+    def end_branch(self) -> Optional[Union[Condition, Tuple[Promise], Promise, VoidPromise]]:
         """
         This should be invoked after every branch has been visited
         """
@@ -251,7 +251,7 @@ class Case(object):
                 )
         self._expr = expr
         self._output_promise: Optional[Union[Tuple[Promise], Promise]] = None
-        self._err = None
+        self._err: Optional[str] = None
 
     @property
     def expr(self) -> Optional[Union[ComparisonExpression, ConjunctionExpression]]:
@@ -266,14 +266,16 @@ class Case(object):
         return self._err
 
     # TODO this is complicated. We do not want this to run
-    def then(self, p: Union[Promise, Tuple[Promise]]) -> Union[Condition, Promise]:
+    def then(
+        self, p: Union[Promise, Tuple[Promise]]
+    ) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
         self._output_promise = p
         # We can always mark branch as completed
         return self._cs.end_branch()
 
     def fail(self, err: str) -> Promise:
         self._err = err
-        return self._cs.end_branch()
+        return cast(Promise, self._cs.end_branch())
 
 
 class Condition(object):
