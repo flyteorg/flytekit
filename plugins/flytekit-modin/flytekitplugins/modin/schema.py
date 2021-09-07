@@ -2,20 +2,20 @@ import os
 import typing
 from typing import Type
 
-from flytekit import FlyteContext, task, workflow
+from flytekit import FlyteContext
 from flytekit.configuration import sdk
 from flytekit.extend import T, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, SchemaEngine, SchemaFormat, SchemaHandler
-from flytekit.types.schema import FlyteSchema, PandasSchemaWriter, SchemaFormat, SchemaOpenMode
+from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, SchemaEngine, SchemaHandler
+from flytekit.types.schema import SchemaFormat
 from flytekit.types.schema.types import FlyteSchemaTransformer
 
 from modin import pandas
 
+
 class ParquetIO(object):
     PARQUET_ENGINE = "pyarrow"
-
 
     def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs) -> pandas.DataFrame:
         return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
@@ -104,10 +104,10 @@ class ModinPandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
     """
     Transforms a pd.DataFrame to Schema without column types.
     """
-    _SUPPORTED_TYPES: typing.Dict[
-            type, SchemaType.SchemaColumn.SchemaColumnType
-        ] = FlyteSchemaTransformer._SUPPORTED_TYPES
 
+    _SUPPORTED_TYPES: typing.Dict[
+        type, SchemaType.SchemaColumn.SchemaColumnType
+    ] = FlyteSchemaTransformer._SUPPORTED_TYPES
 
     def __init__(self):
         super().__init__("ModinPandasDataFrame<->GenericSchema", pandas.DataFrame)
