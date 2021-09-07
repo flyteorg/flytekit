@@ -10,7 +10,7 @@ CACHE_LOCATION = "~/.flyte/local-cache"
 
 
 def _calculate_cache_key(task_name: str, cache_version: str, input_literal_map: LiteralMap) -> str:
-    return f"{task_name}-{cache_version}-{hash(input_literal_map)}"
+    return f"{task_name}-{cache_version}-{input_literal_map}"
 
 
 class LocalTaskCache(object):
