@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import typing
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -66,7 +67,7 @@ class GreatExpectationsType(object):
     """
 
     @classmethod
-    def config(cls) -> Tuple[Type[str], GreatExpectationsFlyteConfig]:
+    def config(cls) -> Tuple[Type, GreatExpectationsFlyteConfig]:
         return (
             str,
             GreatExpectationsFlyteConfig(datasource_name="", data_connector_name="", expectation_suite_name=""),
@@ -182,7 +183,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         ctx: FlyteContext,
         lv: Literal,
         expected_python_type: Type[GreatExpectationsType],
-    ) -> str:
+    ) -> GreatExpectationsType:
         if not (
             lv
             and lv.scalar
@@ -322,7 +323,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
         logging.info("Validation succeeded!")
 
-        return return_dataset
+        return typing.cast(GreatExpectationsType, return_dataset)
 
 
 TypeEngine.register(GreatExpectationsTypeTransformer())
