@@ -442,8 +442,11 @@ def create_native_named_tuple(
         return None
 
     if isinstance(promises, Promise):
-        v = [v for k, v in entity_interface.outputs.items()][0]  # get output native type
-        return TypeEngine.to_python_value(ctx, promises.val, v)
+        k, v = [(k, v) for k, v in entity_interface.outputs.items()][0]  # get output native type
+        try:
+            return TypeEngine.to_python_value(ctx, promises.val, v)
+        except Exception as e:
+            raise AssertionError(f"Failed to convert value of output {k}, expected type {v}.") from e
 
     if len(promises) == 0:
         return None
@@ -459,7 +462,11 @@ def create_native_named_tuple(
                 "Workflow outputs can only be promises that are returned by tasks. Found a value of"
                 f"type {type(p)}. Workflows cannot return local variables or constants."
             )
-        outputs[p.var] = TypeEngine.to_python_value(ctx, p.val, entity_interface.outputs[p.var])
+        t = entity_interface.outputs[p.var]
+        try:
+            outputs[p.var] = TypeEngine.to_python_value(ctx, p.val, t)
+        except Exception as e:
+            raise AssertionError(f"Failed to convert value of output {p.var}, expected type {t}.") from e
 
     # Should this class be part of the Interface?
     t = collections.namedtuple(named_tuple_name, list(outputs.keys()))
@@ -750,12 +757,15 @@ def create_and_link_node(
                 f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
                 f" Check if the predecessor function returning more than one value?"
             )
-        bindings.append(
-            binding_from_python_std(
-                ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
+        try:
+            bindings.append(
+                binding_from_python_std(
+                    ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
+                )
             )
-        )
-        used_inputs.add(k)
+            used_inputs.add(k)
+        except Exception as e:
+            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
@@ -829,7 +839,7 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
     # Make sure arguments are part of interface
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
-            raise ValueError(f"Received unexpected keyword argument {k}")
+            raise ValueError(f"Received unexpected keyword argument {k} in function {cast(SupportsNodeCreation, entity).name}")
 
     ctx = FlyteContextManager.current_context()
 
@@ -862,12 +872,18 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
             if result is None or isinstance(result, VoidPromise):
                 return None
             else:
-                raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
+                raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
 
         if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
             return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
 
         raise ValueError(
+<<<<<<< HEAD
             f"Expected outputs and actual outputs do not match. Result {result}. "
             f"Python interface: {cast(SupportsNodeCreation, entity).python_interface}"
+=======
+            f"Expected outputs and actual outputs do not match."
+            f"Result {result}. "
+            f"Python interface: {entity.python_interface}"
+>>>>>>> a9c0a43c ([WIP] Compile time type assertions)
         )

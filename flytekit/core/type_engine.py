@@ -382,8 +382,10 @@ class TypeEngine(typing.Generic[T]):
         if python_val is None:
             raise AssertionError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
+        if transformer.type_assertions_enabled:
+            if not isinstance(python_val, python_type):
+                raise AssertionError(f"Type of Val '{python_val}' is not an instance of {python_type}")
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
-        # TODO Perform assertion here
         return lv
 
     @classmethod

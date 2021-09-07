@@ -235,7 +235,8 @@ class Task(object):
         if self.metadata.cache:
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
-                f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+                f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
+                f"and inputs: {input_literal_map}"
             )
             outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
             # The cache returns None iff the key does not exist in the cache
@@ -245,7 +246,8 @@ class Task(object):
                 # TODO: need `native_inputs`
                 LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
                 logger.info(
-                    f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+                    f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} "
+                    f"and inputs: {input_literal_map}"
                 )
             else:
                 logger.info("Cache hit")
@@ -505,8 +507,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 try:
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
-                    logger.error(f"failed to convert return value for var {k} with error {type(e)}: {e}")
-                    raise e
+                    logger.error(f"Failed to convert return value for var {k} with error {type(e)}: {e}")
+                    raise AssertionError(f"Failed to convert return value for var {k} for function {self.name}") from e
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
