@@ -2,10 +2,6 @@
 test:
 	pytest tests
 
-.PHONY: install-all-dev
-install-all-dev:
-	pip install -e .
-
 .PHONY: build_all_plugins
 build_all_plugins:
 	./run_all_plugins.sh python setup.py sdist bdist_wheel
@@ -13,6 +9,10 @@ build_all_plugins:
 .PHONY: publish_all_plugins
 publish_all_plugins:
 	twine upload */dist/*
+
+.PHONY: all_requirements
+all_requirements:
+	./run_all_plugins.sh pip-compile requirements.in
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
 VERSION_FILE := "setup.py"
