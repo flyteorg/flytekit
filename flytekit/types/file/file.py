@@ -228,7 +228,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
     @staticmethod
-    def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
+    def get_format(t: typing.Union[typing.Type[FlyteFile]]) -> str:
         if t is os.PathLike:
             return ""
         return t.extension()

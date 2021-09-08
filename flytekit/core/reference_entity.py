@@ -83,11 +83,11 @@ class ReferenceEntity(object):
         raise Exception("Remote reference entities cannot be run locally. You must mock this out.")
 
     @property
-    def python_interface(self) -> Optional[Interface]:
+    def python_interface(self) -> Interface:
         return self._native_interface
 
     @property
-    def interface(self) -> Optional[_interface_models.TypedInterface]:
+    def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
     @property
@@ -104,7 +104,7 @@ class ReferenceEntity(object):
 
     def unwrap_literal_map_and_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[VoidPromise, _literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+    ) -> _literal_models.LiteralMap:
         """
         Please see the implementation of the dispatch_execute function in the real task.
         """

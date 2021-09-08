@@ -119,12 +119,13 @@ class NotebookTask(PythonInstanceTask[T]):
         if not os.path.exists(self._notebook_path):
             raise ValueError(f"Illegal notebook path passed in {self._notebook_path}")
 
-        outputs.update(
-            {
-                self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
-                self._IMPLICIT_RENDERED_NOTEBOOK: self._IMPLICIT_RENDERED_NOTEBOOK_TYPE,
-            }
-        )
+        if outputs:
+            outputs.update(
+                {
+                    self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
+                    self._IMPLICIT_RENDERED_NOTEBOOK: self._IMPLICIT_RENDERED_NOTEBOOK_TYPE,
+                }
+            )
         super().__init__(
             name, task_config, task_type=task_type, interface=Interface(inputs=inputs, outputs=outputs), **kwargs
         )
@@ -185,7 +186,7 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         logging.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         # Execute Notebook via Papermill.
-        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs)
+        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs)  # type: ignore
 
         outputs = self.extract_outputs(self.output_notebook_path)
         self.render_nb_html(self.output_notebook_path, self.rendered_output_path)

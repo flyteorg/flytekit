@@ -342,20 +342,20 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
-        bases = return_annotation.__bases__
+        bases = return_annotation.__bases__  # type: ignore
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
             return return_annotation.__annotations__
 
-    if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:
+    if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3
         logger.debug(f"Task returns unnamed typing.Tuple {return_annotation}")
-        if len(return_annotation.__args__) == 1:
+        if len(return_annotation.__args__) == 1:  # type: ignore
             raise FlyteValidationException(
                 "Tuples should be used to indicate multiple return values, found only one return variable."
             )
         return OrderedDict(
-            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)  # type: ignore
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:
