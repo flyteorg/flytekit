@@ -34,10 +34,13 @@ from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
+from flytekit.core.node import Node
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
+if typing.TYPE_CHECKING:
+    from flytekit.core.base_task import TaskResolverMixin
 
 _DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 
@@ -194,7 +197,7 @@ class SerializationSettings(object):
         entrypoint_settings: Optional[EntrypointSettings] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
 
-        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> "Builder":
+        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
             self.fast_serialization_settings = fss
             return self
 
@@ -246,13 +249,13 @@ class CompilationState(object):
             users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
             us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
         mode (int): refer to :py:class:`flytekit.extend.ExecutionState.Mode`
-        task_resolver (Optional["TaskResolverMixin"]): Please see :py:class:`flytekit.extend.TaskResolverMixin`
+        task_resolver (Optional[TaskResolverMixin]): Please see :py:class:`flytekit.extend.TaskResolverMixin`
         nodes (Optional[List]): Stores currently compiled nodes so far.
     """
 
     prefix: str
     mode: int = 1
-    task_resolver: Optional["TaskResolverMixin"] = None
+    task_resolver: Optional[TaskResolverMixin] = None
     nodes: List = field(default_factory=list)
 
     def add_node(self, n: Node):
@@ -262,7 +265,7 @@ class CompilationState(object):
         self,
         prefix: str,
         mode: Optional[int] = None,
-        resolver: Optional["TaskResolverMixin"] = None,
+        resolver: Optional[TaskResolverMixin] = None,
         nodes: Optional[List] = None,
     ) -> CompilationState:
         """
@@ -516,7 +519,7 @@ class FlyteContext(object):
                 in_a_condition=self.in_a_condition,
             )
 
-        def enter_conditional_section(self) -> "Builder":
+        def enter_conditional_section(self) -> FlyteContext.Builder:
             """
             Used by the condition block to indicate that a new conditional section has been started.
             """
@@ -539,22 +542,22 @@ class FlyteContext(object):
             self.in_a_condition = True
             return self
 
-        def with_execution_state(self, es: ExecutionState) -> "Builder":
+        def with_execution_state(self, es: ExecutionState) -> FlyteContext.Builder:
             self.execution_state = es
             return self
 
-        def with_compilation_state(self, c: CompilationState) -> "Builder":
+        def with_compilation_state(self, c: CompilationState) -> FlyteContext.Builder:
             self.compilation_state = c
             return self
 
-        def with_new_compilation_state(self) -> "Builder":
+        def with_new_compilation_state(self) -> FlyteContext.Builder:
             return self.with_compilation_state(self.new_compilation_state())
 
-        def with_file_access(self, fa: FileAccessProvider) -> "Builder":
+        def with_file_access(self, fa: FileAccessProvider) -> FlyteContext.Builder:
             self.file_access = fa
             return self
 
-        def with_serialization_settings(self, ss: SerializationSettings) -> "Builder":
+        def with_serialization_settings(self, ss: SerializationSettings) -> FlyteContext.Builder:
             self.serialization_settings = ss
             return self
 

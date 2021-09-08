@@ -31,15 +31,17 @@ def local_dummy_file():
 
 
 def test_file_type_in_workflow_with_bad_format():
+    txt = str
+
     @task
-    def t1() -> FlyteFile["txt"]:
+    def t1() -> FlyteFile[txt]:
         fname = "/tmp/flytekit_test"
         with open(fname, "w") as fh:
             fh.write("Hello World\n")
         return fname
 
     @workflow
-    def my_wf() -> FlyteFile["txt"]:
+    def my_wf() -> FlyteFile[txt]:
         f = t1()
         return f
 

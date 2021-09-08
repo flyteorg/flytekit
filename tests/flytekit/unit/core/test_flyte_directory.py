@@ -140,8 +140,10 @@ def test_wf():
     files = os.listdir(wfd.path)
     assert len(files) == 5
 
+    csv = str
+
     @task
-    def t2(in1: FlyteDirectory["csv"]) -> int:
+    def t2(in1: FlyteDirectory[csv]) -> int:
         return len(os.listdir(in1.path))
 
     @workflow
