@@ -56,13 +56,13 @@ jobs:
       with:
         fail_ci_if_error: true # optional (default = false)
 
-# , "flytekit-data-fsspec", "flytekit-dolt", "flytekit-greatexpectations", "flytekit-hive", "flytekit-k8s-pod", "flytekit-kf-pytorch", "flytekit-kf-tensorflow", "flytekit-pandera", "flytekit-papermill", "flytekit-spark", "flytekit-sqlalchemy"
+# , "flytekit-kf-pytorch", "flytekit-kf-tensorflow", "flytekit-pandera", "flytekit-papermill", "flytekit-spark", "flytekit-sqlalchemy"
   build-plugins:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.8]
-        plugin-names: ["flytekit-aws-athena", "flytekit-aws-sagemaker"]
+        plugin-names: ["flytekit-aws-athena", "flytekit-aws-sagemaker", "flytekit-data-fsspec", "flytekit-dolt", "flytekit-greatexpectations", "flytekit-hive", "flytekit-k8s-pod"]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}

@@ -73,7 +73,7 @@ def test_pod_task_deserialization():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "plugins.tests.pod.test_pod",
+        "tests.test_pod",
         "task-name",
         "simple_pod_task",
     ]
@@ -138,7 +138,7 @@ def test_pod_task():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "plugins.tests.pod.test_pod",
+        "tests.test_pod",
         "task-name",
         "simple_pod_task",
     ]
@@ -325,7 +325,7 @@ def test_map_pod_task_serialization():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "plugins.tests.pod.test_pod",
+        "tests.test_pod",
         "task-name",
         "simple_pod_task",
     ]
@@ -371,7 +371,7 @@ def test_fast_pod_task_serialization():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "plugins.tests.pod.test_pod",
+        "tests.test_pod",
         "task-name",
         "simple_pod_task",
     ]
