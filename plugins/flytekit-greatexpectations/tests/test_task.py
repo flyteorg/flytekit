@@ -1,4 +1,5 @@
 import os
+import pathlib
 import sqlite3
 import typing
 
@@ -10,6 +11,9 @@ from great_expectations.exceptions import ValidationError
 from flytekit import kwtypes, task, workflow
 from flytekit.types.file import CSVFile, FlyteFile
 from flytekit.types.schema import FlyteSchema
+
+this_dir = pathlib.Path(__file__).resolve().parent
+os.chdir(this_dir)
 
 
 def test_ge_simple_task():
