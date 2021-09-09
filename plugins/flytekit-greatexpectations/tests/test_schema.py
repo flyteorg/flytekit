@@ -11,9 +11,6 @@ from flytekit import task, workflow
 from flytekit.types.file import CSVFile
 from flytekit.types.schema import FlyteSchema
 
-if "tests/greatexpectations" not in os.getcwd():
-    os.chdir("plugins/tests/greatexpectations/")
-
 
 def test_ge_type():
     ge_config = GreatExpectationsFlyteConfig(
