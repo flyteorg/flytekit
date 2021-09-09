@@ -85,7 +85,7 @@ jobs:
         pip freeze
     - name: Test with coverage
       run: |
-        coverage run -m pytest plugins/${{ matrix.plugin-names }}/tests
+        coverage run -m pytest tests
 
   docs:
     runs-on: ubuntu-latest
