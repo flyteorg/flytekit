@@ -1,2 +1,2 @@
 .
--e file:.#egg=flytekitplugins-fsspec
+-e file:.#egg=flytekitplugins-data-fsspec
