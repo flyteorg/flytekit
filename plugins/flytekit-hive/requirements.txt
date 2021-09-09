@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements.in
 #
--e file:///Users/ytong/go/src/github.com/flyteorg/flytekit/plugins/flytekit-hive
+-e file:.#egg=flytekitplugins-hive
     # via -r requirements.in
 attrs==21.2.0
     # via scantree

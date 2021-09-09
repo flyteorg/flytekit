@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements.in
 #
--e file:///Users/ytong/go/src/github.com/flyteorg/flytekit/plugins/flytekit-papermill
+-e file:.#egg=flytekitplugins-papermill
     # via -r requirements.in
 ansiwrap==0.8.4
     # via papermill

@@ -1,1 +1,3 @@
--e .
+.
+-e file:.#egg=flytekitplugins-dolt
+
