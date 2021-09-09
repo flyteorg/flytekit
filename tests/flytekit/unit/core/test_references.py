@@ -96,7 +96,7 @@ def test_ref_task_more():
 
 
 @reference_workflow(project="proj", domain="development", name="wf_name", version="abc")
-def ref_wf1(a: int) -> (str, str):
+def ref_wf1(a: int) -> typing.Tuple[str, str]:
     ...
 
 

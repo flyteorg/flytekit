@@ -529,7 +529,7 @@ class DictTransformer(TypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def get_dict_types(t: Type[dict]) -> (type, type):
+    def get_dict_types(t: Type[dict]) -> typing.Tuple[type, type]:
         """
         Return the generic Type T of the Dict
         """

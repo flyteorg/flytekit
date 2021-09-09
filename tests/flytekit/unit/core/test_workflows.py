@@ -172,7 +172,7 @@ def test_wf_nested_comp():
         return a
 
     @workflow
-    def outer() -> (int, int):
+    def outer() -> typing.Tuple[int, int]:
         # You should not do this. This is just here for testing.
         @workflow
         def wf2() -> int:
@@ -207,7 +207,7 @@ def simple_wf() -> int:
 
 
 @workflow
-def my_wf_example(a: int) -> (int, int):
+def my_wf_example(a: int) -> typing.Tuple[int, int]:
     """example
 
     Workflows can have inputs and return outputs of simple or complex types.

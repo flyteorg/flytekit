@@ -1,3 +1,4 @@
+import typing
 from collections import OrderedDict
 
 import pytest
@@ -23,9 +24,9 @@ serialization_settings = context_manager.SerializationSettings(
 
 def test_wf_resolving():
     @workflow
-    def my_wf(a: int, b: str) -> (int, str):
+    def my_wf(a: int, b: str) -> typing.Tuple[int, str]:
         @task
-        def t1(a: int) -> (int, str):
+        def t1(a: int) -> typing.Tuple[int, str]:
             return a + 2, "world"
 
         @task

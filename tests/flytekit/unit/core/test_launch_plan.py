@@ -372,7 +372,7 @@ def test_lp_nodes():
     lp = launch_plan.LaunchPlan.get_or_create(my_sub_wf, "my_sub_wf_lp1")
 
     @workflow
-    def my_wf(a: int) -> (int, int):
+    def my_wf(a: int) -> typing.Tuple[int, int]:
         t = t1(a=a)
         w = lp(a=a)
         return t, w

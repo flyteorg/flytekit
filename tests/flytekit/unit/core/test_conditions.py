@@ -81,11 +81,11 @@ def test_condition_sub_workflows():
         return a + b, a - b
 
     @workflow
-    def sub_wf(a: int, b: int) -> (int, int):
+    def sub_wf(a: int, b: int) -> typing.Tuple[int, int]:
         return sum_sub(a=a, b=b)
 
     @workflow
-    def math_ops(a: int, b: int) -> (int, int):
+    def math_ops(a: int, b: int) -> typing.Tuple[int, int]:
         # Flyte will only make `sum` and `sub` available as outputs because they are common between all branches
         sum, sub = (
             conditional("noDivByZero")
@@ -108,7 +108,7 @@ def test_condition_tuple_branches():
         return a + b, a - b
 
     @workflow
-    def math_ops(a: int, b: int) -> (int, int):
+    def math_ops(a: int, b: int) -> typing.Tuple[int, int]:
         add, sub = (
             conditional("noDivByZero")
             .if_(a > b)
