@@ -4,7 +4,7 @@ test:
 
 .PHONY: install-all-dev
 install-all-dev:
-	pip install -e .
+	pip -v install -e .
 
 .PHONY: build_all_plugins
 build_all_plugins:
