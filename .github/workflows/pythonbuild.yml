@@ -85,6 +85,7 @@ jobs:
         pip freeze
     - name: Test with coverage
       run: |
+        cd plugins/${{ matrix.plugin-names }}
         coverage run -m pytest tests
 
   docs:
