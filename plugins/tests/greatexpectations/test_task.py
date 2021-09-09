@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import typing
 
 import pandas as pd
 import pytest
@@ -268,7 +269,7 @@ def test_ge_flytefile_multiple_args():
     )
 
     @task
-    def get_file_name(dataset_one: FlyteFile, dataset_two: FlyteFile) -> (int, int):
+    def get_file_name(dataset_one: FlyteFile, dataset_two: FlyteFile) -> typing.Tuple[int, int]:
         df_one = pd.read_csv(os.path.join("data", dataset_one))
         df_two = pd.read_csv(os.path.join("data", dataset_two))
         return len(df_one), len(df_two)
@@ -277,7 +278,7 @@ def test_ge_flytefile_multiple_args():
     def wf(
         dataset_one: FlyteFile = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv",
         dataset_two: FlyteFile = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-02.csv",
-    ) -> (int, int):
+    ) -> typing.Tuple[int, int]:
         task_object_one(dataset=dataset_one)
         task_object_two(dataset=dataset_two)
         return get_file_name(dataset_one=dataset_one, dataset_two=dataset_two)

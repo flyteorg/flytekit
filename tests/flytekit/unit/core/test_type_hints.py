@@ -1252,7 +1252,7 @@ def test_conditional_asymmetric_return():
         return False
 
     @task
-    def sum_diff(a: int, b: int) -> (int, int):
+    def sum_diff(a: int, b: int) -> typing.Tuple[int, int]:
         """
         sum_diff returns the sum and difference between a and b.
         """
