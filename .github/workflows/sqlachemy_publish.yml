@@ -1,7 +1,7 @@
 name: Push SQLAlchemy Docker Image
 
 on:
-  pull_request:
+  push:
   create:
     tags:
       - v*
@@ -25,8 +25,8 @@ jobs:
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
           image_tag: sqlalchemy-${{ github.sha }},sqlalchemy-${{ github.event.ref }}
-          push_git_tag: ${{ github.event_name != 'pull_request' }}
-          push_image_and_stages: ${{ github.event_name != 'pull_request' }}
+          push_git_tag: true
+          push_image_and_stages: true
           registry: ghcr.io
           build_extra_args: "--compress=true --build-arg=tag=ghcr.io/${{ github.repository_owner }}/flytekit:sqlalchemy-${{ github.sha }}"
           context: "./plugins/flytekit-sqlalchemy/flytekitplugins/"
