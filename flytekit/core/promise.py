@@ -83,7 +83,7 @@ def translate_inputs_to_literals(
                 and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
             ):
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
-            k_type, sub_type = DictTransformer.get_dict_types(val_type)
+            k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
             if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
                 return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
             else:

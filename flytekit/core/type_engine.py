@@ -8,7 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from typing import Type, cast
+from typing import Type, cast, Optional
 
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf import json_format as _json_format
@@ -303,7 +303,7 @@ class TypeEngine(typing.Generic[T]):
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()
 
     @classmethod
-    def register(cls, transformer: TypeTransformer, additional_types: typing.Optional[typing.List[Type]] = None):
+    def register(cls, transformer: TypeTransformer, additional_types: Optional[typing.List[Type]] = None):
         """
         This should be used for all types that respond with the right type annotation when you use type(...) function
         """
@@ -424,7 +424,7 @@ class TypeEngine(typing.Generic[T]):
         cls,
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
-        guessed_python_types: typing.Optional[typing.Dict[str, type]] = None,
+        guessed_python_types: Optional[typing.Dict[str, type]] = None,
     ) -> LiteralMap:
         """
         Given a dictionary mapping string keys to python values and a dictionary containing guessed types for such string keys,
@@ -495,7 +495,7 @@ class ListTransformer(TypeTransformer[T]):
                 return t.__args__[0]  # type: ignore
         raise ValueError("Only generic univariate typing.List[T] type is supported.")
 
-    def get_literal_type(self, t: Type[T]) -> typing.Optional[LiteralType]:
+    def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         """
         Only univariate Lists are supported in Flyte
         """
@@ -514,7 +514,7 @@ class ListTransformer(TypeTransformer[T]):
         st = self.get_sub_type(expected_python_type)
         return [TypeEngine.to_python_value(ctx, x, st) for x in lv.collection.literals]
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.List[Type[typing.Any]]:
+    def guess_python_type(self, literal_type: LiteralType) -> typing.List[Type[T]]:
         if literal_type.collection_type:
             ct = TypeEngine.guess_python_type(literal_type.collection_type)
             return [ct]
@@ -531,7 +531,7 @@ class DictTransformer(TypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def get_dict_types(t: Type[dict]) -> typing.Tuple[type, type]:
+    def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[type], Optional[type]]:
         """
         Return the generic Type T of the Dict
         """
