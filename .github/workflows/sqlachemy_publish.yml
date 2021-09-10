@@ -2,6 +2,8 @@ name: Push SQLAlchemy Docker Image
 
 on:
   push:
+    branches:
+      - master
   create:
     tags:
       - v*
