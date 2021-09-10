@@ -100,10 +100,6 @@ def _detect_default_config_file():
         )
 
 
-# Run this as the module is loading to pick up settings that click can then use when constructing the commands
-_detect_default_config_file()
-
-
 def _get_io_string(literal_map, verbose=False):
     """
     :param flytekit.models.literals.LiteralMap literal_map:
@@ -311,6 +307,7 @@ _DOMAIN_FLAGS = ["-d", "--domain"]
 _NAME_FLAGS = ["-n", "--name"]
 _VERSION_FLAGS = ["-v", "--version"]
 _HOST_FLAGS = ["-h", "--host"]
+_CONFIG_FLAGS = ["-c", "--config"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
 
@@ -498,6 +495,7 @@ class _FlyteSubCommand(_click.Command):
         "domain": _DOMAIN_FLAGS[0],
         "name": _NAME_FLAGS[0],
         "host": _HOST_FLAGS[0],
+        "config": _CONFIG_FLAGS[0],
     }
 
     _PASSABLE_FLAGS = {
@@ -529,6 +527,14 @@ class _FlyteSubCommand(_click.Command):
         return ctx
 
 
+@_click.option(
+    *_CONFIG_FLAGS,
+    required=False,
+    type=str,
+    default=None,
+    help="[Optional] The filepath to the config file to pass to the sub-command (if applicable)."
+    "  If set again in the sub-command, the sub-command's parameter takes precedence.",
+)
 @_click.option(
     *_HOST_FLAGS,
     required=False,
@@ -564,11 +570,22 @@ class _FlyteSubCommand(_click.Command):
 @_insecure_option
 @_click.group("flyte-cli")
 @_click.pass_context
-def _flyte_cli(ctx, host, project, domain, name, insecure):
+def _flyte_cli(ctx, host, config, project, domain, name, insecure):
     """
     Command line tool for interacting with all entities on the Flyte Platform.
     """
-    pass
+    if config is None:
+        # Run this as the module is loading to pick up settings that click can then use when constructing the commands
+        _detect_default_config_file()
+        return
+    if _os.path.exists(config):
+        _click.secho("Using config file at {}".format(_tt(config)), fg="blue")
+        set_flyte_config_file(config_file_path=config)
+    else:
+        _click.secho(
+            "Config file not found at {}".format(_tt(config)),
+            fg="blue",
+        )
 
 
 ########################################################################################################################
