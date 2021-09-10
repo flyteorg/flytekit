@@ -19,10 +19,6 @@ from flytekit.types.file import HTMLPage, PythonNotebook
 T = typing.TypeVar("T")
 
 
-def _dummy_task_func():
-    return None
-
-
 class NotebookTask(PythonInstanceTask[T]):
     """
     Simple Papermill based input output handling for a Python Jupyter notebook. This task should be used to wrap
@@ -111,6 +107,11 @@ class NotebookTask(PythonInstanceTask[T]):
         outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         **kwargs,
     ):
+        def _dummy_task_func():
+            return None
+
+        _dummy_task_func.__name__ = name
+
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
         self._plugin = plugin_class(task_config=task_config, task_function=_dummy_task_func)
         task_type = f"nb-{self._plugin.task_type}"
