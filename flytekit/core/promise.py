@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import typing
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from typing_extensions import Protocol
 
