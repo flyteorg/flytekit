@@ -191,12 +191,12 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             raise AssertionError("Can only validate a literal string/FlyteFile/FlyteSchema value")
 
         # fetch the configuration
-        conf_dict = GreatExpectationsTypeTransformer.get_config(expected_python_type)[1].to_dict()
+        conf_dict = GreatExpectationsTypeTransformer.get_config(expected_python_type)[1].to_dict()  # type: ignore
 
         ge_conf = GreatExpectationsFlyteConfig(**conf_dict)
 
         # fetch the data context
-        context = ge.data_context.DataContext(ge_conf.context_root_dir)
+        context = ge.data_context.DataContext(ge_conf.context_root_dir)  # type: ignore
 
         # determine the type of data connector
         selected_datasource = list(filter(lambda x: x["name"] == ge_conf.datasource_name, context.list_datasources()))

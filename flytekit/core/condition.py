@@ -101,13 +101,13 @@ class ConditionalSection:
                     upstream_nodes.add(p.ref.node)
 
             n = Node(
-                id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+                id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",  # type: ignore
                 metadata=_core_wf.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
                 bindings=sorted(bindings, key=lambda b: b.var),
                 upstream_nodes=list(upstream_nodes),  # type: ignore
                 flyte_entity=node,
             )
-            FlyteContextManager.current_context().compilation_state.add_node(n)
+            FlyteContextManager.current_context().compilation_state.add_node(n)  # type: ignore
             return self._compute_outputs(n)
         return self._condition
 
@@ -161,7 +161,7 @@ class LocalExecutedConditionalSection(ConditionalSection):
         # We already have a candidate case selected
         if self._selected_case is None:
             if c.expr is None or c.expr.eval() or last_case:
-                ctx.execution_state.take_branch()
+                ctx.execution_state.take_branch()  # type: ignore
                 self._selected_case = added_case
         return added_case
 
@@ -176,8 +176,8 @@ class LocalExecutedConditionalSection(ConditionalSection):
         """
         ctx = FlyteContextManager.current_context()
         # Let us mark the execution state as complete
-        ctx.execution_state.branch_complete()
-        if self._last_case:
+        ctx.execution_state.branch_complete()  # type: ignore
+        if self._last_case and self._selected_case:
             # We have completed the conditional section, lets pop off the branch context
             FlyteContextManager.pop_context()
             if self._selected_case.output_promise is None and self._selected_case.err is None:
@@ -382,7 +382,7 @@ def transform_to_boolexpr(
 
 def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
     expr, promises = transform_to_boolexpr(c.expr)
-    n = c.output_promise.ref.node
+    n = c.output_promise.ref.node  # type: ignore
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
@@ -405,7 +405,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
     node = None
     err = None
     if last_case.output_promise is not None:
-        node = last_case.output_promise.ref.node
+        node = last_case.output_promise.ref.node  # type: ignore
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (

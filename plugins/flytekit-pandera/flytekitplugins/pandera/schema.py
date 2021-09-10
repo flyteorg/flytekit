@@ -18,7 +18,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
     ] = FlyteSchemaTransformer._SUPPORTED_TYPES
 
     def __init__(self):
-        super().__init__("Pandera Transformer", pandera.typing.DataFrame)
+        super().__init__("Pandera Transformer", pandera.typing.DataFrame)  # type: ignore
 
     def _pandera_schema(self, t: Type[pandera.typing.DataFrame]):
         try:
@@ -31,7 +31,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             schema_model, *_ = type_args
             schema = schema_model.to_schema()
         else:
-            schema = pandera.DataFrameSchema()
+            schema = pandera.DataFrameSchema()  # type: ignore
         return schema
 
     @staticmethod
