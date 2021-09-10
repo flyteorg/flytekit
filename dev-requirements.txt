@@ -61,7 +61,7 @@ decorator==5.0.9
     # via
     #   -c requirements.txt
     #   retry
-deprecated==1.2.12
+deprecated==1.2.13
     # via
     #   -c requirements.txt
     #   flytekit
@@ -77,7 +77,7 @@ distlib==0.3.2
     # via virtualenv
 distro==1.6.0
     # via docker-compose
-docker[ssh]==5.0.1
+docker[ssh]==5.0.2
     # via docker-compose
 docker-compose==1.29.2
     # via
@@ -97,15 +97,15 @@ docstring-parser==0.10
     #   flytekit
 filelock==3.0.12
     # via virtualenv
-flyteidl==0.20.1
+flyteidl==0.21.0
     # via
     #   -c requirements.txt
     #   flytekit
-grpcio==1.39.0
+grpcio==1.40.0
     # via
     #   -c requirements.txt
     #   flytekit
-identify==2.2.13
+identify==2.2.14
     # via pre-commit
 idna==3.2
     # via
@@ -189,7 +189,7 @@ platformdirs==2.3.0
     #   virtualenv
 pluggy==1.0.0
     # via pytest
-pre-commit==2.14.1
+pre-commit==2.15.0
     # via -r dev-requirements.in
 protobuf==3.17.3
     # via
