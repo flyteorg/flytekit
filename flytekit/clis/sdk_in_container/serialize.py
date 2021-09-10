@@ -113,6 +113,7 @@ def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Se
     duplicate_tasks: typing.Set[task_models.TaskTemplate] = set()
     set_tasks = set(tasks)
     print(f"Lenght all tasks {len(tasks)} set tasks {len(set_tasks)}")
+
     for task in tasks:
         if task.template.id not in seen:
             print(f"Adding duplicate id {task.template.id}")
