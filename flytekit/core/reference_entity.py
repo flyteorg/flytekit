@@ -14,7 +14,6 @@ from flytekit.core.promise import (
 )
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
