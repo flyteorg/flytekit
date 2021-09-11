@@ -138,13 +138,11 @@ def test_sig_files():
 
 
 def test_file_types():
-    svg = str
-
-    def t1() -> FlyteFile[svg]:
+    def t1() -> FlyteFile[typing.TypeVar("svg")]:
         ...
 
     return_type = extract_return_annotation(inspect.signature(t1).return_annotation)
-    assert return_type["o0"].extension() == FlyteFile[str].extension()
+    assert return_type["o0"].extension() == FlyteFile[typing.TypeVar("svg")].extension()
 
 
 def test_parameters_and_defaults():
