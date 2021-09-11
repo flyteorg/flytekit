@@ -23,6 +23,9 @@ def _dummy_task_func():
     return None
 
 
+PAPERMILL_TASK_PREFIX = "pm.nb"
+
+
 class NotebookTask(PythonInstanceTask[T]):
     """
     Simple Papermill based input output handling for a Python Jupyter notebook. This task should be used to wrap
@@ -121,8 +124,9 @@ class NotebookTask(PythonInstanceTask[T]):
         _dummy_task_func.__name__ = existing_name
 
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
-        self._plugin = plugin_class(task_config=task_config, task_function=_dummy_task_func)
-        task_type = f"nb-{self._plugin.task_type}"
+        self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
+        self._config_task_instance._name = f"{PAPERMILL_TASK_PREFIX}.{name}"
+        task_type = f"nb-{self._config_task_instance.task_type}"
         self._notebook_path = os.path.abspath(notebook_path)
 
         if not os.path.exists(self._notebook_path):
@@ -152,7 +156,7 @@ class NotebookTask(PythonInstanceTask[T]):
         return self._notebook_path.split(".ipynb")[0] + "-out.html"
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        return self._plugin.pre_execute(user_params)
+        return self._config_task_instance.pre_execute(user_params)
 
     @staticmethod
     def extract_outputs(nb: str) -> LiteralMap:
@@ -218,7 +222,7 @@ class NotebookTask(PythonInstanceTask[T]):
         return tuple(output_list)
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
-        return self._plugin.post_execute(user_params, rval)
+        return self._config_task_instance.post_execute(user_params, rval)
 
 
 def record_outputs(**kwargs) -> str:

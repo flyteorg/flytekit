@@ -111,8 +111,12 @@ def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Se
     """
     seen: typing.Set[task_models.TaskTemplate] = set()
     duplicate_tasks: typing.Set[task_models.TaskTemplate] = set()
+    set_tasks = set(tasks)
+    print(f"Lenght all tasks {len(tasks)} set tasks {len(set_tasks)}")
+
     for task in tasks:
         if task.template.id not in seen:
+            print(f"Adding duplicate id {task.template.id}")
             seen.add(task.template.id)
         else:
             duplicate_tasks.add(task)
@@ -135,6 +139,9 @@ def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
                 lp = LaunchPlan.get_default_launch_plan(ctx, entity)
                 get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
 
+    for k, v in new_api_serializable_entities.items():
+        if isinstance(v, task_models.TaskSpec):
+            print(f"Found: {type(k)} name {k.name} {k.lhs if hasattr(k, 'lhs') else 'no lhs'} {v.template.id}")
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
     serializable_tasks: typing.List[task_models.TaskSpec] = [
