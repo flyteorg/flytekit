@@ -54,7 +54,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             id=_dnsify(id) if id else None,
             metadata=metadata,
             inputs=bindings,
-            upstream_node_ids=[n.id for n in upstream_nodes],
+            upstream_node_ids=sorted([n.id for n in upstream_nodes], key=lambda x: x.__str__()),
             output_aliases=[],
             task_node=_component_nodes.FlyteTaskNode(flyte_task) if flyte_task else None,
             workflow_node=workflow_node,

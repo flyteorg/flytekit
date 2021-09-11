@@ -253,7 +253,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=sorted([n.id for n in upstream_sdk_nodes], key=lambda x: x.__str__()),
             output_aliases=[],
         )
         if ref_template.resource_type == _identifier_model.ResourceType.TASK:
@@ -274,7 +274,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=sorted([n.id for n in upstream_sdk_nodes], key=lambda x: x.__str__()),
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=task_spec.template.id, overrides=TaskNodeOverrides(resources=entity._resources)
@@ -289,7 +289,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=sorted([n.id for n in upstream_sdk_nodes], key=lambda x: x.__str__()),
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.template.id),
         )
@@ -299,7 +299,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=sorted([n.id for n in upstream_sdk_nodes], key=lambda x: x.__str__()),
             output_aliases=[],
             branch_node=get_serializable(entity_mapping, settings, entity.flyte_entity),
         )
@@ -311,7 +311,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=sorted([n.id for n in upstream_sdk_nodes], key=lambda x: x.__str__()),
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
         )
