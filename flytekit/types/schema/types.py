@@ -6,7 +6,7 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Type
+from typing import Type
 
 import numpy as _np
 
