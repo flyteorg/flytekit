@@ -377,7 +377,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if not literal_type.schema:
             raise ValueError(f"Cannot reverse {literal_type}")
-        columns: Optional[Type[T]] = None
+        columns: dict[Type] = {}
         for literal_column in literal_type.schema.columns:
             if literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.INTEGER:
                 columns[literal_column.name] = int

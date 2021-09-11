@@ -514,10 +514,10 @@ class ListTransformer(TypeTransformer[T]):
         st = self.get_sub_type(expected_python_type)
         return [TypeEngine.to_python_value(ctx, x, st) for x in lv.collection.literals]
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.List[Type[T]]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[list]:
         if literal_type.collection_type:
             ct = TypeEngine.guess_python_type(literal_type.collection_type)
-            return [ct]
+            return typing.List[ct]
         raise ValueError(f"List transformer cannot reverse {literal_type}")
 
 

@@ -278,7 +278,7 @@ def test_subworkflow_condition_named_tuple():
 
     @workflow
     def branching(x: int) -> nt:
-        return nt(conditional("test").if_(x == 2).then(t()).else_().then(wf1()))
+        return conditional("test").if_(x == 2).then(t()).else_().then(wf1())
 
     assert branching(x=2) == (5, "foo")
     assert branching(x=3) == (3, "bar")
