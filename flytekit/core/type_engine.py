@@ -8,7 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from typing import Type, cast, Optional
+from typing import Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf import json_format as _json_format
