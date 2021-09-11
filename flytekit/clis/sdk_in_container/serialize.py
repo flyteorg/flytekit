@@ -141,7 +141,7 @@ def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
 
     for k, v in new_api_serializable_entities.items():
         if isinstance(v, task_models.TaskSpec):
-            print(f"Found: {k} {v.template.id}")
+            print(f"Found: {type(k)} name {k.name} {k.lhs if hasattr(k, 'lhs') else 'no lhs'} {v.template.id}")
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
     serializable_tasks: typing.List[task_models.TaskSpec] = [
