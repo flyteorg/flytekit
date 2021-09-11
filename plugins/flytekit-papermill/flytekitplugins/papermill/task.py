@@ -111,7 +111,14 @@ class NotebookTask(PythonInstanceTask[T]):
         outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         **kwargs,
     ):
+        # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
+        # to run pre- and post- execute functions using the corresponding task plugin.
+        # We rename the function name here to ensure the generated task has a unique name and avoid duplicate task name
+        # errors.
+        # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
+        existing_name = _dummy_task_func.__name__
         _dummy_task_func.__name__ = name
+        _dummy_task_func.__name__ = existing_name
 
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
         self._plugin = plugin_class(task_config=task_config, task_function=_dummy_task_func)
