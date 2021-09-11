@@ -39,6 +39,8 @@ from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
+
+# Enables static type checking https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING
 if typing.TYPE_CHECKING:
     from flytekit.core.base_task import TaskResolverMixin
 
