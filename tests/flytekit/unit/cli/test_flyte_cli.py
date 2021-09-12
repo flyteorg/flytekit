@@ -118,7 +118,7 @@ def test_setup_config_secure_mode():
         "authorization_metadata_key": "fake_key",
     }
     _responses.add(_responses.GET, "https://flyte.company.com/config/v1/flyte_client", json=data, status=200)
-    with _mock.patch("configparser.ConfigParser.write") as mock_write:
+    with _mock.patch("configparser.ConfigParser.write"):
         result = runner.invoke(_main._flyte_cli, ["setup-config", "-h", "flyte.company.com"])
     assert result.exit_code == 0
 
@@ -128,8 +128,8 @@ def test_setup_config_insecure_mode():
     runner = _CliRunner()
 
     _responses.add(_responses.GET, "http://flyte.company.com/config/v1/flyte_client", json={}, status=200)
-    with _mock.patch("configparser.ConfigParser.write") as mock_write:
-        result = _CliRunner().invoke(_main._flyte_cli, ["setup-config", "-h", "flyte.company.com", "-i"])
+    with _mock.patch("configparser.ConfigParser.write"):
+        result = runner.invoke(_main._flyte_cli, ["setup-config", "-h", "flyte.company.com", "-i"])
     assert result.exit_code == 0
 
 
