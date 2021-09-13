@@ -121,6 +121,9 @@ class NotebookTask(PythonInstanceTask[T]):
         # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
         self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
+        # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
+        # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
+        # at serialization time.
         self._config_task_instance._name = f"{PAPERMILL_TASK_PREFIX}.{name}"
         task_type = f"nb-{self._config_task_instance.task_type}"
         self._notebook_path = os.path.abspath(notebook_path)
