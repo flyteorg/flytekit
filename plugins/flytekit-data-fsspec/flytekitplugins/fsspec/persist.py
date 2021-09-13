@@ -56,7 +56,7 @@ class FSSpecPersistence(DataPersistence):
             kwargs = {"auto_mkdir": True}
         if protocol == "s3":
             kwargs = s3_setup_args()
-        return fsspec.filesystem(protocol, **kwargs)
+        return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
@@ -97,7 +97,7 @@ class FSSpecPersistence(DataPersistence):
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
         paths = list(paths)  # make type check happy
         if add_prefix:
-            paths.insert(0, self.default_prefix)
+            paths.insert(0, self.default_prefix)  # type: ignore
         path = "/".join(paths)
         if add_protocol:
             return f"{self.default_protocol}://{path}"

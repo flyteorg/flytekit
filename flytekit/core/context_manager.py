@@ -414,7 +414,7 @@ class FlyteContext(object):
     Please do not confuse this object with the :py:class:`flytekit.ExecutionParameters` object.
     """
 
-    file_access: Optional[FileAccessProvider]
+    file_access: FileAccessProvider
     level: int = 0
     flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
     compilation_state: Optional[CompilationState] = None

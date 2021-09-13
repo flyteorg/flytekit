@@ -109,8 +109,8 @@ def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Se
     """
     Given a list of `TaskSpec`, this function returns a set containing the duplicated `TaskSpec` if any exists.
     """
-    seen: typing.Set[task_models.TaskTemplate] = set()
-    duplicate_tasks: typing.Set[task_models.TaskTemplate] = set()
+    seen: typing.Set[_identifier.Identifier] = set()
+    duplicate_tasks: typing.Set[task_models.TaskSpec] = set()
     for task in tasks:
         if task.template.id not in seen:
             seen.add(task.template.id)

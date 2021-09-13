@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import typing
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 from typing_extensions import Protocol
 
@@ -804,7 +804,7 @@ class LocallyExecutable(Protocol):
         ...
 
 
-def flyte_entity_call_handler(entity: Union[SupportsNodeCreation, LocallyExecutable], *args, **kwargs):
+def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwargs):
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
@@ -828,7 +828,7 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation, LocallyExecuta
         )
     # Make sure arguments are part of interface
     for k, v in kwargs.items():
-        if k not in entity.python_interface.inputs:
+        if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
             raise ValueError(f"Received unexpected keyword argument {k}")
 
     ctx = FlyteContextManager.current_context()
@@ -837,24 +837,27 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation, LocallyExecuta
         return create_and_link_node(ctx, entity=entity, **kwargs)
     elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
         if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-            if len(entity.python_interface.inputs) > 0 or len(entity.python_interface.outputs) > 0:
-                output_names = list(entity.python_interface.outputs.keys())
+            if (
+                len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
+                or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
+            ):
+                output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
                 if len(output_names) == 0:
                     return VoidPromise(entity.name)
                 vals = [Promise(var, None) for var in output_names]
-                return create_task_output(vals, entity.python_interface)
+                return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
             else:
                 return None
-        return entity.local_execute(ctx, **kwargs)
+        return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
         with FlyteContextManager.with_context(
             ctx.with_execution_state(
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
             )
         ) as child_ctx:
-            result = entity.local_execute(child_ctx, **kwargs)
+            result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
 
-        expected_outputs = len(entity.python_interface.outputs)
+        expected_outputs = len(cast(SupportsNodeCreation, entity).python_interface.outputs)
         if expected_outputs == 0:
             if result is None or isinstance(result, VoidPromise):
                 return None
@@ -862,9 +865,9 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation, LocallyExecuta
                 raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
 
         if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
-            return create_native_named_tuple(ctx, result, entity.python_interface)
+            return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
 
         raise ValueError(
             f"Expected outputs and actual outputs do not match. Result {result}. "
-            f"Python interface: {entity.python_interface}"
+            f"Python interface: {cast(SupportsNodeCreation, entity).python_interface}"
         )

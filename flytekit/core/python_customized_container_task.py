@@ -230,7 +230,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> ExecutableTemplateShimTask:
         logger.info(f"Task template loader args: {loader_args}")
         ctx = FlyteContext.current_context()
-        task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")
+        task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")  # type: ignore
         ctx.file_access.get_data(loader_args[0], task_template_local_path)
         task_template_proto = common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)

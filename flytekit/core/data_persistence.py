@@ -258,7 +258,7 @@ class FileAccessProvider(object):
         """
         Deprecated. Lets find a replacement
         """
-        return not (path.startswith("/") or path.startswith("file://"))
+        return not (path.startswith("/") or path.startswith("file://"))  # type: ignore
 
     @property
     def local_sandbox_dir(self) -> os.PathLike:

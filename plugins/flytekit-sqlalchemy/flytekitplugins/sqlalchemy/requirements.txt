@@ -22,8 +22,6 @@ deprecated==1.2.12
     # via flytekit
 dirhash==0.2.1
     # via flytekit
-diskcache==5.2.1
-    # via flytekit
 docker-image-py==0.1.10
     # via flytekit
 docstring-parser==0.10
