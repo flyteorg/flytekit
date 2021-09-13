@@ -67,6 +67,8 @@ flytekit==0.22.1
     # via flytekitplugins-great-expectations
 great-expectations==0.13.32
     # via flytekitplugins-great-expectations
+greenlet==1.1.1
+    # via sqlalchemy
 grpcio==1.40.0
     # via flytekit
 idna==3.2
@@ -270,6 +272,8 @@ six==1.16.0
     #   scantree
 sortedcontainers==2.4.0
     # via flytekit
+sqlalchemy==1.4.23
+    # via -r requirements.in
 statsd==3.3.0
     # via flytekit
 termcolor==1.1.0

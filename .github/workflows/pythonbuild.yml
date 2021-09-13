@@ -86,7 +86,7 @@ jobs:
     - name: Test with coverage
       run: |
         cd plugins/${{ matrix.plugin-names }}
-        coverage run -m pytest tests -s
+        coverage run -m pytest tests
 
   docs:
     runs-on: ubuntu-latest
