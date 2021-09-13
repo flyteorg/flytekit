@@ -73,7 +73,9 @@ def test_imperative():
     def my_workflow(in1: str) -> nt:
         x = t1(a=in1)
         t2()
-        return (x,)
+        return nt(
+            x,
+        )
 
     # docs_equivalent_end
 

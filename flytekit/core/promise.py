@@ -75,22 +75,22 @@ def translate_inputs_to_literals(
                 if len(input_val) == 0:
                     raise
                 sub_type = type(input_val[0])
-            literals = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
-            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals))
+            literal_list = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
+            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
             if (
                 flyte_literal_type.map_value_type is None
                 and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
             ):
                 raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
-            k_type, sub_type = DictTransformer.get_dict_types(val_type)
+            k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
             if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
                 return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
             else:
-                literals = {
+                literal_map = {
                     k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
                 }
-                return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
+                return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literal_map))
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
             return input_val.val
@@ -532,7 +532,7 @@ def create_task_output(
             # See comment for runs_before
             return self
 
-    return Output(*promises)
+    return Output(*promises)  # type: ignore
 
 
 def binding_data_from_python_std(

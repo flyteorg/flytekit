@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
 from kubernetes.client import ApiClient
@@ -21,8 +21,8 @@ class Pod(object):
         self,
         pod_spec: V1PodSpec,
         primary_container_name: str,
-        labels: Dict[str, str] = None,
-        annotations: Dict[str, str] = None,
+        labels: Optional[Dict[str, str]] = None,
+        annotations: Optional[Dict[str, str]] = None,
     ):
         if not pod_spec:
             raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
@@ -43,11 +43,11 @@ class Pod(object):
         return self._primary_container_name
 
     @property
-    def labels(self) -> Dict[str, str]:
+    def labels(self) -> Optional[Dict[str, str]]:
         return self._labels
 
     @property
-    def annotations(self) -> Dict[str, str]:
+    def annotations(self) -> Optional[Dict[str, str]]:
         return self._annotations
 
 

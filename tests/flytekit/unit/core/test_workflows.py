@@ -94,7 +94,7 @@ def test_sub_wf_single_named_tuple():
     @task
     def t1(a: int) -> nt:
         a = a + 2
-        return (a,)
+        return nt(a)
 
     @workflow
     def subwf(a: int) -> nt:

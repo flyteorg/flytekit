@@ -22,7 +22,7 @@ class Interface(object):
 
     def __init__(
         self,
-        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
+        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]], None]] = None,
         outputs: typing.Optional[typing.Dict[str, Type]] = None,
         output_tuple_name: Optional[str] = None,
         docstring: Optional[Docstring] = None,
@@ -230,7 +230,7 @@ def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
     om = {}
     for k, v in m.items():
         om[k] = typing.List[v]
-    return om
+    return om  # type: ignore
 
 
 def transform_interface_to_list_interface(interface: Interface) -> Interface:

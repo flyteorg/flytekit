@@ -159,7 +159,7 @@ def test_ref_plain_no_outputs():
     @task
     def t1(a: int) -> nt1:
         a = a + 2
-        return a, "world-" + str(a)
+        return nt1(a, "world-" + str(a))
 
     @workflow
     def wf2(a: int):

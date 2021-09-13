@@ -296,7 +296,7 @@ def test_lp_all_parameters():
     @task
     def t1(a: int) -> nt:
         a = a + 2
-        return a, "world-" + str(a)
+        return nt(a, "world-" + str(a))
 
     @task
     def t2(a: str, b: str, c: str) -> str:

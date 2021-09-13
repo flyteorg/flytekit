@@ -202,7 +202,7 @@ class Task(object):
         """
         return type(v)
 
-    def get_input_types(self) -> Dict[str, type]:
+    def get_input_types(self) -> Optional[Dict[str, type]]:
         """
         Returns python native types for inputs. In case this is not a python native task (base class) and hence
         returns a None. we could deduce the type from literal types, but that is not a required exercise

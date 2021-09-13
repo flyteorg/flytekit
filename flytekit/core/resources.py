@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -23,14 +24,14 @@ class Resources(object):
     Also refer to the `K8s conventions. <https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes>`__
     """
 
-    cpu: str = None
-    mem: str = None
-    gpu: str = None
-    storage: str = None
-    ephemeral_storage: str = None
+    cpu: Optional[str] = None
+    mem: Optional[str] = None
+    gpu: Optional[str] = None
+    storage: Optional[str] = None
+    ephemeral_storage: Optional[str] = None
 
 
 @dataclass
 class ResourceSpec(object):
-    requests: Resources = None
-    limits: Resources = None
+    requests: Optional[Resources] = None
+    limits: Optional[Resources] = None

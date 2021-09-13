@@ -141,7 +141,7 @@ class ReferenceEntity(object):
         # After the execute has been successfully completed
         return outputs_literal_map
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
         """
         Please see the local_execute comments in the main task.
         """

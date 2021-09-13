@@ -24,7 +24,7 @@ import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from docker_image import reference
 
@@ -80,8 +80,8 @@ class ImageConfig(object):
         images (List[Image]): Optional, additional images which can be used in task container definitions.
     """
 
-    default_image: Image = None
-    images: List[Image] = None
+    default_image: Optional[Image] = None
+    images: Optional[List[Image]] = None
 
     def find_image(self, name) -> Optional[Image]:
         """
@@ -133,8 +133,8 @@ class EntrypointSettings(object):
     to execute tasks at runtime.
     """
 
-    path: str = None
-    command: str = None
+    path: Optional[str] = None
+    command: Optional[str] = None
     version: int = 0
 
 
@@ -145,7 +145,7 @@ class FastSerializationSettings(object):
     """
 
     enabled: bool = False
-    destination_dir: str = None
+    destination_dir: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -333,9 +333,9 @@ class ExecutionState(object):
         #: or propeller.
         LOCAL_TASK_EXECUTION = 3
 
-    mode: ExecutionState.Mode
+    mode: Optional[ExecutionState.Mode]
     working_dir: os.PathLike
-    engine_dir: os.PathLike
+    engine_dir: Optional[Union[os.PathLike, str]]
     additional_context: Optional[Dict[Any, Any]]
     branch_eval_mode: Optional[BranchEvalMode]
     user_space_params: Optional[ExecutionParameters]
@@ -344,7 +344,7 @@ class ExecutionState(object):
         self,
         working_dir: os.PathLike,
         mode: Optional[ExecutionState.Mode] = None,
-        engine_dir: Optional[os.PathLike] = None,
+        engine_dir: Optional[Union[os.PathLike, str]] = None,
         additional_context: Optional[Dict[Any, Any]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
@@ -485,7 +485,7 @@ class FlyteContext(object):
         return ExecutionState(working_dir=working_dir, user_space_params=self.user_space_params)
 
     @staticmethod
-    def current_context() -> FlyteContext:
+    def current_context() -> Optional[FlyteContext]:
         """
         This method exists only to maintain backwards compatibility. Please use
         ``FlyteContextManager.current_context()`` instead.
@@ -565,7 +565,7 @@ class FlyteContext(object):
             """
             return CompilationState(prefix=prefix)
 
-        def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
+        def new_execution_state(self, working_dir: Optional[Union[os.PathLike, str]] = None) -> ExecutionState:
             """
             Creates and returns a new default execution state. This should be used at the entrypoint of execution,
             in all other cases it is preferable to use with_execution_state
@@ -606,7 +606,7 @@ class FlyteContextManager(object):
         return ss[0]
 
     @staticmethod
-    def current_context() -> FlyteContext:
+    def current_context() -> Optional[FlyteContext]:
         if FlyteContextManager._OBJS:
             return FlyteContextManager._OBJS[-1]
         return None
