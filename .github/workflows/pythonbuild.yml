@@ -16,7 +16,6 @@ jobs:
         exclude:
         - python-version: 3.8
           spark-version-suffix: "-spark2"
-
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -56,6 +55,38 @@ jobs:
       uses: codecov/codecov-action@v1
       with:
         fail_ci_if_error: true # optional (default = false)
+
+  build-plugins:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+        # Omitting "flytekit-pandera" for now.
+        plugin-names: ["flytekit-aws-athena", "flytekit-aws-sagemaker", "flytekit-data-fsspec", "flytekit-dolt", "flytekit-greatexpectations", "flytekit-hive", "flytekit-k8s-pod", "flytekit-kf-pytorch", "flytekit-kf-tensorflow", "flytekit-papermill", "flytekit-spark", "flytekit-sqlalchemy"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        # This path is specific to Ubuntu
+        path: ~/.cache/pip
+        # Look to see if there is a cache hit for the corresponding requirements files
+        key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        make setup
+        cd plugins/${{ matrix.plugin-names }}
+        pip install -r requirements.txt
+        pip freeze
+    - name: Test with coverage
+      run: |
+        cd plugins/${{ matrix.plugin-names }}
+        coverage run -m pytest tests
 
   docs:
     runs-on: ubuntu-latest

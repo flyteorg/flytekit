@@ -1,4 +1,5 @@
 import os
+import pathlib
 import sqlite3
 import typing
 
@@ -11,8 +12,8 @@ from flytekit import task, workflow
 from flytekit.types.file import CSVFile
 from flytekit.types.schema import FlyteSchema
 
-if "tests/greatexpectations" not in os.getcwd():
-    os.chdir("plugins/tests/greatexpectations/")
+this_dir = pathlib.Path(__file__).resolve().parent
+os.chdir(this_dir)
 
 
 def test_ge_type():

@@ -48,13 +48,11 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 test: lint ## Run tests
 	pytest tests/flytekit/unit
 	pytest tests/scripts
-	pytest plugins/tests
 
 .PHONY: unit_test
 unit_test:
 	pytest tests/flytekit/unit
 	pytest tests/scripts
-	pytest plugins/tests
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools
@@ -78,8 +76,8 @@ requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	coverage run -m pytest tests/flytekit/unit/core flytekit/types plugins/tests
-	coverage report -m --include="flytekit/core/*,flytekit/types/*,plugins/*"
+	coverage run -m pytest tests/flytekit/unit/core flytekit/types
+	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
 
