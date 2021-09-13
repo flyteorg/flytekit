@@ -112,8 +112,6 @@ class NotebookTask(PythonInstanceTask[T]):
         outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         **kwargs,
     ):
-        # _dummy_task_func.__name__ = name
-
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
         self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
         self._config_task_instance._name = f"{PAPERMILL_TASK_PREFIX}.{name}"
