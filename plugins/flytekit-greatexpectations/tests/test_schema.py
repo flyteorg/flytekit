@@ -12,9 +12,6 @@ from flytekit import task, workflow
 from flytekit.types.file import CSVFile
 from flytekit.types.schema import FlyteSchema
 
-this_dir = pathlib.Path(__file__).resolve().parent
-os.chdir(this_dir)
-
 
 def test_ge_type():
     ge_config = GreatExpectationsFlyteConfig(

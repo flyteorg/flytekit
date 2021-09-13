@@ -13,6 +13,7 @@ from flytekit.types.file import CSVFile, FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 this_dir = pathlib.Path(__file__).resolve().parent
+print(this_dir)
 os.chdir(this_dir)
 
 
