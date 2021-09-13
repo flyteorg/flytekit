@@ -313,6 +313,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         security_context=None,
         config=None,
         k8s_pod=None,
+        sql=None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -335,9 +336,14 @@ class TaskTemplate(_common.FlyteIdlEntity):
         :param dict[str, str] config: For plugin tasks this represents additional configuration information to be used
             in tandem with the custom.
         :param K8sPod k8s_pod: Alternative to the container used to execute this task.
+        :param Sql sql: This is used to execute query in FlytePropeller instead of running container or k8s_pod.
         """
-        if container is not None and k8s_pod is not None:
-            raise ValueError("At most one of container or k8s_pod can be set")
+        if (
+            (container is not None and k8s_pod is not None)
+            or (container is not None and sql is not None)
+            or (k8s_pod is not None and sql is not None)
+        ):
+            raise ValueError("At most one of container, k8s_pod or sql can be set")
         self._id = id
         self._type = type
         self._metadata = metadata
@@ -348,6 +354,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._config = config
         self._security_context = security_context
         self._k8s_pod = k8s_pod
+        self._sql = sql
 
     @property
     def id(self):
@@ -418,6 +425,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
     def k8s_pod(self):
         return self._k8s_pod
 
+    @property
+    def sql(self):
+        return self._sql
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
@@ -433,6 +444,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             config={k: v for k, v in self.config.items()} if self.config is not None else None,
             k8s_pod=self.k8s_pod.to_flyte_idl() if self.k8s_pod else None,
+            sql=self.sql.to_flyte_idl() if self.sql else None,
         )
         return task_template
 
@@ -455,6 +467,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             else None,
             config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
             k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,
+            sql=Sql.from_flyte_idl(pb2_object.sql) if pb2_object.HasField("sql") else None,
         )
 
 
@@ -982,6 +995,37 @@ class K8sPod(_common.FlyteIdlEntity):
         return cls(
             metadata=K8sObjectMetadata.from_flyte_idl(pb2_object.metadata),
             pod_spec=_json_format.MessageToDict(pb2_object.pod_spec) if pb2_object.HasField("pod_spec") else None,
+        )
+
+
+class Sql(_common.FlyteIdlEntity):
+    class Dialect(object):
+        ANSI = 0
+        HIVE = 1
+
+    def __init__(self, statement: str = None, dialect: int = 0):
+        """
+        This defines a kubernetes pod target. It will build the pod target during task execution
+        """
+        self._statement = statement
+        self._dialect = dialect
+
+    @property
+    def statement(self) -> str:
+        return self._statement
+
+    @property
+    def dialect(self) -> int:
+        return self._dialect
+
+    def to_flyte_idl(self) -> _core_task.Sql:
+        return _core_task.Sql(statement=self.statement, dialect=self.dialect)
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_task.Sql):
+        return cls(
+            statement=pb2_object.statement,
+            dialect=pb2_object.dialect,
         )
 
 

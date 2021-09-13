@@ -116,6 +116,7 @@ def get_serializable_task(
         security_context=entity.security_context,
         config=entity.get_config(settings),
         k8s_pod=entity.get_k8s_pod(settings),
+        sql=entity.get_sql(settings),
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()

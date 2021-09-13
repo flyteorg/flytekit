@@ -286,6 +286,12 @@ class Task(object):
         """
         return None
 
+    def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
+        """
+        Returns the Sql definition (if any) that is used to run the task on hosted Flyte.
+        """
+        return None
+
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         """
         Return additional plugin-specific custom data (if any) as a serializable dictionary.
