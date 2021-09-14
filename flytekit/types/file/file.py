@@ -7,8 +7,7 @@ import typing
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
-from flytekit.models import types as _type_models
-from flytekit.models.core import types as _core_types
+from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
@@ -233,11 +232,18 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return ""
         return t.extension()
 
-    def _blob_type(self, format: str) -> _core_types.BlobType:
-        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE)
+    def _blob_type(self, format: str) -> BlobType:
+        return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
+
+    def assert_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike],
+                    v: typing.Union[FlyteFile, os.PathLike, str]):
+        if isinstance(v, os.PathLike) or isinstance(v, FlyteFile) or isinstance(v, str):
+            return
+        raise TypeError(f"No automatic conversion found from type{type(v)} to FlyteFile."
+                        f"Supported (os.PathLike, str, Flytefile)")
 
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
+        return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
         self,
@@ -348,7 +354,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
         if (
             literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
         ):
             return FlyteFile[typing.TypeVar(literal_type.blob.format)]
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")

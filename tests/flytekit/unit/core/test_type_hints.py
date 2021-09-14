@@ -17,6 +17,10 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
+<<<<<<< HEAD
+=======
+# from flytekit.interfaces.data.data_proxy import FileAccessProvider
+>>>>>>> f1dd84c6 (Improved errors)
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
@@ -241,19 +245,16 @@ def test_wf1_with_list_of_inputs():
 
 def test_wf_output_mismatch():
     with pytest.raises(AssertionError):
-
         @workflow
         def my_wf(a: int, b: str) -> (int, str):
             return a
 
     with pytest.raises(AssertionError):
-
         @workflow
         def my_wf2(a: int, b: str) -> int:
             return a, b  # type: ignore
 
     with pytest.raises(AssertionError):
-
         @workflow
         def my_wf3(a: int, b: str) -> int:
             return (a,)  # type: ignore
@@ -281,9 +282,9 @@ def test_promise_return():
     ctx = context_manager.FlyteContextManager.current_context()
 
     with context_manager.FlyteContextManager.with_context(
-        ctx.with_execution_state(
-            ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
-        )
+            ctx.with_execution_state(
+                ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+            )
     ) as ctx:
         a, b = mimic_sub_wf(a=3)
 
@@ -442,15 +443,15 @@ def test_wf1_with_dynamic():
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
     with context_manager.FlyteContextManager.with_context(
-        context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
-                project="test_proj",
-                domain="test_domain",
-                version="abc",
-                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-                env={},
+            context_manager.FlyteContextManager.current_context().with_serialization_settings(
+                context_manager.SerializationSettings(
+                    project="test_proj",
+                    domain="test_domain",
+                    version="abc",
+                    image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                    env={},
+                )
             )
-        )
     ) as ctx:
         new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
         with context_manager.FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)) as ctx:
@@ -480,27 +481,27 @@ def test_wf1_with_fast_dynamic():
         return v
 
     with context_manager.FlyteContextManager.with_context(
-        context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
-                project="test_proj",
-                domain="test_domain",
-                version="abc",
-                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-                env={},
-                fast_serialization_settings=FastSerializationSettings(enabled=True),
-            )
-        )
-    ) as ctx:
-        with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.execution_state.with_params(
-                    mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
+            context_manager.FlyteContextManager.current_context().with_serialization_settings(
+                context_manager.SerializationSettings(
+                    project="test_proj",
+                    domain="test_domain",
+                    version="abc",
+                    image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                    env={},
+                    fast_serialization_settings=FastSerializationSettings(enabled=True),
                 )
             )
+    ) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+                ctx.with_execution_state(
+                    ctx.execution_state.with_params(
+                        mode=ExecutionState.Mode.TASK_EXECUTION,
+                        additional_context={
+                            "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
+                            "dynamic_dest_dir": "/User/flyte/workflows",
+                        },
+                    )
+                )
         ) as ctx:
             dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
             assert len(dynamic_job_spec._nodes) == 5
@@ -595,12 +596,12 @@ def test_wf1_branches():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-            .if_(x == 4)
-            .then(t2(a=b))
-            .elif_(x >= 5)
-            .then(t2(a=y))
-            .else_()
-            .fail("Unable to choose branch")
+                .if_(x == 4)
+                .then(t2(a=b))
+                .elif_(x >= 5)
+                .then(t2(a=y))
+                .else_()
+                .fail("Unable to choose branch")
         )
         f = conditional("test2").if_(d == "hello ").then(t2(a="It is hello")).else_().then(t2(a="Not Hello!"))
         return x, f
@@ -644,12 +645,13 @@ def test_wf1_branches_no_else_malformed_but_no_error():
     def t2(a: str) -> str:
         return a
 
-    @workflow
-    def my_wf(a: int, b: str) -> (int, str):
-        x, y = t1(a=a)
-        d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
-        conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
-        return x, d
+    with pytest.raises(TypeError):
+        @workflow
+        def my_wf(a: int, b: str) -> (int, str):
+            x, y = t1(a=a)
+            d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
+            conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
+            return x, d
 
     assert context_manager.FlyteContextManager.size() == 1
 
@@ -668,12 +670,12 @@ def test_wf1_branches_failing():
         x, y = t1(a=a)
         d = (
             conditional("test1")
-            .if_(x == 4)
-            .then(t2(a=b))
-            .elif_(x >= 5)
-            .then(t2(a=y))
-            .else_()
-            .fail("All Branches failed")
+                .if_(x == 4)
+                .then(t2(a=b))
+                .elif_(x >= 5)
+                .then(t2(a=y))
+                .else_()
+                .fail("All Branches failed")
         )
         return x, d
 
@@ -684,7 +686,6 @@ def test_wf1_branches_failing():
 
 def test_cant_use_normal_tuples():
     with pytest.raises(RestrictedTypeError):
-
         @task
         def t1(a: str) -> tuple:
             return (a, 3)
@@ -822,7 +823,6 @@ def test_wf_container_task_multiple():
 
 def test_wf_tuple_fails():
     with pytest.raises(RestrictedTypeError):
-
         @task
         def t1(a: tuple) -> (int, str):
             return a[0] + 2, str(a) + "-HELLO"
@@ -954,7 +954,6 @@ def test_wf_with_catching_no_return():
         pass
 
     with pytest.raises(AssertionError):
-
         @workflow
         def wf():
             d = t1()
@@ -968,7 +967,6 @@ def test_wf_with_catching_no_return():
 
 def test_wf_custom_types_missing_dataclass_json():
     with pytest.raises(AssertionError):
-
         @dataclass
         class MyCustomType(object):
             pass
@@ -1008,7 +1006,6 @@ def test_arbit_class():
         pass
 
     with pytest.raises(ValueError):
-
         @task
         def t1(a: int) -> Foo:
             return Foo()
@@ -1057,7 +1054,7 @@ def test_environment():
         env={"FOO": "foo", "BAR": "bar"},
     )
     with context_manager.FlyteContextManager.with_context(
-        context_manager.FlyteContextManager.current_context().with_new_compilation_state()
+            context_manager.FlyteContextManager.current_context().with_new_compilation_state()
     ):
         task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
         assert task_spec.template.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
@@ -1090,7 +1087,7 @@ def test_resources():
         env={},
     )
     with context_manager.FlyteContextManager.with_context(
-        context_manager.FlyteContextManager.current_context().with_new_compilation_state()
+            context_manager.FlyteContextManager.current_context().with_new_compilation_state()
     ):
         task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
         assert task_spec.template.container.resources.requests == [
@@ -1164,7 +1161,6 @@ def test_secrets():
     assert foo2() == "super-secret-value2"
 
     with pytest.raises(AssertionError):
-
         @task(secret_requests=["test"])
         def foo() -> str:
             pass
@@ -1272,10 +1268,10 @@ def test_conditional_asymmetric_return():
         is_heads = coin_toss(seed=seed)
         res = (
             conditional("double_or_square")
-            .if_(is_heads.is_true())
-            .then(square(n=my_input))
-            .else_()
-            .then(sum_diff(a=my_input, b=my_input))
+                .if_(is_heads.is_true())
+                .then(square(n=my_input))
+                .else_()
+                .then(sum_diff(a=my_input, b=my_input))
         )
 
         # Regardless of the result, always double before returning
@@ -1341,11 +1337,12 @@ def test_guess_dict3():
 
 def test_error_messages():
     @task
-    def foo(a: dict, b: str) -> typing.Tuple[int, str]:
+    def foo(a: int, b: str) -> typing.Tuple[int, str]:
         return 10, "hello"
 
     @task
     def foo2(a: int, b: str) -> typing.Tuple[int, str]:
         return "hello", 10
 
-    foo(a="hello", b=10)
+    with pytest.raises(TypeError):
+        foo(a="hello", b=10)

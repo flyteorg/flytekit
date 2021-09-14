@@ -60,6 +60,10 @@ class TypeTransformer(typing.Generic[T]):
         """
         return self._type_assertions_enabled
 
+    def assert_type(self, t: Type[T], v: T):
+        if not hasattr(t, "__origin__") and not isinstance(v, t):
+            raise TypeError(f"Type of Val '{v}' is not an instance of {t}")
+
     @abstractmethod
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         """
@@ -383,8 +387,7 @@ class TypeEngine(typing.Generic[T]):
             raise AssertionError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
-            if not isinstance(python_val, python_type):
-                raise AssertionError(f"Type of Val '{python_val}' is not an instance of {python_type}")
+            transformer.assert_type(python_type, python_val)
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
         return lv
 

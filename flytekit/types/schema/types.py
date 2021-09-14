@@ -336,6 +336,14 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             converted_cols.append(SchemaType.SchemaColumn(name=k, type=self._SUPPORTED_TYPES[v]))
         return SchemaType(columns=converted_cols)
 
+    def assert_type(self, t: Type[FlyteSchema], v: typing.Any):
+        if issubclass(t, FlyteSchema) or isinstance(v, FlyteSchema):
+            return
+        try:
+            SchemaEngine.get_handler(type(v))
+        except ValueError as e:
+            raise TypeError(f"No automatic conversion found from type{type(v)} to FlyteSchema") from e
+
     def get_literal_type(self, t: Type[FlyteSchema]) -> LiteralType:
         return LiteralType(schema=self._get_schema_type(t))
 

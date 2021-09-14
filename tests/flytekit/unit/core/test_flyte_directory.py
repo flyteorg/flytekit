@@ -77,11 +77,11 @@ def test_transformer_to_literal_local():
         assert mock_remote_files == ["xyz"]
 
         # The only primitives allowed are strings
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             tf.to_literal(ctx, 3, FlyteDirectory, lt)
 
         # Can't use if it's not a directory
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             p = "/tmp/flyte/xyz"
             path = pathlib.Path(p)
             try:

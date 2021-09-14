@@ -227,6 +227,9 @@ class ComparisonExpression(object):
     def __repr__(self):
         return f"Comp({self._lhs} {self._op.value} {self._rhs})"
 
+    def __str__(self):
+        return self.__repr__()
+
 
 class ConjunctionExpression(object):
     """
@@ -287,6 +290,9 @@ class ConjunctionExpression(object):
 
     def __repr__(self):
         return f"( {self._lhs} {self._op} {self._rhs} )"
+
+    def __str__(self):
+        return self.__repr__()
 
 
 # TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
