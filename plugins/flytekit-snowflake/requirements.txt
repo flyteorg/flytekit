@@ -30,9 +30,9 @@ docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.10
     # via flytekit
-flyteidl==0.20.2
+flyteidl==0.21.0
     # via flytekit
-flytekit==0.22.1
+flytekit==0.23.0b0
     # via flytekitplugins-snowflake
 grpcio==1.40.0
     # via flytekit
