@@ -235,12 +235,14 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def _blob_type(self, format: str) -> BlobType:
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
 
-    def assert_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike],
-                    v: typing.Union[FlyteFile, os.PathLike, str]):
+    def assert_type(
+        self, t: typing.Union[typing.Type[FlyteFile], os.PathLike], v: typing.Union[FlyteFile, os.PathLike, str]
+    ):
         if isinstance(v, os.PathLike) or isinstance(v, FlyteFile) or isinstance(v, str):
             return
-        raise TypeError(f"No automatic conversion found from type{type(v)} to FlyteFile."
-                        f"Supported (os.PathLike, str, Flytefile)")
+        raise TypeError(
+            f"No automatic conversion found from type{type(v)} to FlyteFile." f"Supported (os.PathLike, str, Flytefile)"
+        )
 
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
         return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
@@ -357,6 +359,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
         ):
             return FlyteFile[typing.TypeVar(literal_type.blob.format)]
+
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 

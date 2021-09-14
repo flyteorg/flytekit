@@ -217,18 +217,20 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             NOTE: we do not do a isdir check because the given path could be remote reference
             """
             return
-        raise TypeError(f"No automatic conversion from {type(v)} declared type {t} to FlyteDirectory found."
-                        f" Use (FlyteDirectory, str, os.PathLike)")
+        raise TypeError(
+            f"No automatic conversion from {type(v)} declared type {t} to FlyteDirectory found."
+            f" Use (FlyteDirectory, str, os.PathLike)"
+        )
 
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
 
     def to_literal(
-            self,
-            ctx: FlyteContext,
-            python_val: FlyteDirectory,
-            python_type: typing.Type[FlyteDirectory],
-            expected: LiteralType,
+        self,
+        ctx: FlyteContext,
+        python_val: FlyteDirectory,
+        python_type: typing.Type[FlyteDirectory],
+        expected: LiteralType,
     ) -> Literal:
 
         remote_directory = None
@@ -277,7 +279,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     def to_python_value(
-            self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
 
         uri = lv.scalar.blob.uri
@@ -302,8 +304,8 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteDirectory[typing.Any]]:
         if (
-                literal_type.blob is not None
-                and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
         ):
             return FlyteDirectory[typing.TypeVar(literal_type.blob.format)]
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
