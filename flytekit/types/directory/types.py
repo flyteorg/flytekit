@@ -290,7 +290,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
         ):
-            return FlyteDirectory[literal_type.blob.format]
+            return FlyteDirectory[typing.TypeVar(literal_type.blob.format)]
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
