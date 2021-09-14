@@ -601,6 +601,10 @@ class DictTransformer(TypeTransformer[dict]):
         if literal_type.map_value_type:
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
+
+        if literal_type.simple == SimpleType.STRUCT and literal_type.metadata is None:
+            return dict
+
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
 

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import pandas
 import pytest
 from dataclasses_json import dataclass_json
+from google.protobuf.struct_pb2 import Struct
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
@@ -30,7 +31,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
-from flytekit.models.types import LiteralType
+from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 
@@ -1277,3 +1278,33 @@ def test_conditional_asymmetric_return():
 
     assert consume_outputs(my_input=4, seed=7) == 32
     assert consume_outputs(my_input=4) == 16
+
+
+def test_guess_dict():
+    @task
+    def t2(a: dict) -> str:
+        return ", ".join([f"K: {k} V: {v}" for k, v in a.items()])
+
+    serialization_settings = context_manager.SerializationSettings(
+        project="proj",
+        domain="dom",
+        version="123",
+        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
+        env={},
+    )
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    assert task_spec.template.interface.inputs["a"].type.simple == SimpleType.STRUCT
+    print(f"|{task_spec.template.interface.inputs['a'].type}|")
+    print(f"|{task_spec.template.interface.inputs['a'].type.metadata}|")
+
+    pt = TypeEngine.guess_python_type(task_spec.template.interface.inputs["a"].type)
+    assert pt is dict
+
+    input_map = {"a": {"k1": "v1", "k2": "2"}}
+    guessed_types = {"a": pt}
+    ctx = context_manager.FlyteContext.current_context()
+    lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, guessed_python_types=guessed_types)
+    assert isinstance(lm.literals["a"].scalar.generic, Struct)
+
+    output_lm = t2.dispatch_execute(ctx, lm)
+    assert output_lm.literals["o0"].scalar.primitive.string_value == "K: k2 V: 2, K: k1 V: v1"
