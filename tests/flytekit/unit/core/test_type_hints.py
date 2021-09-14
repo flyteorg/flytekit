@@ -17,8 +17,6 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
-
-# from flytekit.interfaces.data.data_proxy import FileAccessProvider
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
@@ -33,6 +31,14 @@ from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
+
+serialization_settings = context_manager.SerializationSettings(
+    project="proj",
+    domain="dom",
+    version="123",
+    image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
+    env={},
+)
 
 
 def test_default_wf_params_works():
@@ -1285,17 +1291,8 @@ def test_guess_dict():
     def t2(a: dict) -> str:
         return ", ".join([f"K: {k} V: {v}" for k, v in a.items()])
 
-    serialization_settings = context_manager.SerializationSettings(
-        project="proj",
-        domain="dom",
-        version="123",
-        image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
-        env={},
-    )
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
     assert task_spec.template.interface.inputs["a"].type.simple == SimpleType.STRUCT
-    print(f"|{task_spec.template.interface.inputs['a'].type}|")
-    print(f"|{task_spec.template.interface.inputs['a'].type.metadata}|")
 
     pt = TypeEngine.guess_python_type(task_spec.template.interface.inputs["a"].type)
     assert pt is dict
@@ -1307,4 +1304,35 @@ def test_guess_dict():
     assert isinstance(lm.literals["a"].scalar.generic, Struct)
 
     output_lm = t2.dispatch_execute(ctx, lm)
-    assert output_lm.literals["o0"].scalar.primitive.string_value == "K: k2 V: 2, K: k1 V: v1"
+    str_value = output_lm.literals["o0"].scalar.primitive.string_value
+    assert str_value == "K: k2 V: 2, K: k1 V: v1" or str_value == "K: k1 V: v1, K: k2 V: 2"
+
+
+def test_guess_dict2():
+    @task
+    def t2(a: typing.List[dict]) -> str:
+        strs = []
+        for input_dict in a:
+            strs.append(", ".join([f"K: {k} V: {v}" for k, v in input_dict.items()]))
+        return " ".join(strs)
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    assert task_spec.template.interface.inputs["a"].type.collection_type.simple == SimpleType.STRUCT
+    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.inputs)
+    assert pt_map == {"a": typing.List[dict]}
+
+
+def test_guess_dict3():
+    @task
+    def t2() -> dict:
+        return {"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}}
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    print(task_spec.template.interface.outputs["o0"])
+
+    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
+    assert pt_map["o0"] is dict
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    assert output_lm.literals["o0"].scalar.generic is not None
