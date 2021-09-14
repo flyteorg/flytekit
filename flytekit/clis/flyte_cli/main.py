@@ -499,6 +499,13 @@ class _FlyteSubCommand(_click.Command):
             if param.name in type(self)._PASSABLE_FLAGS and param.name in parent.params and parent.params[param.name]:
                 prefix_args.append(type(self)._PASSABLE_FLAGS[param.name])
 
+        # Pass the parameters to the subcommand "setup-config", so both of the below commands can work.
+        # flyte-cli -h localhost:30081 -i setup-config
+        # flyte-cli setup-config -h localhost:30081 -i
+        if cmd_name == "setup-config":
+            ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
+            return ctx
+
         config = parent.params["config"]
         if config is None:
             # Run this as the module is loading to pick up settings that click can
@@ -2340,7 +2347,7 @@ def list_matching_attributes(host, insecure, resource_type):
         _click.echo("{}".format(configuration.attributes))
 
 
-@_flyte_cli.command("setup-config", cls=_click.Command)
+@_flyte_cli.command("setup-config", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 def setup_config(host, insecure):
