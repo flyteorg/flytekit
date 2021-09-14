@@ -61,8 +61,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8]
-        # Omitting "flytekit-pandera" for now.
-        plugin-names: ["flytekit-aws-athena", "flytekit-aws-sagemaker", "flytekit-data-fsspec", "flytekit-dolt", "flytekit-greatexpectations", "flytekit-hive", "flytekit-k8s-pod", "flytekit-kf-pytorch", "flytekit-kf-tensorflow", "flytekit-papermill", "flytekit-spark", "flytekit-sqlalchemy"]
+        plugin-names: ["flytekit-aws-athena", "flytekit-aws-sagemaker", "flytekit-data-fsspec", "flytekit-dolt", "flytekit-greatexpectations", "flytekit-hive", "flytekit-k8s-pod", "flytekit-kf-pytorch", "flytekit-kf-tensorflow", "flytekit-papermill", "flytekit-spark", "flytekit-sqlalchemy", "flytekit-pandera"]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
