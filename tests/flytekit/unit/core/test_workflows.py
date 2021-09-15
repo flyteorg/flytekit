@@ -65,7 +65,7 @@ def test_default_values():
 
     @workflow
     def wf(a: bool = True) -> bool:
-        return conditional("bool").if_(a.is_true()).then(t()).else_().then(f())
+        return conditional("bool").if_(a.is_true()).then(t()).else_().then(f())  # type: ignore
 
     assert wf() is True
     assert wf(a=False) is False
@@ -94,7 +94,7 @@ def test_sub_wf_single_named_tuple():
     @task
     def t1(a: int) -> nt:
         a = a + 2
-        return (a,)
+        return nt(a)
 
     @workflow
     def subwf(a: int) -> nt:
@@ -172,7 +172,7 @@ def test_wf_nested_comp():
         return a
 
     @workflow
-    def outer() -> (int, int):
+    def outer() -> typing.Tuple[int, int]:
         # You should not do this. This is just here for testing.
         @workflow
         def wf2() -> int:
@@ -207,7 +207,7 @@ def simple_wf() -> int:
 
 
 @workflow
-def my_wf_example(a: int) -> (int, int):
+def my_wf_example(a: int) -> typing.Tuple[int, int]:
     """example
 
     Workflows can have inputs and return outputs of simple or complex types.

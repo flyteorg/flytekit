@@ -14,7 +14,6 @@ from flytekit.core.promise import (
 )
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import identifier as _identifier_model
@@ -83,11 +82,11 @@ class ReferenceEntity(object):
         raise Exception("Remote reference entities cannot be run locally. You must mock this out.")
 
     @property
-    def python_interface(self) -> Optional[Interface]:
+    def python_interface(self) -> Interface:
         return self._native_interface
 
     @property
-    def interface(self) -> Optional[_interface_models.TypedInterface]:
+    def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
     @property
@@ -104,7 +103,7 @@ class ReferenceEntity(object):
 
     def unwrap_literal_map_and_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[VoidPromise, _literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+    ) -> _literal_models.LiteralMap:
         """
         Please see the implementation of the dispatch_execute function in the real task.
         """
@@ -142,7 +141,7 @@ class ReferenceEntity(object):
         # After the execute has been successfully completed
         return outputs_literal_map
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
         """
         Please see the local_execute comments in the main task.
         """

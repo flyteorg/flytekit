@@ -95,8 +95,8 @@ def test_ref_task_more():
         assert wf1(in1=["hello", "world"]) == "hello"
 
 
-@reference_workflow(project="proj", domain="developement", name="wf_name", version="abc")
-def ref_wf1(a: int) -> (str, str):
+@reference_workflow(project="proj", domain="development", name="wf_name", version="abc")
+def ref_wf1(a: int) -> typing.Tuple[str, str]:
     ...
 
 
@@ -159,7 +159,7 @@ def test_ref_plain_no_outputs():
     @task
     def t1(a: int) -> nt1:
         a = a + 2
-        return a, "world-" + str(a)
+        return nt1(a, "world-" + str(a))
 
     @workflow
     def wf2(a: int):

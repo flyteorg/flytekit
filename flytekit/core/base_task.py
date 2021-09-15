@@ -202,10 +202,10 @@ class Task(object):
         """
         return type(v)
 
-    def get_input_types(self) -> Dict[str, type]:
+    def get_input_types(self) -> Optional[Dict[str, type]]:
         """
         Returns python native types for inputs. In case this is not a python native task (base class) and hence
-        returns a None. we could deduce the type from literal types, but that is not a required excercise
+        returns a None. we could deduce the type from literal types, but that is not a required exercise
         # TODO we could use literal type to determine this
         """
         return None
@@ -226,7 +226,7 @@ class Task(object):
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
-            flyte_interface_types=self.interface.inputs,
+            flyte_interface_types=self.interface.inputs,  # type: ignore
             native_types=self.get_input_types(),
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
@@ -256,7 +256,7 @@ class Task(object):
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
         #    location, otherwise we dont really need to right? The higher level execute could just handle literalMap
         # After running, we again have to wrap the outputs, if any, back into Promise objects
-        output_names = list(self.interface.outputs.keys())
+        output_names = list(self.interface.outputs.keys())  # type: ignore
         if len(output_names) != len(outputs_literals):
             # Length check, clean up exception
             raise AssertionError(f"Length difference {len(output_names)} {len(outputs_literals)}")
@@ -283,6 +283,12 @@ class Task(object):
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
         """
         Returns the kubernetes pod definition (if any) that is used to run the task on hosted Flyte.
+        """
+        return None
+
+    def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
+        """
+        Returns the Sql definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
@@ -423,7 +429,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
     @property
     def _outputs_interface(self) -> Dict[Any, Variable]:
-        return self.interface.outputs
+        return self.interface.outputs  # type: ignore
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
@@ -443,7 +449,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
+            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))  # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
@@ -527,7 +533,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
         """
         Post execute is called after the execution has completed, with the user_params and can be used to clean-up,
-        or alter the outputs to match the intended tasks outputs. If not overriden, then this function is a No-op
+        or alter the outputs to match the intended tasks outputs. If not overridden, then this function is a No-op
 
         Args:
             rval is returned value from call to execute

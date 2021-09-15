@@ -6,7 +6,6 @@ import tarfile as _tarfile
 import typing
 from collections import OrderedDict
 from enum import Enum as _Enum
-from typing import List
 
 import click
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
@@ -18,6 +17,7 @@ from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
 from flytekit.common.exceptions.scopes import system_entry_point
+from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.translator import get_serializable
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
@@ -105,6 +105,20 @@ def _should_register_with_admin(entity) -> bool:
     )
 
 
+def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Set[task_models.TaskSpec]:
+    """
+    Given a list of `TaskSpec`, this function returns a set containing the duplicated `TaskSpec` if any exists.
+    """
+    seen: typing.Set[_identifier.Identifier] = set()
+    duplicate_tasks: typing.Set[task_models.TaskSpec] = set()
+    for task in tasks:
+        if task.template.id not in seen:
+            seen.add(task.template.id)
+        else:
+            duplicate_tasks.add(task)
+    return duplicate_tasks
+
+
 def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
     """
     Returns all entities that can be serialized and should be sent over to Flyte backend. This will filter any entities
@@ -123,6 +137,19 @@ def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
+    serializable_tasks: typing.List[task_models.TaskSpec] = [
+        entity for entity in entities_to_be_serialized if isinstance(entity, task_models.TaskSpec)
+    ]
+    # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same metadata identifiers
+    # (see :py:class:`flytekit.common.core.identifier.Identifier`). Duplicate tasks are considered invalid at registration
+    # time and usually indicate user error, so we catch this common mistake at serialization time.
+    duplicate_tasks = _find_duplicate_tasks(serializable_tasks)
+    if len(duplicate_tasks) > 0:
+        duplicate_task_names = [task.template.id.name for task in duplicate_tasks]
+        raise FlyteValidationException(
+            f"Multiple definitions of the following tasks were found: {duplicate_task_names}"
+        )
+
     return [v.to_flyte_idl() for v in entities_to_be_serialized]
 
 
@@ -155,7 +182,7 @@ def persist_registrable_entities(entities: typing.List, folder: str):
 
 @system_entry_point
 def serialize_all(
-    pkgs: List[str] = None,
+    pkgs: typing.List[str] = None,
     local_source_root: str = None,
     folder: str = None,
     mode: SerializationMode = None,

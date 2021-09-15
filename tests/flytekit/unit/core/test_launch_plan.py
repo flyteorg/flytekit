@@ -296,7 +296,7 @@ def test_lp_all_parameters():
     @task
     def t1(a: int) -> nt:
         a = a + 2
-        return a, "world-" + str(a)
+        return nt(a, "world-" + str(a))
 
     @task
     def t2(a: str, b: str, c: str) -> str:
@@ -372,7 +372,7 @@ def test_lp_nodes():
     lp = launch_plan.LaunchPlan.get_or_create(my_sub_wf, "my_sub_wf_lp1")
 
     @workflow
-    def my_wf(a: int) -> (int, int):
+    def my_wf(a: int) -> typing.Tuple[int, int]:
         t = t1(a=a)
         w = lp(a=a)
         return t, w

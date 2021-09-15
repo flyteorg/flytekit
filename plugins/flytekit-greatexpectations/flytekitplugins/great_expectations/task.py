@@ -156,7 +156,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         return dataset
 
     def execute(self, **kwargs) -> Any:
-        context = ge.data_context.DataContext(self._context_root_dir)
+        context = ge.data_context.DataContext(self._context_root_dir)  # type: ignore
 
         if len(self.python_interface.inputs.keys()) != 1:
             raise TypeError("Expected one input argument to validate the dataset")

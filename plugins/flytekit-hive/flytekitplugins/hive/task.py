@@ -77,7 +77,7 @@ class HiveTask(SQLTask[HiveConfig]):
         return self.task_config.cluster_label
 
     @property
-    def output_schema_type(self) -> Type[FlyteSchema]:
+    def output_schema_type(self) -> Optional[Type[FlyteSchema]]:
         return self._output_schema_type
 
     @property

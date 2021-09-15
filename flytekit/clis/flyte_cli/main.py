@@ -1,3 +1,4 @@
+import configparser as _configparser
 import importlib as _importlib
 import os
 import os as _os
@@ -98,10 +99,6 @@ def _detect_default_config_file():
                         To setup your config file run 'flyte-cli setup-config'""",
             fg="blue",
         )
-
-
-# Run this as the module is loading to pick up settings that click can then use when constructing the commands
-_detect_default_config_file()
 
 
 def _get_io_string(literal_map, verbose=False):
@@ -289,28 +286,12 @@ def _render_schedule_expr(lp):
     return "{:30}".format(sched_expr)
 
 
-# These two flags are special in that they are specifiable in both the user's default ~/.flyte/config file, and in the
-# flyte-cli command itself, both in the parent-command position (flyte-cli) , and in the child-command position
-# (e.g. list-task-names). To get around this, first we read the value of the config object, and store it. Later in the
-# file below are options for each of these options, one for the parent command, and one for the child command. If not
-# set by the parent, and also not set by the child, then the value from the config file is used.
-#
-# For both host and insecure, command line values will override the setting in ~/.flyte/config file.
-#
-# The host url option is a required setting, so if missing it will fail, but it may be set in the click command, so we
-# don't have to check now. It will be checked later.
-_HOST_URL = None
-try:
-    _HOST_URL = _platform_config.URL.get()
-except _user_exceptions.FlyteAssertion:
-    pass
-_INSECURE_FLAG = _platform_config.INSECURE.get()
-
 _PROJECT_FLAGS = ["-p", "--project"]
 _DOMAIN_FLAGS = ["-d", "--domain"]
 _NAME_FLAGS = ["-n", "--name"]
 _VERSION_FLAGS = ["-v", "--version"]
 _HOST_FLAGS = ["-h", "--host"]
+_CONFIG_FLAGS = ["-c", "--config"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
 
@@ -344,15 +325,14 @@ _optional_principal_option = _click.option(
     default=None,
     help="[Optional] Your team name, or your name",
 )
-_insecure_option = _click.option(*_INSECURE_FLAGS, is_flag=True, required=True, help="Do not use SSL")
+_insecure_option = _click.option(*_INSECURE_FLAGS, is_flag=True, help="Do not use SSL")
 _urn_option = _click.option("-u", "--urn", required=True, help="The unique identifier for an entity.")
 
 _optional_urn_option = _click.option("-u", "--urn", required=False, help="The unique identifier for an entity.")
 
 _host_option = _click.option(
     *_HOST_FLAGS,
-    required=not bool(_HOST_URL),
-    default=_HOST_URL,
+    required=False,
     help="The URL for the Flyte Admin Service. If you intend for this to be consistent, set the FLYTE_PLATFORM_URL "
     "environment variable to the desired URL and this will not need to be set.",
 )
@@ -498,6 +478,7 @@ class _FlyteSubCommand(_click.Command):
         "domain": _DOMAIN_FLAGS[0],
         "name": _NAME_FLAGS[0],
         "host": _HOST_FLAGS[0],
+        "config": _CONFIG_FLAGS[0],
     }
 
     _PASSABLE_FLAGS = {
@@ -518,6 +499,48 @@ class _FlyteSubCommand(_click.Command):
             if param.name in type(self)._PASSABLE_FLAGS and param.name in parent.params and parent.params[param.name]:
                 prefix_args.append(type(self)._PASSABLE_FLAGS[param.name])
 
+        # Pass the parameters to the subcommand "setup-config", so both of the below commands can work.
+        # flyte-cli -h localhost:30081 -i setup-config
+        # flyte-cli setup-config -h localhost:30081 -i
+        if cmd_name == "setup-config":
+            ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
+            return ctx
+
+        config = parent.params["config"]
+        if config is None:
+            # Run this as the module is loading to pick up settings that click can
+            # then use when constructing the commands
+            _detect_default_config_file()
+
+        else:
+            config = parent.params["config"]
+            if _os.path.exists(config):
+                _click.secho("Using config file at {}".format(_tt(config)), fg="blue")
+                set_flyte_config_file(config_file_path=config)
+            else:
+                _click.secho(
+                    "Config file not found at {}".format(_tt(config)),
+                    fg="blue",
+                )
+
+        # These two flags are special in that they are specifiable in both the user's default ~/.flyte/config file,
+        # and in the flyte-cli command itself, both in the parent-command position (flyte-cli) , and in the
+        # child-command position (e.g. list-task-names). To get around this, first we read the value of the config
+        # object, and store it. Later in the file below are options for each of these options, one for the parent
+        # command, and one for the child command. If not set by the parent, and also not set by the child,
+        # then the value from the config file is used.
+        #
+        # For both host and insecure, command line values will override the setting in ~/.flyte/config file.
+        #
+        # The host url option is a required setting, so if missing it will fail, but it may be set in the click command,
+        # so we don't have to check now. It will be checked later.
+        _HOST_URL = None
+        try:
+            _HOST_URL = _platform_config.URL.get()
+        except _user_exceptions.FlyteAssertion:
+            pass
+        _INSECURE_FLAG = _platform_config.INSECURE.get()
+
         # This is where we handle the value read from the flyte-cli config file, if any, for the insecure flag.
         # Previously we tried putting it into the default into the declaration of the option itself, but in click, it
         # appears that flags operate like toggles. If both the default is true and the flag is passed in the command,
@@ -525,10 +548,21 @@ class _FlyteSubCommand(_click.Command):
         if _INSECURE_FLAG and _INSECURE_FLAGS[0] not in prefix_args:
             prefix_args.append(_INSECURE_FLAGS[0])
 
+        # Use host url in config file if users don't specify the host url
+        if _HOST_FLAGS[0] not in prefix_args:
+            prefix_args.extend([_HOST_FLAGS[0], _six.text_type(_HOST_URL)])
         ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
         return ctx
 
 
+@_click.option(
+    *_CONFIG_FLAGS,
+    required=False,
+    type=str,
+    default=None,
+    help="[Optional] The filepath to the config file to pass to the sub-command (if applicable)."
+    "  If set again in the sub-command, the sub-command's parameter takes precedence.",
+)
 @_click.option(
     *_HOST_FLAGS,
     required=False,
@@ -564,11 +598,10 @@ class _FlyteSubCommand(_click.Command):
 @_insecure_option
 @_click.group("flyte-cli")
 @_click.pass_context
-def _flyte_cli(ctx, host, project, domain, name, insecure):
+def _flyte_cli(ctx, host, config, project, domain, name, insecure):
     """
     Command line tool for interacting with all entities on the Flyte Platform.
     """
-    pass
 
 
 ########################################################################################################################
@@ -583,9 +616,9 @@ def _flyte_cli(ctx, host, project, domain, name, insecure):
 @_idl_class_option
 def parse_proto(filename, proto_class):
     _welcome_message()
-    splitted = proto_class.split(".")
-    idl_module = ".".join(splitted[:-1])
-    idl_obj = splitted[-1]
+    split = proto_class.split(".")
+    idl_module = ".".join(split[:-1])
+    idl_obj = split[-1]
     mod = _importlib.import_module(idl_module)
     idl = getattr(mod, idl_obj)
     obj = _load_proto_from_file(idl, filename)
@@ -1272,7 +1305,7 @@ def recover_execution(urn, name, host, insecure):
         - downstream system failures (downstream services)
         - or simply to recover executions that failed because of retry exhaustion and should complete if tried again.
 
-    You can optionally assign a name to the recreated execution you trigger or let the system assing one.
+    You can optionally assign a name to the recreated execution you trigger or let the system assign one.
 
     Usage:
         $ flyte-cli recover-execution -u ex:flyteexamples:development:some-workflow:abc123 -n my_retry_name
@@ -1840,7 +1873,6 @@ def _extract_and_register(
     file_paths: List[str],
     patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]] = None,
 ):
-
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
     flyte_entities_list = _extract_files(project, domain, version, file_paths, patches)
@@ -2315,7 +2347,7 @@ def list_matching_attributes(host, insecure, resource_type):
         _click.echo("{}".format(configuration.attributes))
 
 
-@_flyte_cli.command("setup-config", cls=_click.Command)
+@_flyte_cli.command("setup-config", cls=_FlyteSubCommand)
 @_host_option
 @_insecure_option
 def setup_config(host, insecure):
@@ -2342,26 +2374,27 @@ def setup_config(host, insecure):
     config_url = _urlparse.urljoin(full_host, "config/v1/flyte_client")
     response = _requests.get(config_url)
     data = response.json()
+    platform_config = {"url": str(host), "insecure": str(insecure)}
+    credentials_config = None
+    if not insecure:
+        # We can't get credentials config in insecure mode
+        credentials_config = {
+            "client_id": data["client_id"],
+            "redirect_uri": data["redirect_uri"],
+            "scopes": data["scopes"],
+            "authorization_metadata_key": data["authorization_metadata_key"],
+            "auth_mode": "standard",
+        }
     with open(config_file, "w+") as f:
-        f.write("[platform]")
-        f.write("\n")
-        f.write("url={}".format(host))
-        f.write("\n")
-        f.write("insecure={}".format(insecure))
-        f.write("\n\n")
-
-        f.write("[credentials]")
-        f.write("\n")
-        f.write("client_id={}".format(data["client_id"]))
-        f.write("\n")
-        f.write("redirect_uri={}".format(data["redirect_uri"]))
-        f.write("\n")
-        f.write("scopes={}".format(data["scopes"]))
-        f.write("\n")
-        f.write("authorization_metadata_key={}".format(data["authorization_metadata_key"]))
-        f.write("\n")
-        f.write("auth_mode=standard")
-        f.write("\n")
+        parser = _configparser.ConfigParser()
+        parser.add_section("platform")
+        for key in platform_config.keys():
+            parser.set("platform", key, platform_config[key])
+        if not insecure:
+            parser.add_section("credentials")
+            for key in credentials_config.keys():
+                parser.set("credentials", key, credentials_config[key])
+        parser.write(f)
     set_flyte_config_file(config_file_path=config_file)
     _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg="blue")
 

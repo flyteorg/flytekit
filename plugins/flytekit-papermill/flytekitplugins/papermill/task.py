@@ -23,6 +23,9 @@ def _dummy_task_func():
     return None
 
 
+PAPERMILL_TASK_PREFIX = "pm.nb"
+
+
 class NotebookTask(PythonInstanceTask[T]):
     """
     Simple Papermill based input output handling for a Python Jupyter notebook. This task should be used to wrap
@@ -111,20 +114,30 @@ class NotebookTask(PythonInstanceTask[T]):
         outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         **kwargs,
     ):
+        # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
+        # to run pre- and post- execute functions using the corresponding task plugin.
+        # We rename the function name here to ensure the generated task has a unique name and avoid duplicate task name
+        # errors.
+        # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
-        self._plugin = plugin_class(task_config=task_config, task_function=_dummy_task_func)
-        task_type = f"nb-{self._plugin.task_type}"
+        self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
+        # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
+        # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
+        # at serialization time.
+        self._config_task_instance._name = f"{PAPERMILL_TASK_PREFIX}.{name}"
+        task_type = f"nb-{self._config_task_instance.task_type}"
         self._notebook_path = os.path.abspath(notebook_path)
 
         if not os.path.exists(self._notebook_path):
             raise ValueError(f"Illegal notebook path passed in {self._notebook_path}")
 
-        outputs.update(
-            {
-                self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
-                self._IMPLICIT_RENDERED_NOTEBOOK: self._IMPLICIT_RENDERED_NOTEBOOK_TYPE,
-            }
-        )
+        if outputs:
+            outputs.update(
+                {
+                    self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
+                    self._IMPLICIT_RENDERED_NOTEBOOK: self._IMPLICIT_RENDERED_NOTEBOOK_TYPE,
+                }
+            )
         super().__init__(
             name, task_config, task_type=task_type, interface=Interface(inputs=inputs, outputs=outputs), **kwargs
         )
@@ -142,7 +155,7 @@ class NotebookTask(PythonInstanceTask[T]):
         return self._notebook_path.split(".ipynb")[0] + "-out.html"
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        return self._plugin.pre_execute(user_params)
+        return self._config_task_instance.pre_execute(user_params)
 
     @staticmethod
     def extract_outputs(nb: str) -> LiteralMap:
@@ -185,7 +198,7 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         logging.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         # Execute Notebook via Papermill.
-        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs)
+        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs)  # type: ignore
 
         outputs = self.extract_outputs(self.output_notebook_path)
         self.render_nb_html(self.output_notebook_path, self.rendered_output_path)
@@ -208,7 +221,7 @@ class NotebookTask(PythonInstanceTask[T]):
         return tuple(output_list)
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
-        return self._plugin.post_execute(user_params, rval)
+        return self._config_task_instance.post_execute(user_params, rval)
 
 
 def record_outputs(**kwargs) -> str:

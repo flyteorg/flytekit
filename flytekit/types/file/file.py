@@ -141,8 +141,8 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     def __class_getitem__(cls, item: typing.Type) -> typing.Type[FlyteFile]:
         if item is None:
             return cls
-        item = str(item)
-        item = item.strip().lstrip("~").lstrip(".")
+        item_string = str(item)
+        item_string = item_string.strip().lstrip("~").lstrip(".")
         if item == "":
             return cls
 
@@ -152,7 +152,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
             @classmethod
             def extension(cls) -> str:
-                return item
+                return item_string
 
         return _SpecificFormatClass
 
@@ -204,7 +204,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         If this is an input to a task, and the original path is ``s3://something``, flytekit will download the
         file for the user. In case the user wants access to the original path, it will be here.
         """
-        return self._remote_source
+        return typing.cast(str, self._remote_source)
 
     def download(self) -> str:
         if self._downloaded:
@@ -228,7 +228,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
     @staticmethod
-    def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
+    def get_format(t: typing.Union[typing.Type[FlyteFile]]) -> str:
         if t is os.PathLike:
             return ""
         return t.extension()
@@ -345,12 +345,12 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         return ff
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
         if (
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
         ):
-            return FlyteFile[literal_type.blob.format]
+            return FlyteFile[typing.TypeVar(literal_type.blob.format)]
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 

@@ -22,7 +22,7 @@ necessary to add plugins here, but this is a good starting place.
 
 
 ## Have a Plugin Idea?
-Please [file an issue](https://github.com/flyteorg/flyte/issues/new?assignees=&labels=untriaged%2Cplugins&template=backend-plugin-request.md&title=%5BPlugin%5D) 
+Please [file an issue](https://github.com/flyteorg/flyte/issues/new?assignees=&labels=untriaged%2Cplugins&template=backend-plugin-request.md&title=%5BPlugin%5D)
 
 ## Development
 Flyte plugins are structured as micro-libs and can be authored in an

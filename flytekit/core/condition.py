@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import typing
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, cast
 
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.node import Node
@@ -77,7 +77,7 @@ class ConditionalSection:
         self._cases.append(c)
         return self._cases[-1]
 
-    def end_branch(self) -> Union[Condition, Promise]:
+    def end_branch(self) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
         """
         This should be invoked after every branch has been visited.
         In case this is not local workflow execution then, we should check if this is the last case.
@@ -101,13 +101,13 @@ class ConditionalSection:
                     upstream_nodes.add(p.ref.node)
 
             n = Node(
-                id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+                id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",  # type: ignore
                 metadata=_core_wf.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
                 bindings=sorted(bindings, key=lambda b: b.var),
                 upstream_nodes=list(upstream_nodes),  # type: ignore
                 flyte_entity=node,
             )
-            FlyteContextManager.current_context().compilation_state.add_node(n)
+            FlyteContextManager.current_context().compilation_state.add_node(n)  # type: ignore
             return self._compute_outputs(n)
         return self._condition
 
@@ -135,7 +135,7 @@ class ConditionalSection:
                 curr = curr.intersection(x)
         return curr
 
-    def _compute_outputs(self, n: Node) -> Union[Promise, Tuple[Promise], VoidPromise]:
+    def _compute_outputs(self, n: Node) -> Optional[Union[Promise, Tuple[Promise], VoidPromise]]:
         curr = self.compute_output_set()
         if curr is None:
             return VoidPromise(n.id)
@@ -146,7 +146,7 @@ class ConditionalSection:
 
 class LocalExecutedConditionalSection(ConditionalSection):
     def __init__(self, name: str):
-        self._selected_case = None
+        self._selected_case: Optional[Case] = None
         super().__init__(name=name)
 
     def start_branch(self, c: Case, last_case: bool = False) -> Case:
@@ -161,7 +161,7 @@ class LocalExecutedConditionalSection(ConditionalSection):
         # We already have a candidate case selected
         if self._selected_case is None:
             if c.expr is None or c.expr.eval() or last_case:
-                ctx.execution_state.take_branch()
+                ctx.execution_state.take_branch()  # type: ignore
                 self._selected_case = added_case
         return added_case
 
@@ -176,18 +176,18 @@ class LocalExecutedConditionalSection(ConditionalSection):
         """
         ctx = FlyteContextManager.current_context()
         # Let us mark the execution state as complete
-        ctx.execution_state.branch_complete()
-        if self._last_case:
+        ctx.execution_state.branch_complete()  # type: ignore
+        if self._last_case and self._selected_case:
             # We have completed the conditional section, lets pop off the branch context
             FlyteContextManager.pop_context()
             if self._selected_case.output_promise is None and self._selected_case.err is None:
                 raise AssertionError("Bad conditional statements, did not resolve in a promise")
             elif self._selected_case.output_promise is not None:
-                return self._compute_outputs(self._selected_case.output_promise)
+                return typing.cast(Promise, self._compute_outputs(self._selected_case.output_promise))
             raise ValueError(self._selected_case.err)
         return self._condition
 
-    def _compute_outputs(self, selected_output_promise) -> Union[Promise, Tuple[Promise], VoidPromise]:
+    def _compute_outputs(self, selected_output_promise) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
         """
         For the local execution case only returns the least common set of outputs
         """
@@ -209,7 +209,7 @@ class SkippedConditionalSection(ConditionalSection):
     def __init__(self, name: str):
         super().__init__(name=name)
 
-    def end_branch(self) -> Union[Condition, Promise]:
+    def end_branch(self) -> Optional[Union[Condition, Tuple[Promise], Promise, VoidPromise]]:
         """
         This should be invoked after every branch has been visited
         """
@@ -251,7 +251,7 @@ class Case(object):
                 )
         self._expr = expr
         self._output_promise: Optional[Union[Tuple[Promise], Promise]] = None
-        self._err = None
+        self._err: Optional[str] = None
 
     @property
     def expr(self) -> Optional[Union[ComparisonExpression, ConjunctionExpression]]:
@@ -266,14 +266,16 @@ class Case(object):
         return self._err
 
     # TODO this is complicated. We do not want this to run
-    def then(self, p: Union[Promise, Tuple[Promise]]) -> Union[Condition, Promise]:
+    def then(
+        self, p: Union[Promise, Tuple[Promise]]
+    ) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
         self._output_promise = p
         # We can always mark branch as completed
         return self._cs.end_branch()
 
     def fail(self, err: str) -> Promise:
         self._err = err
-        return self._cs.end_branch()
+        return cast(Promise, self._cs.end_branch())
 
 
 class Condition(object):
@@ -361,7 +363,7 @@ def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[_core_cond.Operand
     return _core_cond.Operand(primitive=v.scalar.primitive), None
 
 
-def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.ComparisonExpression, typing.List[Promise]):
+def transform_to_comp_expr(expr: ComparisonExpression) -> Tuple[_core_cond.ComparisonExpression, typing.List[Promise]]:
     o_lhs, b_lhs = transform_to_operand(expr.lhs)
     o_rhs, b_rhs = transform_to_operand(expr.rhs)
     return (
@@ -372,7 +374,7 @@ def transform_to_comp_expr(expr: ComparisonExpression) -> (_core_cond.Comparison
 
 def transform_to_boolexpr(
     expr: Union[ComparisonExpression, ConjunctionExpression]
-) -> (_core_cond.BooleanExpression, typing.List[Promise]):
+) -> Tuple[_core_cond.BooleanExpression, typing.List[Promise]]:
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)
         return _core_cond.BooleanExpression(conjunction=cexpr), promises
@@ -380,17 +382,17 @@ def transform_to_boolexpr(
     return _core_cond.BooleanExpression(comparison=cexpr), promises
 
 
-def to_case_block(c: Case) -> (Union[_core_wf.IfBlock], typing.List[Promise]):
+def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
     expr, promises = transform_to_boolexpr(c.expr)
-    n = c.output_promise.ref.node
+    n = c.output_promise.ref.node  # type: ignore
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
-def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlock, typing.List[Binding]):
+def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfElseBlock, typing.List[Binding]]:
     if len(cs.cases) == 0:
         raise AssertionError("Illegal Condition block, with no if-else cases")
     if len(cs.cases) < 2:
-        raise AssertionError("Atleast an if/else is required. Dangling If is not allowed")
+        raise AssertionError("At least an if/else is required. Dangling If is not allowed")
     all_promises: typing.List[Promise] = []
     first_case, promises = to_case_block(cs.cases[0])
     all_promises.extend(promises)
@@ -405,7 +407,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     node = None
     err = None
     if last_case.output_promise is not None:
-        node = last_case.output_promise.ref.node
+        node = last_case.output_promise.ref.node  # type: ignore
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (
@@ -414,7 +416,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> (_core_wf.IfElseBlo
     )
 
 
-def to_branch_node(name: str, cs: ConditionalSection) -> (BranchNode, typing.List[Promise]):
+def to_branch_node(name: str, cs: ConditionalSection) -> Tuple[BranchNode, typing.List[Promise]]:
     blocks, promises = to_ifelse_block(name, cs)
     return BranchNode(name=name, ifelse_block=blocks), promises
 

@@ -3,6 +3,7 @@ from typing import Dict
 
 import flytekit
 from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import identifier as _identifier
@@ -45,16 +46,7 @@ class FlyteTaskNode(_workflow_model.TaskNode):
             flyte_task = _task.FlyteTask.promote_from_model(task)
             return cls(flyte_task)
 
-        # if not found, fetch it from Admin
-        _logging.debug(f"Fetching task template for {base_model.reference_id} from Admin")
-        return cls(
-            _task.FlyteTask.fetch(
-                base_model.reference_id.project,
-                base_model.reference_id.domain,
-                base_model.reference_id.name,
-                base_model.reference_id.version,
-            )
-        )
+        raise _system_exceptions.FlyteSystemException(f"Task template {base_model.reference_id} not found.")
 
 
 class FlyteWorkflowNode(_workflow_model.WorkflowNode):
@@ -105,36 +97,30 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         cls,
         base_model: _workflow_model.WorkflowNode,
         sub_workflows: Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate],
+        node_launch_plans: Dict[_identifier.Identifier, _launch_plan_model.LaunchPlanSpec],
         tasks: Dict[_identifier.Identifier, _task_model.TaskTemplate],
     ) -> "FlyteWorkflowNode":
         from flytekit.remote import launch_plan as _launch_plan
         from flytekit.remote import workflow as _workflow
 
-        fetch_args = (
-            base_model.reference.project,
-            base_model.reference.domain,
-            base_model.reference.name,
-            base_model.reference.version,
-        )
-
         if base_model.launchplan_ref is not None:
-            return cls(flyte_launch_plan=_launch_plan.FlyteLaunchPlan.fetch(*fetch_args))
+            return cls(
+                flyte_launch_plan=_launch_plan.FlyteLaunchPlan.promote_from_model(
+                    base_model.launchplan_ref, node_launch_plans[base_model.launchplan_ref]
+                )
+            )
         elif base_model.sub_workflow_ref is not None:
-            # the workflow tempaltes for sub-workflows should have been included in the original response
+            # the workflow templates for sub-workflows should have been included in the original response
             if base_model.reference in sub_workflows:
                 return cls(
                     flyte_workflow=_workflow.FlyteWorkflow.promote_from_model(
                         sub_workflows[base_model.reference],
                         sub_workflows=sub_workflows,
+                        node_launch_plans=node_launch_plans,
                         tasks=tasks,
                     )
                 )
-
-            # If not found for some reason, fetch it from Admin again. The reason there is a warning here but not for
-            # tasks is because sub-workflows should always be passed along. Ideally subworkflows are never even
-            # registered with Admin, so fetching from Admin ideelly doesn't return anything
-            _logging.warning(f"Your subworkflow with id {base_model.reference} is not included in the promote call.")
-            return cls(flyte_workflow=_workflow.FlyteWorkflow.fetch(*fetch_args))
+            raise _system_exceptions.FlyteSystemException(f"Subworkflow {base_model.reference} not found.")
 
         raise _system_exceptions.FlyteSystemException(
             "Bad workflow node model, neither subworkflow nor launchplan specified."

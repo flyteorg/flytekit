@@ -4,7 +4,7 @@ PLUGIN_NAME = "pandera"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.16.0b6,<1.0.0", "pandera>=0.6.1"]
+plugin_requires = ["flytekit>=0.16.0b6,<1.0.0", "pandera>=0.7.1"]
 
 __version__ = "0.0.0+develop"
 

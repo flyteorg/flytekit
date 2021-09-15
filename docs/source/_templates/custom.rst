@@ -8,7 +8,7 @@
 
    {% block methods %}
    {% if methods %}
-   
+
    .. rubric:: {{ _('Methods') }}
    {% for item in methods %}
 

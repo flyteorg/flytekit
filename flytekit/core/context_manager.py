@@ -24,7 +24,7 @@ import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from docker_image import reference
 
@@ -34,10 +34,15 @@ from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
+from flytekit.core.node import Node
 from flytekit.engines.unit import mock_stats as _mock_stats
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
+
+# Enables static type checking https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING
+if typing.TYPE_CHECKING:
+    from flytekit.core.base_task import TaskResolverMixin
 
 _DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 
@@ -80,8 +85,8 @@ class ImageConfig(object):
         images (List[Image]): Optional, additional images which can be used in task container definitions.
     """
 
-    default_image: Image = None
-    images: List[Image] = None
+    default_image: Optional[Image] = None
+    images: Optional[List[Image]] = None
 
     def find_image(self, name) -> Optional[Image]:
         """
@@ -133,8 +138,8 @@ class EntrypointSettings(object):
     to execute tasks at runtime.
     """
 
-    path: str = None
-    command: str = None
+    path: Optional[str] = None
+    command: Optional[str] = None
     version: int = 0
 
 
@@ -145,7 +150,7 @@ class FastSerializationSettings(object):
     """
 
     enabled: bool = False
-    destination_dir: str = None
+    destination_dir: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -194,7 +199,7 @@ class SerializationSettings(object):
         entrypoint_settings: Optional[EntrypointSettings] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
 
-        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> "Builder":
+        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
             self.fast_serialization_settings = fss
             return self
 
@@ -246,13 +251,13 @@ class CompilationState(object):
             users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
             us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
         mode (int): refer to :py:class:`flytekit.extend.ExecutionState.Mode`
-        task_resolver (Optional["TaskResolverMixin"]): Please see :py:class:`flytekit.extend.TaskResolverMixin`
+        task_resolver (Optional[TaskResolverMixin]): Please see :py:class:`flytekit.extend.TaskResolverMixin`
         nodes (Optional[List]): Stores currently compiled nodes so far.
     """
 
     prefix: str
     mode: int = 1
-    task_resolver: Optional["TaskResolverMixin"] = None
+    task_resolver: Optional[TaskResolverMixin] = None
     nodes: List = field(default_factory=list)
 
     def add_node(self, n: Node):
@@ -262,7 +267,7 @@ class CompilationState(object):
         self,
         prefix: str,
         mode: Optional[int] = None,
-        resolver: Optional["TaskResolverMixin"] = None,
+        resolver: Optional[TaskResolverMixin] = None,
         nodes: Optional[List] = None,
     ) -> CompilationState:
         """
@@ -333,9 +338,9 @@ class ExecutionState(object):
         #: or propeller.
         LOCAL_TASK_EXECUTION = 3
 
-    mode: ExecutionState.Mode
+    mode: Optional[ExecutionState.Mode]
     working_dir: os.PathLike
-    engine_dir: os.PathLike
+    engine_dir: Optional[Union[os.PathLike, str]]
     additional_context: Optional[Dict[Any, Any]]
     branch_eval_mode: Optional[BranchEvalMode]
     user_space_params: Optional[ExecutionParameters]
@@ -344,7 +349,7 @@ class ExecutionState(object):
         self,
         working_dir: os.PathLike,
         mode: Optional[ExecutionState.Mode] = None,
-        engine_dir: Optional[os.PathLike] = None,
+        engine_dir: Optional[Union[os.PathLike, str]] = None,
         additional_context: Optional[Dict[Any, Any]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
@@ -414,7 +419,7 @@ class FlyteContext(object):
     Please do not confuse this object with the :py:class:`flytekit.ExecutionParameters` object.
     """
 
-    file_access: Optional[FileAccessProvider]
+    file_access: FileAccessProvider
     level: int = 0
     flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
     compilation_state: Optional[CompilationState] = None
@@ -485,7 +490,7 @@ class FlyteContext(object):
         return ExecutionState(working_dir=working_dir, user_space_params=self.user_space_params)
 
     @staticmethod
-    def current_context() -> FlyteContext:
+    def current_context() -> Optional[FlyteContext]:
         """
         This method exists only to maintain backwards compatibility. Please use
         ``FlyteContextManager.current_context()`` instead.
@@ -516,7 +521,7 @@ class FlyteContext(object):
                 in_a_condition=self.in_a_condition,
             )
 
-        def enter_conditional_section(self) -> "Builder":
+        def enter_conditional_section(self) -> FlyteContext.Builder:
             """
             Used by the condition block to indicate that a new conditional section has been started.
             """
@@ -539,22 +544,22 @@ class FlyteContext(object):
             self.in_a_condition = True
             return self
 
-        def with_execution_state(self, es: ExecutionState) -> "Builder":
+        def with_execution_state(self, es: ExecutionState) -> FlyteContext.Builder:
             self.execution_state = es
             return self
 
-        def with_compilation_state(self, c: CompilationState) -> "Builder":
+        def with_compilation_state(self, c: CompilationState) -> FlyteContext.Builder:
             self.compilation_state = c
             return self
 
-        def with_new_compilation_state(self) -> "Builder":
+        def with_new_compilation_state(self) -> FlyteContext.Builder:
             return self.with_compilation_state(self.new_compilation_state())
 
-        def with_file_access(self, fa: FileAccessProvider) -> "Builder":
+        def with_file_access(self, fa: FileAccessProvider) -> FlyteContext.Builder:
             self.file_access = fa
             return self
 
-        def with_serialization_settings(self, ss: SerializationSettings) -> "Builder":
+        def with_serialization_settings(self, ss: SerializationSettings) -> FlyteContext.Builder:
             self.serialization_settings = ss
             return self
 
@@ -565,7 +570,7 @@ class FlyteContext(object):
             """
             return CompilationState(prefix=prefix)
 
-        def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
+        def new_execution_state(self, working_dir: Optional[Union[os.PathLike, str]] = None) -> ExecutionState:
             """
             Creates and returns a new default execution state. This should be used at the entrypoint of execution,
             in all other cases it is preferable to use with_execution_state
@@ -606,7 +611,7 @@ class FlyteContextManager(object):
         return ss[0]
 
     @staticmethod
-    def current_context() -> FlyteContext:
+    def current_context() -> Optional[FlyteContext]:
         if FlyteContextManager._OBJS:
             return FlyteContextManager._OBJS[-1]
         return None
@@ -642,7 +647,7 @@ class FlyteContextManager(object):
         try:
             yield ctx
         finally:
-            # NOTE: Why? Do we have a loop here to ensure that we are popping all context upto the previously recorded
+            # NOTE: Why? Do we have a loop here to ensure that we are popping all context up to the previously recorded
             # length? This is because it is possible that a conditional context may have leaked. Because of the syntax
             # of conditionals, if a conditional section fails to evaluate / compile, the context is not removed from the
             # stack. This is because context managers cannot be used in the conditional section.

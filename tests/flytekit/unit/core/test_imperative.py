@@ -52,7 +52,7 @@ def test_imperative():
     # Call your tasks.
     node = wb.add_entity(t1, a=wb.inputs["in1"])
     wb.add_entity(t2)
-    # This is analagous to a return statement
+    # This is analogous to a return statement
     wb.add_workflow_output("from_n0t1", node.outputs["o0"])
     # docs_end
 
@@ -73,7 +73,9 @@ def test_imperative():
     def my_workflow(in1: str) -> nt:
         x = t1(a=in1)
         t2()
-        return (x,)
+        return nt(
+            x,
+        )
 
     # docs_equivalent_end
 

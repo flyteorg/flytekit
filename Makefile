@@ -28,29 +28,31 @@ setup-spark2: install-piptools ## Install requirements
 
 .PHONY: fmt
 fmt: ## Format code with black and isort
-	black .
-	isort .
+	pre-commit run black --all-files || true
+	pre-commit run isort --all-files || true
 
 .PHONY: lint
 lint: ## Run linters
 	mypy flytekit/core || true
 	mypy flytekit/types || true
 	mypy tests/flytekit/unit/core || true
-	mypy plugins || true
-	flake8 .
+	# Exclude setup.py to fix erorr: Duplicate module named "setup"
+	mypy plugins --exclude setup.py || true
+	pre-commit run --all-files
+
+.PHONY: spellcheck
+spellcheck:  ## Runs a spellchecker over all code and documentation
+	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
 
 .PHONY: test
 test: lint ## Run tests
 	pytest tests/flytekit/unit
 	pytest tests/scripts
-	pytest plugins/tests
-	find **/*.sh ! -path "boilerplate/*" -exec shellcheck {} \;
 
 .PHONY: unit_test
 unit_test:
 	pytest tests/flytekit/unit
 	pytest tests/scripts
-	pytest plugins/tests
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools
@@ -74,15 +76,15 @@ requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	coverage run -m pytest tests/flytekit/unit/core flytekit/types plugins/tests
-	coverage report -m --include="flytekit/core/*,flytekit/types/*,plugins/*"
+	coverage run -m pytest tests/flytekit/unit/core flytekit/types
+	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
 
 .PHONY: update_version
 update_version:
 	# ensure the placeholder is there. If grep doesn't find the placeholder
-	# it exits with exit code 1 and github actions aborts the build. 
+	# it exits with exit code 1 and github actions aborts the build.
 	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
 	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
 

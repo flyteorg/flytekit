@@ -16,7 +16,7 @@ from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
-from flytekit.models.task import Container, K8sPod
+from flytekit.models.task import Container, K8sPod, Sql
 
 
 class MapPythonTask(PythonTask):
@@ -102,6 +102,10 @@ class MapPythonTask(PythonTask):
     def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
         with self.prepare_target():
             return self._run_task.get_k8s_pod(settings)
+
+    def get_sql(self, settings: SerializationSettings) -> Sql:
+        with self.prepare_target():
+            return self._run_task.get_sql(settings)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()

@@ -22,7 +22,7 @@ class Interface(object):
 
     def __init__(
         self,
-        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]]]] = None,
+        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]], None]] = None,
         outputs: typing.Optional[typing.Dict[str, Type]] = None,
         output_tuple_name: Optional[str] = None,
         docstring: Optional[Docstring] = None,
@@ -56,7 +56,7 @@ class Interface(object):
                 This class can be used in two different places. For multivariate-return entities this class is used
                 to rewrap the outputs so that our with_overrides function can work.
                 For manual node creation, it's used during local execution as something that can be dereferenced.
-                See the create_node funciton for more information.
+                See the create_node function for more information.
                 """
 
                 def with_overrides(self, *args, **kwargs):
@@ -230,7 +230,7 @@ def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
     om = {}
     for k, v in m.items():
         om[k] = typing.List[v]
-    return om
+    return om  # type: ignore
 
 
 def transform_interface_to_list_interface(interface: Interface) -> Interface:
@@ -342,20 +342,20 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
     if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
-        bases = return_annotation.__bases__
+        bases = return_annotation.__bases__  # type: ignore
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
             return return_annotation.__annotations__
 
-    if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:
+    if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3
         logger.debug(f"Task returns unnamed typing.Tuple {return_annotation}")
-        if len(return_annotation.__args__) == 1:
+        if len(return_annotation.__args__) == 1:  # type: ignore
             raise FlyteValidationException(
                 "Tuples should be used to indicate multiple return values, found only one return variable."
             )
         return OrderedDict(
-            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)  # type: ignore
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:

@@ -8,7 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf import json_format as _json_format
@@ -21,6 +21,7 @@ from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -212,7 +213,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
         schema = None
         try:
-            schema = JSONSchema().dump(t.schema())
+            schema = JSONSchema().dump(cast(DataClassJsonMixin, t).schema())
         except Exception as e:
             logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
 
@@ -228,7 +229,9 @@ class DataclassTransformer(TypeTransformer[object]):
             raise AssertionError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
-        return Literal(scalar=Scalar(generic=_json_format.Parse(python_val.to_json(), _struct.Struct())))
+        return Literal(
+            scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
+        )
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not dataclasses.is_dataclass(expected_python_type):
@@ -241,7 +244,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json to be "
                 f"serialized correctly"
             )
-        dc = expected_python_type.from_json(_json_format.MessageToJson(lv.scalar.generic))
+        dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
         # NOTE: Protobuf Struct does not support explicit int types, int types are upconverted to a double value
         # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
@@ -278,6 +281,16 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
         pb_obj = _ParseDict(dictionary, pb_obj)
         return pb_obj
 
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if (
+            literal_type.simple == SimpleType.STRUCT
+            and literal_type.metadata
+            and literal_type.metadata.get(self.PB_FIELD_KEY, "")
+        ):
+            tag = literal_type.metadata[self.PB_FIELD_KEY]
+            return load_type_from_tag(tag)
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
 
 class TypeEngine(typing.Generic[T]):
     """
@@ -290,7 +303,7 @@ class TypeEngine(typing.Generic[T]):
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()
 
     @classmethod
-    def register(cls, transformer: TypeTransformer, additional_types: typing.Optional[typing.List[Type]] = None):
+    def register(cls, transformer: TypeTransformer, additional_types: Optional[typing.List[Type]] = None):
         """
         This should be used for all types that respond with the right type annotation when you use type(...) function
         """
@@ -407,17 +420,28 @@ class TypeEngine(typing.Generic[T]):
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 
     @classmethod
-    def dict_to_literal_map(cls, ctx: FlyteContext, d: typing.Dict[str, typing.Any]) -> LiteralMap:
+    def dict_to_literal_map(
+        cls,
+        ctx: FlyteContext,
+        d: typing.Dict[str, typing.Any],
+        guessed_python_types: Optional[typing.Dict[str, type]] = None,
+    ) -> LiteralMap:
         """
-        Given a dictionary mapping string keys to python values, convert to a LiteralMap.
+        Given a dictionary mapping string keys to python values and a dictionary containing guessed types for such string keys,
+        convert to a LiteralMap.
         """
+        guessed_python_types = guessed_python_types or {}
         literal_map = {}
         for k, v in d.items():
+            # The guessed type takes precedence over the type returned by the python runtime. This is needed
+            # to account for the type erasure that happens in the case of built-in collection containers, such as
+            # `list` and `dict`.
+            python_type = guessed_python_types.get(k, type(v))
             literal_map[k] = TypeEngine.to_literal(
                 ctx=ctx,
                 python_val=v,
-                python_type=type(v),
-                expected=TypeEngine.to_literal_type(type(v)),
+                python_type=python_type,
+                expected=TypeEngine.to_literal_type(python_type),
             )
         return LiteralMap(literal_map)
 
@@ -466,12 +490,12 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
-        if hasattr(t, "__origin__") and t.__origin__ is list:
+        if hasattr(t, "__origin__") and t.__origin__ is list:  # type: ignore
             if hasattr(t, "__args__"):
-                return t.__args__[0]
+                return t.__args__[0]  # type: ignore
         raise ValueError("Only generic univariate typing.List[T] type is supported.")
 
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
+    def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         """
         Only univariate Lists are supported in Flyte
         """
@@ -483,14 +507,14 @@ class ListTransformer(TypeTransformer[T]):
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         t = self.get_sub_type(python_type)
-        lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]
+        lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[T]:
         st = self.get_sub_type(expected_python_type)
         return [TypeEngine.to_python_value(ctx, x, st) for x in lv.collection.literals]
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[list]:
         if literal_type.collection_type:
             ct = TypeEngine.guess_python_type(literal_type.collection_type)
             return typing.List[ct]
@@ -507,13 +531,13 @@ class DictTransformer(TypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def get_dict_types(t: Type[dict]) -> (type, type):
+    def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[type], Optional[type]]:
         """
         Return the generic Type T of the Dict
         """
-        if hasattr(t, "__origin__") and t.__origin__ is dict:
+        if hasattr(t, "__origin__") and t.__origin__ is dict:  # type: ignore
             if hasattr(t, "__args__"):
-                return t.__args__
+                return t.__args__  # type: ignore
         return None, None
 
     @staticmethod
@@ -576,7 +600,11 @@ class DictTransformer(TypeTransformer[dict]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.map_value_type:
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
-            return typing.Dict[str, mt]
+            return typing.Dict[str, mt]  # type: ignore
+
+        if literal_type.simple == SimpleType.STRUCT and literal_type.metadata is None:
+            return dict
+
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
 
@@ -656,13 +684,13 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        values = [v.value for v in t]
+        values = [v.value for v in t]  # type: ignore
         if not isinstance(values[0], str):
             raise AssertionError("Only EnumTypes with value of string are supported")
         return LiteralType(enum_type=_core_types.EnumType(values=values))
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))
+        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)

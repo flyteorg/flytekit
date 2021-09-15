@@ -101,7 +101,9 @@ def test_more_normal_task():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return (f"{a + 2}",)
+        return nt(
+            f"{a + 2}",
+        )
 
     @task
     def t1_nt(a: int) -> nt:
@@ -129,7 +131,9 @@ def test_reserved_keyword():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return (f"{a + 2}",)
+        return nt(
+            f"{a + 2}",
+        )
 
     # Test that you can't name an output "outputs"
     with pytest.raises(FlyteAssertion):

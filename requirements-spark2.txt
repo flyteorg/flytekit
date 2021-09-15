@@ -8,8 +8,10 @@
     # via -r requirements-spark2.in
 ansiwrap==0.8.4
     # via papermill
-appdirs==1.4.4
-    # via black
+appnope==0.1.2
+    # via
+    #   ipykernel
+    #   ipython
 attrs==20.3.0
     # via
     #   -r requirements-spark2.in
@@ -19,13 +21,13 @@ backcall==0.2.0
     # via ipython
 bcrypt==3.2.0
     # via paramiko
-black==21.7b0
+black==21.8b0
     # via papermill
-bleach==4.0.0
+bleach==4.1.0
     # via nbconvert
-boto3==1.18.25
+boto3==1.18.39
     # via sagemaker-training
-botocore==1.21.25
+botocore==1.21.39
     # via
     #   boto3
     #   s3transfer
@@ -46,11 +48,9 @@ click==7.1.2
     #   papermill
 croniter==1.0.15
     # via flytekit
-cryptography==3.4.7
-    # via
-    #   paramiko
-    #   secretstorage
-dataclasses-json==0.5.4
+cryptography==3.4.8
+    # via paramiko
+dataclasses-json==0.5.5
     # via flytekit
 decorator==5.0.9
     # via
@@ -58,7 +58,7 @@ decorator==5.0.9
     #   retry
 defusedxml==0.7.1
     # via nbconvert
-deprecated==1.2.12
+deprecated==1.2.13
     # via flytekit
 dirhash==0.2.1
     # via flytekit
@@ -73,36 +73,30 @@ entrypoints==0.3
     #   jupyter-client
     #   nbconvert
     #   papermill
-flyteidl==0.19.25
+flyteidl==0.21.0
     # via flytekit
 gevent==21.8.0
     # via sagemaker-training
 greenlet==1.1.1
     # via gevent
-grpcio==1.39.0
+grpcio==1.40.0
     # via flytekit
 hmsclient==0.1.1
     # via flytekit
 idna==3.2
     # via requests
-importlib-metadata==4.6.4
+importlib-metadata==4.8.1
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
 ipykernel==5.5.5
     # via flytekit
-ipython==7.26.0
+ipython==7.27.0
     # via ipykernel
 ipython-genutils==0.2.0
-    # via
-    #   nbformat
-    #   traitlets
+    # via nbformat
 jedi==0.18.0
     # via ipython
-jeepney==0.7.1
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.0.1
     # via nbconvert
 jmespath==0.10.0
@@ -111,7 +105,7 @@ jmespath==0.10.0
     #   botocore
 jsonschema==3.2.0
     # via nbformat
-jupyter-client==7.0.1
+jupyter-client==7.0.2
     # via
     #   ipykernel
     #   nbclient
@@ -137,7 +131,7 @@ marshmallow-enum==1.5.1
     # via dataclasses-json
 marshmallow-jsonschema==0.12.0
     # via flytekit
-matplotlib-inline==0.1.2
+matplotlib-inline==0.1.3
     # via ipython
 mistune==0.8.4
     # via nbconvert
@@ -189,7 +183,9 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-prompt-toolkit==3.0.19
+platformdirs==2.3.0
+    # via black
+prompt-toolkit==3.0.20
     # via ipython
 protobuf==3.17.3
     # via
@@ -241,7 +237,7 @@ pyyaml==5.4.1
     # via papermill
 pyzmq==22.2.1
     # via jupyter-client
-regex==2021.8.3
+regex==2021.8.28
     # via
     #   black
     #   docker-image-py
@@ -264,8 +260,6 @@ scantree==0.0.1
     # via dirhash
 scipy==1.7.1
     # via sagemaker-training
-secretstorage==3.3.1
-    # via keyring
 six==1.16.0
     # via
     #   bcrypt
@@ -285,8 +279,6 @@ sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0
     # via flytekit
-stringcase==1.2.0
-    # via dataclasses-json
 tenacity==8.0.1
     # via papermill
 testpath==0.5.0
@@ -301,9 +293,9 @@ tornado==6.1
     # via
     #   ipykernel
     #   jupyter-client
-tqdm==4.62.1
+tqdm==4.62.2
     # via papermill
-traitlets==5.0.5
+traitlets==5.1.0
     # via
     #   ipykernel
     #   ipython
@@ -313,8 +305,10 @@ traitlets==5.0.5
     #   nbclient
     #   nbconvert
     #   nbformat
-typing-extensions==3.10.0.0
-    # via typing-inspect
+typing-extensions==3.10.0.2
+    # via
+    #   black
+    #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json
 urllib3==1.26.6

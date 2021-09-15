@@ -20,6 +20,7 @@ SOURCES = {
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-athena": "flytekit-aws-athena",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
+    "flytekitplugins-snowflake": "flytekit-snowflake",
 }
 
 

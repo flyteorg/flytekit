@@ -75,7 +75,7 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
                 )
 
         s = Struct()
-        s.update(python_val.to_dict())
+        s.update(python_val.to_dict())  # type: ignore
         return Literal(Scalar(generic=s))
 
     def to_python_value(

@@ -35,7 +35,7 @@ class SchemaOpenMode(Enum):
     WRITE = "w"
 
 
-def generate_ordered_files(directory: os.PathLike, n: int) -> typing.Generator[os.PathLike, None, None]:
+def generate_ordered_files(directory: os.PathLike, n: int) -> str:
     for i in range(n):
         yield os.path.join(directory, f"{i:05}")
 
@@ -249,7 +249,7 @@ class FlyteSchema(object):
 
     @property
     def remote_path(self) -> str:
-        return self._remote_path
+        return typing.cast(str, self._remote_path)
 
     @property
     def supported_mode(self) -> SchemaOpenMode:
@@ -313,7 +313,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         _np.float32: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         _np.float64: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-        _np.bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
+        _np.bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
         bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
         _np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
         _datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
@@ -362,7 +362,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
         if not (lv and lv.scalar and lv.scalar.schema):
-            raise AssertionError("Can only covert a literal schema to a FlyteSchema")
+            raise AssertionError("Can only convert a literal schema to a FlyteSchema")
 
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)
@@ -377,7 +377,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if not literal_type.schema:
             raise ValueError(f"Cannot reverse {literal_type}")
-        columns = {}
+        columns: dict[Type] = {}
         for literal_column in literal_type.schema.columns:
             if literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.INTEGER:
                 columns[literal_column.name] = int

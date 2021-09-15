@@ -2,7 +2,7 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine  # type: ignore
 
 from flytekit import current_context, kwtypes
 from flytekit.core.base_sql_task import SQLTask

@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 import tempfile
+import typing
 from unittest.mock import MagicMock
 
 import pytest
@@ -141,7 +142,7 @@ def test_wf():
     assert len(files) == 5
 
     @task
-    def t2(in1: FlyteDirectory["csv"]) -> int:
+    def t2(in1: FlyteDirectory[typing.TypeVar("csv")]) -> int:
         return len(os.listdir(in1.path))
 
     @workflow

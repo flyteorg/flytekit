@@ -16,7 +16,10 @@ from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
+from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
+from flytekit.models import filters as filter_models
+from flytekit.models.admin import common as admin_common_models
 
 try:
     from functools import singledispatchmethod
@@ -57,6 +60,8 @@ from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.remote.workflow_execution import FlyteWorkflowExecution
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
+
+MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
 
 
 @dataclass
@@ -160,7 +165,7 @@ class FlyteRemote(object):
         image_config: typing.Optional[ImageConfig] = None,
         raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
     ):
-        """Initilize a FlyteRemote object.
+        """Initialize a FlyteRemote object.
 
         :param flyte_admin_url: url pointing to the remote backend.
         :param insecure: whether or not the enable SSL.
@@ -351,10 +356,24 @@ class FlyteRemote(object):
         )
         admin_workflow = self.client.get_workflow(workflow_id)
         compiled_wf = admin_workflow.closure.compiled_workflow
+
+        base_model = compiled_wf.primary.template
+        sub_workflows = {sw.template.id: sw.template for sw in compiled_wf.sub_workflows}
+        tasks = {t.template.id: t.template for t in compiled_wf.tasks}
+
+        node_launch_plans = {}
+        # TODO: Inspect branch nodes for launch plans
+        for node in FlyteWorkflow.get_non_system_nodes(base_model.nodes):
+            if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
+                node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
+                    node.workflow_node.launchplan_ref
+                ).spec
+
         flyte_workflow = FlyteWorkflow.promote_from_model(
             base_model=compiled_wf.primary.template,
-            sub_workflows={sw.template.id: sw.template for sw in compiled_wf.sub_workflows},
-            tasks={t.template.id: t.template for t in compiled_wf.tasks},
+            sub_workflows=sub_workflows,
+            node_launch_plans=node_launch_plans,
+            tasks=tasks,
         )
         flyte_workflow._id = workflow_id
         return flyte_workflow
@@ -383,12 +402,15 @@ class FlyteRemote(object):
             version,
         )
         admin_launch_plan = self.client.get_launch_plan(launch_plan_id)
-        flyte_launch_plan = FlyteLaunchPlan.promote_from_model(admin_launch_plan.spec)
-        flyte_launch_plan._id = launch_plan_id
+        flyte_launch_plan = FlyteLaunchPlan.promote_from_model(launch_plan_id, admin_launch_plan.spec)
 
         wf_id = flyte_launch_plan.workflow_id
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         flyte_launch_plan._interface = workflow.interface
+        flyte_launch_plan.guessed_python_interface = Interface(
+            inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
+            outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
+        )
         return flyte_launch_plan
 
     def fetch_workflow_execution(
@@ -414,6 +436,47 @@ class FlyteRemote(object):
                 )
             )
         )
+
+    ######################
+    #  Listing Entities  #
+    ######################
+
+    def recent_executions(
+        self,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: typing.Optional[int] = 100,
+    ) -> typing.List[FlyteWorkflowExecution]:
+        # Ignore token for now
+        exec_models, _ = self.client.list_executions_paginated(
+            project or self.default_project,
+            domain or self.default_domain,
+            limit,
+            sort_by=MOST_RECENT_FIRST,
+        )
+        return [FlyteWorkflowExecution.promote_from_model(e) for e in exec_models]
+
+    def list_tasks_by_version(
+        self,
+        version: str,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: typing.Optional[int] = 100,
+    ) -> typing.List[FlyteTask]:
+        if not version:
+            raise ValueError("Must specify a version")
+
+        named_entity_id = common_models.NamedEntityIdentifier(
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+        )
+        # Ignore token for now
+        t_models, _ = self.client.list_tasks_paginated(
+            named_entity_id,
+            filters=[filter_models.Filter.from_python_std(f"eq(version,{version})")],
+            limit=limit,
+        )
+        return [FlyteTask.promote_from_model(t.closure.compiled_task.template) for t in t_models]
 
     ######################
     # Serialize Entities #
@@ -574,12 +637,15 @@ class FlyteRemote(object):
 
     def _execute(
         self,
-        flyte_id: Identifier,
+        entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
         project: str,
         domain: str,
         execution_name: typing.Optional[str] = None,
         wait: bool = False,
+        labels: typing.Optional[common_models.Labels] = None,
+        annotations: typing.Optional[common_models.Annotations] = None,
+        auth_role: typing.Optional[common_models.AuthRole] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -600,7 +666,8 @@ class FlyteRemote(object):
             disable_all = None
 
         with self.remote_context() as ctx:
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs)
+            input_python_types = entity.guessed_python_interface.inputs
+            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, input_python_types)
         try:
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -612,7 +679,7 @@ class FlyteRemote(object):
                 domain,
                 execution_name,
                 ExecutionSpec(
-                    flyte_id,
+                    entity.id,
                     ExecutionMetadata(
                         ExecutionMetadata.ExecutionMode.MANUAL,
                         "placeholder",  # TODO: get principle
@@ -620,9 +687,9 @@ class FlyteRemote(object):
                     ),
                     notifications=notifications,
                     disable_all=disable_all,
-                    labels=self.labels,
-                    annotations=self.annotations,
-                    auth_role=self.auth_role,
+                    labels=labels or self.labels,
+                    annotations=annotations or self.annotations,
+                    auth_role=auth_role or self.auth_role,
                 ),
                 literal_inputs,
             )
@@ -678,7 +745,7 @@ class FlyteRemote(object):
     @execute.register(FlyteLaunchPlan)
     def _(
         self,
-        entity,
+        entity: typing.Union[FlyteTask, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
@@ -697,12 +764,20 @@ class FlyteRemote(object):
             entity, project, domain, entity.id.name, entity.id.version
         )
         return self._execute(
-            entity.id,
+            entity,
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
             execution_name=execution_name,
             wait=wait,
+            labels=entity.labels if isinstance(entity, FlyteLaunchPlan) and entity.labels.values else None,
+            annotations=entity.annotations
+            if isinstance(entity, FlyteLaunchPlan) and entity.annotations.values
+            else None,
+            auth_role=entity.auth_role
+            if isinstance(entity, FlyteLaunchPlan)
+            and (entity.auth_role.assumable_iam_role or entity.auth_role.kubernetes_service_account)
+            else None,
         )
 
     @execute.register
@@ -726,8 +801,9 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(
             entity, project, domain, entity.id.name, entity.id.version
         )
+        launch_plan = self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version)
         return self.execute(
-            self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version),
+            launch_plan,
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
@@ -757,6 +833,7 @@ class FlyteRemote(object):
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except Exception:
             flyte_task: FlyteTask = self.register(entity, **resolved_identifiers_dict)
+        flyte_task.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_task,
             inputs,
@@ -785,6 +862,7 @@ class FlyteRemote(object):
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
         except Exception:
             flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
+        flyte_workflow.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_workflow,
             inputs,
@@ -813,6 +891,7 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
         except Exception:
             flyte_launchplan: FlyteLaunchPlan = self.register(entity, **resolved_identifiers_dict)
+        flyte_launchplan.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_launchplan,
             inputs,

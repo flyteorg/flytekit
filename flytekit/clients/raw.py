@@ -142,7 +142,7 @@ def _handle_rpc_error(retry=False):
                             if (retry is False) or i == (max_retries - 1):
                                 raise
                             else:
-                                # Retry: Start with 200ms wait-time and exponentially back-off upto 1 second.
+                                # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
                                 wait_time = min(200 * (2 ** i), max_wait_time)
                                 cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                                 time.sleep(wait_time / 1000)
@@ -215,10 +215,12 @@ class RawSynchronousFlyteClient(object):
     def set_access_token(self, access_token):
         # Always set the header to lower-case regardless of what the config is. The grpc libraries that Admin uses
         # to parse the metadata don't change the metadata, but they do automatically lower the key you're looking for.
+        authorization_metadata_key = _creds_config.AUTHORIZATION_METADATA_KEY.get().lower()
+        cli_logger.debug(f"Adding authorization header. Header name: {authorization_metadata_key}.")
         self._metadata = [
             (
-                _creds_config.AUTHORIZATION_METADATA_KEY.get().lower(),
-                "Bearer {}".format(access_token),
+                authorization_metadata_key,
+                f"Bearer {access_token}",
             )
         ]
 
@@ -475,7 +477,7 @@ class RawSynchronousFlyteClient(object):
     @_handle_rpc_error(retry=True)
     def list_launch_plans_paginated(self, resource_list_request):
         """
-        Lists Launch Plans for a given Identifer (project, domain, name)
+        Lists Launch Plans for a given Identifier (project, domain, name)
 
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanList
