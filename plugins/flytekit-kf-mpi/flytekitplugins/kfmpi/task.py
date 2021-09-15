@@ -9,7 +9,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask, Resources
 from flytekit.extend import SerializationSettings, TaskPlugins
-from flytekit.models import task as _task_model
+from flytekit.models import task as model
 
 
 @dataclass
@@ -85,7 +85,7 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
         return mpi_cmd
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        job = _task_model.MPIJob(
+        job = model.MPIJob(
             num_workers=self.task_config.num_workers,
             num_launcher_replicas=self.task_config.num_launcher_replicas,
             slots=self.task_config.slots,
