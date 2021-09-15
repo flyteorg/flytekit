@@ -57,7 +57,7 @@ def double(n: float) -> float:
 
 def test_condition_else_fail():
     @workflow
-    def multiplier_2(my_input: float) -> Promise:
+    def multiplier_2(my_input: float) -> float:
         return (
             conditional("fractions")
             .if_((my_input > 0.1) & (my_input < 1.0))
