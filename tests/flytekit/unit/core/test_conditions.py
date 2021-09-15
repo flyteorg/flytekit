@@ -9,7 +9,6 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
-from flytekit.core.promise import Promise
 from flytekit.models.core.workflow import Node
 
 default_img = Image(name="default", fqn="test", tag="tag")
