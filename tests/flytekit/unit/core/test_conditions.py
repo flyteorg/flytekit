@@ -3,6 +3,7 @@ from collections import OrderedDict
 
 import mock
 import pytest
+from flytekit.core.promise import Promise
 
 from flytekit import task, workflow
 from flytekit.common.translator import get_serializable
@@ -56,7 +57,7 @@ def double(n: float) -> float:
 
 def test_condition_else_fail():
     @workflow
-    def multiplier_2(my_input: float) -> float:
+    def multiplier_2(my_input: float) -> Promise:
         return (
             conditional("fractions")
             .if_((my_input > 0.1) & (my_input < 1.0))

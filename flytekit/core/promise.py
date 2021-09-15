@@ -434,7 +434,7 @@ class Promise(object):
 
 
 def create_native_named_tuple(
-    ctx: FlyteContext, promises: Union[Promise, typing.List[Promise]], entity_interface: Interface
+    ctx: FlyteContext, promises: Optional[Union[Promise, typing.List[Promise]]], entity_interface: Interface
 ) -> Optional[Tuple]:
     """
     Creates and returns a Named tuple with all variables that match the expected named outputs. this makes
