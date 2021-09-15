@@ -342,7 +342,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         try:
             SchemaEngine.get_handler(type(v))
         except ValueError as e:
-            raise TypeError(f"No automatic conversion found from type{type(v)} to FlyteSchema") from e
+            raise TypeError(f"No automatic conversion found from type {type(v)} to FlyteSchema") from e
 
     def get_literal_type(self, t: Type[FlyteSchema]) -> LiteralType:
         return LiteralType(schema=self._get_schema_type(t))
