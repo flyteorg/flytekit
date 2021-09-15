@@ -6,6 +6,7 @@ import typing
 from unittest.mock import MagicMock
 
 import pytest
+from flytekit.common.exceptions.user import FlyteAssertion
 
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager, Image, ImageConfig
@@ -77,11 +78,11 @@ def test_transformer_to_literal_local():
         assert mock_remote_files == ["xyz"]
 
         # The only primitives allowed are strings
-        with pytest.raises(TypeError):
+        with pytest.raises(AssertionError):
             tf.to_literal(ctx, 3, FlyteDirectory, lt)
 
         # Can't use if it's not a directory
-        with pytest.raises(TypeError):
+        with pytest.raises(FlyteAssertion):
             p = "/tmp/flyte/xyz"
             path = pathlib.Path(p)
             try:
