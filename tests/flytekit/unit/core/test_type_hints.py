@@ -1341,6 +1341,7 @@ def test_guess_dict3():
     expected_struct.update({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
+
 def test_error_messages():
     @task
     def foo(a: int, b: str) -> typing.Tuple[int, str]:

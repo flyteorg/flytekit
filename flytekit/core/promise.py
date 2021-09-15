@@ -845,7 +845,9 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
     # Make sure arguments are part of interface
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
-            raise ValueError(f"Received unexpected keyword argument {k} in function {cast(SupportsNodeCreation, entity).name}")
+            raise ValueError(
+                f"Received unexpected keyword argument {k} in function {cast(SupportsNodeCreation, entity).name}"
+            )
 
     ctx = FlyteContextManager.current_context()
 
@@ -884,12 +886,7 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
             return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
 
         raise ValueError(
-<<<<<<< HEAD
-            f"Expected outputs and actual outputs do not match. Result {result}. "
-            f"Python interface: {cast(SupportsNodeCreation, entity).python_interface}"
-=======
             f"Expected outputs and actual outputs do not match."
             f"Result {result}. "
-            f"Python interface: {entity.python_interface}"
->>>>>>> a9c0a43c ([WIP] Compile time type assertions)
+            f"Python interface: {cast(SupportsNodeCreation, entity).python_interface}"
         )
