@@ -241,7 +241,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         if isinstance(v, os.PathLike) or isinstance(v, FlyteFile) or isinstance(v, str):
             return
         raise TypeError(
-            f"No automatic conversion found from type{type(v)} to FlyteFile." f"Supported (os.PathLike, str, Flytefile)"
+            f"No automatic conversion found from type {type(v)} to FlyteFile."
+            f"Supported (os.PathLike, str, Flytefile)"
         )
 
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:

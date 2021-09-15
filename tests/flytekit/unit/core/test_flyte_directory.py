@@ -81,6 +81,9 @@ def test_transformer_to_literal_local():
         with pytest.raises(AssertionError):
             tf.to_literal(ctx, 3, FlyteDirectory, lt)
 
+        with pytest.raises(TypeError, match="No automatic conversion from <class 'int'>"):
+            TypeEngine.to_literal(ctx, 3, FlyteDirectory, lt)
+
         # Can't use if it's not a directory
         with pytest.raises(FlyteAssertion):
             p = "/tmp/flyte/xyz"

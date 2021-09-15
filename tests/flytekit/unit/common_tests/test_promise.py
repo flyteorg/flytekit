@@ -65,12 +65,8 @@ def test_create_native_named_tuple():
             ctx, promises=[p1, p2], entity_interface=Interface(outputs={"x": int}, output_tuple_name="Tup")
         )
 
-    with pytest.raises(AssertionError, match='Failed to convert value of output x'):
-        create_native_named_tuple(
-            ctx, promises=[p1, p2], entity_interface=Interface(outputs={"x": Promise, "y": int})
-        )
+    with pytest.raises(AssertionError, match="Failed to convert value of output x"):
+        create_native_named_tuple(ctx, promises=[p1, p2], entity_interface=Interface(outputs={"x": Promise, "y": int}))
 
-    with pytest.raises(AssertionError, match='Failed to convert value of output x'):
-        create_native_named_tuple(
-            ctx, promises=p1, entity_interface=Interface(outputs={"x": Promise})
-        )
+    with pytest.raises(AssertionError, match="Failed to convert value of output x"):
+        create_native_named_tuple(ctx, promises=p1, entity_interface=Interface(outputs={"x": Promise}))

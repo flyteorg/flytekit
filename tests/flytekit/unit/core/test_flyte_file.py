@@ -264,6 +264,11 @@ def test_dont_convert_remotes():
             wf = dyn.dispatch_execute(ctx, lm)
             assert wf.nodes[0].inputs[0].binding.scalar.blob.uri == "s3://anything"
 
+            with pytest.raises(TypeError, match="No automatic conversion found from type <class 'int'>"):
+                TypeEngine.to_literal(
+                    ctx, 3, FlyteFile, BlobType("", dimensionality=BlobType.BlobDimensionality.SINGLE)
+                )
+
 
 def test_download_caching():
     mock_downloader = MagicMock()
