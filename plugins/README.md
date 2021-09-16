@@ -40,7 +40,7 @@ When authoring plugins here are some tips
       - tests
           - __init__.py
    ```
-   *NOTE* the inner package `flytekitplugins` DOES NOT have an `__init__.py` file. 
+   *NOTE* the inner package `flytekitplugins` DOES NOT have an `__init__.py` file.
 
 3. The published packages have to be named as `flytekitplugins-{package-name}`, where `{package-name}` is a unique identifier for the plugin.
 
@@ -99,10 +99,10 @@ setup(
 ```
 5. Each plugin should have a README.md, which describes how to install it, and has a simple example for it.
 
-6. Each plugin should have its own tests package *NOTE* it has an `__init__.py` file. 
+6. Each plugin should have its own tests package *NOTE* it has an `__init__.py` file.
 
 7. There may be some cases in which you might want to Auto-load some of your modules when the plugin is installed. This is especially true for `data-plugins` and `type-plugins`.
-In such cases, you can add a special directive in the `setup.py` which will instruct flytekit to automatically load the prescribed modules. Following shows an excerpt from the `flytekit-data-fsspec` plugin's setup.py 
+In such cases, you can add a special directive in the `setup.py` which will instruct flytekit to automatically load the prescribed modules. Following shows an excerpt from the `flytekit-data-fsspec` plugin's setup.py
 
 ```python
 setup(
