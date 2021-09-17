@@ -414,7 +414,6 @@ class Promise(object):
     def with_overrides(self, *args, **kwargs):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            print(f"Forwarding to node {self.ref.node.id}")
             self.ref.node.with_overrides(*args, **kwargs)
         return self
 

@@ -5,7 +5,7 @@ from pythonjsonlogger import jsonlogger
 
 logger = _logging.getLogger("flytekit")
 # Always set the root logger to debug until we can add more user based controls
-logger.setLevel(_logging.DEBUG)
+logger.setLevel(_logging.WARNING)
 
 # Child loggers
 auth_logger = logger.getChild("auth")
@@ -23,7 +23,7 @@ level_from_env = _os.getenv(logging_env_var)
 if level_from_env is not None:
     ch.setLevel(int(level_from_env))
 else:
-    ch.setLevel(_logging.DEBUG)
+    ch.setLevel(_logging.WARNING)
 
 # create formatter
 formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s")
