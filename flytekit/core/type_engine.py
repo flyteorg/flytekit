@@ -19,6 +19,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_jsonschema import JSONSchema
 
+from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
@@ -436,7 +437,11 @@ class TypeEngine(typing.Generic[T]):
             # The guessed type takes precedence over the type returned by the python runtime. This is needed
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
-            python_type = guessed_python_types.get(k, type(v))
+            python_type = guessed_python_types.get(k)
+            if python_type is None:
+                raise user_exceptions.FlyteValueException(k, "The workflow doesn't have this input key.")
+            if python_type is not type(v):
+                raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
             literal_map[k] = TypeEngine.to_literal(
                 ctx=ctx,
                 python_val=v,

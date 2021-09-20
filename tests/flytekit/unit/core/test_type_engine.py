@@ -9,6 +9,7 @@ import pytest
 from dataclasses_json import dataclass_json
 from flyteidl.core import errors_pb2
 
+from flytekit.common.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
     DataclassTransformer,
@@ -461,3 +462,19 @@ def test_dict_to_literal_map(python_value, python_types, expected_literal_map):
     ctx = FlyteContext.current_context()
 
     assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
+
+
+def test_dict_to_literal_map_with_wrong_input_type():
+    ctx = FlyteContext.current_context()
+    input = {"a": 1}
+    guessed_python_types = {"a": str}
+    with pytest.raises(user_exceptions.FlyteTypeException):
+        TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
+
+
+def test_dict_to_literal_map_with_wrong_input_key():
+    ctx = FlyteContext.current_context()
+    input = {"a": 1}
+    guessed_python_types = {"b": int}
+    with pytest.raises(user_exceptions.FlyteValueException, match="The workflow doesn't have this input key."):
+        TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)

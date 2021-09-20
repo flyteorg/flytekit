@@ -27,6 +27,7 @@ except ImportError:
     from singledispatchmethod import singledispatchmethod
 
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
+from flytekit.clis.flyte_cli.main import _detect_default_config_file
 from flytekit.common import constants
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
@@ -123,6 +124,9 @@ class FlyteRemote(object):
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
         """
+        # TODO: flyte-cli already support users to set different flyte config file path, we should
+        #  also support it in the flyte remote.
+        _detect_default_config_file()
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
             sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
         )
@@ -180,6 +184,8 @@ class FlyteRemote(object):
         :param raw_output_data_config: location for offloaded data, e.g. in S3
         """
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
+        if flyte_admin_url is None:
+            raise user_exceptions.FlyteAssertion("Can't find Flyte admin url in flyte config file.")
 
         self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure)
 
@@ -649,7 +655,7 @@ class FlyteRemote(object):
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
-        :param flyte_id: entity identifier
+        :param entity: entity identifier
         :param inputs: dictionary mapping argument names to values
         :param project: project on which to execute the entity referenced by flyte_id
         :param domain: domain on which to execute the entity referenced by flyte_id
