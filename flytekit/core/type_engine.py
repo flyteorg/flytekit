@@ -440,7 +440,9 @@ class TypeEngine(typing.Generic[T]):
             python_type = guessed_python_types.get(k)
             if python_type is None:
                 raise user_exceptions.FlyteValueException(k, "The workflow doesn't have this input key.")
-            if python_type is not type(v):
+            if (hasattr(python_type, "__origin__") and not isinstance(v, python_type.__origin__)) or (
+                not hasattr(python_type, "__origin__") and not isinstance(v, python_type)
+            ):
                 raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
             literal_map[k] = TypeEngine.to_literal(
                 ctx=ctx,
