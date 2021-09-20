@@ -674,7 +674,6 @@ class FlyteRemote(object):
         with self.remote_context() as ctx:
             input_python_types = entity.guessed_python_interface.inputs
             expected_input = entity.interface.inputs
-            print("fuck", expected_input)
             for k, v in inputs.items():
                 if expected_input.get(k) is None:
                     raise user_exceptions.FlyteValueException(
