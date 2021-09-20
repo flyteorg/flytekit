@@ -382,7 +382,7 @@ def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload
             ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
         )
     ) as ctx:
-        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5}, {"a", int})
+        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5}, {"a": int})
         mock_load_proto.return_value = input_literal_map.to_flyte_idl()
 
         files = OrderedDict()
@@ -417,7 +417,7 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
             ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
         )
     ) as ctx:
-        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5}, {"a": int})
         mock_load_proto.return_value = input_literal_map.to_flyte_idl()
 
         python_task = mock.MagicMock()

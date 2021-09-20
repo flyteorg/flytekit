@@ -441,7 +441,8 @@ class TypeEngine(typing.Generic[T]):
             if python_type is None:
                 raise user_exceptions.FlyteValueException(k, "The workflow doesn't have this input key.")
             if (hasattr(python_type, "__origin__") and not isinstance(v, python_type.__origin__)) or (
-                not hasattr(python_type, "__origin__") and not isinstance(v, python_type)
+                not hasattr(python_type, "_test_dispatch_execute_user_error_recoverable_origin__")
+                and not isinstance(v, python_type)
             ):
                 raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
             literal_map[k] = TypeEngine.to_literal(
