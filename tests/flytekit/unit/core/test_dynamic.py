@@ -8,7 +8,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 
 
-def test_wf1_with_fast_dynamictest_wf1_with_fast_dynamic():
+def test_wf1_with_fast_dynamic():
     @task
     def t1(a: int) -> str:
         a = a + 2
@@ -49,7 +49,7 @@ def test_wf1_with_fast_dynamictest_wf1_with_fast_dynamic():
                 )
             )
         ) as ctx:
-            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5}, {"a": int})
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
             dynamic_job_spec = my_subwf.dispatch_execute(ctx, input_literal_map)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1

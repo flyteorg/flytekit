@@ -470,11 +470,3 @@ def test_dict_to_literal_map_with_wrong_input_type():
     guessed_python_types = {"a": str}
     with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
-
-
-def test_dict_to_literal_map_with_wrong_input_key():
-    ctx = FlyteContext.current_context()
-    input = {"a": 1}
-    guessed_python_types = {"b": int}
-    with pytest.raises(user_exceptions.FlyteValueException, match="The workflow doesn't have this input key."):
-        TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)

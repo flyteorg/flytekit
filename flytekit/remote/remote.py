@@ -185,7 +185,7 @@ class FlyteRemote(object):
         """
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
         if flyte_admin_url is None:
-            raise user_exceptions.FlyteAssertion("Can't find Flyte admin url in flyte config file.")
+            raise user_exceptions.FlyteAssertion("Cannot find flyte admin url in config file.")
 
         self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure)
 
@@ -655,7 +655,7 @@ class FlyteRemote(object):
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
-        :param entity: entity identifier
+        :param flyte_id: entity identifier
         :param inputs: dictionary mapping argument names to values
         :param project: project on which to execute the entity referenced by flyte_id
         :param domain: domain on which to execute the entity referenced by flyte_id
@@ -673,6 +673,13 @@ class FlyteRemote(object):
 
         with self.remote_context() as ctx:
             input_python_types = entity.guessed_python_interface.inputs
+            expected_input = entity.interface.inputs
+            print("fuck", expected_input)
+            for k, v in inputs.items():
+                if expected_input.get(k) is None:
+                    raise user_exceptions.FlyteValueException(
+                        k, f"The {entity.__class__.__name__} doesn't have this input key."
+                    )
             literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, input_python_types)
         try:
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by

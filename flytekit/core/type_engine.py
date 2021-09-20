@@ -437,12 +437,9 @@ class TypeEngine(typing.Generic[T]):
             # The guessed type takes precedence over the type returned by the python runtime. This is needed
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
-            python_type = guessed_python_types.get(k)
-            if python_type is None:
-                raise user_exceptions.FlyteValueException(k, "The workflow doesn't have this input key.")
+            python_type = guessed_python_types.get(k, type(v))
             if (hasattr(python_type, "__origin__") and not isinstance(v, python_type.__origin__)) or (
-                not hasattr(python_type, "_test_dispatch_execute_user_error_recoverable_origin__")
-                and not isinstance(v, python_type)
+                not hasattr(python_type, "__origin__") and not isinstance(v, python_type)
             ):
                 raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
             literal_map[k] = TypeEngine.to_literal(
