@@ -1,6 +1,7 @@
 import pytest
 from mock import MagicMock, patch
 
+from flytekit.common.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models.admin.workflow import Workflow
 from flytekit.models.core.identifier import (
@@ -195,3 +196,27 @@ def test_underscore_execute_fall_back_remote_attributes(mock_insecure, mock_url,
         project="proj",
         domain="dev",
     )
+
+
+@patch("flytekit.remote.workflow_execution.FlyteWorkflowExecution.promote_from_model")
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_execute_with_wrong_input_key(mock_insecure, mock_url, mock_wf_exec):
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = True
+    mock_wf_exec.return_value = True
+    mock_client = MagicMock()
+
+    remote = FlyteRemote.from_config("p1", "d1")
+    remote._client = mock_client
+
+    mock_entity = MagicMock()
+    mock_entity.interface.inputs = {"foo": int}
+
+    with pytest.raises(user_exceptions.FlyteValueException):
+        remote._execute(
+            mock_entity,
+            inputs={"bar": 3},
+            project="proj",
+            domain="dev",
+        )

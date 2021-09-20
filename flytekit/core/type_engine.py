@@ -19,6 +19,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_jsonschema import JSONSchema
 
+from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
@@ -437,6 +438,10 @@ class TypeEngine(typing.Generic[T]):
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
             python_type = guessed_python_types.get(k, type(v))
+            if (hasattr(python_type, "__origin__") and not isinstance(v, python_type.__origin__)) or (
+                not hasattr(python_type, "__origin__") and not isinstance(v, python_type)
+            ):
+                raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
             literal_map[k] = TypeEngine.to_literal(
                 ctx=ctx,
                 python_val=v,
