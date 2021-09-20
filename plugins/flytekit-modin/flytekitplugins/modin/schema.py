@@ -83,7 +83,6 @@ class ModinPandasDataFrameTransformer(TypeTransformer[modin.pandas.DataFrame]):
         expected: LiteralType,
     ) -> Literal:
         local_dir = ctx.file_access.get_random_local_directory()
-        print(local_dir)
         w = ModinPandasSchemaWriter(to_path=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
         w.write(python_val)
         remote_path = ctx.file_access.get_random_remote_directory()
