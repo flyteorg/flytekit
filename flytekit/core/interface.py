@@ -13,6 +13,8 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models.core import interface as _interface_models
+from flytekit.types.file import PythonPickle
+from flytekit.types.file.file import FlyteFilePathTransformer
 
 
 class Interface(object):
@@ -188,7 +190,7 @@ def transform_inputs_to_parameters(
 
 
 def transform_interface_to_typed_interface(
-    interface: typing.Optional[Interface],
+    interface: typing.Optional[Interface], name: str = ""
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
@@ -204,8 +206,8 @@ def transform_interface_to_typed_interface(
             interface.docstring.output_descriptions, interface.outputs
         )
 
-    inputs_map = transform_variable_map(interface.inputs, input_descriptions)
-    outputs_map = transform_variable_map(interface.outputs, output_descriptions)
+    inputs_map = transform_variable_map(interface.inputs, input_descriptions, name)
+    outputs_map = transform_variable_map(interface.outputs, output_descriptions, name)
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
@@ -244,7 +246,9 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def transform_signature_to_interface(signature: inspect.Signature, docstring: Optional[Docstring] = None) -> Interface:
+def transform_signature_to_interface(
+    signature: inspect.Signature, docstring: Optional[Docstring] = None, contain_return: bool = False
+) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -252,12 +256,29 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
     For now the fancy object, maybe in the future a dumb object.
 
     """
+
     outputs = extract_return_annotation(signature.return_annotation)
+    # [WIP] Handle multiple outputs
+    if outputs == {} and contain_return:
+        outputs["o0"] = PythonPickle
+    for k, v in outputs.items():
+        try:
+            TypeEngine.get_transformer(v)
+        except ValueError:
+            # We change the output type to the "PythonPickle" if we can't find the transformer for the original type
+            outputs[k] = PythonPickle
 
     inputs = OrderedDict()
     for k, v in signature.parameters.items():
+        annotation = v.annotation
+        try:
+            TypeEngine.get_transformer(annotation)
+        except ValueError:
+            # We change the input type to the "PythonPickle" if we can't find the transformer for the original type
+            annotation = PythonPickle
+        default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
-        inputs[k] = (v.annotation, v.default if v.default is not inspect.Parameter.empty else None)
+        inputs[k] = (annotation, default)
 
     # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
     # would like to preserve that name in our custom collections.namedtuple.
@@ -273,7 +294,9 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
 
 
 def transform_variable_map(
-    variable_map: Dict[str, type], descriptions: Dict[str, str] = {}
+    variable_map: Dict[str, type],
+    descriptions: Dict[str, str] = {},
+    name: str = "",
 ) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
@@ -283,6 +306,9 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
+            # flytekit will lookup LiteralType metadata when task output type is PythonPickle,
+            # and write a pickle file to FlyteFilePathTransformer.PICKLE_PATH
+            res[k].type.metadata = {FlyteFilePathTransformer.PICKLE_PATH: name + "." + k}
 
     return res
 
@@ -355,7 +381,8 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
                 "Tuples should be used to indicate multiple return values, found only one return variable."
             )
         return OrderedDict(
-            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)  # type: ignore
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
+            # type: ignore
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:

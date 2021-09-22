@@ -1,3 +1,4 @@
+import ast
 import datetime as _datetime
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Type, Union
@@ -182,6 +183,9 @@ def task(
             timeout=timeout,
         )
 
+        def _contains_explicit_return(f):
+            return any(isinstance(node, ast.Return) for node in ast.walk(ast.parse(inspect.getsource(f))))
+
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
             task_config,
             fn,
@@ -192,6 +196,7 @@ def task(
             limits=limits,
             secret_requests=secret_requests,
             execution_mode=execution_mode,
+            contain_return=_contains_explicit_return(fn),
         )
 
         return task_instance

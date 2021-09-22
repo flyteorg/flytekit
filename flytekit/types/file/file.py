@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import pickle
 import typing
 
 from flytekit.core.context_manager import FlyteContext
@@ -222,6 +223,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
 
 class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
+    BASE_DIR = ".flyte/"
+    PICKLE_PATH = "pickle-path"
+    PYTHON_PICKLE_FORMAT = "python-pickle"
+
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
@@ -265,6 +270,17 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # information used by all cases
         meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
+
+        # Dump the task output into pickle
+        if expected.blob.format == self.PYTHON_PICKLE_FORMAT:
+            os.makedirs(self.BASE_DIR, exist_ok=True)
+            uri = self.BASE_DIR + expected.metadata.get(self.PICKLE_PATH)
+            outfile = open(uri, "wb")
+            pickle.dump(python_val, outfile)
+            outfile.close()
+            remote_path = ctx.file_access.get_random_remote_path(uri)
+            ctx.file_access.put_data(uri, remote_path, is_multipart=False)
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
         if isinstance(python_val, FlyteFile):
             source_path = python_val.path
@@ -326,6 +342,16 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     ) -> FlyteFile:
 
         uri = lv.scalar.blob.uri
+        # Deserialize the pickle, and return data in the pickle,
+        # and download pickle file to local first if file is not in the local file systems.
+        if lv.scalar.blob.metadata.type.format == self.PYTHON_PICKLE_FORMAT:
+            if ctx.file_access.is_remote(uri):
+                ctx.file_access.get_data(uri, "./pickle-file", False)
+                uri = "./pickle-file"
+            infile = open(uri, "rb")
+            data = pickle.load(infile)
+            infile.close()
+            return data
 
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
         # Using is instead of issubclass because FlyteFile does actually subclass it

@@ -231,7 +231,6 @@ class Task(object):
             native_types=self.get_input_types(),
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
-
         # if metadata.cache is set, check memoized version
         if self.metadata.cache:
             # TODO: how to get a nice `native_inputs` here?
@@ -373,7 +372,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface),
+            interface=transform_interface_to_typed_interface(interface, name),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
@@ -456,7 +455,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
-            native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self.python_interface.inputs)
+            native_inputs = TypeEngine.literal_map_to_kwargs(
+                exec_ctx, input_literal_map, self.python_interface.inputs, self.interface.inputs
+            )
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
