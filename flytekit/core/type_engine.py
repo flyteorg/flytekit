@@ -240,9 +240,9 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if isinstance(val, list):
             try:
-                if ListTransformer.get_sub_type(f.type) == int:
+                if ListTransformer.get_sub_type(t) == int:
                     return [int(i) for i in val]
-            except:
+            except ValueError:
                 return val
 
         if isinstance(val, dict):
