@@ -239,26 +239,16 @@ class DataclassTransformer(TypeTransformer[object]):
             return int(val)
 
         if isinstance(val, list):
-            try:
-                if ListTransformer.get_sub_type(t) == int:
-                    return [int(i) for i in val]
-            except ValueError:
-                return val
+            # Handle nested List. e.g. [[1, 2], [3, 4]]
+            return list(map(lambda x: self._fix_val_int(ListTransformer.get_sub_type(t), x), val))
 
         if isinstance(val, dict):
             ktype, vtype = DictTransformer.get_dict_types(t)
-            if (ktype is not None and ktype == int) or (vtype is not None and vtype == int):
-                d = {}
-                for k, v in val.items():
-                    if ktype is not None and ktype == int:
-                        k = int(k)
-                    if vtype is not None and vtype == int:
-                        v = int(v)
-                    d[k] = v
-                return d
+            # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
+            return {self._fix_val_int(ktype, k): self._fix_val_int(vtype, v) for k, v in val.items()}
 
         if dataclasses.is_dataclass(t):
-            return self._fix_dataclass_int(t, val)
+            return self._fix_dataclass_int(t, val)  # type: ignore
 
         return val
 
