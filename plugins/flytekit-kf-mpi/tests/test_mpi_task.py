@@ -6,7 +6,12 @@ from flytekit.extend import Image, ImageConfig, SerializationSettings
 
 
 def test_mpi_task():
-    @task(task_config=MPIJob(num_workers=10, num_launcher_replicas=10, slots=1, per_replica_requests=Resources(cpu="1")), cache=True, cache_version="1")
+    @task(
+        task_config=MPIJob(num_workers=10, num_launcher_replicas=10, slots=1),
+        requests=Resources(cpu="1"),
+        cache=True,
+        cache_version="1",
+    )
     def my_mpi_task(x: int, y: str) -> int:
         return x
 
@@ -24,7 +29,7 @@ def test_mpi_task():
         entrypoint_settings=EntrypointSettings(path="/etc/my-entrypoint", command="my-entrypoint"),
     )
 
-    assert my_mpi_task.get_custom(settings) == {"workers": 10}
+    assert my_mpi_task.get_custom(settings) == {"numLauncherReplicas": 10, "numWorkers": 10, "slots": 1}
     assert my_mpi_task.resources.limits == Resources()
     assert my_mpi_task.resources.requests == Resources(cpu="1")
     assert my_mpi_task.task_type == "mpi"
