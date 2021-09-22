@@ -80,7 +80,8 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
         cmd = super().get_command(settings)
         num_procs = self.task_config.num_workers * self.task_config.slots
         mpi_cmd = self._MPI_BASE_COMMAND + ["-np", f"{num_procs}"] + ["python",
-                                                                      settings.entrypoint_settings.path] + cmd[1:]
+                                                                      settings.entrypoint_settings.path,
+                                                                      "pyflyte-execute"] + cmd[1:]
         # the hostfile is set automatically by MPIOperator using env variable OMPI_MCA_orte_default_hostfile
         return mpi_cmd
 
