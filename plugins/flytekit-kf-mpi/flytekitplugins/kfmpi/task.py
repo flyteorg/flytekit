@@ -50,7 +50,7 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
     _MPI_BASE_COMMAND = [
         "mpirun",
         "--allow-run-as-root",
-        "bind-to",
+        "-bind-to",
         "none",
         "-map-by",
         "slot",
