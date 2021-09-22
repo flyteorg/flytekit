@@ -234,6 +234,47 @@ class DataclassTransformer(TypeTransformer[object]):
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
 
+    def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
+        if t == int:
+            return int(val)
+
+        if isinstance(val, list):
+            try:
+                if ListTransformer.get_sub_type(f.type) == int:
+                    return [int(i) for i in val]
+            except:
+                return val
+
+        if isinstance(val, dict):
+            ktype, vtype = DictTransformer.get_dict_types(t)
+            if (ktype is not None and ktype == int) or (vtype is not None and vtype == int):
+                d = {}
+                for k, v in val.items():
+                    if ktype is not None and ktype == int:
+                        k = int(k)
+                    if vtype is not None and vtype == int:
+                        v = int(v)
+                    d[k] = v
+                return d
+
+        if dataclasses.is_dataclass(t):
+            return self._fix_dataclass_int(t, val)
+
+        return val
+
+    def _fix_dataclass_int(self, dc_type: Type[DataClassJsonMixin], dc: DataClassJsonMixin) -> DataClassJsonMixin:
+        """
+        This is a performance penalty to convert to the right types, but this is expected by the user and hence
+        needs to be done
+        """
+        # NOTE: Protobuf Struct does not support explicit int types, int types are upconverted to a double value
+        # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
+        # Thus we will have to walk the given dataclass and typecast values to int, where expected.
+        for f in dataclasses.fields(dc_type):
+            val = dc.__getattribute__(f.name)
+            dc.__setattr__(f.name, self._fix_val_int(f.type, val))
+        return dc
+
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not dataclasses.is_dataclass(expected_python_type):
             raise AssertionError(
@@ -246,13 +287,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"serialized correctly"
             )
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
-        # NOTE: Protobuf Struct does not support explicit int types, int types are upconverted to a double value
-        # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
-        # Thus we will have to walk the given dataclass and typecast values to int, where expected.
-        for f in dataclasses.fields(expected_python_type):
-            if f.type == int:
-                dc.__setattr__(f.name, int(dc.__getattribute__(f.name)))
-        return dc
+        return self._fix_dataclass_int(expected_python_type, dc)
 
 
 class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMessageType]):
