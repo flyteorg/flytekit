@@ -383,7 +383,7 @@ def test_dataclass_transformer():
     assert t.simple is not None
     assert t.simple == SimpleType.STRUCT
     assert t.metadata is not None
-    # assert t.metadata == schema
+    assert t.metadata == schema
 
     t = TypeEngine.to_literal_type(TestStruct)
     assert t is not None
