@@ -1,7 +1,10 @@
+import os
+
 import pytest
 from mock import MagicMock, patch
 
 from flytekit.common.exceptions import user as user_exceptions
+from flytekit.configuration import internal
 from flytekit.models import common as common_models
 from flytekit.models.admin.workflow import Workflow
 from flytekit.models.core.identifier import (
@@ -220,3 +223,20 @@ def test_execute_with_wrong_input_key(mock_insecure, mock_url, mock_wf_exec):
             project="proj",
             domain="dev",
         )
+
+
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_form_config(mock_insecure, mock_url):
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = True
+
+    FlyteRemote.from_config("p1", "d1")
+    assert ".flyte/config" in os.environ[internal.CONFIGURATION_PATH.env_var]
+    remote = FlyteRemote.from_config("p1", "d1", "fake_config")
+    assert "fake_config" in os.environ[internal.CONFIGURATION_PATH.env_var]
+
+    assert remote._flyte_admin_url == "localhost"
+    assert remote._insecure is True
+    assert remote.default_project == "p1"
+    assert remote.default_domain == "d1"
