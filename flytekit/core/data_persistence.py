@@ -262,6 +262,7 @@ def stringify_path(filepath):
     else:
         return filepath
 
+
 def split_protocol(urlpath):
     """
     Copied from `filesystem_spec <https://github.com/intake/filesystem_spec/blob/master/fsspec/core.py#L502>`__
