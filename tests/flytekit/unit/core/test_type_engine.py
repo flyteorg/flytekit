@@ -399,76 +399,31 @@ def test_dataclass_transformer():
     assert t.metadata is None
 
 
-def check_element_type_is_int(val):
-    if type(val) == list:
-        for v in val:
-            check_element_type_is_int(v)
-    elif type(val) == dict:
-        for k, v in val.items():
-            check_element_type_is_int(k)
-            check_element_type_is_int(v)
-    else:
-        if type(val) is not str:
-            assert type(val) == int
-
-
 def test_dataclass_int_preserving():
     ctx = FlyteContext.current_context()
 
-    i = InnerStruct(a=5, b=None, c=[1, 2, 3])
+    o = InnerStruct(a=5, b=None, c=[1, 2, 3])
     tf = DataclassTransformer()
-    lv = tf.to_literal(ctx, i, InnerStruct, tf.get_literal_type(InnerStruct))
+    lv = tf.to_literal(ctx, o, InnerStruct, tf.get_literal_type(InnerStruct))
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=InnerStruct)
-    assert ot.a == 5
-    check_element_type_is_int(ot.a)
-    assert ot.c == [1, 2, 3]
-    check_element_type_is_int(ot.c)
-
-    o = TestStruct(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": "b"})
-    lv = tf.to_literal(ctx, o, TestStruct, tf.get_literal_type(TestStruct))
-    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStruct)
-    assert ot.s.a == 5
-    check_element_type_is_int(ot.s.a)
-    assert ot.s.c == [1, 2, 3]
-    check_element_type_is_int(ot.s.c)
-    assert ot.m == {"a": "b"}
-    check_element_type_is_int(ot.m)
+    assert ot == o
 
     o = TestStructB(
         s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={5: "b"}, n=[[1, 2, 3], [4, 5, 6]], o={1: {2: 3}, 4: {5: 6}}
     )
     lv = tf.to_literal(ctx, o, TestStructB, tf.get_literal_type(TestStructB))
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructB)
-    assert ot.s.a == 5
-    check_element_type_is_int(ot.s.a)
-    assert ot.s.c == [1, 2, 3]
-    check_element_type_is_int(ot.s.c)
-    assert ot.m == {5: "b"}
-    check_element_type_is_int(ot.m)
-    assert ot.n == [[1, 2, 3], [4, 5, 6]]
-    check_element_type_is_int(ot.n)
-    assert ot.o == {1: {2: 3}, 4: {5: 6}}
-    check_element_type_is_int(ot.o)
+    assert ot == o
 
     o = TestStructC(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": 5})
     lv = tf.to_literal(ctx, o, TestStructC, tf.get_literal_type(TestStructC))
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructC)
-    assert ot.s.a == 5
-    check_element_type_is_int(ot.s.a)
-    assert ot.s.c == [1, 2, 3]
-    check_element_type_is_int(ot.s.c)
-    assert ot.m == {"a": 5}
-    check_element_type_is_int(ot.m)
+    assert ot == o
 
     o = TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})
     lv = tf.to_literal(ctx, o, TestStructD, tf.get_literal_type(TestStructD))
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructD)
-    assert ot.s.a == 5
-    check_element_type_is_int(ot.s.a)
-    assert ot.s.c == [1, 2, 3]
-    check_element_type_is_int(ot.s.c)
-    assert ot.m == {"a": [5]}
-    check_element_type_is_int(ot.m)
+    assert ot == o
 
 
 # Enums should have string values
