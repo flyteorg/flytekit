@@ -14,7 +14,6 @@ from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
-from flytekit.configuration import internal
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.configuration import set_flyte_config_file
