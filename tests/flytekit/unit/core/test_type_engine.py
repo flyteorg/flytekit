@@ -298,8 +298,8 @@ def test_zero_floats():
     assert TypeEngine.to_python_value(ctx, l1, float) == 0
 
 
-@dataclass
 @dataclass_json
+@dataclass
 class InnerStruct(object):
     a: int
     b: typing.Optional[str]
@@ -311,6 +311,29 @@ class InnerStruct(object):
 class TestStruct(object):
     s: InnerStruct
     m: typing.Dict[str, str]
+
+
+@dataclass_json
+@dataclass
+class TestStructB(object):
+    s: InnerStruct
+    m: typing.Dict[int, str]
+    n: typing.List[typing.List[int]] = None
+    o: typing.Dict[int, typing.Dict[int, int]] = None
+
+
+@dataclass_json
+@dataclass
+class TestStructC(object):
+    s: InnerStruct
+    m: typing.Dict[str, int]
+
+
+@dataclass_json
+@dataclass
+class TestStructD(object):
+    s: InnerStruct
+    m: typing.Dict[str, typing.List[int]]
 
 
 class UnsupportedSchemaType:
@@ -353,6 +376,7 @@ def test_dataclass_transformer():
             },
         },
     }
+
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
     assert t is not None
@@ -373,6 +397,33 @@ def test_dataclass_transformer():
     assert t.simple is not None
     assert t.simple == SimpleType.STRUCT
     assert t.metadata is None
+
+
+def test_dataclass_int_preserving():
+    ctx = FlyteContext.current_context()
+
+    o = InnerStruct(a=5, b=None, c=[1, 2, 3])
+    tf = DataclassTransformer()
+    lv = tf.to_literal(ctx, o, InnerStruct, tf.get_literal_type(InnerStruct))
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=InnerStruct)
+    assert ot == o
+
+    o = TestStructB(
+        s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={5: "b"}, n=[[1, 2, 3], [4, 5, 6]], o={1: {2: 3}, 4: {5: 6}}
+    )
+    lv = tf.to_literal(ctx, o, TestStructB, tf.get_literal_type(TestStructB))
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructB)
+    assert ot == o
+
+    o = TestStructC(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": 5})
+    lv = tf.to_literal(ctx, o, TestStructC, tf.get_literal_type(TestStructC))
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructC)
+    assert ot == o
+
+    o = TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})
+    lv = tf.to_literal(ctx, o, TestStructD, tf.get_literal_type(TestStructD))
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructD)
+    assert ot == o
 
 
 # Enums should have string values
