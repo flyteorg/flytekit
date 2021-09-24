@@ -76,6 +76,7 @@ def task(
     _task_function: Optional[Callable] = None,
     task_config: Optional[Any] = None,
     cache: bool = False,
+    cache_serialize: bool = False,
     cache_version: str = "",
     retries: int = 0,
     interruptible: Optional[bool] = None,
@@ -121,6 +122,10 @@ def task(
     :param task_config: This argument provides configuration for a specific task types.
                         Please refer to the plugins documentation for the right object to use.
     :param cache: Boolean that indicates if caching should be enabled
+    :param cache_serialize: Boolean that indicates if identical (ie. same inputs) instances of this task should be
+          executed in serial when caching is enabled. This means that given multiple concurrent executions over
+          identical inputs, only a single instance executes and the resr wait to reuse the cached results. This
+          parameter does nothing without also setting the cache parameter.
     :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
            but you can always manually update this field as well to force a cache miss. You should also manually bump
            this version if the function body/business logic has changed, but the signature hasn't.
@@ -175,6 +180,7 @@ def task(
     def wrapper(fn) -> PythonFunctionTask:
         _metadata = TaskMetadata(
             cache=cache,
+            cache_serialize=cache_serialize,
             cache_version=cache_version,
             retries=retries,
             interruptible=interruptible,
