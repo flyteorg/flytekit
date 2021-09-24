@@ -1150,6 +1150,7 @@ class TensorFlowJob(_common.FlyteIdlEntity):
             chief_replicas_count=pb2_object.chief_replicas,
         )
 
+
 class MPIJob(_common.FlyteIdlEntity):
     def __init__(self, num_workers, num_launcher_replicas, slots):
         self._num_workers = num_workers
