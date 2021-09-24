@@ -16,6 +16,7 @@ from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
+from flytekit.configuration import set_flyte_config_file
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
@@ -117,16 +118,23 @@ class FlyteRemote(object):
 
     @classmethod
     def from_config(
-        cls, default_project: typing.Optional[str] = None, default_domain: typing.Optional[str] = None
+        cls,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        config_file_path: typing.Optional[str] = None,
     ) -> FlyteRemote:
         """Create a FlyteRemote object using flyte configuration variables and/or environment variable overrides.
 
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
+        :param config_file_path: config file to use when connecting to flyte admin. we will use '~/.flyte/config' by default.
         """
-        # TODO: flyte-cli already support users to set different flyte config file path, we should
-        #  also support it in the flyte remote.
-        _detect_default_config_file()
+
+        if config_file_path is None:
+            _detect_default_config_file()
+        else:
+            set_flyte_config_file(config_file_path)
+
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
             sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
         )
