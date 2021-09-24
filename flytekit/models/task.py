@@ -6,9 +6,9 @@ from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.plugins import mpi_pb2 as _mpi_task
 from flyteidl.plugins import pytorch_pb2 as _pytorch_task
 from flyteidl.plugins import spark_pb2 as _spark_task
-from flyteidl.plugins import mpi_pb2 as _mpi_task
 from flyteidl.plugins import tensorflow_pb2 as _tensorflow_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct

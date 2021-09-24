@@ -3,7 +3,7 @@ This Plugin adds the capability of running distributed tensorflow training to Fl
 Kubernetes. It leverages `TF Job <https://github.com/kubeflow/mpi-operator>`_ Plugin from kubeflow.
 """
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, List
+from typing import Any, Callable, Dict, List, Optional
 
 from google.protobuf.json_format import MessageToDict
 
