@@ -1351,5 +1351,15 @@ def test_error_messages():
     def foo2(a: int, b: str) -> typing.Tuple[int, str]:
         return "hello", 10
 
-    with pytest.raises(TypeError):
+    @task
+    def foo3(a: typing.Dict) -> typing.Dict:
+        return a
+
+    with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
         foo(a="hello", b=10)
+
+    with pytest.raises(TypeError, match="Failed to convert return value for var o0 for function test_type_hints.foo2"):
+        foo2(a=10, b="hello")
+
+    with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
+        foo3(a=[{"hello": 2}])

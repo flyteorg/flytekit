@@ -68,7 +68,7 @@ def translate_inputs_to_literals(
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
-                raise Exception(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
+                raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
             try:
                 sub_type = ListTransformer.get_sub_type(val_type)
             except ValueError:
@@ -82,7 +82,7 @@ def translate_inputs_to_literals(
                 flyte_literal_type.map_value_type is None
                 and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
             ):
-                raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
+                raise TypeError(f"Not a map type {flyte_literal_type} but got a map {input_val}")
             k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
             if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
                 return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
