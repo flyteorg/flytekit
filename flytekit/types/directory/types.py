@@ -192,6 +192,12 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     """
     This transformer handles conversion between the Python native FlyteDirectory class defined above, and the Flyte
     IDL literal/type of Multipart Blob. Please see the FlyteDirectory comments for additional information.
+
+    .. caution:
+
+       The transformer will not check if the given path is actually a directory. This is because the path could be
+       a remote reference.
+
     """
 
     def __init__(self):
@@ -204,6 +210,17 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     @staticmethod
     def _blob_type(format: str) -> _core_types.BlobType:
         return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART)
+
+    def assert_type(self, t: typing.Type[FlyteDirectory], v: typing.Union[FlyteDirectory, os.PathLike, str]):
+        if isinstance(v, FlyteDirectory) or isinstance(v, str) or isinstance(v, os.PathLike):
+            """
+            NOTE: we do not do a isdir check because the given path could be remote reference
+            """
+            return
+        raise TypeError(
+            f"No automatic conversion from {type(v)} declared type {t} to FlyteDirectory found."
+            f" Use (FlyteDirectory, str, os.PathLike)"
+        )
 
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
