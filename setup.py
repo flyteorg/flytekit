@@ -94,6 +94,7 @@ setup(
         "singledispatchmethod; python_version < '3.8.0'",
         "docstring-parser>=0.9.0",
         "diskcache>=5.2.1",
+        "warlock>=1.3.3",
     ],
     extras_require=extras_require,
     scripts=[

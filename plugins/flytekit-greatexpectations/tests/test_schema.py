@@ -234,7 +234,7 @@ def test_ge_schema_flyteschema():
                 expectation_suite_name="test.demo",
                 data_connector_name="data_flytetype_data_connector",
                 batch_request_config=BatchRequestConfig(data_connector_query={"limit": 10}),
-                local_file_path="/tmp/test3.py.parquet",  # noqa: F722
+                local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
         ]
     ) -> int:
@@ -259,7 +259,7 @@ def test_ge_schema_flyteschema_literal():
                 expectation_suite_name="test.demo",
                 data_connector_name="data_flytetype_data_connector",
                 batch_request_config=BatchRequestConfig(data_connector_query={"limit": 10}),
-                local_file_path="/tmp/test3.py.parquet",  # noqa: F722
+                local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
         ]
     ) -> int:

@@ -94,7 +94,7 @@ def test_lp_default_handling():
     )
     assert len(lp_with_defaults.fixed_inputs.literals) == 0
 
-    lp_with_fixed = launch_plan.LaunchPlan.create("test3.py", my_wf, fixed_inputs={"a": 3})
+    lp_with_fixed = launch_plan.LaunchPlan.create("test3", my_wf, fixed_inputs={"a": 3})
     assert len(lp_with_fixed.parameters.parameters) == 1
     assert len(lp_with_fixed.fixed_inputs.literals) == 1
     assert lp_with_fixed.fixed_inputs.literals["a"] == _literal_models.Literal(
