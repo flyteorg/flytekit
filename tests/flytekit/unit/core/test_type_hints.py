@@ -9,10 +9,8 @@ from dataclasses import dataclass
 
 import pandas
 import pytest
-import warlock
-from dataclasses_json import DataClassJsonMixin, dataclass_json
+from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
-from marshmallow_jsonschema import JSONSchema
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
@@ -1359,8 +1357,6 @@ def test_guess_dict4():
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
 
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
-    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = dataclass_json(dataclass(warlock.model_factory(schema)))
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     ctx = context_manager.FlyteContextManager.current_context()

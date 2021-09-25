@@ -67,7 +67,7 @@ def test_ge_batchrequest_pandas_config():
 
 def test_invalid_ge_batchrequest_pandas_config():
     task_object = GreatExpectationsTask(
-        name="test3",
+        name="test3.py",
         datasource_name="data",
         inputs=kwtypes(data=str),
         expectation_suite_name="test.demo",
