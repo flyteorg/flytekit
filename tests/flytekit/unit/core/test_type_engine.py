@@ -6,7 +6,6 @@ from datetime import timedelta
 from enum import Enum
 
 import pytest
-import warlock
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
@@ -21,6 +20,7 @@ from flytekit.core.type_engine import (
     ListTransformer,
     SimpleTransformer,
     TypeEngine,
+    convert_json_schema_to_python_class,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
@@ -131,7 +131,7 @@ def test_list_of_dataclass_getting_python_value():
     ctx = FlyteContext.current_context()
 
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = dataclass_json(dataclass(warlock.model_factory(schema)))
+    foo_class = convert_json_schema_to_python_class(schema)
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
     assert isinstance(pv, list)
