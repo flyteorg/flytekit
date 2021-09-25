@@ -10,7 +10,8 @@ import typing
 from abc import ABC, abstractmethod
 from typing import Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin
+import warlock
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
 from google.protobuf import struct_pb2 as _struct
@@ -447,7 +448,6 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError(
                 f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
             )
-
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 
     @classmethod
@@ -637,8 +637,11 @@ class DictTransformer(TypeTransformer[dict]):
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
-        if literal_type.simple == SimpleType.STRUCT and literal_type.metadata is None:
-            return dict
+        if literal_type.simple == SimpleType.STRUCT:
+            if literal_type.metadata is None:
+                return dict
+            else:
+                return dataclass_json(dataclasses.dataclass(warlock.model_factory(literal_type.metadata)))
 
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
