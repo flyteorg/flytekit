@@ -640,7 +640,7 @@ class DictTransformer(TypeTransformer[dict]):
         if literal_type.simple == SimpleType.STRUCT:
             if literal_type.metadata is None:
                 return dict
-            else:
+            if "definitions" in literal_type.metadata:
                 return dataclass_json(dataclasses.dataclass(warlock.model_factory(literal_type.metadata)))
 
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
