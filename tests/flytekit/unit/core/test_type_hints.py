@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import functools
 import os
@@ -1330,7 +1331,6 @@ def test_guess_dict3():
         return {"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}}
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
-    print(task_spec.template.interface.outputs["o0"])
 
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert pt_map["o0"] is dict
@@ -1339,6 +1339,48 @@ def test_guess_dict3():
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
     expected_struct = Struct()
     expected_struct.update({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}})
+    assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+
+def test_guess_dict4():
+    @dataclass_json
+    @dataclass
+    class Foo(object):
+        x: int
+        y: str
+        z: typing.Dict[str, str]
+
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+        y: str
+        z: Foo
+
+    @task
+    def t1() -> Foo:
+        return Foo(x=1, y="foo", z={"hello": "world"})
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
+    assert dataclasses.is_dataclass(pt_map["o0"])
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    expected_struct = Struct()
+    expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
+    assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+    @task
+    def t2() -> Bar:
+        return Bar(x=1, y="bar", z=Foo(x=1, y="foo", z={"hello": "world"}))
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
+    assert dataclasses.is_dataclass(pt_map["o0"])
+
+    output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    expected_struct.update({"x": 1, "y": "bar", "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import dataclasses
 import datetime as _datetime
 import enum
@@ -10,7 +11,7 @@ import typing
 from abc import ABC, abstractmethod
 from typing import Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
 from google.protobuf import struct_pb2 as _struct
@@ -447,7 +448,6 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError(
                 f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
             )
-
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 
     @classmethod
@@ -637,8 +637,11 @@ class DictTransformer(TypeTransformer[dict]):
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
-        if literal_type.simple == SimpleType.STRUCT and literal_type.metadata is None:
-            return dict
+        if literal_type.simple == SimpleType.STRUCT:
+            if literal_type.metadata is None:
+                return dict
+            if "definitions" in literal_type.metadata:
+                return convert_json_schema_to_python_class(literal_type.metadata)
 
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
@@ -729,6 +732,30 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)
+
+
+def convert_json_schema_to_python_class(schema):
+    """Generate a model class based on the provided JSON Schema
+    :param schema: dict representing valid JSON schema
+    """
+    schema = copy.deepcopy(schema)
+
+    class Model(dict):
+        def __init__(self, *args, **kwargs):
+            self.__dict__["schema"] = schema
+            d = dict(*args, **kwargs)
+            dict.__init__(self, d)
+
+        def __setitem__(self, key, value):
+            dict.__setitem__(self, key, value)
+
+        def __getattr__(self, key):
+            try:
+                return self.__getitem__(key)
+            except KeyError:
+                raise AttributeError(key)
+
+    return dataclass_json(dataclasses.dataclass(Model))
 
 
 def _check_and_covert_float(lv: Literal) -> float:

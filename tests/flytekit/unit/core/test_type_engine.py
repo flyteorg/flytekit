@@ -6,8 +6,11 @@ from datetime import timedelta
 from enum import Enum
 
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
+from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -17,6 +20,7 @@ from flytekit.core.type_engine import (
     ListTransformer,
     SimpleTransformer,
     TypeEngine,
+    convert_json_schema_to_python_class,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
@@ -96,6 +100,41 @@ def test_file_format_getting_python_value():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile["txt"])
     assert isinstance(pv, FlyteFile)
     assert pv.extension() == "txt"
+
+
+def test_list_of_dict_getting_python_value():
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+    lv = Literal(
+        collection=LiteralCollection(
+            literals=[Literal(map=LiteralMap({"foo": Literal(scalar=Scalar(primitive=Primitive(integer=1)))}))]
+        )
+    )
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[typing.Dict[str, int]])
+    assert isinstance(pv, list)
+
+
+def test_list_of_dataclass_getting_python_value():
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        x: int
+        y: str
+        z: typing.Dict[int, str]
+
+    foo = Foo(x=1, y="boo", z={3: "10"})
+    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
+    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+
+    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
+    foo_class = convert_json_schema_to_python_class(schema)
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    assert isinstance(pv, list)
 
 
 def test_file_non_downloadable():
@@ -208,6 +247,23 @@ def test_dict_transformer():
         Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
         typing.Dict[str, int],
     )
+
+
+def test_convert_json_schema_to_python_class():
+    @dataclass_json
+    @dataclass
+    class Foo(object):
+        x: int
+        y: str
+
+    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
+    foo_class = convert_json_schema_to_python_class(schema)
+    foo = foo_class(x=1, y="hello")
+    foo.x = 2
+    assert foo.x == 2
+    assert foo.y == "hello"
+    with pytest.raises(AttributeError):
+        _ = foo.c
 
 
 def test_list_transformer():
