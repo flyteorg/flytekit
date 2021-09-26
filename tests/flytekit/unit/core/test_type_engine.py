@@ -249,6 +249,22 @@ def test_dict_transformer():
     )
 
 
+def test_convert_json_schema_to_python_class():
+    @dataclass_json
+    @dataclass
+    class Foo(object):
+        x: int
+        y: str
+
+    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
+    foo_class = convert_json_schema_to_python_class(schema)
+    foo = foo_class(x=1, y="hello")
+    assert foo.x == 1
+    assert foo.y == "hello"
+    with pytest.raises(AttributeError):
+        _ = foo.c
+
+
 def test_list_transformer():
     l0 = Literal(scalar=Scalar(primitive=Primitive(integer=3)))
     l1 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
