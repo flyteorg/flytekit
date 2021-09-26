@@ -259,7 +259,8 @@ def test_convert_json_schema_to_python_class():
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
     foo_class = convert_json_schema_to_python_class(schema)
     foo = foo_class(x=1, y="hello")
-    assert foo.x == 1
+    foo.x = 2
+    assert foo.x == 2
     assert foo.y == "hello"
     with pytest.raises(AttributeError):
         _ = foo.c

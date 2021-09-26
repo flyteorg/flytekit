@@ -746,6 +746,9 @@ def convert_json_schema_to_python_class(schema):
             d = dict(*args, **kwargs)
             dict.__init__(self, d)
 
+        def __setitem__(self, key, value):
+            dict.__setitem__(self, key, value)
+
         def __getattr__(self, key):
             try:
                 return self.__getitem__(key)
