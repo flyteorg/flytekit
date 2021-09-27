@@ -35,7 +35,7 @@ The plugins maintained by the core team are maintained in this repository and pr
 Plugins should have their own unit tests.
 
 ## Guidelines 📜
-Some guidelines to help you write the Flytekit plugins.
+Some guidelines to help you write the Flytekit plugins better.
 
 1. The folder name has to be `flytekit-*`, e.g., `flytekit-hive`. In case you want to group for a specific service, then use `flytekit-aws-athena`.
 2. Flytekit plugins use a concept called [Namespace packages](https://packaging.python.org/guides/creating-and-discovering-plugins/#using-namespace-packages), and thus, the package structure is essential. 
@@ -55,7 +55,7 @@ Some guidelines to help you write the Flytekit plugins.
 
 3. The published packages have to be named `flytekitplugins-{package-name}`, where `{package-name}` is a unique identifier for the plugin.
 
-4. The setup.py file has to have the following template. You can use it as it by editing the TODO sections.
+4. The setup.py file has to have the following template. You can use it as is by editing the TODO sections.
 
 ```python
 from setuptools import setup

@@ -6,10 +6,10 @@
         Flytekit Python
     </h1>
     <p align="center">
-        Flytekit is the Python SDK built on top of Flyte
+        Flytekit Python is the Python SDK built on top of Flyte
     </p>
     <h3 align="center">
-        <a href="#flytekit-plugins">Plugins</a>
+        <a href="#-flytekit-plugins">Plugins</a>
         <span> · </span>
         <a href="https://docs.flyte.org/projects/flytekit/en/latest/contributing.html">Contribution Guide</a>
     </h3>
@@ -25,7 +25,7 @@
 [![Docs](https://readthedocs.org/projects/flytekit/badge/?version=latest&style=plastic)](https://flytekit.rtfd.io)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Flytekit is the Python Library for easily authoring, testing, deploying, and interacting with Flyte tasks, workflows, and launch plans. 
+Flytekit Python is the Python Library for easily authoring, testing, deploying, and interacting with Flyte tasks, workflows, and launch plans. 
 
 If you haven't explored Flyte yet, please refer to:
  - [Flyte homepage](https://flyte.org)
@@ -64,7 +64,7 @@ def my_workflow(x: int, y: int) -> int:
 - [Flytekit API documentation](https://flytekit.readthedocs.io/)
 
 
-📖 How to Contribute to Flytekit
+## 📖 How to Contribute to Flytekit
 You can find the detailed contribution guide [here](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html). Plugins' contribution guide is included as well.
 
 ## 🐞 File an Issue
