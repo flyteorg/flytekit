@@ -9,7 +9,7 @@
         Flytekit Python is the Python SDK built on top of Flyte
     </p>
     <h3 align="center">
-        <a href="#-flytekit-plugins">Plugins</a>
+        <a href="plugins/README.md">Plugins</a>
         <span> · </span>
         <a href="https://docs.flyte.org/projects/flytekit/en/latest/contributing.html">Contribution Guide</a>
     </h3>
