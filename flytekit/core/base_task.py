@@ -123,7 +123,7 @@ class TaskMetadata(object):
             interruptible=self.interruptible,
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
-            discovery_serializable=self.cache_serialie,
+            discovery_serializable=self.cache_serialize,
         )
 
 
