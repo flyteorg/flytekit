@@ -1,4 +1,19 @@
-# Flytekit
+<html>
+    <p align="center"> 
+        <img src="https://github.com/flyteorg/flyte/blob/master/rsts/images/flyte_circle_gradient_1_4x4.png" alt="Flyte Logo" width="100">
+    </p>
+    <h1 align="center">
+        Flytekit Python
+    </h1>
+    <p align="center">
+        Flytekit is the Python SDK built on top of Flyte
+    </p>
+    <h3 align="center">
+        <a href="#plugins">Plugins</a>
+        <span> · </span>
+        <a href="https://docs.flyte.org/projects/flytekit/en/latest/contributing.html">Contribution Guide</a>
+    </h3>
+</html>
 
 [![PyPI version fury.io](https://badge.fury.io/py/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
 [![PyPI download day](https://img.shields.io/pypi/dd/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
@@ -10,22 +25,23 @@
 [![Docs](https://readthedocs.org/projects/flytekit/badge/?version=latest&style=plastic)](https://flytekit.rtfd.io)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+Flytekit is the Python Library for easily authoring, testing, deploying, and interacting with Flyte tasks, workflows, and launch plans. 
 
-Python Library for easily authoring, testing, deploying, and interacting with Flyte tasks, workflows, and launch plans. To understand more about Flyte please refer to,
+If you haven't explored Flyte yet, please refer to:
  - [Flyte homepage](https://flyte.org)
  - [Flyte core repository](https://github.com/flyteorg/flyte)
 
-## Installation
+## 🚀 Quick Start
 
-Flytekit is the core extensible library to author Flyte workflows and tasks and interact with Flyte Backend services. Flyte plugins can be installed separately.
+Flytekit is the core extensible library to author Flyte workflows and tasks and interact with Flyte backend services. 
 
-### Base Installation
+### Installation
 
 ```bash
 pip install flytekit
 ```
 
-### Simple getting started
+### A Simple Example
 
 ```python
 from flytekit import task, workflow
@@ -40,18 +56,27 @@ def square(z: int) -> int:
 
 @workflow
 def my_workflow(x: int, y: int) -> int:
-    return sum(x=square(z=x),y=square(z=y))
+    return sum(x=square(z=x), y=square(z=y))
 ```
 
-### Learn Flytekit by example using
-- [Learn flytekit by examples](https://flytecookbook.readthedocs.io/)
-- [Flytekit API documentation](http://flytekit.readthedocs.io/)
-- [Flyte documentation Hub](http://flytekit.readthedocs.io/)
+## 📦 Resources
+- [Learn Flytekit by examples](https://flytecookbook.readthedocs.io/)
+- [Flytekit API documentation](https://flytekit.readthedocs.io/)
 
-### Contributions and Issues
-Please see the [contributor guide](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html) and file issues against the main [Flyte repo](https://github.com/flyteorg/flyte/issues).
+<html>
+    <h2 id="contribution-guide">
+        📖 How to Contribute to Flytekit
+    </h2>
+</html>
+You can find the detailed contribution guide [here](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html). Plugins' contribution guide is included as well.
 
-### Plugins:
-Refer to [plugins/README.md](plugins/README.md) for a list of available
-plugins. There may be plugins outside of this list, but this list is maintained
-by the core maintainers.
+## 🐞 File an Issue
+Refer to the issues section in the contribution guide if you'd like to file an issue relating to flytesnacks code or documentation.
+
+<html>
+    <h2 id="plugins">
+        Flytekit Plugins
+    </h2>
+</html>
+Refer to [plugins/README.md](plugins/README.md) for a list of available plugins. 
+There may be plugins outside of this list, but this list is maintained by the core maintainers.
