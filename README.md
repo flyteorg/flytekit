@@ -9,7 +9,7 @@
         Flytekit is the Python SDK built on top of Flyte
     </p>
     <h3 align="center">
-        <a href="#plugins">Plugins</a>
+        <a href="#flytekit-plugins">Plugins</a>
         <span> · </span>
         <a href="https://docs.flyte.org/projects/flytekit/en/latest/contributing.html">Contribution Guide</a>
     </h3>
@@ -63,20 +63,13 @@ def my_workflow(x: int, y: int) -> int:
 - [Learn Flytekit by examples](https://flytecookbook.readthedocs.io/)
 - [Flytekit API documentation](https://flytekit.readthedocs.io/)
 
-<html>
-    <h2 id="contribution-guide">
-        📖 How to Contribute to Flytekit
-    </h2>
-</html>
+
+📖 How to Contribute to Flytekit
 You can find the detailed contribution guide [here](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html). Plugins' contribution guide is included as well.
 
 ## 🐞 File an Issue
-Refer to the issues section in the contribution guide if you'd like to file an issue relating to flytesnacks code or documentation.
+Refer to the [issues](https://docs.flyte.org/en/latest/community/contribute.html#issues) section in the contribution guide if you'd like to file an issue.
 
-<html>
-    <h2 id="plugins">
-        Flytekit Plugins
-    </h2>
-</html>
+## 🔌 Flytekit Plugins
 Refer to [plugins/README.md](plugins/README.md) for a list of available plugins. 
 There may be plugins outside of this list, but this list is maintained by the core maintainers.
