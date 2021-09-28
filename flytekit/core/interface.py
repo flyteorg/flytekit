@@ -307,7 +307,7 @@ def transform_variable_map(
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
             if isinstance(v, FlytePickle):
-                res[k].type.metadata = {"python_class_name": typing.cast(FlytePickle, v.python_type)}
+                res[k].type.metadata = {"python_class_name": typing.cast(FlytePickle, v.python_type.__name__)}
     return res
 
 
