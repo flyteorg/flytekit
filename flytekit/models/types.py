@@ -1,3 +1,4 @@
+import json
 import json as _json
 
 from flyteidl.core import types_pb2 as _types_pb2
@@ -165,12 +166,20 @@ class LiteralType(_common.FlyteIdlEntity):
         """
         return self._metadata
 
+    class AdvancedJSONEncoder(json.JSONEncoder):
+        def default(self, obj):
+            try:
+                _json.dumps(obj)
+                return obj
+            except TypeError:
+                return str(obj)
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.types_pb2.LiteralType
         """
         if self.metadata is not None:
-            metadata = _json_format.Parse(_json.dumps(self.metadata), _struct.Struct())
+            metadata = _json_format.Parse(_json.dumps(self.metadata, cls=self.AdvancedJSONEncoder), _struct.Struct())
         else:
             metadata = None
         t = _types_pb2.LiteralType(

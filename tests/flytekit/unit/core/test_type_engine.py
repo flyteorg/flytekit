@@ -1,7 +1,8 @@
+import dataclasses
 import datetime
 import os
 import typing
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 
@@ -10,17 +11,18 @@ from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
-from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
+    ATTRIBUTE,
     DataclassTransformer,
     DictTransformer,
     ListTransformer,
     SimpleTransformer,
     TypeEngine,
-    convert_json_schema_to_python_class,
+    _extract_dataclass_attribute,
+    dataclass_from_dict,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
@@ -117,7 +119,7 @@ def test_list_of_dict_getting_python_value():
 
 def test_list_of_dataclass_getting_python_value():
     @dataclass_json
-    @dataclass()
+    @dataclass
     class Foo(object):
         x: int
         y: str
@@ -130,11 +132,9 @@ def test_list_of_dataclass_getting_python_value():
     transformer = TypeEngine.get_transformer(typing.List)
     ctx = FlyteContext.current_context()
 
-    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = convert_json_schema_to_python_class(schema)
-
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
     assert isinstance(pv, list)
+    assert pv[0] == foo
 
 
 def test_file_non_downloadable():
@@ -247,23 +247,6 @@ def test_dict_transformer():
         Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
         typing.Dict[str, int],
     )
-
-
-def test_convert_json_schema_to_python_class():
-    @dataclass_json
-    @dataclass
-    class Foo(object):
-        x: int
-        y: str
-
-    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = convert_json_schema_to_python_class(schema)
-    foo = foo_class(x=1, y="hello")
-    foo.x = 2
-    assert foo.x == 2
-    assert foo.y == "hello"
-    with pytest.raises(AttributeError):
-        _ = foo.c
 
 
 def test_list_transformer():
@@ -432,6 +415,7 @@ def test_dataclass_transformer():
             },
         },
     }
+    schema[ATTRIBUTE] = _extract_dataclass_attribute(typing.cast(typing.Type[DataClassJsonMixin], TestStruct))
 
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
@@ -453,6 +437,19 @@ def test_dataclass_transformer():
     assert t.simple is not None
     assert t.simple == SimpleType.STRUCT
     assert t.metadata is None
+
+
+def test_dataclass_to_python_value():
+    ctx = FlyteContext.current_context()
+    dataclass_tf = DataclassTransformer()
+    dict_tf = DictTransformer()
+    o = TestStructC(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": 5})
+    literal_type = dataclass_tf.get_literal_type(TestStructC)
+    lv = dataclass_tf.to_literal(ctx, o, TestStructC, literal_type)
+    expected_python_type = dict_tf.guess_python_type(literal_type)
+    ot = dataclass_tf.to_python_value(ctx=ctx, lv=lv, expected_python_type=expected_python_type)
+    final_object = dataclass_from_dict(TestStructC, asdict(ot))  # type: ignore
+    assert final_object == o
 
 
 def test_dataclass_int_preserving():

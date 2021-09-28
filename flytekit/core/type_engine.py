@@ -32,6 +32,8 @@ from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Pri
 from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
+DATACLASS = "dataclass"
+ATTRIBUTE = "attribute"
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -220,6 +222,7 @@ class DataclassTransformer(TypeTransformer[object]):
         schema = None
         try:
             schema = JSONSchema().dump(cast(DataClassJsonMixin, t).schema())
+            schema[ATTRIBUTE] = _extract_dataclass_attribute(t)
         except Exception as e:
             logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
 
@@ -640,8 +643,8 @@ class DictTransformer(TypeTransformer[dict]):
         if literal_type.simple == SimpleType.STRUCT:
             if literal_type.metadata is None:
                 return dict
-            if "definitions" in literal_type.metadata:
-                return convert_json_schema_to_python_class(literal_type.metadata)
+            if ATTRIBUTE in literal_type.metadata:
+                return _construct_dataclass(literal_type.metadata[ATTRIBUTE])
 
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
@@ -734,28 +737,44 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return expected_python_type(lv.scalar.primitive.string_value)
 
 
-def convert_json_schema_to_python_class(schema):
-    """Generate a model class based on the provided JSON Schema
-    :param schema: dict representing valid JSON schema
-    """
-    schema = copy.deepcopy(schema)
+def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.Any:
+    field_types_lookup = {field.name: field.type for field in dataclasses.fields(cls)}
 
-    class Model(dict):
-        def __init__(self, *args, **kwargs):
-            self.__dict__["schema"] = schema
-            d = dict(*args, **kwargs)
-            dict.__init__(self, d)
+    constructor_inputs = {}
+    for field_name, value in src.items():
+        if dataclasses.is_dataclass(field_types_lookup[field_name]):
+            constructor_inputs[field_name] = dataclass_from_dict(field_types_lookup[field_name], value)
+        else:
+            constructor_inputs[field_name] = value
 
-        def __setitem__(self, key, value):
-            dict.__setitem__(self, key, value)
+    return cls(**constructor_inputs)
 
-        def __getattr__(self, key):
-            try:
-                return self.__getitem__(key)
-            except KeyError:
-                raise AttributeError(key)
 
-    return dataclass_json(dataclasses.dataclass(Model))
+def _construct_dataclass(
+    attribute: typing.Dict[str, typing.Dict[str, typing.Union[Type[T], typing.Dict[str, Type[T]]]]]
+):
+    attribute_list = []
+    for k, v in attribute.items():
+        if DATACLASS in k:
+            for n, d in v.items():
+                attribute_list.append((n, _construct_dataclass(d)))
+        else:
+            attribute_list.append((k, v))
+    return dataclass_json(dataclasses.make_dataclass(DATACLASS, attribute_list))
+
+
+def _extract_dataclass_attribute(
+    dc: Type[DataClassJsonMixin],
+) -> typing.Dict[str, typing.Union[Type[T], typing.Dict[str, Type[T]]]]:
+    attribute: typing.Dict[str, typing.Union[Type[T], typing.Dict[str, Type[T]]]] = {DATACLASS: {}}
+    for x, y in dc.__annotations__.items():
+        if dataclasses.is_dataclass(y):
+            if DATACLASS in attribute:
+                attribute[DATACLASS].update({x: _extract_dataclass_attribute(y)})  # type: ignore
+        else:
+            attribute[x] = y
+
+    return attribute
 
 
 def _check_and_covert_float(lv: Literal) -> float:
