@@ -3,6 +3,7 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
+import logging as _logging
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
@@ -13,8 +14,7 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models.core import interface as _interface_models
-from flytekit.types.file import PythonPickle
-from flytekit.types.file.file import FlyteFilePathTransformer
+from flytekit.types.pickle import FlytePickle
 
 
 class Interface(object):
@@ -206,8 +206,8 @@ def transform_interface_to_typed_interface(
             interface.docstring.output_descriptions, interface.outputs
         )
 
-    inputs_map = transform_variable_map(interface.inputs, input_descriptions, name)
-    outputs_map = transform_variable_map(interface.outputs, output_descriptions, name)
+    inputs_map = transform_variable_map(interface.inputs, input_descriptions)
+    outputs_map = transform_variable_map(interface.outputs, output_descriptions)
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
@@ -246,27 +246,24 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def transform_signature_to_interface(
-    signature: inspect.Signature, docstring: Optional[Docstring] = None, contain_return: bool = False
-) -> Interface:
+def transform_signature_to_interface(signature: inspect.Signature, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
 
     For now the fancy object, maybe in the future a dumb object.
-
     """
-
     outputs = extract_return_annotation(signature.return_annotation)
-    # [WIP] Handle multiple outputs
-    if outputs == {} and contain_return:
-        outputs["o0"] = PythonPickle
     for k, v in outputs.items():
         try:
             TypeEngine.get_transformer(v)
         except ValueError:
-            # We change the output type to the "PythonPickle" if we can't find the transformer for the original type
-            outputs[k] = PythonPickle
+            _logging.warning(
+                f"We change the output type to the PythonPickle "
+                f"since we can't find a transformer for the type {v}. "
+                f"We strongly recommend to use python type that flyte support."
+            )
+            outputs[k] = FlytePickle(python_type=v)  # type: ignore
 
     inputs = OrderedDict()
     for k, v in signature.parameters.items():
@@ -274,8 +271,12 @@ def transform_signature_to_interface(
         try:
             TypeEngine.get_transformer(annotation)
         except ValueError:
-            # We change the input type to the "PythonPickle" if we can't find the transformer for the original type
-            annotation = PythonPickle
+            _logging.warning(
+                f"We change the output type to the PythonPickle "
+                f"if we can't find a transformer for the original type {v}. "
+                f"We strongly recommend to use python type that flyte support."
+            )
+            annotation = FlytePickle(python_type=v.annotation)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)
@@ -296,7 +297,6 @@ def transform_signature_to_interface(
 def transform_variable_map(
     variable_map: Dict[str, type],
     descriptions: Dict[str, str] = {},
-    name: str = "",
 ) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
@@ -306,10 +306,8 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
-            # flytekit will lookup LiteralType metadata when task output type is PythonPickle,
-            # and write a pickle file to FlyteFilePathTransformer.PICKLE_PATH
-            res[k].type.metadata = {FlyteFilePathTransformer.PICKLE_PATH: name + "." + k}
-
+            if isinstance(v, FlytePickle):
+                res[k].type.metadata = {"python_class_name": typing.cast(FlytePickle, v.python_type)}
     return res
 
 

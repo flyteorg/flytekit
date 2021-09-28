@@ -1018,11 +1018,9 @@ def test_arbit_class():
     class Foo(object):
         pass
 
-    with pytest.raises(ValueError):
-
-        @task
-        def t1(a: int) -> Foo:
-            return Foo()
+    @task
+    def t1(a: int) -> Foo:
+        return Foo()
 
 
 def test_dataclass_more():

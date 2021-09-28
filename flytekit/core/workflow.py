@@ -571,12 +571,12 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         metadata: Optional[WorkflowMetadata],
         default_metadata: Optional[WorkflowMetadataDefaults],
         docstring: Docstring = None,
-        contain_return: bool = False,
     ):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
         native_interface = transform_signature_to_interface(
-            inspect.signature(workflow_function), docstring=docstring, contain_return=contain_return
+            inspect.signature(workflow_function),
+            docstring=docstring,
         )
 
         # TODO do we need this - can this not be in launchplan only?
@@ -723,14 +723,6 @@ def workflow(
     """
 
     def wrapper(fn):
-        def _contains_explicit_return(f):
-            try:
-                return any(isinstance(node, ast.Return) for node in ast.walk(ast.parse(inspect.getsource(f))))
-            except IndentationError:
-                # Avoid the test errors when ast parse the workflow in test file.
-                # IndentationError: unexpected unindent
-                return False
-
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -740,7 +732,6 @@ def workflow(
             metadata=workflow_metadata,
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
-            contain_return=_contains_explicit_return(fn),
         )
         workflow_instance.compile()
         return workflow_instance

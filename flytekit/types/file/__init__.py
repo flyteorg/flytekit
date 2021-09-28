@@ -63,16 +63,10 @@ PNGImageFile = FlyteFile[typing.TypeVar("png")]
     decoration and useful for attaching content type information with the file and automatically documenting code.
 """
 
-PythonPickledFile = FlyteFile[typing.TypeVar("python-pickled-file")]
+PythonPickledFile = FlyteFile[typing.TypeVar("python-pickled")]
 """
     This type can be used when a serialized python pickled object is returned and shared between tasks. This only
     adds metadata to the file in Flyte, but does not really carry any object information
-"""
-PYTHON_PICKLE_FORMAT = "python-pickle"
-PythonPickle = FlyteFile[typing.TypeVar(PYTHON_PICKLE_FORMAT)]
-"""
-    This type is only used by flytekit. User should not use this type.
-    Any type that flyte can't recognize will fall back on a PythonPickle
 """
 
 PythonNotebook = FlyteFile[typing.TypeVar("ipynb")]

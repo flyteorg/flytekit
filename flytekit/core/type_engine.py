@@ -6,7 +6,6 @@ import enum
 import inspect
 import json as _json
 import mimetypes
-import pickle
 import typing
 from abc import ABC, abstractmethod
 from typing import NamedTuple, Optional, Type, cast
@@ -479,7 +478,6 @@ class TypeEngine(typing.Generic[T]):
         ctx: FlyteContext,
         lm: LiteralMap,
         python_types: typing.Dict[str, type],
-        literal_type: typing.Dict[str, Variable] = None,
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
