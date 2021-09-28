@@ -5,6 +5,7 @@ import pathlib
 import time
 import typing
 
+import joblib
 import pytest
 
 from flytekit import kwtypes
