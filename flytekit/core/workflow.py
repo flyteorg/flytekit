@@ -249,8 +249,8 @@ class WorkflowBase(object):
 
         # The output of this will always be a combination of Python native values and Promises containing Flyte
         # Literals.
-
         function_outputs = self.execute(**kwargs)
+
         # First handle the empty return case.
         # A workflow function may return a task that doesn't return anything
         #   def wf():
