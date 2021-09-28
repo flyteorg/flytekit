@@ -2393,6 +2393,7 @@ def setup_config(host, insecure):
         if not insecure:
             parser.add_section("credentials")
             for key in credentials_config.keys():
+                # ConfigParser needs all keys to be strings
                 parser.set("credentials", key, str(credentials_config[key]))
         parser.write(f)
     set_flyte_config_file(config_file_path=config_file)
