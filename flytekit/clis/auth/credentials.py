@@ -47,7 +47,7 @@ def get_client(flyte_client_url):
     _authorization_client = _AuthorizationClient(
         redirect_uri=_REDIRECT_URI.get(),
         client_id=_CLIENT_ID.get(),
-        scopes=SCOPES.get() or DEPRECATED_OAUTH_SCOPES.get(),
+        scopes=DEPRECATED_OAUTH_SCOPES.get() or SCOPES.get(),
         auth_endpoint=authorization_endpoints.auth_endpoint,
         token_endpoint=authorization_endpoints.token_endpoint,
         client_secret=_CLIENT_SECRET.get(),

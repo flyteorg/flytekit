@@ -33,9 +33,7 @@ SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "scopes
 This controls the list of scopes to request from the authorization server.
 """
 
-DEPRECATED_OAUTH_SCOPES = _config_common.FlyteStringListConfigurationEntry(
-    "credentials", "oauth_scopes", default=["openid"]
-)
+DEPRECATED_OAUTH_SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "oauth_scopes", default=None)
 """
 This controls the list of scopes to request from the authorization server.
 Deprecated - please use the SCOPES variable.

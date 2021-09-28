@@ -47,7 +47,7 @@ def _get_basic_flow_scopes() -> List[str]:
     deprecated_single_scope = _DEPRECATED_SCOPE.get()
     if deprecated_single_scope:
         return [deprecated_single_scope]
-    scopes = SCOPES.get() or DEPRECATED_OAUTH_SCOPES.get()
+    scopes = DEPRECATED_OAUTH_SCOPES.get() or SCOPES.get()
     if "openid" in scopes:
         cli_logger.warning("Basic flow authentication should never use openid.")
 
