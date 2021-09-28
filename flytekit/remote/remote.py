@@ -1260,12 +1260,14 @@ class FlyteRemote(object):
                 lm=self._get_input_literal_map(execution_data),
                 python_types=TypeEngine.guess_python_types(interface.inputs),
             )
+            execution._raw_inputs = self._get_input_literal_map(execution_data).literals
             if execution.is_complete and not execution.error:
                 execution._outputs = TypeEngine.literal_map_to_kwargs(
                     ctx=ctx,
                     lm=self._get_output_literal_map(execution_data),
                     python_types=TypeEngine.guess_python_types(interface.outputs),
                 )
+                execution._raw_outputs = self._get_output_literal_map(execution_data).literals
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
