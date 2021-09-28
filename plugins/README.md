@@ -25,7 +25,7 @@ All Flytekit plugins maintained by the core team are added here. It is not neces
 Please [file an issue](https://github.com/flyteorg/flyte/issues/new?assignees=&labels=untriaged%2Cplugins&template=backend-plugin-request.md&title=%5BPlugin%5D).
 
 ## Development 💻
-Flytekit plugins are structured as micro-libs and can be authored in an independent repository. 
+Flytekit plugins are structured as micro-libs and can be authored in an independent repository.
 
 > Refer to the [Python microlibs](https://medium.com/@jherreras/python-microlibs-5be9461ad979) blog to understand the idea of microlibs.
 
@@ -38,7 +38,7 @@ Plugins should have their own unit tests.
 Some guidelines to help you write the Flytekit plugins better.
 
 1. The folder name has to be `flytekit-*`, e.g., `flytekit-hive`. In case you want to group for a specific service, then use `flytekit-aws-athena`.
-2. Flytekit plugins use a concept called [Namespace packages](https://packaging.python.org/guides/creating-and-discovering-plugins/#using-namespace-packages), and thus, the package structure is essential. 
+2. Flytekit plugins use a concept called [Namespace packages](https://packaging.python.org/guides/creating-and-discovering-plugins/#using-namespace-packages), and thus, the package structure is essential.
 
    Please use the following Python package structure:
    ```
@@ -113,7 +113,7 @@ setup(
 6. Each plugin should have its own tests' package. *NOTE:* `tests` folder should have an `__init__.py` file.
 
 7. There may be some cases where you might want to auto-load some of your modules when the plugin is installed. This is especially true for `data-plugins` and `type-plugins`.
-In such a case, you can add a special directive in the `setup.py` which will instruct Flytekit to automatically load the prescribed modules. 
+In such a case, you can add a special directive in the `setup.py` which will instruct Flytekit to automatically load the prescribed modules.
 
    Following shows an excerpt from the `flytekit-data-fsspec` plugin's setup.py file.
 
@@ -133,4 +133,3 @@ In such a case, you can add a special directive in the `setup.py` which will ins
 - Example of a plugin that modifies the execution command: [flytekit-spark](./flytekit-spark/) OR [flytekit-aws-sagemaker](./flytekit-aws-sagemaker/)
 - Example that allows executing the user container with some other context modifications: [flytekit-kf-tensorflow](./flytekit-kf-tensorflow/)
 - Example of a Persistence Plugin that allows data to be stored to different persistence layers: [flytekit-data-fsspec](./flytekit-data-fsspec/)
-
