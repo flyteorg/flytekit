@@ -2048,6 +2048,8 @@ def fast_register_files(
             complete_args = _substitute_fast_register_task_args(
                 entity.template.container.args, full_remote_path, dest_dir
             )
+            # Because we're dealing with a proto list, we have to delete the existing args before we can extend the list
+            # with the substituted ones.
             del entity.template.container.args[:]
             entity.template.container.args.extend(complete_args)
 
@@ -2056,6 +2058,7 @@ def fast_register_files(
             if "containers" in pod_spec_struct:
                 for idx in range(len(pod_spec_struct["containers"])):
                     if "args" in pod_spec_struct["containers"][idx]:
+                        # We can directly overwrite the args in the pod spec struct definition.
                         pod_spec_struct["containers"][idx]["args"] = _substitute_fast_register_task_args(
                             pod_spec_struct["containers"][idx]["args"], full_remote_path, dest_dir
                         )
