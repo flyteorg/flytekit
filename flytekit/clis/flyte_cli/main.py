@@ -2381,7 +2381,7 @@ def setup_config(host, insecure):
         credentials_config = {
             "client_id": data["client_id"],
             "redirect_uri": data["redirect_uri"],
-            "scopes": data["scopes"],
+            "oauth_scopes": data["scopes"],
             "authorization_metadata_key": data["authorization_metadata_key"],
             "auth_mode": "standard",
         }
@@ -2393,7 +2393,7 @@ def setup_config(host, insecure):
         if not insecure:
             parser.add_section("credentials")
             for key in credentials_config.keys():
-                parser.set("credentials", key, credentials_config[key])
+                parser.set("credentials", key, str(credentials_config[key]))
         parser.write(f)
     set_flyte_config_file(config_file_path=config_file)
     _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg="blue")
