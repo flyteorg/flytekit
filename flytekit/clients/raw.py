@@ -18,7 +18,7 @@ from flytekit.configuration import creds as _creds_config
 from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import COMMAND as _COMMAND
-from flytekit.configuration.creds import SCOPES
+from flytekit.configuration.creds import DEPRECATED_OAUTH_SCOPES, SCOPES
 from flytekit.configuration.platform import AUTH as _AUTH
 from flytekit.loggers import cli_logger
 
@@ -47,7 +47,7 @@ def _get_basic_flow_scopes() -> List[str]:
     deprecated_single_scope = _DEPRECATED_SCOPE.get()
     if deprecated_single_scope:
         return [deprecated_single_scope]
-    scopes = SCOPES.get()
+    scopes = SCOPES.get() or DEPRECATED_OAUTH_SCOPES.get()
     if "openid" in scopes:
         cli_logger.warning("Basic flow authentication should never use openid.")
 
