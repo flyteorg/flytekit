@@ -2381,7 +2381,7 @@ def setup_config(host, insecure):
         credentials_config = {
             "client_id": data["client_id"],
             "redirect_uri": data["redirect_uri"],
-            "oauth_scopes": data["scopes"],
+            "scopes": data["scopes"],
             "authorization_metadata_key": data["authorization_metadata_key"],
             "auth_mode": "standard",
         }
