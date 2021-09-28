@@ -737,6 +737,9 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
 
 
 def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.Any:
+    """
+    Utility function to construct a dataclass object from dict
+    """
     field_types_lookup = {field.name: field.type for field in dataclasses.fields(cls)}
 
     constructor_inputs = {}
