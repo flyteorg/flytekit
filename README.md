@@ -1,5 +1,5 @@
 <html>
-    <p align="center"> 
+    <p align="center">
         <img src="https://github.com/flyteorg/flyte/blob/master/rsts/images/flyte_circle_gradient_1_4x4.png" alt="Flyte Logo" width="100">
     </p>
     <h1 align="center">
@@ -25,7 +25,7 @@
 [![Docs](https://readthedocs.org/projects/flytekit/badge/?version=latest&style=plastic)](https://flytekit.rtfd.io)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Flytekit Python is the Python Library for easily authoring, testing, deploying, and interacting with Flyte tasks, workflows, and launch plans. 
+Flytekit Python is the Python Library for easily authoring, testing, deploying, and interacting with Flyte tasks, workflows, and launch plans.
 
 If you haven't explored Flyte yet, please refer to:
  - [Flyte homepage](https://flyte.org)
@@ -33,7 +33,7 @@ If you haven't explored Flyte yet, please refer to:
 
 ## 🚀 Quick Start
 
-Flytekit is the core extensible library to author Flyte workflows and tasks and interact with Flyte backend services. 
+Flytekit is the core extensible library to author Flyte workflows and tasks and interact with Flyte backend services.
 
 ### Installation
 
@@ -71,5 +71,5 @@ You can find the detailed contribution guide [here](https://docs.flyte.org/proje
 Refer to the [issues](https://docs.flyte.org/en/latest/community/contribute.html#issues) section in the contribution guide if you'd like to file an issue.
 
 ## 🔌 Flytekit Plugins
-Refer to [plugins/README.md](plugins/README.md) for a list of available plugins. 
+Refer to [plugins/README.md](plugins/README.md) for a list of available plugins.
 There may be plugins outside of this list, but this list is maintained by the core maintainers.
