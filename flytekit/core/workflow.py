@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import inspect
 from dataclasses import dataclass
 from enum import Enum
@@ -174,7 +173,7 @@ class WorkflowBase(object):
         self._workflow_metadata = workflow_metadata
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
-        self._interface = transform_interface_to_typed_interface(python_interface, name)
+        self._interface = transform_interface_to_typed_interface(python_interface)
         self._inputs = {}
         self._unbound_inputs = set()
         self._nodes = []
@@ -250,6 +249,7 @@ class WorkflowBase(object):
 
         # The output of this will always be a combination of Python native values and Promises containing Flyte
         # Literals.
+
         function_outputs = self.execute(**kwargs)
         # First handle the empty return case.
         # A workflow function may return a task that doesn't return anything
@@ -574,10 +574,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     ):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
-        native_interface = transform_signature_to_interface(
-            inspect.signature(workflow_function),
-            docstring=docstring,
-        )
+        native_interface = transform_signature_to_interface(inspect.signature(workflow_function), docstring=docstring)
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or

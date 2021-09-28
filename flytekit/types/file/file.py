@@ -222,10 +222,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
 
 class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
-    BASE_DIR = ".flyte/"
-    PICKLE_PATH = "pickle-path"
-    PYTHON_PICKLE_FORMAT = "python-pickle"
-
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 

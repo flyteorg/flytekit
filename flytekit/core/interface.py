@@ -190,7 +190,7 @@ def transform_inputs_to_parameters(
 
 
 def transform_interface_to_typed_interface(
-    interface: typing.Optional[Interface], name: str = ""
+    interface: typing.Optional[Interface],
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
@@ -272,7 +272,7 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
             TypeEngine.get_transformer(annotation)
         except ValueError:
             _logging.warning(
-                f"We change the output type to the PythonPickle "
+                f"We change the input type to the PythonPickle "
                 f"if we can't find a transformer for the original type {v}. "
                 f"We strongly recommend to use python type that flyte support."
             )
@@ -379,8 +379,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
                 "Tuples should be used to indicate multiple return values, found only one return variable."
             )
         return OrderedDict(
-            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
-            # type: ignore
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)  # type: ignore
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:
