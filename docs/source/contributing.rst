@@ -32,7 +32,7 @@ This will install flytekit dependencies and also install flytekit itself in edit
 ******************
 Plugin Development
 ******************
-As discussed in the design component, Flytekit plugins currently live in this flytekit repo, but under a different top level folder ``plugins``. 
+As discussed in the design component, Flytekit plugins currently live in this flytekit repo, but under a different top level folder ``plugins``.
 In the future, this will be separated out into a different repo. These plugins follow a `microlib <https://medium.com/@jherreras/python-microlibs-5be9461ad979>`__ structure, which will persist even if we move repos. ::
 
     source ~/.virtualenvs/flytekit/bin/activate
@@ -69,7 +69,7 @@ Running unit tests: ::
 
 Cookbook Testing
 ----------------
-Please see the `cookbook <https://github.com/flyteorg/flytesnacks/tree/master/cookbook>`__ and the generated `docs <https://flytecookbook.readthedocs.io/en/latest/>`__ for more information. 
+Please see the `cookbook <https://github.com/flyteorg/flytesnacks/tree/master/cookbook>`__ and the generated `docs <https://flytecookbook.readthedocs.io/en/latest/>`__ for more information.
 This example repo can be cloned and run on a local Flyte cluster, or just in your IDE or other Python environment.
 
 Follow the setup instructions for the cookbook and then override it with the version of Flytekit you're interested in testing by running something like: ::
@@ -85,7 +85,7 @@ End-to-end Testing
 
 .. TODO: Replace this with actual instructions
 
-The Flyte developer experience team has put together an end-to-end testing framework that will spin up a K8s cluster, install Flyte onto it, and run through a series of workflows. 
+The Flyte developer experience team has put together an end-to-end testing framework that will spin up a K8s cluster, install Flyte onto it, and run through a series of workflows.
 Please contact us if you reach this stage and would like more information on this.
 
 
@@ -93,7 +93,7 @@ Please contact us if you reach this stage and would like more information on thi
 Pre-commit hooks
 ****************
 
-We use `pre-commit <https://pre-commit.com/>`__ to automate linting and code formatting on every commit. 
+We use `pre-commit <https://pre-commit.com/>`__ to automate linting and code formatting on every commit.
 Configured hooks include `black <https://github.com/psf/black>`__, `isort <https://github.com/PyCQA/isort>`__, and `flake8 <https://github.com/PyCQA/flake8>`__ and also linters to check for the validity of YAML files and ensuring that newlines are added to the end of files.
 
 We run all those hooks in CI, but if you want to run them locally on every commit, run `pre-commit install` after installing the dev environment requirements. In case you want to disable `pre-commit` hooks locally, for example, while you're iterating on some feature, run `pre-commit uninstall`. More info in https://pre-commit.com/.
