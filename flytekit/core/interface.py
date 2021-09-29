@@ -317,7 +317,9 @@ def transform_variable_map(
             res[k] = transform_type(v, descriptions.get(k, k))
             if isinstance(v, FlytePickle):
                 if hasattr(v.python_type, "__origin__") and v.python_type.__origin__ is list:
-                    res[k].type.metadata = {"python_class_name": typing.cast(FlytePickle, v.python_type.__args__[0].__name__)}
+                    res[k].type.metadata = {
+                        "python_class_name": typing.cast(FlytePickle, v.python_type.__args__[0].__name__)
+                    }
                 else:
                     res[k].type.metadata = {"python_class_name": typing.cast(FlytePickle, v.python_type.__name__)}
     return res
