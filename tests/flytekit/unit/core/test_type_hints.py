@@ -1022,6 +1022,9 @@ def test_arbit_class():
     def t1(a: int) -> Foo:
         return Foo()
 
+    def t2(a: Foo) -> typing.List[Foo]:
+        return [a, a]
+
 
 def test_dataclass_more():
     @dataclass_json

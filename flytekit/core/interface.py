@@ -256,7 +256,11 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
     outputs = extract_return_annotation(signature.return_annotation)
     for k, v in outputs.items():
         try:
-            TypeEngine.get_transformer(v)
+            if hasattr(v, "__origin__") and v.__origin__ == list:
+                TypeEngine.get_transformer(v.__args__[0])
+            else:
+                TypeEngine.get_transformer(v)
+
         except ValueError:
             _logging.warning(
                 f"We change the output type to the PythonPickle "
@@ -270,7 +274,10 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
     for k, v in signature.parameters.items():
         annotation = v.annotation
         try:
-            TypeEngine.get_transformer(annotation)
+            if hasattr(annotation, "__origin__") and annotation.__origin__ == list:
+                TypeEngine.get_transformer(annotation.__args__[0])
+            else:
+                TypeEngine.get_transformer(annotation)
         except ValueError:
             _logging.warning(
                 f"We change the output type to the PythonPickle "
@@ -309,7 +316,10 @@ def transform_variable_map(
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
             if isinstance(v, FlytePickle):
-                res[k].type.metadata = {"python_class_name": typing.cast(FlytePickle, v.python_type.__name__)}
+                if hasattr(v.python_type, "__origin__") and v.python_type.__origin__ is list:
+                    res[k].type.metadata = {"python_class_name": typing.cast(FlytePickle, v.python_type.__args__[0].__name__)}
+                else:
+                    res[k].type.metadata = {"python_class_name": typing.cast(FlytePickle, v.python_type.__name__)}
     return res
 
 
