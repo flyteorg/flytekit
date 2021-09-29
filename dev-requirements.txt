@@ -341,7 +341,7 @@ wrapt==1.12.1
     #   -c requirements.txt
     #   deprecated
     #   flytekit
-zipp==3.5.1
+zipp==3.6.0
     # via
     #   -c requirements.txt
     #   importlib-metadata

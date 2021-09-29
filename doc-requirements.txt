@@ -420,7 +420,7 @@ wrapt==1.12.1
     #   astroid
     #   deprecated
     #   flytekit
-zipp==3.5.1
+zipp==3.6.0
     # via importlib-metadata
 zope.event==4.5.0
     # via gevent
