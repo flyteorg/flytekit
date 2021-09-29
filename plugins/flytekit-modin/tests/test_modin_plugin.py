@@ -11,20 +11,20 @@ if not ray.is_initialized():
     ray.init(_plasma_directory="/tmp")  # setting to disable out of core in Ray
 
 
-def test_modin_workflow(data="https://modin-datasets.s3.amazonaws.com/plasticc/training_set.csv"):
+def test_modin_workflow():
     @task
-    def generate(df_path: str) -> pd.DataFrame:
-        df = pd.read_csv(df_path)
+    def generate() -> pd.DataFrame:
+        df = pd.DataFrame({"col1": [1, 2, 3], "col2": list("abc")})
         return df
 
     @task
-    def consume(d: pd.DataFrame) -> pd.DataFrame:
-        df = d
-        return df.head()
+    def consume(df: pd.DataFrame) -> pd.DataFrame:
+        df["col3"] = df["col1"].astype(str) + df["col2"]
+        return df
 
     @workflow
-    def wf(df_path: str = data) -> pd.DataFrame:
-        return consume(d=generate(df_path=df_path))
+    def wf() -> pd.DataFrame:
+        return consume(df=generate())
 
     result = wf()
     assert result is not None
