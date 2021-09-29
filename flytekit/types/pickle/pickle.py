@@ -1,5 +1,5 @@
 import os
-import pickle
+import cloudpickle
 import typing
 from typing import Type
 
@@ -38,7 +38,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
             ctx.file_access.get_data(uri, self.PICKLE, False)
             uri = self.PICKLE
         infile = open(uri, "rb")
-        data = pickle.load(infile)
+        data = cloudpickle.load(infile)
         infile.close()
         return data
 
@@ -53,7 +53,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         os.makedirs(local_dir, exist_ok=True)
         uri = os.path.join(local_dir, self.PICKLE)
         outfile = open(uri, "w+b")
-        pickle.dump(python_val, outfile)
+        cloudpickle.dump(python_val, outfile)
         outfile.close()
 
         remote_path = ctx.file_access.get_random_remote_path(uri)

@@ -260,8 +260,9 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
         except ValueError:
             _logging.warning(
                 f"We change the output type to the PythonPickle "
-                f"since we can't find a transformer for the type {v}. "
-                f"We strongly recommend to use python type that flyte support."
+                f"since we can't find a transformer for the type {v}.\n"
+                f"Pickle can only be used to send objects between the exact same version of Python, "
+                f"and we strongly recommend to use python type that flyte support."
             )
             outputs[k] = FlytePickle(python_type=v)  # type: ignore
 
@@ -272,9 +273,10 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
             TypeEngine.get_transformer(annotation)
         except ValueError:
             _logging.warning(
-                f"We change the input type to the PythonPickle "
-                f"if we can't find a transformer for the original type {v}. "
-                f"We strongly recommend to use python type that flyte support."
+                f"We change the output type to the PythonPickle "
+                f"since we can't find a transformer for the type {v}.\n"
+                f"Pickle can only be used to send objects between the exact same version of Python, "
+                f"and we strongly recommend to use python type that flyte support."
             )
             annotation = FlytePickle(python_type=v.annotation)
         default = v.default if v.default is not inspect.Parameter.empty else None
