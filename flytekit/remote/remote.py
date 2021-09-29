@@ -927,7 +927,7 @@ class FlyteRemote(object):
 
     def wait(
         self,
-        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        execution: FlyteWorkflowExecution,
         timeout: typing.Optional[timedelta] = None,
         poll_interval: typing.Optional[timedelta] = None,
     ):
@@ -941,7 +941,7 @@ class FlyteRemote(object):
         time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
 
         while datetime.utcnow() < time_to_give_up:
-            execution = self.sync(execution)
+            execution = self.sync_workflow_execution(execution)
             if execution.is_complete:
                 return execution
             time.sleep(poll_interval.total_seconds())
@@ -952,23 +952,7 @@ class FlyteRemote(object):
     # Sync Execution State #
     ########################
 
-    @singledispatchmethod
-    def sync(
-        self,
-        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
-        entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-    ):
-        """Sync a flyte execution object with its corresponding remote state.
-
-        This method syncs the inputs and outputs of the execution object and all of its child node executions.
-
-        :param execution: workflow execution to sync.
-        :param entity_definition: optional, reference entity definition which adds more context to this execution entity
-        """
-        raise NotImplementedError(f"Execution type {type(execution)} cannot be synced.")
-
-    @sync.register
-    def _(
+    def sync_workflow_execution(
         self, execution: FlyteWorkflowExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
     ) -> FlyteWorkflowExecution:
 
@@ -991,13 +975,12 @@ class FlyteRemote(object):
         synced_execution._closure = self.client.get_execution(execution.id).closure
 
         synced_execution._node_executions = {
-            node.id.node_id: self.sync(FlyteNodeExecution.promote_from_model(node), flyte_entity)
+            node.id.node_id: self.sync_node_execution(FlyteNodeExecution.promote_from_model(node), flyte_entity)
             for node in iterate_node_executions(self.client, execution.id)
         }
         return self._assign_inputs_and_outputs(synced_execution, execution_data, flyte_entity.interface)
 
-    @sync.register
-    def _(
+    def sync_node_execution(
         self, execution: FlyteNodeExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
     ) -> FlyteNodeExecution:
         """Sync a FlyteNodeExecution object with its corresponding remote state."""
@@ -1014,7 +997,7 @@ class FlyteRemote(object):
         synced_execution._closure = self.client.get_node_execution(execution.id).closure
         if synced_execution.metadata.is_parent_node:
             synced_execution._subworkflow_node_executions = [
-                self.sync(FlyteNodeExecution.promote_from_model(node), entity_definition)
+                self.sync_node_execution(FlyteNodeExecution.promote_from_model(node), entity_definition)
                 for node in iterate_node_executions(
                     self.client,
                     workflow_execution_identifier=synced_execution.id.execution_id,
@@ -1023,7 +1006,7 @@ class FlyteRemote(object):
             ]
         else:
             synced_execution._task_executions = [
-                self.sync(FlyteTaskExecution.promote_from_model(t))
+                self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
                 for t in iterate_task_executions(self.client, synced_execution.id)
             ]
         synced_execution._interface = self._get_node_execution_interface(synced_execution, entity_definition)
@@ -1033,8 +1016,7 @@ class FlyteRemote(object):
             synced_execution.interface,
         )
 
-    @sync.register
-    def _(
+    def sync_task_execution(
         self, execution: FlyteTaskExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
