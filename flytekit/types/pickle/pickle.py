@@ -1,7 +1,8 @@
 import os
-import cloudpickle
 import typing
 from typing import Type
+
+import cloudpickle
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
