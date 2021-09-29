@@ -1255,19 +1255,21 @@ class FlyteRemote(object):
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         with self.remote_context() as ctx:
+            input_literal_map = self._get_input_literal_map(execution_data)
+            execution._raw_inputs = input_literal_map.literals
             execution._inputs = TypeEngine.literal_map_to_kwargs(
                 ctx=ctx,
-                lm=self._get_input_literal_map(execution_data),
+                lm=input_literal_map,
                 python_types=TypeEngine.guess_python_types(interface.inputs),
             )
-            execution._raw_inputs = self._get_input_literal_map(execution_data).literals
             if execution.is_complete and not execution.error:
+                output_literal_map = self._get_output_literal_map(execution_data)
+                execution._raw_outputs = output_literal_map.literals
                 execution._outputs = TypeEngine.literal_map_to_kwargs(
                     ctx=ctx,
-                    lm=self._get_output_literal_map(execution_data),
+                    lm=output_literal_map,
                     python_types=TypeEngine.guess_python_types(interface.outputs),
                 )
-                execution._raw_outputs = self._get_output_literal_map(execution_data).literals
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
