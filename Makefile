@@ -1,6 +1,7 @@
 export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose
+MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
 
 .SILENT: help
 .PHONY: help
@@ -70,8 +71,12 @@ doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
 	$(PIP_COMPILE) $<
 
+${MOCK_FLYTE_REPO}/requirements.txt: export CUSTOM_COMPILE_COMMAND := make ${MOCK_FLYTE_REPO}/requirements.txt
+${MOCK_FLYTE_REPO}/requirements.txt: ${MOCK_FLYTE_REPO}/requirements.in install-piptools
+	$(PIP_COMPILE) $<
+
 .PHONY: requirements
-requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-requirements.txt ## Compile requirements
+requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compile requirements
 
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
