@@ -31,6 +31,10 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
     def __init__(self):
         super().__init__(name="FlytePickle", t=FlytePickle)
 
+    def assert_type(self, t: Type[T], v: T):
+        # Every type can serialize to pickle, so we don't need to check the type here.
+        ...
+
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         uri = lv.scalar.blob.uri
         # Deserialize the pickle, and return data in the pickle,
