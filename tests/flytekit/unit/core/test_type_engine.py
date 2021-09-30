@@ -729,3 +729,16 @@ def test_literals_resolver(literal_value, python_type, expected_python_value):
     lr = LiteralsResolver(lit_dict)
     out = lr.get("a", python_type)
     assert out == expected_python_value
+
+
+def test_guess_of_dataclass():
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        x: int
+        y: str
+        z: typing.Dict[int, str]
+
+    lt = TypeEngine.to_literal_type(Foo)
+    # This will need to be improved in the future after fixing the Model class.
+    TypeEngine.guess_python_type(lt)
