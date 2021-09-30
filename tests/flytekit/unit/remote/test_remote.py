@@ -9,7 +9,6 @@ from flytekit.models import common as common_models
 from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.remote.remote import FlyteRemote
-from flytekit.remote.workflow_execution import FlyteWorkflowExecution
 
 CLIENT_METHODS = {
     ResourceType.WORKFLOW: "list_workflows_paginated",
