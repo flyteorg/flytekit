@@ -987,7 +987,7 @@ class FlyteRemote(object):
             )
 
         # sync closure, node executions, and inputs/outputs
-        execution = self.client.get_execution(execution.id).closure
+        execution._closure = self.client.get_execution(execution.id).closure
         execution._node_executions = {
             node.id.node_id: self.sync(FlyteNodeExecution.promote_from_model(node), flyte_entity)
             for node in iterate_node_executions(self.client, execution.id)
