@@ -7,7 +7,7 @@ from flytekit.remote import identifier as _core_identifier
 from flytekit.remote import nodes as _nodes
 
 
-class FlyteWorkflowExecution(_execution_models.Execution, _artifact.ExecutionArtifact):
+class FlyteWorkflowExecution(_execution_models.Execution):
     """A class encapsulating a workflow execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
