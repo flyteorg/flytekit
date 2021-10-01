@@ -952,6 +952,25 @@ class FlyteRemote(object):
     # Sync Execution State #
     ########################
 
+    @singledispatchmethod
+    def sync(
+        self,
+        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
+    ):
+        """Sync a flyte execution object with its corresponding remote state.
+        This method syncs the inputs and outputs of the execution object and all of its child node executions.
+        :param execution: workflow execution to sync.
+        :param entity_definition: optional, reference entity definition which adds more context to this execution entity
+        """
+        if isinstance(execution, FlyteWorkflowExecution):
+            return self.sync_workflow_execution(execution, entity_definition)
+        elif isinstance(execution, FlyteNodeExecution):
+            return self.sync_node_execution(execution, entity_definition)
+        elif isinstance(execution, FlyteTaskExecution):
+            return self.sync_task_execution(execution, entity_definition)
+        raise ValueError(f"Execution type {type(execution)} cannot be synced.")
+
     def sync_workflow_execution(
         self, execution: FlyteWorkflowExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
     ) -> FlyteWorkflowExecution:
