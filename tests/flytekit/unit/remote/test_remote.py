@@ -240,3 +240,31 @@ def test_form_config(mock_insecure, mock_url):
     assert remote._insecure is True
     assert remote.default_project == "p1"
     assert remote.default_domain == "d1"
+
+
+@patch("flytekit.clients.raw._ssl_channel_credentials")
+@patch("flytekit.clients.raw._secure_channel")
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_channel, mock_ssl_channel_credentials):
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = False
+
+    # Default mode, no explicit channel credentials
+    mock_ssl_channel_credentials.reset_mock()
+    _ = FlyteRemote.from_config("project", "domain")
+
+    assert mock_ssl_channel_credentials.called
+
+    mock_secure_channel.reset_mock()
+    mock_ssl_channel_credentials.reset_mock()
+
+    # Explicit channel credentials
+    from grpc import ssl_channel_credentials
+
+    credentials = ssl_channel_credentials(b"TEST CERTIFICATE")
+
+    _ = FlyteRemote.from_config("project", "domain", grpc_credentials=credentials)
+    assert mock_secure_channel.called
+    assert mock_secure_channel.call_args[0][1] == credentials
+    assert not mock_ssl_channel_credentials.called

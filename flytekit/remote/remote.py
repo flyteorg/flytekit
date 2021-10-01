@@ -10,6 +10,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -122,12 +123,14 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         config_file_path: typing.Optional[str] = None,
+        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
     ) -> FlyteRemote:
         """Create a FlyteRemote object using flyte configuration variables and/or environment variable overrides.
 
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
         :param config_file_path: config file to use when connecting to flyte admin. we will use '~/.flyte/config' by default.
+        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned by :func:`grpc.ssl_channel_credentials`
         """
 
         if config_file_path is None:
@@ -161,6 +164,7 @@ class FlyteRemote(object):
             raw_output_data_config=(
                 common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
             ),
+            grpc_credentials=grpc_credentials,
         )
 
     def __init__(
@@ -176,6 +180,7 @@ class FlyteRemote(object):
         annotations: typing.Optional[common_models.Annotations] = None,
         image_config: typing.Optional[ImageConfig] = None,
         raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
+        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
     ):
         """Initialize a FlyteRemote object.
 
@@ -190,12 +195,13 @@ class FlyteRemote(object):
         :param annotations: annotation config
         :param image_config: image config
         :param raw_output_data_config: location for offloaded data, e.g. in S3
+        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned by :func:`grpc.ssl_channel_credentials`
         """
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
         if flyte_admin_url is None:
             raise user_exceptions.FlyteAssertion("Cannot find flyte admin url in config file.")
 
-        self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure)
+        self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure, credentials=grpc_credentials)
 
         # read config files, env vars, host, ssl options for admin client
         self._flyte_admin_url = flyte_admin_url
