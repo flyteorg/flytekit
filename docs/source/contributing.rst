@@ -6,7 +6,7 @@ Flytekit Contribution Guide
 
 First off, thank you for thinking about contributing! Below you'll find instructions that will hopefully guide you through how to fix, improve, and extend Flytekit.
 
-Please also take some time to read through the `design guides <https://docs.flyte.org/projects/flytekit/en/latest/design/index.html>`__, which describe the various parts of Flytekit and should make contributing easier.
+Please also take some time to read through the :std:ref:`design guides <design>`, which describe the various parts of Flytekit and should make contributing easier.
 
 ******************
 💻 Contribute Code
