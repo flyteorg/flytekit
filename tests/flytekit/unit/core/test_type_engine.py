@@ -152,7 +152,6 @@ def test_list_of_dataclass_getting_python_value():
     assert type(pv[0].z.x) == float
     assert pv[0].z.y == foo.z.y
     assert pv[0].z.z == foo.z.z
-    print(pv[0])
     assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
 
 

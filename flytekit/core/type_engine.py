@@ -755,8 +755,10 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
     """
     attribute_list = []
     for property_key, property_val in schema[schema_name]["properties"].items():
+        # Handle List
         if property_val["type"] == "array":
             attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))
+        # Handle dataclass and dict
         elif property_val["type"] == "object":
             if "$ref" in property_val:
                 name = property_val["$ref"].split("/")[-1]
@@ -765,6 +767,7 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
                 attribute_list.append(
                     (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])
                 )
+        # Handle int, float or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])
 
