@@ -986,15 +986,13 @@ class FlyteRemote(object):
                 f"Resource type {execution.spec.launch_plan.resource_type} not recognized. Must be a TASK or WORKFLOW."
             )
 
-        synced_execution = deepcopy(execution)
         # sync closure, node executions, and inputs/outputs
-        synced_execution._closure = self.client.get_execution(execution.id).closure
-
-        synced_execution._node_executions = {
+        execution._closure = self.client.get_execution(execution.id).closure
+        execution._node_executions = {
             node.id.node_id: self.sync(FlyteNodeExecution.promote_from_model(node), flyte_entity)
             for node in iterate_node_executions(self.client, execution.id)
         }
-        return self._assign_inputs_and_outputs(synced_execution, execution_data, flyte_entity.interface)
+        return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
 
     @sync.register
     def _(
@@ -1008,29 +1006,27 @@ class FlyteRemote(object):
         ):
             return execution
 
-        synced_execution = deepcopy(execution)
-
         # sync closure, child nodes, interface, and inputs/outputs
-        synced_execution._closure = self.client.get_node_execution(execution.id).closure
-        if synced_execution.metadata.is_parent_node:
-            synced_execution._subworkflow_node_executions = [
+        execution._closure = self.client.get_node_execution(execution.id).closure
+        if execution.metadata.is_parent_node:
+            execution._subworkflow_node_executions = [
                 self.sync(FlyteNodeExecution.promote_from_model(node), entity_definition)
                 for node in iterate_node_executions(
                     self.client,
-                    workflow_execution_identifier=synced_execution.id.execution_id,
-                    unique_parent_id=synced_execution.id.node_id,
+                    workflow_execution_identifier=execution.id.execution_id,
+                    unique_parent_id=execution.id.node_id,
                 )
             ]
         else:
-            synced_execution._task_executions = [
+            execution._task_executions = [
                 self.sync(FlyteTaskExecution.promote_from_model(t))
-                for t in iterate_task_executions(self.client, synced_execution.id)
+                for t in iterate_task_executions(self.client, execution.id)
             ]
-        synced_execution._interface = self._get_node_execution_interface(synced_execution, entity_definition)
+        execution._interface = self._get_node_execution_interface(execution, entity_definition)
         return self._assign_inputs_and_outputs(
-            synced_execution,
+            execution,
             self.client.get_node_execution_data(execution.id),
-            synced_execution.interface,
+            execution.interface,
         )
 
     @sync.register
@@ -1040,14 +1036,13 @@ class FlyteRemote(object):
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
         if entity_definition is not None:
             raise ValueError("Entity definition arguments aren't supported when syncing task executions")
-        synced_execution = deepcopy(execution)
 
         # sync closure and inputs/outputs
-        synced_execution._closure = self.client.get_task_execution(synced_execution.id).closure
-        execution_data = self.client.get_task_execution_data(synced_execution.id)
+        execution._closure = self.client.get_task_execution(execution.id).closure
+        execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
         task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-        return self._assign_inputs_and_outputs(synced_execution, execution_data, task.interface)
+        return self._assign_inputs_and_outputs(execution, execution_data, task.interface)
 
     #############################
     # Terminate Execution State #
