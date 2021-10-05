@@ -117,14 +117,14 @@ We use `codespell <https://github.com/codespell-project/codespell>`__ to catch s
     make spellcheck
 
 ******************************
-📃 Contribute to Documentation 
+📃 Contribute to Documentation
 ******************************
 
 1. Install requirements by running ``make doc-requirements.txt`` in the root of the repo
 2. Make the required changes
 3. Verify if the documentation looks as expected by running ``make html`` in the `docs <https://github.com/flyteorg/flytekit/tree/master/docs>`__ directory
 4. Open HTML pages present in the ``docs/build`` directory in the browser
-5. After creating the pull request, check if the docs are rendered correctly by clicking on the documentation check 
+5. After creating the pull request, check if the docs are rendered correctly by clicking on the documentation check
 
    .. image:: https://raw.githubusercontent.com/flyteorg/flyte/static-resources/img/flytesnacks/contribution-guide/test_docs_link.png
        :alt: Doc link in PR
@@ -133,6 +133,6 @@ We use `codespell <https://github.com/codespell-project/codespell>`__ to catch s
 📝 Releases and Project Management
 **********************************
 
-Currently, Flytekit and all its plugins share one common version. 
-To release, contact a member of the Flytekit repo maintainers or committers, and request a release. 
+Currently, Flytekit and all its plugins share one common version.
+To release, contact a member of the Flytekit repo maintainers or committers, and request a release.
 We will create a GitHub release off of master, which will automatically publish a Pypi package.
