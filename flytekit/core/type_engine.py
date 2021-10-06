@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import dataclasses
 import datetime as _datetime
 import enum
@@ -32,6 +31,7 @@ from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Pri
 from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
+DEFINITIONS = "definitions"
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -284,6 +284,14 @@ class DataclassTransformer(TypeTransformer[object]):
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
         return self._fix_dataclass_int(expected_python_type, dc)
 
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if literal_type.simple == SimpleType.STRUCT:
+            if literal_type.metadata is not None and DEFINITIONS in literal_type.metadata:
+                schema_name = literal_type.metadata["$ref"].split("/")[-1]
+                return convert_json_schema_to_python_class(literal_type.metadata[DEFINITIONS], schema_name)
+
+        raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
+
 
 class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMessageType]):
     PB_FIELD_KEY = "pb_type"
@@ -509,6 +517,13 @@ class TypeEngine(typing.Generic[T]):
                 return transformer.guess_python_type(flyte_type)
             except ValueError:
                 logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
+
+        # Because the dataclass transformer is handled explicity in the get_transformer code, we have to handle it
+        # separately here too.
+        try:
+            return cls._DATACLASS_TRANSFORMER.guess_python_type(literal_type=flyte_type)
+        except ValueError:
+            logger.debug(f"Skipping transformer {cls._DATACLASS_TRANSFORMER.name} for {flyte_type}")
         raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
 
 
@@ -640,8 +655,6 @@ class DictTransformer(TypeTransformer[dict]):
         if literal_type.simple == SimpleType.STRUCT:
             if literal_type.metadata is None:
                 return dict
-            if "definitions" in literal_type.metadata:
-                return convert_json_schema_to_python_class(literal_type.metadata)
 
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
@@ -734,28 +747,63 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return expected_python_type(lv.scalar.primitive.string_value)
 
 
-def convert_json_schema_to_python_class(schema):
+def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:
     """Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
+    :param schema_name: dataclass name of return type
     """
-    schema = copy.deepcopy(schema)
+    attribute_list = []
+    for property_key, property_val in schema[schema_name]["properties"].items():
+        # Handle list
+        if property_val["type"] == "array":
+            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))
+        # Handle dataclass and dict
+        elif property_val["type"] == "object":
+            if "$ref" in property_val:
+                name = property_val["$ref"].split("/")[-1]
+                attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
+            else:
+                attribute_list.append(
+                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])
+                )
+        # Handle int, float, bool or str
+        else:
+            attribute_list.append([property_key, _get_element_type(property_val)])
 
-    class Model(dict):
-        def __init__(self, *args, **kwargs):
-            self.__dict__["schema"] = schema
-            d = dict(*args, **kwargs)
-            dict.__init__(self, d)
+    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
-        def __setitem__(self, key, value):
-            dict.__setitem__(self, key, value)
 
-        def __getattr__(self, key):
-            try:
-                return self.__getitem__(key)
-            except KeyError:
-                raise AttributeError(key)
+def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
+    element_type = element_property["type"]
+    element_format = element_property["format"] if "format" in element_property else None
+    if element_type == "string":
+        return str
+    elif element_type == "integer":
+        return int
+    elif element_type == "boolean":
+        return bool
+    elif element_type == "number":
+        if element_format == "integer":
+            return int
+        else:
+            return float
+    return str
 
-    return dataclass_json(dataclasses.dataclass(Model))
+
+def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.Any:
+    """
+    Utility function to construct a dataclass object from dict
+    """
+    field_types_lookup = {field.name: field.type for field in dataclasses.fields(cls)}
+
+    constructor_inputs = {}
+    for field_name, value in src.items():
+        if dataclasses.is_dataclass(field_types_lookup[field_name]):
+            constructor_inputs[field_name] = dataclass_from_dict(field_types_lookup[field_name], value)
+        else:
+            constructor_inputs[field_name] = value
+
+    return cls(**constructor_inputs)
 
 
 def _check_and_covert_float(lv: Literal) -> float:
