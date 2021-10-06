@@ -71,7 +71,9 @@ jobs:
       # install plugin first, then developmentflytekit
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        pip install -r plugins/${{ matrix.plugin-names }}/requirements.txt
+        cd plugins/${{ matrix.plugin-names }}
+        pip install -r requirements.txt
+        cd ../..
         make setup
         pip freeze
     - name: Test with coverage
