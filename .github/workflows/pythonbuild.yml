@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.8, 3.9]
         plugin-names: ["flytekit-aws-athena", "flytekit-aws-sagemaker", "flytekit-data-fsspec", "flytekit-dolt", "flytekit-greatexpectations", "flytekit-hive", "flytekit-k8s-pod", "flytekit-kf-pytorch", "flytekit-kf-tensorflow", "flytekit-papermill", "flytekit-spark", "flytekit-sqlalchemy", "flytekit-pandera", "flytekit-snowflake"]
     steps:
     - uses: actions/checkout@v2
