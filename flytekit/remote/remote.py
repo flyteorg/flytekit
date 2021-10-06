@@ -953,9 +953,9 @@ class FlyteRemote(object):
     ########################
 
     def sync(
-            self,
-            execution: FlyteWorkflowExecution,
-            entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
+        self,
+        execution: FlyteWorkflowExecution,
+        entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
     ):
         """
         This function was previously a singledispatchmethod. We've removed that but this function remains
@@ -969,7 +969,10 @@ class FlyteRemote(object):
         return self.sync_workflow_execution(execution, entity_definition)
 
     def sync_workflow_execution(
-        self, execution: FlyteWorkflowExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
+        self,
+        execution: FlyteWorkflowExecution,
+        entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
+        workflow_only=False,
     ) -> FlyteWorkflowExecution:
 
         """Sync a FlyteWorkflowExecution object with its corresponding remote state."""
@@ -988,10 +991,11 @@ class FlyteRemote(object):
 
         # sync closure, node executions, and inputs/outputs
         execution._closure = self.client.get_execution(execution.id).closure
-        execution._node_executions = {
-            node.id.node_id: self.sync_node_execution(FlyteNodeExecution.promote_from_model(node), flyte_entity)
-            for node in iterate_node_executions(self.client, execution.id)
-        }
+        if not workflow_only:
+            execution._node_executions = {
+                node.id.node_id: self.sync_node_execution(FlyteNodeExecution.promote_from_model(node), flyte_entity)
+                for node in iterate_node_executions(self.client, execution.id)
+            }
         return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
 
     def sync_node_execution(
