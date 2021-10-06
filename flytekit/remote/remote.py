@@ -956,6 +956,7 @@ class FlyteRemote(object):
         self,
         execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
+        workflow_only: bool = False,
     ):
         """
         This function was previously a singledispatchmethod. We've removed that but this function remains
@@ -966,7 +967,7 @@ class FlyteRemote(object):
         """
         if not isinstance(execution, FlyteWorkflowExecution):
             raise ValueError(f"remote.sync should only be called on workflow executions, got {type(execution)}")
-        return self.sync_workflow_execution(execution, entity_definition)
+        return self.sync_workflow_execution(execution, entity_definition, workflow_only)
 
     def sync_workflow_execution(
         self,
