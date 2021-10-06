@@ -72,7 +72,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         make setup
         cd plugins/${{ matrix.plugin-names }}
-        pip install -r requirements.txt
+        pip install -e .
         pip freeze
     - name: Test with coverage
       run: |
