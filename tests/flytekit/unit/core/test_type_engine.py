@@ -123,7 +123,7 @@ def test_list_of_dataclass_getting_python_value():
         w: typing.Optional[str]
         x: float
         y: str
-        z: typing.Dict[str, int]
+        z: typing.Dict[str, bool]
 
     @dataclass_json
     @dataclass()
@@ -133,7 +133,7 @@ def test_list_of_dataclass_getting_python_value():
         y: typing.Dict[str, str]
         z: Bar
 
-    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": 4}))
+    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
     generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
@@ -576,6 +576,25 @@ def test_enum_type():
                                 "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
                                 "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
                             },
+                        )
+                    )
+                }
+            ),
+        ),
+        (
+            {"p1": TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})},
+            {"p1": TestStructD},
+            LiteralMap(
+                literals={
+                    "p1": Literal(
+                        scalar=Scalar(
+                            generic=_json_format.Parse(
+                                typing.cast(
+                                    DataClassJsonMixin,
+                                    TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]}),
+                                ).to_json(),
+                                _struct.Struct(),
+                            )
                         )
                     )
                 }
