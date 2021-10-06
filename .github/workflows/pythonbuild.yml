@@ -68,10 +68,10 @@ jobs:
         # Look to see if there is a cache hit for the corresponding requirements files
         key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
     - name: Install dependencies
-      # install plugin first, then development flytekit
+      # install plugin first, then developmentflytekit
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        pip install -e plugins/${{ matrix.plugin-names }} 
+        pip install -r plugins/${{ matrix.plugin-names }}/requirements.txt
         make setup
         pip freeze
     - name: Test with coverage
