@@ -956,24 +956,28 @@ class FlyteRemote(object):
         self,
         execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-        workflow_only: bool = False,
-    ):
+        sync_nodes: bool = True,
+    ) -> FlyteWorkflowExecution:
         """
         This function was previously a singledispatchmethod. We've removed that but this function remains
         so that we don't break people.
+
         :param execution:
         :param entity_definition:
-        :return:
+        :param sync_nodes: By default sync will fetch data on all underlying node executions (recursively,
+          so subworkflows will also get picked up). Set this to False in order to prevent that (which
+          will make this call faster).
+        :return: Returns the same execution object, but with additional information pulled in.
         """
         if not isinstance(execution, FlyteWorkflowExecution):
             raise ValueError(f"remote.sync should only be called on workflow executions, got {type(execution)}")
-        return self.sync_workflow_execution(execution, entity_definition, workflow_only)
+        return self.sync_workflow_execution(execution, entity_definition, sync_nodes)
 
     def sync_workflow_execution(
         self,
         execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-        workflow_only=False,
+        sync_nodes: bool = True,
     ) -> FlyteWorkflowExecution:
 
         """Sync a FlyteWorkflowExecution object with its corresponding remote state."""
@@ -992,7 +996,7 @@ class FlyteRemote(object):
 
         # sync closure, node executions, and inputs/outputs
         execution._closure = self.client.get_execution(execution.id).closure
-        if not workflow_only:
+        if sync_nodes:
             execution._node_executions = {
                 node.id.node_id: self.sync_node_execution(FlyteNodeExecution.promote_from_model(node), flyte_entity)
                 for node in iterate_node_executions(self.client, execution.id)
