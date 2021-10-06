@@ -11,7 +11,6 @@ from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import FlyteSchema, PandasSchemaWriter, SchemaFormat, SchemaOpenMode
 from flytekit.types.schema.types import FlyteSchemaTransformer
 
-
 T = typing.TypeVar("T")
 
 
@@ -57,8 +56,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         return LiteralType(schema=self._get_schema_type(t))
 
     def assert_type(self, t: Type[T], v: T):
-        # TODO: need to implement this for pandas dataframe
-        if not hasattr(t, "__origin__") and not isinstance(v, t):
+        if not hasattr(t, "__origin__") and not isinstance(v, (t, pandas.DataFrame)):
             raise TypeError(f"Type of Val '{v}' is not an instance of {t}")
 
     def to_literal(

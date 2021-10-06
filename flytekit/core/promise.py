@@ -770,7 +770,7 @@ def create_and_link_node(
             )
             used_inputs.add(k)
         except Exception as e:
-            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}") from e
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
