@@ -1,7 +1,7 @@
 import datetime
 import os
 import typing
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 
@@ -21,6 +21,7 @@ from flytekit.core.type_engine import (
     SimpleTransformer,
     TypeEngine,
     convert_json_schema_to_python_class,
+    dataclass_from_dict,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
@@ -118,12 +119,21 @@ def test_list_of_dict_getting_python_value():
 def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
-    class Foo(object):
-        x: int
+    class Bar(object):
+        w: typing.Optional[str]
+        x: float
         y: str
-        z: typing.Dict[int, str]
+        z: typing.Dict[str, bool]
 
-    foo = Foo(x=1, y="boo", z={3: "10"})
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        w: int
+        x: typing.List[int]
+        y: typing.Dict[str, str]
+        z: Bar
+
+    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
     generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
@@ -131,10 +141,18 @@ def test_list_of_dataclass_getting_python_value():
     ctx = FlyteContext.current_context()
 
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = convert_json_schema_to_python_class(schema)
+    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
     assert isinstance(pv, list)
+    assert pv[0].w == foo.w
+    assert pv[0].x == foo.x
+    assert pv[0].y == foo.y
+    assert pv[0].z.x == foo.z.x
+    assert type(pv[0].z.x) == float
+    assert pv[0].z.y == foo.z.y
+    assert pv[0].z.z == foo.z.z
+    assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
 
 
 def test_file_non_downloadable():
@@ -257,7 +275,7 @@ def test_convert_json_schema_to_python_class():
         y: str
 
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = convert_json_schema_to_python_class(schema)
+    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
     foo = foo_class(x=1, y="hello")
     foo.x = 2
     assert foo.x == 2
@@ -558,6 +576,25 @@ def test_enum_type():
                                 "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
                                 "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
                             },
+                        )
+                    )
+                }
+            ),
+        ),
+        (
+            {"p1": TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})},
+            {"p1": TestStructD},
+            LiteralMap(
+                literals={
+                    "p1": Literal(
+                        scalar=Scalar(
+                            generic=_json_format.Parse(
+                                typing.cast(
+                                    DataClassJsonMixin,
+                                    TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]}),
+                                ).to_json(),
+                                _struct.Struct(),
+                            )
                         )
                     )
                 }

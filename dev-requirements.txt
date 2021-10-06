@@ -33,7 +33,7 @@ cffi==1.14.6
     #   pynacl
 cfgv==3.3.1
     # via pre-commit
-charset-normalizer==2.0.4
+charset-normalizer==2.0.6
     # via
     #   -c requirements.txt
     #   requests
@@ -53,11 +53,11 @@ cryptography==3.4.8
     # via
     #   -c requirements.txt
     #   paramiko
-dataclasses-json==0.5.5
+dataclasses-json==0.5.6
     # via
     #   -c requirements.txt
     #   flytekit
-decorator==5.0.9
+decorator==5.1.0
     # via
     #   -c requirements.txt
     #   retry
@@ -73,7 +73,7 @@ diskcache==5.2.1
     # via
     #   -c requirements.txt
     #   flytekit
-distlib==0.3.2
+distlib==0.3.3
     # via virtualenv
 distro==1.6.0
     # via docker-compose
@@ -95,17 +95,17 @@ docstring-parser==0.10
     # via
     #   -c requirements.txt
     #   flytekit
-filelock==3.0.12
+filelock==3.1.0
     # via virtualenv
-flyteidl==0.21.0
+flyteidl==0.21.2
     # via
     #   -c requirements.txt
     #   flytekit
-grpcio==1.40.0
+grpcio==1.41.0
     # via
     #   -c requirements.txt
     #   flytekit
-identify==2.2.14
+identify==2.2.15
     # via pre-commit
 idna==3.2
     # via
@@ -121,11 +121,13 @@ jinja2==3.0.1
     # via
     #   -c requirements.txt
     #   pytest-flyte
+joblib==1.0.1
+    # via -r dev-requirements.in
 jsonschema==3.2.0
     # via
     #   -c requirements.txt
     #   docker-compose
-keyring==23.1.0
+keyring==23.2.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -171,7 +173,7 @@ packaging==21.0
     # via
     #   -c requirements.txt
     #   pytest
-pandas==1.3.2
+pandas==1.3.3
     # via
     #   -c requirements.txt
     #   flytekit
@@ -183,7 +185,7 @@ pathspec==0.9.0
     # via
     #   -c requirements.txt
     #   scantree
-platformdirs==2.3.0
+platformdirs==2.4.0
     # via
     #   -c requirements.txt
     #   virtualenv
@@ -191,7 +193,7 @@ pluggy==1.0.0
     # via pytest
 pre-commit==2.15.0
     # via -r dev-requirements.in
-protobuf==3.17.3
+protobuf==3.18.0
     # via
     #   -c requirements.txt
     #   flyteidl
@@ -228,7 +230,7 @@ pytest==6.2.5
     #   pytest-flyte
 pytest-docker==0.10.3
     # via pytest-flyte
-git+git://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
+pytest-flyte @ git+git://github.com/flyteorg/pytest-flyte@main
     # via -r dev-requirements.in
 python-dateutil==2.8.1
     # via
@@ -256,7 +258,7 @@ pyyaml==5.4.1
     #   -c requirements.txt
     #   docker-compose
     #   pre-commit
-regex==2021.8.28
+regex==2021.9.24
     # via
     #   -c requirements.txt
     #   docker-image-py
@@ -267,7 +269,7 @@ requests==2.26.0
     #   docker-compose
     #   flytekit
     #   responses
-responses==0.13.4
+responses==0.14.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -287,7 +289,6 @@ six==1.16.0
     #   flytekit
     #   grpcio
     #   jsonschema
-    #   protobuf
     #   pynacl
     #   python-dateutil
     #   responses
@@ -319,13 +320,13 @@ typing-inspect==0.7.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
-urllib3==1.26.6
+urllib3==1.26.7
     # via
     #   -c requirements.txt
     #   flytekit
     #   requests
     #   responses
-virtualenv==20.7.2
+virtualenv==20.8.1
     # via pre-commit
 websocket-client==0.59.0
     # via
@@ -340,7 +341,7 @@ wrapt==1.12.1
     #   -c requirements.txt
     #   deprecated
     #   flytekit
-zipp==3.5.0
+zipp==3.6.0
     # via
     #   -c requirements.txt
     #   importlib-metadata
