@@ -11,7 +11,7 @@ plugin_requires = [
     "ipykernel>=5.0.0",
 ]
 
-test_requires = [
+test_require = [
     "flytekitplugins-spark>=0.16.0b0,<1.0.0",
 ]
 
@@ -26,7 +26,7 @@ setup(
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
-    test_requires=test_requires,
+    test_require=test_require,
     license="apache2",
     python_requires=">=3.7",
     classifiers=[
