@@ -3,6 +3,7 @@ import datetime
 import functools
 import os
 import random
+import sys
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -1010,7 +1011,11 @@ def test_arbit_class():
     class Foo(object):
         pass
 
-    with pytest.raises(TypeError):
+    if sys.version_info <= (3, 8):
+        raised_exeption = ValueError
+    else:
+        raised_exeption = TypeError
+    with pytest.raises(raised_exeption):
 
         @task
         def t1(a: int) -> Foo:
