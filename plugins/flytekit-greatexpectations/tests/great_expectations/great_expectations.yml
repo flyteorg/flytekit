@@ -51,7 +51,7 @@ datasources:
               - year
               - month
         glob_directive: '*.csv'
-  sqlite_data:
+  my_sqlite_datasource:
     class_name: Datasource
     module_name: great_expectations.datasource
     execution_engine:

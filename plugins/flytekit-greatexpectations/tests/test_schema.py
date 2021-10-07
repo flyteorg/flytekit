@@ -150,7 +150,7 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
 
 def test_ge_schema_runtimebatchrequest_sqlite_config():
     ge_config = GreatExpectationsFlyteConfig(
-        datasource_name="sqlite_data",
+        datasource_name="my_sqlite_datasource",
         expectation_suite_name="sqlite.movies",
         data_connector_name="sqlite_data_connector",
         data_asset_name="sqlite_data",

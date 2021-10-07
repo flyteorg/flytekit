@@ -89,7 +89,7 @@ def test_invalid_ge_batchrequest_pandas_config():
 def test_ge_runtimebatchrequest_sqlite_config():
     task_object = GreatExpectationsTask(
         name="test4",
-        datasource_name="sqlite_data",
+        datasource_name="my_sqlite_datasource",
         inputs=kwtypes(dataset=str),
         expectation_suite_name="sqlite.movies",
         data_connector_name="sqlite_data_connector",
