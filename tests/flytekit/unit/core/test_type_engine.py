@@ -29,6 +29,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
 
@@ -599,6 +600,24 @@ def test_enum_type():
                                     TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]}),
                                 ).to_json(),
                                 _struct.Struct(),
+                            )
+                        )
+                    )
+                }
+            ),
+        ),
+        (
+            {"p1": "s3://tmp/file.jpeg"},
+            {"p1": JPEGImageFile},
+            LiteralMap(
+                literals={
+                    "p1": Literal(
+                        scalar=Scalar(
+                            blob=Blob(
+                                metadata=BlobMetadata(
+                                    type=BlobType(format="jpeg", dimensionality=BlobType.BlobDimensionality.SINGLE)
+                                ),
+                                uri="s3://tmp/file.jpeg",
                             )
                         )
                     )
