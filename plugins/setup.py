@@ -65,7 +65,7 @@ setup(
     version="0.1.0",
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This is a fake package to help install all the plugins",
+    description="This is a microlib package to help install all the plugins",
     license="apache2",
     classifiers=["Private :: Do Not Upload to pypi server"],
     install_requires=[],

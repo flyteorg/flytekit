@@ -4,7 +4,16 @@ PLUGIN_NAME = "papermill"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0"]
+plugin_requires = [
+    "flytekit>=0.16.0b0,<1.0.0",
+    "papermill>=1.2.0",
+    "nbconvert>=6.0.7",
+    "ipykernel>=5.0.0",
+]
+
+test_requires = [
+    "flytekitplugins-spark>=0.16.0b0,<1.0.0",
+]
 
 __version__ = "0.0.0+develop"
 
@@ -17,6 +26,7 @@ setup(
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
+    test_requires=test_requires,
     license="apache2",
     python_requires=">=3.7",
     classifiers=[
