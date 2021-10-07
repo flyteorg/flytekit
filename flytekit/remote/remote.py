@@ -930,7 +930,7 @@ class FlyteRemote(object):
         execution: FlyteWorkflowExecution,
         timeout: typing.Optional[timedelta] = None,
         poll_interval: typing.Optional[timedelta] = None,
-    ):
+    ) -> FlyteWorkflowExecution:
         """Wait for an execution to finish.
 
         :param execution: execution object to wait on
@@ -941,7 +941,7 @@ class FlyteRemote(object):
         time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
 
         while datetime.utcnow() < time_to_give_up:
-            execution = self.sync_workflow_execution(execution)
+            execution = self.sync_workflow_execution(execution, sync_nodes=False)
             if execution.is_complete:
                 return execution
             time.sleep(poll_interval.total_seconds())
