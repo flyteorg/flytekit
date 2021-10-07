@@ -60,7 +60,7 @@ def test_type_resolution():
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         TypeEngine.get_transformer(typing.Any)
 
 

@@ -1010,7 +1010,7 @@ def test_arbit_class():
     class Foo(object):
         pass
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
 
         @task
         def t1(a: int) -> Foo:
