@@ -53,7 +53,21 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8, 3.9]
-        plugin-names: ["flytekit-aws-athena", "flytekit-aws-sagemaker", "flytekit-data-fsspec", "flytekit-dolt", "flytekit-greatexpectations", "flytekit-hive", "flytekit-k8s-pod", "flytekit-kf-pytorch", "flytekit-kf-tensorflow", "flytekit-papermill", "flytekit-spark", "flytekit-sqlalchemy", "flytekit-pandera", "flytekit-snowflake"]
+        plugin-names:
+          - flytekit-aws-athena
+          - flytekit-aws-sagemaker
+          - flytekit-data-fsspec
+          - flytekit-dolt
+          - flytekit-greatexpectations
+          - flytekit-hive
+          - flytekit-k8s-pod
+          - flytekit-kf-pytorch
+          - flytekit-kf-tensorflow
+          - flytekit-papermill
+          - flytekit-spark
+          - flytekit-sqlalchemy
+          - flytekit-pandera
+          - flytekit-snowflake
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -72,7 +86,8 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         make setup
         cd plugins/${{ matrix.plugin-names }}
-        pip install -r requirements.txt
+        # install in develop mode so setuptools doesn't override flytekit on current branch
+        pip install -e .
         pip freeze
     - name: Test with coverage
       run: |
