@@ -63,7 +63,7 @@ def test_type_resolution():
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
 
-    if sys.version_info <= (3, 9):
+    if sys.version_info >= (3, 9):
         raised_exeption = TypeError
     else:
         raised_exeption = ValueError
