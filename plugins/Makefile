@@ -1,6 +1,6 @@
 .PHONY: test
 test:
-	pytest tests
+	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 pytest
 
 .PHONY: build_all_plugins
 build_all_plugins:
