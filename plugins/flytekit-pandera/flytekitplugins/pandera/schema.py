@@ -56,8 +56,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         return LiteralType(schema=self._get_schema_type(t))
 
     def assert_type(self, t: Type[T], v: T):
-        if not hasattr(t, "__origin__") and not isinstance(v, t):
-        # if not hasattr(t, "__origin__") and not isinstance(v, (t, pandas.DataFrame)):
+        if not hasattr(t, "__origin__") and not isinstance(v, (t, pandas.DataFrame)):
             raise TypeError(f"Type of Val '{v}' is not an instance of {t}")
 
     def to_literal(
