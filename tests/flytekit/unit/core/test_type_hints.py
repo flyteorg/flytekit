@@ -1011,10 +1011,10 @@ def test_arbit_class():
     class Foo(object):
         pass
 
-    if sys.version_info <= (3, 8):
-        raised_exeption = ValueError
-    else:
+    if sys.version_info >= (3, 9):
         raised_exeption = TypeError
+    else:
+        raised_exeption = ValueError
     with pytest.raises(raised_exeption):
 
         @task
