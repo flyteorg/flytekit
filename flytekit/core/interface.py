@@ -263,8 +263,7 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
 
         except ValueError:
             _logging.warning(
-                f"We change the output type to the PythonPickle "
-                f"since we can't find a transformer for the type {v}.\n"
+                f"Unsupported Type {v} found, Flyte will default to using PickleFile as the transport. "
                 f"Pickle can only be used to send objects between the exact same version of Python, "
                 f"and we strongly recommend to use python type that flyte support."
             )
@@ -280,8 +279,7 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
                 TypeEngine.get_transformer(annotation)
         except ValueError:
             _logging.warning(
-                f"We change the output type to the PythonPickle "
-                f"since we can't find a transformer for the type {v}.\n"
+                f"Unsupported Type {v} found, Flyte will default to using PickleFile as the transport. "
                 f"Pickle can only be used to send objects between the exact same version of Python, "
                 f"and we strongly recommend to use python type that flyte support."
             )
