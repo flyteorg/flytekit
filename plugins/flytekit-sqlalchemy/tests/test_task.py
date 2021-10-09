@@ -7,23 +7,22 @@ import tempfile
 import pandas
 import pytest
 from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
+from flytekitplugins.sqlalchemy.task import SQLAlchemyTaskExecutor
+from typing import Iterator
+from flytekit.testing import SecretsManager
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.schema import FlyteSchema
+from flytekit.models.security import Secret
 
-tk = SQLAlchemyTask(
-    "test",
-    query_template="select * from tracks",
-    task_config=SQLAlchemyConfig(
-        uri="sqlite://",
-    ),
-)
+
+# TODO: add test for secret handling
 
 
 @pytest.fixture(scope="function")
-def sql_server():
+def sql_server() -> Iterator[str]:
+    d = tempfile.TemporaryDirectory()
     try:
-        d = tempfile.TemporaryDirectory()
         db_path = os.path.join(d.name, "tracks.db")
         with contextlib.closing(sqlite3.connect(db_path)) as con:
             con.execute("create table tracks (TrackId bigint, Name text)")
@@ -85,18 +84,18 @@ def test_workflow(sql_server):
     assert wf(limit=5) == 5
 
 
-def test_task_serialization():
+def test_task_serialization(sql_server):
     sql_task = SQLAlchemyTask(
         "test",
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
         output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
-        task_config=SQLAlchemyConfig(
-            uri=sql_server,
-        ),
+        task_config=SQLAlchemyConfig(uri=sql_server),
     )
 
     tt = sql_task.serialize_to_model(sql_task.SERIALIZE_SETTINGS)
+
+    assert tt.container is not None
 
     assert tt.container.args == [
         "pyflyte-execute",
@@ -115,3 +114,55 @@ def test_task_serialization():
 
     assert tt.custom["query_template"] == "select TrackId, Name from tracks limit {{.inputs.limit}}"
     assert tt.container.image != ""
+
+
+def test_task_serialization_deserialization_with_secret(sql_server):
+    SECRET_GROUP = "foo"
+    SECRET_NAME = "bar"
+
+    sec = SecretsManager()
+    os.environ[sec.get_secrets_env_var(SECRET_GROUP, SECRET_NAME)] = "IMMEDIATE"
+
+    sql_task = SQLAlchemyTask(
+        "test",
+        query_template="select 1;",
+        inputs=kwtypes(limit=int),
+        output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+        task_config=SQLAlchemyConfig(
+            uri=sql_server,
+            # As sqlite3 doesn't really support passwords, we pass another connect_arg as a secret
+            secret_connect_args={"isolation_level": Secret(group=SECRET_GROUP, key=SECRET_NAME)},
+        ),
+    )
+
+    tt = sql_task.serialize_to_model(sql_task.SERIALIZE_SETTINGS)
+
+    assert tt.container is not None
+
+    assert tt.container.args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_customized_container_task.default_task_template_resolver",
+        "--",
+        "{{.taskTemplatePath}}",
+        "flytekitplugins.sqlalchemy.task.SQLAlchemyTaskExecutor",
+    ]
+
+    assert tt.custom["query_template"] == "select 1;"
+    assert tt.container.image != ""
+
+    assert "secret_connect_args" in tt.custom
+    assert "isolation_level" in tt.custom["secret_connect_args"]
+    assert tt.custom["secret_connect_args"]["isolation_level"]["group"] == SECRET_GROUP
+    assert tt.custom["secret_connect_args"]["isolation_level"]["key"] == SECRET_NAME
+
+    executor = SQLAlchemyTaskExecutor()
+    r = executor.execute_from_model(tt)
+
+    assert r.iat[0, 0] == 1
