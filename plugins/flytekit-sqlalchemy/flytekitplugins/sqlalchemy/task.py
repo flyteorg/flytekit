@@ -35,6 +35,20 @@ class SQLAlchemyConfig(object):
     connect_args: typing.Optional[typing.Dict[str, typing.Any]] = None
     secret_connect_args: typing.Optional[typing.Dict[str, Secret]] = None
 
+    @staticmethod
+    def _secret_to_dict(secret: Secret) -> typing.Dict[str, typing.Optional[str]]:
+        return {"group": secret.group, "key": secret.key}
+
+    def secret_connect_args_to_dicts(self) -> typing.Optional[typing.Dict[str, typing.Dict[str, typing.Optional[str]]]]:
+        if self.secret_connect_args is None:
+            return None
+        
+        secret_connect_args_dicts = {}
+        for key, secret in self.secret_connect_args.items():
+            secret_connect_args_dicts[key] = self._secret_to_dict(secret)
+        
+        return secret_connect_args_dicts
+
 
 class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
     """
@@ -80,15 +94,15 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
             "query_template": self.query_template,
             "uri": self.task_config.uri,
             "connect_args": self.task_config.connect_args or {},
-            "secret_connect_args": self.task_config.secret_connect_args,
+            "secret_connect_args": self.task_config.secret_connect_args_to_dicts()
         }
 
 
 class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
     def execute_from_model(self, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
         if tt.custom["secret_connect_args"] is not None:
-            for key, secret in tt.custom["secret_connect_args"].items():
-                value = current_context().secrets.get(secret.group, secret.key)
+            for key, secret_dict in tt.custom["secret_connect_args"].items():
+                value = current_context().secrets.get(**secret_dict)
                 tt.custom["connect_args"][key] = value
 
         engine = create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)
