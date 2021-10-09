@@ -28,7 +28,7 @@ class SQLAlchemyConfig(object):
         uri: default sqlalchemy connector
         connect_args: sqlalchemy kwarg overrides -- ex: host
         secret_connect_args: flyte secrets loaded into sqlalchemy connect args
-            -- ex: {"password": {"name": SECRET_NAME, "group": SECRET_GROUP}}
+            -- ex: {"password": flytekit.models.security.Secret(name=SECRET_NAME, group=SECRET_GROUP)}
     """
 
     uri: str
@@ -42,11 +42,11 @@ class SQLAlchemyConfig(object):
     def secret_connect_args_to_dicts(self) -> typing.Optional[typing.Dict[str, typing.Dict[str, typing.Optional[str]]]]:
         if self.secret_connect_args is None:
             return None
-        
+
         secret_connect_args_dicts = {}
         for key, secret in self.secret_connect_args.items():
             secret_connect_args_dicts[key] = self._secret_to_dict(secret)
-        
+
         return secret_connect_args_dicts
 
 
@@ -94,7 +94,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
             "query_template": self.query_template,
             "uri": self.task_config.uri,
             "connect_args": self.task_config.connect_args or {},
-            "secret_connect_args": self.task_config.secret_connect_args_to_dicts()
+            "secret_connect_args": self.task_config.secret_connect_args_to_dicts(),
         }
 
 
