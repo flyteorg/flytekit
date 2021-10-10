@@ -37,7 +37,12 @@ class SQLAlchemyConfig(object):
 
     @staticmethod
     def _secret_to_dict(secret: Secret) -> typing.Dict[str, typing.Optional[str]]:
-        return {"group": secret.group, "key": secret.key}
+        return {
+            "group": secret.group,
+            "key": secret.key,
+            "group_version": secret.group_version,
+            "mount_requirement": secret.mount_requirement.value,
+        }
 
     def secret_connect_args_to_dicts(self) -> typing.Optional[typing.Dict[str, typing.Dict[str, typing.Optional[str]]]]:
         if self.secret_connect_args is None:
@@ -102,7 +107,7 @@ class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
     def execute_from_model(self, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
         if tt.custom["secret_connect_args"] is not None:
             for key, secret_dict in tt.custom["secret_connect_args"].items():
-                value = current_context().secrets.get(**secret_dict)
+                value = current_context().secrets.get(group=secret_dict["group"], key=secret_dict["key"])
                 tt.custom["connect_args"][key] = value
 
         engine = create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)
