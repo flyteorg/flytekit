@@ -3,15 +3,16 @@ import os
 import shutil
 import sqlite3
 import tempfile
+from typing import Iterator
 
 import pandas
 import pytest
 from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 from flytekitplugins.sqlalchemy.task import SQLAlchemyTaskExecutor
-from typing import Iterator
-from flytekit.testing import SecretsManager
 
 from flytekit import kwtypes, task, workflow
+from flytekit.models.security import Secret
+from flytekit.testing import SecretsManager
 from flytekit.types.schema import FlyteSchema
 
 tk = SQLAlchemyTask(
@@ -121,11 +122,11 @@ def test_task_serialization(sql_server):
 
 
 def test_task_serialization_deserialization_with_secret(sql_server):
-    SECRET_GROUP = "foo"
-    SECRET_NAME = "bar"
+    secret_group = "foo"
+    secret_name = "bar"
 
     sec = SecretsManager()
-    os.environ[sec.get_secrets_env_var(SECRET_GROUP, SECRET_NAME)] = "IMMEDIATE"
+    os.environ[sec.get_secrets_env_var(secret_group, secret_name)] = "IMMEDIATE"
 
     sql_task = SQLAlchemyTask(
         "test",
@@ -135,7 +136,7 @@ def test_task_serialization_deserialization_with_secret(sql_server):
         task_config=SQLAlchemyConfig(
             uri=sql_server,
             # As sqlite3 doesn't really support passwords, we pass another connect_arg as a secret
-            secret_connect_args={"isolation_level": Secret(group=SECRET_GROUP, key=SECRET_NAME)},
+            secret_connect_args={"isolation_level": Secret(group=secret_group, key=secret_name)},
         ),
     )
 
@@ -163,8 +164,10 @@ def test_task_serialization_deserialization_with_secret(sql_server):
 
     assert "secret_connect_args" in tt.custom
     assert "isolation_level" in tt.custom["secret_connect_args"]
-    assert tt.custom["secret_connect_args"]["isolation_level"]["group"] == SECRET_GROUP
-    assert tt.custom["secret_connect_args"]["isolation_level"]["key"] == SECRET_NAME
+    assert tt.custom["secret_connect_args"]["isolation_level"]["group"] == secret_group
+    assert tt.custom["secret_connect_args"]["isolation_level"]["key"] == secret_name
+    assert tt.custom["secret_connect_args"]["isolation_level"]["group_version"] is None
+    assert tt.custom["secret_connect_args"]["isolation_level"]["mount_requirement"] == 0
 
     executor = SQLAlchemyTaskExecutor()
     r = executor.execute_from_model(tt)
