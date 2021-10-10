@@ -3,15 +3,8 @@ from collections import OrderedDict
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
-from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 
-not_tk = SQLAlchemyTask(
-    "test",
-    query_template="select * from tracks",
-    task_config=SQLAlchemyConfig(
-        uri="sqlite://",
-    ),
-)
+from .test_task import tk as not_tk
 
 
 def test_sql_lhs():

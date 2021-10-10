@@ -13,10 +13,14 @@ from flytekit.testing import SecretsManager
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.schema import FlyteSchema
-from flytekit.models.security import Secret
 
-
-# TODO: add test for secret handling
+tk = SQLAlchemyTask(
+    "test",
+    query_template="select * from tracks",
+    task_config=SQLAlchemyConfig(
+        uri="sqlite://",
+    ),
+)
 
 
 @pytest.fixture(scope="function")
