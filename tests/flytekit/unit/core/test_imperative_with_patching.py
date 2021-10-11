@@ -53,7 +53,7 @@ def test_return_none_errors(mock_execute):
 def test_none_conversion(mock_t1):
     mock_t1.return_value = None
     # This will try to convert None to a string
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         wb(in1="hello")
 
 

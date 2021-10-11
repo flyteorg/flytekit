@@ -10,7 +10,7 @@ import typing
 from abc import ABC, abstractmethod
 from typing import Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
 from google.protobuf import struct_pb2 as _struct
@@ -19,6 +19,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_jsonschema import JSONSchema
 
+from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
@@ -30,6 +31,7 @@ from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Pri
 from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
+DEFINITIONS = "definitions"
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -59,6 +61,10 @@ class TypeTransformer(typing.Generic[T]):
         Indicates if the transformer wants type assertions to be enabled at the core type engine layer
         """
         return self._type_assertions_enabled
+
+    def assert_type(self, t: Type[T], v: T):
+        if not hasattr(t, "__origin__") and not isinstance(v, t):
+            raise TypeError(f"Type of Val '{v}' is not an instance of {t}")
 
     @abstractmethod
     def get_literal_type(self, t: Type[T]) -> LiteralType:
@@ -233,6 +239,37 @@ class DataclassTransformer(TypeTransformer[object]):
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
 
+    def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
+        if t == int:
+            return int(val)
+
+        if isinstance(val, list):
+            # Handle nested List. e.g. [[1, 2], [3, 4]]
+            return list(map(lambda x: self._fix_val_int(ListTransformer.get_sub_type(t), x), val))
+
+        if isinstance(val, dict):
+            ktype, vtype = DictTransformer.get_dict_types(t)
+            # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
+            return {self._fix_val_int(ktype, k): self._fix_val_int(vtype, v) for k, v in val.items()}
+
+        if dataclasses.is_dataclass(t):
+            return self._fix_dataclass_int(t, val)  # type: ignore
+
+        return val
+
+    def _fix_dataclass_int(self, dc_type: Type[DataClassJsonMixin], dc: DataClassJsonMixin) -> DataClassJsonMixin:
+        """
+        This is a performance penalty to convert to the right types, but this is expected by the user and hence
+        needs to be done
+        """
+        # NOTE: Protobuf Struct does not support explicit int types, int types are upconverted to a double value
+        # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
+        # Thus we will have to walk the given dataclass and typecast values to int, where expected.
+        for f in dataclasses.fields(dc_type):
+            val = dc.__getattribute__(f.name)
+            dc.__setattr__(f.name, self._fix_val_int(f.type, val))
+        return dc
+
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not dataclasses.is_dataclass(expected_python_type):
             raise AssertionError(
@@ -245,13 +282,15 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"serialized correctly"
             )
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
-        # NOTE: Protobuf Struct does not support explicit int types, int types are upconverted to a double value
-        # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
-        # Thus we will have to walk the given dataclass and typecast values to int, where expected.
-        for f in dataclasses.fields(expected_python_type):
-            if f.type == int:
-                dc.__setattr__(f.name, int(dc.__getattribute__(f.name)))
-        return dc
+        return self._fix_dataclass_int(expected_python_type, dc)
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if literal_type.simple == SimpleType.STRUCT:
+            if literal_type.metadata is not None and DEFINITIONS in literal_type.metadata:
+                schema_name = literal_type.metadata["$ref"].split("/")[-1]
+                return convert_json_schema_to_python_class(literal_type.metadata[DEFINITIONS], schema_name)
+
+        raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
 
 class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMessageType]):
@@ -382,8 +421,9 @@ class TypeEngine(typing.Generic[T]):
         if python_val is None:
             raise AssertionError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
+        if transformer.type_assertions_enabled:
+            transformer.assert_type(python_type, python_val)
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
-        # TODO Perform assertion here
         return lv
 
     @classmethod
@@ -416,7 +456,6 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError(
                 f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
             )
-
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 
     @classmethod
@@ -437,12 +476,15 @@ class TypeEngine(typing.Generic[T]):
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
             python_type = guessed_python_types.get(k, type(v))
-            literal_map[k] = TypeEngine.to_literal(
-                ctx=ctx,
-                python_val=v,
-                python_type=python_type,
-                expected=TypeEngine.to_literal_type(python_type),
-            )
+            try:
+                literal_map[k] = TypeEngine.to_literal(
+                    ctx=ctx,
+                    python_val=v,
+                    python_type=python_type,
+                    expected=TypeEngine.to_literal_type(python_type),
+                )
+            except TypeError:
+                raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
         return LiteralMap(literal_map)
 
     @classmethod
@@ -474,6 +516,13 @@ class TypeEngine(typing.Generic[T]):
                 return transformer.guess_python_type(flyte_type)
             except ValueError:
                 logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
+
+        # Because the dataclass transformer is handled explicity in the get_transformer code, we have to handle it
+        # separately here too.
+        try:
+            return cls._DATACLASS_TRANSFORMER.guess_python_type(literal_type=flyte_type)
+        except ValueError:
+            logger.debug(f"Skipping transformer {cls._DATACLASS_TRANSFORMER.name} for {flyte_type}")
         raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
 
 
@@ -602,8 +651,9 @@ class DictTransformer(TypeTransformer[dict]):
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
-        if literal_type.simple == SimpleType.STRUCT and literal_type.metadata is None:
-            return dict
+        if literal_type.simple == SimpleType.STRUCT:
+            if literal_type.metadata is None:
+                return dict
 
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
@@ -694,6 +744,65 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)
+
+
+def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:
+    """Generate a model class based on the provided JSON Schema
+    :param schema: dict representing valid JSON schema
+    :param schema_name: dataclass name of return type
+    """
+    attribute_list = []
+    for property_key, property_val in schema[schema_name]["properties"].items():
+        # Handle list
+        if property_val["type"] == "array":
+            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))
+        # Handle dataclass and dict
+        elif property_val["type"] == "object":
+            if "$ref" in property_val:
+                name = property_val["$ref"].split("/")[-1]
+                attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
+            else:
+                attribute_list.append(
+                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])
+                )
+        # Handle int, float, bool or str
+        else:
+            attribute_list.append([property_key, _get_element_type(property_val)])
+
+    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+
+
+def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
+    element_type = element_property["type"]
+    element_format = element_property["format"] if "format" in element_property else None
+    if element_type == "string":
+        return str
+    elif element_type == "integer":
+        return int
+    elif element_type == "boolean":
+        return bool
+    elif element_type == "number":
+        if element_format == "integer":
+            return int
+        else:
+            return float
+    return str
+
+
+def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.Any:
+    """
+    Utility function to construct a dataclass object from dict
+    """
+    field_types_lookup = {field.name: field.type for field in dataclasses.fields(cls)}
+
+    constructor_inputs = {}
+    for field_name, value in src.items():
+        if dataclasses.is_dataclass(field_types_lookup[field_name]):
+            constructor_inputs[field_name] = dataclass_from_dict(field_types_lookup[field_name], value)
+        else:
+            constructor_inputs[field_name] = value
+
+    return cls(**constructor_inputs)
 
 
 def _check_and_covert_float(lv: Literal) -> float:

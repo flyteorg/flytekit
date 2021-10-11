@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import functools
 import os
@@ -644,12 +645,14 @@ def test_wf1_branches_no_else_malformed_but_no_error():
     def t2(a: str) -> str:
         return a
 
-    @workflow
-    def my_wf(a: int, b: str) -> (int, str):
-        x, y = t1(a=a)
-        d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
-        conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
-        return x, d
+    with pytest.raises(TypeError):
+
+        @workflow
+        def my_wf(a: int, b: str) -> (int, str):
+            x, y = t1(a=a)
+            d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
+            conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
+            return x, d
 
     assert context_manager.FlyteContextManager.size() == 1
 
@@ -1328,7 +1331,6 @@ def test_guess_dict3():
         return {"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}}
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
-    print(task_spec.template.interface.outputs["o0"])
 
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert pt_map["o0"] is dict
@@ -1338,3 +1340,68 @@ def test_guess_dict3():
     expected_struct = Struct()
     expected_struct.update({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+
+def test_guess_dict4():
+    @dataclass_json
+    @dataclass
+    class Foo(object):
+        x: int
+        y: str
+        z: typing.Dict[str, str]
+
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+        y: str
+        z: Foo
+
+    @task
+    def t1() -> Foo:
+        return Foo(x=1, y="foo", z={"hello": "world"})
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
+    assert dataclasses.is_dataclass(pt_map["o0"])
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    expected_struct = Struct()
+    expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
+    assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+    @task
+    def t2() -> Bar:
+        return Bar(x=1, y="bar", z=Foo(x=1, y="foo", z={"hello": "world"}))
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
+    assert dataclasses.is_dataclass(pt_map["o0"])
+
+    output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    expected_struct.update({"x": 1, "y": "bar", "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
+    assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+
+def test_error_messages():
+    @task
+    def foo(a: int, b: str) -> typing.Tuple[int, str]:
+        return 10, "hello"
+
+    @task
+    def foo2(a: int, b: str) -> typing.Tuple[int, str]:
+        return "hello", 10
+
+    @task
+    def foo3(a: typing.Dict) -> typing.Dict:
+        return a
+
+    with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
+        foo(a="hello", b=10)
+
+    with pytest.raises(TypeError, match="Failed to convert return value for var o0 for function test_type_hints.foo2"):
+        foo2(a=10, b="hello")
+
+    with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
+        foo3(a=[{"hello": 2}])

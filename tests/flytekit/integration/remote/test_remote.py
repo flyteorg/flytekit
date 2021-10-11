@@ -5,6 +5,7 @@ import pathlib
 import time
 import typing
 
+import joblib
 import pytest
 
 from flytekit import kwtypes
@@ -81,7 +82,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
     poll_interval = datetime.timedelta(seconds=1)
     time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
 
-    execution = remote.sync(execution)
+    execution = remote.sync_workflow_execution(execution)
     while datetime.datetime.utcnow() < time_to_give_up:
 
         if execution.is_complete:
@@ -93,7 +94,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
             execution.outputs
 
         time.sleep(poll_interval.total_seconds())
-        execution = remote.sync(execution)
+        execution = remote.sync_workflow_execution(execution)
 
         if execution.node_executions:
             assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEEDED
@@ -269,3 +270,15 @@ def test_execute_sqlite3_task(flyteclient, flyte_workflows_register, flyte_remot
     assert result.__class__.__name__ == "DataFrame"
     assert "TrackId" in result
     assert "Name" in result
+
+
+def test_execute_joblib_workflow(flyteclient, flyte_workflows_register, flyte_remote_env):
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    flyte_workflow = remote.fetch_workflow(name="workflows.basic.joblib.joblib_workflow", version=f"v{VERSION}")
+    input_obj = [1, 2, 3]
+    execution = remote.execute(flyte_workflow, {"obj": input_obj}, wait=True)
+    joblib_output = execution.outputs["o0"]
+    joblib_output.download()
+    output_obj = joblib.load(joblib_output.path)
+    assert execution.outputs["o0"].extension() == "joblib"
+    assert output_obj == input_obj

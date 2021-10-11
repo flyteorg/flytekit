@@ -143,6 +143,12 @@ class ConditionalSection:
         # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)
 
+    def __repr__(self):
+        return self._condition.__repr__()
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class LocalExecutedConditionalSection(ConditionalSection):
     def __init__(self, name: str):
@@ -252,6 +258,7 @@ class Case(object):
         self._expr = expr
         self._output_promise: Optional[Union[Tuple[Promise], Promise]] = None
         self._err: Optional[str] = None
+        self._stmt = stmt
 
     @property
     def expr(self) -> Optional[Union[ComparisonExpression, ConjunctionExpression]]:
@@ -277,6 +284,12 @@ class Case(object):
         self._err = err
         return cast(Promise, self._cs.end_branch())
 
+    def __repr__(self):
+        return f"{self._stmt}({self.expr.__repr__()})"
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class Condition(object):
     def __init__(self, cs: ConditionalSection):
@@ -294,6 +307,12 @@ class Condition(object):
 
     def else_(self) -> Case:
         return self._cs.start_branch(Case(cs=self._cs, expr=None, stmt="else_"), last_case=True)
+
+    def __repr__(self):
+        return f"condition({self._cs.name}) " + "".join([x.__repr__() for x in self._cs.cases])
+
+    def __str__(self):
+        return self.__repr__()
 
 
 _logical_ops = {

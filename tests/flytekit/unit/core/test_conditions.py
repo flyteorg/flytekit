@@ -68,7 +68,7 @@ def test_condition_else_fail():
         )
 
     with pytest.raises(ValueError):
-        multiplier_2(my_input=10)
+        multiplier_2(my_input=10.0)
 
 
 def test_condition_sub_workflows():
@@ -373,11 +373,11 @@ def test_nested_condition():
     res = multiplier_2(my_input=0.3)
     assert res == 0.6
 
-    res = multiplier_2(my_input=5)
+    res = multiplier_2(my_input=5.0)
     assert res == 25
 
     with pytest.raises(ValueError):
-        multiplier_2(my_input=10)
+        multiplier_2(my_input=10.0)
 
 
 def test_nested_condition_2():
@@ -429,8 +429,8 @@ def test_nested_condition_2():
     res = multiplier_2(my_input=0.3)
     assert res == 0.6
 
-    res = multiplier_2(my_input=5)
+    res = multiplier_2(my_input=5.0)
     assert res == 25
 
-    res = multiplier_2(my_input=10)
+    res = multiplier_2(my_input=10.0)
     assert res == 20
