@@ -67,7 +67,7 @@ marshmallow-enum==1.5.1
     # via dataclasses-json
 marshmallow-jsonschema==0.12.0
     # via flytekit
-modin==0.10.2
+modin==0.11.1
     # via flytekitplugins-modin
 msgpack==1.0.2
     # via ray
@@ -83,7 +83,7 @@ numpy==1.21.2
     #   ray
 packaging==21.0
     # via modin
-pandas==1.3.2
+pandas==1.3.3
     # via
     #   flytekit
     #   modin
