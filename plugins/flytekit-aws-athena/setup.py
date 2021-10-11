@@ -1,12 +1,12 @@
 from setuptools import setup
 
+from flytekitplugins.athena import __version__
+
 PLUGIN_NAME = "athena"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=0.19.0,<1.0.0"]
-
-__version__ = "0.0.0+develop"
 
 setup(
     name=microlib_name,

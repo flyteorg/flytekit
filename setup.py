@@ -2,6 +2,8 @@ import sys
 
 from setuptools import find_packages, setup  # noqa
 
+import flytekit
+
 # from flytekit.tools.lazy_loader import LazyLoadPlugin  # noqa
 # extras_require = LazyLoadPlugin.get_extras_require()
 
@@ -42,11 +44,9 @@ extras_require = {
     "all": spark3 + all_but_spark,
 }
 
-__version__ = "0.0.0+develop"
-
 setup(
     name="flytekit",
-    version=__version__,
+    version=flytekit.__version__,
     maintainer="Flyte Contributors",
     maintainer_email="admin@flyte.org",
     packages=find_packages(exclude=["tests*"]),
