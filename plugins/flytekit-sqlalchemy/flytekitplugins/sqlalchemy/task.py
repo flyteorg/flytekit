@@ -72,6 +72,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         task_config: SQLAlchemyConfig,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+        container_image: str = "ghcr.io/flyteorg/flytekit:sqlalchemy-6deb81af74ce8f3768553c188ab35660c717420a",
         **kwargs,
     ):
         output_schema = output_schema_type if output_schema_type else FlyteSchema
@@ -80,10 +81,10 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         super().__init__(
             name=name,
             task_config=task_config,
-            container_image="ghcr.io/flyteorg/flytekit:sqlalchemy-6deb81af74ce8f3768553c188ab35660c717420a",
             executor_type=SQLAlchemyTaskExecutor,
             task_type=self._SQLALCHEMY_TASK_TYPE,
             query_template=query_template,
+            container_image=container_image,
             inputs=inputs,
             outputs=outputs,
             **kwargs,
