@@ -92,6 +92,3 @@ update_version:
 	# it exits with exit code 1 and github actions aborts the build.
 	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
 	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
-
-	grep "$(PLACEHOLDER)" "setup.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
