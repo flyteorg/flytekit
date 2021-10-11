@@ -44,6 +44,8 @@ flyteidl==0.20.2
     # via flytekit
 flytekit==0.22.2
     # via flytekitplugins-modin
+fsspec==2021.10.0
+    # via flytekitplugins-modin
 grpcio==1.40.0
     # via
     #   flytekit
