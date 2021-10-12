@@ -92,7 +92,7 @@ class ImageConfig(object):
         """
         Return an image, by name, if it exists.
         """
-        for i in self.images:
+        for i in self.images + [self.default_image]:
             if i.name == name:
                 return i
         return None
