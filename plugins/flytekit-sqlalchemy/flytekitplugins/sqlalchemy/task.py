@@ -72,7 +72,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         task_config: SQLAlchemyConfig,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
-        container_image: str = "ghcr.io/flyteorg/flytekit:sqlalchemy-6deb81af74ce8f3768553c188ab35660c717420a",
+        container_image: str = "ghcr.io/flyteorg/flytekit:sqlalchemy-75fc68cd2d0a71588359039f94daab09d68cac11",
         **kwargs,
     ):
         output_schema = output_schema_type if output_schema_type else FlyteSchema
