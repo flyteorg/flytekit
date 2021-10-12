@@ -68,6 +68,7 @@ jobs:
           - flytekit-sqlalchemy
           - flytekit-pandera
           - flytekit-snowflake
+          - flytekit-modin
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
