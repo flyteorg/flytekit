@@ -26,6 +26,7 @@ from flytekit.models import common as _common_model
 from flytekit.models import execution as _admin_execution_models
 from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
+from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
@@ -170,7 +171,7 @@ class SdkTask(
         client = _flyte_engine.get_client()
         try:
             self._id = id_to_register
-            client.create_task(id_to_register, _task_model.TaskSpec(self))
+            client.create_task(id_to_register, _taskSpec(self))
             self._id = old_id
             self._has_registered = True
             return str(id_to_register)
@@ -185,7 +186,7 @@ class SdkTask(
         """
         :rtype: flyteidl.admin.task_pb2.TaskSpec
         """
-        return _task_model.TaskSpec(self).to_flyte_idl()
+        return _taskSpec(self).to_flyte_idl()
 
     @classmethod
     @_exception_scopes.system_entry_point

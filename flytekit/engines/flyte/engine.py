@@ -25,9 +25,9 @@ from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution_models
 from flytekit.models import literals as _literals
-from flytekit.models import task as _task_models
 from flytekit.models.admin import common as _common
 from flytekit.models.admin import workflow as _workflow_model
+from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
 
@@ -317,7 +317,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         try:
-            client.create_task(identifier, _task_models.TaskSpec(self.sdk_task))
+            client.create_task(identifier, _taskSpec(self.sdk_task))
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 

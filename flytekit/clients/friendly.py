@@ -64,7 +64,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             remains identical, calling this method multiple times will result in success.
 
         :param flytekit.models.core.identifier.Identifier task_identifer: The identifier for this task.
-        :param flytekit.models.task.TaskSpec task_spec: This is the actual definition of the task that
+        :param flytekit.models.admin.task.TaskSpec task_spec: This is the actual definition of the task that
             should be created.
         :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
             task is found, this exception is raised.  The client might choose to ignore this exception because the

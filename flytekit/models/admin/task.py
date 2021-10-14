@@ -4,6 +4,7 @@ from flyteidl.core import tasks_pb2 as _core_task
 from flytekit.models import common as _common
 from flytekit.models import literals as _literals
 from flytekit.models.task import RuntimeMetadata as _runtimeMatadata
+from flytekit.models.task import TaskTemplate as _taskTemplate
 
 class TaskMetadata(_common.FlyteIdlEntity):
     def __init__(
@@ -131,3 +132,32 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message,
         )
+
+
+class TaskSpec(_common.FlyteIdlEntity):
+    def __init__(self, template):
+        """
+        :param TaskTemplate template:
+        """
+        self._template = template
+
+    @property
+    def template(self):
+        """
+        :rtype: TaskTemplate
+        """
+        return self._template
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.tasks_pb2.TaskSpec
+        """
+        return _admin_task.TaskSpec(template=self.template.to_flyte_idl())
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.tasks_pb2.TaskSpec pb2_object:
+        :rtype: TaskSpec
+        """
+        return cls(_taskTemplate.from_flyte_idl(pb2_object.template))

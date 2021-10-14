@@ -27,7 +27,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import task as task_models
+from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
@@ -101,16 +101,16 @@ def _should_register_with_admin(entity) -> bool:
     that do not/should not be written to .pb file to send to admin. This function filters them out.
     """
     return isinstance(
-        entity, (task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
+        entity, (_taskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
     )
 
 
-def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Set[task_models.TaskSpec]:
+def _find_duplicate_tasks(tasks: typing.List[_taskSpec]) -> typing.Set[_taskSpec]:
     """
     Given a list of `TaskSpec`, this function returns a set containing the duplicated `TaskSpec` if any exists.
     """
     seen: typing.Set[_identifier.Identifier] = set()
-    duplicate_tasks: typing.Set[task_models.TaskSpec] = set()
+    duplicate_tasks: typing.Set[_taskSpec] = set()
     for task in tasks:
         if task.template.id not in seen:
             seen.add(task.template.id)
@@ -137,8 +137,8 @@ def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
-    serializable_tasks: typing.List[task_models.TaskSpec] = [
-        entity for entity in entities_to_be_serialized if isinstance(entity, task_models.TaskSpec)
+    serializable_tasks: typing.List[_taskSpec] = [
+        entity for entity in entities_to_be_serialized if isinstance(entity, _taskSpec)
     ]
     # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same metadata identifiers
     # (see :py:class:`flytekit.common.core.identifier.Identifier`). Duplicate tasks are considered invalid at registration
