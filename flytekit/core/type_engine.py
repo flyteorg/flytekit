@@ -32,16 +32,15 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 
-""" Module that monkey-patches json module when it's imported so
-JSONEncoder.default() automatically checks for a special "to_json()"
-method and uses it to encode the object if found.
-"""
-
 
 def _default(self, obj):
     return getattr(obj.__class__, "to_json", _default.default)(obj)
 
 
+""" Module that monkey-patches json module when it's imported so
+JSONEncoder.default() automatically checks for a special "to_json()"
+method and uses it to encode the object if found.
+"""
 _default.default = JSONEncoder().default
 JSONEncoder.default = _default
 
@@ -233,13 +232,14 @@ class DataclassTransformer(TypeTransformer[object]):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
-        schema = typing.Dict
+        schema = None
         try:
             schema = JSONSchema().dump(cast(DataClassJsonMixin, t).schema())
             schema["additionalSchema"] = {}
             update_additional_schema(t, schema["additionalSchema"])
         except Exception as e:
             logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
+            schema = None
 
         return _primitives.Generic.to_flyte_literal_type(metadata=schema)
 
@@ -263,7 +263,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         from flytekit.types.file import FlyteFile
 
-        if t == FlyteFile:
+        if t is FlyteFile:
             return FlyteFile(val)
 
         if isinstance(val, list):
@@ -771,21 +771,26 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return expected_python_type(lv.scalar.primitive.string_value)
 
 
-def update_additional_schema(t: Type[T], schema: dict):
-    for f in dataclasses.fields(cast(dataclasses, t)):
-        from flytekit.types.file import FlyteFile
+def update_additional_schema(t: Type[T], additional_schema: dict):
+    from flytekit.types.file import FlyteFile
 
-        if f.type == FlyteFile or (
+    for f in dataclasses.fields(cast(dataclasses, t)):
+        if f.type is FlyteFile or (
             hasattr(f.type, "__origin__")
             and (
                 (f.type.__origin__ is list and ListTransformer.get_sub_type(f.type) is FlyteFile)
                 or (f.type.__origin__ is dict and DictTransformer.get_dict_types(f.type)[1] == FlyteFile)
             )
         ):
-            schema.update({f.name: FlyteFile.__name__})
+            additional_schema.update({f.name: FlyteFile.__name__})
         elif dataclasses.is_dataclass(f.type):
-            schema[f.name] = {}
-            update_additional_schema(f.type, schema[f.name])
+            additional_schema[f.name] = {}
+            update_additional_schema(f.type, additional_schema[f.name])
+        else:
+            # Any non python primitive type in marshmallow has "fields.Field" in schema.
+            # We throw an error if the type is not FlyteFile
+            if type(t.schema().fields[f.name]) is fields.Field:
+                raise TypeError(f"Unsupported type {f.type} in dataclass")
 
 
 def convert_json_schema_to_python_class(

@@ -454,7 +454,6 @@ def test_dataclass_transformer():
     }
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
-    print(t.metadata["additionalSchema"])
     assert t is not None
     assert t.simple is not None
     assert t.simple == SimpleType.STRUCT
@@ -472,7 +471,6 @@ def test_dataclass_transformer():
     assert t is not None
     assert t.simple is not None
     assert t.simple == SimpleType.STRUCT
-    print(t.metadata)
     assert t.metadata is None
 
 
