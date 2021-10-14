@@ -9,6 +9,7 @@ from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
+from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 
 LIST_OF_SCALAR_LITERAL_TYPES = [
     types.LiteralType(simple=types.SimpleType.BINARY),
@@ -109,7 +110,7 @@ LIST_OF_RETRY_POLICIES = [literals.RetryStrategy(retries=i) for i in [0, 1, 3, 1
 LIST_OF_INTERRUPTIBLE = [None, True, False]
 
 LIST_OF_TASK_METADATA = [
-    task.TaskMetadata(
+    _taskMatadata(
         discoverable,
         runtime_metadata,
         timeout,

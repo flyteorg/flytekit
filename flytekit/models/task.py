@@ -19,6 +19,7 @@ from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
+from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from flytekit.sdk.spark_types import SparkType as _spark_type
 
@@ -173,134 +174,6 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         return cls(type=pb2_object.type, version=pb2_object.version, flavor=pb2_object.flavor)
 
 
-class TaskMetadata(_common.FlyteIdlEntity):
-    def __init__(
-        self,
-        discoverable,
-        runtime,
-        timeout,
-        retries,
-        interruptible,
-        discovery_version,
-        deprecated_error_message,
-    ):
-        """
-        Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
-        and retries.
-
-        :param bool discoverable: Whether or not the outputs of this task should be cached for discovery.
-        :param RuntimeMetadata runtime: Metadata describing the runtime environment for this task.
-        :param datetime.timedelta timeout: The amount of time to wait before timing out.  This includes queuing and
-            scheduler latency.
-        :param bool interruptible: Whether or not the task is interruptible.
-        :param flytekit.models.literals.RetryStrategy retries: Retry strategy for this task.  0 retries means only
-            try once.
-        :param Text discovery_version: This is the version used to create a logical version for data in the cache.
-            This is only used when `discoverable` is true.  Data is considered discoverable if: the inputs to a given
-            task are the same and the discovery_version is also the same.
-        :param Text deprecated: This string can be used to mark the task as deprecated.  Consumers of the task will
-            receive deprecation warnings.
-        """
-        self._discoverable = discoverable
-        self._runtime = runtime
-        self._timeout = timeout
-        self._interruptible = interruptible
-        self._retries = retries
-        self._discovery_version = discovery_version
-        self._deprecated_error_message = deprecated_error_message
-
-    @property
-    def discoverable(self):
-        """
-        Whether or not the outputs of this task should be cached for discovery.
-        :rtype: bool
-        """
-        return self._discoverable
-
-    @property
-    def runtime(self):
-        """
-        Metadata describing the runtime environment for this task.
-        :rtype: RuntimeMetadata
-        """
-        return self._runtime
-
-    @property
-    def retries(self):
-        """
-        Retry strategy for this task.  0 retries means only try once.
-        :rtype: flytekit.models.literals.RetryStrategy
-        """
-        return self._retries
-
-    @property
-    def timeout(self):
-        """
-        The amount of time to wait before timing out.  This includes queuing and scheduler latency.
-        :rtype: datetime.timedelta
-        """
-        return self._timeout
-
-    @property
-    def interruptible(self):
-        """
-        Whether or not the task is interruptible.
-        :rtype: bool
-        """
-        return self._interruptible
-
-    @property
-    def discovery_version(self):
-        """
-        This is the version used to create a logical version for data in the cache.
-        This is only used when `discoverable` is true.  Data is considered discoverable if: the inputs to a given
-        task are the same and the discovery_version is also the same.
-        :rtype: Text
-        """
-        return self._discovery_version
-
-    @property
-    def deprecated_error_message(self):
-        """
-        This string can be used to mark the task as deprecated.  Consumers of the task will receive deprecation
-        warnings.
-        :rtype: Text
-        """
-        return self._deprecated_error_message
-
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.admin.task_pb2.TaskMetadata
-        """
-        tm = _core_task.TaskMetadata(
-            discoverable=self.discoverable,
-            runtime=self.runtime.to_flyte_idl(),
-            retries=self.retries.to_flyte_idl(),
-            interruptible=self.interruptible,
-            discovery_version=self.discovery_version,
-            deprecated_error_message=self.deprecated_error_message,
-        )
-        if self.timeout:
-            tm.timeout.FromTimedelta(self.timeout)
-        return tm
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        """
-        :param flyteidl.core.task_pb2.TaskMetadata pb2_object:
-        :rtype: TaskMetadata
-        """
-        return cls(
-            discoverable=pb2_object.discoverable,
-            runtime=RuntimeMetadata.from_flyte_idl(pb2_object.runtime),
-            timeout=pb2_object.timeout.ToTimedelta(),
-            interruptible=pb2_object.interruptible if pb2_object.HasField("interruptible") else None,
-            retries=_literals.RetryStrategy.from_flyte_idl(pb2_object.retries),
-            discovery_version=pb2_object.discovery_version,
-            deprecated_error_message=pb2_object.deprecated_error_message,
-        )
-
-
 class TaskTemplate(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -324,7 +197,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         :param flytekit.models.core.identifier.Identifier id: This is generated by the system and uniquely identifies
             the task.
         :param Text type: This is used to define additional extensions for use by Propeller or SDK.
-        :param TaskMetadata metadata: This contains information needed at runtime to determine behavior such as
+        :param flytekit.models.admin.task.TaskMetadata metadata: This contains information needed at runtime to determine behavior such as
             whether or not outputs are discoverable, timeouts, and retries.
         :param flytekit.models.interface.TypedInterface interface: The interface definition for this task.
         :param dict[Text, T] custom: Dictionary that must be serializable to a protobuf Struct for custom task plugins.
@@ -378,7 +251,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         """
         This contains information needed at runtime to determine behavior such as whether or not outputs are
         discoverable, timeouts, and retries.
-        :rtype: TaskMetadata
+        :rtype: flytekit.models.admin.task.TaskMetadata
         """
         return self._metadata
 
@@ -458,7 +331,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         return cls(
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
             type=pb2_object.type,
-            metadata=TaskMetadata.from_flyte_idl(pb2_object.metadata),
+            metadata=_taskMatadata.from_flyte_idl(pb2_object.metadata),
             interface=_interface.TypedInterface.from_flyte_idl(pb2_object.interface),
             custom=_json_format.MessageToDict(pb2_object.custom) if pb2_object else None,
             container=Container.from_flyte_idl(pb2_object.container) if pb2_object.HasField("container") else None,

@@ -13,6 +13,7 @@ from flytekit.common.types import primitives as _primitives
 from flytekit.configuration import internal as _internal_config
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
+from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 
 input_types_supported = {
     _primitives.Integer,
@@ -74,7 +75,7 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
 
         super(SdkGenericSparkTask, self).__init__(
             task_type,
-            _task_models.TaskMetadata(
+            _taskMatadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
                     _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,

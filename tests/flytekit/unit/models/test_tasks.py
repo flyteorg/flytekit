@@ -10,6 +10,7 @@ import flytekit.models.interface as interface_models
 import flytekit.models.literals as literal_models
 from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
+from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from tests.flytekit.common import parameterizers
 
 
@@ -47,22 +48,22 @@ def test_runtime_metadata():
 def test_task_metadata_interruptible_from_flyte_idl():
     # Interruptible not set
     idl = TaskMetadata()
-    obj = task.TaskMetadata.from_flyte_idl(idl)
+    obj = _taskMatadata.from_flyte_idl(idl)
     assert obj.interruptible is None
 
     idl = TaskMetadata()
     idl.interruptible = True
-    obj = task.TaskMetadata.from_flyte_idl(idl)
+    obj = _taskMatadata.from_flyte_idl(idl)
     assert obj.interruptible is True
 
     idl = TaskMetadata()
     idl.interruptible = False
-    obj = task.TaskMetadata.from_flyte_idl(idl)
+    obj = _taskMatadata.from_flyte_idl(idl)
     assert obj.interruptible is False
 
 
 def test_task_metadata():
-    obj = task.TaskMetadata(
+    obj = _taskMatadata(
         True,
         task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
         timedelta(days=1),
@@ -81,7 +82,7 @@ def test_task_metadata():
     assert obj.runtime.version == "1.0.0"
     assert obj.deprecated_error_message == "This is deprecated!"
     assert obj.discovery_version == "0.1.1b0"
-    assert obj == task.TaskMetadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == _taskMatadata.from_flyte_idl(obj.to_flyte_idl())
 
 
 @pytest.mark.parametrize(
@@ -125,10 +126,10 @@ def test_task_template(in_tuple):
 
 def test_task_template__k8s_pod_target():
     int_type = types.LiteralType(types.SimpleType.INTEGER)
-    obj = task.TaskTemplate(
+    obj = _taskMatadata(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",
-        task.TaskMetadata(
+        _taskMatadata(
             False,
             task.RuntimeMetadata(1, "v", "f"),
             timedelta(days=1),

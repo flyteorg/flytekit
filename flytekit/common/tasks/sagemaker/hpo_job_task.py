@@ -16,6 +16,7 @@ from flytekit.models import task as _task_models
 from flytekit.models import types as _types_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
+from flytekit.models.admin.task import TaskMetadata as _task_matadata
 
 
 class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
@@ -79,7 +80,7 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
 
         super().__init__(
             type=SdkTaskType.SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
-            metadata=_task_models.TaskMetadata(
+            metadata=_task_matadata(
                 runtime=_task_models.RuntimeMetadata(
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     version=__version__,

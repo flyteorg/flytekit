@@ -25,6 +25,7 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
+from flytekit.models.admin.task import TaskMetadata as _task_matadata
 from flytekit.plugins import papermill as _pm
 from flytekit.sdk.spark_types import SparkType as _spark_type
 from flytekit.sdk.types import Types as _Types
@@ -120,7 +121,7 @@ class SdkNotebookTask(_base_tasks.SdkTask):
 
         super(SdkNotebookTask, self).__init__(
             task_type,
-            _task_models.TaskMetadata(
+            _task_matadata(
                 discoverable,
                 _task_models.RuntimeMetadata(
                     _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,

@@ -45,6 +45,7 @@ from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+from flytekit.models.admin.task import TaskMetadata as _task_matadata
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -103,13 +104,13 @@ class TaskMetadata(object):
     def retry_strategy(self) -> _literal_models.RetryStrategy:
         return _literal_models.RetryStrategy(self.retries)
 
-    def to_taskmetadata_model(self) -> _task_model.TaskMetadata:
+    def to_taskmetadata_model(self) -> _task_matadata:
         """
         Converts to _task_model.TaskMetadata
         """
         from flytekit import __version__
 
-        return _task_model.TaskMetadata(
+        return _task_matadata(
             discoverable=self.cache,
             runtime=_task_model.RuntimeMetadata(
                 _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
