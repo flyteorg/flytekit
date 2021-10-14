@@ -1016,14 +1016,27 @@ def test_wf_custom_types():
 
 def test_arbit_class():
     class Foo(object):
-        pass
+        def __init__(self, number: int):
+            self.number = number
 
     @task
     def t1(a: int) -> Foo:
-        return Foo()
+        return Foo(number=a)
 
+    @task
     def t2(a: Foo) -> typing.List[Foo]:
         return [a, a]
+
+    @task
+    def t3(a: typing.List[Foo]) -> typing.Dict[str, Foo]:
+        return {"hello": a[0]}
+
+    def wf(a: int) -> typing.Dict[str, Foo]:
+        o1 = t1(a=a)
+        o2 = t2(a=o1)
+        return t3(a=o2)
+
+    wf(1)
 
 
 def test_dataclass_more():

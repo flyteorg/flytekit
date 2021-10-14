@@ -258,6 +258,8 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
         try:
             if hasattr(v, "__origin__") and v.__origin__ == list:
                 TypeEngine.get_transformer(v.__args__[0])
+            elif hasattr(v, "__origin__") and v.__origin__ == dict:
+                TypeEngine.get_transformer(v.__args__[1])
             else:
                 TypeEngine.get_transformer(v)
 
@@ -275,6 +277,8 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
         try:
             if hasattr(annotation, "__origin__") and annotation.__origin__ == list:
                 TypeEngine.get_transformer(annotation.__args__[0])
+            elif hasattr(annotation, "__origin__") and annotation.__origin__ == dict:
+                TypeEngine.get_transformer(annotation.__args__[1])
             else:
                 TypeEngine.get_transformer(annotation)
         except ValueError:
@@ -316,6 +320,8 @@ def transform_variable_map(
             if isinstance(v, FlytePickle):
                 if hasattr(v.python_type, "__origin__") and v.python_type.__origin__ is list:
                     res[k].type.metadata = {"python_class_name": v.python_type.__args__[0].__name__}
+                elif hasattr(v.python_type, "__origin__") and v.python_type.__origin__ is dict:
+                    res[k].type.metadata = {"python_class_name": v.python_type.__args__[1].__name__}
                 else:
                     res[k].type.metadata = {"python_class_name": v.python_type.__name__}
     return res

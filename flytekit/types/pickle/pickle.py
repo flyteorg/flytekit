@@ -25,7 +25,6 @@ class FlytePickle(object):
 
 
 class FlytePickleTransformer(TypeTransformer[FlytePickle]):
-    PICKLE = "pickle"
     PYTHON_PICKLE_FORMAT = "PythonPickle"
 
     def __init__(self):
@@ -40,11 +39,11 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         # Deserialize the pickle, and return data in the pickle,
         # and download pickle file to local first if file is not in the local file systems.
         if ctx.file_access.is_remote(uri):
-            ctx.file_access.get_data(uri, self.PICKLE, False)
-            uri = self.PICKLE
-        infile = open(uri, "rb")
-        data = cloudpickle.load(infile)
-        infile.close()
+            local_path = ctx.file_access.get_random_local_path()
+            ctx.file_access.get_data(uri, local_path, False)
+            uri = local_path
+        with open(uri, "rb") as infile:
+            data = cloudpickle.load(infile)
         return data
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
@@ -56,10 +55,10 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         # Dump the task output into pickle
         local_dir = ctx.file_access.get_random_local_directory()
         os.makedirs(local_dir, exist_ok=True)
-        uri = os.path.join(local_dir, self.PICKLE)
-        outfile = open(uri, "w+b")
-        cloudpickle.dump(python_val, outfile)
-        outfile.close()
+        local_path = ctx.file_access.get_random_local_path()
+        uri = os.path.join(local_dir, local_path)
+        with open(uri, "w+b") as outfile:
+            cloudpickle.dump(python_val, outfile)
 
         remote_path = ctx.file_access.get_random_remote_path(uri)
         ctx.file_access.put_data(uri, remote_path, is_multipart=False)
