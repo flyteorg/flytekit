@@ -18,6 +18,7 @@ from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.core.compiler import CompiledTask as _compiledTask
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from flytekit.sdk.spark_types import SparkType as _spark_type
 
@@ -549,14 +550,14 @@ class Task(_common.FlyteIdlEntity):
 class TaskClosure(_common.FlyteIdlEntity):
     def __init__(self, compiled_task):
         """
-        :param CompiledTask compiled_task:
+        :param flytekit.models.core.compiler.CompiledTask compiled_task:
         """
         self._compiled_task = compiled_task
 
     @property
     def compiled_task(self):
         """
-        :rtype: CompiledTask
+        :rtype: flytekit.models.core.compiler.CompiledTask
         """
         return self._compiled_task
 
@@ -572,36 +573,7 @@ class TaskClosure(_common.FlyteIdlEntity):
         :param flyteidl.admin.task_pb2.TaskClosure pb2_object:
         :rtype: TaskClosure
         """
-        return cls(compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task))
-
-
-class CompiledTask(_common.FlyteIdlEntity):
-    def __init__(self, template):
-        """
-        :param TaskTemplate template:
-        """
-        self._template = template
-
-    @property
-    def template(self):
-        """
-        :rtype: TaskTemplate
-        """
-        return self._template
-
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.core.compiler_pb2.CompiledTask
-        """
-        return _compiler.CompiledTask(template=self.template.to_flyte_idl())
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        """
-        :param flyteidl.core.compiler_pb2.CompiledTask pb2_object:
-        :rtype: CompiledTask
-        """
-        return cls(template=TaskTemplate.from_flyte_idl(pb2_object.template))
+        return cls(compiled_task=_compiledTask.from_flyte_idl(pb2_object.compiled_task))
 
 
 class SparkJob(_common.FlyteIdlEntity):

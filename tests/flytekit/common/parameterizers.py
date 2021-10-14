@@ -8,6 +8,7 @@ from flytekit.common.types.impl import schema as _schema_impl
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
+from flytekit.models.core.compiler import CompiledTask as _compiledTask
 
 LIST_OF_SCALAR_LITERAL_TYPES = [
     types.LiteralType(simple=types.SimpleType.BINARY),
@@ -160,7 +161,7 @@ LIST_OF_CONTAINERS = [
     for resources in LIST_OF_RESOURCES
 ]
 
-LIST_OF_TASK_CLOSURES = [task.TaskClosure(task.CompiledTask(template)) for template in LIST_OF_TASK_TEMPLATES]
+LIST_OF_TASK_CLOSURES = [task.TaskClosure(_compiledTask(template)) for template in LIST_OF_TASK_TEMPLATES]
 
 LIST_OF_SCALARS_AND_PYTHON_VALUES = [
     (literals.Scalar(primitive=literals.Primitive(integer=100)), 100),

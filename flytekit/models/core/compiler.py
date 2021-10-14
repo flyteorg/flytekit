@@ -121,35 +121,34 @@ class CompiledWorkflow(_common.FlyteIdlEntity):
         )
 
 
-# TODO: properly sort out the model code and remove one of these duplicate CompiledTasks
 class CompiledTask(_common.FlyteIdlEntity):
     def __init__(self, template):
         """
-        :param TODO template:
+        :param flyteidl.core.CompiledTask.template template:
         """
         self._template = template
 
     @property
     def template(self):
         """
-        :rtype: TODO
+        :rtype: template
         """
         return self._template
 
     def to_flyte_idl(self):
         """
-        :rtype: flyteidl.core.compiler_pb2.CompiledTask
+        :rtype: flyteidl.core.CompiledTask
         """
-        return _compiler_pb2.CompiledTask(template=self.template)  # TODO: .to_flyte_idl()
+        return _compiler_pb2.CompiledTask(template=self.template.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, p):
         """
-        :param flyteidl.core.compiler_pb2.CompiledTask p:
+        :param flyteidl.core.CompiledTask p:
         :rtype: CompiledTask
         """
         # TODO: Refactor task so we don't have cyclical import
-        return cls(None)
+        return cls(template=_core_workflow_models.WorkflowTemplate.from_flyte_idl(p.template))
 
 
 class CompiledWorkflowClosure(_common.FlyteIdlEntity):
@@ -200,12 +199,9 @@ class CompiledWorkflowClosure(_common.FlyteIdlEntity):
         :param flyteidl.core.compiler_pb2.CompiledWorkflowClosure p:
         :rtype: CompiledWorkflowClosure
         """
-        # This import is here to prevent a circular dependency issue.
-        # TODO: properly sort out the model code and remove the duplicate CompiledTask
-        from flytekit.models.task import CompiledTask as _CompiledTask
 
         return cls(
             primary=CompiledWorkflow.from_flyte_idl(p.primary),
             sub_workflows=[CompiledWorkflow.from_flyte_idl(s) for s in p.sub_workflows],
-            tasks=[_CompiledTask.from_flyte_idl(t) for t in p.tasks],
+            tasks=[CompiledTask.from_flyte_idl(t) for t in p.tasks],
         )
