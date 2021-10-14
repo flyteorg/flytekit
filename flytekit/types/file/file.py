@@ -4,6 +4,8 @@ import os
 import pathlib
 import typing
 
+from marshmallow import fields
+
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
@@ -19,7 +21,7 @@ def noop():
 T = typing.TypeVar("T")
 
 
-class FlyteFile(os.PathLike, typing.Generic[T]):
+class FlyteFile(os.PathLike, typing.Generic[T], fields.Field):
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -184,6 +186,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             )
         else:
             return self._path == other
+
+    def to_json(self):
+        return self.path
 
     @property
     def downloaded(self) -> bool:

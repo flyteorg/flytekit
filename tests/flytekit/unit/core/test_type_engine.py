@@ -501,6 +501,40 @@ def test_dataclass_int_preserving():
     assert ot == o
 
 
+@dataclass_json
+@dataclass
+class TestInnerFileStruct(object):
+    a: FlyteFile
+    b: typing.List[FlyteFile]
+    c: typing.Dict[str, FlyteFile]
+
+
+@dataclass_json
+@dataclass
+class TestFileStruct(object):
+    a: FlyteFile
+    b: typing.List[FlyteFile]
+    c: typing.Dict[str, FlyteFile]
+    d: TestInnerFileStruct
+
+
+def test_flyte_file_in_dataclass():
+    f = FlyteFile("s3://tmp/file.jpeg")
+    o = TestFileStruct(a=f, b=[f], c={"hello": f}, d=TestInnerFileStruct(a=f, b=[f], c={"hello": f}))
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct)
+    gt = tf.guess_python_type(lt)
+    lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=gt)
+    assert type(ot.a) == FlyteFile
+    assert type(ot.b[0]) == FlyteFile
+    assert type(ot.c.get("hello")) == FlyteFile
+    assert type(ot.d.a) == FlyteFile
+    assert o == dataclass_from_dict(TestFileStruct, asdict(typing.cast(dataclass, ot)))
+
+
 # Enums should have string values
 class Color(Enum):
     RED = "red"

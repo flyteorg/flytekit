@@ -8,6 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
+from json import JSONEncoder
 from typing import Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -17,7 +18,8 @@ from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
-from marshmallow_jsonschema import JSONSchema
+from marshmallow import fields
+from marshmallow_jsonschema import JSONSchema, base
 
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
@@ -30,6 +32,20 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 
+""" Module that monkey-patches json module when it's imported so
+JSONEncoder.default() automatically checks for a special "to_json()"
+method and uses it to encode the object if found.
+"""
+
+
+def _default(self, obj):
+    return getattr(obj.__class__, "to_json", _default.default)(obj)
+
+
+_default.default = JSONEncoder().default
+JSONEncoder.default = _default
+
+base.MARSHMALLOW_TO_PY_TYPES_PAIRS.append((fields.Field, str))
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 
@@ -217,9 +233,11 @@ class DataclassTransformer(TypeTransformer[object]):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
-        schema = None
+        schema = typing.Dict
         try:
             schema = JSONSchema().dump(cast(DataClassJsonMixin, t).schema())
+            schema["additionalSchema"] = {}
+            update_additional_schema(t, schema["additionalSchema"])
         except Exception as e:
             logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
 
@@ -239,25 +257,30 @@ class DataclassTransformer(TypeTransformer[object]):
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
 
-    def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
+    def _fix_val_type(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if t == int:
             return int(val)
 
+        from flytekit.types.file import FlyteFile
+
+        if t == FlyteFile:
+            return FlyteFile(val)
+
         if isinstance(val, list):
             # Handle nested List. e.g. [[1, 2], [3, 4]]
-            return list(map(lambda x: self._fix_val_int(ListTransformer.get_sub_type(t), x), val))
+            return list(map(lambda x: self._fix_val_type(ListTransformer.get_sub_type(t), x), val))
 
         if isinstance(val, dict):
             ktype, vtype = DictTransformer.get_dict_types(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
-            return {self._fix_val_int(ktype, k): self._fix_val_int(vtype, v) for k, v in val.items()}
+            return {self._fix_val_type(ktype, k): self._fix_val_type(vtype, v) for k, v in val.items()}
 
         if dataclasses.is_dataclass(t):
-            return self._fix_dataclass_int(t, val)  # type: ignore
+            return self._fix_dataclass_type(t, val)  # type: ignore
 
         return val
 
-    def _fix_dataclass_int(self, dc_type: Type[DataClassJsonMixin], dc: DataClassJsonMixin) -> DataClassJsonMixin:
+    def _fix_dataclass_type(self, dc_type: Type[DataClassJsonMixin], dc: DataClassJsonMixin) -> DataClassJsonMixin:
         """
         This is a performance penalty to convert to the right types, but this is expected by the user and hence
         needs to be done
@@ -267,7 +290,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
             val = dc.__getattribute__(f.name)
-            dc.__setattr__(f.name, self._fix_val_int(f.type, val))
+            dc.__setattr__(f.name, self._fix_val_type(f.type, val))
         return dc
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -282,13 +305,15 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"serialized correctly"
             )
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
-        return self._fix_dataclass_int(expected_python_type, dc)
+        return self._fix_dataclass_type(expected_python_type, dc)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.simple == SimpleType.STRUCT:
             if literal_type.metadata is not None and DEFINITIONS in literal_type.metadata:
                 schema_name = literal_type.metadata["$ref"].split("/")[-1]
-                return convert_json_schema_to_python_class(literal_type.metadata[DEFINITIONS], schema_name)
+                return convert_json_schema_to_python_class(
+                    literal_type.metadata[DEFINITIONS], literal_type.metadata["additionalSchema"], schema_name
+                )
 
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
@@ -746,35 +771,71 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return expected_python_type(lv.scalar.primitive.string_value)
 
 
-def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:
+def update_additional_schema(t: Type[T], schema: dict):
+    for f in dataclasses.fields(cast(dataclasses, t)):
+        from flytekit.types.file import FlyteFile
+
+        if f.type == FlyteFile or (
+            hasattr(f.type, "__origin__")
+            and (
+                (f.type.__origin__ is list and ListTransformer.get_sub_type(f.type) is FlyteFile)
+                or (f.type.__origin__ is dict and DictTransformer.get_dict_types(f.type)[1] == FlyteFile)
+            )
+        ):
+            schema.update({f.name: FlyteFile.__name__})
+        elif dataclasses.is_dataclass(f.type):
+            schema[f.name] = {}
+            update_additional_schema(f.type, schema[f.name])
+
+
+def convert_json_schema_to_python_class(
+    schema: dict, additional_schema: dict, schema_name: str
+) -> Type[dataclasses.dataclass()]:
     """Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
-    :param schema_name: dataclass name of return type
+    :param additional_schema: dict representing origin type of dataclass attribute
+    :param schema_name: str dataclass name of return type
     """
     attribute_list = []
     for property_key, property_val in schema[schema_name]["properties"].items():
+        property_type = property_val["type"]
         # Handle list
-        if property_val["type"] == "array":
-            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))
+        if property_type == "array":
+            attribute_list.append(
+                (property_key, typing.List[_get_element_type(property_val["items"], additional_schema)])
+            )
         # Handle dataclass and dict
-        elif property_val["type"] == "object":
+        elif property_type == "object":
             if "$ref" in property_val:
                 name = property_val["$ref"].split("/")[-1]
-                attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
-            else:
                 attribute_list.append(
-                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])
+                    (property_key, convert_json_schema_to_python_class(schema, additional_schema[property_key], name))
                 )
+            elif "additionalProperties" in property_val:
+                attribute_list.append(
+                    (
+                        property_key,
+                        typing.Dict[str, _get_element_type(property_val["additionalProperties"], additional_schema)],
+                    )
+                )
+            else:
+                attribute_list.append((property_key, dict))
         # Handle int, float, bool or str
         else:
-            attribute_list.append([property_key, _get_element_type(property_val)])
-
+            attribute_list.append([property_key, _get_element_type(property_val, additional_schema)])
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
+def _get_element_type(element_property: typing.Dict[str, str], additional_schema: dict) -> Type[T]:
+    element_key = element_property["title"]
     element_type = element_property["type"]
     element_format = element_property["format"] if "format" in element_property else None
+
+    from flytekit.types.file import FlyteFile
+
+    if additional_schema[element_key] is FlyteFile.__name__:
+        return FlyteFile
+
     if element_type == "string":
         return str
     elif element_type == "integer":
