@@ -40,6 +40,8 @@ def _default(self, obj):
 """ Module that monkey-patches json module when it's imported so
 JSONEncoder.default() automatically checks for a special "to_json()"
 method and uses it to encode the object if found.
+For example, we implement the "to_json()" method in FlyteFile,
+and we serialize the value which type is FlyteFile to the path (str) of FlyteFile
 """
 _default.default = JSONEncoder().default
 JSONEncoder.default = _default
@@ -47,6 +49,7 @@ JSONEncoder.default = _default
 base.MARSHMALLOW_TO_PY_TYPES_PAIRS.append((fields.Field, str))
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
+ADDITIONALSCHEMA = "additionalSchema"
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -235,8 +238,8 @@ class DataclassTransformer(TypeTransformer[object]):
         schema = None
         try:
             schema = JSONSchema().dump(cast(DataClassJsonMixin, t).schema())
-            schema["additionalSchema"] = {}
-            update_additional_schema(t, schema["additionalSchema"])
+            schema[ADDITIONALSCHEMA] = {}
+            update_additional_schema(t, schema[ADDITIONALSCHEMA])
         except Exception as e:
             logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
             schema = None
@@ -312,7 +315,7 @@ class DataclassTransformer(TypeTransformer[object]):
             if literal_type.metadata is not None and DEFINITIONS in literal_type.metadata:
                 schema_name = literal_type.metadata["$ref"].split("/")[-1]
                 return convert_json_schema_to_python_class(
-                    literal_type.metadata[DEFINITIONS], literal_type.metadata["additionalSchema"], schema_name
+                    literal_type.metadata[DEFINITIONS], literal_type.metadata[ADDITIONALSCHEMA], schema_name
                 )
 
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
@@ -787,7 +790,7 @@ def update_additional_schema(t: Type[T], additional_schema: dict):
             additional_schema[f.name] = {}
             update_additional_schema(f.type, additional_schema[f.name])
         else:
-            # Any non python primitive type in marshmallow has "fields.Field" in schema.
+            # Any non-primitive type in marshmallow has "fields.Field" in schema.
             # We throw an error if the type is not FlyteFile
             if type(t.schema().fields[f.name]) is fields.Field:
                 raise TypeError(f"Unsupported type {f.type} in dataclass")
@@ -826,8 +829,6 @@ def convert_json_schema_to_python_class(
                         typing.Dict[str, _get_element_type(property_val["additionalProperties"], additional_schema)],
                     )
                 )
-            else:
-                attribute_list.append((property_key, dict))
         # Handle int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val, additional_schema)])
