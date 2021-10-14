@@ -8,7 +8,7 @@ from flytekit.common import notifications as _notifications
 from flytekit.common import schedules as _schedules
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_models
-from flytekit.models import schedule as _schedule
+from flytekit.models.admin import schedule as _schedule
 from flytekit.models import types as _type_models
 from flytekit.models.core import execution as _execution
 from flytekit.models.core import identifier as _identifier

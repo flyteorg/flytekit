@@ -1,6 +1,7 @@
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
-from flytekit.models import common, interface, launch_plan, literals, schedule, types
+from flytekit.models import common, interface, launch_plan, literals, types
+from flytekit.models.admin import schedule
 from flytekit.models.core import identifier
 
 

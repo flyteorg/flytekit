@@ -25,7 +25,7 @@ from flytekit.models import execution as _execution_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
-from flytekit.models import schedule as _schedule_model
+from flytekit.models.admin import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 

@@ -58,7 +58,7 @@ from flytekit.models.matchable_resource import MatchingAttributes as _MatchingAt
 from flytekit.models.matchable_resource import PluginOverride as _PluginOverride
 from flytekit.models.matchable_resource import PluginOverrides as _PluginOverrides
 from flytekit.models.project import Project as _Project
-from flytekit.models.schedule import Schedule as _Schedule
+from flytekit.models.admin.schedule import Schedule as _Schedule
 from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
 
 try:  # Python 3
