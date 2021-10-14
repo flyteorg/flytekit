@@ -1,6 +1,6 @@
 import pytest
 
-from flytekit.core.context_manager import ImageConfig, Image
+from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.python_auto_container import get_registerable_container_image
 
 
