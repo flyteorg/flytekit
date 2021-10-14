@@ -16,8 +16,8 @@ from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.core.compiler import CompiledTask as _compiledTask
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
+from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from flytekit.sdk.spark_types import SparkType as _spark_type
 
@@ -347,7 +347,7 @@ class Task(_common.FlyteIdlEntity):
     def __init__(self, id, closure):
         """
         :param flytekit.models.core.identifier.Identifier id: The (project, domain, name) identifier for this task.
-        :param TaskClosure closure: The closure for the underlying workload.
+        :param flytekit.models.admin.task.TaskClosure closure: The closure for the underlying workload.
         """
         self._id = id
         self._closure = closure
@@ -364,7 +364,7 @@ class Task(_common.FlyteIdlEntity):
     def closure(self):
         """
         The closure for the underlying workload.
-        :rtype: TaskClosure
+        :rtype: flytekit.models.admin.task.TaskClosure
         """
         return self._closure
 
@@ -384,38 +384,9 @@ class Task(_common.FlyteIdlEntity):
         :rtype: TaskDefinition
         """
         return cls(
-            closure=TaskClosure.from_flyte_idl(pb2_object.closure),
+            closure=_taskSpec.from_flyte_idl(pb2_object.closure),
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
         )
-
-
-class TaskClosure(_common.FlyteIdlEntity):
-    def __init__(self, compiled_task):
-        """
-        :param flytekit.models.core.compiler.CompiledTask compiled_task:
-        """
-        self._compiled_task = compiled_task
-
-    @property
-    def compiled_task(self):
-        """
-        :rtype: flytekit.models.core.compiler.CompiledTask
-        """
-        return self._compiled_task
-
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.admin.task_pb2.TaskClosure
-        """
-        return _admin_task.TaskClosure(compiled_task=self.compiled_task.to_flyte_idl())
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        """
-        :param flyteidl.admin.task_pb2.TaskClosure pb2_object:
-        :rtype: TaskClosure
-        """
-        return cls(compiled_task=_compiledTask.from_flyte_idl(pb2_object.compiled_task))
 
 
 class SparkJob(_common.FlyteIdlEntity):

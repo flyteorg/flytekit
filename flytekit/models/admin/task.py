@@ -5,6 +5,7 @@ from flytekit.models import common as _common
 from flytekit.models import literals as _literals
 from flytekit.models.task import RuntimeMetadata as _runtimeMatadata
 from flytekit.models.task import TaskTemplate as _taskTemplate
+from flytekit.models.core.compiler import CompiledTask as _compiledTask
 
 class TaskMetadata(_common.FlyteIdlEntity):
     def __init__(
@@ -161,3 +162,32 @@ class TaskSpec(_common.FlyteIdlEntity):
         :rtype: TaskSpec
         """
         return cls(_taskTemplate.from_flyte_idl(pb2_object.template))
+
+
+class TaskClosure(_common.FlyteIdlEntity):
+    def __init__(self, compiled_task):
+        """
+        :param flytekit.models.core.compiler.CompiledTask compiled_task:
+        """
+        self._compiled_task = compiled_task
+
+    @property
+    def compiled_task(self):
+        """
+        :rtype: flytekit.models.core.compiler.CompiledTask
+        """
+        return self._compiled_task
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.task_pb2.TaskClosure
+        """
+        return _admin_task.TaskClosure(compiled_task=self.compiled_task.to_flyte_idl())
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.task_pb2.TaskClosure pb2_object:
+        :rtype: TaskClosure
+        """
+        return cls(compiled_task=_compiledTask.from_flyte_idl(pb2_object.compiled_task))
