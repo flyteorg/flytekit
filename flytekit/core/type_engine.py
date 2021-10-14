@@ -790,8 +790,8 @@ def update_additional_schema(t: Type[T], additional_schema: dict):
             additional_schema[f.name] = {}
             update_additional_schema(f.type, additional_schema[f.name])
         else:
-            # Any non-primitive type in marshmallow has "fields.Field" in schema.
-            # We throw an error if the type is not FlyteFile
+            # Any non-primitive type in marshmallow has "fields.Field" in schema,
+            # and we throw an error if the type is not FlyteFile
             if type(t.schema().fields[f.name]) is fields.Field:
                 raise TypeError(f"Unsupported type {f.type} in dataclass")
 
