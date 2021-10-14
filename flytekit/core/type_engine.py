@@ -809,7 +809,10 @@ def convert_json_schema_to_python_class(
             if "$ref" in property_val:
                 name = property_val["$ref"].split("/")[-1]
                 attribute_list.append(
-                    (property_key, convert_json_schema_to_python_class(schema, additional_schema[property_key], name))
+                    (
+                        property_key,
+                        convert_json_schema_to_python_class(schema, additional_schema.get(property_key), name),
+                    )
                 )
             elif "additionalProperties" in property_val:
                 attribute_list.append(
@@ -826,14 +829,14 @@ def convert_json_schema_to_python_class(
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, str], additional_schema: dict) -> Type[T]:
+def _get_element_type(element_property: typing.Dict[str, str], additional_schema: typing.Optional[dict]) -> Type[T]:
     element_key = element_property["title"]
     element_type = element_property["type"]
     element_format = element_property["format"] if "format" in element_property else None
 
     from flytekit.types.file import FlyteFile
 
-    if additional_schema[element_key] is FlyteFile.__name__:
+    if additional_schema and additional_schema.get(element_key) is FlyteFile.__name__:
         return FlyteFile
 
     if element_type == "string":
