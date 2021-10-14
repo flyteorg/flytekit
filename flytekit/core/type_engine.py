@@ -8,7 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from typing import Optional, Type, cast
+from typing import NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -23,6 +23,7 @@ from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.interfaces import random
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -151,7 +152,7 @@ class RestrictedTypeError(Exception):
 
 class RestrictedType(TypeTransformer[T], ABC):
     """
-    A Simple implementation of a type transformer that uses simple lambdas to transform and reduces boilerplate
+    TODO:
     """
 
     def __init__(self, name: str, t: Type[T]):
@@ -339,10 +340,15 @@ class TypeEngine(typing.Generic[T]):
     """
 
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
+    _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()
 
     @classmethod
-    def register(cls, transformer: TypeTransformer, additional_types: Optional[typing.List[Type]] = None):
+    def register(
+        cls,
+        transformer: TypeTransformer,
+        additional_types: Optional[typing.List[Type]] = None,
+    ):
         """
         This should be used for all types that respond with the right type annotation when you use type(...) function
         """
@@ -355,6 +361,15 @@ class TypeEngine(typing.Generic[T]):
                     f" Cannot override with {transformer.name}"
                 )
             cls._REGISTRY[t] = transformer
+
+    @classmethod
+    def register_restricted_type(
+        cls,
+        name: str,
+        type: Type,
+    ):
+        cls._RESTRICTED_TYPES.append(type)
+        cls.register(RestrictedType(name, type))
 
     @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
@@ -394,9 +409,13 @@ class TypeEngine(typing.Generic[T]):
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
+        # TODO: can we randomize the order? By forcing a random order we uncovered the NamedTuple bug
+        keys = list(cls._REGISTRY.keys())
+        # shuffle modifies the list in-place
+        random.random.shuffle(keys)
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
-        for base_type in cls._REGISTRY.keys():
+        for base_type in set(keys) - set(cls._RESTRICTED_TYPES):
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
             if isinstance(python_type, base_type) or (
@@ -896,9 +915,9 @@ def _register_default_type_transformers():
     # that the return signature of a task can be a NamedTuple that contains another NamedTuple inside it.
     # Also, it's not entirely true that Flyte IDL doesn't support tuples. We can always fake them as structs, but we'll
     # hold off on doing that for now, as we may amend the IDL formally to support tuples.
-    TypeEngine.register(RestrictedType("non typed tuple", tuple))
-    TypeEngine.register(RestrictedType("non typed tuple", typing.Tuple))
-    TypeEngine.register(RestrictedType("named tuple", typing.NamedTuple))
+    TypeEngine.register_restricted_type("non typed tuple", tuple)
+    TypeEngine.register_restricted_type("non typed tuple", typing.Tuple)
+    TypeEngine.register_restricted_type("named tuple", NamedTuple)
 
 
 _register_default_type_transformers()

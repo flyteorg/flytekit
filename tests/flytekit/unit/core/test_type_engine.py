@@ -1,6 +1,5 @@
 import datetime
 import os
-import sys
 import typing
 from dataclasses import asdict, dataclass
 from datetime import timedelta
@@ -63,11 +62,7 @@ def test_type_resolution():
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
 
-    if sys.version_info >= (3, 9):
-        raised_exeption = TypeError
-    else:
-        raised_exeption = ValueError
-    with pytest.raises(raised_exeption):
+    with pytest.raises(ValueError):
         TypeEngine.get_transformer(typing.Any)
 
 
