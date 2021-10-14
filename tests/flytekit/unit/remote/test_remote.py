@@ -17,7 +17,7 @@ from flytekit.models.execution import Execution
 from flytekit.models.interface import TypedInterface, Variable
 from flytekit.models.launch_plan import LaunchPlan
 from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
-from flytekit.models.task import Task
+from flytekit.models.admin.task import Task
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote import FlyteWorkflow
 from flytekit.remote.remote import FlyteRemote

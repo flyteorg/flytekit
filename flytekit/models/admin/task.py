@@ -5,6 +5,7 @@ from flytekit.models import common as _common
 from flytekit.models import literals as _literals
 from flytekit.models.task import RuntimeMetadata as _runtimeMatadata
 from flytekit.models.task import TaskTemplate as _taskTemplate
+from flytekit.models.core import identifier as _identifier
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
 
 class TaskMetadata(_common.FlyteIdlEntity):
@@ -191,3 +192,49 @@ class TaskClosure(_common.FlyteIdlEntity):
         :rtype: TaskClosure
         """
         return cls(compiled_task=_compiledTask.from_flyte_idl(pb2_object.compiled_task))
+
+
+class Task(_common.FlyteIdlEntity):
+    def __init__(self, id, closure):
+        """
+        :param flytekit.models.core.identifier.Identifier id: The (project, domain, name) identifier for this task.
+        :param TaskClosure closure: The closure for the underlying workload.
+        """
+        self._id = id
+        self._closure = closure
+
+    @property
+    def id(self):
+        """
+        The (project, domain, name, version) identifier for this task.
+        :rtype: flytekit.models.core.identifier.Identifier
+        """
+        return self._id
+
+    @property
+    def closure(self):
+        """
+        The closure for the underlying workload.
+        :rtype: TaskClosure
+        """
+        return self._closure
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.task_pb2.Task
+        """
+        return _admin_task.Task(
+            closure=self.closure.to_flyte_idl(),
+            id=self.id.to_flyte_idl(),
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.task_pb2.Task pb2_object:
+        :rtype: TaskDefinition
+        """
+        return cls(
+            closure=TaskSpec.from_flyte_idl(pb2_object.closure),
+            id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
+        )

@@ -12,7 +12,7 @@ from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals
-from flytekit.models import task as _task_models
+from flytekit.models.admin import task as _task_models
 from flytekit.models.admin import common as _common
 from flytekit.models.core import errors, identifier
 from flytekit.sdk import test_utils

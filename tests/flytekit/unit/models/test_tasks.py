@@ -11,6 +11,7 @@ import flytekit.models.literals as literal_models
 from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
+from flytekit.models.admin.task import Task as _task
 from tests.flytekit.common import parameterizers
 
 
@@ -195,7 +196,7 @@ def test_task_template_security_context(sec_ctx):
 
 @pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)
 def test_task(task_closure):
-    obj = task.Task(
+    obj = _task(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         task_closure,
     )
@@ -204,7 +205,7 @@ def test_task(task_closure):
     assert obj.id.name == "name"
     assert obj.id.version == "version"
     assert obj.closure == task_closure
-    assert obj == task.Task.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == _task.from_flyte_idl(obj.to_flyte_idl())
 
 
 @pytest.mark.parametrize("resources", parameterizers.LIST_OF_RESOURCES)

@@ -2,7 +2,6 @@ import json as _json
 import typing
 
 import six as _six
-from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
 from flyteidl.plugins import pytorch_pb2 as _pytorch_task
@@ -17,7 +16,6 @@ from flytekit.models import interface as _interface
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
-from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 from flytekit.sdk.spark_types import SparkType as _spark_type
 
@@ -340,52 +338,6 @@ class TaskTemplate(_common.FlyteIdlEntity):
             config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
             k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,
             sql=Sql.from_flyte_idl(pb2_object.sql) if pb2_object.HasField("sql") else None,
-        )
-
-
-class Task(_common.FlyteIdlEntity):
-    def __init__(self, id, closure):
-        """
-        :param flytekit.models.core.identifier.Identifier id: The (project, domain, name) identifier for this task.
-        :param flytekit.models.admin.task.TaskClosure closure: The closure for the underlying workload.
-        """
-        self._id = id
-        self._closure = closure
-
-    @property
-    def id(self):
-        """
-        The (project, domain, name, version) identifier for this task.
-        :rtype: flytekit.models.core.identifier.Identifier
-        """
-        return self._id
-
-    @property
-    def closure(self):
-        """
-        The closure for the underlying workload.
-        :rtype: flytekit.models.admin.task.TaskClosure
-        """
-        return self._closure
-
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.admin.task_pb2.Task
-        """
-        return _admin_task.Task(
-            closure=self.closure.to_flyte_idl(),
-            id=self.id.to_flyte_idl(),
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        """
-        :param flyteidl.admin.task_pb2.Task pb2_object:
-        :rtype: TaskDefinition
-        """
-        return cls(
-            closure=_taskSpec.from_flyte_idl(pb2_object.closure),
-            id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
         )
 
 

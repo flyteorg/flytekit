@@ -351,7 +351,7 @@ class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
         """
         :param flytekit.models.core.identifier.Identifier task_id: This identifier should have a resource type of kind
             Task.
-        :rtype: flytekit.models.task.Task
+        :rtype: flytekit.models.admin.task.Task
         """
         pass
 
@@ -360,7 +360,7 @@ class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
         """
         Fetches the latest task
         :param flytekit.models.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
-        :rtype: flytekit.models.task.Task
+        :rtype: flytekit.models.admin.task.Task
         """
         pass
 

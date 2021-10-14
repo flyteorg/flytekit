@@ -19,7 +19,7 @@ from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import node_execution as _node_execution
 from flytekit.models import project as _project
-from flytekit.models import task as _task
+from flytekit.models.admin import task as _task
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.admin import task_execution as _task_execution
 from flytekit.models.admin import workflow as _workflow
@@ -167,7 +167,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
         :param flytekit.models.core.identifier.Identifier id: The ID representing a given task.
         :raises: TODO
-        :rtype: flytekit.models.task.Task
+        :rtype: flytekit.models.admin.task.Task
         """
         return _task.Task.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_task(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
