@@ -66,10 +66,13 @@ def translate_inputs_to_literals(
     def extract_value(
         ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: flytekit.models.core.types.LiteralType
     ) -> _literal_models.Literal:
-        if flyte_literal_type.blob and flyte_literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
-            return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
 
         if isinstance(input_val, list):
+            if (
+                flyte_literal_type.blob
+                and flyte_literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+            ):
+                return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
             if flyte_literal_type.collection_type is None:
                 raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
             try:
@@ -81,6 +84,11 @@ def translate_inputs_to_literals(
             literal_list = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
+            if (
+                flyte_literal_type.blob
+                and flyte_literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+            ):
+                return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
             if (
                 flyte_literal_type.map_value_type is None
                 and flyte_literal_type.simple != flytekit.models.core.types.SimpleType.STRUCT
