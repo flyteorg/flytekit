@@ -11,6 +11,7 @@ import flytekit.models.literals as literal_models
 from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
+from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
 from flytekit.models.admin.task import Task as _task
 from tests.flytekit.common import parameterizers
 
@@ -36,14 +37,14 @@ def test_resources(resource_list):
 
 
 def test_runtime_metadata():
-    obj = task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python")
-    assert obj.type == task.RuntimeMetadata.RuntimeType.FLYTE_SDK
+    obj = _runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python")
+    assert obj.type == _runtimeMetadata.RuntimeType.FLYTE_SDK
     assert obj.version == "1.0.0"
     assert obj.flavor == "python"
-    assert obj == task.RuntimeMetadata.from_flyte_idl(obj.to_flyte_idl())
-    assert obj != task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.1", "python")
-    assert obj != task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python")
-    assert obj != task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "golang")
+    assert obj == _runtimeMetadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj != _runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, "1.0.1", "python")
+    assert obj != _runtimeMetadata(_runtimeMetadata.RuntimeType.OTHER, "1.0.0", "python")
+    assert obj != _runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "golang")
 
 
 def test_task_metadata_interruptible_from_flyte_idl():
@@ -66,7 +67,7 @@ def test_task_metadata_interruptible_from_flyte_idl():
 def test_task_metadata():
     obj = _taskMatadata(
         True,
-        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
+        _runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
         timedelta(days=1),
         literals.RetryStrategy(3),
         True,
@@ -79,7 +80,7 @@ def test_task_metadata():
     assert obj.interruptible is True
     assert obj.timeout == timedelta(days=1)
     assert obj.runtime.flavor == "python"
-    assert obj.runtime.type == task.RuntimeMetadata.RuntimeType.FLYTE_SDK
+    assert obj.runtime.type == _runtimeMetadata.RuntimeType.FLYTE_SDK
     assert obj.runtime.version == "1.0.0"
     assert obj.deprecated_error_message == "This is deprecated!"
     assert obj.discovery_version == "0.1.1b0"
@@ -132,7 +133,7 @@ def test_task_template__k8s_pod_target():
         "python",
         _taskMatadata(
             False,
-            task.RuntimeMetadata(1, "v", "f"),
+            _runtimeMetadata(1, "v", "f"),
             timedelta(days=1),
             literal_models.RetryStrategy(5),
             False,

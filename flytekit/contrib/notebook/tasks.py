@@ -26,6 +26,7 @@ from flytekit.models import interface as _interface
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 from flytekit.models.admin.task import TaskMetadata as _task_matadata
+from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
 from flytekit.plugins import papermill as _pm
 from flytekit.sdk.spark_types import SparkType as _spark_type
 from flytekit.sdk.types import Types as _Types
@@ -123,8 +124,8 @@ class SdkNotebookTask(_base_tasks.SdkTask):
             task_type,
             _task_matadata(
                 discoverable,
-                _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+                _runtimeMetadata(
+                    _runtimeMetadata.RuntimeType.FLYTE_SDK,
                     __version__,
                     "notebook",
                 ),

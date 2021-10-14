@@ -31,6 +31,7 @@ from flytekit.interfaces.stats import taggable
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
+from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
 
 
 class SecretsManager(object):
@@ -408,8 +409,8 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             task_type,
             _taskMatadata(
                 discoverable,
-                _task_models.RuntimeMetadata(
-                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+                _runtimeMetadata(
+                    _runtimeMetadata.RuntimeType.FLYTE_SDK,
                     __version__,
                     "python",
                 ),

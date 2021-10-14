@@ -9,11 +9,10 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.models import interface as _interface_model
 from flytekit.models import literals as _literal_models
-from flytekit.models import task as _task_models
+from flytekit.models.admin import task as _task_models
 from flytekit.models import types as _idl_types
 from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker import training_job as _training_job_models
-from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 
 
 def _content_type_to_blob_format(content_type: _training_job_models) -> str:
@@ -52,7 +51,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
 
         super(SdkBuiltinAlgorithmTrainingJobTask, self).__init__(
             type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
-            metadata=_taskMatadata(
+            metadata=_task_models.TaskMetadata(
                 runtime=_task_models.RuntimeMetadata(
                     type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     version=__version__,

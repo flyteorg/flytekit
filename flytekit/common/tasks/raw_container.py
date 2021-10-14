@@ -12,6 +12,7 @@ from flytekit.models import literals as _literals
 from flytekit.models import task as _task_models
 from flytekit.models.interface import Variable
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
+from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
 
 
 def types_to_variable(t: Dict[str, FlyteSdkType]) -> Dict[str, Variable]:
@@ -174,8 +175,8 @@ class SdkRawContainerTask(_base_task.SdkTask):
         metadata = _taskMatadata(
             discoverable,
             # This needs to have the proper version reflected in it
-            _task_models.RuntimeMetadata(
-                _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+            _runtimeMetadata(
+                _runtimeMetadata.RuntimeType.FLYTE_SDK,
                 flytekit.__version__,
                 "python",
             ),
