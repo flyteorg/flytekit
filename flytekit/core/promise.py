@@ -727,6 +727,18 @@ class SupportsNodeCreation(Protocol):
         ...
 
 
+def extract_obj_name(name: str) -> str:
+    """
+    Generates a shortened name, without the module information. Useful for node-names etc. Only extracts the final
+    object information often separated by `.` in the python fully qualified notation
+    """
+    if name is None:
+        return ""
+    if "." in name:
+        return name.split(".")[-1]
+    return name
+
+
 def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,

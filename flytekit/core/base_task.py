@@ -33,6 +33,7 @@ from flytekit.core.promise import (
     VoidPromise,
     create_and_link_node,
     create_task_output,
+    extract_obj_name,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
@@ -416,7 +417,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         Used when constructing the node that encapsulates this task as part of a broader workflow definition.
         """
         return _workflow_model.NodeMetadata(
-            name=f"{self.__module__}.{self.name}",
+            name=extract_obj_name(self.name),
             timeout=self.metadata.timeout,
             retries=self.metadata.retry_strategy,
             interruptible=self.metadata.interruptible,
