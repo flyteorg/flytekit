@@ -23,7 +23,6 @@ from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
-from flytekit.interfaces import random
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -409,13 +408,14 @@ class TypeEngine(typing.Generic[T]):
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
-        # TODO: can we randomize the order? By forcing a random order we uncovered the NamedTuple bug
-        keys = list(cls._REGISTRY.keys())
-        # shuffle modifies the list in-place
-        random.random.shuffle(keys)
+        # Restricted types should not be part of the search for a type transformer.
+        # Also, in order to preserve the order in the original list of types we run this O(n^2) algorithm instead
+        # of, for example, removing the restricted types using set difference.
+        unrestricted_types = [type for type in cls._REGISTRY.keys() if type not in cls._RESTRICTED_TYPES]
+
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
-        for base_type in set(keys) - set(cls._RESTRICTED_TYPES):
+        for base_type in unrestricted_types:
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
             if isinstance(python_type, base_type) or (
