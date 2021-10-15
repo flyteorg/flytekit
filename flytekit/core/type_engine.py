@@ -151,7 +151,8 @@ class RestrictedTypeError(Exception):
 
 class RestrictedTypeTransformer(TypeTransformer[T], ABC):
     """
-    Types registered with the RestrictedTypeTransformer are not allowed to be converted to literals.
+    Types registered with the RestrictedTypeTransformer are not allowed to be converted to and from literals. In other words,
+    Restricted types are not allowed to be used as inputs or outputs of tasks and workflows.
     """
 
     def __init__(self, name: str, t: Type[T]):
