@@ -169,9 +169,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         from flytekit.core.task import ReferenceTask
 
         if not ctx.compilation_state:
-            cs = ctx.new_compilation_state("dynamic")
+            cs = ctx.new_compilation_state(prefix="d")
         else:
-            cs = ctx.compilation_state.with_params(prefix="dynamic")
+            cs = ctx.compilation_state.with_params(prefix="d")
 
         with FlyteContextManager.with_context(ctx.with_compilation_state(cs)):
             # TODO: Resolve circular import

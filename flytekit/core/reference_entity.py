@@ -10,6 +10,7 @@ from flytekit.core.promise import (
     VoidPromise,
     create_and_link_node,
     create_task_output,
+    extract_obj_name,
     translate_inputs_to_literals,
 )
 from flytekit.core.type_engine import TypeEngine
@@ -176,7 +177,7 @@ class ReferenceEntity(object):
         return create_task_output(vals, self.python_interface)
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
-        return _workflow_model.NodeMetadata(name=f"{self.__module__}.{self.name}")
+        return _workflow_model.NodeMetadata(name=extract_obj_name(self.name))
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         return create_and_link_node(ctx, entity=self, **kwargs)
