@@ -160,6 +160,12 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
     def get_literal_type(self, t: Type[T] = None) -> LiteralType:
         raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
 
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
+
 
 class DataclassTransformer(TypeTransformer[object]):
     """
@@ -411,7 +417,7 @@ class TypeEngine(typing.Generic[T]):
         # Restricted types should not be part of the search for a type transformer.
         # Also, in order to preserve the order in the original list of types we run this O(n^2) algorithm instead
         # of, for example, removing the restricted types using set difference.
-        unrestricted_types = [type for type in cls._REGISTRY.keys() if type not in cls._RESTRICTED_TYPES]
+        unrestricted_types = [t for t in cls._REGISTRY.keys() if t not in cls._RESTRICTED_TYPES]
 
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.

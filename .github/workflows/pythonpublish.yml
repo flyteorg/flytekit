@@ -91,6 +91,6 @@ jobs:
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py38-${{ steps.bump.outputs.version }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py39-${{ steps.bump.outputs.version }}"
           context: .
           dockerfile: Dockerfile.py39
