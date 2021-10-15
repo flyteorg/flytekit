@@ -187,7 +187,7 @@ class WorkflowBase(object):
 
     @property
     def short_name(self) -> str:
-        return self._name.split(".")[-1]
+        return extract_obj_name(self._name)
 
     @property
     def workflow_metadata(self) -> Optional[WorkflowMetadata]:

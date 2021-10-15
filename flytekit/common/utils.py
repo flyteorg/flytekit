@@ -11,7 +11,7 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.models.core import identifier as _identifier
 
 
-def _dnsify(value):  # type: (str) -> str
+def _dnsify(value: str) -> str:
     """
     Converts value into a DNS-compliant (RFC1035/RFC1123 DNS_LABEL). The resulting string must only consist of
     alphanumeric (lower-case a-z, and 0-9) and not exceed 63 characters. It's permitted to have '-' character as long
