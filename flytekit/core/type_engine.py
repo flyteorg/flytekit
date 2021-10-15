@@ -149,9 +149,9 @@ class RestrictedTypeError(Exception):
     pass
 
 
-class RestrictedType(TypeTransformer[T], ABC):
+class RestrictedTypeTransformer(TypeTransformer[T], ABC):
     """
-    TODO:
+    Types registered with the RestrictedTypeTransformer are not allowed to be converted to literals.
     """
 
     def __init__(self, name: str, t: Type[T]):
@@ -368,7 +368,7 @@ class TypeEngine(typing.Generic[T]):
         type: Type,
     ):
         cls._RESTRICTED_TYPES.append(type)
-        cls.register(RestrictedType(name, type))
+        cls.register(RestrictedTypeTransformer(name, type))
 
     @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
