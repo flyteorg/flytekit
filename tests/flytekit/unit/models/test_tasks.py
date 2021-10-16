@@ -129,7 +129,7 @@ def test_task_template(in_tuple):
 
 def test_task_template__k8s_pod_target():
     int_type = types.LiteralType(types.SimpleType.INTEGER)
-    obj = _taskMatadata(
+    obj = _taskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",
         _taskMatadata(

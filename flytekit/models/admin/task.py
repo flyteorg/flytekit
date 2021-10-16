@@ -1,6 +1,9 @@
+import json as _json
+
 from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 
 from flytekit.models import common as _common
 from flytekit.models import literals as _literals
@@ -239,7 +242,7 @@ class Task(_common.FlyteIdlEntity):
         :rtype: TaskDefinition
         """
         return cls(
-            closure=TaskSpec.from_flyte_idl(pb2_object.closure),
+            closure=TaskClosure.from_flyte_idl(pb2_object.closure),
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
         )
 

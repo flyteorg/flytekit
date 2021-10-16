@@ -10,6 +10,8 @@ from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
 from flytekit.models.admin import task as task
+from flytekit.models.task import Resources as _task_resource
+from flytekit.models.task import Container as _task_container
 
 LIST_OF_SCALAR_LITERAL_TYPES = [
     types.LiteralType(simple=types.SimpleType.BINARY),
@@ -82,11 +84,11 @@ LIST_OF_INTERFACES = [
 
 
 LIST_OF_RESOURCE_ENTRIES = [
-    task.Resources.ResourceEntry(task.Resources.ResourceName.CPU, "1"),
-    task.Resources.ResourceEntry(task.Resources.ResourceName.GPU, "1"),
-    task.Resources.ResourceEntry(task.Resources.ResourceName.MEMORY, "1G"),
-    task.Resources.ResourceEntry(task.Resources.ResourceName.STORAGE, "1G"),
-    task.Resources.ResourceEntry(task.Resources.ResourceName.EPHEMERAL_STORAGE, "1G"),
+    _task_resource.ResourceEntry(_task_resource.ResourceName.CPU, "1"),
+    _task_resource.ResourceEntry(_task_resource.ResourceName.GPU, "1"),
+    _task_resource.ResourceEntry(_task_resource.ResourceName.MEMORY, "1G"),
+    _task_resource.ResourceEntry(_task_resource.ResourceName.STORAGE, "1G"),
+    _task_resource.ResourceEntry(_task_resource.ResourceName.EPHEMERAL_STORAGE, "1G"),
 ]
 
 
@@ -94,7 +96,7 @@ LIST_OF_RESOURCE_ENTRY_LISTS = [LIST_OF_RESOURCE_ENTRIES]
 
 
 LIST_OF_RESOURCES = [
-    task.Resources(request, limit)
+    _task_resource(request, limit)
     for request, limit in product(LIST_OF_RESOURCE_ENTRY_LISTS, LIST_OF_RESOURCE_ENTRY_LISTS)
 ]
 
@@ -138,7 +140,7 @@ LIST_OF_TASK_TEMPLATES = [
         task_metadata,
         interfaces,
         {"a": 1, "b": [1, 2, 3], "c": "abc", "d": {"x": 1, "y": 2, "z": 3}},
-        container=task.Container(
+        container=_task_container(
             "my_image",
             ["this", "is", "a", "cmd"],
             ["this", "is", "an", "arg"],
@@ -151,7 +153,7 @@ LIST_OF_TASK_TEMPLATES = [
 ]
 
 LIST_OF_CONTAINERS = [
-    task.Container(
+    _task_container(
         "my_image",
         ["this", "is", "a", "cmd"],
         ["this", "is", "an", "arg"],
