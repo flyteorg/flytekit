@@ -24,8 +24,8 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_model
 from flytekit.models import execution as _admin_execution_models
-from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
+from flytekit.models.admin.task import TaskTemplate as _taskTemplate
 from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
@@ -35,7 +35,7 @@ class SdkTask(
     _hash_mixin.HashOnReferenceMixin,
     _registerable.RegisterableEntity,
     _launchable_mixin.LaunchableEntity,
-    _task_model.TaskTemplate,
+    _taskTemplate,
     metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(
@@ -97,7 +97,7 @@ class SdkTask(
     @classmethod
     def promote_from_model(cls, base_model):
         """
-        :param flytekit.models.task.TaskTemplate base_model:
+        :param flytekit.models.admin.task.TaskTemplate base_model:
         :rtype: SdkTask
         """
         t = cls(

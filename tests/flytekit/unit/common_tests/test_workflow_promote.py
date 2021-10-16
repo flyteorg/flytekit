@@ -16,6 +16,7 @@ from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.admin.task import TaskTemplate as _taskTemplate
 from flytekit.sdk import tasks as _sdk_tasks
 from flytekit.sdk import workflow as _sdk_workflow
 from flytekit.sdk.tasks import inputs, outputs, python_task
@@ -135,7 +136,7 @@ def test_basic_workflow_promote(mock_task_fetch):
         {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3")},
     )
     # Since the promotion of a workflow requires retrieving the task from Admin, we mock the SdkTask to return
-    task_template = _task_model.TaskTemplate(
+    task_template = _taskTemplate(
         _identifier.Identifier(
             _identifier.ResourceType.TASK,
             "project",

@@ -183,7 +183,7 @@ class SdkWorkflow(
             sub_workflows: Provide a list of WorkflowTemplate
             models (should be returned from Admin as part of the admin CompiledWorkflowClosure. Relevant sub-workflows
             should always be provided.
-        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.task.TaskTemplate] tasks: Same as above
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.admin.task.TaskTemplate] tasks: Same as above
             but for tasks. If tasks are not provided relevant TaskTemplates will be fetched from Admin
         :rtype: SdkWorkflow
         """

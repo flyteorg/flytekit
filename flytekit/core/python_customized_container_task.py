@@ -14,6 +14,7 @@ from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
+from flytekit.models.admin.task import TaskTemplate as _taskTemplate
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.security import Secret, SecurityContext
 from flytekit.tools.module_loader import load_object_from_module
@@ -130,7 +131,7 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         return self._task_resolver
 
     @property
-    def task_template(self) -> Optional[_task_model.TaskTemplate]:
+    def task_template(self) -> Optional[_taskTemplate]:
         """
         Override the base class implementation to serialize on first call.
         """
@@ -175,13 +176,13 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
             memory_limit=self.resources.limits.mem,
         )
 
-    def serialize_to_model(self, settings: SerializationSettings) -> _task_model.TaskTemplate:
+    def serialize_to_model(self, settings: SerializationSettings) -> _taskTemplate:
         # This doesn't get called from translator unfortunately. Will need to move the translator to use the model
         # objects directly first.
         # Note: This doesn't settle the issue of duplicate registrations. We'll need to figure that out somehow.
         # TODO: After new control plane classes are in, promote the template to a FlyteTask, so that authors of
         #  customized-container tasks have a familiar thing to work with.
-        obj = _task_model.TaskTemplate(
+        obj = _taskTemplate(
             identifier_models.Identifier(
                 identifier_models.ResourceType.TASK, settings.project, settings.domain, self.name, settings.version
             ),
@@ -233,7 +234,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")  # type: ignore
         ctx.file_access.get_data(loader_args[0], task_template_local_path)
         task_template_proto = common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
-        task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
+        task_template_model = _taskTemplate.from_flyte_idl(task_template_proto)
 
         executor_class = load_object_from_module(loader_args[1])
         return ExecutableTemplateShimTask(task_template_model, executor_class)

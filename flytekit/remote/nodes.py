@@ -13,7 +13,7 @@ from flytekit.core.promise import NodeOutput
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import node_execution as _node_execution_models
-from flytekit.models import task as _task_model
+from flytekit.models.admin import task as _task_model
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import component_nodes as _component_nodes

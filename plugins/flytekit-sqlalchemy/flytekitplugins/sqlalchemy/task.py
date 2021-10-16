@@ -9,7 +9,7 @@ from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
-from flytekit.models import task as task_models
+from flytekit.models.admin import task as task_models
 from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
 

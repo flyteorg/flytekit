@@ -15,9 +15,8 @@ from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import task as task_models
+from flytekit.models.admin import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
@@ -36,7 +35,7 @@ FlyteLocalEntity = Union[
     ReferenceEntity,
 ]
 FlyteControlPlaneEntity = Union[
-    _taskSpec,
+    task_models.TaskSpec,
     _launch_plan_models.LaunchPlan,
     admin_workflow_models.WorkflowSpec,
     workflow_model.Node,
@@ -93,7 +92,7 @@ def get_serializable_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
-) -> _taskSpec:
+) -> task_models.TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
         settings.project,
@@ -122,7 +121,7 @@ def get_serializable_task(
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
 
-    return _taskSpec(template=tt)
+    return task_models.TaskSpec(template=tt)
 
 
 def get_serializable_workflow(
@@ -422,7 +421,7 @@ def gather_dependent_entities(
     launch_plan_specs: Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec] = {}
 
     for cp_entity in serialized.values():
-        if isinstance(cp_entity, _taskSpec):
+        if isinstance(cp_entity, task_models.TaskSpec):
             task_templates[cp_entity.template.id] = cp_entity.template
         elif isinstance(cp_entity, _launch_plan_models.LaunchPlan):
             launch_plan_specs[cp_entity.id] = cp_entity.spec

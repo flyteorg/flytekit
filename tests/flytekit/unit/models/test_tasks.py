@@ -12,6 +12,7 @@ from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.admin.task import TaskTemplate as _taskTemplate
 from flytekit.models.admin.task import Task as _task
 from tests.flytekit.common import parameterizers
 
@@ -93,7 +94,7 @@ def test_task_metadata():
 )
 def test_task_template(in_tuple):
     task_metadata, interfaces, resources = in_tuple
-    obj = task.TaskTemplate(
+    obj = _taskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",
         task_metadata,
@@ -121,7 +122,7 @@ def test_task_template(in_tuple):
     assert obj.container.image == "my_image"
     assert obj.container.resources == resources
     assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
-        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
+        _taskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
     )
     assert obj.config == {"a": "b"}
 
@@ -166,14 +167,14 @@ def test_task_template__k8s_pod_target():
     assert obj.k8s_pod.metadata == task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"})
     assert obj.k8s_pod.pod_spec == {"str": "val", "int": 1}
     assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
-        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
+        _taskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
     )
     assert obj.config == {"a": "b"}
 
 
 @pytest.mark.parametrize("sec_ctx", parameterizers.LIST_OF_SECURITY_CONTEXT)
 def test_task_template_security_context(sec_ctx):
-    obj = task.TaskTemplate(
+    obj = _taskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",
         parameterizers.LIST_OF_TASK_METADATA[0],
@@ -191,7 +192,7 @@ def test_task_template_security_context(sec_ctx):
     )
     assert obj.security_context == sec_ctx
     assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
-        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
+        _taskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
     )
 
 

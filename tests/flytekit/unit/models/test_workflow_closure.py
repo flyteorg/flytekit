@@ -9,6 +9,7 @@ from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.admin.task import TaskTemplate as _taskTemplate
 
 
 def test_workflow_closure():
@@ -42,7 +43,7 @@ def test_workflow_closure():
     cpu_resource = _task.Resources.ResourceEntry(_task.Resources.ResourceName.CPU, "1")
     resources = _task.Resources(requests=[cpu_resource], limits=[cpu_resource])
 
-    task = _task.TaskTemplate(
+    task = _taskTemplate(
         _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",
         task_metadata,

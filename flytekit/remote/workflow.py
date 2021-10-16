@@ -7,7 +7,7 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import task as _task_models
+from flytekit.models.admin import task as _task_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.remote import identifier as _identifier
