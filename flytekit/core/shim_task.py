@@ -5,7 +5,7 @@ from typing import Any, Generic, Type, TypeVar, Union
 from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager, logger
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models.core import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.admin import task as _task_model
 
