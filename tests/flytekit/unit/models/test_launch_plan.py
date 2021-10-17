@@ -2,6 +2,7 @@ from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 from flytekit.models import common, interface, launch_plan, literals, types
 from flytekit.models.admin import schedule
+from flytekit.models.admin import common as _common
 from flytekit.models.core import identifier
 
 
@@ -54,12 +55,12 @@ def test_launch_plan_spec():
         {"a": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1)))}
     )
 
-    labels_model = common.Labels({})
-    annotations_model = common.Annotations({"my": "annotation"})
+    labels_model = _common.Labels({})
+    annotations_model = _common.Annotations({"my": "annotation"})
 
     auth_role_model = common.AuthRole(assumable_iam_role="my:iam:role")
-    raw_data_output_config = common.RawOutputDataConfig("s3://bucket")
-    empty_raw_data_output_config = common.RawOutputDataConfig("")
+    raw_data_output_config = _common.RawOutputDataConfig("s3://bucket")
+    empty_raw_data_output_config = _common.RawOutputDataConfig("")
     max_parallelism = 100
 
     lp_spec_raw_output_prefixed = launch_plan.LaunchPlanSpec(
@@ -107,10 +108,10 @@ def test_old_style_role():
         {"a": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1)))}
     )
 
-    labels_model = common.Labels({})
-    annotations_model = common.Annotations({"my": "annotation"})
+    labels_model = _common.Labels({})
+    annotations_model = _common.Annotations({"my": "annotation"})
 
-    raw_data_output_config = common.RawOutputDataConfig("s3://bucket")
+    raw_data_output_config = _common.RawOutputDataConfig("s3://bucket")
 
     old_role = _launch_plan_idl.Auth(kubernetes_service_account="my:service:account")
 

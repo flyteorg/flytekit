@@ -4,7 +4,7 @@ from flytekit.core import notification
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.models import common as _common_model
+from flytekit.models.admin import common as _common_model
 from flytekit.models.core import execution as _execution_model
 
 _workflow_execution_succeeded = _execution_model.WorkflowExecutionPhase.SUCCEEDED

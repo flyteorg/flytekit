@@ -4,6 +4,7 @@ from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models.admin import schedule as _schedule
+from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier
 
 
@@ -12,7 +13,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         """
 
         :param flytekit.models.schedule.Schedule schedule: Schedule to execute the Launch Plan
-        :param list[flytekit.models.common.Notification] notifications: List of notifications based on
+        :param list[flytekit.models.admin.common.Notification] notifications: List of notifications based on
             execution status transitions
         """
         self._schedule = schedule
@@ -30,7 +31,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
     def notifications(self):
         """
         List of notifications based on Execution status transitions
-        :rtype: list[flytekit.models.common.Notification]
+        :rtype: list[flytekit.models.admin.common.Notification]
         """
         return self._notifications
 
@@ -54,7 +55,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
             schedule=_schedule.Schedule.from_flyte_idl(pb2_object.schedule)
             if pb2_object.HasField("schedule")
             else None,
-            notifications=[_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
+            notifications=[_admin_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
         )
 
 
@@ -114,10 +115,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         entity_metadata,
         default_inputs,
         fixed_inputs,
-        labels: _common.Labels,
-        annotations: _common.Annotations,
+        labels: _admin_common.Labels,
+        annotations: _admin_common.Annotations,
         auth_role: _common.AuthRole,
-        raw_output_data_config: _common.RawOutputDataConfig,
+        raw_output_data_config: _admin_common.RawOutputDataConfig,
         max_parallelism=None,
     ):
         """
@@ -129,10 +130,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         :param flytekit.models.literals.LiteralMap fixed_inputs: Fixed, non-overridable inputs for the Launch Plan
         :param flytekit.models.common.Labels:
             Any custom kubernetes labels to apply to workflows executed by this launch plan.
-        :param flytekit.models.common.Annotations annotations:
+        :param flytekit.models.admin.common.Annotations annotations:
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
         :param flytekit.models.common.AuthRole auth_role: The auth method with which to execute the workflow.
-        :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
+        :param flytekit.models.admin.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
             data like Blobs and Schemas.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
@@ -180,18 +181,18 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._fixed_inputs
 
     @property
-    def labels(self) -> _common.Labels:
+    def labels(self) -> _admin_common.Labels:
         """
         The labels to execute the workflow with
-        :rtype: flytekit.models.common.Labels
+        :rtype: flytekit.models.admin.common.Labels
         """
         return self._labels
 
     @property
-    def annotations(self) -> _common.Annotations:
+    def annotations(self) -> _admin_common.Annotations:
         """
         The annotations to execute the workflow with
-        :rtype: flytekit.models.common.Annotations
+        :rtype: flytekit.models.admin.common.Annotations
         """
         return self._annotations
 
@@ -207,7 +208,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def raw_output_data_config(self):
         """
         Where to store offloaded data like Blobs and Schemas
-        :rtype: flytekit.models.common.RawOutputDataConfig
+        :rtype: flytekit.models.admin.common.RawOutputDataConfig
         """
         return self._raw_output_data_config
 
@@ -253,10 +254,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             entity_metadata=LaunchPlanMetadata.from_flyte_idl(pb2.entity_metadata),
             default_inputs=_interface.ParameterMap.from_flyte_idl(pb2.default_inputs),
             fixed_inputs=_literals.LiteralMap.from_flyte_idl(pb2.fixed_inputs),
-            labels=_common.Labels.from_flyte_idl(pb2.labels),
-            annotations=_common.Annotations.from_flyte_idl(pb2.annotations),
+            labels=_admin_common.Labels.from_flyte_idl(pb2.labels),
+            annotations=_admin_common.Annotations.from_flyte_idl(pb2.annotations),
             auth_role=auth_role,
-            raw_output_data_config=_common.RawOutputDataConfig.from_flyte_idl(pb2.raw_output_data_config),
+            raw_output_data_config=_admin_common.RawOutputDataConfig.from_flyte_idl(pb2.raw_output_data_config),
             max_parallelism=pb2.max_parallelism,
         )
 

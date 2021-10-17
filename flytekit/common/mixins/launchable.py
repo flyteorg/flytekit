@@ -28,8 +28,8 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
         :param list[flytekit.common.notifications.Notification] notification_overrides: [Optional] If specified, these
             are the notifications that will be honored for this execution.  An empty list signals to disable all
             notifications.
-        :param flytekit.models.common.Labels label_overrides:
-        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.admin.common.Labels label_overrides:
+        :param flytekit.models.admin.common.Annotations annotation_overrides:
         :param flytekit.models.common.AuthRole auth_role:
         :rtype: T
 
@@ -97,8 +97,8 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
         :param list[flytekit.common.notifications.Notification] notification_overrides: [Optional] If specified, these
             are the notifications that will be honored for this execution.  An empty list signals to disable all
             notifications.
-        :param flytekit.models.common.Labels label_overrides:
-        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.admin.common.Labels label_overrides:
+        :param flytekit.models.admin.common.Annotations annotation_overrides:
         :param flytekit.models.common.AuthRole auth_role:
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier:
         """

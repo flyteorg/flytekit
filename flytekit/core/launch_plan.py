@@ -13,6 +13,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.admin import schedule as _schedule_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.admin import common as _admin_common
 
 
 class LaunchPlan(object):
@@ -109,10 +110,10 @@ class LaunchPlan(object):
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        notifications: List[_admin_common.Notification] = None,
+        labels: _admin_common.Labels = None,
+        annotations: _admin_common.Annotations = None,
+        raw_output_data_config: _admin_common.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
     ) -> LaunchPlan:
@@ -175,10 +176,10 @@ class LaunchPlan(object):
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        notifications: List[_admin_common.Notification] = None,
+        labels: _admin_common.Labels = None,
+        annotations: _admin_common.Annotations = None,
+        raw_output_data_config: _admin_common.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
     ) -> LaunchPlan:
@@ -275,10 +276,10 @@ class LaunchPlan(object):
         parameters: _interface_models.ParameterMap,
         fixed_inputs: _literal_models.LiteralMap,
         schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        notifications: List[_admin_common.Notification] = None,
+        labels: _admin_common.Labels = None,
+        annotations: _admin_common.Annotations = None,
+        raw_output_data_config: _admin_common.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
     ):
@@ -334,19 +335,19 @@ class LaunchPlan(object):
         return self._schedule
 
     @property
-    def notifications(self) -> List[_common_models.Notification]:
+    def notifications(self) -> List[_admin_common.Notification]:
         return self._notifications
 
     @property
-    def labels(self) -> Optional[_common_models.Labels]:
+    def labels(self) -> Optional[_admin_common.Labels]:
         return self._labels
 
     @property
-    def annotations(self) -> Optional[_common_models.Annotations]:
+    def annotations(self) -> Optional[_admin_common.Annotations]:
         return self._annotations
 
     @property
-    def raw_output_data_config(self) -> Optional[_common_models.RawOutputDataConfig]:
+    def raw_output_data_config(self) -> Optional[_admin_common.RawOutputDataConfig]:
         return self._raw_output_data_config
 
     @property

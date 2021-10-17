@@ -17,6 +17,7 @@ from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.admin import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.admin import common as _common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
@@ -206,10 +207,10 @@ def get_serializable_launch_plan(
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
-        labels=entity.labels or _common_models.Labels({}),
-        annotations=entity.annotations or _common_models.Annotations({}),
+        labels=entity.labels or _common.Labels({}),
+        annotations=entity.annotations or _common.Annotations({}),
         auth_role=entity._auth_role or _common_models.AuthRole(),
-        raw_output_data_config=entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
+        raw_output_data_config=entity.raw_output_data_config or _common.RawOutputDataConfig(""),
         max_parallelism=entity.max_parallelism,
     )
     lp_id = _identifier_model.Identifier(

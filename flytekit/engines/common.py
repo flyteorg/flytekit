@@ -219,10 +219,10 @@ class BaseLaunchPlanLauncher(object, metaclass=_common_models.FlyteABCMeta):
         :param Text domain:
         :param Text name:
         :param flytekit.models.literals.LiteralMap inputs: The inputs to pass
-        :param list[flytekit.models.common.Notification] notification_overrides: If specified, override the
+        :param list[flytekit.models.admin.common.Notification] notification_overrides: If specified, override the
             notifications.
-        :param flytekit.models.common.Labels label_overrides:
-        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.admin.common.Labels label_overrides:
+        :param flytekit.models.admin.common.Annotations annotation_overrides:
         :rtype: flytekit.models.execution.Execution
         """
         pass
@@ -283,10 +283,10 @@ class BaseTaskExecutor(object, metaclass=_common_models.FlyteABCMeta):
         :param Text domain:
         :param Text name:
         :param flytekit.models.literals.LiteralMap inputs: The inputs to pass
-        :param list[flytekit.models.common.Notification] notification_overrides: If specified, override the
+        :param list[flytekit.models.admin.common.Notification] notification_overrides: If specified, override the
             notifications.
-        :param flytekit.models.common.Labels label_overrides:
-        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.admin.common.Labels label_overrides:
+        :param flytekit.models.admin.common.Annotations annotation_overrides:
         :param flytekit.models.common.AuthRole auth_role:
         :rtype: flytekit.models.execution.Execution
         """

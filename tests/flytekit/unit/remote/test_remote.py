@@ -18,6 +18,7 @@ from flytekit.models.interface import TypedInterface, Variable
 from flytekit.models.launch_plan import LaunchPlan
 from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
 from flytekit.models.admin.task import Task
+from flytekit.models.admin import common as _common
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote import FlyteWorkflow
 from flytekit.remote.remote import FlyteRemote
@@ -153,8 +154,8 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url,
     def local_assertions(*args, **kwargs):
         execution_spec = args[3]
         assert execution_spec.auth_role.kubernetes_service_account == "svc"
-        assert execution_spec.labels == common_models.Labels({"a": "my_label_value"})
-        assert execution_spec.annotations == common_models.Annotations({"b": "my_annotation_value"})
+        assert execution_spec.labels == _common.Labels({"a": "my_label_value"})
+        assert execution_spec.annotations == _common.Annotations({"b": "my_annotation_value"})
 
     mock_client.create_execution.side_effect = local_assertions
 
@@ -165,8 +166,8 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url,
         inputs={},
         project="proj",
         domain="dev",
-        labels=common_models.Labels({"a": "my_label_value"}),
-        annotations=common_models.Annotations({"b": "my_annotation_value"}),
+        labels=_common.Labels({"a": "my_label_value"}),
+        annotations=_common.Annotations({"b": "my_annotation_value"}),
         auth_role=common_models.AuthRole(kubernetes_service_account="svc"),
     )
 

@@ -17,6 +17,7 @@ from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.admin import schedule as _schedule_models
+from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 
@@ -246,9 +247,9 @@ class SdkRunnableWorkflow(SdkWorkflow):
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_models.Schedule = None,
         role: str = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
+        notifications: List[_admin_common.Notification] = None,
+        labels: _admin_common.Labels = None,
+        annotations: _admin_common.Annotations = None,
         assumable_iam_role: str = None,
         kubernetes_service_account: str = None,
         raw_output_data_prefix: str = None,
@@ -259,10 +260,10 @@ class SdkRunnableWorkflow(SdkWorkflow):
         :param dict[Text,T] fixed_inputs:
         :param flytekit.models.schedule.Schedule schedule: A schedule on which to execute this launch plan.
         :param Text role: Deprecated. Use assumable_iam_role instead.
-        :param list[flytekit.models.common.Notification] notifications: A list of notifications to enact by default for
+        :param list[flytekit.models.admin.common.Notification] notifications: A list of notifications to enact by default for
         this launch plan.
-        :param flytekit.models.common.Labels labels:
-        :param flytekit.models.common.Annotations annotations:
+        :param flytekit.models.admin.common.Labels labels:
+        :param flytekit.models.admin.common.Annotations annotations:
         :param cls: This parameter can be used by users to define an extension of a launch plan to instantiate.  The
         class provided should be a subclass of flytekit.common.launch_plan.SdkLaunchPlan.
         :param Text assumable_iam_role: The IAM role to execute the workflow with.
@@ -284,7 +285,7 @@ class SdkRunnableWorkflow(SdkWorkflow):
             kubernetes_service_account=kubernetes_service_account,
         )
 
-        raw_output_config = _common_models.RawOutputDataConfig(raw_output_data_prefix or "")
+        raw_output_config = _admin_common.RawOutputDataConfig(raw_output_data_prefix or "")
 
         return _launch_plan.SdkRunnableLaunchPlan(
             sdk_workflow=self,

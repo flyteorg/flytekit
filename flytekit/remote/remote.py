@@ -160,7 +160,7 @@ class FlyteRemote(object):
             annotations=None,
             image_config=get_image_config(),
             raw_output_data_config=(
-                common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
+                admin_common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
             ),
         )
 
@@ -172,11 +172,11 @@ class FlyteRemote(object):
         default_domain: typing.Optional[str] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
         auth_role: typing.Optional[common_models.AuthRole] = None,
-        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
-        labels: typing.Optional[common_models.Labels] = None,
-        annotations: typing.Optional[common_models.Annotations] = None,
+        notifications: typing.Optional[typing.List[admin_common_models.Notification]] = None,
+        labels: typing.Optional[admin_common_models.Labels] = None,
+        annotations: typing.Optional[admin_common_models.Annotations] = None,
         image_config: typing.Optional[ImageConfig] = None,
-        raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
+        raw_output_data_config: typing.Optional[admin_common_models.RawOutputDataConfig] = None,
     ):
         """Initialize a FlyteRemote object.
 
@@ -286,11 +286,11 @@ class FlyteRemote(object):
         insecure: typing.Optional[bool] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
         auth_role: typing.Optional[common_models.AuthRole] = None,
-        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
-        labels: typing.Optional[common_models.Labels] = None,
-        annotations: typing.Optional[common_models.Annotations] = None,
+        notifications: typing.Optional[typing.List[admin_common_models.Notification]] = None,
+        labels: typing.Optional[admin_common_models.Labels] = None,
+        annotations: typing.Optional[admin_common_models.Annotations] = None,
         image_config: typing.Optional[ImageConfig] = None,
-        raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
+        raw_output_data_config: typing.Optional[admin_common_models.RawOutputDataConfig] = None,
     ):
         """Create a copy of the remote object, overriding the specified attributes."""
         new_remote = deepcopy(self)
@@ -580,7 +580,7 @@ class FlyteRemote(object):
                 self.auth_role.assumable_iam_role, self.auth_role.kubernetes_service_account
             )
         if self.raw_output_data_config:
-            serialized_lp.spec._raw_output_data_config = common_models.RawOutputDataConfig(
+            serialized_lp.spec._raw_output_data_config = admin_common_models.RawOutputDataConfig(
                 self.raw_output_data_config.output_location_prefix
             )
 
@@ -658,8 +658,8 @@ class FlyteRemote(object):
         domain: str,
         execution_name: typing.Optional[str] = None,
         wait: bool = False,
-        labels: typing.Optional[common_models.Labels] = None,
-        annotations: typing.Optional[common_models.Annotations] = None,
+        labels: typing.Optional[admin_common_models.Labels] = None,
+        annotations: typing.Optional[admin_common_models.Annotations] = None,
         auth_role: typing.Optional[common_models.AuthRole] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.

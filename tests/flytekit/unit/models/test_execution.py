@@ -1,11 +1,11 @@
 import pytest
 
-from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution
 from flytekit.models import literals as _literals
 from flytekit.models.core import execution as _core_exec
 from flytekit.models.core import identifier as _identifier
 from tests.flytekit.common import parameterizers as _parameterizers
+from flytekit.models.admin import common as _common_models
 
 _INPUT_MAP = _literals.LiteralMap(
     {"a": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1)))}

@@ -20,6 +20,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.admin import workflow as _admin_workflow_model, schedule as _schedule_models
+from flytekit.models.admin import common as _common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 
@@ -281,10 +282,10 @@ class SdkWorkflow(
             ),
             default_inputs=_interface_models.ParameterMap({}),
             fixed_inputs=_literal_models.LiteralMap(literals={}),
-            labels=_common_models.Labels({}),
-            annotations=_common_models.Annotations({}),
+            labels=_common.Labels({}),
+            annotations=_common.Annotations({}),
             auth_role=auth_role,
-            raw_output_data_config=_common_models.RawOutputDataConfig(""),
+            raw_output_data_config=_common.RawOutputDataConfig(""),
         )
 
     @_exception_scopes.system_entry_point

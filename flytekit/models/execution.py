@@ -7,6 +7,7 @@ from flytekit.models import common as _common_models
 from flytekit.models import literals as _literals_models
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.admin import common as _admin_common
 
 
 class ExecutionMetadata(_common_models.FlyteIdlEntity):
@@ -86,8 +87,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param ExecutionMetadata metadata: The metadata to be associated with this execution
         :param NotificationList notifications: List of notifications for this execution.
         :param bool disable_all: If true, all notifications should be disabled.
-        :param flytekit.models.common.Labels labels: Labels to apply to the execution.
-        :param flytekit.models.common.Annotations annotations: Annotations to apply to the execution
+        :param flytekit.models.admin.common.Labels labels: Labels to apply to the execution.
+        :param flytekit.models.admin.common.Annotations annotations: Annotations to apply to the execution
         :param flytekit.models.common.AuthRole auth_role: The authorization method with which to execute the workflow.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
@@ -98,8 +99,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._metadata = metadata
         self._notifications = notifications
         self._disable_all = disable_all
-        self._labels = labels or _common_models.Labels({})
-        self._annotations = annotations or _common_models.Annotations({})
+        self._labels = labels or _admin_common.Labels({})
+        self._annotations = annotations or _admin_common.Annotations({})
         self._auth_role = auth_role or _common_models.AuthRole()
         self._max_parallelism = max_parallelism
 
@@ -135,14 +136,14 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     @property
     def labels(self):
         """
-        :rtype: flytekit.models.common.Labels
+        :rtype: flytekit.models.admin.common.Labels
         """
         return self._labels
 
     @property
     def annotations(self):
         """
-        :rtype: flytekit.models.common.Annotations
+        :rtype: flytekit.models.admin.common.Annotations
         """
         return self._annotations
 
@@ -183,8 +184,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             metadata=ExecutionMetadata.from_flyte_idl(p.metadata),
             notifications=NotificationList.from_flyte_idl(p.notifications) if p.HasField("notifications") else None,
             disable_all=p.disable_all if p.HasField("disable_all") else None,
-            labels=_common_models.Labels.from_flyte_idl(p.labels),
-            annotations=_common_models.Annotations.from_flyte_idl(p.annotations),
+            labels=_admin_common.Labels.from_flyte_idl(p.labels),
+            annotations=_admin_common.Annotations.from_flyte_idl(p.annotations),
             auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role),
             max_parallelism=p.max_parallelism,
         )
@@ -367,14 +368,14 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
 class NotificationList(_common_models.FlyteIdlEntity):
     def __init__(self, notifications):
         """
-        :param list[flytekit.models.common.Notification] notifications: A simple list of notifications.
+        :param list[flytekit.models.admin.common.Notification] notifications: A simple list of notifications.
         """
         self._notifications = notifications
 
     @property
     def notifications(self):
         """
-        :rtype: list[flytekit.models.common.Notification]
+        :rtype: list[flytekit.models.admin.common.Notification]
         """
         return self._notifications
 
@@ -390,7 +391,7 @@ class NotificationList(_common_models.FlyteIdlEntity):
         :param flyteidl.admin.execution_pb2.NotificationList pb2_object:
         :rtype: NotificationList
         """
-        return cls([_common_models.Notification.from_flyte_idl(p) for p in pb2_object.notifications])
+        return cls([_admin_common.Notification.from_flyte_idl(p) for p in pb2_object.notifications])
 
 
 class _CommonDataResponse(_common_models.FlyteIdlEntity):
@@ -401,8 +402,8 @@ class _CommonDataResponse(_common_models.FlyteIdlEntity):
 
     def __init__(self, inputs, outputs, full_inputs, full_outputs):
         """
-        :param _common_models.UrlBlob inputs:
-        :param _common_models.UrlBlob outputs:
+        :param _admin_common.UrlBlob inputs:
+        :param _admin_common.UrlBlob outputs:
         :param _literals_pb2.LiteralMap full_inputs:
         :param _literals_pb2.LiteralMap full_outputs:
         """
@@ -414,14 +415,14 @@ class _CommonDataResponse(_common_models.FlyteIdlEntity):
     @property
     def inputs(self):
         """
-        :rtype: _common_models.UrlBlob
+        :rtype: _admin_common.UrlBlob
         """
         return self._inputs
 
     @property
     def outputs(self):
         """
-        :rtype: _common_models.UrlBlob
+        :rtype: _admin_common.UrlBlob
         """
         return self._outputs
 
@@ -448,8 +449,8 @@ class WorkflowExecutionGetDataResponse(_CommonDataResponse):
         :rtype: WorkflowExecutionGetDataResponse
         """
         return cls(
-            inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
-            outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            inputs=_admin_common.UrlBlob.from_flyte_idl(pb2_object.inputs),
+            outputs=_admin_common.UrlBlob.from_flyte_idl(pb2_object.outputs),
             full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
             full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )
@@ -474,8 +475,8 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
         :rtype: TaskExecutionGetDataResponse
         """
         return cls(
-            inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
-            outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            inputs=_admin_common.UrlBlob.from_flyte_idl(pb2_object.inputs),
+            outputs=_admin_common.UrlBlob.from_flyte_idl(pb2_object.outputs),
             full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
             full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )
@@ -500,8 +501,8 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
         :rtype: NodeExecutionGetDataResponse
         """
         return cls(
-            inputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.inputs),
-            outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
+            inputs=_admin_common.UrlBlob.from_flyte_idl(pb2_object.inputs),
+            outputs=_admin_common.UrlBlob.from_flyte_idl(pb2_object.outputs),
             full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
             full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
         )

@@ -26,6 +26,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.admin import schedule as _schedule_model
+from flytekit.models.admin import common as _common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
@@ -225,14 +226,14 @@ class SdkLaunchPlan(
     @property
     def raw_output_data_config(self):
         """
-        :rtype: flytekit.models.common.RawOutputDataConfig
+        :rtype: flytekit.models.admin.common.RawOutputDataConfig
         """
         raw_output_data_config = super(SdkLaunchPlan, self).raw_output_data_config
         if raw_output_data_config is not None and raw_output_data_config.output_location_prefix != "":
             return raw_output_data_config
 
         # If it was not set explicitly then let's use the value found in the configuration.
-        return _common_models.RawOutputDataConfig(_auth_config.RAW_OUTPUT_DATA_PREFIX.get())
+        return _common.RawOutputDataConfig(_auth_config.RAW_OUTPUT_DATA_PREFIX.get())
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -310,8 +311,8 @@ class SdkLaunchPlan(
         :param list[flytekit.common.notifications.Notification] notification_overrides: [Optional] If specified, these
             are the notifications that will be honored for this execution.  An empty list signals to disable all
             notifications.
-        :param flytekit.models.common.Labels label_overrides:
-        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.admin.common.Labels label_overrides:
+        :param flytekit.models.admin.common.Annotations annotation_overrides:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
         :param flytekit.models.common.AuthRole auth_role:
         """
@@ -408,13 +409,13 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
         :param Text role: Deprecated. IAM role to execute this launch plan with.
         :param flytekit.models.schedule.Schedule: Schedule to apply to this workflow.
         :param list[flytekit.models.common.Notification]: List of notifications to apply to this launch plan.
-        :param flytekit.models.common.Labels labels: Any custom kubernetes labels to apply to workflows executed by this
+        :param flytekit.models.admin.common.Labels labels: Any custom kubernetes labels to apply to workflows executed by this
             launch plan.
-        :param flytekit.models.common.Annotations annotations: Any custom kubernetes annotations to apply to workflows
+        :param flytekit.models.admin.common.Annotations annotations: Any custom kubernetes annotations to apply to workflows
             executed by this launch plan.
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
         :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
-        :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
+        :param flytekit.models.admin.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
         """
         if role and auth_role:
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
@@ -446,10 +447,10 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
                     if k in fixed_inputs
                 },
             ),
-            labels or _common_models.Labels({}),
-            annotations or _common_models.Annotations({}),
+            labels or _common.Labels({}),
+            annotations or _common.Annotations({}),
             auth_role,
-            raw_output_data_config or _common_models.RawOutputDataConfig(""),
+            raw_output_data_config or _common.RawOutputDataConfig(""),
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},
