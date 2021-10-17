@@ -1,4 +1,4 @@
-from flytekit.models import matchable_resource
+from flytekit.models.admin import matchable_resource
 
 
 def test_cluster_resource_attributes():
