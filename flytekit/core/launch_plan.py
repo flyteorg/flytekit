@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Type
 
+import flytekit.models.admin.launch_plan
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_inputs_to_parameters, transform_signature_to_interface
@@ -114,7 +115,7 @@ class LaunchPlan(object):
         labels: _admin_common.Labels = None,
         annotations: _admin_common.Annotations = None,
         raw_output_data_config: _admin_common.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
+        auth_role: flytekit.models.admin.launch_plan.AuthRole = None,
         max_parallelism: int = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
@@ -180,7 +181,7 @@ class LaunchPlan(object):
         labels: _admin_common.Labels = None,
         annotations: _admin_common.Annotations = None,
         raw_output_data_config: _admin_common.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
+        auth_role: flytekit.models.admin.launch_plan.AuthRole = None,
         max_parallelism: int = None,
     ) -> LaunchPlan:
         """
@@ -280,7 +281,7 @@ class LaunchPlan(object):
         labels: _admin_common.Labels = None,
         annotations: _admin_common.Annotations = None,
         raw_output_data_config: _admin_common.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
+        auth_role: flytekit.models.admin.launch_plan.AuthRole = None,
         max_parallelism: int = None,
     ):
         self._name = name

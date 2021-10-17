@@ -15,10 +15,9 @@ from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
-from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import node_execution as _node_execution
 from flytekit.models import project as _project
-from flytekit.models.admin import task as _task
+from flytekit.models.admin import task as _task, launch_plan as _launch_plan
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.admin import task_execution as _task_execution
 from flytekit.models.admin import workflow as _workflow

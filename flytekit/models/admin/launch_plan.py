@@ -1,10 +1,11 @@
-from flyteidl.admin import launch_plan_pb2 as _launch_plan
+from flyteidl.admin import launch_plan_pb2 as _launch_plan, common_pb2 as _common_pb2
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models.admin import schedule as _schedule
 from flytekit.models.admin import common as _admin_common
+from flytekit.models.common import FlyteIdlEntity
 from flytekit.models.core import identifier as _identifier
 
 
@@ -59,10 +60,9 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         )
 
 
-class Auth(_common.FlyteIdlEntity):
+class AuthRole(FlyteIdlEntity):
     def __init__(self, assumable_iam_role=None, kubernetes_service_account=None):
         """
-        DEPRECATED. Do not use. Use flytekit.models.common.AuthRole instead
         At most one of assumable_iam_role or kubernetes_service_account can be set.
         :param Text assumable_iam_role: IAM identity with set permissions policies.
         :param Text kubernetes_service_account: Provides an identity for workflow execution resources. Flyte deployment
@@ -91,7 +91,7 @@ class Auth(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.Auth
         """
-        return _launch_plan.Auth(
+        return _common_pb2.AuthRole(
             assumable_iam_role=self.assumable_iam_role if self.assumable_iam_role else None,
             kubernetes_service_account=self.kubernetes_service_account if self.kubernetes_service_account else None,
         )
@@ -117,7 +117,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         fixed_inputs,
         labels: _admin_common.Labels,
         annotations: _admin_common.Annotations,
-        auth_role: _common.AuthRole,
+        auth_role: AuthRole,
         raw_output_data_config: _admin_common.RawOutputDataConfig,
         max_parallelism=None,
     ):
@@ -132,7 +132,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             Any custom kubernetes labels to apply to workflows executed by this launch plan.
         :param flytekit.models.admin.common.Annotations annotations:
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.common.AuthRole auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.admin.launch_plan.AuthRole auth_role: The auth method with which to execute the workflow.
         :param flytekit.models.admin.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
             data like Blobs and Schemas.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
@@ -200,7 +200,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def auth_role(self):
         """
         The authorization method with which to execute the workflow.
-        :rtype: flytekit.models.common.AuthRole
+        :rtype: flytekit.models.admin.launch_plan.AuthRole
         """
         return self._auth_role
 
@@ -241,13 +241,13 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         auth_role = None
         # First check the newer field, auth_role.
         if pb2.auth_role is not None and (pb2.auth_role.assumable_iam_role or pb2.auth_role.kubernetes_service_account):
-            auth_role = _common.AuthRole.from_flyte_idl(pb2.auth_role)
+            auth_role = AuthRole.from_flyte_idl(pb2.auth_role)
         # Fallback to the deprecated field.
         elif pb2.auth is not None:
             if pb2.auth.assumable_iam_role:
-                auth_role = _common.AuthRole(assumable_iam_role=pb2.auth.assumable_iam_role)
+                auth_role = AuthRole(assumable_iam_role=pb2.auth.assumable_iam_role)
             else:
-                auth_role = _common.AuthRole(assumable_iam_role=pb2.auth.kubernetes_service_account)
+                auth_role = AuthRole(assumable_iam_role=pb2.auth.kubernetes_service_account)
 
         return cls(
             workflow_id=_identifier.Identifier.from_flyte_idl(pb2.workflow_id),

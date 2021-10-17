@@ -9,9 +9,8 @@ from flytekit.common.exceptions import scopes
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.engines.flyte import engine
 from flytekit.models import execution as _execution_models
-from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals
-from flytekit.models.admin import task as _task_models
+from flytekit.models.admin import task as _task_models, launch_plan as _launch_plan_models
 from flytekit.models.admin import common as _common_models
 from flytekit.models.core import errors, identifier
 from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier

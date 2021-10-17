@@ -26,9 +26,8 @@ from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import WorkflowBase
-from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.admin.task import TaskSpec as _taskSpec
-from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.admin import workflow as admin_workflow_models, launch_plan as _launch_plan_models
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order

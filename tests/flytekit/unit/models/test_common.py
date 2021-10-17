@@ -1,3 +1,4 @@
+import flytekit.models.admin.launch_plan
 from flytekit.models import common as _common
 from flytekit.models.core import execution as _execution
 from flytekit.models.admin import common as _admin_common
@@ -71,22 +72,22 @@ def test_annotations():
 
 
 def test_auth_role():
-    obj = _common.AuthRole(assumable_iam_role="rollie-pollie")
+    obj = flytekit.models.admin.launch_plan.AuthRole(assumable_iam_role="rollie-pollie")
     assert obj.assumable_iam_role == "rollie-pollie"
     assert not obj.kubernetes_service_account
-    obj2 = _common.AuthRole.from_flyte_idl(obj.to_flyte_idl())
+    obj2 = flytekit.models.admin.launch_plan.AuthRole.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
-    obj = _common.AuthRole(kubernetes_service_account="service-account-name")
+    obj = flytekit.models.admin.launch_plan.AuthRole(kubernetes_service_account="service-account-name")
     assert obj.kubernetes_service_account == "service-account-name"
     assert not obj.assumable_iam_role
-    obj2 = _common.AuthRole.from_flyte_idl(obj.to_flyte_idl())
+    obj2 = flytekit.models.admin.launch_plan.AuthRole.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
-    obj = _common.AuthRole(assumable_iam_role="rollie-pollie", kubernetes_service_account="service-account-name")
+    obj = flytekit.models.admin.launch_plan.AuthRole(assumable_iam_role="rollie-pollie", kubernetes_service_account="service-account-name")
     assert obj.assumable_iam_role == "rollie-pollie"
     assert obj.kubernetes_service_account == "service-account-name"
-    obj2 = _common.AuthRole.from_flyte_idl(obj.to_flyte_idl())
+    obj2 = flytekit.models.admin.launch_plan.AuthRole.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
 
@@ -100,7 +101,7 @@ def test_raw_output_data_config():
 def test_auth_role_empty():
     # This test is here to ensure we can serialize launch plans with an empty auth role.
     # Auth roles are empty because they are filled in at registration time.
-    obj = _common.AuthRole()
+    obj = flytekit.models.admin.launch_plan.AuthRole()
     x = obj.to_flyte_idl()
-    y = _common.AuthRole.from_flyte_idl(x)
+    y = flytekit.models.admin.launch_plan.AuthRole.from_flyte_idl(x)
     assert y == obj

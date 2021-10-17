@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
+import flytekit.models.admin.launch_plan
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
@@ -20,7 +21,7 @@ from flytekit.configuration import set_flyte_config_file
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
-from flytekit.models.admin import common as admin_common_models
+from flytekit.models.admin import common as admin_common_models, launch_plan as launch_plan_models
 from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
 
 try:
@@ -42,7 +43,6 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
-from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core.identifier import ResourceType
@@ -151,7 +151,7 @@ class FlyteRemote(object):
             default_project=default_project or PROJECT.get() or None,
             default_domain=default_domain or DOMAIN.get() or None,
             file_access=file_access,
-            auth_role=common_models.AuthRole(
+            auth_role=flytekit.models.admin.launch_plan.AuthRole(
                 assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
                 kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
             ),
@@ -171,7 +171,7 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
-        auth_role: typing.Optional[common_models.AuthRole] = None,
+        auth_role: typing.Optional[flytekit.models.admin.launch_plan.AuthRole] = None,
         notifications: typing.Optional[typing.List[admin_common_models.Notification]] = None,
         labels: typing.Optional[admin_common_models.Labels] = None,
         annotations: typing.Optional[admin_common_models.Annotations] = None,
@@ -285,7 +285,7 @@ class FlyteRemote(object):
         flyte_admin_url: typing.Optional[str] = None,
         insecure: typing.Optional[bool] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
-        auth_role: typing.Optional[common_models.AuthRole] = None,
+        auth_role: typing.Optional[flytekit.models.admin.launch_plan.AuthRole] = None,
         notifications: typing.Optional[typing.List[admin_common_models.Notification]] = None,
         labels: typing.Optional[admin_common_models.Labels] = None,
         annotations: typing.Optional[admin_common_models.Annotations] = None,
@@ -576,7 +576,7 @@ class FlyteRemote(object):
         resolved_identifiers = asdict(self._resolve_identifier_kwargs(entity, project, domain, name, version))
         serialized_lp: launch_plan_models.LaunchPlan = self._serialize(entity, **resolved_identifiers)
         if self.auth_role:
-            serialized_lp.spec._auth_role = common_models.AuthRole(
+            serialized_lp.spec._auth_role = flytekit.models.admin.launch_plan.AuthRole(
                 self.auth_role.assumable_iam_role, self.auth_role.kubernetes_service_account
             )
         if self.raw_output_data_config:
@@ -660,7 +660,7 @@ class FlyteRemote(object):
         wait: bool = False,
         labels: typing.Optional[admin_common_models.Labels] = None,
         annotations: typing.Optional[admin_common_models.Annotations] = None,
-        auth_role: typing.Optional[common_models.AuthRole] = None,
+        auth_role: typing.Optional[flytekit.models.admin.launch_plan.AuthRole] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 

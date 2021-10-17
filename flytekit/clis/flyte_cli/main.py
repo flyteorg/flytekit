@@ -39,13 +39,11 @@ from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.data_proxy import Data
 from flytekit.models import filters as _filters
-from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import literals as _literals
 from flytekit.models import named_entity as _named_entity
-from flytekit.models.admin import common as _admin_common
-from flytekit.models.common import AuthRole as _AuthRole
+from flytekit.models.admin import common as _admin_common, launch_plan as _launch_plan
+from flytekit.models.admin.launch_plan import AuthRole as _AuthRole
 from flytekit.models.admin.common import RawOutputDataConfig as _RawOutputDataConfig
-from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.core import identifier as _core_identifier
 from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata

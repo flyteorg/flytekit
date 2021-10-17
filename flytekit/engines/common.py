@@ -287,7 +287,7 @@ class BaseTaskExecutor(object, metaclass=_common_models.FlyteABCMeta):
             notifications.
         :param flytekit.models.admin.common.Labels label_overrides:
         :param flytekit.models.admin.common.Annotations annotation_overrides:
-        :param flytekit.models.common.AuthRole auth_role:
+        :param flytekit.models.admin.launch_plan.AuthRole auth_role:
         :rtype: flytekit.models.execution.Execution
         """
         pass

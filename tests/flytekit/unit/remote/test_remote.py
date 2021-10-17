@@ -3,6 +3,7 @@ import os
 import pytest
 from mock import MagicMock, patch
 
+import flytekit.models.admin.launch_plan
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import internal
 from flytekit.models import common as common_models
@@ -15,7 +16,7 @@ from flytekit.models.core.identifier import (
 )
 from flytekit.models.execution import Execution
 from flytekit.models.interface import TypedInterface, Variable
-from flytekit.models.launch_plan import LaunchPlan
+from flytekit.models.admin.launch_plan import LaunchPlan
 from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
 from flytekit.models.admin.task import Task
 from flytekit.models.admin import common as _common
@@ -168,7 +169,7 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url,
         domain="dev",
         labels=_common.Labels({"a": "my_label_value"}),
         annotations=_common.Annotations({"b": "my_annotation_value"}),
-        auth_role=common_models.AuthRole(kubernetes_service_account="svc"),
+        auth_role=flytekit.models.admin.launch_plan.AuthRole(kubernetes_service_account="svc"),
     )
 
 

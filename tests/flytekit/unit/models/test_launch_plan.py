@@ -1,7 +1,8 @@
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
-from flytekit.models import common, interface, launch_plan, literals, types
-from flytekit.models.admin import schedule
+import flytekit.models.admin.launch_plan
+from flytekit.models import common, interface, literals, types
+from flytekit.models.admin import schedule, launch_plan
 from flytekit.models.admin import common as _common
 from flytekit.models.core import identifier
 
@@ -58,7 +59,7 @@ def test_launch_plan_spec():
     labels_model = _common.Labels({})
     annotations_model = _common.Annotations({"my": "annotation"})
 
-    auth_role_model = common.AuthRole(assumable_iam_role="my:iam:role")
+    auth_role_model = flytekit.models.admin.launch_plan.AuthRole(assumable_iam_role="my:iam:role")
     raw_data_output_config = _common.RawOutputDataConfig("s3://bucket")
     empty_raw_data_output_config = _common.RawOutputDataConfig("")
     max_parallelism = 100

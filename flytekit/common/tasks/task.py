@@ -7,6 +7,7 @@ import six as _six
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
+import flytekit.models.admin.launch_plan
 from flytekit.common import interface as _interfaces
 from flytekit.common import nodes as _nodes
 from flytekit.common import sdk_bases as _sdk_bases
@@ -370,7 +371,7 @@ class SdkTask(
             notifications.
         :param flytekit.models.admin.common.Labels label_overrides:
         :param flytekit.models.admin.common.Annotations annotation_overrides:
-        :param flytekit.models.common.AuthRole auth_role:
+        :param flytekit.models.admin.launch_plan.AuthRole auth_role:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
         """
         disable_all = notification_overrides == []
@@ -392,7 +393,7 @@ class SdkTask(
                     "Please update your config to use `assumable_iam_role` instead"
                 )
                 assumable_iam_role = _sdk_config.ROLE.get()
-            auth_role = _common_model.AuthRole(
+            auth_role = flytekit.models.admin.launch_plan.AuthRole(
                 assumable_iam_role=assumable_iam_role,
                 kubernetes_service_account=kubernetes_service_account,
             )

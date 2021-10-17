@@ -5,6 +5,7 @@ import uuid as _uuid
 import six as _six
 from deprecated import deprecated as _deprecated
 
+import flytekit.models.admin.launch_plan
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _promises
@@ -23,9 +24,8 @@ from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution_models
 from flytekit.models import interface as _interface_models
-from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import literals as _literal_models
-from flytekit.models.admin import schedule as _schedule_model
+from flytekit.models.admin import schedule as _schedule_model, launch_plan as _launch_plan_models
 from flytekit.models.admin import common as _common
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
@@ -170,7 +170,7 @@ class SdkLaunchPlan(
     @property
     def auth_role(self):
         """
-        :rtype: flytekit.models.common.AuthRole
+        :rtype: flytekit.models.admin.launch_plan.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
         if fixed_auth is not None and (
@@ -186,7 +186,7 @@ class SdkLaunchPlan(
                 "Using deprecated `role` from config. Please update your config to use `assumable_iam_role` instead"
             )
             assumable_iam_role = _sdk_config.ROLE.get()
-        return _common_models.AuthRole(
+        return flytekit.models.admin.launch_plan.AuthRole(
             assumable_iam_role=assumable_iam_role,
             kubernetes_service_account=kubernetes_service_account,
         )
@@ -424,7 +424,7 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
         default_inputs = default_inputs or {}
 
         if role:
-            auth_role = _common_models.AuthRole(assumable_iam_role=role)
+            auth_role = flytekit.models.admin.launch_plan.AuthRole(assumable_iam_role=role)
 
         # The constructor for SdkLaunchPlan sets the id to None anyways so we don't bother passing in an ID. The ID
         # should be set in one of three places,
