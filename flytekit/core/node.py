@@ -7,7 +7,7 @@ from typing import Any, List
 from flytekit.common.utils import _dnsify
 from flytekit.core.resources import Resources
 from flytekit.models.core import workflow as _workflow_model, literals as _literal_models
-from flytekit.models.task import Resources as _resources_model
+from flytekit.models.core.task import Resources as _resources_model
 
 
 class Node(object):

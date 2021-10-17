@@ -9,6 +9,7 @@ import six as _six
 from google.protobuf import json_format as _json_format
 from google.protobuf import text_format as _text_format
 
+import flytekit.models.core.task
 from flytekit import __version__
 from flytekit.bin import entrypoint as _entrypoint
 from flytekit.common import constants as _constants
@@ -497,7 +498,7 @@ class SdkNotebookSparkTask(SdkNotebookTask):
         return _spark_task.SdkRunnableSparkContainer(
             command=[],
             args=[],
-            resources=_task_models.Resources(limits=[], requests=[]),
+            resources=flytekit.models.core.task.Resources(limits=[], requests=[]),
             env=environment or {},
             config={},
         )

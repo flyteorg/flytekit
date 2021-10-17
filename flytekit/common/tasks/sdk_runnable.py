@@ -12,6 +12,7 @@ from inspect import getfullargspec as _getargspec
 
 import six as _six
 
+import flytekit.models.core.task
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import sdk_bases as _sdk_bases
@@ -245,7 +246,7 @@ class ExecutionParameters(object):
         return self.__getattr__(attr_name=key)
 
 
-class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.ExtendedSdkType):
+class SdkRunnableContainer(flytekit.models.core.task.Container, metaclass=_sdk_bases.ExtendedSdkType):
     """
     This is not necessarily a local-only Container object. So long as configuration is present, you can use this object
     """
@@ -318,32 +319,40 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
         requests = []
         if storage_request:
             requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
+                flytekit.models.core.task.Resources.ResourceEntry(
+                    flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_request)
             )
         if cpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
+            requests.append(
+                flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, cpu_request))
         if gpu_request:
-            requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
+            requests.append(
+                flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.GPU, gpu_request))
         if memory_request:
             requests.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
+                flytekit.models.core.task.Resources.ResourceEntry(
+                    flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_request)
             )
 
         limits = []
         if storage_limit:
             limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit)
+                flytekit.models.core.task.Resources.ResourceEntry(
+                    flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_limit)
             )
         if cpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
+            limits.append(
+                flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, cpu_limit))
         if gpu_limit:
-            limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
+            limits.append(
+                flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.GPU, gpu_limit))
         if memory_limit:
             limits.append(
-                _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit)
+                flytekit.models.core.task.Resources.ResourceEntry(
+                    flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_limit)
             )
 
-        return _task_models.Resources(limits=limits, requests=requests)
+        return flytekit.models.core.task.Resources(limits=limits, requests=requests)
 
 
 class SdkRunnableTaskStyle(enum.Enum):

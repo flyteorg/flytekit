@@ -5,6 +5,7 @@ from flyteidl.core import compiler_pb2 as _compiler_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
 from mock import patch as _patch
 
+import flytekit.models.core.task
 import flytekit.models.core.types
 from flytekit.common import workflow as _workflow_common
 from flytekit.common.tasks import task as _task
@@ -36,10 +37,11 @@ def get_sample_container():
     """
     :rtype: flytekit.models.task.Container
     """
-    cpu_resource = _task_model.Resources.ResourceEntry(_task_model.Resources.ResourceName.CPU, "1")
-    resources = _task_model.Resources(requests=[cpu_resource], limits=[cpu_resource])
+    cpu_resource = flytekit.models.core.task.Resources.ResourceEntry(
+        flytekit.models.core.task.Resources.ResourceName.CPU, "1")
+    resources = flytekit.models.core.task.Resources(requests=[cpu_resource], limits=[cpu_resource])
 
-    return _task_model.Container(
+    return flytekit.models.core.task.Container(
         "my_image",
         ["this", "is", "a", "cmd"],
         ["this", "is", "an", "arg"],

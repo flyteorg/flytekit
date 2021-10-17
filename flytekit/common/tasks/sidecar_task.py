@@ -2,6 +2,7 @@ import six as _six
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+import flytekit.models.core.task
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
@@ -96,7 +97,7 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
                 primary_exists = True
                 break
         if not primary_exists:
-            containers.extend([_lazy_k8s.io.api.core.v1.generated_pb2.Container(name=primary_container_name)])
+            containers.extend([flytekit.models.core.task.Container(name=primary_container_name)])
 
         final_containers = []
         for container in containers:
@@ -137,7 +138,7 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
         del pod_spec.containers[:]
         pod_spec.containers.extend(final_containers)
 
-        sidecar_job_plugin = _task_models.SidecarJob(
+        sidecar_job_plugin = flytekit.models.core.task.SidecarJob(
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
             annotations=annotations,

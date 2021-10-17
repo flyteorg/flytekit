@@ -4,6 +4,7 @@ from itertools import product
 import pytest
 from google.protobuf import text_format
 
+import flytekit.models.core.task
 from flytekit.models import array_job as _array_job
 from flytekit.models import task as _task
 from flytekit.models.admin.task import TaskTemplate as _taskTemplate
@@ -18,7 +19,7 @@ LIST_OF_DYNAMIC_TASKS = [
         task_metadata,
         interfaces,
         _array_job.ArrayJob(2, 2, 2).to_dict(),
-        container=_task.Container(
+        container=flytekit.models.core.task.Container(
             "my_image",
             ["this", "is", "a", "cmd"],
             ["this", "is", "an", "arg"],

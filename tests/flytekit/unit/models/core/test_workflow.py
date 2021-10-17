@@ -4,7 +4,7 @@ import flytekit.models.core.types
 from flytekit.models.core import condition as _condition, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow
-from flytekit.models.task import Resources
+from flytekit.models.core.task import Resources
 
 _generic_id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version")
 

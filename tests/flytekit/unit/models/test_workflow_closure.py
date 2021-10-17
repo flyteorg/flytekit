@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import flytekit.models.core.task
 import flytekit.models.core.types
 from flytekit.models import task as _task
 from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface, \
@@ -38,8 +39,9 @@ def test_workflow_closure():
         "This is deprecated!",
     )
 
-    cpu_resource = _task.Resources.ResourceEntry(_task.Resources.ResourceName.CPU, "1")
-    resources = _task.Resources(requests=[cpu_resource], limits=[cpu_resource])
+    cpu_resource = flytekit.models.core.task.Resources.ResourceEntry(
+        flytekit.models.core.task.Resources.ResourceName.CPU, "1")
+    resources = flytekit.models.core.task.Resources(requests=[cpu_resource], limits=[cpu_resource])
 
     task = _taskTemplate(
         _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version"),
@@ -47,7 +49,7 @@ def test_workflow_closure():
         task_metadata,
         typed_interface,
         {"a": 1, "b": {"c": 2, "d": 3}},
-        container=_task.Container(
+        container=flytekit.models.core.task.Container(
             "my_image",
             ["this", "is", "a", "cmd"],
             ["this", "is", "an", "arg"],

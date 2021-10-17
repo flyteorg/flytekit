@@ -28,7 +28,7 @@ from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.core import types as _core_types, literals as _literal_models
 from flytekit.models.core.interface import Parameter
-from flytekit.models.task import Resources as _resource_models
+from flytekit.models.core.task import Resources as _resource_models
 from flytekit.models.core.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 

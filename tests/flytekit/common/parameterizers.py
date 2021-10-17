@@ -10,8 +10,7 @@ from flytekit.models.core import identifier, literals, interface, security
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
 from flytekit.models.admin import task as task
-from flytekit.models.task import Resources as _task_resource
-from flytekit.models.task import Container as _task_container
+from flytekit.models.core.task import Resources as _task_resource, Container as _task_container
 
 LIST_OF_SCALAR_LITERAL_TYPES = [
     flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BINARY),

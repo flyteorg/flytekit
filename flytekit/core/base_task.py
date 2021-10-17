@@ -23,6 +23,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
+import flytekit.models.core.task
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
@@ -276,19 +277,19 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> flytekit.models.core.task.Container:
         """
         Returns the container definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
+    def get_k8s_pod(self, settings: SerializationSettings) -> flytekit.models.core.task.K8sPod:
         """
         Returns the kubernetes pod definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
+    def get_sql(self, settings: SerializationSettings) -> Optional[flytekit.models.core.task.Sql]:
         """
         Returns the Sql definition (if any) that is used to run the task on hosted Flyte.
         """

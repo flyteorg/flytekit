@@ -6,9 +6,7 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
 from flytekit.models import common as _common
-from flytekit.models.task import Container as _container
-from flytekit.models.task import Sql as _sql
-from flytekit.models.task import K8sPod as _k8s_pod
+from flytekit.models.core.task import Container as _container, K8sPod as _k8s_pod, Sql as _sql
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
 from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface, \
     security as _sec

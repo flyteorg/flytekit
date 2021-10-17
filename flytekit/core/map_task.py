@@ -16,7 +16,7 @@ from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.interface import Variable
-from flytekit.models.task import Container, K8sPod, Sql
+from flytekit.models.core.task import Container, K8sPod, Sql
 
 
 class MapPythonTask(PythonTask):

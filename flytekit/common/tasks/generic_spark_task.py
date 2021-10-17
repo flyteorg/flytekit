@@ -3,6 +3,7 @@ import sys as _sys
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+import flytekit.models.core.task
 from flytekit import __version__
 from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
@@ -139,11 +140,11 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
             args.append("--{}".format(k))
             args.append("{{{{.Inputs.{}}}}}".format(k))
 
-        return _task_models.Container(
+        return flytekit.models.core.task.Container(
             image=_internal_config.IMAGE.get(),
             command=[],
             args=args,
-            resources=_task_models.Resources([], []),
+            resources=flytekit.models.core.task.Resources([], []),
             env=environment,
             config={},
         )

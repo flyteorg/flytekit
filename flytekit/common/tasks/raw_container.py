@@ -2,6 +2,7 @@ import datetime as _datetime
 from typing import Dict, List
 
 import flytekit
+import flytekit.models.core.task
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
@@ -27,7 +28,7 @@ def _get_container_definition(
     image: str,
     command: List[str],
     args: List[str],
-    data_loading_config: _task_models.DataLoadingConfig,
+    data_loading_config: flytekit.models.core.task.DataLoadingConfig,
     storage_request: str = None,
     ephemeral_storage_request: str = None,
     cpu_request: str = None,
@@ -39,7 +40,7 @@ def _get_container_definition(
     gpu_limit: str = None,
     memory_limit: str = None,
     environment: Dict[str, str] = None,
-) -> _task_models.Container:
+) -> flytekit.models.core.task.Container:
     storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
     storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
     ephemeral_storage_limit = ephemeral_storage_limit or _resource_config.DEFAULT_EPHEMERAL_STORAGE_LIMIT.get()
@@ -54,47 +55,53 @@ def _get_container_definition(
     requests = []
     if storage_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
+            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_request)
         )
     if ephemeral_storage_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
             )
         )
     if cpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
+        requests.append(
+            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, cpu_request))
     if gpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
+        requests.append(
+            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.GPU, gpu_request))
     if memory_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
+            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_request)
         )
 
     limits = []
     if storage_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit))
+        limits.append(
+            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_limit))
     if ephemeral_storage_limit:
         limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
             )
         )
     if cpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
+        limits.append(
+            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, cpu_limit))
     if gpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
+        limits.append(
+            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.GPU, gpu_limit))
     if memory_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit))
+        limits.append(
+            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_limit))
 
     if environment is None:
         environment = {}
 
-    return _task_models.Container(
+    return flytekit.models.core.task.Container(
         image=image,
         command=command,
         args=args,
-        resources=_task_models.Resources(limits=limits, requests=requests),
+        resources=flytekit.models.core.task.Resources(limits=limits, requests=requests),
         env=environment,
         config={},
         data_loading_config=data_loading_config,
@@ -107,9 +114,9 @@ class SdkRawContainerTask(_base_task.SdkTask):
     separately as a container completely separate from the container where your Flyte workflow is defined.
     """
 
-    METADATA_FORMAT_JSON = _task_models.DataLoadingConfig.LITERALMAP_FORMAT_JSON
-    METADATA_FORMAT_YAML = _task_models.DataLoadingConfig.LITERALMAP_FORMAT_YAML
-    METADATA_FORMAT_PROTO = _task_models.DataLoadingConfig.LITERALMAP_FORMAT_PROTO
+    METADATA_FORMAT_JSON = flytekit.models.core.task.DataLoadingConfig.LITERALMAP_FORMAT_JSON
+    METADATA_FORMAT_YAML = flytekit.models.core.task.DataLoadingConfig.LITERALMAP_FORMAT_YAML
+    METADATA_FORMAT_PROTO = flytekit.models.core.task.DataLoadingConfig.LITERALMAP_FORMAT_PROTO
 
     def __init__(
         self,
@@ -119,7 +126,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
         input_data_dir: str = None,
         output_data_dir: str = None,
         metadata_format: int = METADATA_FORMAT_JSON,
-        io_strategy: _task_models.IOStrategy = None,
+        io_strategy: flytekit.models.core.task.IOStrategy = None,
         command: List[str] = None,
         args: List[str] = None,
         storage_request: str = None,
@@ -164,7 +171,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
 
         # Set as class fields which are used down below to configure implicit
         # parameters
-        self._data_loading_config = _task_models.DataLoadingConfig(
+        self._data_loading_config = flytekit.models.core.task.DataLoadingConfig(
             input_path=input_data_dir,
             output_path=output_data_dir,
             format=metadata_format,

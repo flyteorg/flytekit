@@ -9,7 +9,7 @@ from flytekit.models.core import condition as _condition, interface as _interfac
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core.literals import Binding as _Binding
 from flytekit.models.core.literals import RetryStrategy as _RetryStrategy
-from flytekit.models.task import Resources
+from flytekit.models.core.task import Resources
 
 
 class IfBlock(_common.FlyteIdlEntity):
