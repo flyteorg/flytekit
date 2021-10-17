@@ -3,6 +3,8 @@ from itertools import product
 
 from six.moves import range
 
+import flytekit.models.admin.core.task
+import flytekit.models.core.task
 import flytekit.models.core.types
 from flytekit.common.types.impl import blobs as _blob_impl
 from flytekit.common.types.impl import schema as _schema_impl
@@ -101,8 +103,9 @@ LIST_OF_RESOURCES = [
 
 
 LIST_OF_RUNTIME_METADATA = [
-    task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"),
-    task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"),
+    flytekit.models.admin.core.task.RuntimeMetadata(flytekit.models.admin.core.task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"),
+    flytekit.models.admin.core.task.RuntimeMetadata(
+        flytekit.models.admin.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"),
 ]
 
 
@@ -111,7 +114,7 @@ LIST_OF_RETRY_POLICIES = [literals.RetryStrategy(retries=i) for i in [0, 1, 3, 1
 LIST_OF_INTERRUPTIBLE = [None, True, False]
 
 LIST_OF_TASK_METADATA = [
-    task.TaskMetadata(
+    flytekit.models.core.task.TaskMetadata(
         discoverable,
         runtime_metadata,
         timeout,
@@ -133,7 +136,7 @@ LIST_OF_TASK_METADATA = [
 
 
 LIST_OF_TASK_TEMPLATES = [
-    task.TaskTemplate(
+    flytekit.models.core.task.TaskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",
         task_metadata,

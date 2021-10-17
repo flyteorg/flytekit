@@ -25,8 +25,8 @@ from flytekit.contrib.notebook.supported_types import notebook_types_map as _not
 from flytekit.engines import loader as _engine_loader
 from flytekit.models.core import literals as _literal_models, interface as _interface
 from flytekit.models import task as _task_models
-from flytekit.models.admin.task import TaskMetadata as _task_matadata
-from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _task_matadata
+from flytekit.models.admin.core.task import RuntimeMetadata as _runtimeMetadata
 from flytekit.plugins import papermill as _pm
 from flytekit.sdk.spark_types import SparkType as _spark_type
 from flytekit.sdk.types import Types as _Types

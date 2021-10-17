@@ -2,6 +2,7 @@ import six as _six
 from flyteidl.core import compiler_pb2 as _compiler_pb2
 
 import flytekit.models.admin.task
+import flytekit.models.core.task
 from flytekit.models import common as _common
 from flytekit.models.core import workflow as _core_workflow_models
 
@@ -149,7 +150,7 @@ class CompiledTask(_common.FlyteIdlEntity):
         :rtype: CompiledTask
         """
         # TODO: Refactor task so we don't have cyclical import
-        return cls(template=flytekit.models.admin.task.TaskTemplate.from_flyte_idl(p.template))
+        return cls(template=flytekit.models.core.task.TaskTemplate.from_flyte_idl(p.template))
 
 
 class CompiledWorkflowClosure(_common.FlyteIdlEntity):

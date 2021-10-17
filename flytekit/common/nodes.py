@@ -183,7 +183,7 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
         :param flytekit.models.core.workflow.Node model:
         :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.workflow.WorkflowTemplate]
             sub_workflows:
-        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.admin.task.TaskTemplate] tasks: If specified,
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.task.TaskTemplate] tasks: If specified,
             these task templates will be passed to the SdkTaskNode promote_from_model call, and used
             instead of fetching from Admin.
         :rtype: SdkNode

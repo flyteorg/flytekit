@@ -12,9 +12,8 @@ import flytekit.models.core.task
 import flytekit.models.core.types
 from flytekit.models import task
 from flytekit.models.core import identifier, literals
-from flytekit.models.admin.task import TaskMetadata as _taskMatadata
-from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
-from flytekit.models.admin.task import TaskTemplate as _taskTemplate
+from flytekit.models.core.task import TaskMetadata as _taskMatadata, TaskTemplate as _taskTemplate
+from flytekit.models.admin.core.task import RuntimeMetadata as _runtimeMetadata
 from flytekit.models.admin.task import Task as _task
 from tests.flytekit.common import parameterizers
 

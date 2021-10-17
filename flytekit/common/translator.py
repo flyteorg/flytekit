@@ -2,6 +2,7 @@ from collections import OrderedDict
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import flytekit.models.admin.launch_plan
+import flytekit.models.core.task
 from flytekit.common import constants as _common_constants
 from flytekit.common.utils import _dnsify
 from flytekit.core.base_task import PythonTask
@@ -104,7 +105,7 @@ def get_serializable_task(
         # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
         # parent class
         entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
-    tt = task_models.TaskTemplate(
+    tt = flytekit.models.core.task.TaskTemplate(
         id=task_id,
         type=entity.task_type,
         metadata=entity.metadata.to_taskmetadata_model(),
@@ -402,7 +403,7 @@ def get_serializable(
 def gather_dependent_entities(
     serialized: OrderedDict,
 ) -> Tuple[
-    Dict[_identifier_model.Identifier, task_models.TaskTemplate],
+    Dict[_identifier_model.Identifier, flytekit.models.core.task.TaskTemplate],
     Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec],
     Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec],
 ]:
@@ -415,7 +416,7 @@ def gather_dependent_entities(
     :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
     :return:
     """
-    task_templates: Dict[_identifier_model.Identifier, task_models.TaskTemplate] = {}
+    task_templates: Dict[_identifier_model.Identifier, flytekit.models.core.task.TaskTemplate] = {}
     workflow_specs: Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec] = {}
     launch_plan_specs: Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec] = {}
 

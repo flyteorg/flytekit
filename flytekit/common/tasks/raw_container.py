@@ -12,8 +12,8 @@ from flytekit.configuration import resources as _resource_config
 from flytekit.models.core import literals as _literals
 from flytekit.models import task as _task_models
 from flytekit.models.core.interface import Variable
-from flytekit.models.admin.task import TaskMetadata as _taskMatadata
-from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _taskMatadata
+from flytekit.models.admin.core.task import RuntimeMetadata as _runtimeMetadata
 
 
 def types_to_variable(t: Dict[str, FlyteSdkType]) -> Dict[str, Variable]:

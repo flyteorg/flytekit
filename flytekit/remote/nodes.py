@@ -2,6 +2,7 @@ import logging as _logging
 from typing import Any, Dict, List, Optional, Union
 
 import flytekit
+import flytekit.models.core.task
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import system as _system_exceptions
@@ -71,7 +72,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         model: _workflow_model.Node,
         sub_workflows: Optional[Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate]],
         node_launch_plans: Optional[Dict[_identifier.Identifier, _launch_plan_model.LaunchPlanSpec]],
-        tasks: Optional[Dict[_identifier.Identifier, _task_model.TaskTemplate]],
+        tasks: Optional[Dict[_identifier.Identifier, flytekit.models.core.task.TaskTemplate]],
     ) -> "FlyteNode":
         id = model.id
         if id in {_constants.START_NODE_ID, _constants.END_NODE_ID}:

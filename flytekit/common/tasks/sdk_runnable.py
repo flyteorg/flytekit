@@ -31,8 +31,8 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces.stats import taggable
 from flytekit.models.core import literals as _literal_models
 from flytekit.models import task as _task_models
-from flytekit.models.admin.task import TaskMetadata as _taskMatadata
-from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _taskMatadata
+from flytekit.models.admin.core.task import RuntimeMetadata as _runtimeMetadata
 
 
 class SecretsManager(object):

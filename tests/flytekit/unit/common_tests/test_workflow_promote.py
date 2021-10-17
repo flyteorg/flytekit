@@ -13,9 +13,8 @@ from flytekit.models import task as _task_model
 from flytekit.models.core import compiler as _compiler_model, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.admin.task import TaskMetadata as _taskMatadata
-from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
-from flytekit.models.admin.task import TaskTemplate as _taskTemplate
+from flytekit.models.core.task import TaskMetadata as _taskMatadata, TaskTemplate as _taskTemplate
+from flytekit.models.admin.core.task import RuntimeMetadata as _runtimeMetadata
 from flytekit.sdk import tasks as _sdk_tasks
 from flytekit.sdk import workflow as _sdk_workflow
 from flytekit.sdk.tasks import inputs, outputs, python_task
@@ -53,7 +52,7 @@ def get_sample_container():
 
 def get_sample_task_metadata():
     """
-    :rtype: flytekit.models.admin.task.TaskMetadata
+    :rtype: flytekit.models.core.task.TaskMetadata
     """
     return _taskMatadata(
         True,

@@ -3,6 +3,7 @@ import datetime as _datetime
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+import flytekit.models.admin.core.task
 import flytekit.models.core.types
 from flytekit import __version__
 from flytekit.common import constants as _constants
@@ -59,7 +60,8 @@ class SdkPrestoTask(_base_task.SdkTask):
         metadata = _task_model.TaskMatadata(
             discoverable,
             # This needs to have the proper version reflected in it
-            _task_model.RuntimeMetadata(_task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
+            flytekit.models.admin.core.task.RuntimeMetadata(
+                flytekit.models.admin.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
             interruptible,

@@ -1,5 +1,6 @@
 from typing import Optional
 
+import flytekit.models.core.task
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
@@ -10,7 +11,7 @@ from flytekit.remote import identifier as _identifier
 from flytekit.remote import interface as _interfaces
 
 
-class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
+class FlyteTask(_hash_mixin.HashOnReferenceMixin, flytekit.models.core.task.TaskTemplate):
     """A class encapsulating a remote Flyte task."""
 
     def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None):
@@ -49,7 +50,7 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
         self._python_interface = value
 
     @classmethod
-    def promote_from_model(cls, base_model: _task_model.TaskTemplate) -> "FlyteTask":
+    def promote_from_model(cls, base_model: flytekit.models.core.task.TaskTemplate) -> "FlyteTask":
         t = cls(
             id=base_model.id,
             type=base_model.type,

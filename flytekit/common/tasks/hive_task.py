@@ -255,7 +255,7 @@ def _create_hive_job_node(name, hive_job, metadata):
     """
     :param Text name:
     :param _qubole.QuboleHiveJob hive_job: Hive job spec
-    :param flytekit.models.admin.task.TaskMetadata metadata: This contains information needed at runtime to determine
+    :param flytekit.models.core.task.TaskMetadata metadata: This contains information needed at runtime to determine
         behavior such as whether or not outputs are discoverable, timeouts, and retries.
     :rtype: _nodes.SdkNode:
     """

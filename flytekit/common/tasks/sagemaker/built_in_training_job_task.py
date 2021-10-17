@@ -2,6 +2,8 @@ import datetime as _datetime
 
 from google.protobuf.json_format import MessageToDict
 
+import flytekit.models.admin.core.task
+import flytekit.models.core.task
 import flytekit.models.core.types
 from flytekit import __version__
 from flytekit.common import interface as _interface
@@ -49,9 +51,9 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
 
         super(SdkBuiltinAlgorithmTrainingJobTask, self).__init__(
             type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
-            metadata=_task_models.TaskMetadata(
-                runtime=_task_models.RuntimeMetadata(
-                    type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+            metadata=flytekit.models.core.task.TaskMetadata(
+                runtime=flytekit.models.admin.core.task.RuntimeMetadata(
+                    type=flytekit.models.admin.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     version=__version__,
                     flavor="sagemaker",
                 ),

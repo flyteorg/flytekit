@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional
 
+import flytekit.models.core.task
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
@@ -116,7 +117,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         base_model: _workflow_models.WorkflowTemplate,
         sub_workflows: Optional[Dict[_identifier.Identifier, _workflow_models.WorkflowTemplate]] = None,
         node_launch_plans: Optional[Dict[_identifier.Identifier, _launch_plan_models.LaunchPlanSpec]] = None,
-        tasks: Optional[Dict[_identifier.Identifier, _task_models.TaskTemplate]] = None,
+        tasks: Optional[Dict[_identifier.Identifier, flytekit.models.core.task.TaskTemplate]] = None,
     ) -> "FlyteWorkflow":
         base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes)
         sub_workflows = sub_workflows or {}

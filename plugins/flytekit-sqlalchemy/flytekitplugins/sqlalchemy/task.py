@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import pandas as pd
 from sqlalchemy import create_engine  # type: ignore
 
+import flytekit.models.core.task
 from flytekit import current_context, kwtypes
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.context_manager import SerializationSettings
@@ -85,7 +86,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
 
 
 class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
-    def execute_from_model(self, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
+    def execute_from_model(self, tt: flytekit.models.core.task.TaskTemplate, **kwargs) -> typing.Any:
         if tt.custom["secret_connect_args"] is not None:
             for key, secret in tt.custom["secret_connect_args"].items():
                 value = current_context().secrets.get(secret.group, secret.key)
