@@ -811,7 +811,7 @@ def convert_json_schema_to_python_class(
             )
         # Handle dataclass and dict
         elif property_type == "object":
-            if "$ref" in property_val:
+            if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
                 attribute_list.append(
                     (
@@ -819,7 +819,7 @@ def convert_json_schema_to_python_class(
                         convert_json_schema_to_python_class(schema, additional_schema.get(property_key), name),
                     )
                 )
-            elif "additionalProperties" in property_val:
+            elif property_val.get("additionalProperties"):
                 attribute_list.append(
                     (
                         property_key,

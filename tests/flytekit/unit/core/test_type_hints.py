@@ -1354,7 +1354,7 @@ def test_guess_dict4():
     @dataclass
     class Bar(object):
         x: int
-        y: str
+        y: dict
         z: Foo
 
     @task
@@ -1373,14 +1373,14 @@ def test_guess_dict4():
 
     @task
     def t2() -> Bar:
-        return Bar(x=1, y="bar", z=Foo(x=1, y="foo", z={"hello": "world"}))
+        return Bar(x=1, y={"hello": "world"}, z=Foo(x=1, y="foo", z={"hello": "world"}))
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": "bar", "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
+    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 
