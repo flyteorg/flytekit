@@ -6,8 +6,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import containers as _containers
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.types import primitives as _primitives
-from flytekit.models import interface as _interface_models
-from flytekit.models.core import literals as _literal_models
+from flytekit.models.core import literals as _literal_models, interface as _interface_models
 
 
 class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkType):

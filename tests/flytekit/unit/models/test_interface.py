@@ -1,6 +1,7 @@
 import pytest
 
-from flytekit.models import interface, types
+from flytekit.models import types
+from flytekit.models.core import interface
 from tests.flytekit.common.parameterizers import LIST_OF_ALL_LITERAL_TYPES
 
 

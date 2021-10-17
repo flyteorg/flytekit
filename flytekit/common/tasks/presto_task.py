@@ -9,8 +9,7 @@ from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import interface as _interface_model
-from flytekit.models.core import literals as _literals
+from flytekit.models.core import literals as _literals, interface as _interface_model
 from flytekit.models import presto as _presto_models
 from flytekit.models.admin import task as _task_model
 from flytekit.models import types as _types

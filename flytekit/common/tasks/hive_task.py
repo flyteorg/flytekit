@@ -13,9 +13,9 @@ from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import interface as _interface_model
 from flytekit.models import qubole as _qubole
-from flytekit.models.core import workflow as _workflow_model, dynamic_job as _dynamic_job, literals as _literal_models
+from flytekit.models.core import workflow as _workflow_model, dynamic_job as _dynamic_job, literals as _literal_models, \
+    interface as _interface_model
 
 ALLOWED_TAGS_COUNT = int(6)
 MAX_TAG_LENGTH = int(20)

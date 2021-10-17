@@ -13,12 +13,10 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.models import common as _common_models
-from flytekit.models import interface as interface_models
 from flytekit.models.admin import task as task_models, launch_plan as _launch_plan_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin import common as _common
-from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import identifier as _identifier_model, interface as interface_models
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel

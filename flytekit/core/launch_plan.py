@@ -9,9 +9,9 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Fly
 from flytekit.core.interface import Interface, transform_inputs_to_parameters, transform_signature_to_interface
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
-from flytekit.models import interface as _interface_models
 from flytekit.models.admin import schedule as _schedule_model
-from flytekit.models.core import workflow as _workflow_model, literals as _literal_models
+from flytekit.models.core import workflow as _workflow_model, literals as _literal_models, \
+    interface as _interface_models
 from flytekit.models.admin import common as _admin_common
 
 

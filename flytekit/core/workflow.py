@@ -34,8 +34,8 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models import interface as _interface_models
-from flytekit.models.core import workflow as _workflow_model, literals as _literal_models
+from flytekit.models.core import workflow as _workflow_model, literals as _literal_models, \
+    interface as _interface_models
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,

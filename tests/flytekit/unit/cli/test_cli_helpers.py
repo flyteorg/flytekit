@@ -11,7 +11,7 @@ from flytekit.clis import helpers
 from flytekit.clis.helpers import _hydrate_identifier, _hydrate_workflow_template_nodes, hydrate_registration_parameters
 from flytekit.models import types
 from flytekit.models.core import literals
-from flytekit.models.interface import Parameter, ParameterMap, Variable
+from flytekit.models.core.interface import Parameter, ParameterMap, Variable
 
 
 def test_parse_args_into_dict():

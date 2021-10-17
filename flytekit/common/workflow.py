@@ -16,11 +16,11 @@ from flytekit.common.mixins import registerable as _registerable
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import interface as _interface_models
 from flytekit.models.admin import workflow as _admin_workflow_model, schedule as _schedule_models, \
     launch_plan as _launch_plan_models
 from flytekit.models.admin import common as _common
-from flytekit.models.core import identifier as _identifier_model, literals as _literal_models
+from flytekit.models.core import identifier as _identifier_model, literals as _literal_models, \
+    interface as _interface_models
 from flytekit.models.core import workflow as _workflow_models
 
 

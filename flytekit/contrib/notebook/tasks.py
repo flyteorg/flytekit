@@ -22,8 +22,7 @@ from flytekit.common.tasks import task as _base_tasks
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
 from flytekit.engines import loader as _engine_loader
-from flytekit.models import interface as _interface
-from flytekit.models.core import literals as _literal_models
+from flytekit.models.core import literals as _literal_models, interface as _interface
 from flytekit.models import task as _task_models
 from flytekit.models.admin.task import TaskMetadata as _task_matadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata

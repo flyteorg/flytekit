@@ -4,9 +4,8 @@ import typing
 from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
-from flytekit.models import interface as _interface
 from flytekit.models import types as _types
-from flytekit.models.core import condition as _condition
+from flytekit.models.core import condition as _condition, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core.literals import Binding as _Binding
 from flytekit.models.core.literals import RetryStrategy as _RetryStrategy

@@ -6,7 +6,6 @@ from mock import MagicMock, patch
 import flytekit.models.admin.launch_plan
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import internal
-from flytekit.models import common as common_models
 from flytekit.models.admin.workflow import Workflow
 from flytekit.models.core.identifier import (
     Identifier,
@@ -15,7 +14,7 @@ from flytekit.models.core.identifier import (
     WorkflowExecutionIdentifier,
 )
 from flytekit.models.execution import Execution
-from flytekit.models.interface import TypedInterface, Variable
+from flytekit.models.core.interface import TypedInterface, Variable
 from flytekit.models.admin.launch_plan import LaunchPlan
 from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
 from flytekit.models.admin.task import Task

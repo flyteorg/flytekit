@@ -6,7 +6,7 @@ from flyteidl.core.tasks_pb2 import TaskMetadata
 from google.protobuf import text_format
 from k8s.io.api.core.v1 import generated_pb2
 
-import flytekit.models.interface as interface_models
+import flytekit.models.core.interface as interface_models
 import flytekit.models.core.literals as literal_models
 from flytekit.models import task, types
 from flytekit.models.core import identifier, literals

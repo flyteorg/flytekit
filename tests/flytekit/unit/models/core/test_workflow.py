@@ -1,8 +1,7 @@
 from datetime import timedelta
 
-from flytekit.models import interface as _interface
 from flytekit.models import types as _types
-from flytekit.models.core import condition as _condition, literals as _literals
+from flytekit.models.core import condition as _condition, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow
 from flytekit.models.task import Resources

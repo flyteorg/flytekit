@@ -10,7 +10,7 @@ from flytekit.common.types.base_sdk_types import FlyteSdkType
 from flytekit.configuration import resources as _resource_config
 from flytekit.models.core import literals as _literals
 from flytekit.models import task as _task_models
-from flytekit.models.interface import Variable
+from flytekit.models.core.interface import Variable
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
 

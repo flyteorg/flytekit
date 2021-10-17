@@ -7,10 +7,9 @@ from flytekit.common import interface as _interface
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _sdk_task
-from flytekit.models import interface as _interface_model
 from flytekit.models.admin import task as _task_models
 from flytekit.models import types as _idl_types
-from flytekit.models.core import types as _core_types, literals as _literal_models
+from flytekit.models.core import types as _core_types, literals as _literal_models, interface as _interface_model
 from flytekit.models.sagemaker import training_job as _training_job_models
 
 

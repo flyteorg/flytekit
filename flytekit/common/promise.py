@@ -2,7 +2,7 @@ from flytekit.common import constants as _constants
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import interface as _interface_models
+from flytekit.models.core import interface as _interface_models
 from flytekit.models import types as _type_models
 
 

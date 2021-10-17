@@ -7,10 +7,9 @@ from mock import patch as _patch
 
 from flytekit.common import workflow as _workflow_common
 from flytekit.common.tasks import task as _task
-from flytekit.models import interface as _interface
 from flytekit.models import task as _task_model
 from flytekit.models import types as _types
-from flytekit.models.core import compiler as _compiler_model, literals as _literals
+from flytekit.models.core import compiler as _compiler_model, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata

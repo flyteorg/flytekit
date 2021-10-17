@@ -1,11 +1,10 @@
 from flyteidl.admin import launch_plan_pb2 as _launch_plan, common_pb2 as _common_pb2
 
 from flytekit.models import common as _common
-from flytekit.models import interface as _interface
 from flytekit.models.admin import schedule as _schedule
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.common import FlyteIdlEntity
-from flytekit.models.core import identifier as _identifier, literals as _literals
+from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
