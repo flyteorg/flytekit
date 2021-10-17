@@ -42,7 +42,7 @@ from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model, dynamic_job as _dynamic_job, literals as _literal_models, \
     interface as _interface_models
 from flytekit.models.core.interface import Variable
-from flytekit.models.security import SecurityContext
+from flytekit.models.core.security import SecurityContext
 from flytekit.models.admin.task import TaskMetadata as _task_matadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
 

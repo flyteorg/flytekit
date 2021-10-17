@@ -16,7 +16,7 @@ from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.admin.task import TaskTemplate as _taskTemplate
 from flytekit.models.core import identifier as identifier_models
-from flytekit.models.security import Secret, SecurityContext
+from flytekit.models.core.security import Secret, SecurityContext
 from flytekit.tools.module_loader import load_object_from_module
 
 TC = TypeVar("TC")
