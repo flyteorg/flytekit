@@ -13,7 +13,6 @@ from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.models import common as _common
 from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
@@ -24,6 +23,7 @@ from flytekit.models.admin import common as _admin_common
 from flytekit.models.admin import task_execution as _task_execution
 from flytekit.models.admin import workflow as _workflow
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
 
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
@@ -112,7 +112,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
+            [_namedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
             str(identifier_list.token),
         )
 
@@ -131,7 +131,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
-        :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
+        :param flytekit.models.named_entity.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
         :param int limit: [Optional] The maximum number of entries to return.  Must be greater than 0.  The maximum
             page size is determined by the Flyte Admin Service configuration.  If limit is greater than the maximum
             page size, an exception will be raised.
@@ -241,7 +241,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
+            [_namedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
             str(identifier_list.token),
         )
 
@@ -260,7 +260,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
-        :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
+        :param flytekit.models.named_entity.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
         :param int limit: [Optional] The maximum number of entries to return.  Must be greater than 0.  The maximum
             page size is determined by the Flyte Admin Service configuration.  If limit is greater than the maximum
             page size, an exception will be raised.
@@ -350,7 +350,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         Retrieves the active launch plan entity given a named entity identifier (project, domain, name).  Raises an
         error if no active launch plan exists.
 
-        :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
+        :param flytekit.models.named_entity.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
         :rtype: flytekit.models.launch_plan.LaunchPlan
         """
         return _launch_plan.LaunchPlan.from_flyte_idl(
@@ -396,7 +396,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
         return (
-            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
+            [_namedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
             str(identifier_list.token),
         )
 
@@ -415,7 +415,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
-        :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
+        :param flytekit.models.named_entity.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
         :param int limit: [Optional] The maximum number of entries to return.  Must be greater than 0.  The maximum
             page size is determined by the Flyte Admin Service configuration.  If limit is greater than the maximum
             page size, an exception will be raised.

@@ -101,59 +101,6 @@ class FlyteCustomIdlEntity(FlyteIdlEntity):
         pass
 
 
-class NamedEntityIdentifier(FlyteIdlEntity):
-    def __init__(self, project, domain, name=None):
-        """
-        :param Text project: The name of the project in which this entity lives.
-        :param Text domain: The name of the domain within the project.
-        :param Text name: [Optional] The name of the entity within the namespace of the project and domain.
-        """
-        self._project = project
-        self._domain = domain
-        self._name = name
-
-    @property
-    def project(self):
-        """
-        The name of the project in which this entity lives.
-        :rtype: Text
-        """
-        return self._project
-
-    @property
-    def domain(self):
-        """
-        The name of the domain within the project.
-        :rtype: Text
-        """
-        return self._domain
-
-    @property
-    def name(self):
-        """
-        The name of the entity within the namespace of the project and domain.
-        :rtype: Text
-        """
-        return self._name
-
-    def to_flyte_idl(self):
-        """
-        Stores object to a Flyte-IDL defined protobuf.
-        :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifier
-        """
-
-        # We use the kwarg constructor of the protobuf and setting name=None is equivalent to not setting it at all
-        return _common_pb2.NamedEntityIdentifier(project=self.project, domain=self.domain, name=self.name)
-
-    @classmethod
-    def from_flyte_idl(cls, idl_object):
-        """
-        :param flyteidl.admin.common_pb2.NamedEntityIdentifier idl_object:
-        :rtype: NamedEntityIdentifier
-        """
-        return cls(idl_object.project, idl_object.domain, idl_object.name)
-
-
 class EmailNotification(FlyteIdlEntity):
     def __init__(self, recipients_email):
         """

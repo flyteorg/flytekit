@@ -29,6 +29,7 @@ from flytekit.models.admin.task import TaskTemplate as _taskTemplate
 from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
 
 
 class SdkTask(
@@ -217,7 +218,7 @@ class SdkTask(
         :param Text name:
         :rtype: SdkTask
         """
-        named_task = _common_model.NamedEntityIdentifier(project, domain, name)
+        named_task = _namedEntityIdentifier(project, domain, name)
         client = _flyte_engine.get_client()
         task_list, _ = client.list_tasks_paginated(
             named_task,

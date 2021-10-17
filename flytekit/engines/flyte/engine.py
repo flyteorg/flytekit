@@ -30,6 +30,7 @@ from flytekit.models.admin import workflow as _workflow_model
 from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
 
 
 class _FlyteClientManager(object):
@@ -160,7 +161,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
                 _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_launch_plan(launch_plan_id)
         else:
-            named_entity_id = _common_models.NamedEntityIdentifier(
+            named_entity_id = _namedEntityIdentifier(
                 launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
             )
             return _FlyteClientManager(

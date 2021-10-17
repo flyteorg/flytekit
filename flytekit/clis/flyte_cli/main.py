@@ -38,7 +38,6 @@ from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.data_proxy import Data
-from flytekit.models import common as _common_models
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import literals as _literals
@@ -46,6 +45,7 @@ from flytekit.models import named_entity as _named_entity
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.common import AuthRole as _AuthRole
 from flytekit.models.common import RawOutputDataConfig as _RawOutputDataConfig
+from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.core import identifier as _core_identifier
 from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata
@@ -699,7 +699,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
     _click.echo("{:50} {:40}".format("Version", "Urn"))
     while True:
         task_list, next_token = client.list_tasks_paginated(
-            _common_models.NamedEntityIdentifier(project, domain, name),
+            _named_entity.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -854,7 +854,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
     _click.echo("{:50} {:40}".format("Version", "Urn"))
     while True:
         wf_list, next_token = client.list_workflows_paginated(
-            _common_models.NamedEntityIdentifier(project, domain, name),
+            _named_entity.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -1032,7 +1032,7 @@ def list_launch_plan_versions(
 
     while True:
         lp_list, next_token = client.list_launch_plans_paginated(
-            _common_models.NamedEntityIdentifier(project, domain, name),
+            _named_entity.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -1100,7 +1100,7 @@ def get_active_launch_plan(project, domain, name, host, insecure):
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
-    lp = client.get_active_launch_plan(_common_models.NamedEntityIdentifier(project, domain, name))
+    lp = client.get_active_launch_plan(_named_entity.NamedEntityIdentifier(project, domain, name))
     _click.echo("Active Launch Plan for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
     _click.echo(lp)
     _click.echo("")

@@ -21,6 +21,7 @@ from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
 from flytekit.models.admin import common as admin_common_models
+from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
 
 try:
     from functools import singledispatchmethod
@@ -75,7 +76,7 @@ class ResolvedIdentifiers:
 
 
 def _get_latest_version(list_entities_method: typing.Callable, project: str, domain: str, name: str):
-    named_entity = common_models.NamedEntityIdentifier(project, domain, name)
+    named_entity = _namedEntityIdentifier(project, domain, name)
     entity_list, _ = list_entities_method(
         named_entity,
         limit=1,
@@ -480,7 +481,7 @@ class FlyteRemote(object):
         if not version:
             raise ValueError("Must specify a version")
 
-        named_entity_id = common_models.NamedEntityIdentifier(
+        named_entity_id = _namedEntityIdentifier(
             project=project or self.default_project,
             domain=domain or self.default_domain,
         )

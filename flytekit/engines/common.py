@@ -359,7 +359,7 @@ class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
     def fetch_latest_task(self, named_task):
         """
         Fetches the latest task
-        :param flytekit.models.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
+        :param flytekit.models.named_entity.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
         :rtype: flytekit.models.admin.task.Task
         """
         pass

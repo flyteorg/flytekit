@@ -28,6 +28,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.admin import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_models
+from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
 
 
 class SdkLaunchPlan(
@@ -111,7 +112,7 @@ class SdkLaunchPlan(
         if launch_plan_id.version:
             lp = _flyte_engine.get_client().get_launch_plan(launch_plan_id)
         else:
-            named_entity_id = _common_models.NamedEntityIdentifier(
+            named_entity_id = _namedEntityIdentifier(
                 launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
             )
             lp = _flyte_engine.get_client().get_active_launch_plan(named_entity_id)
