@@ -186,7 +186,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             return self._path == other
 
     def to_json(self):
-        return self.path
+        return {"path": self._path, "remote_path": self._remote_path}
 
     @property
     def downloaded(self) -> bool:

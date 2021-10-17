@@ -37,16 +37,13 @@ def _default(self, obj):
     return getattr(obj.__class__, "to_json", _default.default)(obj)
 
 
-""" Module that monkey-patches json module when it's imported so
-JSONEncoder.default() automatically checks for a special "to_json()"
-method and uses it to encode the object if found.
-For example, we implement the "to_json()" method in FlyteFile,
-and we serialize the value which type is FlyteFile to the path (str) of FlyteFile
-"""
+# Module that monkey-patches json module when it's imported so
+# JSONEncoder.default() automatically checks for a special "to_json()"
+# method and uses it to encode the object if found.
 _default.default = JSONEncoder().default
 JSONEncoder.default = _default
 
-base.MARSHMALLOW_TO_PY_TYPES_PAIRS.append((fields.Field, str))
+base.MARSHMALLOW_TO_PY_TYPES_PAIRS.append((fields.Field, dict))
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 ADDITIONALSCHEMA = "additionalSchema"
@@ -267,7 +264,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.file import FlyteFile
 
         if t is FlyteFile:
-            return FlyteFile(val)
+            return FlyteFile(**val)
 
         if isinstance(val, list):
             # Handle nested List. e.g. [[1, 2], [3, 4]]
@@ -829,6 +826,8 @@ def convert_json_schema_to_python_class(
                         typing.Dict[str, _get_element_type(property_val["additionalProperties"], additional_schema)],
                     )
                 )
+            else:
+                attribute_list.append([property_key, _get_element_type(property_val, additional_schema)])
         # Handle int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val, additional_schema)])
@@ -856,6 +855,8 @@ def _get_element_type(element_property: typing.Dict[str, str], additional_schema
             return int
         else:
             return float
+    elif element_type == "object":
+        return dict
     return str
 
 
