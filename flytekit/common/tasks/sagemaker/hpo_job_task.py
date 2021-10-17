@@ -3,7 +3,6 @@ import typing
 
 from google.protobuf.json_format import MessageToDict
 
-import flytekit.models.admin.core.task
 import flytekit.models.core.task
 import flytekit.models.core.types
 from flytekit import __version__
@@ -80,8 +79,8 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
         super().__init__(
             type=SdkTaskType.SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
             metadata=flytekit.models.core.task.TaskMetadata(
-                runtime=flytekit.models.admin.core.task.RuntimeMetadata(
-                    type=flytekit.models.admin.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+                runtime=flytekit.models.core.task.RuntimeMetadata(
+                    type=flytekit.models.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     version=__version__,
                     flavor="sagemaker",
                 ),

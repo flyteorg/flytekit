@@ -6,7 +6,6 @@ from flyteidl.core import tasks_pb2 as _core_task, literals_pb2 as _literals_pb2
 from google.protobuf import json_format as _json_format, struct_pb2 as _struct
 
 from flytekit.models import common as _common
-from flytekit.models.admin.core.task import RuntimeMetadata
 from flytekit.models.core import literals as _literals, identifier as _identifier, interface as _interface, \
     security as _sec
 from flytekit.plugins import flyteidl as _lazy_flyteidl
@@ -477,7 +476,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         and retries.
 
         :param bool discoverable: Whether or not the outputs of this task should be cached for discovery.
-        :param flytekit.models.admin.core.task.RuntimeMetadata runtime: Metadata describing the runtime environment for this task.
+        :param flytekit.models.core.task.RuntimeMetadata runtime: Metadata describing the runtime environment for this task.
         :param datetime.timedelta timeout: The amount of time to wait before timing out.  This includes queuing and
             scheduler latency.
         :param bool interruptible: Whether or not the task is interruptible.
@@ -509,7 +508,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
     def runtime(self):
         """
         Metadata describing the runtime environment for this task.
-        :rtype: flytekit.models.admin.core.task.RuntimeMetadata
+        :rtype: flytekit.models.core.task.RuntimeMetadata
         """
         return self._runtime
 
@@ -758,3 +757,58 @@ class TaskTemplate(_common.FlyteIdlEntity):
             k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,
             sql=Sql.from_flyte_idl(pb2_object.sql) if pb2_object.HasField("sql") else None,
         )
+
+
+class RuntimeMetadata(_common.FlyteIdlEntity):
+    class RuntimeType(object):
+        OTHER = 0
+        FLYTE_SDK = 1
+
+    def __init__(self, type, version, flavor):
+        """
+        :param int type: Enum type from RuntimeMetadata.RuntimeType
+        :param Text version: Version string for SDK version.  Can be used for metrics or managing breaking changes in
+            Admin or Propeller
+        :param Text flavor: Optional extra information about runtime environment (e.g. Python, GoLang, etc.)
+        """
+        self._type = type
+        self._version = version
+        self._flavor = flavor
+
+    @property
+    def type(self):
+        """
+        Enum type from RuntimeMetadata.RuntimeType
+        :rtype: int
+        """
+        return self._type
+
+    @property
+    def version(self):
+        """
+        Version string for SDK version.  Can be used for metrics or managing breaking changes in Admin or Propeller
+        :rtype: Text
+        """
+        return self._version
+
+    @property
+    def flavor(self):
+        """
+        Optional extra information about runtime environment (e.g. Python, GoLang, etc.)
+        :rtype: Text
+        """
+        return self._flavor
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.tasks_pb2.RuntimeMetadata
+        """
+        return _core_task.RuntimeMetadata(type=self.type, version=self.version, flavor=self.flavor)
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.core.tasks_pb2.RuntimeMetadata pb2_object:
+        :rtype: RuntimeMetadata
+        """
+        return cls(type=pb2_object.type, version=pb2_object.version, flavor=pb2_object.flavor)

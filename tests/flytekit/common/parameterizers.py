@@ -3,7 +3,6 @@ from itertools import product
 
 from six.moves import range
 
-import flytekit.models.admin.core.task
 import flytekit.models.core.task
 import flytekit.models.core.types
 from flytekit.common.types.impl import blobs as _blob_impl
@@ -103,9 +102,9 @@ LIST_OF_RESOURCES = [
 
 
 LIST_OF_RUNTIME_METADATA = [
-    flytekit.models.admin.core.task.RuntimeMetadata(flytekit.models.admin.core.task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"),
-    flytekit.models.admin.core.task.RuntimeMetadata(
-        flytekit.models.admin.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"),
+    flytekit.models.core.task.RuntimeMetadata(flytekit.models.core.task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"),
+    flytekit.models.core.task.RuntimeMetadata(
+        flytekit.models.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"),
 ]
 
 

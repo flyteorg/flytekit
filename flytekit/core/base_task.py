@@ -44,8 +44,7 @@ from flytekit.models.core import workflow as _workflow_model, dynamic_job as _dy
     interface as _interface_models
 from flytekit.models.core.interface import Variable
 from flytekit.models.core.security import SecurityContext
-from flytekit.models.core.task import TaskMetadata as _task_matadata
-from flytekit.models.admin.core.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _task_matadata, RuntimeMetadata as _runtimeMetadata
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:

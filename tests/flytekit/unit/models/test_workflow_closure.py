@@ -6,8 +6,8 @@ from flytekit.models import task as _task
 from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface, \
     workflow_closure as _workflow_closure
 from flytekit.models.core import workflow as _workflow
-from flytekit.models.core.task import TaskMetadata as _taskMatadata, TaskTemplate as _taskTemplate
-from flytekit.models.admin.core.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _taskMatadata, TaskTemplate as _taskTemplate, \
+    RuntimeMetadata as _runtimeMetadata
 
 
 def test_workflow_closure():
