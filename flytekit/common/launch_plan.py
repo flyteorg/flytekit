@@ -27,7 +27,7 @@ from flytekit.models.admin import common as _common
 from flytekit.models.core import identifier as _identifier_model, literals as _literal_models, \
     interface as _interface_models
 from flytekit.models.core import workflow as _workflow_models
-from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
+from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
 
 
 class SdkLaunchPlan(

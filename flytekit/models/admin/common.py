@@ -2,10 +2,10 @@ import six as _six
 
 from flyteidl.admin import common_pb2 as _common_pb2
 
-from flytekit.models import common as _common
+from flytekit.models import common as _common_models
 
 
-class Sort(_common.FlyteIdlEntity):
+class Sort(_common_models.FlyteIdlEntity):
     class Direction(object):
         DESCENDING = _common_pb2.Sort.DESCENDING
         ASCENDING = _common_pb2.Sort.ASCENDING
@@ -72,7 +72,7 @@ class Sort(_common.FlyteIdlEntity):
         return cls(key=key, direction=direction)
 
 
-class EmailNotification(_common.FlyteIdlEntity):
+class EmailNotification(_common_models.FlyteIdlEntity):
     def __init__(self, recipients_email):
         """
         :param list[Text] recipients_email:
@@ -101,7 +101,7 @@ class EmailNotification(_common.FlyteIdlEntity):
         return cls(pb2_object.recipients_email)
 
 
-class SlackNotification(_common.FlyteIdlEntity):
+class SlackNotification(_common_models.FlyteIdlEntity):
     def __init__(self, recipients_email):
         """
         :param list[Text] recipients_email:
@@ -130,7 +130,7 @@ class SlackNotification(_common.FlyteIdlEntity):
         return cls(pb2_object.recipients_email)
 
 
-class PagerDutyNotification(_common.FlyteIdlEntity):
+class PagerDutyNotification(_common_models.FlyteIdlEntity):
     def __init__(self, recipients_email):
         """
         :param list[Text] recipients_email:
@@ -159,7 +159,7 @@ class PagerDutyNotification(_common.FlyteIdlEntity):
         return cls(pb2_object.recipients_email)
 
 
-class Notification(_common.FlyteIdlEntity):
+class Notification(_common_models.FlyteIdlEntity):
     def __init__(
         self,
         phases,
@@ -233,7 +233,7 @@ class Notification(_common.FlyteIdlEntity):
         )
 
 
-class Labels(_common.FlyteIdlEntity):
+class Labels(_common_models.FlyteIdlEntity):
     def __init__(self, values):
         """
         Label values to be applied to a workflow execution resource.
@@ -261,7 +261,7 @@ class Labels(_common.FlyteIdlEntity):
         return cls({k: v for k, v in _six.iteritems(pb2_object.values)})
 
 
-class Annotations(_common.FlyteIdlEntity):
+class Annotations(_common_models.FlyteIdlEntity):
     def __init__(self, values):
         """
         Annotation values to be applied to a workflow execution resource.
@@ -289,7 +289,7 @@ class Annotations(_common.FlyteIdlEntity):
         return cls({k: v for k, v in _six.iteritems(pb2_object.values)})
 
 
-class UrlBlob(_common.FlyteIdlEntity):
+class UrlBlob(_common_models.FlyteIdlEntity):
     def __init__(self, url, bytes):
         """
         :param Text url:
@@ -327,7 +327,7 @@ class UrlBlob(_common.FlyteIdlEntity):
         return cls(url=pb.url, bytes=pb.bytes)
 
 
-class RawOutputDataConfig(_common.FlyteIdlEntity):
+class RawOutputDataConfig(_common_models.FlyteIdlEntity):
     def __init__(self, output_location_prefix):
         """
         :param Text output_location_prefix: Location of offloaded data for things like S3, etc.
@@ -347,3 +347,122 @@ class RawOutputDataConfig(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2):
         return cls(output_location_prefix=pb2.output_location_prefix)
+
+
+class NamedEntityState(object):
+    ACTIVE = _common_pb2.NAMED_ENTITY_ACTIVE
+    ARCHIVED = _common_pb2.NAMED_ENTITY_ARCHIVED
+
+    @classmethod
+    def enum_to_string(cls, val):
+        """
+        :param int val:
+        :rtype: Text
+        """
+        if val == cls.ACTIVE:
+            return "ACTIVE"
+        elif val == cls.ARCHIVED:
+            return "ARCHIVED"
+        else:
+            return "<UNKNOWN>"
+
+
+class NamedEntityIdentifier(_common_models.FlyteIdlEntity):
+    def __init__(self, project, domain, name):
+        """
+        :param Text project:
+        :param Text domain:
+        :param Text name:
+        """
+        self._project = project
+        self._domain = domain
+        self._name = name
+
+    @property
+    def project(self):
+        """
+        :rtype: Text
+        """
+        return self._project
+
+    @property
+    def domain(self):
+        """
+        :rtype: Text
+        """
+        return self._domain
+
+    @property
+    def name(self):
+        """
+        :rtype: Text
+        """
+        return self._name
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifier
+        """
+        return _common_pb2.NamedEntityIdentifier(
+            project=self.project,
+            domain=self.domain,
+            name=self.name,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, p):
+        """
+        :param flyteidl.core.common_pb2.NamedEntityIdentifier p:
+        :rtype: Identifier
+        """
+        return cls(
+            project=p.project,
+            domain=p.domain,
+            name=p.name,
+        )
+
+
+class NamedEntityMetadata(_common_models.FlyteIdlEntity):
+    def __init__(self, description, state):
+        """
+
+        :param Text description:
+        :param int state: enum value from NamedEntityState
+        """
+        self._description = description
+        self._state = state
+
+    @property
+    def description(self):
+        """
+        :rtype: Text
+        """
+        return self._description
+
+    @property
+    def state(self):
+        """
+        enum value from NamedEntityState
+        :rtype: int
+        """
+        return self._state
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.common_pb2.NamedEntityMetadata
+        """
+        return _common_pb2.NamedEntityMetadata(
+            description=self.description,
+            state=self.state,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, p):
+        """
+        :param flyteidl.core.common_pb2.NamedEntityMetadata p:
+        :rtype: Identifier
+        """
+        return cls(
+            description=p.description,
+            state=p.state,
+        )

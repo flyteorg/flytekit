@@ -29,7 +29,7 @@ from flytekit.models.admin import workflow as _workflow_model
 from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import errors as _error_models, literals as _literals
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.named_entity import NamedEntityIdentifier as _namedEntityIdentifier
+from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
 
 
 class _FlyteClientManager(object):
