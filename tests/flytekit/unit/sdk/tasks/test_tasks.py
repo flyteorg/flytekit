@@ -1,11 +1,11 @@
 import datetime as _datetime
 import os as _os
 
+import flytekit.models.core.types
 from flytekit import configuration as _configuration
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.models import task as _task_models
-from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
@@ -24,10 +24,10 @@ default_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "projec
 def test_default_python_task():
     assert isinstance(default_task, _sdk_runnable.SdkRunnableTask)
     assert default_task.interface.inputs["in1"].description == ""
-    assert default_task.interface.inputs["in1"].type == _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER)
+    assert default_task.interface.inputs["in1"].type == flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER)
     assert default_task.interface.outputs["out1"].description == ""
-    assert default_task.interface.outputs["out1"].type == _type_models.LiteralType(
-        simple=_type_models.SimpleType.STRING
+    assert default_task.interface.outputs["out1"].type == flytekit.models.core.types.LiteralType(
+        simple=flytekit.models.core.types.SimpleType.STRING
     )
     assert default_task.type == _common_constants.SdkTaskType.PYTHON_TASK
     assert default_task.task_function_name == "default_task"

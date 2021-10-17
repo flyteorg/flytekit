@@ -1,6 +1,7 @@
 import importlib as _importer
 from typing import Type
 
+import flytekit.models.core.types
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
@@ -10,7 +11,6 @@ from flytekit.common.types import helpers as _helpers
 from flytekit.common.types import primitives as _primitive_types
 from flytekit.common.types import proto as _proto
 from flytekit.common.types import schema as _schema
-from flytekit.models import types as _literal_type_models
 from flytekit.models.core import types as _core_types
 
 
@@ -58,14 +58,14 @@ def _generic_proto_sdk_type_from_tag(tag: str) -> Type[_proto.GenericProtobuf]:
 
 class FlyteDefaultTypeEngine(object):
     _SIMPLE_TYPE_LOOKUP_TABLE = {
-        _literal_type_models.SimpleType.INTEGER: _primitive_types.Integer,
-        _literal_type_models.SimpleType.FLOAT: _primitive_types.Float,
-        _literal_type_models.SimpleType.BOOLEAN: _primitive_types.Boolean,
-        _literal_type_models.SimpleType.DATETIME: _primitive_types.Datetime,
-        _literal_type_models.SimpleType.DURATION: _primitive_types.Timedelta,
-        _literal_type_models.SimpleType.NONE: _base_sdk_types.Void,
-        _literal_type_models.SimpleType.STRING: _primitive_types.String,
-        _literal_type_models.SimpleType.STRUCT: _primitive_types.Generic,
+        flytekit.models.core.types.SimpleType.INTEGER: _primitive_types.Integer,
+        flytekit.models.core.types.SimpleType.FLOAT: _primitive_types.Float,
+        flytekit.models.core.types.SimpleType.BOOLEAN: _primitive_types.Boolean,
+        flytekit.models.core.types.SimpleType.DATETIME: _primitive_types.Datetime,
+        flytekit.models.core.types.SimpleType.DURATION: _primitive_types.Timedelta,
+        flytekit.models.core.types.SimpleType.NONE: _base_sdk_types.Void,
+        flytekit.models.core.types.SimpleType.STRING: _primitive_types.String,
+        flytekit.models.core.types.SimpleType.STRUCT: _primitive_types.Generic,
     }
 
     def python_std_to_sdk_type(self, t):
@@ -96,7 +96,7 @@ class FlyteDefaultTypeEngine(object):
 
     def get_sdk_type_from_literal_type(self, literal_type):
         """
-        :param flytekit.models.types.LiteralType literal_type:
+        :param flytekit.models.core.types.LiteralType literal_type:
         :rtype: flytekit.common.types.base_sdk_types.FlyteSdkType
         """
         if literal_type.collection_type is not None:
@@ -109,12 +109,12 @@ class FlyteDefaultTypeEngine(object):
             return self._get_blob_impl_from_type(literal_type.blob)
         elif literal_type.simple is not None:
             if (
-                literal_type.simple == _literal_type_models.SimpleType.BINARY
+                literal_type.simple == flytekit.models.core.types.SimpleType.BINARY
                 and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
             ):
                 return _proto_sdk_type_from_tag(literal_type.metadata[_proto.Protobuf.PB_FIELD_KEY])
             if (
-                literal_type.simple == _literal_type_models.SimpleType.STRUCT
+                literal_type.simple == flytekit.models.core.types.SimpleType.STRUCT
                 and literal_type.metadata
                 and _proto.Protobuf.PB_FIELD_KEY in literal_type.metadata
             ):

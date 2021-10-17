@@ -1,10 +1,10 @@
 import pytest
 from six.moves import range as _range
 
+import flytekit.models.core.types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import containers, primitives
 from flytekit.models.core import literals
-from flytekit.models import types as literal_types
 
 
 def test_list():
@@ -12,7 +12,7 @@ def test_list():
     assert list_type.to_flyte_literal_type().simple is None
     assert list_type.to_flyte_literal_type().map_value_type is None
     assert list_type.to_flyte_literal_type().schema is None
-    assert list_type.to_flyte_literal_type().collection_type.simple == literal_types.SimpleType.INTEGER
+    assert list_type.to_flyte_literal_type().collection_type.simple == flytekit.models.core.types.SimpleType.INTEGER
 
     list_value = list_type.from_python_std([1, 2, 3, 4])
     assert list_value.to_python_std() == [1, 2, 3, 4]
@@ -85,7 +85,7 @@ def test_nested_list():
     assert list_type.to_flyte_literal_type().collection_type.simple is None
     assert list_type.to_flyte_literal_type().collection_type.map_value_type is None
     assert list_type.to_flyte_literal_type().collection_type.schema is None
-    assert list_type.to_flyte_literal_type().collection_type.collection_type.simple == literal_types.SimpleType.INTEGER
+    assert list_type.to_flyte_literal_type().collection_type.collection_type.simple == flytekit.models.core.types.SimpleType.INTEGER
 
     gt = [[1, 2, 3], [4, 5, 6], []]
     list_value = list_type.from_python_std(gt)

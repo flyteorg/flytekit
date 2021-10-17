@@ -39,7 +39,7 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
     @classmethod
     def from_python_std(cls, literal_type, t_value, upstream_nodes=None):
         """
-        :param flytekit.models.types.LiteralType literal_type:
+        :param flytekit.models.core.types.LiteralType literal_type:
         :param T t_value:
         :param list[flytekit.common.nodes.SdkNode] upstream_nodes: [Optional] Keeps track of the nodes upstream,
             if applicable.

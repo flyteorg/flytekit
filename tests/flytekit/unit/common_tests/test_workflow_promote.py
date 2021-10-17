@@ -5,10 +5,10 @@ from flyteidl.core import compiler_pb2 as _compiler_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
 from mock import patch as _patch
 
+import flytekit.models.core.types
 from flytekit.common import workflow as _workflow_common
 from flytekit.common.tasks import task as _task
 from flytekit.models import task as _task_model
-from flytekit.models import types as _types
 from flytekit.models.core import compiler as _compiler_model, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow_model
@@ -126,7 +126,7 @@ def test_basic_workflow_promote(mock_task_fetch):
         wf_output_c = _sdk_workflow.Output(my_task_node.outputs.c, sdk_type=_Types.Integer)
 
     # This section uses the TaskTemplate stored in Admin to promote back to an Sdk Workflow
-    int_type = _types.LiteralType(_types.SimpleType.INTEGER)
+    int_type = flytekit.models.core.types.LiteralType(flytekit.models.core.types.SimpleType.INTEGER)
     task_interface = _interface.TypedInterface(
         # inputs
         {"a": _interface.Variable(int_type, "description1")},

@@ -7,8 +7,7 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
-from flytekit.models.types import OutputReference as _OutputReference
-from flytekit.models.types import SchemaType as _SchemaType
+from flytekit.models.core.types import SchemaType as _SchemaType, OutputReference as _OutputReference
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
@@ -361,7 +360,7 @@ class BindingData(_common.FlyteIdlEntity):
         :param Scalar scalar: [Optional] A simple scalar value.
         :param BindingDataCollection collection: [Optional] A collection of binding data. This allows nesting of
             binding data to any number of levels.
-        :param flytekit.models.types.OutputReference promise: [Optional] References an output promised by another node.
+        :param flytekit.models.core.types.OutputReference promise: [Optional] References an output promised by another node.
         :param BindingDataMap map: [Optional] A map of bindings. The key is always a string.
         """
         self._scalar = scalar
@@ -389,7 +388,7 @@ class BindingData(_common.FlyteIdlEntity):
     def promise(self):
         """
         [Optional] References an output promised by another node.
-        :rtype: flytekit.models.types.OutputReference
+        :rtype: flytekit.models.core.types.OutputReference
         """
         return self._promise
 
@@ -505,7 +504,7 @@ class Schema(_common.FlyteIdlEntity):
         A strongly typed schema that defines the interface of data retrieved from the underlying storage medium.
 
         :param Text uri:
-        :param flytekit.models.types.SchemaType type:
+        :param flytekit.models.core.types.SchemaType type:
         """
         self._uri = uri
         self._type = type
@@ -520,7 +519,7 @@ class Schema(_common.FlyteIdlEntity):
     @property
     def type(self):
         """
-        :rtype: flytekit.models.types.SchemaType
+        :rtype: flytekit.models.core.types.SchemaType
         """
         return self._type
 

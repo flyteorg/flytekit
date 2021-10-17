@@ -15,7 +15,7 @@ from flytekit.models.core.literals import Literal
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 from flytekit.models.sagemaker import parameter_ranges as _params
 from flytekit.models.sagemaker import training_job as _training_job_model
-from flytekit.models.types import LiteralType
+from flytekit.models.core.types import LiteralType
 
 
 @dataclass

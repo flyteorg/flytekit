@@ -46,7 +46,7 @@ class FlyteSdkType(_sdk_bases.ExtendedSdkType, metaclass=_common_models.FlyteABC
     @_abc.abstractmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.types.LiteralType
+        :rtype: flytekit.models.core.types.LiteralType
         """
         pass
 
@@ -103,7 +103,7 @@ class Void(FlyteSdkValue):
     @classmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.types.LiteralType
+        :rtype: flytekit.models.core.types.LiteralType
         """
         raise _user_exceptions.FlyteAssertion(
             "A Void type does not have a literal type and cannot be used in this " "manner."

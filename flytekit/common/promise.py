@@ -1,9 +1,9 @@
+import flytekit.models.core.types
 from flytekit.common import constants as _constants
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models.core import interface as _interface_models
-from flytekit.models import types as _type_models
 
 
 class Input(_interface_models.Parameter, metaclass=_sdk_bases.ExtendedSdkType):
@@ -42,7 +42,7 @@ class Input(_interface_models.Parameter, metaclass=_sdk_bases.ExtendedSdkType):
         self._sdk_default = default
         self._help = help
         self._sdk_type = sdk_type
-        self._promise = _type_models.OutputReference(_constants.GLOBAL_INPUT_NODE_ID, name)
+        self._promise = flytekit.models.core.types.OutputReference(_constants.GLOBAL_INPUT_NODE_ID, name)
         self._name = name
         super(Input, self).__init__(
             _interface_models.Variable(type=sdk_type.to_flyte_literal_type(), description=help or ""),
@@ -120,7 +120,7 @@ class Input(_interface_models.Parameter, metaclass=_sdk_bases.ExtendedSdkType):
             return cls("", sdk_type, help=model.var.description, required=True)
 
 
-class NodeOutput(_type_models.OutputReference, metaclass=_sdk_bases.ExtendedSdkType):
+class NodeOutput(flytekit.models.core.types.OutputReference, metaclass=_sdk_bases.ExtendedSdkType):
     def __init__(self, sdk_node, sdk_type, var):
         """
         :param sdk_node:

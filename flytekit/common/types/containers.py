@@ -2,10 +2,10 @@ import json as _json
 
 import six as _six
 
+import flytekit.models.core.types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.models.core import literals as _literals
-from flytekit.models import types as _idl_types
 
 
 class CollectionType(_base_sdk_types.FlyteSdkType):
@@ -100,9 +100,9 @@ class TypedListImpl(ListImpl, metaclass=TypedCollectionType):
     @classmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.types.LiteralType
+        :rtype: flytekit.models.core.types.LiteralType
         """
-        return _idl_types.LiteralType(collection_type=cls.sub_type.to_flyte_literal_type())
+        return flytekit.models.core.types.LiteralType(collection_type=cls.sub_type.to_flyte_literal_type())
 
     @classmethod
     def promote_from_model(cls, literal_model):

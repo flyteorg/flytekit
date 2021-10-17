@@ -8,7 +8,8 @@ from k8s.io.api.core.v1 import generated_pb2
 
 import flytekit.models.core.interface as interface_models
 import flytekit.models.core.literals as literal_models
-from flytekit.models import task, types
+import flytekit.models.core.types
+from flytekit.models import task
 from flytekit.models.core import identifier, literals
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
@@ -128,7 +129,7 @@ def test_task_template(in_tuple):
 
 
 def test_task_template__k8s_pod_target():
-    int_type = types.LiteralType(types.SimpleType.INTEGER)
+    int_type = flytekit.models.core.types.LiteralType(flytekit.models.core.types.SimpleType.INTEGER)
     obj = _taskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",

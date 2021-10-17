@@ -3,6 +3,7 @@ import datetime as _datetime
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+import flytekit.models.core.types
 from flytekit import __version__
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
@@ -12,7 +13,6 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.models.core import literals as _literals, interface as _interface_model
 from flytekit.models import presto as _presto_models
 from flytekit.models.admin import task as _task_model
-from flytekit.models import types as _types
 
 
 class SdkPrestoTask(_base_task.SdkTask):
@@ -79,22 +79,22 @@ class SdkPrestoTask(_base_task.SdkTask):
         i = _interface.TypedInterface(
             {
                 "__implicit_routing_group": _interface_model.Variable(
-                    type=_types.LiteralType(simple=_types.SimpleType.STRING),
+                    type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING),
                     description="The routing group set as an implicit input",
                 ),
                 "__implicit_catalog": _interface_model.Variable(
-                    type=_types.LiteralType(simple=_types.SimpleType.STRING),
+                    type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING),
                     description="The catalog set as an implicit input",
                 ),
                 "__implicit_schema": _interface_model.Variable(
-                    type=_types.LiteralType(simple=_types.SimpleType.STRING),
+                    type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING),
                     description="The schema set as an implicit input",
                 ),
             },
             {
                 # Set the schema for the Presto query as an output
                 "results": _interface_model.Variable(
-                    type=_types.LiteralType(schema=output_schema.schema_type),
+                    type=flytekit.models.core.types.LiteralType(schema=output_schema.schema_type),
                     description="The schema for the Presto query",
                 )
             },

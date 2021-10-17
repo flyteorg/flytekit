@@ -7,7 +7,7 @@ from flytekit.common.types import base_sdk_types, primitives
 from flytekit.core.interface import Interface
 from flytekit.core.promise import Promise, create_native_named_tuple
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.core.types import LiteralType, SimpleType
 
 
 def test_input():

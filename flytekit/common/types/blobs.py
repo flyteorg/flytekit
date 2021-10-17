@@ -1,7 +1,7 @@
+import flytekit.models.core.types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.models import types as _idl_types
 from flytekit.models.core import types as _core_types, literals as _literals
 
 
@@ -77,9 +77,9 @@ class Blob(_base_sdk_types.FlyteSdkValue, metaclass=BlobInstantiator):
     @classmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.types.LiteralType
+        :rtype: flytekit.models.core.types.LiteralType
         """
-        return _idl_types.LiteralType(
+        return flytekit.models.core.types.LiteralType(
             blob=_core_types.BlobType(format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE)
         )
 
@@ -200,7 +200,7 @@ class MultiPartBlob(_base_sdk_types.FlyteSdkValue, metaclass=MultiPartBlobInstan
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(
+        return flytekit.models.core.types.LiteralType(
             blob=_core_types.BlobType(
                 format="",
                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
@@ -323,7 +323,7 @@ class CSV(Blob, metaclass=CsvInstantiator):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(
+        return flytekit.models.core.types.LiteralType(
             blob=_core_types.BlobType(
                 format="csv",
                 dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
@@ -434,7 +434,7 @@ class MultiPartCSV(MultiPartBlob, metaclass=MultiPartCsvInstantiator):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return _idl_types.LiteralType(
+        return flytekit.models.core.types.LiteralType(
             blob=_core_types.BlobType(
                 format="csv",
                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,

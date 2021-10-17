@@ -1,8 +1,8 @@
+import flytekit.models.core.types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types.impl import schema as _schema_impl
 from flytekit.models.core import literals as _literals
-from flytekit.models import types as _idl_types
 
 
 class SchemaInstantiator(_base_sdk_types.InstantiableType):
@@ -118,9 +118,9 @@ class Schema(_base_sdk_types.FlyteSdkValue, metaclass=SchemaInstantiator):
     @classmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.types.LiteralType
+        :rtype: flytekit.models.core.types.LiteralType
         """
-        return _idl_types.LiteralType(schema=cls.schema_type)
+        return flytekit.models.core.types.LiteralType(schema=cls.schema_type)
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -179,7 +179,7 @@ def schema_instantiator(columns=None):
 
 def schema_instantiator_from_proto(schema_type):
     """
-    :param flytekit.models.types.SchemaType schema_type:
+    :param flytekit.models.core.types.SchemaType schema_type:
     :rtype: SchemaInstantiator
     """
 

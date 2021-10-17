@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from flytekit.models import types as _types
+import flytekit.models.core.types
 from flytekit.models.core import condition as _condition, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow
@@ -32,7 +32,7 @@ def test_alias():
 def test_workflow_template():
     task = _workflow.TaskNode(reference_id=_generic_id)
     nm = _get_sample_node_metadata()
-    int_type = _types.LiteralType(_types.SimpleType.INTEGER)
+    int_type = flytekit.models.core.types.LiteralType(flytekit.models.core.types.SimpleType.INTEGER)
     wf_metadata = _workflow.WorkflowMetadata()
     wf_metadata_defaults = _workflow.WorkflowMetadataDefaults()
     typed_interface = _interface.TypedInterface(

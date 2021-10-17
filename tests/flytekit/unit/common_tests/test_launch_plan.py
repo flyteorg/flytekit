@@ -2,6 +2,7 @@ import os as _os
 
 import pytest as _pytest
 
+import flytekit.models.core.types
 from flytekit import configuration as _configuration
 from flytekit.common import launch_plan as _launch_plan
 from flytekit.common import notifications as _notifications
@@ -9,7 +10,6 @@ from flytekit.common import schedules as _schedules
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models.admin import schedule as _schedule
 from flytekit.models.admin import common as _common_models
-from flytekit.models import types as _type_models
 from flytekit.models.core import execution as _execution
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk import types as _types
@@ -273,7 +273,7 @@ def test_launch_plan_node():
 
     # Test that outputs are promised
     n.assign_id_and_return("node-id")
-    assert n.outputs["out"].sdk_type.to_flyte_literal_type().collection_type.simple == _type_models.SimpleType.INTEGER
+    assert n.outputs["out"].sdk_type.to_flyte_literal_type().collection_type.simple == flytekit.models.core.types.SimpleType.INTEGER
     assert n.outputs["out"].var == "out"
     assert n.outputs["out"].node_id == "node-id"
 
