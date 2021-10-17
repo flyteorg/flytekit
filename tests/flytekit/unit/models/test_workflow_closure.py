@@ -2,8 +2,8 @@ from datetime import timedelta
 
 import flytekit.models.core.types
 from flytekit.models import task as _task
-from flytekit.models import workflow_closure as _workflow_closure
-from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface
+from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface, \
+    workflow_closure as _workflow_closure
 from flytekit.models.core import workflow as _workflow
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
