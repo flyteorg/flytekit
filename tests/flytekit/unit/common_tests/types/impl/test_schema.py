@@ -12,7 +12,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import blobs as _blobs
 from flytekit.common.types import primitives as _primitives
 from flytekit.common.types.impl import schema as _schema_impl
-from flytekit.models import literals as _literal_models
+from flytekit.models.core import literals as _literal_models
 from flytekit.models import types as _type_models
 from flytekit.sdk import test_utils as _test_utils
 

@@ -1,9 +1,8 @@
 from flyteidl.core import dynamic_job_pb2 as _dynamic_job
 
 from flytekit.models import common as _common
-from flytekit.models import literals as _literals
 from flytekit.models.admin import task as _task
-from flytekit.models.core import workflow as _workflow
+from flytekit.models.core import workflow as _workflow, literals as _literals
 
 
 class DynamicJobSpec(_common.FlyteIdlEntity):

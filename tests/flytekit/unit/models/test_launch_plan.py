@@ -1,10 +1,10 @@
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 import flytekit.models.admin.launch_plan
-from flytekit.models import common, interface, literals, types
+from flytekit.models import interface, types
 from flytekit.models.admin import schedule, launch_plan
 from flytekit.models.admin import common as _common
-from flytekit.models.core import identifier
+from flytekit.models.core import identifier, literals
 
 
 def test_metadata():

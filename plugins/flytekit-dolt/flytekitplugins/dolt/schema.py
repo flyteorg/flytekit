@@ -14,7 +14,7 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
-from flytekit.models.literals import Literal, Scalar
+from flytekit.models.core.literals import Literal, Scalar
 from flytekit.models.types import LiteralType
 
 logger = logging.getLogger("flytekitplugins.dolt")

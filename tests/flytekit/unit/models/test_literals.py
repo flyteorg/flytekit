@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 import pytz
 
-from flytekit.models import literals
+from flytekit.models.core import literals
 from flytekit.models import types as _types
 from tests.flytekit.common import parameterizers
 

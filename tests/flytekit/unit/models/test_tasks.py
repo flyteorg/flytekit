@@ -7,9 +7,9 @@ from google.protobuf import text_format
 from k8s.io.api.core.v1 import generated_pb2
 
 import flytekit.models.interface as interface_models
-import flytekit.models.literals as literal_models
-from flytekit.models import literals, task, types
-from flytekit.models.core import identifier
+import flytekit.models.core.literals as literal_models
+from flytekit.models import task, types
+from flytekit.models.core import identifier, literals
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata
 from flytekit.models.admin.task import TaskTemplate as _taskTemplate

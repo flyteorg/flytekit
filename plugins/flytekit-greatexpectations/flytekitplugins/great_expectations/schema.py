@@ -15,7 +15,7 @@ from great_expectations.exceptions import ValidationError
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
-from flytekit.models.literals import Literal, Primitive, Scalar
+from flytekit.models.core.literals import Literal, Primitive, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer, SchemaOpenMode

@@ -19,8 +19,7 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.configuration import internal as _internal_config
 from flytekit.models import array_job as _array_job
-from flytekit.models.core import dynamic_job as _dynamic_job
-from flytekit.models import literals as _literal_models
+from flytekit.models.core import dynamic_job as _dynamic_job, literals as _literal_models
 
 
 class PromiseOutputReference(_task_output.OutputReference):

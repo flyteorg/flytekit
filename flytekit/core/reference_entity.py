@@ -15,8 +15,7 @@ from flytekit.core.promise import (
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
-from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import identifier as _identifier_model, literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 
 

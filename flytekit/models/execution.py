@@ -5,8 +5,7 @@ import pytz as _pytz
 
 import flytekit.models.admin.launch_plan
 from flytekit.models import common as _common_models
-from flytekit.models import literals as _literals_models
-from flytekit.models.core import execution as _core_execution
+from flytekit.models.core import execution as _core_execution, literals as _literals_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.admin import common as _admin_common
 

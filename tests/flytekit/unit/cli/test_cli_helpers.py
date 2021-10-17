@@ -9,7 +9,8 @@ from flyteidl.core.identifier_pb2 import LAUNCH_PLAN
 
 from flytekit.clis import helpers
 from flytekit.clis.helpers import _hydrate_identifier, _hydrate_workflow_template_nodes, hydrate_registration_parameters
-from flytekit.models import literals, types
+from flytekit.models import types
+from flytekit.models.core import literals
 from flytekit.models.interface import Parameter, ParameterMap, Variable
 
 

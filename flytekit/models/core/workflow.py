@@ -8,8 +8,8 @@ from flytekit.models import interface as _interface
 from flytekit.models import types as _types
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.literals import Binding as _Binding
-from flytekit.models.literals import RetryStrategy as _RetryStrategy
+from flytekit.models.core.literals import Binding as _Binding
+from flytekit.models.core.literals import RetryStrategy as _RetryStrategy
 from flytekit.models.task import Resources
 
 

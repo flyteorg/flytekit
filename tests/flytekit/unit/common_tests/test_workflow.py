@@ -7,8 +7,7 @@ from flytekit.common import nodes, promise, workflow
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.local_workflow import build_sdk_workflow_from_metaclass
 from flytekit.common.types import containers, primitives
-from flytekit.models import literals as _literals
-from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import identifier as _identifier, literals as _literals
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.sdk import types as _types
 from flytekit.sdk.tasks import inputs, outputs, python_task

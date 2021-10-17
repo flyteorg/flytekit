@@ -39,9 +39,8 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
-from flytekit.models.core import workflow as _workflow_model, dynamic_job as _dynamic_job
+from flytekit.models.core import workflow as _workflow_model, dynamic_job as _dynamic_job, literals as _literal_models
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 from flytekit.models.admin.task import TaskMetadata as _task_matadata

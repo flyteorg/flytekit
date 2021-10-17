@@ -14,8 +14,7 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import execution as _execution_models
-from flytekit.models import literals as _literal_models
-from flytekit.models.core import execution as _core_execution_models
+from flytekit.models.core import execution as _core_execution_models, literals as _literal_models
 
 
 class SdkWorkflowExecution(

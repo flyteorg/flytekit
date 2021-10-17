@@ -28,7 +28,7 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.configuration import secrets
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces.stats import taggable
-from flytekit.models import literals as _literal_models
+from flytekit.models.core import literals as _literal_models
 from flytekit.models import task as _task_models
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata

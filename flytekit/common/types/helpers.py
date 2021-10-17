@@ -5,7 +5,7 @@ import six as _six
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.models import literals as _literal_models
+from flytekit.models.core import literals as _literal_models
 
 
 class _TypeEngineLoader(object):

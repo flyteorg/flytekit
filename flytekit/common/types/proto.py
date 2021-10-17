@@ -11,7 +11,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
-from flytekit.models import literals as _literals
+from flytekit.models.core import literals as _literals
 from flytekit.models import types as _idl_types
 from flytekit.models.common import FlyteIdlEntity, FlyteType
 from flytekit.models.types import LiteralType

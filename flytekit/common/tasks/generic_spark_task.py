@@ -11,7 +11,7 @@ from flytekit.common.tasks import task as _base_tasks
 from flytekit.common.types import helpers as _helpers
 from flytekit.common.types import primitives as _primitives
 from flytekit.configuration import internal as _internal_config
-from flytekit.models import literals as _literal_models
+from flytekit.models.core import literals as _literal_models
 from flytekit.models import task as _task_models
 from flytekit.models.admin.task import TaskMetadata as _taskMatadata
 from flytekit.models.admin.task import RuntimeMetadata as _runtimeMetadata

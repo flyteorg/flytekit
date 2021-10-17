@@ -14,7 +14,7 @@ from flytekit.common.types import primitives as _primitives
 from flytekit.common.types.impl import blobs as _blob_impl
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models import literals as _literal_models
+from flytekit.models.core import literals as _literal_models
 from flytekit.models import types as _type_models
 from flytekit.plugins import numpy as _np
 from flytekit.plugins import pandas as _pd

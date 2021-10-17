@@ -42,8 +42,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
-from flytekit.models import common as common_models
-from flytekit.models import literals as literal_models
+from flytekit.models.core import literals as literal_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.execution import (

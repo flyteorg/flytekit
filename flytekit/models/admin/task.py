@@ -6,14 +6,14 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
 from flytekit.models import common as _common
-from flytekit.models import literals as _literals
 from flytekit.models import interface as _interface
 from flytekit.models import security as _sec
 from flytekit.models.task import Container as _container
 from flytekit.models.task import Sql as _sql
 from flytekit.models.task import K8sPod as _k8s_pod
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
-from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import identifier as _identifier, literals as _literals
+
 
 class TaskMetadata(_common.FlyteIdlEntity):
     def __init__(

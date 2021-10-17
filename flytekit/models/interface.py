@@ -4,7 +4,7 @@ import six as _six
 from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
-from flytekit.models import literals as _literals
+from flytekit.models.core import literals as _literals
 from flytekit.models import types as _types
 
 

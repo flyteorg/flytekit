@@ -22,9 +22,8 @@ from flytekit.common.tasks.sagemaker.hpo_job_task import (
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.engines import common as _common_engine
 from flytekit.engines.unit.mock_stats import MockStats
-from flytekit.models import literals as _literals
 from flytekit.models import types as _idl_types
-from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import identifier as _identifier, literals as _literals
 from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker.hpo_job import HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig
 from flytekit.models.sagemaker.hpo_job import (

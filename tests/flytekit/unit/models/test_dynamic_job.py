@@ -5,10 +5,9 @@ import pytest
 from google.protobuf import text_format
 
 from flytekit.models import array_job as _array_job
-from flytekit.models import literals as _literals
 from flytekit.models import task as _task
 from flytekit.models.admin.task import TaskTemplate as _taskTemplate
-from flytekit.models.core import identifier as _identifier, dynamic_job as _dynamic_job
+from flytekit.models.core import identifier as _identifier, dynamic_job as _dynamic_job, literals as _literals
 from flytekit.models.core import workflow as _workflow
 from tests.flytekit.common import parameterizers
 
