@@ -12,7 +12,6 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
-from flytekit.models import task as _task_model
 from flytekit.models.core.security import Secret, SecurityContext
 
 T = TypeVar("T")

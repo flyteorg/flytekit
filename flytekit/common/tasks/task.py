@@ -24,9 +24,7 @@ from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import common as _common_model
-from flytekit.models import execution as _admin_execution_models
-from flytekit.models.admin import common as _admin_common
+from flytekit.models.admin import common as _admin_common, execution as _admin_execution_models
 from flytekit.models.core.task import TaskTemplate as _taskTemplate
 from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import identifier as _identifier_model

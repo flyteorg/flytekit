@@ -3,7 +3,6 @@ from typing import Dict, Optional, Type
 
 import flytekit.models.core.task
 from flytekit.extend import SerializationSettings, SQLTask
-from flytekit.models import task as _task_model
 from flytekit.types.schema import FlyteSchema
 
 _ACCOUNT_FIELD = "account"

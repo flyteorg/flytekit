@@ -7,7 +7,6 @@ from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.interface import Interface
 from flytekit.core.resources import Resources, ResourceSpec
-from flytekit.models import task as _task_model
 
 
 class ContainerTask(PythonTask):

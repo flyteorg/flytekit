@@ -14,7 +14,6 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
-from flytekit.models import task as _task_model
 from flytekit.models.core.task import TaskTemplate as _taskTemplate
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.core.security import Secret, SecurityContext

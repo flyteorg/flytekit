@@ -6,7 +6,6 @@ import flytekit.models.core.types
 from flytekit import configuration as _configuration
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types

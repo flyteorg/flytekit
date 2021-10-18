@@ -45,7 +45,7 @@ from flytekit.core.workflow import WorkflowBase
 from flytekit.models.core import literals as literal_models
 from flytekit.models.admin.common import Sort, NamedEntityIdentifier as _namedEntityIdentifier
 from flytekit.models.core.identifier import ResourceType
-from flytekit.models.execution import (
+from flytekit.models.admin.execution import (
     ExecutionMetadata,
     ExecutionSpec,
     NodeExecutionGetDataResponse,

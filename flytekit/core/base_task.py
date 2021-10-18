@@ -39,7 +39,6 @@ from flytekit.core.promise import (
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model, dynamic_job as _dynamic_job, literals as _literal_models, \
     interface as _interface_models
 from flytekit.models.core.interface import Variable

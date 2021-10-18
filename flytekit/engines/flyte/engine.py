@@ -24,8 +24,7 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.models import execution as _execution_models
-from flytekit.models.admin import common as _common
+from flytekit.models.admin import common as _common, execution as _execution_models
 from flytekit.models.admin import workflow as _workflow_model
 from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import errors as _error_models, literals as _literals

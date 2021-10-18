@@ -30,7 +30,6 @@ from flytekit.configuration import secrets
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces.stats import taggable
 from flytekit.models.core import literals as _literal_models
-from flytekit.models import task as _task_models
 from flytekit.models.core.task import TaskMetadata as _taskMatadata, RuntimeMetadata as _runtimeMetadata
 
 

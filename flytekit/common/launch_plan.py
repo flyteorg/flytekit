@@ -22,8 +22,8 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import execution as _execution_models
-from flytekit.models.admin import schedule as _schedule_model, launch_plan as _launch_plan_models
+from flytekit.models.admin import schedule as _schedule_model, launch_plan as _launch_plan_models, \
+    execution as _execution_models
 from flytekit.models.admin import common as _common
 from flytekit.models.core import identifier as _identifier_model, literals as _literal_models, \
     interface as _interface_models

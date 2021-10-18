@@ -1,7 +1,6 @@
 import logging as _logging
 from typing import Any, Dict, List, Optional, Union
 
-import flytekit
 import flytekit.models.core.task
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.common import constants as _constants
@@ -12,8 +11,8 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.utils import _dnsify
 from flytekit.core.promise import NodeOutput
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import node_execution as _node_execution_models
-from flytekit.models.admin import task as _task_model, launch_plan as _launch_plan_model
+from flytekit.models.admin import launch_plan as _launch_plan_model, \
+    node_execution as _node_execution_models
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import component_nodes as _component_nodes

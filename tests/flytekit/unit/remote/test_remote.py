@@ -14,10 +14,10 @@ from flytekit.models.core.identifier import (
     ResourceType,
     WorkflowExecutionIdentifier,
 )
-from flytekit.models.execution import Execution
+from flytekit.models.admin.execution import Execution
 from flytekit.models.core.interface import TypedInterface, Variable
 from flytekit.models.admin.launch_plan import LaunchPlan
-from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
+from flytekit.models.admin.node_execution import NodeExecution, NodeExecutionMetaData
 from flytekit.models.admin.task import Task
 from flytekit.models.admin import common as _common
 from flytekit.models.core.types import LiteralType, SimpleType

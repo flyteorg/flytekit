@@ -14,7 +14,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.models.array_job import ArrayJob
+from flytekit.models.plugins.array_job import ArrayJob
 from flytekit.models.core.interface import Variable
 from flytekit.models.core.task import Container, K8sPod, Sql
 

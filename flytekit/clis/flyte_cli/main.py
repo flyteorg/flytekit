@@ -44,8 +44,8 @@ from flytekit.models.admin import common as _admin_common, launch_plan as _launc
 from flytekit.models.admin.common import RawOutputDataConfig as _RawOutputDataConfig, AuthRole as _AuthRole
 from flytekit.models.core import execution as _core_execution_models, literals as _literals
 from flytekit.models.core import identifier as _core_identifier
-from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata
-from flytekit.models.execution import ExecutionSpec as _ExecutionSpec
+from flytekit.models.admin.execution import ExecutionMetadata as _ExecutionMetadata
+from flytekit.models.admin.execution import ExecutionSpec as _ExecutionSpec
 from flytekit.models.admin.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes
 from flytekit.models.admin.matchable_resource import ExecutionClusterLabel as _ExecutionClusterLabel
 from flytekit.models.admin.matchable_resource import ExecutionQueueAttributes as _ExecutionQueueAttributes
