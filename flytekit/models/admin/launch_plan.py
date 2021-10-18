@@ -1,9 +1,9 @@
-from flyteidl.admin import launch_plan_pb2 as _launch_plan, common_pb2 as _common_pb2
+from flyteidl.admin import launch_plan_pb2 as _launch_plan
 
 from flytekit.models import common as _common
 from flytekit.models.admin import schedule as _schedule
 from flytekit.models.admin import common as _admin_common
-from flytekit.models.common import FlyteIdlEntity
+from flytekit.models.admin.common import AuthRole
 from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface
 
 
@@ -58,54 +58,6 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         )
 
 
-class AuthRole(FlyteIdlEntity):
-    def __init__(self, assumable_iam_role=None, kubernetes_service_account=None):
-        """
-        At most one of assumable_iam_role or kubernetes_service_account can be set.
-        :param Text assumable_iam_role: IAM identity with set permissions policies.
-        :param Text kubernetes_service_account: Provides an identity for workflow execution resources. Flyte deployment
-            administrators are responsible for handling permissions as they relate to the service account.
-        """
-        self._assumable_iam_role = assumable_iam_role
-        self._kubernetes_service_account = kubernetes_service_account
-
-    @property
-    def assumable_iam_role(self):
-        """
-        The IAM role to execute the workflow with
-        :rtype: Text
-        """
-        return self._assumable_iam_role
-
-    @property
-    def kubernetes_service_account(self):
-        """
-        The kubernetes service account to execute the workflow with
-        :rtype: Text
-        """
-        return self._kubernetes_service_account
-
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.admin.launch_plan_pb2.Auth
-        """
-        return _common_pb2.AuthRole(
-            assumable_iam_role=self.assumable_iam_role if self.assumable_iam_role else None,
-            kubernetes_service_account=self.kubernetes_service_account if self.kubernetes_service_account else None,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        """
-        :param flyteidl.admin.launch_plan_pb2.Auth pb2_object:
-        :rtype: Auth
-        """
-        return cls(
-            assumable_iam_role=pb2_object.assumable_iam_role,
-            kubernetes_service_account=pb2_object.kubernetes_service_account,
-        )
-
-
 class LaunchPlanSpec(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -130,7 +82,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             Any custom kubernetes labels to apply to workflows executed by this launch plan.
         :param flytekit.models.admin.common.Annotations annotations:
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.admin.launch_plan.AuthRole auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.admin.common.AuthRole auth_role: The auth method with which to execute the workflow.
         :param flytekit.models.admin.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
             data like Blobs and Schemas.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
@@ -198,7 +150,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def auth_role(self):
         """
         The authorization method with which to execute the workflow.
-        :rtype: flytekit.models.admin.launch_plan.AuthRole
+        :rtype: flytekit.models.admin.common.AuthRole
         """
         return self._auth_role
 

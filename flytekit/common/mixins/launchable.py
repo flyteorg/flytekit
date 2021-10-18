@@ -30,7 +30,7 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
             notifications.
         :param flytekit.models.admin.common.Labels label_overrides:
         :param flytekit.models.admin.common.Annotations annotation_overrides:
-        :param flytekit.models.admin.launch_plan.AuthRole auth_role:
+        :param flytekit.models.admin.common.AuthRole auth_role:
         :rtype: T
 
         """
@@ -99,7 +99,7 @@ class LaunchableEntity(object, metaclass=_abc.ABCMeta):
             notifications.
         :param flytekit.models.admin.common.Labels label_overrides:
         :param flytekit.models.admin.common.Annotations annotation_overrides:
-        :param flytekit.models.admin.launch_plan.AuthRole auth_role:
+        :param flytekit.models.admin.common.AuthRole auth_role:
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier:
         """
         pass

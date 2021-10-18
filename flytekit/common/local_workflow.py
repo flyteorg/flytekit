@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 import six as _six
 from six.moves import queue as _queue
 
+import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 from flytekit.common import interface as _interface
 from flytekit.common import launch_plan as _launch_plan
@@ -279,7 +280,7 @@ class SdkRunnableWorkflow(SdkWorkflow):
 
         if role:
             assumable_iam_role = role  # For backwards compatibility
-        auth_role = flytekit.models.admin.launch_plan.AuthRole(
+        auth_role = flytekit.models.admin.common.AuthRole(
             assumable_iam_role=assumable_iam_role,
             kubernetes_service_account=kubernetes_service_account,
         )

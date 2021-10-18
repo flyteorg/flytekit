@@ -3,6 +3,7 @@ import os
 import pytest
 from mock import MagicMock, patch
 
+import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import internal
@@ -168,7 +169,7 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url,
         domain="dev",
         labels=_common.Labels({"a": "my_label_value"}),
         annotations=_common.Annotations({"b": "my_annotation_value"}),
-        auth_role=flytekit.models.admin.launch_plan.AuthRole(kubernetes_service_account="svc"),
+        auth_role=flytekit.models.admin.common.AuthRole(kubernetes_service_account="svc"),
     )
 
 

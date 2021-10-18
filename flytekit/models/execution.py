@@ -3,6 +3,7 @@ import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
 import pytz as _pytz
 
+import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 from flytekit.models import common as _common_models
 from flytekit.models.core import execution as _core_execution, literals as _literals_models
@@ -89,7 +90,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param bool disable_all: If true, all notifications should be disabled.
         :param flytekit.models.admin.common.Labels labels: Labels to apply to the execution.
         :param flytekit.models.admin.common.Annotations annotations: Annotations to apply to the execution
-        :param flytekit.models.admin.launch_plan.AuthRole auth_role: The authorization method with which to execute the workflow.
+        :param flytekit.models.admin.common.AuthRole auth_role: The authorization method with which to execute the workflow.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
@@ -101,7 +102,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._disable_all = disable_all
         self._labels = labels or _admin_common.Labels({})
         self._annotations = annotations or _admin_common.Annotations({})
-        self._auth_role = auth_role or flytekit.models.admin.launch_plan.AuthRole()
+        self._auth_role = auth_role or flytekit.models.admin.common.AuthRole()
         self._max_parallelism = max_parallelism
 
     @property
@@ -150,7 +151,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     @property
     def auth_role(self):
         """
-        :rtype: flytekit.models.common.AuthRole
+        :rtype: flytekit.models.admin.common.AuthRole
         """
         return self._auth_role
 
@@ -186,7 +187,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             disable_all=p.disable_all if p.HasField("disable_all") else None,
             labels=_admin_common.Labels.from_flyte_idl(p.labels),
             annotations=_admin_common.Annotations.from_flyte_idl(p.annotations),
-            auth_role=flytekit.models.admin.launch_plan.AuthRole.from_flyte_idl(p.auth_role),
+            auth_role=flytekit.models.admin.common.AuthRole.from_flyte_idl(p.auth_role),
             max_parallelism=p.max_parallelism,
         )
 

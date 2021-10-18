@@ -5,6 +5,7 @@ import uuid as _uuid
 import six as _six
 from deprecated import deprecated as _deprecated
 
+import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
@@ -168,7 +169,7 @@ class SdkLaunchPlan(
     @property
     def auth_role(self):
         """
-        :rtype: flytekit.models.admin.launch_plan.AuthRole
+        :rtype: flytekit.models.admin.common.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
         if fixed_auth is not None and (
@@ -184,7 +185,7 @@ class SdkLaunchPlan(
                 "Using deprecated `role` from config. Please update your config to use `assumable_iam_role` instead"
             )
             assumable_iam_role = _sdk_config.ROLE.get()
-        return flytekit.models.admin.launch_plan.AuthRole(
+        return flytekit.models.admin.common.AuthRole(
             assumable_iam_role=assumable_iam_role,
             kubernetes_service_account=kubernetes_service_account,
         )
@@ -312,7 +313,7 @@ class SdkLaunchPlan(
         :param flytekit.models.admin.common.Labels label_overrides:
         :param flytekit.models.admin.common.Annotations annotation_overrides:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
-        :param flytekit.models.common.AuthRole auth_role:
+        :param flytekit.models.admin.common.AuthRole auth_role:
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
@@ -412,7 +413,7 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
         :param flytekit.models.admin.common.Annotations annotations: Any custom kubernetes annotations to apply to workflows
             executed by this launch plan.
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.admin.common.Authrole auth_role: The auth method with which to execute the workflow.
         :param flytekit.models.admin.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
         """
         if role and auth_role:
@@ -422,7 +423,7 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
         default_inputs = default_inputs or {}
 
         if role:
-            auth_role = flytekit.models.admin.launch_plan.AuthRole(assumable_iam_role=role)
+            auth_role = flytekit.models.admin.common.AuthRole(assumable_iam_role=role)
 
         # The constructor for SdkLaunchPlan sets the id to None anyways so we don't bother passing in an ID. The ID
         # should be set in one of three places,

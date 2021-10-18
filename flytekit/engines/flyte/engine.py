@@ -8,6 +8,7 @@ from deprecated import deprecated as _deprecated
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 import flytekit
+import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
@@ -426,7 +427,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
             notifications.
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
-        :param flytekit.models.common.AuthRole auth_role:
+        :param flytekit.models.admin.common.AuthRole auth_role:
         :rtype: flytekit.models.execution.Execution
         """
         disable_all = notification_overrides == []
@@ -446,7 +447,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                     "Please update your config to use `assumable_iam_role` instead"
                 )
                 assumable_iam_role = _sdk_config.ROLE.get()
-            auth_role = flytekit.models.admin.launch_plan.AuthRole(
+            auth_role = flytekit.models.admin.common.AuthRole(
                 assumable_iam_role=assumable_iam_role,
                 kubernetes_service_account=kubernetes_service_account,
             )

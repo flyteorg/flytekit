@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
+import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 import flytekit.models.core.task
 from flytekit.common import constants as _common_constants
@@ -208,7 +209,7 @@ def get_serializable_launch_plan(
         fixed_inputs=entity.fixed_inputs,
         labels=entity.labels or _common.Labels({}),
         annotations=entity.annotations or _common.Annotations({}),
-        auth_role=entity._auth_role or flytekit.models.admin.launch_plan.AuthRole(),
+        auth_role=entity._auth_role or flytekit.models.admin.common.AuthRole(),
         raw_output_data_config=entity.raw_output_data_config or _common.RawOutputDataConfig(""),
         max_parallelism=entity.max_parallelism,
     )

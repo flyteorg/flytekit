@@ -1,6 +1,7 @@
 import datetime as _datetime
 from typing import List
 
+import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
@@ -268,7 +269,7 @@ class SdkWorkflow(
 
         if not (assumable_iam_role or kubernetes_service_account):
             raise _user_exceptions.FlyteValidationException("No assumable role or service account found")
-        auth_role = flytekit.models.admin.launch_plan.AuthRole(
+        auth_role = flytekit.models.admin.common.AuthRole(
             assumable_iam_role=assumable_iam_role,
             kubernetes_service_account=kubernetes_service_account,
         )

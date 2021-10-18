@@ -10,8 +10,7 @@ from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.schedule import CronSchedule
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.models.admin.launch_plan import AuthRole
-from flytekit.models.admin.common import Labels, Annotations, RawOutputDataConfig
+from flytekit.models.admin.common import Labels, Annotations, RawOutputDataConfig, AuthRole
 from flytekit.models.core import execution as _execution_model
 from flytekit.models.core import identifier as identifier_models
 

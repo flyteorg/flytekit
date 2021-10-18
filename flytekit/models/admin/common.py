@@ -3,6 +3,7 @@ import six as _six
 from flyteidl.admin import common_pb2 as _common_pb2
 
 from flytekit.models import common as _common_models
+from flytekit.models.common import FlyteIdlEntity
 
 
 class Sort(_common_models.FlyteIdlEntity):
@@ -465,4 +466,52 @@ class NamedEntityMetadata(_common_models.FlyteIdlEntity):
         return cls(
             description=p.description,
             state=p.state,
+        )
+
+
+class AuthRole(FlyteIdlEntity):
+    def __init__(self, assumable_iam_role=None, kubernetes_service_account=None):
+        """
+        At most one of assumable_iam_role or kubernetes_service_account can be set.
+        :param Text assumable_iam_role: IAM identity with set permissions policies.
+        :param Text kubernetes_service_account: Provides an identity for workflow execution resources. Flyte deployment
+            administrators are responsible for handling permissions as they relate to the service account.
+        """
+        self._assumable_iam_role = assumable_iam_role
+        self._kubernetes_service_account = kubernetes_service_account
+
+    @property
+    def assumable_iam_role(self):
+        """
+        The IAM role to execute the workflow with
+        :rtype: Text
+        """
+        return self._assumable_iam_role
+
+    @property
+    def kubernetes_service_account(self):
+        """
+        The kubernetes service account to execute the workflow with
+        :rtype: Text
+        """
+        return self._kubernetes_service_account
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.common.AuthRole
+        """
+        return _common_pb2.AuthRole(
+            assumable_iam_role=self.assumable_iam_role if self.assumable_iam_role else None,
+            kubernetes_service_account=self.kubernetes_service_account if self.kubernetes_service_account else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.common.AuthRole pb2_object:
+        :rtype: AuthRole
+        """
+        return cls(
+            assumable_iam_role=pb2_object.assumable_iam_role,
+            kubernetes_service_account=pb2_object.kubernetes_service_account,
         )
