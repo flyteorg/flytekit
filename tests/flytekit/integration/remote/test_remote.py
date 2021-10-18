@@ -285,14 +285,13 @@ def test_execute_joblib_workflow(flyteclient, flyte_workflows_register, flyte_re
     assert output_obj == input_obj
 
 
-def test_execute_with_default_launch_plan(flyteclient, flyte_remote_env):
+def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):
     from mock_flyte_repo.workflows.basic.list_float_wf import my_wf
 
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
     remote = FlyteRemote.from_config(PROJECT, "development")
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
-    version = uuid.uuid4().hex[:30] + str(int(time.time()))
-    execution = remote.execute(my_wf, version=version, inputs={"xs": xs}, wait=True)
+    execution = remote.execute(my_wf, inputs={"xs": xs}, wait=True)
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
 

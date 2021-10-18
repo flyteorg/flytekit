@@ -889,7 +889,6 @@ class FlyteRemote(object):
         task_identifiers_dict = None
         for node in entity.nodes:
             try:
-                print(resolved_identifiers.version)
                 task_identifiers_dict = deepcopy(resolved_identifiers_dict)
                 task_identifiers_dict["name"] = node.flyte_entity.name
                 self.fetch_task(**task_identifiers_dict)
