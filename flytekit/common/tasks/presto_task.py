@@ -13,7 +13,7 @@ from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.models.core import literals as _literals, interface as _interface_model
 from flytekit.models.plugins import presto as _presto_models
-from flytekit.models.admin import task as _task_model
+from flytekit.models.core import task as _task_model
 
 
 class SdkPrestoTask(_base_task.SdkTask):
@@ -57,7 +57,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         self._catalog = catalog or ""
         self._schema = schema or ""
 
-        metadata = _task_model.TaskMatadata(
+        metadata = _task_model.TaskMetadata(
             discoverable,
             # This needs to have the proper version reflected in it
             flytekit.models.core.task.RuntimeMetadata(

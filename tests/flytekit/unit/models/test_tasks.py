@@ -11,7 +11,7 @@ import flytekit.models.core.literals as literal_models
 import flytekit.models.core.task
 import flytekit.models.core.types
 from flytekit.models.core import identifier, literals
-from flytekit.models.core.task import TaskMetadata as _taskMatadata, TaskTemplate as _taskTemplate, \
+from flytekit.models.core.task import TaskMetadata as _taskMetadata, TaskTemplate as _taskTemplate, \
     RuntimeMetadata as _runtimeMetadata
 from flytekit.models.admin.task import Task as _task
 from tests.flytekit.common import parameterizers
@@ -53,22 +53,22 @@ def test_runtime_metadata():
 def test_task_metadata_interruptible_from_flyte_idl():
     # Interruptible not set
     idl = TaskMetadata()
-    obj = _taskMatadata.from_flyte_idl(idl)
+    obj = _taskMetadata.from_flyte_idl(idl)
     assert obj.interruptible is None
 
     idl = TaskMetadata()
     idl.interruptible = True
-    obj = _taskMatadata.from_flyte_idl(idl)
+    obj = _taskMetadata.from_flyte_idl(idl)
     assert obj.interruptible is True
 
     idl = TaskMetadata()
     idl.interruptible = False
-    obj = _taskMatadata.from_flyte_idl(idl)
+    obj = _taskMetadata.from_flyte_idl(idl)
     assert obj.interruptible is False
 
 
 def test_task_metadata():
-    obj = _taskMatadata(
+    obj = _taskMetadata(
         True,
         _runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
         timedelta(days=1),
@@ -87,7 +87,7 @@ def test_task_metadata():
     assert obj.runtime.version == "1.0.0"
     assert obj.deprecated_error_message == "This is deprecated!"
     assert obj.discovery_version == "0.1.1b0"
-    assert obj == _taskMatadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == _taskMetadata.from_flyte_idl(obj.to_flyte_idl())
 
 
 @pytest.mark.parametrize(
@@ -134,7 +134,7 @@ def test_task_template__k8s_pod_target():
     obj = _taskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",
-        _taskMatadata(
+        _taskMetadata(
             False,
             _runtimeMetadata(1, "v", "f"),
             timedelta(days=1),

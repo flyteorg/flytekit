@@ -5,7 +5,7 @@ import flytekit.models.core.types
 from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface, \
     workflow_closure as _workflow_closure
 from flytekit.models.core import workflow as _workflow
-from flytekit.models.core.task import TaskMetadata as _taskMatadata, TaskTemplate as _taskTemplate, \
+from flytekit.models.core.task import TaskMetadata as _taskMetadata, TaskTemplate as _taskTemplate, \
     RuntimeMetadata as _runtimeMetadata
 
 
@@ -27,7 +27,7 @@ def test_workflow_closure():
         name="node1", timeout=timedelta(seconds=10), retries=_literals.RetryStrategy(0)
     )
 
-    task_metadata = _taskMatadata(
+    task_metadata = _taskMetadata(
         True,
         _runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
         timedelta(days=1),

@@ -12,7 +12,7 @@ from flytekit.common.tasks import task as _task
 from flytekit.models.core import compiler as _compiler_model, literals as _literals, interface as _interface
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.core.task import TaskMetadata as _taskMatadata, TaskTemplate as _taskTemplate, \
+from flytekit.models.core.task import TaskMetadata as _taskMetadata, TaskTemplate as _taskTemplate, \
     RuntimeMetadata as _runtimeMetadata
 from flytekit.sdk import tasks as _sdk_tasks
 from flytekit.sdk import workflow as _sdk_workflow
@@ -53,7 +53,7 @@ def get_sample_task_metadata():
     """
     :rtype: flytekit.models.core.task.TaskMetadata
     """
-    return _taskMatadata(
+    return _taskMetadata(
         True,
         _runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
         timedelta(days=1),
