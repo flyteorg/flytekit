@@ -16,6 +16,7 @@ from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
+from flytekit.configuration import set_flyte_config_file
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
@@ -27,6 +28,7 @@ except ImportError:
     from singledispatchmethod import singledispatchmethod
 
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
+from flytekit.clis.flyte_cli.main import _detect_default_config_file
 from flytekit.common import constants
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
@@ -116,13 +118,23 @@ class FlyteRemote(object):
 
     @classmethod
     def from_config(
-        cls, default_project: typing.Optional[str] = None, default_domain: typing.Optional[str] = None
+        cls,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        config_file_path: typing.Optional[str] = None,
     ) -> FlyteRemote:
         """Create a FlyteRemote object using flyte configuration variables and/or environment variable overrides.
 
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
+        :param config_file_path: config file to use when connecting to flyte admin. we will use '~/.flyte/config' by default.
         """
+
+        if config_file_path is None:
+            _detect_default_config_file()
+        else:
+            set_flyte_config_file(config_file_path)
+
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
             sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
         )
@@ -180,6 +192,8 @@ class FlyteRemote(object):
         :param raw_output_data_config: location for offloaded data, e.g. in S3
         """
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
+        if flyte_admin_url is None:
+            raise user_exceptions.FlyteAssertion("Cannot find flyte admin url in config file.")
 
         self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure)
 
@@ -667,6 +681,12 @@ class FlyteRemote(object):
 
         with self.remote_context() as ctx:
             input_python_types = entity.guessed_python_interface.inputs
+            expected_input = entity.interface.inputs
+            for k, v in inputs.items():
+                if expected_input.get(k) is None:
+                    raise user_exceptions.FlyteValueException(
+                        k, f"The {entity.__class__.__name__} doesn't have this input key."
+                    )
             literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, input_python_types)
         try:
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
@@ -907,21 +927,23 @@ class FlyteRemote(object):
 
     def wait(
         self,
-        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        execution: FlyteWorkflowExecution,
         timeout: typing.Optional[timedelta] = None,
         poll_interval: typing.Optional[timedelta] = None,
-    ):
+        sync_nodes: bool = True,
+    ) -> FlyteWorkflowExecution:
         """Wait for an execution to finish.
 
         :param execution: execution object to wait on
         :param timeout: maximum amount of time to wait
         :param poll_interval: sync workflow execution at this interval
+        :param sync_nodes: passed along to the sync call for the workflow execution
         """
         poll_interval = poll_interval or timedelta(seconds=30)
         time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
 
         while datetime.utcnow() < time_to_give_up:
-            execution = self.sync(execution)
+            execution = self.sync_workflow_execution(execution, sync_nodes=sync_nodes)
             if execution.is_complete:
                 return execution
             time.sleep(poll_interval.total_seconds())
@@ -932,24 +954,32 @@ class FlyteRemote(object):
     # Sync Execution State #
     ########################
 
-    @singledispatchmethod
     def sync(
         self,
-        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-    ):
-        """Sync a flyte execution object with its corresponding remote state.
-
-        This method syncs the inputs and outputs of the execution object and all of its child node executions.
-
-        :param execution: workflow execution to sync.
-        :param entity_definition: optional, reference entity definition which adds more context to this execution entity
+        sync_nodes: bool = True,
+    ) -> FlyteWorkflowExecution:
         """
-        raise NotImplementedError(f"Execution type {type(execution)} cannot be synced.")
+        This function was previously a singledispatchmethod. We've removed that but this function remains
+        so that we don't break people.
 
-    @sync.register
-    def _(
-        self, execution: FlyteWorkflowExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
+        :param execution:
+        :param entity_definition:
+        :param sync_nodes: By default sync will fetch data on all underlying node executions (recursively,
+          so subworkflows will also get picked up). Set this to False in order to prevent that (which
+          will make this call faster).
+        :return: Returns the same execution object, but with additional information pulled in.
+        """
+        if not isinstance(execution, FlyteWorkflowExecution):
+            raise ValueError(f"remote.sync should only be called on workflow executions, got {type(execution)}")
+        return self.sync_workflow_execution(execution, entity_definition, sync_nodes)
+
+    def sync_workflow_execution(
+        self,
+        execution: FlyteWorkflowExecution,
+        entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
+        sync_nodes: bool = True,
     ) -> FlyteWorkflowExecution:
 
         """Sync a FlyteWorkflowExecution object with its corresponding remote state."""
@@ -966,18 +996,16 @@ class FlyteRemote(object):
                 f"Resource type {execution.spec.launch_plan.resource_type} not recognized. Must be a TASK or WORKFLOW."
             )
 
-        synced_execution = deepcopy(execution)
         # sync closure, node executions, and inputs/outputs
-        synced_execution._closure = self.client.get_execution(execution.id).closure
+        execution._closure = self.client.get_execution(execution.id).closure
+        if sync_nodes:
+            execution._node_executions = {
+                node.id.node_id: self.sync_node_execution(FlyteNodeExecution.promote_from_model(node), flyte_entity)
+                for node in iterate_node_executions(self.client, execution.id)
+            }
+        return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
 
-        synced_execution._node_executions = {
-            node.id.node_id: self.sync(FlyteNodeExecution.promote_from_model(node), flyte_entity)
-            for node in iterate_node_executions(self.client, execution.id)
-        }
-        return self._assign_inputs_and_outputs(synced_execution, execution_data, flyte_entity.interface)
-
-    @sync.register
-    def _(
+    def sync_node_execution(
         self, execution: FlyteNodeExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
     ) -> FlyteNodeExecution:
         """Sync a FlyteNodeExecution object with its corresponding remote state."""
@@ -988,46 +1016,42 @@ class FlyteRemote(object):
         ):
             return execution
 
-        synced_execution = deepcopy(execution)
-
         # sync closure, child nodes, interface, and inputs/outputs
-        synced_execution._closure = self.client.get_node_execution(execution.id).closure
-        if synced_execution.metadata.is_parent_node:
-            synced_execution._subworkflow_node_executions = [
-                self.sync(FlyteNodeExecution.promote_from_model(node), entity_definition)
+        execution._closure = self.client.get_node_execution(execution.id).closure
+        if execution.metadata.is_parent_node:
+            execution._subworkflow_node_executions = [
+                self.sync_node_execution(FlyteNodeExecution.promote_from_model(node), entity_definition)
                 for node in iterate_node_executions(
                     self.client,
-                    workflow_execution_identifier=synced_execution.id.execution_id,
-                    unique_parent_id=synced_execution.id.node_id,
+                    workflow_execution_identifier=execution.id.execution_id,
+                    unique_parent_id=execution.id.node_id,
                 )
             ]
         else:
-            synced_execution._task_executions = [
-                self.sync(FlyteTaskExecution.promote_from_model(t))
-                for t in iterate_task_executions(self.client, synced_execution.id)
+            execution._task_executions = [
+                self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
+                for t in iterate_task_executions(self.client, execution.id)
             ]
-        synced_execution._interface = self._get_node_execution_interface(synced_execution, entity_definition)
+        execution._interface = self._get_node_execution_interface(execution, entity_definition)
         return self._assign_inputs_and_outputs(
-            synced_execution,
+            execution,
             self.client.get_node_execution_data(execution.id),
-            synced_execution.interface,
+            execution.interface,
         )
 
-    @sync.register
-    def _(
+    def sync_task_execution(
         self, execution: FlyteTaskExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
         if entity_definition is not None:
             raise ValueError("Entity definition arguments aren't supported when syncing task executions")
-        synced_execution = deepcopy(execution)
 
         # sync closure and inputs/outputs
-        synced_execution._closure = self.client.get_task_execution(synced_execution.id).closure
-        execution_data = self.client.get_task_execution_data(synced_execution.id)
+        execution._closure = self.client.get_task_execution(execution.id).closure
+        execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
         task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-        return self._assign_inputs_and_outputs(synced_execution, execution_data, task.interface)
+        return self._assign_inputs_and_outputs(execution, execution_data, task.interface)
 
     #############################
     # Terminate Execution State #

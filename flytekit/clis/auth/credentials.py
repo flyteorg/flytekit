@@ -4,8 +4,9 @@ from flytekit.clis.auth.auth import AuthorizationClient as _AuthorizationClient
 from flytekit.clis.auth.discovery import DiscoveryClient as _DiscoveryClient
 from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CLIENT_SECRET
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
-from flytekit.configuration.creds import OAUTH_SCOPES as _SCOPES
+from flytekit.configuration.creds import DEPRECATED_OAUTH_SCOPES
 from flytekit.configuration.creds import REDIRECT_URI as _REDIRECT_URI
+from flytekit.configuration.creds import SCOPES
 from flytekit.configuration.platform import HTTP_URL as _HTTP_URL
 from flytekit.configuration.platform import INSECURE as _INSECURE
 from flytekit.configuration.platform import URL as _URL
@@ -46,7 +47,7 @@ def get_client(flyte_client_url):
     _authorization_client = _AuthorizationClient(
         redirect_uri=_REDIRECT_URI.get(),
         client_id=_CLIENT_ID.get(),
-        scopes=_SCOPES.get(),
+        scopes=DEPRECATED_OAUTH_SCOPES.get() or SCOPES.get(),
         auth_endpoint=authorization_endpoints.auth_endpoint,
         token_endpoint=authorization_endpoints.token_endpoint,
         client_secret=_CLIENT_SECRET.get(),

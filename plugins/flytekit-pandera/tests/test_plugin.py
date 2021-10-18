@@ -42,7 +42,7 @@ def test_pandera_dataframe_type_hints():
     # raise error when defining workflow using invalid data
     invalid_df = pandas.DataFrame({"col1": [1, 2, 3], "col2": list("abc")})
 
-    with pytest.raises(pandera.errors.SchemaError):
+    with pytest.raises(AssertionError):
 
         @workflow
         def invalid_wf() -> pandera.typing.DataFrame[OutSchema]:
@@ -65,7 +65,7 @@ def test_pandera_dataframe_type_hints():
     def wf_invalid_output(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
         return transform2_noop(df=transform1(df=df))
 
-    with pytest.raises(pandera.errors.SchemaError, match="column 'col4' not in dataframe"):
+    with pytest.raises(TypeError, match="^Failed to convert return value"):
         wf_invalid_output(df=valid_df)
 
 

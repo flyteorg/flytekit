@@ -262,15 +262,13 @@ class WorkflowBase(object):
             if len(self.python_interface.outputs) != 0:
                 raise FlyteValueException(
                     function_outputs,
-                    f"{function_outputs} received but interface has {len(self.python_interface.outputs)} outputs.",
+                    f"Interface has {len(self.python_interface.outputs)} outputs.",
                 )
             return VoidPromise(self.name)
 
         # Because we should've already returned in the above check, we just raise an error here.
         if len(self.python_interface.outputs) == 0:
-            raise FlyteValueException(
-                function_outputs, f"{function_outputs} received but should've been VoidPromise or None."
-            )
+            raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
 
         expected_output_names = list(self.python_interface.outputs.keys())
         if len(expected_output_names) == 1:
@@ -418,7 +416,7 @@ class ImperativeWorkflow(WorkflowBase):
 
             # Because we should've already returned in the above check, we just raise an Exception here.
             if len(entity.python_interface.outputs) == 0:
-                raise FlyteValueException(results, f"{results} received but should've been VoidPromise or None.")
+                raise FlyteValueException(results, "Interface output should've been VoidPromise or None.")
 
             # if there's only one output,
             if len(expected_output_names) == 1:

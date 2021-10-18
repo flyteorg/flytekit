@@ -68,7 +68,7 @@ def translate_inputs_to_literals(
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
-                raise Exception(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
+                raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
             try:
                 sub_type = ListTransformer.get_sub_type(val_type)
             except ValueError:
@@ -82,7 +82,7 @@ def translate_inputs_to_literals(
                 flyte_literal_type.map_value_type is None
                 and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
             ):
-                raise Exception(f"Not a map type {flyte_literal_type} but got a map {input_val}")
+                raise TypeError(f"Not a map type {flyte_literal_type} but got a map {input_val}")
             k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
             if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
                 return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
@@ -227,6 +227,9 @@ class ComparisonExpression(object):
     def __repr__(self):
         return f"Comp({self._lhs} {self._op.value} {self._rhs})"
 
+    def __str__(self):
+        return self.__repr__()
+
 
 class ConjunctionExpression(object):
     """
@@ -287,6 +290,9 @@ class ConjunctionExpression(object):
 
     def __repr__(self):
         return f"( {self._lhs} {self._op} {self._rhs} )"
+
+    def __str__(self):
+        return self.__repr__()
 
 
 # TODO: The NodeOutput object, which this Promise wraps, has an sdk_type. Since we're no longer using sdk types,
@@ -414,7 +420,6 @@ class Promise(object):
     def with_overrides(self, *args, **kwargs):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            print(f"Forwarding to node {self.ref.node.id}")
             self.ref.node.with_overrides(*args, **kwargs)
         return self
 
@@ -428,7 +433,7 @@ class Promise(object):
 
 
 def create_native_named_tuple(
-    ctx: FlyteContext, promises: Union[Promise, typing.List[Promise]], entity_interface: Interface
+    ctx: FlyteContext, promises: Optional[Union[Promise, typing.List[Promise]]], entity_interface: Interface
 ) -> Optional[Tuple]:
     """
     Creates and returns a Named tuple with all variables that match the expected named outputs. this makes
@@ -442,8 +447,11 @@ def create_native_named_tuple(
         return None
 
     if isinstance(promises, Promise):
-        v = [v for k, v in entity_interface.outputs.items()][0]  # get output native type
-        return TypeEngine.to_python_value(ctx, promises.val, v)
+        k, v = [(k, v) for k, v in entity_interface.outputs.items()][0]  # get output native type
+        try:
+            return TypeEngine.to_python_value(ctx, promises.val, v)
+        except Exception as e:
+            raise AssertionError(f"Failed to convert value of output {k}, expected type {v}.") from e
 
     if len(promises) == 0:
         return None
@@ -459,7 +467,11 @@ def create_native_named_tuple(
                 "Workflow outputs can only be promises that are returned by tasks. Found a value of"
                 f"type {type(p)}. Workflows cannot return local variables or constants."
             )
-        outputs[p.var] = TypeEngine.to_python_value(ctx, p.val, entity_interface.outputs[p.var])
+        t = entity_interface.outputs[p.var]
+        try:
+            outputs[p.var] = TypeEngine.to_python_value(ctx, p.val, t)
+        except Exception as e:
+            raise AssertionError(f"Failed to convert value of output {p.var}, expected type {t}.") from e
 
     # Should this class be part of the Interface?
     t = collections.namedtuple(named_tuple_name, list(outputs.keys()))
@@ -750,12 +762,15 @@ def create_and_link_node(
                 f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
                 f" Check if the predecessor function returning more than one value?"
             )
-        bindings.append(
-            binding_from_python_std(
-                ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
+        try:
+            bindings.append(
+                binding_from_python_std(
+                    ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
+                )
             )
-        )
-        used_inputs.add(k)
+            used_inputs.add(k)
+        except Exception as e:
+            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
@@ -829,7 +844,9 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
     # Make sure arguments are part of interface
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
-            raise ValueError(f"Received unexpected keyword argument {k}")
+            raise ValueError(
+                f"Received unexpected keyword argument {k} in function {cast(SupportsNodeCreation, entity).name}"
+            )
 
     ctx = FlyteContextManager.current_context()
 
@@ -862,12 +879,13 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
             if result is None or isinstance(result, VoidPromise):
                 return None
             else:
-                raise Exception(f"Workflow local execution expected 0 outputs but something received {result}")
+                raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
 
         if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
             return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
 
         raise ValueError(
-            f"Expected outputs and actual outputs do not match. Result {result}. "
+            f"Expected outputs and actual outputs do not match."
+            f"Result {result}. "
             f"Python interface: {cast(SupportsNodeCreation, entity).python_interface}"
         )
