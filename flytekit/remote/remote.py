@@ -15,9 +15,11 @@ from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
+from flytekit.common.exceptions.user import FlyteEntityNotExistException
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.configuration import set_flyte_config_file
+from flytekit.core import context_manager
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
@@ -884,11 +886,29 @@ class FlyteRemote(object):
         """Execute an @workflow-decorated function."""
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        task_identifiers_dict = None
+        for node in entity.nodes:
+            try:
+                print(resolved_identifiers.version)
+                task_identifiers_dict = deepcopy(resolved_identifiers_dict)
+                task_identifiers_dict["name"] = node.flyte_entity.name
+                self.fetch_task(**task_identifiers_dict)
+            except FlyteEntityNotExistException:
+                self.register(node.flyte_entity, **task_identifiers_dict)
+
         try:
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
-        except Exception:
+        except FlyteEntityNotExistException:
             flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
         flyte_workflow.guessed_python_interface = entity.python_interface
+
+        ctx = context_manager.FlyteContext.current_context()
+        try:
+            self.fetch_launch_plan(**resolved_identifiers_dict)
+        except FlyteEntityNotExistException:
+            default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
+            self.register(default_lp, **resolved_identifiers_dict)
+
         return self.execute(
             flyte_workflow,
             inputs,
