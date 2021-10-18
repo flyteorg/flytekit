@@ -139,8 +139,8 @@ def _handle_rpc_error(retry=False):
                         refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
                         refresh_handler_fn(args[0])
                     # There are two cases that we should throw error immediately
-                    # 1. Entity already exists when we register workflow
-                    # 2. Entity not found when we fetch workflow
+                    # 1. Entity already exists when we register entity
+                    # 2. Entity not found when we fetch entity
                     elif e.code() == _GrpcStatusCode.ALREADY_EXISTS:
                         raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
                     elif e.code() == _GrpcStatusCode.NOT_FOUND:
