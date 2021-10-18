@@ -4,7 +4,7 @@ import tarfile as _tarfile
 import tempfile as _tempfile
 from pathlib import Path as _Path
 
-import dirhash as _dirhash
+import checksumdir as _dirhash
 
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.data_proxy import Data as _Data
@@ -18,7 +18,7 @@ def compute_digest(source_dir: _os.PathLike) -> str:
     :param _os.PathLike source_dir:
     :return Text:
     """
-    return f"fast{_dirhash.dirhash(source_dir, 'md5', match=['*.py'])}"
+    return f"fast{_dirhash(source_dir, 'md5')}"
 
 
 def _write_marker(marker: _os.PathLike):
