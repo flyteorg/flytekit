@@ -289,7 +289,7 @@ def test_execute_with_default_launch_plan(flyteclient, flyte_remote_env):
 
     remote = FlyteRemote.from_config(PROJECT, "development")
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
-    execution = remote.execute(my_wf, inputs={"xs": xs},  wait=True)
+    execution = remote.execute(my_wf, inputs={"xs": xs}, wait=True)
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
 
