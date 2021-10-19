@@ -415,20 +415,21 @@ class TypeEngine(typing.Generic[T]):
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
-        # Restricted types should not be part of the search for a type transformer.
-        # Also, in order to preserve the order in the original list of types we run this O(n^2) algorithm instead
-        # of, for example, removing the restricted types using set difference.
-        unrestricted_types = [t for t in cls._REGISTRY.keys() if t not in cls._RESTRICTED_TYPES]
-
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
-        for base_type in unrestricted_types:
+        for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
-            if isinstance(python_type, base_type) or (
-                inspect.isclass(python_type) and issubclass(python_type, base_type)
-            ):
-                return cls._REGISTRY[base_type]
+            try:
+                if isinstance(python_type, base_type) or (
+                    inspect.isclass(python_type) and issubclass(python_type, base_type)
+                ):
+                    return cls._REGISTRY[base_type]
+            except TypeError:
+                breakpoint()
+                # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
+                # is the case for one of the restricted types, namely NamedTuple.
+                logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
