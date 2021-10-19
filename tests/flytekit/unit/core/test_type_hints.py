@@ -1036,7 +1036,7 @@ def test_arbit_class():
         o2 = t2(a=o1)
         return t3(a=o2)
 
-    wf(1)
+    assert wf(1)["hello"].number == 1
 
 
 def test_dataclass_more():

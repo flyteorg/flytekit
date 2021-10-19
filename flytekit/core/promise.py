@@ -68,6 +68,7 @@ def translate_inputs_to_literals(
     ) -> _literal_models.Literal:
 
         if isinstance(input_val, list):
+            # If input value is a list of pickle, we will serialize the whole list into one pickle file.
             if (
                 flyte_literal_type.blob
                 and flyte_literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
@@ -84,6 +85,7 @@ def translate_inputs_to_literals(
             literal_list = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
+            # If there is a pickle in dict, we will serialize the whole dict into one pickle file.
             if (
                 flyte_literal_type.blob
                 and flyte_literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
