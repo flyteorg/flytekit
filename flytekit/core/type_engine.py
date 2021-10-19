@@ -426,7 +426,6 @@ class TypeEngine(typing.Generic[T]):
                 ):
                     return cls._REGISTRY[base_type]
             except TypeError:
-                breakpoint()
                 # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
