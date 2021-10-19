@@ -89,11 +89,11 @@ setup(
         "dataclasses-json>=0.5.2",
         "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
-        "dirhash>=0.2.1",
         "docker-image-py>=0.1.10",
         "singledispatchmethod; python_version < '3.8.0'",
         "docstring-parser>=0.9.0",
         "diskcache>=5.2.1",
+        "checksumdir>=1.2.0",
     ],
     extras_require=extras_require,
     scripts=[
