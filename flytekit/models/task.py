@@ -7,6 +7,7 @@ from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
 from flyteidl.plugins import pytorch_pb2 as _pytorch_task
+from flyteidl.plugins import mpi_pb2 as _mpi_task
 from flyteidl.plugins import spark_pb2 as _spark_task
 from flyteidl.plugins import tensorflow_pb2 as _tensorflow_task
 from google.protobuf import json_format as _json_format
@@ -1147,4 +1148,36 @@ class TensorFlowJob(_common.FlyteIdlEntity):
             workers_count=pb2_object.workers,
             ps_replicas_count=pb2_object.ps_replicas,
             chief_replicas_count=pb2_object.chief_replicas,
+        )
+
+
+class MPIJob(_common.FlyteIdlEntity):
+    def __init__(self, num_workers, num_launcher_replicas, slots):
+        self._num_workers = num_workers
+        self._num_launcher_replicas = num_launcher_replicas
+        self._slots = slots
+
+    @property
+    def num_workers(self):
+        return self._num_workers
+
+    @property
+    def num_launcher_replicas(self):
+        return self._num_launcher_replicas
+
+    @property
+    def slots(self):
+        return self._slots
+
+    def to_flyte_idl(self):
+        return _mpi_task.DistributedMPITrainingTask(
+            num_workers=self.num_workers, num_launcher_replicas=self.num_launcher_replicas, slots=self.slots
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        return cls(
+            num_workers=pb2_object.num_workers,
+            num_launcher_replicas=pb2_object.num_launcher_replicas,
+            slots=pb2_object.slots,
         )
