@@ -63,6 +63,7 @@ jobs:
           - flytekit-k8s-pod
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
+          - flytekit-kf-mpi
           - flytekit-papermill
           - flytekit-spark
           - flytekit-sqlalchemy

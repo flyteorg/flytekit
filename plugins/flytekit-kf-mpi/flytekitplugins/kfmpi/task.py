@@ -5,11 +5,44 @@ Kubernetes. It leverages `TF Job <https://github.com/kubeflow/mpi-operator>`_ Pl
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List
 
+from flyteidl.plugins import mpi_pb2 as _mpi_task
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask
 from flytekit.extend import SerializationSettings, TaskPlugins
-from flytekit.models import task as model
+from flytekit.models import common as _common
+
+
+class MPIJobModel(_common.FlyteIdlEntity):
+    def __init__(self, num_workers, num_launcher_replicas, slots):
+        self._num_workers = num_workers
+        self._num_launcher_replicas = num_launcher_replicas
+        self._slots = slots
+
+    @property
+    def num_workers(self):
+        return self._num_workers
+
+    @property
+    def num_launcher_replicas(self):
+        return self._num_launcher_replicas
+
+    @property
+    def slots(self):
+        return self._slots
+
+    def to_flyte_idl(self):
+        return _mpi_task.DistributedMPITrainingTask(
+            num_workers=self.num_workers, num_launcher_replicas=self.num_launcher_replicas, slots=self.slots
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        return cls(
+            num_workers=pb2_object.num_workers,
+            num_launcher_replicas=pb2_object.num_launcher_replicas,
+            slots=pb2_object.slots,
+        )
 
 
 @dataclass
@@ -81,7 +114,7 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
         return mpi_cmd
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        job = model.MPIJob(
+        job = MPIJobModel(
             num_workers=self.task_config.num_workers,
             num_launcher_replicas=self.task_config.num_launcher_replicas,
             slots=self.task_config.slots,
