@@ -16,7 +16,6 @@ attrs==20.3.0
     # via
     #   -r requirements.in
     #   jsonschema
-    #   scantree
 backcall==0.2.0
     # via ipython
 bcrypt==3.2.0
@@ -40,6 +39,8 @@ cffi==1.14.6
     #   pynacl
 charset-normalizer==2.0.6
     # via requests
+checksumdir==1.2.0
+    # via flytekit
 click==7.1.2
     # via
     #   black
@@ -59,8 +60,6 @@ decorator==5.1.0
 defusedxml==0.7.1
     # via nbconvert
 deprecated==1.2.13
-    # via flytekit
-dirhash==0.2.1
     # via flytekit
 diskcache==5.2.1
     # via flytekit
@@ -176,9 +175,7 @@ paramiko==2.7.2
 parso==0.8.2
     # via jedi
 pathspec==0.9.0
-    # via
-    #   black
-    #   scantree
+    # via black
 pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
@@ -256,8 +253,6 @@ s3transfer==0.5.0
     # via boto3
 sagemaker-training==3.9.2
     # via flytekit
-scantree==0.0.1
-    # via dirhash
 scipy==1.7.1
     # via sagemaker-training
 six==1.16.0
@@ -272,7 +267,6 @@ six==1.16.0
     #   responses
     #   retrying
     #   sagemaker-training
-    #   scantree
     #   thrift
 sortedcontainers==2.4.0
     # via flytekit
