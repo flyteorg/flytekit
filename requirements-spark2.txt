@@ -25,9 +25,9 @@ black==21.9b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.18.50
+boto3==1.18.64
     # via sagemaker-training
-botocore==1.21.50
+botocore==1.21.64
     # via
     #   boto3
     #   s3transfer
@@ -89,12 +89,14 @@ importlib-metadata==4.8.1
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
-ipykernel==5.5.5
+ipykernel==5.5.6
     # via flytekit
 ipython==7.28.0
     # via ipykernel
 ipython-genutils==0.2.0
-    # via nbformat
+    # via
+    #   ipykernel
+    #   nbformat
 jedi==0.18.0
     # via ipython
 jinja2==3.0.2
@@ -103,9 +105,9 @@ jmespath==0.10.0
     # via
     #   boto3
     #   botocore
-jsonschema==3.2.0
+jsonschema==4.1.0
     # via nbformat
-jupyter-client==7.0.5
+jupyter-client==7.0.6
     # via
     #   ipykernel
     #   nbclient
@@ -233,7 +235,7 @@ pytz==2018.4
     # via
     #   flytekit
     #   pandas
-pyyaml==5.4.1
+pyyaml==6.0
     # via papermill
 pyzmq==22.3.0
     # via jupyter-client
@@ -266,7 +268,6 @@ six==1.16.0
     #   bleach
     #   flytekit
     #   grpcio
-    #   jsonschema
     #   pynacl
     #   python-dateutil
     #   responses
@@ -320,7 +321,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webencodings==0.5.1
     # via bleach
-werkzeug==2.0.1
+werkzeug==2.0.2
     # via sagemaker-training
 wheel==0.37.0
     # via flytekit
