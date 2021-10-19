@@ -142,9 +142,9 @@ def _handle_rpc_error(retry=False):
                     # 1. Entity already exists when we register entity
                     # 2. Entity not found when we fetch entity
                     elif e.code() == _GrpcStatusCode.ALREADY_EXISTS:
-                        raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
+                        raise _user_exceptions.FlyteEntityAlreadyExistsException(e)
                     elif e.code() == _GrpcStatusCode.NOT_FOUND:
-                        raise _user_exceptions.FlyteEntityNotExistException(_six.text_type(e))
+                        raise _user_exceptions.FlyteEntityNotExistException(e)
                     else:
                         # No more retries if retry=False or max_retries reached.
                         if (retry is False) or i == (max_retries - 1):

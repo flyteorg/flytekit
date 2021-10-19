@@ -1,6 +1,7 @@
 """Module defining main Flyte backend entrypoint."""
 from __future__ import annotations
 
+import logging
 import os
 import time
 import typing
@@ -15,7 +16,7 @@ from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
-from flytekit.common.exceptions.user import FlyteEntityNotExistException
+from flytekit.common.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.configuration import set_flyte_config_file
@@ -606,6 +607,22 @@ class FlyteRemote(object):
         )
         return self.fetch_launch_plan(**resolved_identifiers)
 
+    def _register_entity_if_not_exists(self, entity: WorkflowBase, identifiers_dict: dict):
+        # Try to register all the entity in WorkflowBase including LaunchPlan, PythonTask, or subworkflow.
+        node_identifiers_dict = deepcopy(identifiers_dict)
+        try:
+            for node in entity.nodes:
+                node_identifiers_dict["name"] = node.flyte_entity.name
+                if isinstance(node.flyte_entity, WorkflowBase):
+                    self._register_entity_if_not_exists(node.flyte_entity, identifiers_dict)
+                    self.register(node.flyte_entity, **node_identifiers_dict)
+                elif isinstance(node.flyte_entity, PythonTask) or isinstance(node.flyte_entity, LaunchPlan):
+                    self.register(node.flyte_entity, **node_identifiers_dict)
+                else:
+                    raise TypeError(f"We don't support registering this kind of entity: {node.flyte_entity.name}")
+        except FlyteEntityAlreadyExistsException:
+            logging.info(f"{entity.name} already exists")
+
     ####################
     # Execute Entities #
     ####################
@@ -886,18 +903,12 @@ class FlyteRemote(object):
         """Execute an @workflow-decorated function."""
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
-        task_identifiers_dict = None
-        for node in entity.nodes:
-            try:
-                task_identifiers_dict = deepcopy(resolved_identifiers_dict)
-                task_identifiers_dict["name"] = node.flyte_entity.name
-                self.fetch_task(**task_identifiers_dict)
-            except FlyteEntityNotExistException:
-                self.register(node.flyte_entity, **task_identifiers_dict)
 
+        self._register_entity_if_not_exists(entity, resolved_identifiers_dict)
         try:
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
+            logging.info("Try to register FlyteWorkflow because it wasn't found in Flyte Admin!")
             flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
         flyte_workflow.guessed_python_interface = entity.python_interface
 
@@ -905,6 +916,7 @@ class FlyteRemote(object):
         try:
             self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
+            logging.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
             default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
             self.register(default_lp, **resolved_identifiers_dict)
 
