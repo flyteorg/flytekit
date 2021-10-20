@@ -1,7 +1,7 @@
 import pandas as pd
 import pyarrow as pa
 from datetime import datetime, timedelta
-
+from pathlib import Path
 
 
 class NewFlyteSchemaIDL():
@@ -23,6 +23,7 @@ def test_scenario_one():
     The different options below show manually what the code might do depending on the output signature
     """
 
+    Path("/tmp/test/").mkdir(exist_ok=True)
     now = datetime.now()
     before = now - timedelta(seconds=5)
     df = pd.DataFrame({  # <- Let's say the user returns this DF
