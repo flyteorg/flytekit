@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import pathlib
+import subprocess
 import time
 import typing
 import uuid
@@ -18,6 +19,9 @@ from flytekit.types.schema import FlyteSchema
 
 PROJECT = "flytesnacks"
 VERSION = os.getpid()
+command = "cd " + os.path.dirname(os.path.abspath(__file__)) + "; git rev-parse HEAD;"
+IMAGE_TAG = subprocess.run(command, capture_output=True, shell=True).stdout.decode("ascii").strip()
+IMAGE_NAME = "flytecookbook:workflows-" + IMAGE_TAG
 
 
 @pytest.fixture(scope="session")
@@ -38,7 +42,7 @@ def flyte_remote_env(docker_services):
     os.environ["FLYTE_INTERNAL_PROJECT"] = PROJECT
     os.environ["FLYTE_INTERNAL_DOMAIN"] = "development"
     os.environ["FLYTE_INTERNAL_VERSION"] = f"v{VERSION}"
-    os.environ["FLYTE_INTERNAL_IMAGE"] = "default:tag"
+    os.environ["FLYTE_INTERNAL_IMAGE"] = IMAGE_NAME
     os.environ["FLYTE_CLOUD_PROVIDER"] = "aws"
     os.environ["FLYTE_AWS_ENDPOINT"] = f"http://localhost:{docker_services.port_for('backend', 30084)}"
     os.environ["FLYTE_AWS_ACCESS_KEY_ID"] = "minio"
@@ -235,11 +239,10 @@ def test_execute_python_workflow_dict_of_string_to_string(flyteclient, flyte_wor
 
 def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_register, flyte_remote_env):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from mock_flyte_repo.workflows.basic.list_float_wf import concat_list, my_wf
+    from mock_flyte_repo.workflows.basic.list_float_wf import my_wf
 
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
-    concat_list._name = concat_list.name.replace("mock_flyte_repo.", "")
 
     remote = FlyteRemote.from_config(PROJECT, "development")
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
@@ -286,12 +289,11 @@ def test_execute_joblib_workflow(flyteclient, flyte_workflows_register, flyte_re
     assert output_obj == input_obj
 
 
-def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register):
-    from mock_flyte_repo.workflows.basic.list_float_wf import concat_list, my_wf
+def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):
+    from mock_flyte_repo.workflows.basic.list_float_wf import my_wf
 
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
-    concat_list._name = concat_list.name.replace("mock_flyte_repo.", "")
 
     remote = FlyteRemote.from_config(PROJECT, "development")
     version = uuid.uuid4().hex[:30] + str(int(time.time()))
