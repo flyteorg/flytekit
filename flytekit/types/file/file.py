@@ -6,7 +6,7 @@ import typing
 from dataclasses import dataclass, field
 
 from dataclasses_json import config, dataclass_json
-from marshmallow import Schema, fields
+from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
