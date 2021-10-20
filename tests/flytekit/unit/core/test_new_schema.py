@@ -3,6 +3,8 @@ import pyarrow as pa
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from flytekit import kwtypes
+from flytekit.models.types import SchemaType
 from flytekit.types.schema import FlyteSchema
 
 
@@ -119,6 +121,16 @@ def test_scenario_one():
     # If the user's return type is a FlyteSchema without columns
     # Infer Arrow schema from pandas
     schema = pa.Schema.from_pandas(df)
-    # Map arrow schema column type to Flyte schema type type
+    python_bytes = schema_bytes.to_pybytes()
+    # pyarrow schema converted into a Flyte Schema
     # for example:
-    # pa.int32() -> 
+    schema_lookup_table = {
+        pa.int32(): SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        pa.string(): SchemaType.SchemaColumn.SchemaColumnType.STRING
+    }
+    flyte_schema = FlyteSchema[kwtypes(col1=schema_lookup_table[t1], col2=schema_lookup_table[t2])]
+    idl_literal_arrow_file = NewFlyteSchemaIDL(
+        metadata=NewFlyteSchemaLiteralMetadata(format="pyarrow.file", arrow_schema=python_bytes),
+        uri="s3://blah",
+        schema=flyte_schema,
+    )
