@@ -68,6 +68,9 @@ def test_scenario_one():
     pa_table = pa.Table.from_pandas(df, ss)
     pa_record_batch = pa.record_batch(df, schema=ss)
 
+    # pa.Table has a from_pandas but obviously it won't work for custom DF libraries. Users will have to provide, and
+    # flytekit will have to pick up and use, code to convert from custom DFs to pa.Table in this case.
+
     # Write the data into a file - there's many, many ways to do this.
     with open("/tmp/test/pd_as_arrow_via_new_file", "wb") as fh:
         writer = pa.ipc.new_file(fh, ss)  # schema must be present here
