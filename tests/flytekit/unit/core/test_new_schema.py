@@ -3,6 +3,8 @@ import pyarrow as pa
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from flytekit.types.schema import FlyteSchema
+
 
 class NewFlyteSchemaIDL():
     def __init__(self, *args, **kwargs):
@@ -91,7 +93,7 @@ def test_scenario_one():
 
     idl_literal_arrow_file = NewFlyteSchemaIDL(
         metadata=NewFlyteSchemaLiteralMetadata(format="pyarrow.file", arrow_schema=python_bytes),
-        uri = "s3://blah",
+        uri="s3://blah",
         schema="xyz",  # where xyz is the pyarrow schema converted into a Flyte Schema.
     )
 
@@ -108,6 +110,15 @@ def test_scenario_one():
     )
 
     # If the user's return type is a FlyteSchema with columns
+    # Infer Arrow schema from pandas
+    schema = pa.Schema.from_pandas(df)
+    # Should do Schema check here
+    # assert schema == FlyteSchema[kwtypes(col1=int, col2=str)]
+    pa.Table.from_pandas(df)
 
     # If the user's return type is a FlyteSchema without columns
-
+    # Infer Arrow schema from pandas
+    schema = pa.Schema.from_pandas(df)
+    # Map arrow schema column type to Flyte schema type type
+    # for example:
+    # pa.int32() -> 
