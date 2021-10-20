@@ -610,8 +610,9 @@ class FlyteRemote(object):
     def _register_entity_if_not_exists(self, entity: WorkflowBase, identifiers_dict: dict):
         # Try to register all the entity in WorkflowBase including LaunchPlan, PythonTask, or subworkflow.
         node_identifiers_dict = deepcopy(identifiers_dict)
-        try:
-            for node in entity.nodes:
+
+        for node in entity.nodes:
+            try:
                 node_identifiers_dict["name"] = node.flyte_entity.name
                 if isinstance(node.flyte_entity, WorkflowBase):
                     self._register_entity_if_not_exists(node.flyte_entity, identifiers_dict)
@@ -619,9 +620,9 @@ class FlyteRemote(object):
                 elif isinstance(node.flyte_entity, PythonTask) or isinstance(node.flyte_entity, LaunchPlan):
                     self.register(node.flyte_entity, **node_identifiers_dict)
                 else:
-                    raise TypeError(f"We don't support registering this kind of entity: {node.flyte_entity.name}")
-        except FlyteEntityAlreadyExistsException:
-            logging.info(f"{entity.name} already exists")
+                    raise NotImplementedError(f"We don't support registering this kind of entity: {node.flyte_entity}")
+            except FlyteEntityAlreadyExistsException:
+                logging.info(f"{entity.name} already exists")
 
     ####################
     # Execute Entities #
