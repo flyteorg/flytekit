@@ -19,24 +19,50 @@ class NewFlyteSchemaLiteralMetadata():
         self._args = args
         self._kwargs = kwargs
 
+########################################################################################################
+# This section is all setup - think of this as user code
+Path("/tmp/test/").mkdir(exist_ok=True)
+now = datetime.now()
+before = now - timedelta(seconds=5)
+
+# Let's say the user returns this DF - used in multiple scenarios below
+df = pd.DataFrame({
+    'field0': [1, 2],
+    'field1': ['a', 'b'],
+    'field2': [now, before],
+    'field3': [[2, 3], [4, 5]],
+})
+
+t1 = pa.int32()
+t2 = pa.string()
+t5 = pa.timestamp('ns')  # This test fails if it's 'ms' because we'd lose precision.
+t6 = pa.list_(t1)
+
+# This is the return signature, like
+#  def t1() -> ss
+# not sure if this is possible, or if we should support it?
+#  def t1() -> pa.Schema
+ss = pa.schema([
+    ('field0', t1),
+    ('field1', t2),
+    ('field2', t5),
+    ('field3', t6)
+])
+########################################################################################################
+
+def tt() -> ss:
+    return pa.Table.from_pandas(df)
+
 
 def test_scenario_one():
     """
     Output/to_literal - Scenario 1:
+
+        def t1() -> some_lib.DataFrame: ...
+
     User returns a some_lib.DataFrame (most likely pandas, but doesn't have to be)
     The different options below show manually what the code might do depending on the output signature
     """
-
-    Path("/tmp/test/").mkdir(exist_ok=True)
-    now = datetime.now()
-    before = now - timedelta(seconds=5)
-    df = pd.DataFrame({  # <- Let's say the user returns this DF
-        'field0': [1, 2],
-        'field1': ['a', 'b'],
-        'field2': [now, before],
-        'field3': [[2, 3], [4, 5]],
-    })
-
     #
     # Option 1. If the user's return type is a pd.DataFrame
     #
@@ -48,21 +74,6 @@ def test_scenario_one():
     # Option 2. If the user's return type is an Arrow Schema instance
     #
 
-    t1 = pa.int32()
-    t2 = pa.string()
-    t5 = pa.timestamp('ns')  # This test fails if it's 'ms' because we'd lose precision.
-    t6 = pa.list_(t1)
-
-    # This is the return signature, like
-    #  def t1() -> ss
-    # not sure if this is possible, or if we should support it?
-    #  def t1() -> pa.Schema
-    ss = pa.schema([
-        ('field0', t1),
-        ('field1', t2),
-        ('field2', t5),
-        ('field3', t6)
-    ])
     # Assuming there's a schema involved, should we serialize the Arrow schema object?
     schema_bytes = ss.serialize()
     python_bytes = schema_bytes.to_pybytes()
@@ -134,3 +145,23 @@ def test_scenario_one():
         uri="s3://blah",
         schema=flyte_schema,
     )
+
+
+def test_scenario_two():
+    """
+    Output/to_literal - Scenario 2:
+    User returns a  (most likely pandas, but doesn't have to be)
+    The different options below show manually what the code might do depending on the output signature
+    """
+    #
+    # Option 1. If the user's return type is a pd.DataFrame
+    #
+    #   Turn DF into a parquet file as we do now, not involving Arrow.
+    #   The format will be stored as parquet in the metadata.
+    #   File will be uploaded to s3/gcs as we do today.
+
+    #
+    # Option 2. If the user's return type is an Arrow Schema instance
+    #
+
+
