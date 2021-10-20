@@ -835,6 +835,8 @@ def dataclass_from_dict(cls: dataclasses, src: typing.Dict[str, typing.Any]) -> 
             ):
                 t = DictTransformer.get_dict_types(field_type)[1]
                 constructor_inputs[field_name] = {k: dataclass_from_dict(t, v) for k, v in value.items()}
+            else:
+                constructor_inputs[field_name] = value
         else:
             constructor_inputs[field_name] = value
 
