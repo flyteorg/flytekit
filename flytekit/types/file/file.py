@@ -3,6 +3,10 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
+from dataclasses import dataclass, field
+
+from dataclasses_json import config, dataclass_json
+from marshmallow import Schema, fields
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -18,7 +22,12 @@ def noop():
 T = typing.TypeVar("T")
 
 
+@dataclass_json
+@dataclass
 class FlyteFile(os.PathLike, typing.Generic[T]):
+    path: str = field(metadata=config(mm_field=fields.String()))
+    remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
+
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -161,10 +170,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
         """
-        self._path = path
+        self.path = path
+        self.remote_path = remote_path
         self._downloader = downloader
         self._downloaded = False
-        self._remote_path = remote_path
         self._remote_source = None
 
     def __fspath__(self):
@@ -172,29 +181,21 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         if not self._downloaded:
             self._downloader()
             self._downloaded = True
-        return self._path
+        return self.path
 
     def __eq__(self, other):
         if isinstance(other, FlyteFile):
             return (
-                self._path == other._path
-                and self._remote_path == other._remote_path
+                self.path == other.path
+                and self.remote_path == other.remote_path
                 and self.extension() == other.extension()
             )
         else:
-            return self._path == other
+            return self.path == other
 
     @property
     def downloaded(self) -> bool:
         return self._downloaded
-
-    @property
-    def remote_path(self) -> typing.Optional[str]:
-        return self._remote_path
-
-    @property
-    def path(self) -> str:
-        return self._path
 
     @property
     def remote_source(self) -> str:
@@ -215,10 +216,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             raise ValueError(f"Attempting to trigger download on non-downloadable file {self}")
 
     def __repr__(self):
-        return self._path
+        return self.path
 
     def __str__(self):
-        return self._path
+        return self.path
 
 
 class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):

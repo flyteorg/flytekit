@@ -815,7 +815,7 @@ def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
     return str
 
 
-def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.Any:
+def dataclass_from_dict(cls: dataclasses, src: typing.Dict[str, typing.Any]) -> typing.Any:
     """
     Utility function to construct a dataclass object from dict
     """
@@ -823,8 +823,18 @@ def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.
 
     constructor_inputs = {}
     for field_name, value in src.items():
-        if dataclasses.is_dataclass(field_types_lookup[field_name]):
+        field_type = field_types_lookup[field_name]
+        if dataclasses.is_dataclass(field_type):
             constructor_inputs[field_name] = dataclass_from_dict(field_types_lookup[field_name], value)
+        elif hasattr(field_type, "__origin__"):
+            if field_type.__origin__ is list and dataclasses.is_dataclass(ListTransformer.get_sub_type(field_type)):
+                t = ListTransformer.get_sub_type(field_type)
+                constructor_inputs[field_name] = [dataclass_from_dict(t, v) for v in value]
+            elif field_type.__origin__ is dict and dataclasses.is_dataclass(
+                DictTransformer.get_dict_types(field_type)[1]
+            ):
+                t = DictTransformer.get_dict_types(field_type)[1]
+                constructor_inputs[field_name] = {k: dataclass_from_dict(t, v) for k, v in value.items()}
         else:
             constructor_inputs[field_name] = value
 
