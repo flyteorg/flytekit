@@ -5,12 +5,14 @@
 #    make requirements-spark2.txt
 #
 -e file:.#egg=flytekit
-    # via -r requirements-spark2.in
+    # via
+    #   -c requirements.in
+    #   -r requirements-spark2.in
 ansiwrap==0.8.4
     # via papermill
 attrs==20.3.0
     # via
-    #   -r requirements-spark2.in
+    #   -c requirements.in
     #   jsonschema
     #   scantree
 backcall==0.2.0
@@ -107,8 +109,10 @@ jmespath==0.10.0
     # via
     #   boto3
     #   botocore
-jsonschema==4.1.2
-    # via nbformat
+jsonschema==3.2.0
+    # via
+    #   -c requirements.in
+    #   nbformat
 jupyter-client==7.0.6
     # via
     #   ipykernel
@@ -203,7 +207,7 @@ ptyprocess==0.7.0
     # via pexpect
 py==1.10.0
     # via retry
-py4j==0.10.7
+py4j==0.10.9.2
     # via pyspark
 pyarrow==3.0.0
     # via flytekit
@@ -220,7 +224,7 @@ pyparsing==2.4.7
     # via packaging
 pyrsistent==0.18.0
     # via jsonschema
-pyspark==2.4.8
+pyspark==3.2.0
     # via flytekit
 python-dateutil==2.8.1
     # via
@@ -237,8 +241,10 @@ pytz==2018.4
     # via
     #   flytekit
     #   pandas
-pyyaml==6.0
-    # via papermill
+pyyaml==5.4.1
+    # via
+    #   -c requirements.in
+    #   papermill
 pyzmq==22.3.0
     # via jupyter-client
 regex==2021.10.8
@@ -272,6 +278,7 @@ six==1.16.0
     #   bleach
     #   flytekit
     #   grpcio
+    #   jsonschema
     #   pynacl
     #   python-dateutil
     #   responses
