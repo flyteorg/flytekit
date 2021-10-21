@@ -32,7 +32,7 @@ def flyte_workflows_source_dir():
 @pytest.fixture(scope="session")
 def flyte_workflows_register(docker_compose):
     docker_compose.execute(
-        f"exec -w /flyteorg/src -e SANDBOX=1 -e PROJECT={PROJECT} -e VERSION=v{VERSION} "
+        f"exec -w /flyteorg/src -e SANDBOX=1 -e PROJECT={PROJECT} -e VERSION=v{IMAGE_TAG} "
         "backend make -C workflows register"
     )
 
