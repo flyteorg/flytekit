@@ -1,3 +1,2 @@
 .[all-spark2.4]
--e file:.#egg=flytekit
-attrs<21
+-c requirements.in
