@@ -58,7 +58,8 @@ def test_scenario_one():
     """
     Output/to_literal - Scenario 1:
 
-        def t1() -> some_lib.DataFrame: ...
+        def t1() -> something:
+            return some_lib.DataFrame()
 
     User returns a some_lib.DataFrame (most likely pandas, but doesn't have to be)
     The different options below show manually what the code might do depending on the output signature
@@ -71,8 +72,20 @@ def test_scenario_one():
     #   File will be uploaded to s3/gcs as we do today.
 
     #
-    # Option 2. If the user's return type is an Arrow Schema instance
-    #
+    # Option 2 . If the user's return type is an Arrow Schema instance
+    """
+    I think we'll have to put the Arrow schema instance into a FlyteSchema wrapper object. The issue is that
+    
+        arrow_schema = pa.schema(...)
+        def tt2() -> arrow_schema:
+            return pa.Table.from_pandas(df)
+    
+    does not pass mypy type checking, because types are supposed to be statically checkable without running code,
+    and pa.schema() is code. We may end up having to support the explicit inclusion of an Arrow schema by asking
+    the user to
+    
+          return NewFlyteSchema(arrow_schema=arrow_schema, ...)
+    """
 
     # Assuming there's a schema involved, should we serialize the Arrow schema object?
     schema_bytes = ss.serialize()
@@ -122,11 +135,16 @@ def test_scenario_one():
         uri="s3://blah",
     )
 
-    # If the user's return type is a FlyteSchema with columns
+    #
+    # Option 3. User's return type is a FlyteSchema with columns
+    #
+
     # Infer Arrow schema from pandas
+    # Why should we do this?
     schema = pa.Schema.from_pandas(df)
-    # Should do Schema check here
+    # Should we do Schema check here?
     # assert schema == FlyteSchema[kwtypes(col1=int, col2=str)]
+
     pa.Table.from_pandas(df)
 
     # If the user's return type is a FlyteSchema without columns

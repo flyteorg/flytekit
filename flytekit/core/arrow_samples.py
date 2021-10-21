@@ -48,11 +48,20 @@ ss = pa.schema([
 ])
 ########################################################################################################
 
-def tt() -> pa.Schema:
+
+def tt() -> pa.Table:
     return pa.Table.from_pandas(df)
 
-def tt2() -> ss:
-    return pa.Table.from_pandas(df)
+
+# This doesn't pass mypy
+# def tt2() -> ss:
+#     return pa.Table.from_pandas(df)
+
+
+# How can we specify a specific pyarrow schema as a return type?
 
 
 
+my_arrow_schema = pa.schema([...])
+def t1() -> my_arrow_schema:
+    ...
