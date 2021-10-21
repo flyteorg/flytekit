@@ -242,7 +242,7 @@ pyyaml==5.4.1
     #   papermill
 pyzmq==22.3.0
     # via jupyter-client
-regex==2021.10.8
+regex==2021.10.21
     # via
     #   black
     #   docker-image-py
