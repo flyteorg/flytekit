@@ -68,6 +68,35 @@ def my_workflow(x: int, y: int) -> int:
 ## 📖 How to Contribute to Flytekit
 You can find the detailed contribution guide [here](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html). Plugins' contribution guide is included as well.
 
+## Code guide
+flytekit started in 2017 and thus much before typing in python was mainstream.
+There are some users of flytekit, that use the older/legacy api. Thus you will
+see 2 different code paths within the repo. The legacy parts are simply
+maintained so as to not break some legacy users, but for most part you should
+look at the code and read through the docs. 
+
+ - The core of flytekit is in ``flytekit/core``
+ - Special types like ``FlyteFile, FlyteSchema etc`` are under ``flytekit/types``
+ - ``flytekit/extend`` is the future home of extension points, but current
+   serves as the raw documentation for extensions
+ - ``flytekit/remote`` implements the interface to interact with the Flyte
+   service
+ - ``flytekit/testing`` is the future home for testing extension like ``mock``
+   etc, but currently serves are documentation. All test extensions should be imported from here
+ - ``flytekit/models`` create a python friendly interface for ``flyteidl
+   objects`` which are the protobuf definitions
+ - ``plugins`` is the source of all plugins
+ - ``flytekit/bin/entrypoint.py`` is the runtime entrypoint for flyte
+ - ``flytekit/clis`` is the home for the clis. This is bound to change and
+   improve. 
+ - ``flytekit/configuration`` has the config accessors, but use of config is
+   highly discouraged and should be used wisely
+
+Most of the other folders are for legacy Flytekit, support for which will be
+dropped in early 2022.
+
+
+
 ## 🐞 File an Issue
 Refer to the [issues](https://docs.flyte.org/en/latest/community/contribute.html#issues) section in the contribution guide if you'd like to file an issue.
 
