@@ -86,9 +86,7 @@ def test_nested_function():
     )
     _, error = p.communicate()
     error_str = error.decode().strip().split("\n")[-1]
-    assert error_str.startswith(
-        "ValueError: TaskFunction cannot be a nested/inner or local function."
-    )
+    assert error_str.startswith("ValueError: TaskFunction cannot be a nested/inner or local function.")
 
 
 def test_mcklsdj():

@@ -50,4 +50,3 @@ t = bleh(2)
 @workflow
 def my_workflow2(x: int) -> int:
     return t(x=x)
-
