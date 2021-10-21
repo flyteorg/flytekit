@@ -61,9 +61,9 @@ jobs:
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-k8s-pod
+          - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
-          - flytekit-kf-mpi
           - flytekit-papermill
           - flytekit-spark
           - flytekit-sqlalchemy
