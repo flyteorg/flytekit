@@ -16,6 +16,8 @@ from flytekit.loggers import logger
 from flytekit.models.core import interface as _interface_models
 from flytekit.types.pickle import FlytePickle
 
+T = typing.TypeVar("T")
+
 
 class Interface(object):
     """
@@ -246,6 +248,32 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
+def _change_unrecognized_type_to_pickle(t: Type[T]):
+    origin_type = t
+    try:
+        if hasattr(t, "__origin__") and t.__origin__ == list:
+            origin_type = list
+            TypeEngine.get_transformer(t.__args__[0])
+        elif hasattr(t, "__origin__") and t.__origin__ == dict:
+            origin_type = dict
+            TypeEngine.get_transformer(t.__args__[1])
+        else:
+            TypeEngine.get_transformer(t)
+    except ValueError:
+        _logging.warning(
+            f"Unsupported Type {t} found, Flyte will default to using PickleFile as the transport. "
+            f"Pickle can only be used to send objects between the exact same version of Python, "
+            f"and we strongly recommend to use python type that flyte support."
+        )
+        if origin_type == list:
+            return typing.List[FlytePickle[t.__args__[0]]]
+        elif origin_type == dict:
+            return typing.Dict[t.__args__[0], FlytePickle[t.__args__[1]]]
+        else:
+            return FlytePickle[t]
+    return t
+
+
 def transform_signature_to_interface(signature: inspect.Signature, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
@@ -255,42 +283,13 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
     """
     outputs = extract_return_annotation(signature.return_annotation)
     for k, v in outputs.items():
-        try:
-            if hasattr(v, "__origin__") and v.__origin__ == list:
-                TypeEngine.get_transformer(v.__args__[0])
-            elif hasattr(v, "__origin__") and v.__origin__ == dict:
-                TypeEngine.get_transformer(v.__args__[1])
-            else:
-                TypeEngine.get_transformer(v)
-
-        except ValueError:
-            _logging.warning(
-                f"Unsupported Type {v} found, Flyte will default to using PickleFile as the transport. "
-                f"Pickle can only be used to send objects between the exact same version of Python, "
-                f"and we strongly recommend to use python type that flyte support."
-            )
-            outputs[k] = FlytePickle(python_type=v)  # type: ignore
-
+        outputs[k] = _change_unrecognized_type_to_pickle(v)
     inputs = OrderedDict()
     for k, v in signature.parameters.items():
         annotation = v.annotation
-        try:
-            if hasattr(annotation, "__origin__") and annotation.__origin__ == list:
-                TypeEngine.get_transformer(annotation.__args__[0])
-            elif hasattr(annotation, "__origin__") and annotation.__origin__ == dict:
-                TypeEngine.get_transformer(annotation.__args__[1])
-            else:
-                TypeEngine.get_transformer(annotation)
-        except ValueError:
-            _logging.warning(
-                f"Unsupported Type {v} found, Flyte will default to using PickleFile as the transport. "
-                f"Pickle can only be used to send objects between the exact same version of Python, "
-                f"and we strongly recommend to use python type that flyte support."
-            )
-            annotation = FlytePickle(python_type=v.annotation)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
-        inputs[k] = (annotation, default)
+        inputs[k] = (_change_unrecognized_type_to_pickle(annotation), default)
 
     # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
     # would like to preserve that name in our custom collections.namedtuple.
@@ -317,13 +316,15 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
-            if isinstance(v, FlytePickle):
-                if hasattr(v.python_type, "__origin__") and v.python_type.__origin__ is list:
-                    res[k].type.metadata = {"python_class_name": v.python_type.__args__[0].__name__}
-                elif hasattr(v.python_type, "__origin__") and v.python_type.__origin__ is dict:
-                    res[k].type.metadata = {"python_class_name": v.python_type.__args__[1].__name__}
-                else:
-                    res[k].type.metadata = {"python_class_name": v.python_type.__name__}
+            if hasattr(v, "__origin__"):
+                PYTHON_CLASS_NAME = "python_class_name"
+                if v.__origin__ is list:
+                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.__args__[0].python_type}
+                elif v.__origin__ is dict:
+                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.__args__[1].python_type}
+                elif v.__origin__ is FlytePickle:
+                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.python_type}
+
     return res
 
 

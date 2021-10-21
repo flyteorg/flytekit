@@ -14,14 +14,25 @@ from flytekit.models.types import LiteralType
 T = typing.TypeVar("T")
 
 
-class FlytePickle(object):
+class FlytePickle(typing.Generic[T]):
     """
     This type is only used by flytekit internally. User should not use this type.
     Any type that flyte can't recognize will become FlytePickle
     """
 
-    def __init__(self, python_type: Type[T]):
-        self.python_type = python_type
+    def __class_getitem__(cls, python_type: typing.Type) -> typing.Type[T]:
+        if python_type is None:
+            return cls
+
+        class _SpecificFormatClass(FlytePickle):
+            # Get the type engine to see this as kind of a generic
+            __origin__ = FlytePickle
+
+            @classmethod
+            def python_type(cls) -> typing.Type:
+                return python_type
+
+        return _SpecificFormatClass
 
 
 class FlytePickleTransformer(TypeTransformer[FlytePickle]):
