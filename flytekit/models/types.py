@@ -31,13 +31,15 @@ class SchemaType(_common.FlyteIdlEntity):
             DURATION = _types_pb2.SchemaType.SchemaColumn.DURATION
             BOOLEAN = _types_pb2.SchemaType.SchemaColumn.BOOLEAN
 
-        def __init__(self, name, type):
+        def __init__(self, name, type, collection_type, map_value_type):
             """
             :param Text name: Name for the column
             :param int type: Enum type from SchemaType.SchemaColumn.SchemaColumnType representing the type of the column
             """
             self._name = name
             self._type = type
+            self._collection_type = collection_type
+            self._map_value_type = map_value_type
 
         @property
         def name(self):
@@ -55,11 +57,32 @@ class SchemaType(_common.FlyteIdlEntity):
             """
             return self._type
 
+        @property
+        def collection_type(self) -> "SchemaType":
+            """
+            Enum type from SchemaType.SchemaColumn.SchemaColumnType representing the type of the column
+            :rtype: int
+            """
+            return self._collection_type
+
+        @property
+        def map_value_type(self) -> "SchemaType":
+            """
+            Enum type from SchemaType.SchemaColumn.SchemaColumnType representing the type of the column
+            :rtype: int
+            """
+            return self._map_value_type
+
         def to_flyte_idl(self):
             """
             :rtype: flyteidl.core.types_pb2.SchemaType.SchemaColumn
             """
-            return _types_pb2.SchemaType.SchemaColumn(name=self.name, type=self.type)
+            return _types_pb2.SchemaType.SchemaColumn(
+                name=self.name,
+                type=self.type,
+                collection_type=self.collection_type.to_flyte_idl() if self.collection_type is not None else None,
+                map_value_type=self.map_value_type.to_flyte_idl() if self.map_value_type is not None else None,
+            )
 
         @classmethod
         def from_flyte_idl(cls, proto):
@@ -67,7 +90,13 @@ class SchemaType(_common.FlyteIdlEntity):
             :param flyteidl.core.types_pb2.SchemaType.SchemaColumn proto:
             :rtype: SchemaType.SchemaColumn
             """
-            return cls(name=proto.name, type=proto.type)
+            collection_type = None
+            map_value_type = None
+            if proto.HasField("collection_type"):
+                collection_type = LiteralType.from_flyte_idl(proto.collection_type)
+            if proto.HasField("map_value_type"):
+                map_value_type = LiteralType.from_flyte_idl(proto.map_value_type)
+            return cls(name=proto.name, type=proto.type, collection_type=collection_type, map_value_type=map_value_type)
 
     def __init__(self, columns):
         """
