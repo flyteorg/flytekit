@@ -2,19 +2,8 @@
 
 from functools import wraps
 
-from flytekit.core import context_manager
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-
-default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
-    project="project",
-    domain="domain",
-    version="version",
-    env=None,
-    image_config=ImageConfig(default_image=default_img, images=[default_img]),
-)
 
 
 def task_decorator(fn):

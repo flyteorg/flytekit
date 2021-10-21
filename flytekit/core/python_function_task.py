@@ -139,8 +139,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 raise ValueError(
                     "TaskFunction cannot be a nested/inner or local function. "
                     "It should be accessible at a module level for Flyte to execute it. Test modules with "
-                    "names beginning with `test_` are allowed to have nested tasks. If you want to create your own tasks"
-                    "use the TaskResolverMixin"
+                    "names beginning with `test_` are allowed to have nested tasks. "
+                    "If you're decorating your task function with custom decorators, use functools.wraps "
+                    "or functools.update_wrapper on the function wrapper. "
+                    "Alternatively if you want to create your own tasks with custom behavior use the TaskResolverMixin"
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
