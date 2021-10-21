@@ -19,9 +19,7 @@ from flytekit.types.schema import FlyteSchema
 
 PROJECT = "flytesnacks"
 VERSION = os.getpid()
-command = "cd " + os.path.dirname(os.path.abspath(__file__)) + "; git rev-parse HEAD;"
-IMAGE_TAG = subprocess.run(command, capture_output=True, shell=True).stdout.decode("ascii").strip()
-IMAGE_NAME = "flytecookbook:workflows-" + IMAGE_TAG
+IMAGE_NAME = "flytecookbook:workflows-" + str(VERSION)
 
 
 @pytest.fixture(scope="session")
@@ -32,7 +30,7 @@ def flyte_workflows_source_dir():
 @pytest.fixture(scope="session")
 def flyte_workflows_register(docker_compose):
     docker_compose.execute(
-        f"exec -w /flyteorg/src -e SANDBOX=1 -e PROJECT={PROJECT} -e VERSION=v{IMAGE_TAG} "
+        f"exec -w /flyteorg/src -e SANDBOX=1 -e PROJECT={PROJECT} -e VERSION=v{VERSION} "
         "backend make -C workflows register"
     )
 
