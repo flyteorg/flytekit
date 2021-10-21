@@ -67,7 +67,7 @@ with at least one element. The first element will be used. If list has more than
 Config files with both this option, and the OAUTH_SCOPES, will use this one.
 """
 
-AUTH_MODE = _config_common.FlyteStringConfigurationEntry("credentials", "auth_mode", default="standard")
+AUTH_MODE = _config_common.FlyteStringConfigurationEntry("credentials", "auth_mode", default="noop")
 """
 The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
 - 'standard' This uses the pkce-enhanced authorization code flow by opening a browser window to initiate credentials

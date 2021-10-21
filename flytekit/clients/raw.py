@@ -102,7 +102,9 @@ def _refresh_credentials_noop(flyte_client):
 
 
 def _get_refresh_handler(auth_mode):
-    if auth_mode == "standard":
+    if auth_mode == "noop":
+        return lambda _: None
+    elif auth_mode == "standard":
         return _refresh_credentials_standard
     elif auth_mode == "basic":
         return _refresh_credentials_basic
