@@ -5,7 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 test_module_dir = Path(os.path.dirname(__file__))
 
 

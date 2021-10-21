@@ -1,8 +1,7 @@
-import flytekit
+from functools import partial, wraps
+
 from flytekit import task, workflow
 from flytekit.core.node_creation import create_node
-
-from functools import partial, wraps
 
 
 def task_decorator(fn):
