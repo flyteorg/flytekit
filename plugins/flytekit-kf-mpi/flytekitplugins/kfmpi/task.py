@@ -11,6 +11,7 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import PythonFunctionTask
 from flytekit.extend import SerializationSettings, TaskPlugins
 from flytekit.models import common as _common
+from flytekit.models import model as _model
 
 
 class MPIJobModel(_common.FlyteIdlEntity):
@@ -69,8 +70,8 @@ class MPIJob(object):
     slots: int
     num_launcher_replicas: int = 1
     num_workers: int = 1
-    per_replica_requests: Optional[Resources] = None
-    per_replica_limits: Optional[Resources] = None
+    per_replica_requests: Optional[_model.Resources] = None
+    per_replica_limits: Optional[_model.Resources] = None
 
 
 class MPIFunctionTask(PythonFunctionTask[MPIJob]):
