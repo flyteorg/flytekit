@@ -261,7 +261,7 @@ def _change_unrecognized_type_to_pickle(t: Type[T]):
             TypeEngine.get_transformer(t)
     except ValueError:
         _logging.warning(
-            f"Unsupported Type {t} found, Flyte will default to using PickleFile as the transport. "
+            f"Unsupported Type {t} found, Flyte will default to use PickleFile as the transport. "
             f"Pickle can only be used to send objects between the exact same version of Python, "
             f"and we strongly recommend to use python type that flyte support."
         )
@@ -319,11 +319,11 @@ def transform_variable_map(
             if hasattr(v, "__origin__"):
                 PYTHON_CLASS_NAME = "python_class_name"
                 if v.__origin__ is list:
-                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.__args__[0].python_type}
+                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.__args__[0].python_type().__name__}
                 elif v.__origin__ is dict:
-                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.__args__[1].python_type}
+                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.__args__[1].python_type().__name__}
                 elif v.__origin__ is FlytePickle:
-                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.python_type}
+                    res[k].type.metadata = {PYTHON_CLASS_NAME: v.python_type().__name__}
 
     return res
 

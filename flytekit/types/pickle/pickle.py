@@ -20,6 +20,10 @@ class FlytePickle(typing.Generic[T]):
     Any type that flyte can't recognize will become FlytePickle
     """
 
+    @classmethod
+    def python_type(cls) -> None:
+        return None
+
     def __class_getitem__(cls, python_type: typing.Type) -> typing.Type[T]:
         if python_type is None:
             return cls
