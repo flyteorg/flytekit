@@ -130,7 +130,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         if self._task_resolver is default_task_resolver:
             # The default task resolver can't handle nested functions
             # TODO: Consider moving this to a can_handle function or something inside the resolver itself.
-            if not istestfunction(func=task_function) and isnested(func=task_function):
+            if (
+                not istestfunction(func=task_function)
+                and isnested(func=task_function)
+                # functions decorated with @functools.wraps are okay
+                and not hasattr(task_function, "__wrapped__")
+            ):
                 raise ValueError(
                     "TaskFunction cannot be a nested/inner or local function. "
                     "It should be accessible at a module level for Flyte to execute it. Test modules with "
