@@ -1,8 +1,20 @@
-from flytekitplugins.kfmpi.task import MPIJob
+from flytekitplugins.kfmpi.task import MPIJob, MPIJobModel
 
 from flytekit import Resources, task
 from flytekit.core.context_manager import EntrypointSettings
 from flytekit.extend import Image, ImageConfig, SerializationSettings
+
+
+def test_mpi_model_task():
+    job = MPIJobModel(
+        num_workers=1,
+        num_launcher_replicas=1,
+        slots=1,
+    )
+    assert job.num_workers == 1
+    assert job.num_launcher_replicas == 1
+    assert job.slots == 1
+    assert job.from_flyte_idl(job.to_flyte_idl())
 
 
 def test_mpi_task():
@@ -30,6 +42,4 @@ def test_mpi_task():
     )
 
     assert my_mpi_task.get_custom(settings) == {"numLauncherReplicas": 10, "numWorkers": 10, "slots": 1}
-    assert my_mpi_task.resources.limits == Resources()
-    assert my_mpi_task.resources.requests == Resources(cpu="1")
     assert my_mpi_task.task_type == "mpi"
