@@ -90,7 +90,7 @@ jobs:
         make setup
         cd plugins/${{ matrix.plugin-names }}
         # install in develop mode so setuptools doesn't override flytekit on current branch
-        pip install -e .
+        pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
         pip freeze
     - name: Test with coverage
       run: |
