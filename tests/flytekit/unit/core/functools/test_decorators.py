@@ -75,14 +75,13 @@ def test_unwrapped_task():
     )
 
 
-def test_nested_function():
+@pytest.mark.parametrize("script", ["nested_function.py", "nested_wrapped_function.py"])
+def test_nested_function(script):
     p = subprocess.Popen(
-        [sys.executable, str(test_module_dir / "nested_function.py")],
+        [sys.executable, str(test_module_dir / script)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
     _, error = p.communicate()
     error_str = error.decode().strip().split("\n")[-1]
-    assert error_str.startswith(
-        "ValueError: TaskFunction cannot be a nested/inner or local function."
-    )
+    assert error_str.startswith("ValueError: TaskFunction cannot be a nested/inner or local function.")

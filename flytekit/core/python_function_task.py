@@ -26,7 +26,7 @@ from flytekit.core.context_manager import ExecutionState, FastSerializationSetti
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
-from flytekit.core.tracker import isnested, istestfunction
+from flytekit.core.tracker import is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
     WorkflowFailurePolicy,
@@ -133,8 +133,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             if (
                 not istestfunction(func=task_function)
                 and isnested(func=task_function)
-                # functions decorated with @functools.wraps are okay
-                and not hasattr(task_function, "__wrapped__")
+                and not is_functools_wrapped_module_level(task_function)
             ):
                 raise ValueError(
                     "TaskFunction cannot be a nested/inner or local function. "

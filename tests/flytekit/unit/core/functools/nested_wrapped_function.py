@@ -1,14 +1,14 @@
-"""Script used for testing local execution of nested functions that don't use functools.wraps."""
+"""Script used for testing local execution of functool.wraps-wrapped tasks"""
 
-import os
+from functools import wraps
 
 from flytekit import task, workflow
 
 
 def task_decorator(fn):
-    def wrapper(x: int) -> int:
-        print("running task_decorator")
-        return fn(x=x)
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        return fn(*args, **kwargs)
 
     return wrapper
 
@@ -17,6 +17,7 @@ def foo():
     @task
     @task_decorator
     def my_task(x: int) -> int:
+        assert x > 0, f"my_task failed with input: {x}"
         print("running my_task")
         return x + 1
 
@@ -32,4 +33,4 @@ def my_workflow(x: int) -> int:
 
 
 if __name__ == "__main__":
-    print(my_workflow(x=int(os.getenv("SCRIPT_INPUT"))))
+    print(my_workflow(x=11))
