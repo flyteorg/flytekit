@@ -6,10 +6,6 @@
 #
 -e file:.#egg=flytekitplugins-papermill
     # via -r ./requirements.in
--e file:../flytekit-spark#egg=flytekitplugins-spark
-    # via
-    #   -r ./requirements.in
-    #   flytekitplugins-papermill
 ansiwrap==0.8.4
     # via papermill
 appnope==0.1.2
@@ -68,6 +64,10 @@ flytekit==0.22.1
     # via
     #   flytekitplugins-papermill
     #   flytekitplugins-spark
+flytekitplugins-spark==0.23.1
+    # via
+    #   -r ./requirements.in
+    #   flytekitplugins-papermill
 grpcio==1.40.0
     # via flytekit
 idna==3.2
