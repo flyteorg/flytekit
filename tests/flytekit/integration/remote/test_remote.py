@@ -179,11 +179,11 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
 
     remote = FlyteRemote.from_config(PROJECT, "development")
-    execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, wait=True)
+    execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == 12
     assert execution.outputs["o1"] == "xyzworld"
 
-    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, version=f"v{VERSION}", name=my_wf.name)
+    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
     execution = remote.execute(launch_plan, inputs={"a": 14, "b": "foobar"}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
