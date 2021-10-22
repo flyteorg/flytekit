@@ -18,7 +18,7 @@ def compute_digest(source_dir: _os.PathLike) -> str:
     :param _os.PathLike source_dir:
     :return Text:
     """
-    return f"fast{checksumdir.dirhash(source_dir, 'md5')}"
+    return f"fast{checksumdir.dirhash(source_dir, 'md5', include_paths=True)}"
 
 
 def _write_marker(marker: _os.PathLike):
