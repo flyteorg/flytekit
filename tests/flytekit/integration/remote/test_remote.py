@@ -2,7 +2,6 @@ import datetime
 import json
 import os
 import pathlib
-import subprocess
 import time
 import typing
 import uuid
@@ -14,12 +13,13 @@ from flytekit import kwtypes
 from flytekit.common.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
+from flytekit.remote import FlyteTask
 from flytekit.remote.remote import FlyteRemote
 from flytekit.types.schema import FlyteSchema
 
 PROJECT = "flytesnacks"
 VERSION = os.getpid()
-IMAGE_NAME = "flytecookbook:workflows-v" + str(VERSION)
+IMAGE_NAME = f"flytecookbook:workflows-v{VERSION}"
 
 
 @pytest.fixture(scope="session")
@@ -28,7 +28,7 @@ def flyte_workflows_source_dir():
 
 
 @pytest.fixture(scope="session")
-def flyte_workflows_register(docker_compose):
+def flyte_workflows_registers(docker_compose):
     docker_compose.execute(
         f"exec -w /flyteorg/src -e SANDBOX=1 -e PROJECT={PROJECT} -e VERSION=v{VERSION} "
         "backend make -C workflows register"
@@ -156,6 +156,8 @@ def test_fetch_execute_workflow(flyteclient, flyte_workflows_register):
 def test_fetch_execute_task(flyteclient, flyte_workflows_register):
     remote = FlyteRemote.from_config(PROJECT, "development")
     flyte_task = remote.fetch_task(name="workflows.basic.basic_workflow.t1", version=f"v{VERSION}")
+    print(typing.cast(FlyteTask, flyte_task).container.image)
+    assert typing.cast(FlyteTask, flyte_task).container.image == IMAGE_NAME
     execution = remote.execute(flyte_task, {"a": 10}, wait=True)
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
