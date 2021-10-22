@@ -17,6 +17,7 @@ from flyteidl.core import literals_pb2 as literals_pb2
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.common.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
+from flytekit.configuration import internal
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.configuration import set_flyte_config_file
@@ -522,6 +523,7 @@ class FlyteRemote(object):
                 domain or self.default_domain,
                 version or self.version,
                 self.image_config,
+                env={internal.IMAGE.env_var: self.image_config.default_image.full},
             ),
             entity=entity,
         )
@@ -621,8 +623,6 @@ class FlyteRemote(object):
                     raise NotImplementedError(f"We don't support registering this kind of entity: {node.flyte_entity}")
             except FlyteEntityAlreadyExistsException:
                 logging.info(f"{entity.name} already exists")
-            except Exception as e:
-                logging.info(f"Failed to register Flyte entity {entity.name} with error v{e}")
 
     ####################
     # Execute Entities #
