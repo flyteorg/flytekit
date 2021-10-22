@@ -75,7 +75,7 @@ numpy==1.21.3
     #   opencv-python
     #   pandas
     #   pyarrow
-opencv-python==4.5.3.56
+opencv-python==4.5.4.58
     # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
 pandas==1.3.4
     # via flytekit
@@ -109,7 +109,7 @@ pytz==2018.4
     # via
     #   flytekit
     #   pandas
-regex==2021.10.8
+regex==2021.10.21
     # via docker-image-py
 requests==2.26.0
     # via

@@ -14,7 +14,6 @@ attrs==20.3.0
     #   jsonschema
     #   pytest
     #   pytest-docker
-    #   scantree
 backports.entry-points-selectable==1.1.0
     # via virtualenv
 bcrypt==3.2.0
@@ -37,6 +36,10 @@ charset-normalizer==2.0.7
     # via
     #   -c requirements.txt
     #   requests
+checksumdir==1.2.0
+    # via
+    #   -c requirements.txt
+    #   flytekit
 click==7.1.2
     # via
     #   -c requirements.txt
@@ -63,10 +66,6 @@ decorator==5.1.0
     #   -c requirements.txt
     #   retry
 deprecated==1.2.13
-    # via
-    #   -c requirements.txt
-    #   flytekit
-dirhash==0.2.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -187,10 +186,6 @@ paramiko==2.8.0
     # via
     #   -c requirements.txt
     #   docker
-pathspec==0.9.0
-    # via
-    #   -c requirements.txt
-    #   scantree
 platformdirs==2.4.0
     # via
     #   -c requirements.txt
@@ -264,7 +259,7 @@ pyyaml==5.4.1
     #   -c requirements.txt
     #   docker-compose
     #   pre-commit
-regex==2021.10.8
+regex==2021.10.21
     # via
     #   -c requirements.txt
     #   docker-image-py
@@ -283,10 +278,6 @@ retry==0.9.2
     # via
     #   -c requirements.txt
     #   flytekit
-scantree==0.0.1
-    # via
-    #   -c requirements.txt
-    #   dirhash
 secretstorage==3.3.1
     # via
     #   -c requirements.txt
@@ -302,7 +293,6 @@ six==1.16.0
     #   pynacl
     #   python-dateutil
     #   responses
-    #   scantree
     #   virtualenv
     #   websocket-client
 sortedcontainers==2.4.0
