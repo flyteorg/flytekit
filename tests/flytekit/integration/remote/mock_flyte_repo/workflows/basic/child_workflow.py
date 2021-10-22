@@ -1,5 +1,5 @@
 from flytekit import LaunchPlan, task, workflow
-from flytekit.models.admin.common import Labels
+from flytekit.models.common import Labels
 
 
 @task
