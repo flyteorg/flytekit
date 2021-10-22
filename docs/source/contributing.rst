@@ -8,6 +8,57 @@ First off, thank you for thinking about contributing! Below you'll find instruct
 
 Please also take some time to read through the :std:ref:`design guides <design>`, which describe the various parts of Flytekit and should make contributing easier.
 
+*******************
+📜 Quick Background
+*******************
+
+The first version of the flytekit library was written circa 2017, before mypy typing was mainstream, and
+targeted Python 2. That legacy code will be fully deprecated and removed in 2022 but because there are still
+users of flytekit that rely on that legacy api, you'll see 2 separate and distinct code paths within this repo.
+Users and contributors should ignore the legacy sections. Below is a listing of the most important packages that
+comprise the new API:
+
+- ``flytekit/core``
+  This holds all the core functionality of the new API.
+- ``flytekit/types``
+  We bundle some special types like ``FlyteFile, FlyteSchema etc`` by default here.
+- ``flytekit/extend``
+  This is the future home of extension points, and currently serves as the raw documentation for extensions.
+- ``flytekit/extras``
+  This contains code that we want bundled with flytekit but not everyone may find useful (for example AWS and GCP
+  specific logic).
+- ``flytekit/remote``
+  This implements the interface to interact with the Flyte service. Think of the code here as the Python-object version of Console.
+- ``flytekit/testing``
+  is the future home for testing functionality like ``mock`` etc, and currently serves as documentation.
+  All test extensions should be imported from here.
+- ``flytekit/models``
+  Protobuf generated Python code is not terribly user-friendly, so we improve upon those ``flyteidl`` classes here.
+- ``plugins``
+  is the source of all plugins
+- ``flytekit/bin/entrypoint.py``
+  The run time entrypoint for flytekit. When a task kicks off, this is where the click command goes.
+- ``flytekit/clis``
+  This is the home for the clis.
+- ``flytekit/configuration``
+  This holds all the configuration objects, but dependency on configuration should be carefully considered as it
+  makes compiled Flyte tasks and workflows less portable (i.e. if you run ``pyflyte package`` can someone else use
+  those serialized objects).
+
+Most of the other folders are for legacy Flytekit, support for which will be dropped in early 2022. For the most part,
+please ignore the following folders:
+
+- ``flytekit/plugins``
+- ``flytekit/common``
+  (the ``translator.py`` file is an exception)
+- ``flytekit/engines``
+- ``flytekit/interfaces``
+- ``flytekit/sdk``
+- ``flytekit/type_engines``
+
+Please also see the :std:ref:`design overview section <design>` for more in-depth information.
+
+
 ******************
 💻 Contribute Code
 ******************
