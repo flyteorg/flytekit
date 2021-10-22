@@ -4,23 +4,19 @@ import os
 import pathlib
 import time
 import typing
-import uuid
 
 import joblib
 import pytest
 
 from flytekit import kwtypes
 from flytekit.common.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
-from flytekit.remote import FlyteTask
 from flytekit.remote.remote import FlyteRemote
 from flytekit.types.schema import FlyteSchema
 
 PROJECT = "flytesnacks"
 VERSION = os.getpid()
-IMAGE_NAME = f"flytecookbook:workflows-v{VERSION}"
 
 
 @pytest.fixture(scope="session")
@@ -41,7 +37,7 @@ def flyte_remote_env(docker_services):
     os.environ["FLYTE_INTERNAL_PROJECT"] = PROJECT
     os.environ["FLYTE_INTERNAL_DOMAIN"] = "development"
     os.environ["FLYTE_INTERNAL_VERSION"] = f"v{VERSION}"
-    os.environ["FLYTE_INTERNAL_IMAGE"] = IMAGE_NAME
+    os.environ["FLYTE_INTERNAL_IMAGE"] = "default:tag"
     os.environ["FLYTE_CLOUD_PROVIDER"] = "aws"
     os.environ["FLYTE_AWS_ENDPOINT"] = f"http://localhost:{docker_services.port_for('backend', 30084)}"
     os.environ["FLYTE_AWS_ACCESS_KEY_ID"] = "minio"
@@ -187,7 +183,7 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     assert execution.outputs["o0"] == 12
     assert execution.outputs["o1"] == "xyzworld"
 
-    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, version=f"v{VERSION}", name=my_wf.name)
     execution = remote.execute(launch_plan, inputs={"a": 14, "b": "foobar"}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
@@ -245,7 +241,7 @@ def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_reg
     remote = FlyteRemote.from_config(PROJECT, "development")
 
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
-    execution = remote.execute(my_wf, inputs={"xs": xs}, wait=True)
+    execution = remote.execute(my_wf, inputs={"xs": xs}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
     launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
@@ -296,7 +292,7 @@ def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register,
     remote = FlyteRemote.from_config(PROJECT, "development")
 
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
-    execution = remote.execute(my_wf, inputs={"xs": xs}, wait=True)
+    execution = remote.execute(my_wf, inputs={"xs": xs}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
 
