@@ -19,7 +19,7 @@ from flytekit.types.schema import FlyteSchema
 
 PROJECT = "flytesnacks"
 VERSION = os.getpid()
-IMAGE_NAME = "flytecookbook:workflows-" + str(VERSION)
+IMAGE_NAME = "flytecookbook:workflows-v" + str(VERSION)
 
 
 @pytest.fixture(scope="session")
