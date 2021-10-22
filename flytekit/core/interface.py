@@ -251,12 +251,13 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
 def _change_unrecognized_type_to_pickle(t: Type[T]):
     origin_type = t
     try:
-        if hasattr(t, "__origin__") and t.__origin__ == list:
-            origin_type = list
-            TypeEngine.get_transformer(t.__args__[0])
-        elif hasattr(t, "__origin__") and t.__origin__ == dict:
-            origin_type = dict
-            TypeEngine.get_transformer(t.__args__[1])
+        if hasattr(t, "__origin__") and hasattr(t, "__args__"):
+            if t.__origin__ == list:
+                origin_type = list
+                TypeEngine.get_transformer(t.__args__[0])
+            elif t.__origin__ == dict:
+                origin_type = dict
+                TypeEngine.get_transformer(t.__args__[1])
         else:
             TypeEngine.get_transformer(t)
     except ValueError:
