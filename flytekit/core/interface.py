@@ -317,14 +317,14 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
-            if hasattr(v, "__origin__"):
-                sub_type: Type[T] = v
+            sub_type: Type[T] = v
+            if hasattr(v, "__origin__") and hasattr(v, "__args__"):
                 if v.__origin__ is list:
                     sub_type = v.__args__[0]
                 elif v.__origin__ is dict:
                     sub_type = v.__args__[1]
-                if hasattr(sub_type, "__origin__") and sub_type.__origin__ is FlytePickle:
-                    res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
+            if hasattr(sub_type, "__origin__") and sub_type.__origin__ is FlytePickle:
+                res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
 
     return res
 
