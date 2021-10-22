@@ -56,7 +56,7 @@ please ignore the following folders:
 - ``flytekit/sdk``
 - ``flytekit/type_engines``
 
-Please also see the :std:ref:`design overview section <design>`__ for more in-depth information.
+Please also see the :std:ref:`design overview section <design>` for more in-depth information.
 
 
 ******************
