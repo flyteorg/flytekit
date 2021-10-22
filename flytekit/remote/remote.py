@@ -216,7 +216,6 @@ class FlyteRemote(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
-        self._grpc_credentials = grpc_credentials
 
         # Save the file access object locally, but also make it available for use from the context.
         FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
@@ -302,7 +301,6 @@ class FlyteRemote(object):
     ):
         """Create a copy of the remote object, overriding the specified attributes."""
         new_remote = deepcopy(self)
-        # new_remote = FlyteRemote(self._flyte_admin_url, insecure, default_project, default_domain)
         if default_project:
             new_remote._default_project = default_project
         if default_domain:
@@ -623,6 +621,8 @@ class FlyteRemote(object):
                     raise NotImplementedError(f"We don't support registering this kind of entity: {node.flyte_entity}")
             except FlyteEntityAlreadyExistsException:
                 logging.info(f"{entity.name} already exists")
+            except Exception as e:
+                logging.info(f"Failed to register Flyte entity {entity.name} with error v{e}")
 
     ####################
     # Execute Entities #
