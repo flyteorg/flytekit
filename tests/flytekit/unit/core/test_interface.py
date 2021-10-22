@@ -286,5 +286,5 @@ def test_parameter_change_to_pickle_type():
     params = transform_inputs_to_parameters(ctx, our_interface)
     assert params.parameters["a"].required
     assert params.parameters["a"].default is None
-    assert isinstance(our_interface.outputs["o0"], FlytePickle)
-    assert isinstance(our_interface.inputs["a"], FlytePickle)
+    assert our_interface.outputs["o0"].__origin__ == FlytePickle
+    assert our_interface.inputs["a"].__origin__ == FlytePickle
