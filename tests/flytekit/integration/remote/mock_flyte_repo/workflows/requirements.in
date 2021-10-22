@@ -1,4 +1,4 @@
-flytekit>=0.17.0b0
+flytekit>=0.23.1
 joblib
 wheel
 matplotlib
