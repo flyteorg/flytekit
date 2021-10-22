@@ -5,7 +5,7 @@ from flytekit.common import promise
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types, primitives
 from flytekit.core.interface import Interface
-from flytekit.core.promise import Promise, create_native_named_tuple
+from flytekit.core.promise import Promise, create_native_named_tuple, extract_obj_name
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import LiteralType, SimpleType
 
@@ -70,3 +70,20 @@ def test_create_native_named_tuple():
 
     with pytest.raises(AssertionError, match="Failed to convert value of output x"):
         create_native_named_tuple(ctx, promises=p1, entity_interface=Interface(outputs={"x": Promise}))
+
+
+@pytest.mark.parametrize(
+    "name, expected_name",
+    [
+        ("test", "test"),
+        ("test.abc", "abc"),
+        (".test", "test"),
+        ("test.", ""),
+        ("test.xyz.abc", "abc"),
+        ("", ""),
+        (None, ""),
+        ("test.xyz.abc.", ""),
+    ],
+)
+def test_extract_obj_name(name, expected_name):
+    assert extract_obj_name(name) == expected_name

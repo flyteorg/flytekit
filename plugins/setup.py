@@ -22,6 +22,7 @@ SOURCES = {
     "flytekitplugins-snowflake": "flytekit-snowflake",
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
+    "flytekitplugins-modin": "flytekit-modin",
 }
 
 

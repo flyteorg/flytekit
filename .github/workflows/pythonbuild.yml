@@ -11,10 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.7, 3.8, 3.9]
         spark-version-suffix: ["", "-spark2"]
         exclude:
         - python-version: 3.8
+          spark-version-suffix: "-spark2"
+        - python-version: 3.9
           spark-version-suffix: "-spark2"
     steps:
     - uses: actions/checkout@v2
@@ -31,7 +33,7 @@ jobs:
         key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('requirements{0}.txt', matrix.spark-version-suffix))) }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip==21.2.4 setuptools wheel
         make setup${{ matrix.spark-version-suffix }}
         pip freeze
     - name: Test with coverage
@@ -52,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.8, 3.9]
         plugin-names:
           - flytekit-aws-athena
           - flytekit-aws-sagemaker
@@ -69,6 +71,7 @@ jobs:
           - flytekit-sqlalchemy
           - flytekit-pandera
           - flytekit-snowflake
+          - flytekit-modin
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -84,7 +87,7 @@ jobs:
         key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip==21.2.4 setuptools wheel
         make setup
         cd plugins/${{ matrix.plugin-names }}
         # install in develop mode so setuptools doesn't override flytekit on current branch
@@ -112,7 +115,7 @@ jobs:
             ${{ runner.os }}-pip-
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip==21.2.4
           pip install -r dev-requirements.txt
       - name: Lint
         run: |
@@ -134,7 +137,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip==21.2.4 setuptools wheel
           pip install -r doc-requirements.txt
       - name: Build the documentation
         run: make -C docs html

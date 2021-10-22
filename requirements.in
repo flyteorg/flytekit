@@ -1,3 +1,9 @@
 .[all]
 -e file:.#egg=flytekit
 attrs<21
+# We need to restrict constrain the versions of both jsonschema and pyyaml because of docker-compose (which is
+# used to run integration tests) pins those 2 libraries. We are in the process of removing docker-compose in
+# favor of a more generic solution that involves flytectl to stand-up the sandbox, described in
+# https://github.com/flyteorg/flyte/issues/1732.
+jsonschema<4
+pyyaml<6
