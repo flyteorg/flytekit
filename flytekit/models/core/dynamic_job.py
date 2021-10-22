@@ -2,7 +2,6 @@ from flyteidl.core import dynamic_job_pb2 as _dynamic_job
 
 import flytekit.models.core.task
 from flytekit.models import common as _common
-from flytekit.models.admin import task as _task
 from flytekit.models.core import literals as _literals
 from flytekit.models.core import workflow as _workflow
 

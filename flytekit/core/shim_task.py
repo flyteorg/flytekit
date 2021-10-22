@@ -6,7 +6,6 @@ import flytekit.models.core.task
 from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager, logger
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models.admin import task as _task_model
 from flytekit.models.core import dynamic_job as _dynamic_job
 from flytekit.models.core import literals as _literal_models
 

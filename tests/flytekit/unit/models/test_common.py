@@ -1,6 +1,5 @@
 import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
-from flytekit.models import common as _common
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import execution as _execution
 

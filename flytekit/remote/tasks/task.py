@@ -5,7 +5,6 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models.admin import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.remote import identifier as _identifier
 from flytekit.remote import interface as _interfaces
