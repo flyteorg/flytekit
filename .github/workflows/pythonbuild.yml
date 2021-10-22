@@ -87,10 +87,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip==21.2.4 setuptools wheel
+        pushd plugins/${{ matrix.plugin-names }}
+        pip install -r requirements.txt
+        popd
+        # Install flytekit later so that we get the development version
         make setup
-        cd plugins/${{ matrix.plugin-names }}
-        # install in develop mode so setuptools doesn't override flytekit on current branch
-        pip install -e .
         pip freeze
     - name: Test with coverage
       run: |
