@@ -205,7 +205,6 @@ class FlyteRemote(object):
             raise user_exceptions.FlyteAssertion("Cannot find flyte admin url in config file.")
 
         self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure, credentials=grpc_credentials)
-
         # read config files, env vars, host, ssl options for admin client
         self._flyte_admin_url = flyte_admin_url
         self._insecure = insecure
@@ -217,6 +216,7 @@ class FlyteRemote(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
+        self._grpc_credentials = grpc_credentials
 
         # Save the file access object locally, but also make it available for use from the context.
         FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
@@ -302,6 +302,7 @@ class FlyteRemote(object):
     ):
         """Create a copy of the remote object, overriding the specified attributes."""
         new_remote = deepcopy(self)
+        # new_remote = FlyteRemote(self._flyte_admin_url, insecure, default_project, default_domain)
         if default_project:
             new_remote._default_project = default_project
         if default_domain:

@@ -11,6 +11,7 @@ import pytest
 
 from flytekit import kwtypes
 from flytekit.common.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
+from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote import FlyteTask
@@ -28,7 +29,7 @@ def flyte_workflows_source_dir():
 
 
 @pytest.fixture(scope="session")
-def flyte_workflows_registers(docker_compose):
+def flyte_workflows_register(docker_compose):
     docker_compose.execute(
         f"exec -w /flyteorg/src -e SANDBOX=1 -e PROJECT={PROJECT} -e VERSION=v{VERSION} "
         "backend make -C workflows register"
@@ -157,7 +158,7 @@ def test_fetch_execute_task(flyteclient, flyte_workflows_register):
     remote = FlyteRemote.from_config(PROJECT, "development")
     flyte_task = remote.fetch_task(name="workflows.basic.basic_workflow.t1", version=f"v{VERSION}")
     print(typing.cast(FlyteTask, flyte_task).container.image)
-    assert typing.cast(FlyteTask, flyte_task).container.image == IMAGE_NAME
+    assert typing.cast(FlyteTask, flyte_task).container.image == "test"
     execution = remote.execute(flyte_task, {"a": 10}, wait=True)
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
@@ -243,14 +244,15 @@ def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_reg
 
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
-
     remote = FlyteRemote.from_config(PROJECT, "development")
+
+    version = uuid.uuid4().hex[:30] + str(int(time.time()))
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(my_wf, inputs={"xs": xs}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
     launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
-    execution = remote.execute(launch_plan, inputs={"xs": [-1.1, 0.12345]}, version=f"v{VERSION}", wait=True)
+    execution = remote.execute(launch_plan, inputs={"xs": [-1.1, 0.12345]}, version=version, wait=True)
     assert execution.outputs["o0"] == "[-1.1, 0.12345]"
 
 
@@ -290,12 +292,12 @@ def test_execute_joblib_workflow(flyteclient, flyte_workflows_register, flyte_re
 
 
 def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):
-    from mock_flyte_repo.workflows.basic.list_float_wf import my_wf
+    from mock_flyte_repo.workflows.basic.list_float_wf import concat_list, my_wf
 
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
-
     remote = FlyteRemote.from_config(PROJECT, "development")
+
     version = uuid.uuid4().hex[:30] + str(int(time.time()))
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(my_wf, inputs={"xs": xs}, version=version, wait=True)
