@@ -6,7 +6,7 @@ import pyspark
 from flytekit import FlyteContext
 from flytekit.extend import T, TypeEngine, TypeTransformer
 from flytekit.models.core.literals import Literal, Scalar, Schema
-from flytekit.models.core.types import SchemaType, LiteralType
+from flytekit.models.core.types import LiteralType, SchemaType
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
 
 

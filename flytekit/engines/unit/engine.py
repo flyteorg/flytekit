@@ -17,8 +17,9 @@ from flytekit.engines import common as _common_engine
 from flytekit.engines.unit.mock_stats import MockStats
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models.core import literals as _literals
-from flytekit.models.plugins import qubole as _qubole_models, array_job as _array_job
 from flytekit.models.core.identifier import WorkflowExecutionIdentifier
+from flytekit.models.plugins import array_job as _array_job
+from flytekit.models.plugins import qubole as _qubole_models
 
 
 class UnitTestEngineFactory(_common_engine.BaseExecutionEngineFactory):

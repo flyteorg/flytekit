@@ -23,7 +23,8 @@ from flytekit.configuration import set_flyte_config_file
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
-from flytekit.models.admin import common as admin_common_models, launch_plan as launch_plan_models
+from flytekit.models.admin import common as admin_common_models
+from flytekit.models.admin import launch_plan as launch_plan_models
 
 try:
     from functools import singledispatchmethod
@@ -43,9 +44,8 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
-from flytekit.models.core import literals as literal_models
-from flytekit.models.admin.common import Sort, NamedEntityIdentifier as _namedEntityIdentifier
-from flytekit.models.core.identifier import ResourceType
+from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
+from flytekit.models.admin.common import Sort
 from flytekit.models.admin.execution import (
     ExecutionMetadata,
     ExecutionSpec,
@@ -53,6 +53,8 @@ from flytekit.models.admin.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
+from flytekit.models.core import literals as literal_models
+from flytekit.models.core.identifier import ResourceType
 from flytekit.remote.identifier import Identifier, WorkflowExecutionIdentifier
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.launch_plan import FlyteLaunchPlan

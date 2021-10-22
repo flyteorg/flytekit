@@ -24,8 +24,8 @@ from flytekit.core.type_engine import (
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
-from flytekit.models.core.types import BlobType, LiteralType, SimpleType
 from flytekit.models.core.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.core.types import BlobType, LiteralType, SimpleType
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer

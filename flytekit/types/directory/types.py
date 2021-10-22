@@ -223,7 +223,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         )
 
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
-        return flytekit.models.core.types.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
+        return flytekit.models.core.types.LiteralType(
+            blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t))
+        )
 
     def to_literal(
         self,

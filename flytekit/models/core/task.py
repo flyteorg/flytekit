@@ -2,12 +2,16 @@ import json as _json
 import typing
 
 import six as _six
-from flyteidl.core import tasks_pb2 as _core_task, literals_pb2 as _literals_pb2
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
+from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import tasks_pb2 as _core_task
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 
 from flytekit.models import common as _common
-from flytekit.models.core import literals as _literals, identifier as _identifier, interface as _interface, \
-    security as _sec
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import interface as _interface
+from flytekit.models.core import literals as _literals
+from flytekit.models.core import security as _sec
 from flytekit.plugins import flyteidl as _lazy_flyteidl
 
 

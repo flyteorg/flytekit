@@ -2,11 +2,14 @@ from datetime import timedelta
 
 import flytekit.models.core.task
 import flytekit.models.core.types
-from flytekit.models.core import identifier as _identifier, literals as _literals, interface as _interface, \
-    workflow_closure as _workflow_closure
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import interface as _interface
+from flytekit.models.core import literals as _literals
 from flytekit.models.core import workflow as _workflow
-from flytekit.models.core.task import TaskMetadata as _taskMetadata, TaskTemplate as _taskTemplate, \
-    RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core import workflow_closure as _workflow_closure
+from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _taskMetadata
+from flytekit.models.core.task import TaskTemplate as _taskTemplate
 
 
 def test_workflow_closure():
@@ -20,8 +23,12 @@ def test_workflow_closure():
         "a",
         _literals.BindingData(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5))),
     )
-    b1 = _literals.Binding("b", _literals.BindingData(promise=flytekit.models.core.types.OutputReference("my_node", "b")))
-    b2 = _literals.Binding("c", _literals.BindingData(promise=flytekit.models.core.types.OutputReference("my_node", "c")))
+    b1 = _literals.Binding(
+        "b", _literals.BindingData(promise=flytekit.models.core.types.OutputReference("my_node", "b"))
+    )
+    b2 = _literals.Binding(
+        "c", _literals.BindingData(promise=flytekit.models.core.types.OutputReference("my_node", "c"))
+    )
 
     node_metadata = _workflow.NodeMetadata(
         name="node1", timeout=timedelta(seconds=10), retries=_literals.RetryStrategy(0)
@@ -38,7 +45,8 @@ def test_workflow_closure():
     )
 
     cpu_resource = flytekit.models.core.task.Resources.ResourceEntry(
-        flytekit.models.core.task.Resources.ResourceName.CPU, "1")
+        flytekit.models.core.task.Resources.ResourceName.CPU, "1"
+    )
     resources = flytekit.models.core.task.Resources(requests=[cpu_resource], limits=[cpu_resource])
 
     task = _taskTemplate(

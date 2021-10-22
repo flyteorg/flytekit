@@ -82,5 +82,7 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
         }
 
     def get_sql(self, settings: SerializationSettings) -> Optional[flytekit.models.core.task.Sql]:
-        sql = flytekit.models.core.task.Sql(statement=self.query_template, dialect=flytekit.models.core.task.Sql.Dialect.ANSI)
+        sql = flytekit.models.core.task.Sql(
+            statement=self.query_template, dialect=flytekit.models.core.task.Sql.Dialect.ANSI
+        )
         return sql

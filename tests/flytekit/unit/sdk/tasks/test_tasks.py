@@ -24,7 +24,9 @@ default_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "projec
 def test_default_python_task():
     assert isinstance(default_task, _sdk_runnable.SdkRunnableTask)
     assert default_task.interface.inputs["in1"].description == ""
-    assert default_task.interface.inputs["in1"].type == flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER)
+    assert default_task.interface.inputs["in1"].type == flytekit.models.core.types.LiteralType(
+        simple=flytekit.models.core.types.SimpleType.INTEGER
+    )
     assert default_task.interface.outputs["out1"].description == ""
     assert default_task.interface.outputs["out1"].type == flytekit.models.core.types.LiteralType(
         simple=flytekit.models.core.types.SimpleType.STRING

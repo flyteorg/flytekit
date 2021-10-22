@@ -13,7 +13,9 @@ from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuilti
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
 from flytekit.common.tasks.sagemaker.types import HyperparameterTuningJobConfig, ParameterRange
 from flytekit.models.admin import task as _task_models
-from flytekit.models.core import types as _core_types, literals as _literal_models, interface as _interface_model
+from flytekit.models.core import interface as _interface_model
+from flytekit.models.core import literals as _literal_models
+from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 
 

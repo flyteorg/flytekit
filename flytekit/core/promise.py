@@ -17,8 +17,10 @@ from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteC
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
-from flytekit.models.core import workflow as _workflow_model, literals as _literal_models, literals as _literals_models, \
-    interface as _interface_models
+from flytekit.models.core import interface as _interface_models
+from flytekit.models.core import literals as _literal_models
+from flytekit.models.core import literals as _literals_models
+from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.core.literals import Primitive
 
 

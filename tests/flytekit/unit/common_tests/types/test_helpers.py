@@ -15,7 +15,8 @@ def test_python_std_to_sdk_type():
 
 def test_get_sdk_type_from_literal_type():
     o = _type_helpers.get_sdk_type_from_literal_type(
-        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.FLOAT))
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.FLOAT)
+    )
     assert o == _sdk_types.Types.Float
 
 

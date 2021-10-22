@@ -425,7 +425,9 @@ class SchemaType(flytekit.models.core.types.SchemaType, metaclass=_sdk_bases.Ext
         :rtype: list[flytekit.models.types.SchemaType.SchemaColumn]
         """
         return [
-            flytekit.models.core.types.SchemaType.SchemaColumn(n, type(self)._LITERAL_TYPE_TO_PROTO_ENUM[v.to_flyte_literal_type()])
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                n, type(self)._LITERAL_TYPE_TO_PROTO_ENUM[v.to_flyte_literal_type()]
+            )
             for n, v in _six.iteritems(self.sdk_columns)
         ]
 

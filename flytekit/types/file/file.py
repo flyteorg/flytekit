@@ -7,8 +7,8 @@ import typing
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
-from flytekit.models.core.types import BlobType, LiteralType
 from flytekit.models.core.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.core.types import BlobType, LiteralType
 
 
 def noop():

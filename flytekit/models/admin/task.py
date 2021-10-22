@@ -1,9 +1,9 @@
 from flyteidl.admin import task_pb2 as _admin_task
 
 from flytekit.models import common as _common
-from flytekit.models.core.task import TaskTemplate
-from flytekit.models.core.compiler import CompiledTask as _compiledTask
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.core.compiler import CompiledTask as _compiledTask
+from flytekit.models.core.task import TaskTemplate
 
 
 class TaskSpec(_common.FlyteIdlEntity):

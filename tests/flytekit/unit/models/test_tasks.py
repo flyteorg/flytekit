@@ -10,20 +10,25 @@ import flytekit.models.core.interface as interface_models
 import flytekit.models.core.literals as literal_models
 import flytekit.models.core.task
 import flytekit.models.core.types
-from flytekit.models.core import identifier, literals
-from flytekit.models.core.task import TaskMetadata as _taskMetadata, TaskTemplate as _taskTemplate, \
-    RuntimeMetadata as _runtimeMetadata
 from flytekit.models.admin.task import Task as _task
+from flytekit.models.core import identifier, literals
+from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _taskMetadata
+from flytekit.models.core.task import TaskTemplate as _taskTemplate
 from tests.flytekit.common import parameterizers
 
 
 def test_resource_entry():
-    obj = flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, "blah")
+    obj = flytekit.models.core.task.Resources.ResourceEntry(
+        flytekit.models.core.task.Resources.ResourceName.CPU, "blah"
+    )
     assert flytekit.models.core.task.Resources.ResourceEntry.from_flyte_idl(obj.to_flyte_idl()) == obj
     assert obj != flytekit.models.core.task.Resources.ResourceEntry(
-        flytekit.models.core.task.Resources.ResourceName.GPU, "blah")
+        flytekit.models.core.task.Resources.ResourceName.GPU, "blah"
+    )
     assert obj != flytekit.models.core.task.Resources.ResourceEntry(
-        flytekit.models.core.task.Resources.ResourceName.CPU, "bloop")
+        flytekit.models.core.task.Resources.ResourceName.CPU, "bloop"
+    )
     assert obj.name == flytekit.models.core.task.Resources.ResourceName.CPU
     assert obj.value == "blah"
 
@@ -166,7 +171,9 @@ def test_task_template__k8s_pod_target():
     assert obj.id.version == "version"
     assert obj.type == "python"
     assert obj.custom == {"a": 1, "b": {"c": 2, "d": 3}}
-    assert obj.k8s_pod.metadata == flytekit.models.core.task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"})
+    assert obj.k8s_pod.metadata == flytekit.models.core.task.K8sObjectMetadata(
+        labels={"label": "foo"}, annotations={"anno": "bar"}
+    )
     assert obj.k8s_pod.pod_spec == {"str": "val", "int": 1}
     assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
         _taskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
@@ -283,7 +290,10 @@ def test_dataloadingconfig():
 
 
 def test_ioconfig():
-    io = flytekit.models.core.task.IOStrategy(flytekit.models.core.task.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD, flytekit.models.core.task.IOStrategy.UPLOAD_MODE_NO_UPLOAD)
+    io = flytekit.models.core.task.IOStrategy(
+        flytekit.models.core.task.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD,
+        flytekit.models.core.task.IOStrategy.UPLOAD_MODE_NO_UPLOAD,
+    )
     assert io == flytekit.models.core.task.IOStrategy.from_flyte_idl(io.to_flyte_idl())
 
 
@@ -295,7 +305,9 @@ def test_k8s_metadata():
 
 
 def test_k8s_pod():
-    obj = flytekit.models.core.task.K8sPod(metadata=flytekit.models.core.task.K8sObjectMetadata(labels={"label": "foo"}), pod_spec={"pod_spec": "bar"})
+    obj = flytekit.models.core.task.K8sPod(
+        metadata=flytekit.models.core.task.K8sObjectMetadata(labels={"label": "foo"}), pod_spec={"pod_spec": "bar"}
+    )
     assert obj.metadata.labels == {"label": "foo"}
     assert obj.pod_spec == {"pod_spec": "bar"}
     assert obj == flytekit.models.core.task.K8sPod.from_flyte_idl(obj.to_flyte_idl())

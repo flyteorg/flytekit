@@ -6,7 +6,8 @@ from flytekit.common import component_nodes as _component_nodes
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.models.core import identifier as _identifier, literals as _literals
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import literals as _literals
 from flytekit.models.core import workflow as _core_workflow_models
 from flytekit.sdk import tasks as _tasks
 from flytekit.sdk import types as _types

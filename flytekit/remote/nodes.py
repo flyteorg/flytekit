@@ -11,8 +11,8 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.utils import _dnsify
 from flytekit.core.promise import NodeOutput
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models.admin import launch_plan as _launch_plan_model, \
-    node_execution as _node_execution_models
+from flytekit.models.admin import launch_plan as _launch_plan_model
+from flytekit.models.admin import node_execution as _node_execution_models
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import component_nodes as _component_nodes

@@ -1,6 +1,7 @@
 from flytekit.common.types import blobs
 from flytekit.common.types.impl import blobs as blob_impl
-from flytekit.models.core import types as _core_types, literals as _literal_models
+from flytekit.models.core import literals as _literal_models
+from flytekit.models.core import types as _core_types
 from flytekit.sdk import test_utils
 
 

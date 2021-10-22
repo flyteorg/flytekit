@@ -30,7 +30,10 @@ def test_parse_args_into_dict():
 
 
 def test_construct_literal_map_from_variable_map():
-    v = Variable(type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER), description="some description")
+    v = Variable(
+        type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER),
+        description="some description",
+    )
     variable_map = {
         "inputa": v,
     }
@@ -44,7 +47,10 @@ def test_construct_literal_map_from_variable_map():
 
 
 def test_construct_literal_map_from_parameter_map():
-    v = Variable(type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER), description="some description")
+    v = Variable(
+        type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER),
+        description="some description",
+    )
     p = Parameter(var=v, required=True)
     pm = ParameterMap(parameters={"inputa": p})
 

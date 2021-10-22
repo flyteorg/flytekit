@@ -11,9 +11,10 @@ from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models.core import literals as _literals, interface as _interface_model
-from flytekit.models.plugins import presto as _presto_models
+from flytekit.models.core import interface as _interface_model
+from flytekit.models.core import literals as _literals
 from flytekit.models.core import task as _task_model
+from flytekit.models.plugins import presto as _presto_models
 
 
 class SdkPrestoTask(_base_task.SdkTask):
@@ -61,7 +62,8 @@ class SdkPrestoTask(_base_task.SdkTask):
             discoverable,
             # This needs to have the proper version reflected in it
             flytekit.models.core.task.RuntimeMetadata(
-                flytekit.models.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
+                flytekit.models.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
+            ),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
             interruptible,

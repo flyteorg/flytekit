@@ -40,10 +40,10 @@ from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.data_proxy import Data
 from flytekit.models import filters as _filters
-from flytekit.models.admin import common as _admin_common, launch_plan as _launch_plan
-from flytekit.models.admin.common import RawOutputDataConfig as _RawOutputDataConfig, AuthRole as _AuthRole
-from flytekit.models.core import execution as _core_execution_models, literals as _literals
-from flytekit.models.core import identifier as _core_identifier
+from flytekit.models.admin import common as _admin_common
+from flytekit.models.admin import launch_plan as _launch_plan
+from flytekit.models.admin.common import AuthRole as _AuthRole
+from flytekit.models.admin.common import RawOutputDataConfig as _RawOutputDataConfig
 from flytekit.models.admin.execution import ExecutionMetadata as _ExecutionMetadata
 from flytekit.models.admin.execution import ExecutionSpec as _ExecutionSpec
 from flytekit.models.admin.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes
@@ -55,6 +55,9 @@ from flytekit.models.admin.matchable_resource import PluginOverride as _PluginOv
 from flytekit.models.admin.matchable_resource import PluginOverrides as _PluginOverrides
 from flytekit.models.admin.project import Project as _Project
 from flytekit.models.admin.schedule import Schedule as _Schedule
+from flytekit.models.core import execution as _core_execution_models
+from flytekit.models.core import identifier as _core_identifier
+from flytekit.models.core import literals as _literals
 from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
 
 try:  # Python 3
@@ -2112,7 +2115,9 @@ def update_task_meta(description, host, insecure, project, domain, name):
     client.update_named_entity(
         _core_identifier.ResourceType.TASK,
         flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
-        flytekit.models.admin.common.NamedEntityMetadata(description, flytekit.models.admin.common.NamedEntityState.ACTIVE),
+        flytekit.models.admin.common.NamedEntityMetadata(
+            description, flytekit.models.admin.common.NamedEntityState.ACTIVE
+        ),
     )
     _click.echo("Successfully updated task")
 
@@ -2133,7 +2138,9 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
     client.update_named_entity(
         _core_identifier.ResourceType.LAUNCH_PLAN,
         flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
-        flytekit.models.admin.common.NamedEntityMetadata(description, flytekit.models.admin.common.NamedEntityState.ACTIVE),
+        flytekit.models.admin.common.NamedEntityMetadata(
+            description, flytekit.models.admin.common.NamedEntityState.ACTIVE
+        ),
     )
     _click.echo("Successfully updated launch plan")
 

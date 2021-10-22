@@ -1,5 +1,4 @@
 import six as _six
-
 from flyteidl.admin import common_pb2 as _common_pb2
 
 from flytekit.models import common as _common_models

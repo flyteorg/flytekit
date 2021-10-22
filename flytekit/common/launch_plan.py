@@ -22,13 +22,15 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models.admin import schedule as _schedule_model, launch_plan as _launch_plan_models, \
-    execution as _execution_models
 from flytekit.models.admin import common as _common
-from flytekit.models.core import identifier as _identifier_model, literals as _literal_models, \
-    interface as _interface_models
-from flytekit.models.core import workflow as _workflow_models
+from flytekit.models.admin import execution as _execution_models
+from flytekit.models.admin import launch_plan as _launch_plan_models
+from flytekit.models.admin import schedule as _schedule_model
 from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import interface as _interface_models
+from flytekit.models.core import literals as _literal_models
+from flytekit.models.core import workflow as _workflow_models
 
 
 class SdkLaunchPlan(
@@ -112,9 +114,7 @@ class SdkLaunchPlan(
         if launch_plan_id.version:
             lp = _flyte_engine.get_client().get_launch_plan(launch_plan_id)
         else:
-            named_entity_id = _namedEntityIdentifier(
-                launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
-            )
+            named_entity_id = _namedEntityIdentifier(launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name)
             lp = _flyte_engine.get_client().get_active_launch_plan(named_entity_id)
 
         sdk_lp = cls.promote_from_model(lp.spec)

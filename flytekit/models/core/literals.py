@@ -7,7 +7,8 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
-from flytekit.models.core.types import SchemaType as _SchemaType, OutputReference as _OutputReference
+from flytekit.models.core.types import OutputReference as _OutputReference
+from flytekit.models.core.types import SchemaType as _SchemaType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):

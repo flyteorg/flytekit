@@ -30,7 +30,8 @@ from flytekit.configuration import secrets
 from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces.stats import taggable
 from flytekit.models.core import literals as _literal_models
-from flytekit.models.core.task import TaskMetadata as _taskMetadata, RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _taskMetadata
 
 
 class SecretsManager(object):
@@ -318,36 +319,52 @@ class SdkRunnableContainer(flytekit.models.core.task.Container, metaclass=_sdk_b
         if storage_request:
             requests.append(
                 flytekit.models.core.task.Resources.ResourceEntry(
-                    flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_request)
+                    flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_request
+                )
             )
         if cpu_request:
             requests.append(
-                flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, cpu_request))
+                flytekit.models.core.task.Resources.ResourceEntry(
+                    flytekit.models.core.task.Resources.ResourceName.CPU, cpu_request
+                )
+            )
         if gpu_request:
             requests.append(
-                flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.GPU, gpu_request))
+                flytekit.models.core.task.Resources.ResourceEntry(
+                    flytekit.models.core.task.Resources.ResourceName.GPU, gpu_request
+                )
+            )
         if memory_request:
             requests.append(
                 flytekit.models.core.task.Resources.ResourceEntry(
-                    flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_request)
+                    flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_request
+                )
             )
 
         limits = []
         if storage_limit:
             limits.append(
                 flytekit.models.core.task.Resources.ResourceEntry(
-                    flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_limit)
+                    flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_limit
+                )
             )
         if cpu_limit:
             limits.append(
-                flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, cpu_limit))
+                flytekit.models.core.task.Resources.ResourceEntry(
+                    flytekit.models.core.task.Resources.ResourceName.CPU, cpu_limit
+                )
+            )
         if gpu_limit:
             limits.append(
-                flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.GPU, gpu_limit))
+                flytekit.models.core.task.Resources.ResourceEntry(
+                    flytekit.models.core.task.Resources.ResourceName.GPU, gpu_limit
+                )
+            )
         if memory_limit:
             limits.append(
                 flytekit.models.core.task.Resources.ResourceEntry(
-                    flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_limit)
+                    flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_limit
+                )
             )
 
         return flytekit.models.core.task.Resources(limits=limits, requests=requests)

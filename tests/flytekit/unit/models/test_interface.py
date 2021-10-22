@@ -44,7 +44,9 @@ def test_typed_interface(literal_type):
 
 
 def test_parameter():
-    v = interface.Variable(flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     obj = interface.Parameter(var=v)
     assert obj.var == v
 
@@ -54,7 +56,9 @@ def test_parameter():
 
 
 def test_parameter_map():
-    v = interface.Variable(flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     p = interface.Parameter(var=v)
 
     obj = interface.ParameterMap({"ppp": p})
@@ -63,7 +67,9 @@ def test_parameter_map():
 
 
 def test_variable_map():
-    v = interface.Variable(flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     obj = interface.VariableMap({"vvv": v})
 
     obj2 = interface.VariableMap.from_flyte_idl(obj.to_flyte_idl())

@@ -2,7 +2,8 @@ import flytekit.models.core.types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.models.core import types as _core_types, literals as _literals
+from flytekit.models.core import literals as _literals
+from flytekit.models.core import types as _core_types
 
 
 class BlobInstantiator(_base_sdk_types.InstantiableType):

@@ -85,7 +85,10 @@ def test_nested_list():
     assert list_type.to_flyte_literal_type().collection_type.simple is None
     assert list_type.to_flyte_literal_type().collection_type.map_value_type is None
     assert list_type.to_flyte_literal_type().collection_type.schema is None
-    assert list_type.to_flyte_literal_type().collection_type.collection_type.simple == flytekit.models.core.types.SimpleType.INTEGER
+    assert (
+        list_type.to_flyte_literal_type().collection_type.collection_type.simple
+        == flytekit.models.core.types.SimpleType.INTEGER
+    )
 
     gt = [[1, 2, 3], [4, 5, 6], []]
     list_value = list_type.from_python_std(gt)

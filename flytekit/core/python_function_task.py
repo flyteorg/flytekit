@@ -34,9 +34,10 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.loggers import logger
-from flytekit.models.core import dynamic_job as _dynamic_job, literals as _literal_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.task import TaskSpec as _taskSpec
+from flytekit.models.core import dynamic_job as _dynamic_job
+from flytekit.models.core import literals as _literal_models
 
 T = TypeVar("T")
 

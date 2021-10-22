@@ -1,8 +1,8 @@
 import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 from flytekit.models import common as _common
-from flytekit.models.core import execution as _execution
 from flytekit.models.admin import common as _admin_common
+from flytekit.models.core import execution as _execution
 
 
 def test_notification_email():
@@ -85,7 +85,9 @@ def test_auth_role():
     obj2 = flytekit.models.admin.common.AuthRole.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
-    obj = flytekit.models.admin.common.AuthRole(assumable_iam_role="rollie-pollie", kubernetes_service_account="service-account-name")
+    obj = flytekit.models.admin.common.AuthRole(
+        assumable_iam_role="rollie-pollie", kubernetes_service_account="service-account-name"
+    )
     assert obj.assumable_iam_role == "rollie-pollie"
     assert obj.kubernetes_service_account == "service-account-name"
     obj2 = flytekit.models.admin.common.AuthRole.from_flyte_idl(obj.to_flyte_idl())

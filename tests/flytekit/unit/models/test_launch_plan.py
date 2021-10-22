@@ -3,9 +3,9 @@ from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 import flytekit.models.admin.common
 import flytekit.models.admin.launch_plan
 import flytekit.models.core.types
-from flytekit.models.admin import schedule, launch_plan
 from flytekit.models.admin import common as _common
-from flytekit.models.core import identifier, literals, interface
+from flytekit.models.admin import launch_plan, schedule
+from flytekit.models.core import identifier, interface, literals
 
 
 def test_metadata():
@@ -24,7 +24,9 @@ def test_metadata_schedule():
 
 
 def test_lp_closure():
-    v = interface.Variable(flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     p = interface.Parameter(var=v)
     parameter_map = interface.ParameterMap({"ppp": p})
     parameter_map.to_flyte_idl()
@@ -49,7 +51,9 @@ def test_launch_plan_spec():
     s = schedule.Schedule("asdf", "1 3 4 5 6 7")
     launch_plan_metadata_model = launch_plan.LaunchPlanMetadata(schedule=s, notifications=[])
 
-    v = interface.Variable(flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     p = interface.Parameter(var=v)
     parameter_map = interface.ParameterMap({"ppp": p})
 
@@ -102,7 +106,9 @@ def test_old_style_role():
     s = schedule.Schedule("asdf", "1 3 4 5 6 7")
     launch_plan_metadata_model = launch_plan.LaunchPlanMetadata(schedule=s, notifications=[])
 
-    v = interface.Variable(flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     p = interface.Parameter(var=v)
     parameter_map = interface.ParameterMap({"ppp": p})
 

@@ -2,7 +2,8 @@ import json as _json
 import typing
 
 from flyteidl.core import types_pb2 as _types_pb2
-from google.protobuf import json_format as _json_format, struct_pb2 as _struct
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 
 from flytekit.models import common as _common
 
@@ -337,4 +338,3 @@ class Error(_common.FlyteIdlEntity):
         :rtype: flytekit.models.core.types.OutputReference
         """
         return cls(failed_node_id=pb2_object.failed_node_id, message=pb2_object.message)
-

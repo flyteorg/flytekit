@@ -552,7 +552,9 @@ class Generic(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRUCT, metadata=metadata)
+        return flytekit.models.core.types.LiteralType(
+            simple=flytekit.models.core.types.SimpleType.STRUCT, metadata=metadata
+        )
 
     @classmethod
     def promote_from_model(cls, literal_model):

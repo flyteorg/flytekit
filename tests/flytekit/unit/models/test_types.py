@@ -18,23 +18,53 @@ def test_simple_type():
 
 
 def test_schema_column():
-    assert flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER == types_pb2.SchemaType.SchemaColumn.INTEGER
-    assert flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT == types_pb2.SchemaType.SchemaColumn.FLOAT
-    assert flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING == types_pb2.SchemaType.SchemaColumn.STRING
-    assert flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME == types_pb2.SchemaType.SchemaColumn.DATETIME
-    assert flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION == types_pb2.SchemaType.SchemaColumn.DURATION
-    assert flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN == types_pb2.SchemaType.SchemaColumn.BOOLEAN
+    assert (
+        flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+        == types_pb2.SchemaType.SchemaColumn.INTEGER
+    )
+    assert (
+        flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+        == types_pb2.SchemaType.SchemaColumn.FLOAT
+    )
+    assert (
+        flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+        == types_pb2.SchemaType.SchemaColumn.STRING
+    )
+    assert (
+        flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+        == types_pb2.SchemaType.SchemaColumn.DATETIME
+    )
+    assert (
+        flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+        == types_pb2.SchemaType.SchemaColumn.DURATION
+    )
+    assert (
+        flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+        == types_pb2.SchemaType.SchemaColumn.BOOLEAN
+    )
 
 
 def test_schema_type():
     obj = flytekit.models.core.types.SchemaType(
         [
-            flytekit.models.core.types.SchemaType.SchemaColumn("a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-            flytekit.models.core.types.SchemaType.SchemaColumn("b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-            flytekit.models.core.types.SchemaType.SchemaColumn("c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-            flytekit.models.core.types.SchemaType.SchemaColumn("d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-            flytekit.models.core.types.SchemaType.SchemaColumn("e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-            flytekit.models.core.types.SchemaType.SchemaColumn("f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+            ),
         ]
     )
 
@@ -65,12 +95,24 @@ def test_literal_types():
 
     schema_type = flytekit.models.core.types.SchemaType(
         [
-            flytekit.models.core.types.SchemaType.SchemaColumn("a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-            flytekit.models.core.types.SchemaType.SchemaColumn("b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-            flytekit.models.core.types.SchemaType.SchemaColumn("c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-            flytekit.models.core.types.SchemaType.SchemaColumn("d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-            flytekit.models.core.types.SchemaType.SchemaColumn("e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-            flytekit.models.core.types.SchemaType.SchemaColumn("f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+            ),
         ]
     )
     obj = flytekit.models.core.types.LiteralType(schema=schema_type)

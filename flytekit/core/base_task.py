@@ -40,11 +40,14 @@ from flytekit.core.promise import (
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models.core import workflow as _workflow_model, dynamic_job as _dynamic_job, literals as _literal_models, \
-    interface as _interface_models
+from flytekit.models.core import dynamic_job as _dynamic_job
+from flytekit.models.core import interface as _interface_models
+from flytekit.models.core import literals as _literal_models
+from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.core.interface import Variable
 from flytekit.models.core.security import SecurityContext
-from flytekit.models.core.task import TaskMetadata as _task_matadata, RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _task_matadata
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -111,9 +114,7 @@ class TaskMetadata(object):
 
         return _task_matadata(
             discoverable=self.cache,
-            runtime=_runtimeMetadata(
-                _runtimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
-            ),
+            runtime=_runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
             timeout=self.timeout,
             retries=self.retry_strategy,
             interruptible=self.interruptible,

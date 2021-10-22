@@ -11,7 +11,8 @@ from flytekit.common.types.base_sdk_types import FlyteSdkType
 from flytekit.configuration import resources as _resource_config
 from flytekit.models.core import literals as _literals
 from flytekit.models.core.interface import Variable
-from flytekit.models.core.task import TaskMetadata as _taskMetadata, RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
+from flytekit.models.core.task import TaskMetadata as _taskMetadata
 
 
 def types_to_variable(t: Dict[str, FlyteSdkType]) -> Dict[str, Variable]:
@@ -53,7 +54,9 @@ def _get_container_definition(
     requests = []
     if storage_request:
         requests.append(
-            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_request)
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_request
+            )
         )
     if ephemeral_storage_request:
         requests.append(
@@ -63,19 +66,30 @@ def _get_container_definition(
         )
     if cpu_request:
         requests.append(
-            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, cpu_request))
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.CPU, cpu_request
+            )
+        )
     if gpu_request:
         requests.append(
-            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.GPU, gpu_request))
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.GPU, gpu_request
+            )
+        )
     if memory_request:
         requests.append(
-            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_request)
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_request
+            )
         )
 
     limits = []
     if storage_limit:
         limits.append(
-            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_limit))
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.STORAGE, storage_limit
+            )
+        )
     if ephemeral_storage_limit:
         limits.append(
             flytekit.models.core.task.Resources.ResourceEntry(
@@ -84,13 +98,22 @@ def _get_container_definition(
         )
     if cpu_limit:
         limits.append(
-            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.CPU, cpu_limit))
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.CPU, cpu_limit
+            )
+        )
     if gpu_limit:
         limits.append(
-            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.GPU, gpu_limit))
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.GPU, gpu_limit
+            )
+        )
     if memory_limit:
         limits.append(
-            flytekit.models.core.task.Resources.ResourceEntry(flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_limit))
+            flytekit.models.core.task.Resources.ResourceEntry(
+                flytekit.models.core.task.Resources.ResourceName.MEMORY, memory_limit
+            )
+        )
 
     if environment is None:
         environment = {}

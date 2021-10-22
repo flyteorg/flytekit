@@ -6,8 +6,9 @@ import flytekit.models.core.task
 from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager, logger
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models.core import dynamic_job as _dynamic_job, literals as _literal_models
 from flytekit.models.admin import task as _task_model
+from flytekit.models.core import dynamic_job as _dynamic_job
+from flytekit.models.core import literals as _literal_models
 
 
 class ExecutableTemplateShimTask(object):
@@ -34,7 +35,9 @@ class ExecutableTemplateShimTask(object):
     that the ``entrypoint.py`` can execute, even though this class doesn't inherit from ``PythonTask``.
     """
 
-    def __init__(self, tt: flytekit.models.core.task.TaskTemplate, executor_type: Type[ShimTaskExecutor], *args, **kwargs):
+    def __init__(
+        self, tt: flytekit.models.core.task.TaskTemplate, executor_type: Type[ShimTaskExecutor], *args, **kwargs
+    ):
         self._executor_type = executor_type
         self._executor = executor_type()
         self._task_template = tt

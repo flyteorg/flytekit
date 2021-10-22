@@ -15,10 +15,11 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.workflow import SdkWorkflow
 from flytekit.configuration import internal as _internal_config
-from flytekit.models.admin import schedule as _schedule_models
 from flytekit.models.admin import common as _admin_common
-from flytekit.models.core import identifier as _identifier_model, literals as _literal_models, \
-    interface as _interface_models
+from flytekit.models.admin import schedule as _schedule_models
+from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import interface as _interface_models
+from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_models
 
 

@@ -24,7 +24,8 @@ from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models
 from flytekit.models.admin import node_execution as _node_execution_models
-from flytekit.models.core import execution as _execution_models, literals as _literal_models
+from flytekit.models.core import execution as _execution_models
+from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 
 

@@ -326,12 +326,24 @@ def test_scalar_binary():
 def test_scalar_schema():
     schema_type = flytekit.models.core.types.SchemaType(
         [
-            flytekit.models.core.types.SchemaType.SchemaColumn("a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-            flytekit.models.core.types.SchemaType.SchemaColumn("b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-            flytekit.models.core.types.SchemaType.SchemaColumn("c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-            flytekit.models.core.types.SchemaType.SchemaColumn("d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-            flytekit.models.core.types.SchemaType.SchemaColumn("e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-            flytekit.models.core.types.SchemaType.SchemaColumn("f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+            ),
+            flytekit.models.core.types.SchemaType.SchemaColumn(
+                "f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+            ),
         ]
     )
 

@@ -4,7 +4,8 @@ from typing import Dict
 import flytekit
 import flytekit.models.core.task
 from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.models.admin import task as _task_model, launch_plan as _launch_plan_model
+from flytekit.models.admin import launch_plan as _launch_plan_model
+from flytekit.models.admin import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import identifier as _identifier
 

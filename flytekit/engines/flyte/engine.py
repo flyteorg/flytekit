@@ -24,12 +24,14 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.models.admin import common as _common, execution as _execution_models
+from flytekit.models.admin import common as _common
+from flytekit.models.admin import execution as _execution_models
 from flytekit.models.admin import workflow as _workflow_model
-from flytekit.models.admin.task import TaskSpec as _taskSpec
-from flytekit.models.core import errors as _error_models, literals as _literals
-from flytekit.models.core import identifier as _identifier
 from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
+from flytekit.models.admin.task import TaskSpec as _taskSpec
+from flytekit.models.core import errors as _error_models
+from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import literals as _literals
 
 
 class _FlyteClientManager(object):
@@ -160,9 +162,7 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
                 _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_launch_plan(launch_plan_id)
         else:
-            named_entity_id = _namedEntityIdentifier(
-                launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
-            )
+            named_entity_id = _namedEntityIdentifier(launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name)
             return _FlyteClientManager(
                 _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_active_launch_plan(named_entity_id)

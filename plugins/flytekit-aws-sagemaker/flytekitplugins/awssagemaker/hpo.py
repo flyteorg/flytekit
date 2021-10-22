@@ -12,10 +12,10 @@ from flytekit import FlyteContext
 from flytekit.common.types import primitives
 from flytekit.extend import DictTransformer, PythonTask, SerializationSettings, TypeEngine, TypeTransformer
 from flytekit.models.core.literals import Literal
+from flytekit.models.core.types import LiteralType
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 from flytekit.models.sagemaker import parameter_ranges as _params
 from flytekit.models.sagemaker import training_job as _training_job_model
-from flytekit.models.core.types import LiteralType
 
 
 @dataclass
