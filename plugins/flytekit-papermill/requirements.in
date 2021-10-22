@@ -1,3 +1,4 @@
 .
 -e file:.#egg=flytekitplugins-papermill
 flytekitplugins-spark
+-e file:../flytekit-spark#egg=flytekitplugins-spark
