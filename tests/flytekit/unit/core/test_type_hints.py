@@ -684,7 +684,15 @@ def test_wf1_branches_failing():
     assert context_manager.FlyteContextManager.size() == 1
 
 
-def test_cant_use_normal_tuples():
+def test_cant_use_normal_tuples_as_input():
+    with pytest.raises(RestrictedTypeError):
+
+        @task
+        def t1(a: tuple) -> str:
+            return a[0]
+
+
+def test_cant_use_normal_tuples_as_output():
     with pytest.raises(RestrictedTypeError):
 
         @task

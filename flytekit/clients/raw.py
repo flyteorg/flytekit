@@ -135,6 +135,7 @@ def _handle_rpc_error(retry=False):
                             if i == (max_retries - 1):
                                 # Exit the loop and wrap the authentication error.
                                 raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+                            cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
                             refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
                             refresh_handler_fn(args[0])
                         else:
