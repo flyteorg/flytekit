@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List
+from typing import List, Dict
 
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
@@ -60,3 +60,20 @@ def test_nested():
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
     print(task_spec)
+
+    # Return signature should be a literal collection of a literal collection of Pickle type.
+
+
+def test_nested2():
+    class Foo(object):
+        def __init__(self, number: int):
+            self.number = number
+
+    @task
+    def t1(a: int) -> List[Dict[str, Foo]]:
+        return [{"a": Foo(number=a)}]
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    print(task_spec)
+
+    # Return signature should be a literal collection of a literal map of Pickle type.
