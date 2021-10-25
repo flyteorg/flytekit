@@ -1,20 +1,22 @@
+import flytekit.models.core.types
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import literals as _literals
-from flytekit.models import types as _model_types
+from flytekit.models.core import literals as _literals
 from flytekit.sdk import types as _sdk_types
 
 
 def test_python_std_to_sdk_type():
     o = _type_helpers.python_std_to_sdk_type(_sdk_types.Types.Integer)
-    assert o.to_flyte_literal_type().simple == _model_types.SimpleType.INTEGER
+    assert o.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.INTEGER
 
     o = _type_helpers.python_std_to_sdk_type([_sdk_types.Types.Boolean])
-    assert o.to_flyte_literal_type().collection_type.simple == _model_types.SimpleType.BOOLEAN
+    assert o.to_flyte_literal_type().collection_type.simple == flytekit.models.core.types.SimpleType.BOOLEAN
 
 
 def test_get_sdk_type_from_literal_type():
-    o = _type_helpers.get_sdk_type_from_literal_type(_model_types.LiteralType(simple=_model_types.SimpleType.FLOAT))
+    o = _type_helpers.get_sdk_type_from_literal_type(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.FLOAT)
+    )
     assert o == _sdk_types.Types.Float
 
 

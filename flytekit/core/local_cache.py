@@ -2,7 +2,7 @@ from typing import Optional
 
 from diskcache import Cache
 
-from flytekit.models.literals import LiteralMap
+from flytekit.models.core.literals import LiteralMap
 
 # Location on the filesystem where serialized objects will be stored
 # TODO: read from config

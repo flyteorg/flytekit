@@ -3,7 +3,7 @@ import pytest
 from flytekitplugins.dolt.schema import DoltConfig, DoltTable, DoltTableNameTransformer
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit.models.literals import Literal, Scalar
+from flytekit.models.core.literals import Literal, Scalar
 
 
 def test_dolt_table_to_python_value(mocker):

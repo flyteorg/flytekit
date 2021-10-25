@@ -3,17 +3,18 @@ import datetime as _datetime
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
+import flytekit.models.core.task
+import flytekit.models.core.types
 from flytekit import __version__
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import interface as _interface_model
-from flytekit.models import literals as _literals
-from flytekit.models import presto as _presto_models
-from flytekit.models import task as _task_model
-from flytekit.models import types as _types
+from flytekit.models.core import interface as _interface_model
+from flytekit.models.core import literals as _literals
+from flytekit.models.core import task as _task_model
+from flytekit.models.plugins import presto as _presto_models
 
 
 class SdkPrestoTask(_base_task.SdkTask):
@@ -60,7 +61,9 @@ class SdkPrestoTask(_base_task.SdkTask):
         metadata = _task_model.TaskMetadata(
             discoverable,
             # This needs to have the proper version reflected in it
-            _task_model.RuntimeMetadata(_task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
+            flytekit.models.core.task.RuntimeMetadata(
+                flytekit.models.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
+            ),
             timeout or _datetime.timedelta(seconds=0),
             _literals.RetryStrategy(retries),
             interruptible,
@@ -80,22 +83,22 @@ class SdkPrestoTask(_base_task.SdkTask):
         i = _interface.TypedInterface(
             {
                 "__implicit_routing_group": _interface_model.Variable(
-                    type=_types.LiteralType(simple=_types.SimpleType.STRING),
+                    type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING),
                     description="The routing group set as an implicit input",
                 ),
                 "__implicit_catalog": _interface_model.Variable(
-                    type=_types.LiteralType(simple=_types.SimpleType.STRING),
+                    type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING),
                     description="The catalog set as an implicit input",
                 ),
                 "__implicit_schema": _interface_model.Variable(
-                    type=_types.LiteralType(simple=_types.SimpleType.STRING),
+                    type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING),
                     description="The schema set as an implicit input",
                 ),
             },
             {
                 # Set the schema for the Presto query as an output
                 "results": _interface_model.Variable(
-                    type=_types.LiteralType(schema=output_schema.schema_type),
+                    type=flytekit.models.core.types.LiteralType(schema=output_schema.schema_type),
                     description="The schema for the Presto query",
                 )
             },

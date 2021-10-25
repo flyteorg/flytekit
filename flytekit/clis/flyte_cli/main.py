@@ -19,6 +19,7 @@ from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from google.protobuf.json_format import MessageToJson
 from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
+import flytekit.models.admin.common
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
@@ -38,27 +39,25 @@ from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.data_proxy import Data
-from flytekit.models import common as _common_models
 from flytekit.models import filters as _filters
-from flytekit.models import launch_plan as _launch_plan
-from flytekit.models import literals as _literals
-from flytekit.models import named_entity as _named_entity
 from flytekit.models.admin import common as _admin_common
-from flytekit.models.common import AuthRole as _AuthRole
-from flytekit.models.common import RawOutputDataConfig as _RawOutputDataConfig
+from flytekit.models.admin import launch_plan as _launch_plan
+from flytekit.models.admin.common import AuthRole as _AuthRole
+from flytekit.models.admin.common import RawOutputDataConfig as _RawOutputDataConfig
+from flytekit.models.admin.execution import ExecutionMetadata as _ExecutionMetadata
+from flytekit.models.admin.execution import ExecutionSpec as _ExecutionSpec
+from flytekit.models.admin.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes
+from flytekit.models.admin.matchable_resource import ExecutionClusterLabel as _ExecutionClusterLabel
+from flytekit.models.admin.matchable_resource import ExecutionQueueAttributes as _ExecutionQueueAttributes
+from flytekit.models.admin.matchable_resource import MatchableResource as _MatchableResource
+from flytekit.models.admin.matchable_resource import MatchingAttributes as _MatchingAttributes
+from flytekit.models.admin.matchable_resource import PluginOverride as _PluginOverride
+from flytekit.models.admin.matchable_resource import PluginOverrides as _PluginOverrides
+from flytekit.models.admin.project import Project as _Project
+from flytekit.models.admin.schedule import Schedule as _Schedule
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.core import identifier as _core_identifier
-from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata
-from flytekit.models.execution import ExecutionSpec as _ExecutionSpec
-from flytekit.models.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes
-from flytekit.models.matchable_resource import ExecutionClusterLabel as _ExecutionClusterLabel
-from flytekit.models.matchable_resource import ExecutionQueueAttributes as _ExecutionQueueAttributes
-from flytekit.models.matchable_resource import MatchableResource as _MatchableResource
-from flytekit.models.matchable_resource import MatchingAttributes as _MatchingAttributes
-from flytekit.models.matchable_resource import PluginOverride as _PluginOverride
-from flytekit.models.matchable_resource import PluginOverrides as _PluginOverrides
-from flytekit.models.project import Project as _Project
-from flytekit.models.schedule import Schedule as _Schedule
+from flytekit.models.core import literals as _literals
 from flytekit.tools.fast_registration import get_additional_distribution_loc as _get_additional_distribution_loc
 
 try:  # Python 3
@@ -699,7 +698,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
     _click.echo("{:50} {:40}".format("Version", "Urn"))
     while True:
         task_list, next_token = client.list_tasks_paginated(
-            _common_models.NamedEntityIdentifier(project, domain, name),
+            flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -854,7 +853,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
     _click.echo("{:50} {:40}".format("Version", "Urn"))
     while True:
         wf_list, next_token = client.list_workflows_paginated(
-            _common_models.NamedEntityIdentifier(project, domain, name),
+            flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -1032,7 +1031,7 @@ def list_launch_plan_versions(
 
     while True:
         lp_list, next_token = client.list_launch_plans_paginated(
-            _common_models.NamedEntityIdentifier(project, domain, name),
+            flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -1100,7 +1099,7 @@ def get_active_launch_plan(project, domain, name, host, insecure):
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
-    lp = client.get_active_launch_plan(_common_models.NamedEntityIdentifier(project, domain, name))
+    lp = client.get_active_launch_plan(flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name))
     _click.echo("Active Launch Plan for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
     _click.echo(lp)
     _click.echo("")
@@ -2089,13 +2088,13 @@ def update_workflow_meta(description, state, host, insecure, project, domain, na
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     if state == "active":
-        state = _named_entity.NamedEntityState.ACTIVE
+        state = flytekit.models.admin.common.NamedEntityState.ACTIVE
     elif state == "archived":
-        state = _named_entity.NamedEntityState.ARCHIVED
+        state = flytekit.models.admin.common.NamedEntityState.ARCHIVED
     client.update_named_entity(
         _core_identifier.ResourceType.WORKFLOW,
-        _named_entity.NamedEntityIdentifier(project, domain, name),
-        _named_entity.NamedEntityMetadata(description, state),
+        flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
+        flytekit.models.admin.common.NamedEntityMetadata(description, state),
     )
     _click.echo("Successfully updated workflow")
 
@@ -2115,8 +2114,10 @@ def update_task_meta(description, host, insecure, project, domain, name):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.update_named_entity(
         _core_identifier.ResourceType.TASK,
-        _named_entity.NamedEntityIdentifier(project, domain, name),
-        _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE),
+        flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
+        flytekit.models.admin.common.NamedEntityMetadata(
+            description, flytekit.models.admin.common.NamedEntityState.ACTIVE
+        ),
     )
     _click.echo("Successfully updated task")
 
@@ -2136,8 +2137,10 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.update_named_entity(
         _core_identifier.ResourceType.LAUNCH_PLAN,
-        _named_entity.NamedEntityIdentifier(project, domain, name),
-        _named_entity.NamedEntityMetadata(description, _named_entity.NamedEntityState.ACTIVE),
+        flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
+        flytekit.models.admin.common.NamedEntityMetadata(
+            description, flytekit.models.admin.common.NamedEntityState.ACTIVE
+        ),
     )
     _click.echo("Successfully updated launch plan")
 

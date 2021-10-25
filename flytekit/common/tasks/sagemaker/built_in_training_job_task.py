@@ -2,15 +2,15 @@ import datetime as _datetime
 
 from google.protobuf.json_format import MessageToDict
 
+import flytekit.models.core.task
+import flytekit.models.core.types
 from flytekit import __version__
 from flytekit.common import interface as _interface
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _sdk_task
-from flytekit.models import interface as _interface_model
-from flytekit.models import literals as _literal_models
-from flytekit.models import task as _task_models
-from flytekit.models import types as _idl_types
+from flytekit.models.core import interface as _interface_model
+from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker import training_job as _training_job_models
 
@@ -51,9 +51,9 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
 
         super(SdkBuiltinAlgorithmTrainingJobTask, self).__init__(
             type=SdkTaskType.SAGEMAKER_TRAINING_JOB_TASK,
-            metadata=_task_models.TaskMetadata(
-                runtime=_task_models.RuntimeMetadata(
-                    type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+            metadata=flytekit.models.core.task.TaskMetadata(
+                runtime=flytekit.models.core.task.RuntimeMetadata(
+                    type=flytekit.models.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     version=__version__,
                     flavor="sagemaker",
                 ),
@@ -67,11 +67,13 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
             interface=_interface.TypedInterface(
                 inputs={
                     "static_hyperparameters": _interface_model.Variable(
-                        type=_idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT),
+                        type=flytekit.models.core.types.LiteralType(
+                            simple=flytekit.models.core.types.SimpleType.STRUCT
+                        ),
                         description="",
                     ),
                     "train": _interface_model.Variable(
-                        type=_idl_types.LiteralType(
+                        type=flytekit.models.core.types.LiteralType(
                             blob=_core_types.BlobType(
                                 format=_content_type_to_blob_format(algorithm_specification.input_content_type),
                                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
@@ -80,7 +82,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
                         description="",
                     ),
                     "validation": _interface_model.Variable(
-                        type=_idl_types.LiteralType(
+                        type=flytekit.models.core.types.LiteralType(
                             blob=_core_types.BlobType(
                                 format=_content_type_to_blob_format(algorithm_specification.input_content_type),
                                 dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
@@ -91,7 +93,7 @@ class SdkBuiltinAlgorithmTrainingJobTask(_sdk_task.SdkTask):
                 },
                 outputs={
                     "model": _interface_model.Variable(
-                        type=_idl_types.LiteralType(
+                        type=flytekit.models.core.types.LiteralType(
                             blob=_core_types.BlobType(
                                 format="",
                                 dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,

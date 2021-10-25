@@ -6,7 +6,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.models import schedule as _schedule_models
+from flytekit.models.admin import schedule as _schedule_models
 
 
 def test_cron():

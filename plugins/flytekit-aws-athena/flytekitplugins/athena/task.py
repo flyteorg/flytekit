@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Type
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.extend import SerializationSettings, SQLTask
-from flytekit.models.presto import PrestoQuery
+from flytekit.models.plugins.presto import PrestoQuery
 from flytekit.types.schema import FlyteSchema
 
 

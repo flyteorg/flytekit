@@ -13,11 +13,11 @@ from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import interface as _interface_model
-from flytekit.models import literals as _literal_models
-from flytekit.models import qubole as _qubole
+from flytekit.models.core import dynamic_job as _dynamic_job
+from flytekit.models.core import interface as _interface_model
+from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.plugins import qubole as _qubole
 
 ALLOWED_TAGS_COUNT = int(6)
 MAX_TAG_LENGTH = int(20)
@@ -257,7 +257,7 @@ def _create_hive_job_node(name, hive_job, metadata):
     """
     :param Text name:
     :param _qubole.QuboleHiveJob hive_job: Hive job spec
-    :param flytekit.models.task.TaskMetadata metadata: This contains information needed at runtime to determine
+    :param flytekit.models.core.task.TaskMetadata metadata: This contains information needed at runtime to determine
         behavior such as whether or not outputs are discoverable, timeouts, and retries.
     :rtype: _nodes.SdkNode:
     """
