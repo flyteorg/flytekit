@@ -623,6 +623,8 @@ class FlyteRemote(object):
                     raise NotImplementedError(f"We don't support registering this kind of entity: {node.flyte_entity}")
             except FlyteEntityAlreadyExistsException:
                 logging.info(f"{entity.name} already exists")
+            except Exception as e:
+                logging.info(f"Failed to register entity {entity.name} with error {e}")
 
     ####################
     # Execute Entities #
