@@ -9,8 +9,8 @@ from flytekit.common.types import primitives
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.models import filters as _filters
 from flytekit.models.admin import common as _admin_common
+from flytekit.models.admin.project import Project as _Project
 from flytekit.models.core import identifier as _core_identifier
-from flytekit.models.project import Project as _Project
 from flytekit.sdk.tasks import inputs, outputs, python_task
 
 mm = _mock.MagicMock()

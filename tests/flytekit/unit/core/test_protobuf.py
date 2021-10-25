@@ -5,7 +5,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.core.types import LiteralType, SimpleType
 
 
 def test_proto():

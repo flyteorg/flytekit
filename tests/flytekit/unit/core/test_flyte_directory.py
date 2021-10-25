@@ -15,8 +15,8 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.models.core.literals import LiteralMap
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import LiteralMap
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 
 

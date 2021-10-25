@@ -8,7 +8,7 @@ from flyteidl.core import workflow_pb2 as _workflow_pb2
 
 from flytekit.clis.sdk_in_container.serialize import _DOMAIN_PLACEHOLDER, _PROJECT_PLACEHOLDER, _VERSION_PLACEHOLDER
 from flytekit.common.types.helpers import get_sdk_type_from_literal_type as _get_sdk_type_from_literal_type
-from flytekit.models import literals as _literals
+from flytekit.models.core import literals as _literals
 
 
 def construct_literal_map_from_variable_map(variable_dict, text_args):

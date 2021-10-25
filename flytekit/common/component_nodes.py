@@ -35,7 +35,7 @@ class SdkTaskNode(_workflow_model.TaskNode, metaclass=_sdk_bases.ExtendedSdkType
         engine.
 
         :param flytekit.models.core.workflow.TaskNode base_model:
-        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.task.TaskTemplate] tasks:
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.task.TaskTemplate] tasks:
         :rtype: SdkTaskNode
         """
         from flytekit.common.tasks import task as _task
@@ -121,7 +121,7 @@ class SdkWorkflowNode(_workflow_model.WorkflowNode, metaclass=_sdk_bases.Extende
         :param flytekit.models.core.workflow.WorkflowNode base_model:
         :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.workflow.WorkflowTemplate]
             sub_workflows:
-        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.task.TaskTemplate] tasks:
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.task.TaskTemplate] tasks:
         :rtype: SdkWorkflowNode
         """
         # put the import statement here to prevent circular dependency error

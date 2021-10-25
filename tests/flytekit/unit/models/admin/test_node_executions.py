@@ -1,4 +1,4 @@
-from flytekit.models import node_execution as node_execution_models
+from flytekit.models.admin import node_execution as node_execution_models
 
 
 def test_metadata():

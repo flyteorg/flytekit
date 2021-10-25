@@ -12,7 +12,7 @@ from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings, get_image_config
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.models.types import SimpleType
+from flytekit.models.core.types import SimpleType
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(

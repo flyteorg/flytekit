@@ -1,6 +1,6 @@
 import pytest as _pytest
 
-from flytekit.models import project
+from flytekit.models.admin import project
 
 
 def test_project_with_default_state():

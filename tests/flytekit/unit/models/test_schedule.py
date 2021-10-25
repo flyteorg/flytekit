@@ -1,6 +1,6 @@
 import pytest as _pytest
 
-from flytekit.models import schedule as _schedule
+from flytekit.models.admin import schedule as _schedule
 
 
 def test_schedule_cron_expression():

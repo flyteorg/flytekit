@@ -5,12 +5,12 @@ import pathlib
 import typing
 from pathlib import Path
 
+import flytekit.models.core.types
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
-from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
+from flytekit.models.core.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.core.types import LiteralType
 
 T = typing.TypeVar("T")
 
@@ -223,7 +223,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         )
 
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
+        return flytekit.models.core.types.LiteralType(
+            blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t))
+        )
 
     def to_literal(
         self,

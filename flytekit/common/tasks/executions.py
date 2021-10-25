@@ -11,9 +11,9 @@ from flytekit.common.mixins import artifact as _artifact_mixin
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models import literals as _literal_models
 from flytekit.models.admin import task_execution as _task_execution_model
 from flytekit.models.core import execution as _execution_models
+from flytekit.models.core import literals as _literal_models
 
 
 class SdkTaskExecution(

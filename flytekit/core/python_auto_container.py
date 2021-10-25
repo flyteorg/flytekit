@@ -4,6 +4,7 @@ import importlib
 import re
 from typing import Callable, Dict, List, Optional, TypeVar
 
+import flytekit.models.core.task
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
@@ -11,8 +12,7 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
-from flytekit.models import task as _task_model
-from flytekit.models.security import Secret, SecurityContext
+from flytekit.models.core.security import Secret, SecurityContext
 
 T = TypeVar("T")
 
@@ -149,7 +149,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
         """
         return self._get_command_fn(settings)
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> flytekit.models.core.task.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=get_registerable_container_image(self.container_image, settings.image_config),

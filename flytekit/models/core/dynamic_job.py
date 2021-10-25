@@ -1,8 +1,8 @@
 from flyteidl.core import dynamic_job_pb2 as _dynamic_job
 
+import flytekit.models.core.task
 from flytekit.models import common as _common
-from flytekit.models import literals as _literals
-from flytekit.models import task as _task
+from flytekit.models.core import literals as _literals
 from flytekit.models.core import workflow as _workflow
 
 
@@ -11,7 +11,7 @@ class DynamicJobSpec(_common.FlyteIdlEntity):
         """
         Initializes a new FutureTaskDocument.
 
-        :param list[flytekit.models.task.TaskTemplate] tasks: A collection of unique tasks to execute.
+        :param list[flytekit.models.core.task.TaskTemplate] tasks: A collection of unique tasks to execute.
         :param list[flytekit.models.core.workflow.Node] nodes: A collection of task nodes.
         :param int min_successes: An absolute number of the minimum number of successful completions of subtasks. As
             soon as this criteria is met, the future job will be marked as successful and outputs will be computed.
@@ -32,7 +32,7 @@ class DynamicJobSpec(_common.FlyteIdlEntity):
     def tasks(self):
         """
         A collection of tasks to execute.
-        :rtype: list[_task.TaskTemplate]
+        :rtype: list[flytekit.models.core.task.TaskTemplate]
         """
         return self._tasks
 
@@ -89,7 +89,9 @@ class DynamicJobSpec(_common.FlyteIdlEntity):
         :return: DynamicJobSpec
         """
         return cls(
-            tasks=[_task.TaskTemplate.from_flyte_idl(task) for task in pb2_object.tasks] if pb2_object.tasks else None,
+            tasks=[flytekit.models.core.task.TaskTemplate.from_flyte_idl(task) for task in pb2_object.tasks]
+            if pb2_object.tasks
+            else None,
             nodes=[_workflow.Node.from_flyte_idl(n) for n in pb2_object.nodes],
             min_successes=pb2_object.min_successes,
             outputs=[_literals.Binding.from_flyte_idl(output) for output in pb2_object.outputs]

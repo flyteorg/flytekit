@@ -20,8 +20,8 @@ from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.models import literals as _literal_models
-from flytekit.models import task as _task_models
+from flytekit.models.core import literals as _literal_models
+from flytekit.models.plugins import task as _task_models
 from flytekit.plugins import pyspark as _pyspark
 
 

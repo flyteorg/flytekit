@@ -5,7 +5,7 @@ import croniter as _croniter
 
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.models import schedule as _schedule_models
+from flytekit.models.admin import schedule as _schedule_models
 
 
 class _ExtendedSchedule(_schedule_models.Schedule):

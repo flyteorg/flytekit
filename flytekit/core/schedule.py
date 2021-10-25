@@ -9,7 +9,7 @@ import re as _re
 
 import croniter as _croniter
 
-from flytekit.models import schedule as _schedule_models
+from flytekit.models.admin import schedule as _schedule_models
 
 
 # Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.

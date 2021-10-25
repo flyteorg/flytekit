@@ -16,7 +16,7 @@ class TypeEngine(object, metaclass=_abc.ABCMeta):
     def get_sdk_type_from_literal_type(self, literal_type):
         """
         Takes the Flyte spec language and converts to an SDK object.
-        :param flytekit.models.types.LiteralType literal_type:
+        :param flytekit.models.core.types.LiteralType literal_type:
         :rtype: flytekit.common.types.base_sdk_types.FlyteSdkType
         """
         pass

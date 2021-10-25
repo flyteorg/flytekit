@@ -1,4 +1,4 @@
-from flytekit.models import qubole
+from flytekit.models.plugins import qubole
 
 
 def test_hive_query():

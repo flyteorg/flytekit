@@ -6,8 +6,8 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import containers as _containers
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.types import primitives as _primitives
-from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
+from flytekit.models.core import interface as _interface_models
+from flytekit.models.core import literals as _literal_models
 
 
 class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkType):
@@ -40,7 +40,7 @@ class BindingData(_literal_models.BindingData, metaclass=_sdk_bases.ExtendedSdkT
     @classmethod
     def from_python_std(cls, literal_type, t_value, upstream_nodes=None):
         """
-        :param flytekit.models.types.LiteralType literal_type:
+        :param flytekit.models.core.types.LiteralType literal_type:
         :param T t_value:
         :param list[flytekit.common.nodes.SdkNode] upstream_nodes: [Optional] Keeps track of the nodes upstream,
             if applicable.

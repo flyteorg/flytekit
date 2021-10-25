@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.models import execution as _execution_models
+from flytekit.models.admin import execution as _execution_models
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.remote import identifier as _core_identifier
 from flytekit.remote import nodes as _nodes

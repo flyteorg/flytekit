@@ -5,9 +5,9 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import interface as _interface_models
-from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models.admin import launch_plan as _launch_plan_models
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import interface as _interface_models
 from flytekit.remote import identifier as _identifier
 from flytekit.remote import interface as _interface
 
