@@ -22,7 +22,6 @@ from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import literals as _literals_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.core.literals import Primitive
-from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
 def translate_inputs_to_literals(

@@ -1427,7 +1427,6 @@ def test_error_messages():
 
     with pytest.raises(
         TypeError,
-        match="Not a collection type simple: STRUCT\nmetadata {\n  fields {\n    key: 'python_class_name'\n"
-        "    value {\n      string_value: 'VT'\n    }\n  }\n}\n but got a list \\[{'hello': 2\\}]",
+        match="Not a collection type simple: STRUCT",
     ):
         foo3(a=[{"hello": 2}])
