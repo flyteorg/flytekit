@@ -243,39 +243,12 @@ class FlyteSchema(object):
 
         if local_path is None:
             local_path = FlyteContextManager.current_context().file_access.get_random_local_directory()
-        self._local_path = local_path
-        self._remote_path = remote_path
-        self._supported_mode = supported_mode
+        self.local_path = local_path
+        self.remote_path = remote_path
+        self.supported_mode = supported_mode
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._downloaded = False
         self._downloader = downloader
-
-    @property
-    def local_path(self) -> os.PathLike:
-        return self._local_path
-
-    @local_path.setter
-    def local_path(self, local_path):
-        self._local_path = local_path
-
-    @property
-    def remote_path(self) -> str:
-        return self._remote_path
-
-    @remote_path.setter
-    def remote_path(self, remote_path):
-        self._remote_path = remote_path
-
-    @property
-    def supported_mode(self) -> SchemaOpenMode:
-        return self._supported_mode
-
-    @supported_mode.setter
-    def supported_mode(self, supported_mode):
-        self._supported_mode = supported_mode
-
-    def __hash__(self):
-        return hash(3)
 
     def open(
         self, dataframe_fmt: type = pandas.DataFrame, override_mode: SchemaOpenMode = None
@@ -291,14 +264,14 @@ class FlyteSchema(object):
                So if you have written to a schema and want to re-open it for reading, you can use this
                mode. A ReadOnly Schema object cannot be opened in write mode.
         """
-        if override_mode and self._supported_mode == SchemaOpenMode.READ and override_mode == SchemaOpenMode.WRITE:
+        if override_mode and self.supported_mode == SchemaOpenMode.READ and override_mode == SchemaOpenMode.WRITE:
             raise AssertionError("Readonly schema cannot be opened in write mode!")
 
-        mode = override_mode if override_mode else self._supported_mode
+        mode = override_mode if override_mode else self.supported_mode
         h = SchemaEngine.get_handler(dataframe_fmt)
         if not h.handles_remote_io:
             # The Schema Handler does not manage its own IO, and this it will expect the files are on local file-system
-            if self._supported_mode == SchemaOpenMode.READ and not self._downloaded:
+            if self.supported_mode == SchemaOpenMode.READ and not self._downloaded:
                 # Only for readable objects if they are not downloaded already, we should download them
                 # Write objects should already have everything written to
                 self._downloader(self.remote_path, self.local_path)
@@ -313,7 +286,7 @@ class FlyteSchema(object):
         return h.reader(self.remote_path, self.columns(), self.format())
 
     def as_readonly(self) -> FlyteSchema:
-        if self._supported_mode == SchemaOpenMode.READ:
+        if self.supported_mode == SchemaOpenMode.READ:
             return self
         s = FlyteSchema.__class_getitem__(self.columns(), self.format())(
             local_path=self.local_path,
