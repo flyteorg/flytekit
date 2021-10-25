@@ -4,11 +4,13 @@ import datetime as _datetime
 import os
 import typing
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Type
 
 import numpy as _np
+from dataclasses_json import dataclass_json, config
+from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import T, TypeEngine, TypeTransformer
@@ -167,7 +169,12 @@ class SchemaEngine(object):
         return cls._SCHEMA_HANDLERS[t]
 
 
+@dataclass_json
+@dataclass
 class FlyteSchema(object):
+    supported_mode: typing.Optional[str] = field(default=SchemaOpenMode.WRITE, metadata=config(mm_field=fields.String()))
+    local_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
+    remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
@@ -247,13 +254,28 @@ class FlyteSchema(object):
     def local_path(self) -> os.PathLike:
         return self._local_path
 
+    @local_path.setter
+    def local_path(self, local_path):
+        self._local_path = local_path
+
     @property
     def remote_path(self) -> str:
-        return typing.cast(str, self._remote_path)
+        return self._remote_path
+
+    @remote_path.setter
+    def remote_path(self, remote_path):
+        self._remote_path = remote_path
 
     @property
     def supported_mode(self) -> SchemaOpenMode:
         return self._supported_mode
+
+    @supported_mode.setter
+    def supported_mode(self, supported_mode):
+        self._supported_mode = supported_mode
+
+    def __hash__(self):
+        return hash(3)
 
     def open(
         self, dataframe_fmt: type = pandas.DataFrame, override_mode: SchemaOpenMode = None
