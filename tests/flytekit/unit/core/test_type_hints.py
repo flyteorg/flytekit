@@ -1425,5 +1425,9 @@ def test_error_messages():
     with pytest.raises(TypeError, match="Failed to convert return value for var o0 for function test_type_hints.foo2"):
         foo2(a=10, b="hello")
 
-    with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
+    with pytest.raises(
+        TypeError,
+        match="Not a collection type simple: STRUCT\nmetadata {\n  fields {\n    key: 'python_class_name'\n"
+        "    value {\n      string_value: 'VT'\n    }\n  }\n}\n but got a list \\[{'hello': 2\\}]",
+    ):
         foo3(a=[{"hello": 2}])
