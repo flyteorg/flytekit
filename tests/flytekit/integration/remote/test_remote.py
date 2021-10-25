@@ -179,7 +179,7 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
 
     remote = FlyteRemote.from_config(PROJECT, "development")
-    execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, version=f"v{VERSION}", wait=True)
+    execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, wait=True)
     assert execution.outputs["o0"] == 12
     assert execution.outputs["o1"] == "xyzworld"
 
