@@ -1,72 +1,68 @@
 from datetime import timedelta
 from itertools import product
 
-from six.moves import range
-
-import flytekit.models.core.task
-import flytekit.models.core.types
 from flytekit.common.types.impl import blobs as _blob_impl
 from flytekit.common.types.impl import schema as _schema_impl
 from flytekit.models.admin import task as task
 from flytekit.models.core import identifier, interface, literals, security
-from flytekit.models.core import types as _core_types
+from flytekit.models.core import types as _core_types, task as _task_models
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
 from flytekit.models.core.task import Container as _task_container
 from flytekit.models.core.task import Resources as _task_resource
 
 LIST_OF_SCALAR_LITERAL_TYPES = [
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BINARY),
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN),
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.DATETIME),
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.DURATION),
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.ERROR),
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.FLOAT),
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER),
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.NONE),
-    flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING),
-    flytekit.models.core.types.LiteralType(
-        schema=flytekit.models.core.types.SchemaType(
+    _core_types.LiteralType(simple=_core_types.SimpleType.BINARY),
+    _core_types.LiteralType(simple=_core_types.SimpleType.BOOLEAN),
+    _core_types.LiteralType(simple=_core_types.SimpleType.DATETIME),
+    _core_types.LiteralType(simple=_core_types.SimpleType.DURATION),
+    _core_types.LiteralType(simple=_core_types.SimpleType.ERROR),
+    _core_types.LiteralType(simple=_core_types.SimpleType.FLOAT),
+    _core_types.LiteralType(simple=_core_types.SimpleType.INTEGER),
+    _core_types.LiteralType(simple=_core_types.SimpleType.NONE),
+    _core_types.LiteralType(simple=_core_types.SimpleType.STRING),
+    _core_types.LiteralType(
+        schema=_core_types.SchemaType(
             [
-                flytekit.models.core.types.SchemaType.SchemaColumn(
-                    "a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+                _core_types.SchemaType.SchemaColumn(
+                    "a", _core_types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
                 ),
-                flytekit.models.core.types.SchemaType.SchemaColumn(
-                    "b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+                _core_types.SchemaType.SchemaColumn(
+                    "b", _core_types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
                 ),
-                flytekit.models.core.types.SchemaType.SchemaColumn(
-                    "c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+                _core_types.SchemaType.SchemaColumn(
+                    "c", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
                 ),
-                flytekit.models.core.types.SchemaType.SchemaColumn(
-                    "d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+                _core_types.SchemaType.SchemaColumn(
+                    "d", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
                 ),
-                flytekit.models.core.types.SchemaType.SchemaColumn(
-                    "e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+                _core_types.SchemaType.SchemaColumn(
+                    "e", _core_types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
                 ),
-                flytekit.models.core.types.SchemaType.SchemaColumn(
-                    "f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+                _core_types.SchemaType.SchemaColumn(
+                    "f", _core_types.SchemaType.SchemaColumn.SchemaColumnType.STRING
                 ),
             ]
         )
     ),
-    flytekit.models.core.types.LiteralType(
+    _core_types.LiteralType(
         blob=_core_types.BlobType(
             format="",
             dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
     ),
-    flytekit.models.core.types.LiteralType(
+    _core_types.LiteralType(
         blob=_core_types.BlobType(
             format="csv",
             dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
         )
     ),
-    flytekit.models.core.types.LiteralType(
+    _core_types.LiteralType(
         blob=_core_types.BlobType(
             format="",
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
         )
     ),
-    flytekit.models.core.types.LiteralType(
+    _core_types.LiteralType(
         blob=_core_types.BlobType(
             format="csv",
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
@@ -76,12 +72,12 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
 
 
 LIST_OF_COLLECTION_LITERAL_TYPES = [
-    flytekit.models.core.types.LiteralType(collection_type=literal_type)
+    _core_types.LiteralType(collection_type=literal_type)
     for literal_type in LIST_OF_SCALAR_LITERAL_TYPES
 ]
 
 LIST_OF_NESTED_COLLECTION_LITERAL_TYPES = [
-    flytekit.models.core.types.LiteralType(collection_type=literal_type)
+    _core_types.LiteralType(collection_type=literal_type)
     for literal_type in LIST_OF_COLLECTION_LITERAL_TYPES
 ]
 
@@ -117,11 +113,11 @@ LIST_OF_RESOURCES = [
 
 
 LIST_OF_RUNTIME_METADATA = [
-    flytekit.models.core.task.RuntimeMetadata(
-        flytekit.models.core.task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"
+    _task_models.RuntimeMetadata(
+        _task_models.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"
     ),
-    flytekit.models.core.task.RuntimeMetadata(
-        flytekit.models.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"
+    _task_models.RuntimeMetadata(
+        _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"
     ),
 ]
 
@@ -131,7 +127,7 @@ LIST_OF_RETRY_POLICIES = [literals.RetryStrategy(retries=i) for i in [0, 1, 3, 1
 LIST_OF_INTERRUPTIBLE = [None, True, False]
 
 LIST_OF_TASK_METADATA = [
-    flytekit.models.core.task.TaskMetadata(
+    _task_models.TaskMetadata(
         discoverable,
         runtime_metadata,
         timeout,
@@ -153,7 +149,7 @@ LIST_OF_TASK_METADATA = [
 
 
 LIST_OF_TASK_TEMPLATES = [
-    flytekit.models.core.task.TaskTemplate(
+    _task_models.TaskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         "python",
         task_metadata,
@@ -235,25 +231,25 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
         literals.Scalar(
             schema=literals.Schema(
                 "s3://some/where/",
-                flytekit.models.core.types.SchemaType(
+                _core_types.SchemaType(
                     [
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+                        _core_types.SchemaType.SchemaColumn(
+                            "a", _core_types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+                        _core_types.SchemaType.SchemaColumn(
+                            "b", _core_types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+                        _core_types.SchemaType.SchemaColumn(
+                            "c", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+                        _core_types.SchemaType.SchemaColumn(
+                            "d", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+                        _core_types.SchemaType.SchemaColumn(
+                            "e", _core_types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+                        _core_types.SchemaType.SchemaColumn(
+                            "f", _core_types.SchemaType.SchemaColumn.SchemaColumnType.STRING
                         ),
                     ]
                 ),
@@ -262,25 +258,25 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
         _schema_impl.Schema(
             "s3://some/where/",
             _schema_impl.SchemaType.promote_from_model(
-                flytekit.models.core.types.SchemaType(
+                _core_types.SchemaType(
                     [
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
+                        _core_types.SchemaType.SchemaColumn(
+                            "a", _core_types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
+                        _core_types.SchemaType.SchemaColumn(
+                            "b", _core_types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
+                        _core_types.SchemaType.SchemaColumn(
+                            "c", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
+                        _core_types.SchemaType.SchemaColumn(
+                            "d", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
+                        _core_types.SchemaType.SchemaColumn(
+                            "e", _core_types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
                         ),
-                        flytekit.models.core.types.SchemaType.SchemaColumn(
-                            "f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING
+                        _core_types.SchemaType.SchemaColumn(
+                            "f", _core_types.SchemaType.SchemaColumn.SchemaColumnType.STRING
                         ),
                     ]
                 )
