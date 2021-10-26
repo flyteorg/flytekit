@@ -672,20 +672,6 @@ class Result:
     schema: TestSchema
 
 
-@task
-def t1() -> Result:
-    schema = TestSchema()
-    df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
-    schema.open().write(df)
-
-    return Result(number=1, schema=schema)
-
-
-@workflow
-def wf() -> Result:
-    return t1()
-
-
 def test_schema_in_dataclass():
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
