@@ -172,11 +172,9 @@ class SchemaEngine(object):
 @dataclass_json
 @dataclass
 class FlyteSchema(object):
-    supported_mode: typing.Optional[str] = field(
-        default=SchemaOpenMode.WRITE, metadata=config(mm_field=fields.String())
-    )
-    local_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
-    remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
+    supported_mode: str = field(default=SchemaOpenMode.WRITE, metadata=config(mm_field=fields.String()))
+    local_path: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    remote_path: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
@@ -229,7 +227,7 @@ class FlyteSchema(object):
     def __init__(
         self,
         local_path: os.PathLike = None,
-        remote_path: str = None,
+        remote_path: os.PathLike = None,
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
         downloader: typing.Callable[[str, os.PathLike], None] = None,
     ):
