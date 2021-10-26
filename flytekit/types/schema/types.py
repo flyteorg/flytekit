@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Type
 
 import numpy as _np
-from dataclasses_json import dataclass_json, config
+from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -172,7 +172,9 @@ class SchemaEngine(object):
 @dataclass_json
 @dataclass
 class FlyteSchema(object):
-    supported_mode: typing.Optional[str] = field(default=SchemaOpenMode.WRITE, metadata=config(mm_field=fields.String()))
+    supported_mode: typing.Optional[str] = field(
+        default=SchemaOpenMode.WRITE, metadata=config(mm_field=fields.String())
+    )
     local_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
