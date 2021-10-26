@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Dict
+from typing import Dict, List
 
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager

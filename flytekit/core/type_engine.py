@@ -29,7 +29,6 @@ from flytekit.models.core import interface as _interface_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.core.types import LiteralType, SimpleType
-from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
