@@ -3,8 +3,6 @@ import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
 import pytz as _pytz
 
-import flytekit.models.admin.common
-import flytekit.models.admin.launch_plan
 from flytekit.models import common as _common_models
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import execution as _core_execution
@@ -103,7 +101,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._disable_all = disable_all
         self._labels = labels or _admin_common.Labels({})
         self._annotations = annotations or _admin_common.Annotations({})
-        self._auth_role = auth_role or flytekit.models.admin.common.AuthRole()
+        self._auth_role = auth_role or _admin_common.AuthRole()
         self._max_parallelism = max_parallelism
 
     @property
@@ -188,7 +186,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             disable_all=p.disable_all if p.HasField("disable_all") else None,
             labels=_admin_common.Labels.from_flyte_idl(p.labels),
             annotations=_admin_common.Annotations.from_flyte_idl(p.annotations),
-            auth_role=flytekit.models.admin.common.AuthRole.from_flyte_idl(p.auth_role),
+            auth_role=_admin_common.AuthRole.from_flyte_idl(p.auth_role),
             max_parallelism=p.max_parallelism,
         )
 
