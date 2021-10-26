@@ -1,6 +1,6 @@
 # Flytekit Great Expectations Plugin
 
-Great Expectations' helps enforce data quality. The plugin supports the usage of Great Expectations as task and type.
+Great Expectations helps enforce data quality. The plugin supports the usage of Great Expectations as task and type.
 
 To install the plugin, run the following command:
 
@@ -72,3 +72,5 @@ def simple_task(
 def simple_wf(directory: str = "my_assets") -> str:
     return simple_task(directory=directory)
 ```
+
+[More examples](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/greatexpectations/index.html) can be found in the documentation.
