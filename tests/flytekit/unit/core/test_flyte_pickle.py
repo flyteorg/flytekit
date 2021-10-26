@@ -5,8 +5,8 @@ from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.models.core.types import BlobType
 from flytekit.models.core.literals import BlobMetadata
+from flytekit.models.core.types import BlobType
 from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickle, FlytePickleTransformer
 
@@ -59,9 +59,10 @@ def test_nested():
         return [[Foo(number=a)]]
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
-    print(task_spec)
-
-    # Return signature should be a literal collection of a literal collection of Pickle type.
+    assert (
+        task_spec.template.interface.outputs["o0"].type.collection_type.collection_type.blob.format
+        is FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+    )
 
 
 def test_nested2():
@@ -74,6 +75,7 @@ def test_nested2():
         return [{"a": Foo(number=a)}]
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
-    print(task_spec)
-
-    # Return signature should be a literal collection of a literal map of Pickle type.
+    assert (
+        task_spec.template.interface.outputs["o0"].type.collection_type.map_value_type.blob.format
+        is FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+    )

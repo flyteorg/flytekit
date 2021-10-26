@@ -248,16 +248,13 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def _change_unrecognized_type_to_pickle(t: Type[T]):
-    origin_type = t
+def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
     try:
         if hasattr(t, "__origin__") and hasattr(t, "__args__"):
             if t.__origin__ == list:
-                origin_type = list
-                TypeEngine.get_transformer(t.__args__[0])
+                return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
             elif t.__origin__ == dict:
-                origin_type = dict
-                TypeEngine.get_transformer(t.__args__[1])
+                return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
         else:
             TypeEngine.get_transformer(t)
     except ValueError:
@@ -266,12 +263,7 @@ def _change_unrecognized_type_to_pickle(t: Type[T]):
             f"Pickle can only be used to send objects between the exact same version of Python, "
             f"and we strongly recommend to use python type that flyte support."
         )
-        if origin_type == list:
-            return typing.List[FlytePickle[t.__args__[0]]]
-        elif origin_type == dict:
-            return typing.Dict[t.__args__[0], FlytePickle[t.__args__[1]]]
-        else:
-            return FlytePickle[t]
+        return FlytePickle[t]
     return t
 
 
