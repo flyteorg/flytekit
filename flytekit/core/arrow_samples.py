@@ -1,7 +1,9 @@
 import pandas as pd
 import pyarrow as pa
+import typing
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing_extensions import Annotated
 
 from flytekit import kwtypes
 from flytekit.models.types import SchemaType
@@ -61,7 +63,34 @@ def tt() -> pa.Table:
 # How can we specify a specific pyarrow schema as a return type?
 
 
+T = typing.TypeVar("T")
 
-my_arrow_schema = pa.schema([...])
-def t1() -> my_arrow_schema:
-    ...
+
+class NewFlyteSchema(typing.Generic[T]):
+    def __class_getitem__(cls, item: pa.Schema) -> typing.Type[NewFlyteSchema]:
+        if item is None:
+            return cls
+        item_string = str(item)
+        item_string = item_string.strip().lstrip("~").lstrip(".")
+        if item == "":
+            return cls
+
+        class _SpecificFormatClass(NewFlyteSchema):
+            # Get the type engine to see this as kind of a generic
+            __origin__ = NewFlyteSchema
+
+            @classmethod
+            def extension(cls) -> str:
+                return item_string
+
+        return _SpecificFormatClass
+
+
+# Specifying Arrow schema when you know it statically.
+CustomSchema = Annotated[FlyteSchema, ss]
+CustomPD = Annotated[pd.DataFrame, ss]
+
+
+def tt3() -> CustomSchema:
+    return FlyteSchema(df, external_bytes=serialized_ss, external_type="arrow", metadata={})
+

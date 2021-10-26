@@ -42,7 +42,7 @@ t6 = pa.list_(t1)
 #  def t1() -> ss
 # not sure if this is possible, or if we should support it?
 #  def t1() -> pa.Schema
-ss = pa.schema([
+arrow_schema = pa.schema([
     ('field0', t1),
     ('field1', t2),
     ('field2', t5),
@@ -50,7 +50,7 @@ ss = pa.schema([
 ])
 ########################################################################################################
 
-def tt() -> ss:
+def tt() -> arrow_schema:
     return pa.Table.from_pandas(df)
 
 
@@ -58,7 +58,7 @@ def test_scenario_one():
     """
     Output/to_literal - Scenario 1:
 
-        def t1() -> something:
+        def t1() -> (see options below):
             return some_lib.DataFrame()
 
     User returns a some_lib.DataFrame (most likely pandas, but doesn't have to be)
@@ -72,96 +72,35 @@ def test_scenario_one():
     #   File will be uploaded to s3/gcs as we do today.
 
     #
-    # Option 2 . If the user's return type is an Arrow Schema instance
-    """
-    I think we'll have to put the Arrow schema instance into a FlyteSchema wrapper object. The issue is that
-    
-        arrow_schema = pa.schema(...)
-        def tt2() -> arrow_schema:
-            return pa.Table.from_pandas(df)
-    
-    does not pass mypy type checking, because types are supposed to be statically checkable without running code,
-    and pa.schema() is code. We may end up having to support the explicit inclusion of an Arrow schema by asking
-    the user to
-    
-          return NewFlyteSchema(arrow_schema=arrow_schema, ...)
-    """
-
-    # Assuming there's a schema involved, should we serialize the Arrow schema object?
-    schema_bytes = ss.serialize()
+    # Option 2 . If the user's return type is Annotated[FlyteSchema, arrow_schema]
+    #
+    # Assuming there's a schema involved, we'll serialize the Arrow schema as well.
+    schema_bytes = arrow_schema.serialize()
     python_bytes = schema_bytes.to_pybytes()
 
-    # Turn into a table to schema check
-    # Warning: This can error easily - bad data and such. Can't have 0 values otherwise it'll be an 'object', etc.
-    pa_table = pa.Table.from_pandas(df, ss)
-    pa_record_batch = pa.record_batch(df, schema=ss)
-
-    # pa.Table has a from_pandas but obviously it won't work for custom DF libraries. Users will have to provide, and
-    # flytekit will have to pick up and use, code to convert from custom DFs to pa.Table in this case.
-
-    # Write the data into a file - there's many, many ways to do this.
-    with open("/tmp/test/pd_as_arrow_via_new_file", "wb") as fh:
-        writer = pa.ipc.new_file(fh, ss)  # schema must be present here
-        writer.write_batch(pa_record_batch)
-        writer.close()
-
-    with open("/tmp/test/pd_as_arrow_via_rbfw", "wb") as fh:
-        writer = pa.ipc.RecordBatchFileWriter(fh, ss)
-        writer.write(pa_table)
-        writer.close()
-
-    with open("/tmp/test/pd_as_arrow_via_rbfw_br", "wb") as fh:
-        writer = pa.ipc.RecordBatchFileWriter(fh, ss)
-        writer.write(pa_record_batch)
-        writer.close()
-
-    # Upload the file as normal to gcs/s3
+    # serialize dataframe to a parquet file as we do now
+    # upload parquet file
 
     idl_literal_arrow_file = NewFlyteSchemaIDL(
-        metadata=NewFlyteSchemaLiteralMetadata(format="pyarrow.file", arrow_schema=python_bytes),
+        metadata=NewFlyteSchemaLiteralMetadata(format="parquet"),
         uri="s3://blah",
         schema="xyz",  # where xyz is the pyarrow schema converted into a Flyte Schema.
-    )
-
-    # Arrow has two file formats - one for files, and one for streaming, but streaming can also be written to a file
-    # Not sure if the other two options above also work, they probably do. not showing them.
-    with open("/tmp/test/pd_as_arrow_via_rbsw", "wb") as fh:
-        writer = pa.ipc.RecordBatchStreamWriter(fh, ss)
-        writer.write(pa_table)
-        writer.close()
-
-    idl_literal_arrow_stream = NewFlyteSchemaIDL(
-        metadata=NewFlyteSchemaLiteralMetadata(format="pyarrow.stream"),
-        uri="s3://blah",
+        external_schema=python_bytes,
+        external_schema_type="arrow",
     )
 
     #
     # Option 3. User's return type is a FlyteSchema with columns
     #
 
-    # Infer Arrow schema from pandas
-    # Why should we do this?
-    schema = pa.Schema.from_pandas(df)
-    # Should we do Schema check here?
-    # assert schema == FlyteSchema[kwtypes(col1=int, col2=str)]
+    # serialize dataframe to parquet file.
+    # upload parquet file to default location
+    # return Flyte literal leaving all arrow information empty.
 
-    pa.Table.from_pandas(df)
-
-    # If the user's return type is a FlyteSchema without columns
-    # Infer Arrow schema from pandas
-    schema = pa.Schema.from_pandas(df)
-    python_bytes = schema_bytes.to_pybytes()
-    # pyarrow schema converted into a Flyte Schema
-    # for example:
-    schema_lookup_table = {
-        pa.int32(): SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-        pa.string(): SchemaType.SchemaColumn.SchemaColumnType.STRING
-    }
-    flyte_schema = FlyteSchema[kwtypes(col1=schema_lookup_table[t1], col2=schema_lookup_table[t2])]
     idl_literal_arrow_file = NewFlyteSchemaIDL(
-        metadata=NewFlyteSchemaLiteralMetadata(format="pyarrow.file", arrow_schema=python_bytes),
+        metadata=NewFlyteSchemaLiteralMetadata(format="parquet"),
         uri="s3://blah",
-        schema=flyte_schema,
+        schema="some_flyte_schema",
     )
 
 
@@ -181,5 +120,48 @@ def test_scenario_two():
     #
     # Option 2. If the user's return type is an Arrow Schema instance
     #
+    # Turn into a table to schema check
+    # Warning: This can error easily - bad data and such. Can't have 0 values otherwise it'll be an 'object', etc.
+    pa_table = pa.Table.from_pandas(df, arrow_schema)
+    pa_record_batch = pa.record_batch(df, schema=arrow_schema)
 
+    # pa.Table has a from_pandas but obviously it won't work for custom DF libraries. Users will have to
+    # provide (and flytekit will have to pick up and use) code to convert from custom DFs
+    # to some intermediate representation (maybe record batch, maybe pa.Table).
+
+    # Write the data into a file - there's many, many ways to do this.
+    with open("/tmp/test/pd_as_arrow_via_new_file", "wb") as fh:
+        writer = pa.ipc.new_file(fh, arrow_schema)  # schema must be present here
+        writer.write_batch(pa_record_batch)
+        writer.close()
+
+    with open("/tmp/test/pd_as_arrow_via_rbfw", "wb") as fh:
+        writer = pa.ipc.RecordBatchFileWriter(fh, arrow_schema)
+        writer.write(pa_table)
+        writer.close()
+
+    with open("/tmp/test/pd_as_arrow_via_rbfw_br", "wb") as fh:
+        writer = pa.ipc.RecordBatchFileWriter(fh, arrow_schema)
+        writer.write(pa_record_batch)
+        writer.close()
+
+    # Upload the file as normal to gcs/s3
+
+    idl_literal_arrow_file = NewFlyteSchemaIDL(
+        metadata=NewFlyteSchemaLiteralMetadata(format="pyarrow.file", arrow_schema=python_bytes),
+        uri="s3://blah",
+        schema="xyz",  # where xyz is the pyarrow schema converted into a Flyte Schema.
+    )
+
+    # Arrow has two file formats - one for files, and one for streaming, but streaming can also be written to a file
+    # Not sure if the other two options above also work, they probably do. not showing them.
+    with open("/tmp/test/pd_as_arrow_via_rbsw", "wb") as fh:
+        writer = pa.ipc.RecordBatchStreamWriter(fh, arrow_schema)
+        writer.write(pa_table)
+        writer.close()
+
+    idl_literal_arrow_stream = NewFlyteSchemaIDL(
+        metadata=NewFlyteSchemaLiteralMetadata(format="pyarrow.stream"),
+        uri="s3://blah",
+    )
 
