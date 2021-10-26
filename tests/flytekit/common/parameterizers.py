@@ -5,7 +5,8 @@ from flytekit.common.types.impl import blobs as _blob_impl
 from flytekit.common.types.impl import schema as _schema_impl
 from flytekit.models.admin import task as task
 from flytekit.models.core import identifier, interface, literals, security
-from flytekit.models.core import types as _core_types, task as _task_models
+from flytekit.models.core import task as _task_models
+from flytekit.models.core import types as _core_types
 from flytekit.models.core.compiler import CompiledTask as _compiledTask
 from flytekit.models.core.task import Container as _task_container
 from flytekit.models.core.task import Resources as _task_resource
@@ -23,24 +24,12 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
     _core_types.LiteralType(
         schema=_core_types.SchemaType(
             [
-                _core_types.SchemaType.SchemaColumn(
-                    "a", _core_types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
-                ),
-                _core_types.SchemaType.SchemaColumn(
-                    "b", _core_types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
-                ),
-                _core_types.SchemaType.SchemaColumn(
-                    "c", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
-                ),
-                _core_types.SchemaType.SchemaColumn(
-                    "d", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
-                ),
-                _core_types.SchemaType.SchemaColumn(
-                    "e", _core_types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
-                ),
-                _core_types.SchemaType.SchemaColumn(
-                    "f", _core_types.SchemaType.SchemaColumn.SchemaColumnType.STRING
-                ),
+                _core_types.SchemaType.SchemaColumn("a", _core_types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+                _core_types.SchemaType.SchemaColumn("b", _core_types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
+                _core_types.SchemaType.SchemaColumn("c", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+                _core_types.SchemaType.SchemaColumn("d", _core_types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+                _core_types.SchemaType.SchemaColumn("e", _core_types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+                _core_types.SchemaType.SchemaColumn("f", _core_types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
             ]
         )
     ),
@@ -72,13 +61,11 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
 
 
 LIST_OF_COLLECTION_LITERAL_TYPES = [
-    _core_types.LiteralType(collection_type=literal_type)
-    for literal_type in LIST_OF_SCALAR_LITERAL_TYPES
+    _core_types.LiteralType(collection_type=literal_type) for literal_type in LIST_OF_SCALAR_LITERAL_TYPES
 ]
 
 LIST_OF_NESTED_COLLECTION_LITERAL_TYPES = [
-    _core_types.LiteralType(collection_type=literal_type)
-    for literal_type in LIST_OF_COLLECTION_LITERAL_TYPES
+    _core_types.LiteralType(collection_type=literal_type) for literal_type in LIST_OF_COLLECTION_LITERAL_TYPES
 ]
 
 LIST_OF_ALL_LITERAL_TYPES = (
@@ -113,12 +100,8 @@ LIST_OF_RESOURCES = [
 
 
 LIST_OF_RUNTIME_METADATA = [
-    _task_models.RuntimeMetadata(
-        _task_models.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"
-    ),
-    _task_models.RuntimeMetadata(
-        _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"
-    ),
+    _task_models.RuntimeMetadata(_task_models.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"),
+    _task_models.RuntimeMetadata(_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"),
 ]
 
 
