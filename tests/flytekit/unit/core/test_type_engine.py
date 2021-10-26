@@ -27,7 +27,7 @@ from flytekit.core.type_engine import (
 from flytekit.models.core.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.core.types import BlobType, LiteralType, SimpleType
 from flytekit.types.directory.types import FlyteDirectory
-from flytekit.types.file import JPEGImageFile
+from flytekit.types.file import JPEGImageFile, PNGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
 
@@ -503,7 +503,7 @@ def test_dataclass_int_preserving():
 @dataclass_json
 @dataclass
 class TestInnerFileStruct(object):
-    a: FlyteFile
+    a: PNGImageFile
     b: typing.List[FlyteFile]
     c: typing.Dict[str, FlyteFile]
 
@@ -519,7 +519,9 @@ class TestFileStruct(object):
 
 def test_flyte_file_in_dataclass():
     f = FlyteFile("s3://tmp/file.jpeg")
-    o = TestFileStruct(a=f, b=[f], c={"hello": f}, d=TestInnerFileStruct(a=f, b=[f], c={"hello": f}))
+    o = TestFileStruct(
+        a=f, b=[f], c={"hello": f}, d=TestInnerFileStruct(a=PNGImageFile("s3://tmp/file.png"), b=[f], c={"hello": f})
+    )
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
