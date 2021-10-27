@@ -54,7 +54,7 @@ def tt() -> arrow_schema:
     return pa.Table.from_pandas(df)
 
 
-def test_scenario_one():
+def test_to_literal_scenario_1():
     """
     Output/to_literal - Scenario 1:
 
@@ -65,16 +65,16 @@ def test_scenario_one():
     The different options below show manually what the code might do depending on the output signature
     """
     #
-    # Option 1. If the user's return type is a pd.DataFrame
+    # Option 1. Return type -> pd.DataFrame
     #
     #   Turn DF into a parquet file as we do now, not involving Arrow.
     #   The format will be stored as parquet in the metadata.
     #   File will be uploaded to s3/gcs as we do today.
 
     #
-    # Option 2 . If the user's return type is Annotated[FlyteSchema, arrow_schema]
+    # Option 2 . Return type -> Annotated[StructuredData, arrow_schema]
     #
-    # Assuming there's a schema involved, we'll serialize the Arrow schema as well.
+    # Since there's an Arrow schema involved, we'll serialize the Arrow schema as well.
     schema_bytes = arrow_schema.serialize()
     python_bytes = schema_bytes.to_pybytes()
 
@@ -90,7 +90,7 @@ def test_scenario_one():
     )
 
     #
-    # Option 3. User's return type is a FlyteSchema with columns
+    # Option 3. Return type -> StructuredData[col_a=blah, etc.] (with or without columns)
     #
 
     # serialize dataframe to parquet file.
@@ -100,25 +100,30 @@ def test_scenario_one():
     idl_literal_arrow_file = NewFlyteSchemaIDL(
         metadata=NewFlyteSchemaLiteralMetadata(format="parquet"),
         uri="s3://blah",
-        schema="some_flyte_schema",
+        schema="some_flyte_schema",  # If cols were specified
     )
 
+    #
+    # Option 4. Return type -> Annotated[StructuredData[col_a=blah, etc.], arrow_schema]
+    #
 
-def test_scenario_two():
+    # Handle this the same as 2 and 3 combined. Convert the columns into arrow schema, make sure
+    # it matches, raise an exception otherwise. (or maybe the other way around actually.)
+
+
+def test_to_literal_scenario_2():
     """
     Output/to_literal - Scenario 2:
-    User returns a  (most likely pandas, but doesn't have to be)
-    The different options below show manually what the code might do depending on the output signature
+
+        def t1() -> StructuredDataset:
+            return StructuredDataset(pd, metadata=..., format="parquet", storage_driver="bq", use_uri="bq://blah")
+
+    User returns a flytekit object that encapsulates additional data that instructs the engine on how to handle
+    the returned dataframe.
     """
     #
-    # Option 1. If the user's return type is a pd.DataFrame
-    #
-    #   Turn DF into a parquet file as we do now, not involving Arrow.
-    #   The format will be stored as parquet in the metadata.
-    #   File will be uploaded to s3/gcs as we do today.
-
-    #
-    # Option 2. If the user's return type is an Arrow Schema instance
+    # Handling can vary depending on the metadata. Following is some code where we infer that we have to first
+    # convert from the df to Arrow format data, and then write the file to GCS.
     #
     # Turn into a table to schema check
     # Warning: This can error easily - bad data and such. Can't have 0 values otherwise it'll be an 'object', etc.
@@ -164,4 +169,38 @@ def test_scenario_two():
         metadata=NewFlyteSchemaLiteralMetadata(format="pyarrow.stream"),
         uri="s3://blah",
     )
+
+
+def test_to_python():
+    """
+    Input/to_python_value - Scenario 2:
+
+        def t1(a: see options below):
+            ...
+    """
+    # In all cases, first we need to extract from the incoming literal metadata -
+    #  - format
+    #  - uri and hence storage location
+    #  - external library schema bytes (Arrow)
+
+    # Option 1:
+    # Input is a: some_lib.DataFrame
+
+    # Option 2:
+    # Input is a: Annotated[FlyteSchema, arrow_schema]
+
+    # Option 3:
+    # Input is a: FlyteSchema
+
+
+def test_cdjskl():
+    def int_to_arrow(input) -> str:
+        return str(input)
+
+    serializers = {int: int_to_arrow}
+
+    # Go through storage drivers
+    #  Do any handle type directly?
+    #  If not, how do you know what intermediate type to try?
+
 
