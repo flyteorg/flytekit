@@ -14,7 +14,7 @@ from flytekit.models import common as _common
 
 
 class MPIJobModel(_common.FlyteIdlEntity):
-    """It will define the model for MPI plugin
+    """Model definition for MPI the plugin
 
     Args:
         num_workers: integer determining the number of worker replicas spawned in the cluster for this job
@@ -23,7 +23,10 @@ class MPIJobModel(_common.FlyteIdlEntity):
         num_launcher_replicas: Number of launcher server replicas to use
 
         slots: Number of slots per worker used in hostfile
+        
+        .. note::
 
+            Please use resources=Resources(cpu="1"...) to specify per worker resource
     """
 
     def __init__(self, num_workers, num_launcher_replicas, slots):
