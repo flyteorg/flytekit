@@ -6,10 +6,9 @@ import cloudpickle
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
-from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
+from flytekit.models.core.types import LiteralType
 
 T = typing.TypeVar("T")
 
@@ -80,7 +79,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return _type_models.LiteralType(
+        return _core_types.LiteralType(
             blob=_core_types.BlobType(
                 format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
             )

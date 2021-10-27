@@ -6,8 +6,7 @@ from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.models.core.literals import BlobMetadata
-from flytekit.models.core.types import BlobType
-from flytekit.models.types import LiteralType
+from flytekit.models.core.types import BlobType, LiteralType
 from flytekit.types.pickle.pickle import FlytePickle, FlytePickleTransformer
 
 default_img = Image(name="default", fqn="test", tag="tag")

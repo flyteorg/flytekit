@@ -253,7 +253,7 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
         if hasattr(t, "__origin__") and hasattr(t, "__args__"):
             if t.__origin__ == list:
                 return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
-            elif t.__origin__ == dict:
+            elif t.__origin__ == dict and t.__args__[0] == str:
                 return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
         else:
             TypeEngine.get_transformer(t)
