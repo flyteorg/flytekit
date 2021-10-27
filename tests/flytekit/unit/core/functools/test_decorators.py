@@ -70,9 +70,9 @@ def test_unwrapped_task():
     )
     error = completed_process.stderr
     error_str = error.strip().split("\n")[-1]
-    assert error_str == (
-        "ValueError: Type <class 'inspect._empty'> not supported currently in Flytekit. "
-        "Please register a new transformer"
+    assert (
+        "TaskFunction cannot be a nested/inner or local function."
+        " It should be accessible at a module level for Flyte to execute it." in error_str
     )
 
 

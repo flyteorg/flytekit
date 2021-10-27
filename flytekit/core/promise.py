@@ -65,6 +65,7 @@ def translate_inputs_to_literals(
     def extract_value(
         ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: flytekit.models.core.types.LiteralType
     ) -> _literal_models.Literal:
+
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
                 raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")

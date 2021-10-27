@@ -29,6 +29,8 @@ from flytekit.models.core.types import BlobType, LiteralType, SimpleType
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.pickle import FlytePickle
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
 def test_type_engine():
@@ -60,6 +62,7 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
+    assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
 
     with pytest.raises(ValueError):
         TypeEngine.get_transformer(typing.Any)

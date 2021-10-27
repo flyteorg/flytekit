@@ -3,6 +3,7 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
+import logging as _logging
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
@@ -13,6 +14,9 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models.core import interface as _interface_models
+from flytekit.types.pickle import FlytePickle
+
+T = typing.TypeVar("T")
 
 
 class Interface(object):
@@ -244,20 +248,41 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
+def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
+    try:
+        if hasattr(t, "__origin__") and hasattr(t, "__args__"):
+            if t.__origin__ == list:
+                return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
+            elif t.__origin__ == dict and t.__args__[0] == str:
+                return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
+        else:
+            TypeEngine.get_transformer(t)
+    except ValueError:
+        _logging.warning(
+            f"Unsupported Type {t} found, Flyte will default to use PickleFile as the transport. "
+            f"Pickle can only be used to send objects between the exact same version of Python, "
+            f"and we strongly recommend to use python type that flyte support."
+        )
+        return FlytePickle[t]
+    return t
+
+
 def transform_signature_to_interface(signature: inspect.Signature, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
 
     For now the fancy object, maybe in the future a dumb object.
-
     """
     outputs = extract_return_annotation(signature.return_annotation)
-
+    for k, v in outputs.items():
+        outputs[k] = _change_unrecognized_type_to_pickle(v)
     inputs = OrderedDict()
     for k, v in signature.parameters.items():
+        annotation = v.annotation
+        default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
-        inputs[k] = (v.annotation, v.default if v.default is not inspect.Parameter.empty else None)
+        inputs[k] = (_change_unrecognized_type_to_pickle(annotation), default)
 
     # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
     # would like to preserve that name in our custom collections.namedtuple.
@@ -273,7 +298,8 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
 
 
 def transform_variable_map(
-    variable_map: Dict[str, type], descriptions: Dict[str, str] = {}
+    variable_map: Dict[str, type],
+    descriptions: Dict[str, str] = {},
 ) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
@@ -283,6 +309,14 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
+            sub_type: Type[T] = v
+            if hasattr(v, "__origin__") and hasattr(v, "__args__"):
+                if v.__origin__ is list:
+                    sub_type = v.__args__[0]
+                elif v.__origin__ is dict:
+                    sub_type = v.__args__[1]
+            if hasattr(sub_type, "__origin__") and sub_type.__origin__ is FlytePickle:
+                res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
 
     return res
 
