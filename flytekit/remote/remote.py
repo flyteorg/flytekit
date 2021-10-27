@@ -523,6 +523,7 @@ class FlyteRemote(object):
                 domain or self.default_domain,
                 version or self.version,
                 self.image_config,
+                # https://github.com/flyteorg/flyte/issues/1359
                 env={internal.IMAGE.env_var: self.image_config.default_image.full},
             ),
             entity=entity,
@@ -907,11 +908,11 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
 
-        self._register_entity_if_not_exists(entity, resolved_identifiers_dict)
         try:
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logging.info("Try to register FlyteWorkflow because it wasn't found in Flyte Admin!")
+            self._register_entity_if_not_exists(entity, resolved_identifiers_dict)
             flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
         flyte_workflow.guessed_python_interface = entity.python_interface
 
