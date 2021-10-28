@@ -208,7 +208,7 @@ class RawSynchronousFlyteClient(object):
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._metadata = None
-        if _AUTH.get():
+        if _AUTH.get() or insecure is False:
             self.force_auth_flow()
 
     @property
