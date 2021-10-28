@@ -44,6 +44,10 @@ click==7.1.2
     # via
     #   -c requirements.txt
     #   flytekit
+cloudpickle==2.0.0
+    # via
+    #   -c requirements.txt
+    #   flytekit
 codespell==2.1.0
     # via -r dev-requirements.in
 coverage[toml]==6.0.2
@@ -97,15 +101,15 @@ docstring-parser==0.12
     #   flytekit
 filelock==3.3.1
     # via virtualenv
-flyteidl==0.21.6
+flyteidl==0.21.7
     # via
     #   -c requirements.txt
     #   flytekit
-grpcio==1.41.0
+grpcio==1.41.1
     # via
     #   -c requirements.txt
     #   flytekit
-identify==2.3.0
+identify==2.3.1
     # via pre-commit
 idna==3.3
     # via
@@ -150,7 +154,7 @@ marshmallow-enum==1.5.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
-marshmallow-jsonschema==0.12.0
+marshmallow-jsonschema==0.13.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -216,7 +220,7 @@ pynacl==1.4.0
     # via
     #   -c requirements.txt
     #   paramiko
-pyparsing==2.4.7
+pyparsing==3.0.3
     # via
     #   -c requirements.txt
     #   packaging
@@ -259,7 +263,7 @@ pyyaml==5.4.1
     #   -c requirements.txt
     #   docker-compose
     #   pre-commit
-regex==2021.10.21
+regex==2021.10.23
     # via
     #   -c requirements.txt
     #   docker-image-py
@@ -270,7 +274,7 @@ requests==2.26.0
     #   docker-compose
     #   flytekit
     #   responses
-responses==0.14.0
+responses==0.15.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -310,7 +314,7 @@ toml==0.10.2
     #   mypy
     #   pre-commit
     #   pytest
-tomli==1.2.1
+tomli==1.2.2
     # via
     #   -c requirements.txt
     #   coverage
@@ -329,7 +333,7 @@ urllib3==1.26.7
     #   flytekit
     #   requests
     #   responses
-virtualenv==20.8.1
+virtualenv==20.9.0
     # via pre-commit
 websocket-client==0.59.0
     # via
