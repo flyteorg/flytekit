@@ -5,7 +5,7 @@ from flytekit.extend import Image, ImageConfig, SerializationSettings
 
 
 def test_pytorch_task():
-    @task(task_config=PyTorch(num_workers=10, per_replica_requests=Resources(cpu="1")), cache=True, cache_version="1")
+    @task(task_config=PyTorch(num_workers=10), cache=True, cache_version="1", requests=Resources(cpu="1"),)
     def my_pytorch_task(x: int, y: str) -> int:
         return x
 
