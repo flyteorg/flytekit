@@ -6,9 +6,7 @@ from flytekit.extend import Image, ImageConfig, SerializationSettings
 
 def test_tensorflow_task():
     @task(
-        task_config=TfJob(
-            num_workers=10,  num_ps_replicas=1, num_chief_replicas=1
-        ),
+        task_config=TfJob(num_workers=10, num_ps_replicas=1, num_chief_replicas=1),
         cache=True,
         requests=Resources(cpu="1"),
         cache_version="1",
