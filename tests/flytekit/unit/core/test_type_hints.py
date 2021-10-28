@@ -31,6 +31,7 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.core.interface import Parameter
 from flytekit.models.core.task import Resources as _resource_models
 from flytekit.models.core.types import LiteralType, SimpleType
+from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 serialization_settings = context_manager.SerializationSettings(
@@ -345,6 +346,36 @@ def test_wf1_with_sql_with_patch():
     # Have to call because tests inside tests don't run
     test_user_demo_test()
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_flytefile_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class InnerFileStruct(object):
+        a: FlyteFile
+
+    @dataclass_json
+    @dataclass
+    class FileStruct(object):
+        a: FlyteFile
+        b: InnerFileStruct
+
+    @task
+    def t1(path: str) -> FileStruct:
+        file = FlyteFile(path)
+        fs = FileStruct(a=file, b=InnerFileStruct(a=file))
+        return fs
+
+    @task
+    def t2(fs: FileStruct) -> str:
+        return fs.a.path
+
+    @workflow
+    def wf(path: str) -> str:
+        n1 = t1(path=path)
+        return t2(fs=n1)
+
+    assert wf(path="/tmp/demo.txt") == "/tmp/demo.txt"
 
 
 def test_wf1_with_map():
