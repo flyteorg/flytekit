@@ -29,5 +29,7 @@ def init():
         extra_context=config,
         # By specifying directory we can have multiple templates in the same repository,
         # as described in https://cookiecutter.readthedocs.io/en/1.7.2/advanced/directories.html.
+        # The idea is to extend the number of templates, each in their own subdirectory, for example
+        # a tensorflow-based example.
         directory="simple-example",
     )
