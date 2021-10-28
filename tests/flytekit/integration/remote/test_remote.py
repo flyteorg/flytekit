@@ -9,7 +9,7 @@ import joblib
 import pytest
 
 from flytekit import kwtypes
-from flytekit.common.exceptions.user import FlyteAssertion
+from flytekit.common.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
@@ -238,8 +238,8 @@ def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_reg
 
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
-
     remote = FlyteRemote.from_config(PROJECT, "development")
+
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(my_wf, inputs={"xs": xs}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
@@ -282,3 +282,29 @@ def test_execute_joblib_workflow(flyteclient, flyte_workflows_register, flyte_re
     output_obj = joblib.load(joblib_output.path)
     assert execution.outputs["o0"].extension() == "joblib"
     assert output_obj == input_obj
+
+
+def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):
+    from mock_flyte_repo.workflows.basic.subworkflows import parent_wf
+
+    # make sure the task name is the same as the name used during registration
+    parent_wf._name = parent_wf.name.replace("mock_flyte_repo.", "")
+
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    execution = remote.execute(parent_wf, {"a": 101}, version=f"v{VERSION}", wait=True)
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 101}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": 103}
+    assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
+
+    # check subworkflow task execution inputs and outputs
+    subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
+    subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
+    subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
+
+
+def test_fetch_not_exist_launch_plan(flyteclient):
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    with pytest.raises(FlyteEntityNotExistException):
+        remote.fetch_launch_plan(name="workflows.basic.list_float_wf.fake_wf", version=f"v{VERSION}")
