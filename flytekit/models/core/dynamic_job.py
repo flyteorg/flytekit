@@ -1,8 +1,8 @@
 from flyteidl.core import dynamic_job_pb2 as _dynamic_job
 
-import flytekit.models.core.task
 from flytekit.models import common as _common
 from flytekit.models.core import literals as _literals
+from flytekit.models.core import task as task_models
 from flytekit.models.core import workflow as _workflow
 
 
@@ -89,7 +89,7 @@ class DynamicJobSpec(_common.FlyteIdlEntity):
         :return: DynamicJobSpec
         """
         return cls(
-            tasks=[flytekit.models.core.task.TaskTemplate.from_flyte_idl(task) for task in pb2_object.tasks]
+            tasks=[task_models.TaskTemplate.from_flyte_idl(task) for task in pb2_object.tasks]
             if pb2_object.tasks
             else None,
             nodes=[_workflow.Node.from_flyte_idl(n) for n in pb2_object.nodes],

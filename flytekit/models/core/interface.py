@@ -3,9 +3,9 @@ import typing
 import six as _six
 from flyteidl.core import interface_pb2 as _interface_pb2
 
-import flytekit.models.core.types
 from flytekit.models import common as _common
 from flytekit.models.core import literals as _literals
+from flytekit.models.core import types as type_models
 
 
 class Variable(_common.FlyteIdlEntity):
@@ -48,7 +48,7 @@ class Variable(_common.FlyteIdlEntity):
         :rtype: Variable
         """
         return cls(
-            type=flytekit.models.core.types.LiteralType.from_flyte_idl(variable_proto.type),
+            type=type_models.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
         )
 
