@@ -1,23 +1,25 @@
-import pandas as pd
-import pyarrow as pa
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import pandas as pd
+import pyarrow as pa
 
 from flytekit import kwtypes
 from flytekit.models.types import SchemaType
 from flytekit.types.schema import FlyteSchema
 
 
-class NewFlyteSchemaLiteral():
+class NewFlyteSchemaLiteral:
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
 
 
-class NewFlyteSchemaLiteralMetadata():
+class NewFlyteSchemaLiteralMetadata:
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
+
 
 ########################################################################################################
 # This section is all setup - think of this as user code
@@ -26,29 +28,27 @@ now = datetime.now()
 before = now - timedelta(seconds=5)
 
 # Let's say the user returns this DF - used in multiple scenarios below
-df = pd.DataFrame({
-    'field0': [1, 2],
-    'field1': ['a', 'b'],
-    'field2': [now, before],
-    'field3': [[2, 3], [4, 5]],
-})
+df = pd.DataFrame(
+    {
+        "field0": [1, 2],
+        "field1": ["a", "b"],
+        "field2": [now, before],
+        "field3": [[2, 3], [4, 5]],
+    }
+)
 
 t1 = pa.int32()
 t2 = pa.string()
-t5 = pa.timestamp('ns')  # This test fails if it's 'ms' because we'd lose precision.
+t5 = pa.timestamp("ns")  # This test fails if it's 'ms' because we'd lose precision.
 t6 = pa.list_(t1)
 
 # This is the return signature, like
 #  def t1() -> ss
 # not sure if this is possible, or if we should support it?
 #  def t1() -> pa.Schema
-arrow_schema = pa.schema([
-    ('field0', t1),
-    ('field1', t2),
-    ('field2', t5),
-    ('field3', t6)
-])
+arrow_schema = pa.schema([("field0", t1), ("field1", t2), ("field2", t5), ("field3", t6)])
 ########################################################################################################
+
 
 def tt() -> arrow_schema:
     return pa.Table.from_pandas(df)
@@ -207,7 +207,7 @@ def test_cdjskl():
     job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.PARQUET, autodetect=True)
 
     with open(pq_file, "rb") as source_file:
-       job = client.load_table_from_file(source_file, table_id, job_config=job_config)
+        job = client.load_table_from_file(source_file, table_id, job_config=job_config)
 
 
 class ParquetToBQ(object):
@@ -232,7 +232,3 @@ def test_cjdkjkl():
     metadata = {
         "storage": "bq",
     }
-
-
-
-

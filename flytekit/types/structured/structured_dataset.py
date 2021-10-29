@@ -4,11 +4,11 @@ import datetime as _datetime
 import os
 import typing
 from abc import abstractmethod
-from dataclasses import dataclass
 from enum import Enum
 from typing import Type
 
 import numpy as _np
+from flyteidl.core.types_pb2 import StructuredDatasetType
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -16,18 +16,7 @@ from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.plugins import pandas
 
-from flyteidl.core.types_pb2 import S
-
 T = typing.TypeVar("T")
-
-
-@dataclass
-class SchemaHandler(object):
-    name: str
-    object_type: Type
-    reader: Type[SchemaReader]
-    writer: Type[SchemaWriter]
-    handles_remote_io: bool = False
 
 
 class SchemaEngine(object):
