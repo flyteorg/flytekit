@@ -11,11 +11,10 @@ from dataclasses_json import dataclass_json
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
 
-import flytekit.models.core.types
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models.core.literals import Literal, Scalar
-from flytekit.models.core.types import LiteralType
+from flytekit.models.core.types import LiteralType, SimpleType
 
 logger = logging.getLogger("flytekitplugins.dolt")
 
@@ -44,7 +43,7 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
         super().__init__(name="DoltTable", t=DoltTable)
 
     def get_literal_type(self, t: Type[DoltTable]) -> LiteralType:
-        return LiteralType(simple=flytekit.models.core.types.SimpleType.STRUCT, metadata={})
+        return LiteralType(simple=SimpleType.STRUCT, metadata={})
 
     def to_literal(
         self,
