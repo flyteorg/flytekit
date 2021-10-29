@@ -177,6 +177,7 @@ class LiteralType(_common.FlyteIdlEntity):
     ):
         """
         Only one of the kwargs may be set.
+
         :param int simple: Enum type from SimpleType
         :param flytekit.models.core.types.SchemaType schema: Type definition for a dataframe-like object.
         :param LiteralType collection_type: For list-like objects, this is the type of each entry in the list.
