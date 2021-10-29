@@ -44,6 +44,10 @@ class EnumType(_common.FlyteIdlEntity):
 
 
 class BlobType(_common.FlyteIdlEntity):
+    """
+    This type represents offloaded data and is typically used for things like files.
+    """
+
     class BlobDimensionality(object):
         SINGLE = _types_pb2.BlobType.SINGLE
         MULTIPART = _types_pb2.BlobType.MULTIPART
@@ -176,7 +180,8 @@ class LiteralType(_common.FlyteIdlEntity):
         metadata=None,
     ):
         """
-        Only one of the kwargs may be set.
+        This is a oneof message, only one of the kwargs may be set, representing one of the Flyte types.
+
         :param int simple: Enum type from SimpleType
         :param flytekit.models.core.types.SchemaType schema: Type definition for a dataframe-like object.
         :param LiteralType collection_type: For list-like objects, this is the type of each entry in the list.
