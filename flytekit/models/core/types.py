@@ -173,33 +173,26 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
             self._literal_type = literal_type
 
         @property
-        def name(self):
+        def name(self) -> str:
             """
             Name for the column
-            :rtype: str
             """
             return self._name
 
         @property
-        def literal_type(self):
+        def literal_type(self) -> LiteralType:
             """
             A LiteralType that defines the type of this column
-            :rtype: LiteralType
             """
             return self._literal_type
 
-        def to_flyte_idl(self):
-            """
-            :rtype: flyteidl.core.types_pb2.StructuredDatasetType.DatasetColumn
-            """
+        def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType.DatasetColumn:
             return _types_pb2.StructuredDatasetType.DatasetColumn(name=self.name, literal_type=self.literal_type)
 
         @classmethod
-        def from_flyte_idl(cls, proto):
-            """
-            :param flyteidl.core.types_pb2.StructuredDatasetType.DatasetColumn proto:
-            :rtype: StructuredDatasetType.DatasetColumn
-            """
+        def from_flyte_idl(
+            cls, proto: _types_pb2.StructuredDatasetType.DatasetColumn
+        ) -> StructuredDatasetType.DatasetColumn:
             return cls(name=proto.name, literal_type=proto.literal_type)
 
     def __init__(self, columns: typing.List[DatasetColumn], external_schema_type: str, external_schema_bytes: bytes):
@@ -219,10 +212,7 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
     def external_schema_bytes(self) -> bytes:
         return self._external_schema_bytes
 
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.core.types_pb2.StructuredDatasetType
-        """
+    def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType:
         return _types_pb2.StructuredDatasetType(
             columns=self.columns,
             external_schema_type=self.external_schema_type,
@@ -230,11 +220,7 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto):
-        """
-        :param flyteidl.core.types_pb2.StructuredDatasetType proto:
-        :rtype: StructuredDatasetType
-        """
+    def from_flyte_idl(cls, proto: _types_pb2.StructuredDatasetType) -> StructuredDatasetType:
         return cls(
             columns=proto.columns,
             external_schema_type=proto.external_schema_type,
