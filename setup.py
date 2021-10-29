@@ -52,7 +52,7 @@ setup(
     packages=find_packages(exclude=["tests*"]),
     url="https://github.com/flyteorg/flytekit",
     description="Flyte SDK for Python",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     entry_points={
         "console_scripts": [
@@ -64,7 +64,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.21.0,<0.22.0",
+        "flyteidl>=0.21.4",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=2.0.0,<4.0.0",
@@ -89,11 +89,12 @@ setup(
         "dataclasses-json>=0.5.2",
         "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
-        "dirhash>=0.2.1",
         "docker-image-py>=0.1.10",
         "singledispatchmethod; python_version < '3.8.0'",
         "docstring-parser>=0.9.0",
         "diskcache>=5.2.1",
+        "checksumdir>=1.2.0",
+        "cloudpickle>=2.0.0",
     ],
     extras_require=extras_require,
     scripts=[
@@ -110,6 +111,7 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

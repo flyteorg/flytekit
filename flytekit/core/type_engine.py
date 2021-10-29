@@ -8,7 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from typing import Optional, Type, cast
+from typing import NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -19,16 +19,16 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_jsonschema import JSONSchema
 
+import flytekit.models.core.types
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.loggers import logger
-from flytekit.models import interface as _interface_models
-from flytekit.models import types as _type_models
+from flytekit.models.core import interface as _interface_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.core.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.core.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -149,15 +149,22 @@ class RestrictedTypeError(Exception):
     pass
 
 
-class RestrictedType(TypeTransformer[T], ABC):
+class RestrictedTypeTransformer(TypeTransformer[T], ABC):
     """
-    A Simple implementation of a type transformer that uses simple lambdas to transform and reduces boilerplate
+    Types registered with the RestrictedTypeTransformer are not allowed to be converted to and from literals. In other words,
+    Restricted types are not allowed to be used as inputs or outputs of tasks and workflows.
     """
 
     def __init__(self, name: str, t: Type[T]):
         super().__init__(name, t)
 
     def get_literal_type(self, t: Type[T] = None) -> LiteralType:
+        raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
 
 
@@ -339,10 +346,15 @@ class TypeEngine(typing.Generic[T]):
     """
 
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
+    _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()
 
     @classmethod
-    def register(cls, transformer: TypeTransformer, additional_types: Optional[typing.List[Type]] = None):
+    def register(
+        cls,
+        transformer: TypeTransformer,
+        additional_types: Optional[typing.List[Type]] = None,
+    ):
         """
         This should be used for all types that respond with the right type annotation when you use type(...) function
         """
@@ -355,6 +367,15 @@ class TypeEngine(typing.Generic[T]):
                     f" Cannot override with {transformer.name}"
                 )
             cls._REGISTRY[t] = transformer
+
+    @classmethod
+    def register_restricted_type(
+        cls,
+        name: str,
+        type: Type,
+    ):
+        cls._RESTRICTED_TYPES.append(type)
+        cls.register(RestrictedTypeTransformer(name, type))
 
     @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
@@ -399,10 +420,15 @@ class TypeEngine(typing.Generic[T]):
         for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
-            if isinstance(python_type, base_type) or (
-                inspect.isclass(python_type) and issubclass(python_type, base_type)
-            ):
-                return cls._REGISTRY[base_type]
+            try:
+                if isinstance(python_type, base_type) or (
+                    inspect.isclass(python_type) and issubclass(python_type, base_type)
+                ):
+                    return cls._REGISTRY[base_type]
+            except TypeError:
+                # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
+                # is the case for one of the restricted types, namely NamedTuple.
+                logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
@@ -517,7 +543,7 @@ class TypeEngine(typing.Generic[T]):
             except ValueError:
                 logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
 
-        # Because the dataclass transformer is handled explicity in the get_transformer code, we have to handle it
+        # Because the dataclass transformer is handled explicitly in the get_transformer code, we have to handle it
         # separately here too.
         try:
             return cls._DATACLASS_TRANSFORMER.guess_python_type(literal_type=flyte_type)
@@ -550,7 +576,7 @@ class ListTransformer(TypeTransformer[T]):
         """
         try:
             sub_type = TypeEngine.to_literal_type(self.get_sub_type(t))
-            return _type_models.LiteralType(collection_type=sub_type)
+            return flytekit.models.core.types.LiteralType(collection_type=sub_type)
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
@@ -605,7 +631,7 @@ class DictTransformer(TypeTransformer[dict]):
             if tp[0] == str:
                 try:
                     sub_type = TypeEngine.to_literal_type(tp[1])
-                    return _type_models.LiteralType(map_value_type=sub_type)
+                    return flytekit.models.core.types.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
         return _primitives.Generic.to_flyte_literal_type()
@@ -673,7 +699,7 @@ class TextIOTransformer(TypeTransformer[typing.TextIO]):
         )
 
     def get_literal_type(self, t: typing.TextIO) -> LiteralType:
-        return _type_models.LiteralType(
+        return flytekit.models.core.types.LiteralType(
             blob=self._blob_type(),
         )
 
@@ -707,7 +733,7 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
         )
 
     def get_literal_type(self, t: Type[typing.BinaryIO]) -> LiteralType:
-        return _type_models.LiteralType(
+        return flytekit.models.core.types.LiteralType(
             blob=self._blob_type(),
         )
 
@@ -878,7 +904,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "none",
             None,
-            _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
+            flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.NONE),
             lambda x: None,
             lambda x: None,
         )
@@ -896,9 +922,9 @@ def _register_default_type_transformers():
     # that the return signature of a task can be a NamedTuple that contains another NamedTuple inside it.
     # Also, it's not entirely true that Flyte IDL doesn't support tuples. We can always fake them as structs, but we'll
     # hold off on doing that for now, as we may amend the IDL formally to support tuples.
-    TypeEngine.register(RestrictedType("non typed tuple", tuple))
-    TypeEngine.register(RestrictedType("non typed tuple", typing.Tuple))
-    TypeEngine.register(RestrictedType("named tuple", typing.NamedTuple))
+    TypeEngine.register_restricted_type("non typed tuple", tuple)
+    TypeEngine.register_restricted_type("non typed tuple", typing.Tuple)
+    TypeEngine.register_restricted_type("named tuple", NamedTuple)
 
 
 _register_default_type_transformers()

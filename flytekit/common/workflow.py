@@ -1,6 +1,8 @@
 import datetime as _datetime
 from typing import List
 
+import flytekit.models.admin.common
+import flytekit.models.admin.launch_plan
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
@@ -15,13 +17,13 @@ from flytekit.common.mixins import registerable as _registerable
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models import common as _common_models
-from flytekit.models import interface as _interface_models
-from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import literals as _literal_models
-from flytekit.models import schedule as _schedule_models
+from flytekit.models.admin import common as _common
+from flytekit.models.admin import launch_plan as _launch_plan_models
+from flytekit.models.admin import schedule as _schedule_models
 from flytekit.models.admin import workflow as _admin_workflow_model
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import interface as _interface_models
+from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_models
 
 
@@ -184,7 +186,7 @@ class SdkWorkflow(
             sub_workflows: Provide a list of WorkflowTemplate
             models (should be returned from Admin as part of the admin CompiledWorkflowClosure. Relevant sub-workflows
             should always be provided.
-        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.task.TaskTemplate] tasks: Same as above
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.admin.task.TaskTemplate] tasks: Same as above
             but for tasks. If tasks are not provided relevant TaskTemplates will be fetched from Admin
         :rtype: SdkWorkflow
         """
@@ -269,7 +271,7 @@ class SdkWorkflow(
 
         if not (assumable_iam_role or kubernetes_service_account):
             raise _user_exceptions.FlyteValidationException("No assumable role or service account found")
-        auth_role = _common_models.AuthRole(
+        auth_role = flytekit.models.admin.common.AuthRole(
             assumable_iam_role=assumable_iam_role,
             kubernetes_service_account=kubernetes_service_account,
         )
@@ -282,10 +284,10 @@ class SdkWorkflow(
             ),
             default_inputs=_interface_models.ParameterMap({}),
             fixed_inputs=_literal_models.LiteralMap(literals={}),
-            labels=_common_models.Labels({}),
-            annotations=_common_models.Annotations({}),
+            labels=_common.Labels({}),
+            annotations=_common.Annotations({}),
             auth_role=auth_role,
-            raw_output_data_config=_common_models.RawOutputDataConfig(""),
+            raw_output_data_config=_common.RawOutputDataConfig(""),
         )
 
     @_exception_scopes.system_entry_point

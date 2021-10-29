@@ -26,7 +26,7 @@ from flytekit.core.context_manager import ExecutionState, FastSerializationSetti
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
-from flytekit.core.tracker import isnested, istestfunction
+from flytekit.core.tracker import is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
     WorkflowFailurePolicy,
@@ -34,10 +34,10 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.loggers import logger
-from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import literals as _literal_models
-from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.admin.task import TaskSpec as _taskSpec
+from flytekit.models.core import dynamic_job as _dynamic_job
+from flytekit.models.core import literals as _literal_models
 
 T = TypeVar("T")
 
@@ -130,12 +130,18 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         if self._task_resolver is default_task_resolver:
             # The default task resolver can't handle nested functions
             # TODO: Consider moving this to a can_handle function or something inside the resolver itself.
-            if not istestfunction(func=task_function) and isnested(func=task_function):
+            if (
+                not istestfunction(func=task_function)
+                and isnested(func=task_function)
+                and not is_functools_wrapped_module_level(task_function)
+            ):
                 raise ValueError(
                     "TaskFunction cannot be a nested/inner or local function. "
                     "It should be accessible at a module level for Flyte to execute it. Test modules with "
-                    "names beginning with `test_` are allowed to have nested tasks. If you want to create your own tasks"
-                    "use the TaskResolverMixin"
+                    "names beginning with `test_` are allowed to have nested tasks. "
+                    "If you're decorating your task function with custom decorators, use functools.wraps "
+                    "or functools.update_wrapper on the function wrapper. "
+                    "Alternatively if you want to create your own tasks with custom behavior use the TaskResolverMixin"
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
@@ -216,9 +222,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 if isinstance(entity, ReferenceTask):
                     raise Exception("Reference tasks are currently unsupported within dynamic tasks")
 
-                if not isinstance(model, task_models.TaskSpec):
+                if not isinstance(model, _taskSpec):
                     raise TypeError(
-                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
+                        f"Unexpected type for serialized form of task. Expected {_taskSpec}, but got {type(model)}"
                     )
 
                 # Store the valid task template so that we can pass it to the

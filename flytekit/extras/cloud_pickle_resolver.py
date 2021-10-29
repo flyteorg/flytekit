@@ -1,7 +1,7 @@
 from base64 import b64decode, b64encode
 from typing import List
 
-import cloudpickle  # intentionally not yet part of setup.py
+import cloudpickle
 
 from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.context_manager import SerializationSettings

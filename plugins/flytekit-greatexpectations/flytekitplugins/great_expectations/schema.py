@@ -12,11 +12,11 @@ from great_expectations.core.run_identifier import RunIdentifier
 from great_expectations.core.util import convert_to_json_serializable
 from great_expectations.exceptions import ValidationError
 
+import flytekit.models.core.types
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
-from flytekit.models import types as _type_models
-from flytekit.models.literals import Literal, Primitive, Scalar
-from flytekit.models.types import LiteralType
+from flytekit.models.core.literals import Literal, Primitive, Scalar
+from flytekit.models.core.types import LiteralType
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer, SchemaOpenMode
 
@@ -99,7 +99,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         datatype = GreatExpectationsTypeTransformer.get_config(t)[0]
 
         if issubclass(datatype, str):
-            return LiteralType(simple=_type_models.SimpleType.STRING, metadata={})
+            return LiteralType(simple=flytekit.models.core.types.SimpleType.STRING, metadata={})
         elif issubclass(datatype, FlyteFile):
             return FlyteFilePathTransformer().get_literal_type(datatype)
         elif issubclass(datatype, FlyteSchema):

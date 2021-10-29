@@ -1,12 +1,12 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type
 
+import flytekit.models.core.task
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.interface import Interface
 from flytekit.core.resources import Resources, ResourceSpec
-from flytekit.models import task as _task_model
 
 
 class ContainerTask(PythonTask):
@@ -17,17 +17,17 @@ class ContainerTask(PythonTask):
     """
 
     class MetadataFormat(Enum):
-        JSON = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_JSON
-        YAML = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_YAML
-        PROTO = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_PROTO
+        JSON = flytekit.models.core.task.DataLoadingConfig.LITERALMAP_FORMAT_JSON
+        YAML = flytekit.models.core.task.DataLoadingConfig.LITERALMAP_FORMAT_YAML
+        PROTO = flytekit.models.core.task.DataLoadingConfig.LITERALMAP_FORMAT_PROTO
 
     class IOStrategy(Enum):
-        DOWNLOAD_EAGER = _task_model.IOStrategy.DOWNLOAD_MODE_EAGER
-        DOWNLOAD_STREAM = _task_model.IOStrategy.DOWNLOAD_MODE_STREAM
-        DO_NOT_DOWNLOAD = _task_model.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD
-        UPLOAD_EAGER = _task_model.IOStrategy.UPLOAD_MODE_EAGER
-        UPLOAD_ON_EXIT = _task_model.IOStrategy.UPLOAD_MODE_ON_EXIT
-        DO_NOT_UPLOAD = _task_model.IOStrategy.UPLOAD_MODE_NO_UPLOAD
+        DOWNLOAD_EAGER = flytekit.models.core.task.IOStrategy.DOWNLOAD_MODE_EAGER
+        DOWNLOAD_STREAM = flytekit.models.core.task.IOStrategy.DOWNLOAD_MODE_STREAM
+        DO_NOT_DOWNLOAD = flytekit.models.core.task.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD
+        UPLOAD_EAGER = flytekit.models.core.task.IOStrategy.UPLOAD_MODE_EAGER
+        UPLOAD_ON_EXIT = flytekit.models.core.task.IOStrategy.UPLOAD_MODE_ON_EXIT
+        DO_NOT_UPLOAD = flytekit.models.core.task.IOStrategy.UPLOAD_MODE_NO_UPLOAD
 
     def __init__(
         self,
@@ -80,13 +80,13 @@ class ContainerTask(PythonTask):
         )
         return None
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> flytekit.models.core.task.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=self._image,
             command=self._cmd,
             args=self._args,
-            data_loading_config=_task_model.DataLoadingConfig(
+            data_loading_config=flytekit.models.core.task.DataLoadingConfig(
                 input_path=self._input_data_dir,
                 output_path=self._output_data_dir,
                 format=self._md_format.value,

@@ -26,11 +26,11 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.models import literals as _literal_models
+from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.interface import Parameter
-from flytekit.models.task import Resources as _resource_models
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.core.interface import Parameter
+from flytekit.models.core.task import Resources as _resource_models
+from flytekit.models.core.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 serialization_settings = context_manager.SerializationSettings(
@@ -685,7 +685,15 @@ def test_wf1_branches_failing():
     assert context_manager.FlyteContextManager.size() == 1
 
 
-def test_cant_use_normal_tuples():
+def test_cant_use_normal_tuples_as_input():
+    with pytest.raises(RestrictedTypeError):
+
+        @task
+        def t1(a: tuple) -> str:
+            return a[0]
+
+
+def test_cant_use_normal_tuples_as_output():
     with pytest.raises(RestrictedTypeError):
 
         @task
@@ -1008,13 +1016,27 @@ def test_wf_custom_types():
 
 def test_arbit_class():
     class Foo(object):
-        pass
+        def __init__(self, number: int):
+            self.number = number
 
-    with pytest.raises(ValueError):
+    @task
+    def t1(a: int) -> Foo:
+        return Foo(number=a)
 
-        @task
-        def t1(a: int) -> Foo:
-            return Foo()
+    @task
+    def t2(a: Foo) -> typing.List[Foo]:
+        return [a, a]
+
+    @task
+    def t3(a: typing.List[Foo]) -> typing.Dict[str, Foo]:
+        return {"hello": a[0]}
+
+    def wf(a: int) -> typing.Dict[str, Foo]:
+        o1 = t1(a=a)
+        o2 = t2(a=o1)
+        return t3(a=o2)
+
+    assert wf(1)["hello"].number == 1
 
 
 def test_dataclass_more():

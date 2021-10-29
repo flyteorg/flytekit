@@ -1,7 +1,11 @@
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
-from flytekit.models import common, interface, launch_plan, literals, schedule, types
-from flytekit.models.core import identifier
+import flytekit.models.admin.common
+import flytekit.models.admin.launch_plan
+import flytekit.models.core.types
+from flytekit.models.admin import common as _common
+from flytekit.models.admin import launch_plan, schedule
+from flytekit.models.core import identifier, interface, literals
 
 
 def test_metadata():
@@ -20,7 +24,9 @@ def test_metadata_schedule():
 
 
 def test_lp_closure():
-    v = interface.Variable(types.LiteralType(simple=types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     p = interface.Parameter(var=v)
     parameter_map = interface.ParameterMap({"ppp": p})
     parameter_map.to_flyte_idl()
@@ -45,7 +51,9 @@ def test_launch_plan_spec():
     s = schedule.Schedule("asdf", "1 3 4 5 6 7")
     launch_plan_metadata_model = launch_plan.LaunchPlanMetadata(schedule=s, notifications=[])
 
-    v = interface.Variable(types.LiteralType(simple=types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     p = interface.Parameter(var=v)
     parameter_map = interface.ParameterMap({"ppp": p})
 
@@ -53,12 +61,12 @@ def test_launch_plan_spec():
         {"a": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1)))}
     )
 
-    labels_model = common.Labels({})
-    annotations_model = common.Annotations({"my": "annotation"})
+    labels_model = _common.Labels({})
+    annotations_model = _common.Annotations({"my": "annotation"})
 
-    auth_role_model = common.AuthRole(assumable_iam_role="my:iam:role")
-    raw_data_output_config = common.RawOutputDataConfig("s3://bucket")
-    empty_raw_data_output_config = common.RawOutputDataConfig("")
+    auth_role_model = flytekit.models.admin.common.AuthRole(assumable_iam_role="my:iam:role")
+    raw_data_output_config = _common.RawOutputDataConfig("s3://bucket")
+    empty_raw_data_output_config = _common.RawOutputDataConfig("")
     max_parallelism = 100
 
     lp_spec_raw_output_prefixed = launch_plan.LaunchPlanSpec(
@@ -98,7 +106,9 @@ def test_old_style_role():
     s = schedule.Schedule("asdf", "1 3 4 5 6 7")
     launch_plan_metadata_model = launch_plan.LaunchPlanMetadata(schedule=s, notifications=[])
 
-    v = interface.Variable(types.LiteralType(simple=types.SimpleType.BOOLEAN), "asdf asdf asdf")
+    v = interface.Variable(
+        flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN), "asdf asdf asdf"
+    )
     p = interface.Parameter(var=v)
     parameter_map = interface.ParameterMap({"ppp": p})
 
@@ -106,10 +116,10 @@ def test_old_style_role():
         {"a": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1)))}
     )
 
-    labels_model = common.Labels({})
-    annotations_model = common.Annotations({"my": "annotation"})
+    labels_model = _common.Labels({})
+    annotations_model = _common.Annotations({"my": "annotation"})
 
-    raw_data_output_config = common.RawOutputDataConfig("s3://bucket")
+    raw_data_output_config = _common.RawOutputDataConfig("s3://bucket")
 
     old_role = _launch_plan_idl.Auth(kubernetes_service_account="my:service:account")
 

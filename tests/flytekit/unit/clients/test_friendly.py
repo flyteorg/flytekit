@@ -2,7 +2,7 @@ import mock as _mock
 from flyteidl.admin import project_pb2 as _project_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
-from flytekit.models.project import Project as _Project
+from flytekit.models.admin.project import Project as _Project
 
 
 @_mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.update_project")

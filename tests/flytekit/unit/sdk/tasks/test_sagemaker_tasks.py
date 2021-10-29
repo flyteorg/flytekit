@@ -7,6 +7,7 @@ import retry.api
 from flyteidl.plugins.sagemaker.training_job_pb2 import TrainingJobResourceConfig as _pb2_TrainingJobResourceConfig
 from google.protobuf.json_format import ParseDict
 
+import flytekit.models.core.types
 from flytekit.common import constants as _common_constants
 from flytekit.common import utils as _utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
@@ -22,9 +23,8 @@ from flytekit.common.tasks.sagemaker.hpo_job_task import (
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.engines import common as _common_engine
 from flytekit.engines.unit.mock_stats import MockStats
-from flytekit.models import literals as _literals
-from flytekit.models import types as _idl_types
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import literals as _literals
 from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker.hpo_job import HyperparameterTuningJobConfig as _HyperparameterTuningJobConfig
 from flytekit.models.sagemaker.hpo_job import (
@@ -101,7 +101,7 @@ def test_builtin_algorithm_training_job_task():
     assert isinstance(builtin_algorithm_training_job_task, SdkBuiltinAlgorithmTrainingJobTask)
     assert isinstance(builtin_algorithm_training_job_task, _sdk_task.SdkTask)
     assert builtin_algorithm_training_job_task.interface.inputs["train"].description == ""
-    assert builtin_algorithm_training_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
+    assert builtin_algorithm_training_job_task.interface.inputs["train"].type == flytekit.models.core.types.LiteralType(
         blob=_core_types.BlobType(
             format="csv",
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
@@ -116,7 +116,7 @@ def test_builtin_algorithm_training_job_task():
         builtin_algorithm_training_job_task.interface.inputs["validation"].type
         == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
-    assert builtin_algorithm_training_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
+    assert builtin_algorithm_training_job_task.interface.inputs["train"].type == flytekit.models.core.types.LiteralType(
         blob=_core_types.BlobType(
             format="csv",
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
@@ -185,7 +185,7 @@ def test_simple_hpo_job_task():
         simple_xgboost_hpo_job_task.interface.inputs["train"].type
         == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
-    assert simple_xgboost_hpo_job_task.interface.inputs["train"].type == _idl_types.LiteralType(
+    assert simple_xgboost_hpo_job_task.interface.inputs["train"].type == flytekit.models.core.types.LiteralType(
         blob=_core_types.BlobType(
             format="csv",
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
@@ -196,7 +196,7 @@ def test_simple_hpo_job_task():
         simple_xgboost_hpo_job_task.interface.inputs["validation"].type
         == _sdk_types.Types.MultiPartCSV.to_flyte_literal_type()
     )
-    assert simple_xgboost_hpo_job_task.interface.inputs["validation"].type == _idl_types.LiteralType(
+    assert simple_xgboost_hpo_job_task.interface.inputs["validation"].type == flytekit.models.core.types.LiteralType(
         blob=_core_types.BlobType(
             format="csv",
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
