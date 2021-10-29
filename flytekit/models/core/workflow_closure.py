@@ -1,7 +1,7 @@
 from flyteidl.core import workflow_closure_pb2 as _workflow_closure_pb2
 
-import flytekit.models.core.task
 from flytekit.models import common as _common
+from flytekit.models.core import task as task_models
 from flytekit.models.core import workflow as _core_workflow_models
 
 
@@ -45,5 +45,5 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         """
         return cls(
             workflow=_core_workflow_models.WorkflowTemplate.from_flyte_idl(pb2_object.workflow),
-            tasks=[flytekit.models.core.task.TaskTemplate.from_flyte_idl(t) for t in pb2_object.tasks],
+            tasks=[task_models.TaskTemplate.from_flyte_idl(t) for t in pb2_object.tasks],
         )
