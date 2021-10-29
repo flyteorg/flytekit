@@ -23,7 +23,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
-import flytekit.models.core.task
+from task_models import RuntimeMetadata, TaskMetadata
+
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
@@ -43,11 +44,10 @@ from flytekit.loggers import logger
 from flytekit.models.core import dynamic_job as _dynamic_job
 from flytekit.models.core import interface as _interface_models
 from flytekit.models.core import literals as _literal_models
+from flytekit.models.core import task as task_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.core.interface import Variable
 from flytekit.models.core.security import SecurityContext
-from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
-from flytekit.models.core.task import TaskMetadata as _task_matadata
 
 
 def kwtypes(**kwargs) -> Dict[str, Type]:
@@ -106,15 +106,15 @@ class TaskMetadata(object):
     def retry_strategy(self) -> _literal_models.RetryStrategy:
         return _literal_models.RetryStrategy(self.retries)
 
-    def to_taskmetadata_model(self) -> _task_matadata:
+    def to_taskmetadata_model(self) -> TaskMetadata:
         """
         Converts to _task_model.TaskMetadata
         """
         from flytekit import __version__
 
-        return _task_matadata(
+        return TaskMetadata(
             discoverable=self.cache,
-            runtime=_runtimeMetadata(_runtimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
+            runtime=RuntimeMetadata(RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
             timeout=self.timeout,
             retries=self.retry_strategy,
             interruptible=self.interruptible,
@@ -277,19 +277,19 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_container(self, settings: SerializationSettings) -> flytekit.models.core.task.Container:
+    def get_container(self, settings: SerializationSettings) -> task_models.Container:
         """
         Returns the container definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_k8s_pod(self, settings: SerializationSettings) -> flytekit.models.core.task.K8sPod:
+    def get_k8s_pod(self, settings: SerializationSettings) -> task_models.K8sPod:
         """
         Returns the kubernetes pod definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_sql(self, settings: SerializationSettings) -> Optional[flytekit.models.core.task.Sql]:
+    def get_sql(self, settings: SerializationSettings) -> Optional[task_models.Sql]:
         """
         Returns the Sql definition (if any) that is used to run the task on hosted Flyte.
         """
