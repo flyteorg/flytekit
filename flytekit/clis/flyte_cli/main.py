@@ -75,9 +75,18 @@ _default_config_file_name = "config"
 
 
 def _welcome_message():
-    _click.secho("\n################################################################################################################################", bold=True)
-    _click.secho("# flyte-cli is being deprecated in favor of flytectl. More details about flytectl in https://docs.flyte.org/projects/flytectl/ #", bold=True)
-    _click.secho("################################################################################################################################\n", bold=True)
+    _click.secho(
+        "\n################################################################################################################################",
+        bold=True,
+    )
+    _click.secho(
+        "# flyte-cli is being deprecated in favor of flytectl. More details about flytectl in https://docs.flyte.org/projects/flytectl/ #",
+        bold=True,
+    )
+    _click.secho(
+        "################################################################################################################################\n",
+        bold=True,
+    )
     _click.secho("Welcome to Flyte CLI! Version: {}\n".format(_tt(__version__)), bold=True)
 
 
