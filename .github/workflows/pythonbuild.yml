@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: [3.7, 3.8, 3.9]
         spark-version-suffix: ["", "-spark2"]
@@ -63,6 +64,7 @@ jobs:
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-k8s-pod
+          - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
           - flytekit-papermill

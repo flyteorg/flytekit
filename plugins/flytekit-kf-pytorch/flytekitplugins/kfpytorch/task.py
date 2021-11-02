@@ -3,11 +3,11 @@ This Plugin adds the capability of running distributed pytorch training to Flyte
 Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_ Plugin from kubeflow.
 """
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import PythonFunctionTask, Resources
+from flytekit import PythonFunctionTask
 from flytekit.extend import SerializationSettings, TaskPlugins
 from flytekit.models import task as _task_model
 
@@ -22,16 +22,9 @@ class PyTorch(object):
         num_workers: integer determining the number of worker replicas spawned in the cluster for this job
         (in addition to 1 master).
 
-        per_replica_requests: [optional] lower-bound resources for each replica spawned for this job
-        (i.e. both for (main)master and workers).  Default is set by platform-level configuration.
-
-        per_replica_limits: [optional] upper-bound resources for each replica spawned for this job. If not specified
-        the scheduled resource may not have all the resources
     """
 
     num_workers: int
-    per_replica_requests: Optional[Resources] = None
-    per_replica_limits: Optional[Resources] = None
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -47,7 +40,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_config,
             task_function,
             task_type=self._PYTORCH_TASK_TYPE,
-            **{**kwargs, "requests": task_config.per_replica_requests, "limits": task_config.per_replica_limits}
+            **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:

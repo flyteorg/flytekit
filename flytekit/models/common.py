@@ -413,10 +413,11 @@ class UrlBlob(FlyteIdlEntity):
 class AuthRole(FlyteIdlEntity):
     def __init__(self, assumable_iam_role=None, kubernetes_service_account=None):
         """
-        At most one of assumable_iam_role or kubernetes_service_account can be set.
+        Either one or both of the assumable IAM role and/or the K8s service account can be set.
         :param Text assumable_iam_role: IAM identity with set permissions policies.
-        :param Text kubernetes_service_account: Provides an identity for workflow execution resources. Flyte deployment
-            administrators are responsible for handling permissions as they relate to the service account.
+        :param Text kubernetes_service_account: Provides an identity for workflow execution resources.
+          Flyte deployment administrators are responsible for handling permissions as they
+          relate to the service account.
         """
         self._assumable_iam_role = assumable_iam_role
         self._kubernetes_service_account = kubernetes_service_account
