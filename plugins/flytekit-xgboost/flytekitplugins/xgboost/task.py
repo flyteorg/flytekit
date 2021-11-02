@@ -140,8 +140,6 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
                 else:
                     raise ValueError(f"Invalid type for {each_key} input")
 
-        print(dataset_vars)
-
         model, evals_result = self.train(
             dtrain=dataset_vars[train_key], dvalid=dataset_vars[validation_key] if validation_key else None
         )
