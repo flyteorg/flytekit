@@ -5,7 +5,7 @@ import six as _six
 from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.models.core import literals as _literal_models
+from flytekit.models import literals as _literal_models
 
 
 class _TypeEngineLoader(object):
@@ -59,7 +59,7 @@ def python_std_to_sdk_type(t):
 
 def get_sdk_type_from_literal_type(literal_type):
     """
-    :param flytekit.models.core.types.LiteralType literal_type:
+    :param flytekit.models.types.LiteralType literal_type:
     :rtype: flytekit.common.types.base_sdk_types.FlyteSdkType
     """
     for e in _TypeEngineLoader.iterate_engines_in_order():
@@ -86,7 +86,7 @@ def infer_sdk_type_from_literal(literal):
 def get_sdk_value_from_literal(literal, sdk_type=None):
     """
     :param flytekit.models.literals.Literal literal:
-    :param flytekit.models.core.types.LiteralType sdk_type:
+    :param flytekit.models.types.LiteralType sdk_type:
     :rtype: flytekit.common.types.base_sdk_types.FlyteSdkValue
     """
     # The spec states everything must be nullable, so if we receive a null value, swap to the null type behavior.

@@ -13,8 +13,6 @@ from datetime import datetime, timedelta
 import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
-import flytekit.models.admin.common
-import flytekit.models.admin.launch_plan
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.configuration import platform as platform_config
@@ -24,7 +22,6 @@ from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
 from flytekit.models.admin import common as admin_common_models
-from flytekit.models.admin import launch_plan as launch_plan_models
 
 try:
     from functools import singledispatchmethod
@@ -44,17 +41,18 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
-from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
+from flytekit.models import common as common_models
+from flytekit.models import launch_plan as launch_plan_models
+from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
-from flytekit.models.admin.execution import (
+from flytekit.models.core.identifier import ResourceType
+from flytekit.models.execution import (
     ExecutionMetadata,
     ExecutionSpec,
     NodeExecutionGetDataResponse,
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
-from flytekit.models.core import literals as literal_models
-from flytekit.models.core.identifier import ResourceType
 from flytekit.remote.identifier import Identifier, WorkflowExecutionIdentifier
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.launch_plan import FlyteLaunchPlan
@@ -78,7 +76,7 @@ class ResolvedIdentifiers:
 
 
 def _get_latest_version(list_entities_method: typing.Callable, project: str, domain: str, name: str):
-    named_entity = _namedEntityIdentifier(project, domain, name)
+    named_entity = common_models.NamedEntityIdentifier(project, domain, name)
     entity_list, _ = list_entities_method(
         named_entity,
         limit=1,
@@ -155,7 +153,7 @@ class FlyteRemote(object):
             default_project=default_project or PROJECT.get() or None,
             default_domain=default_domain or DOMAIN.get() or None,
             file_access=file_access,
-            auth_role=flytekit.models.admin.common.AuthRole(
+            auth_role=common_models.AuthRole(
                 assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
                 kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
             ),
@@ -164,7 +162,7 @@ class FlyteRemote(object):
             annotations=None,
             image_config=get_image_config(),
             raw_output_data_config=(
-                admin_common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
+                common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
             ),
             grpc_credentials=grpc_credentials,
         )
@@ -176,12 +174,12 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
-        auth_role: typing.Optional[flytekit.models.admin.common.AuthRole] = None,
-        notifications: typing.Optional[typing.List[admin_common_models.Notification]] = None,
-        labels: typing.Optional[admin_common_models.Labels] = None,
-        annotations: typing.Optional[admin_common_models.Annotations] = None,
+        auth_role: typing.Optional[common_models.AuthRole] = None,
+        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
+        labels: typing.Optional[common_models.Labels] = None,
+        annotations: typing.Optional[common_models.Annotations] = None,
         image_config: typing.Optional[ImageConfig] = None,
-        raw_output_data_config: typing.Optional[admin_common_models.RawOutputDataConfig] = None,
+        raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
         grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
     ):
         """Initialize a FlyteRemote object.
@@ -292,12 +290,12 @@ class FlyteRemote(object):
         flyte_admin_url: typing.Optional[str] = None,
         insecure: typing.Optional[bool] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
-        auth_role: typing.Optional[flytekit.models.admin.common.AuthRole] = None,
-        notifications: typing.Optional[typing.List[admin_common_models.Notification]] = None,
-        labels: typing.Optional[admin_common_models.Labels] = None,
-        annotations: typing.Optional[admin_common_models.Annotations] = None,
+        auth_role: typing.Optional[common_models.AuthRole] = None,
+        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
+        labels: typing.Optional[common_models.Labels] = None,
+        annotations: typing.Optional[common_models.Annotations] = None,
         image_config: typing.Optional[ImageConfig] = None,
-        raw_output_data_config: typing.Optional[admin_common_models.RawOutputDataConfig] = None,
+        raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
     ):
         """Create a copy of the remote object, overriding the specified attributes."""
         new_remote = deepcopy(self)
@@ -488,7 +486,7 @@ class FlyteRemote(object):
         if not version:
             raise ValueError("Must specify a version")
 
-        named_entity_id = _namedEntityIdentifier(
+        named_entity_id = common_models.NamedEntityIdentifier(
             project=project or self.default_project,
             domain=domain or self.default_domain,
         )
@@ -583,11 +581,11 @@ class FlyteRemote(object):
         resolved_identifiers = asdict(self._resolve_identifier_kwargs(entity, project, domain, name, version))
         serialized_lp: launch_plan_models.LaunchPlan = self._serialize(entity, **resolved_identifiers)
         if self.auth_role:
-            serialized_lp.spec._auth_role = flytekit.models.admin.common.AuthRole(
+            serialized_lp.spec._auth_role = common_models.AuthRole(
                 self.auth_role.assumable_iam_role, self.auth_role.kubernetes_service_account
             )
         if self.raw_output_data_config:
-            serialized_lp.spec._raw_output_data_config = admin_common_models.RawOutputDataConfig(
+            serialized_lp.spec._raw_output_data_config = common_models.RawOutputDataConfig(
                 self.raw_output_data_config.output_location_prefix
             )
 
@@ -665,9 +663,9 @@ class FlyteRemote(object):
         domain: str,
         execution_name: typing.Optional[str] = None,
         wait: bool = False,
-        labels: typing.Optional[admin_common_models.Labels] = None,
-        annotations: typing.Optional[admin_common_models.Annotations] = None,
-        auth_role: typing.Optional[flytekit.models.admin.common.AuthRole] = None,
+        labels: typing.Optional[common_models.Labels] = None,
+        annotations: typing.Optional[common_models.Annotations] = None,
+        auth_role: typing.Optional[common_models.AuthRole] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 

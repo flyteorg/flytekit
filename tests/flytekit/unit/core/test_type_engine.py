@@ -12,7 +12,6 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_jsonschema import JSONSchema
 
-import flytekit.models.core.types
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
@@ -24,8 +23,10 @@ from flytekit.core.type_engine import (
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
-from flytekit.models.core.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
-from flytekit.models.core.types import BlobType, LiteralType, SimpleType
+from flytekit.models import types as model_types
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
@@ -34,18 +35,18 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 def test_type_engine():
     t = int
     lt = TypeEngine.to_literal_type(t)
-    assert lt.simple == flytekit.models.core.types.SimpleType.INTEGER
+    assert lt.simple == model_types.SimpleType.INTEGER
 
     t = typing.Dict[str, typing.List[typing.Dict[str, timedelta]]]
     lt = TypeEngine.to_literal_type(t)
-    assert lt.map_value_type.collection_type.map_value_type.simple == flytekit.models.core.types.SimpleType.DURATION
+    assert lt.map_value_type.collection_type.map_value_type.simple == model_types.SimpleType.DURATION
 
 
 def test_named_tuple():
     t = typing.NamedTuple("Outputs", [("x_str", str), ("y_int", int)])
     var_map = TypeEngine.named_tuple_to_variable_map(t)
-    assert var_map.variables["x_str"].type.simple == flytekit.models.core.types.SimpleType.STRING
-    assert var_map.variables["y_int"].type.simple == flytekit.models.core.types.SimpleType.INTEGER
+    assert var_map.variables["x_str"].type.simple == model_types.SimpleType.STRING
+    assert var_map.variables["y_int"].type.simple == model_types.SimpleType.INTEGER
 
 
 def test_type_resolution():
@@ -321,43 +322,43 @@ def test_protos():
 
 
 def test_guessing_basic():
-    b = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN)
+    b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
     pt = TypeEngine.guess_python_type(b)
     assert pt is bool
 
-    lt = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER)
+    lt = model_types.LiteralType(simple=model_types.SimpleType.INTEGER)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is int
 
-    lt = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING)
+    lt = model_types.LiteralType(simple=model_types.SimpleType.STRING)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is str
 
-    lt = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.DURATION)
+    lt = model_types.LiteralType(simple=model_types.SimpleType.DURATION)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is timedelta
 
-    lt = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.DATETIME)
+    lt = model_types.LiteralType(simple=model_types.SimpleType.DATETIME)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is datetime.datetime
 
-    lt = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.FLOAT)
+    lt = model_types.LiteralType(simple=model_types.SimpleType.FLOAT)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is float
 
-    lt = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.NONE)
+    lt = model_types.LiteralType(simple=model_types.SimpleType.NONE)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is None
 
 
 def test_guessing_containers():
-    b = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN)
-    lt = flytekit.models.core.types.LiteralType(collection_type=b)
+    b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
+    lt = model_types.LiteralType(collection_type=b)
     pt = TypeEngine.guess_python_type(lt)
     assert pt == typing.List[bool]
 
-    dur = flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.DURATION)
-    lt = flytekit.models.core.types.LiteralType(map_value_type=dur)
+    dur = model_types.LiteralType(simple=model_types.SimpleType.DURATION)
+    lt = model_types.LiteralType(map_value_type=dur)
     pt = TypeEngine.guess_python_type(lt)
     assert pt == typing.Dict[str, timedelta]
 

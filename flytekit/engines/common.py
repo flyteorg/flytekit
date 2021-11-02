@@ -219,10 +219,10 @@ class BaseLaunchPlanLauncher(object, metaclass=_common_models.FlyteABCMeta):
         :param Text domain:
         :param Text name:
         :param flytekit.models.literals.LiteralMap inputs: The inputs to pass
-        :param list[flytekit.models.admin.common.Notification] notification_overrides: If specified, override the
+        :param list[flytekit.models.common.Notification] notification_overrides: If specified, override the
             notifications.
-        :param flytekit.models.admin.common.Labels label_overrides:
-        :param flytekit.models.admin.common.Annotations annotation_overrides:
+        :param flytekit.models.common.Labels label_overrides:
+        :param flytekit.models.common.Annotations annotation_overrides:
         :rtype: flytekit.models.execution.Execution
         """
         pass
@@ -283,11 +283,11 @@ class BaseTaskExecutor(object, metaclass=_common_models.FlyteABCMeta):
         :param Text domain:
         :param Text name:
         :param flytekit.models.literals.LiteralMap inputs: The inputs to pass
-        :param list[flytekit.models.admin.common.Notification] notification_overrides: If specified, override the
+        :param list[flytekit.models.common.Notification] notification_overrides: If specified, override the
             notifications.
-        :param flytekit.models.admin.common.Labels label_overrides:
-        :param flytekit.models.admin.common.Annotations annotation_overrides:
-        :param flytekit.models.admin.common.AuthRole auth_role:
+        :param flytekit.models.common.Labels label_overrides:
+        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.common.AuthRole auth_role:
         :rtype: flytekit.models.execution.Execution
         """
         pass
@@ -351,7 +351,7 @@ class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
         """
         :param flytekit.models.core.identifier.Identifier task_id: This identifier should have a resource type of kind
             Task.
-        :rtype: flytekit.models.admin.task.Task
+        :rtype: flytekit.models.task.Task
         """
         pass
 
@@ -359,8 +359,8 @@ class BaseExecutionEngineFactory(object, metaclass=_common_models.FlyteABCMeta):
     def fetch_latest_task(self, named_task):
         """
         Fetches the latest task
-        :param flytekit.models.admin.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
-        :rtype: flytekit.models.admin.task.Task
+        :param flytekit.models.common.NamedEntityIdentifier named_task: NamedEntityIdentifier to fetch
+        :rtype: flytekit.models.task.Task
         """
         pass
 

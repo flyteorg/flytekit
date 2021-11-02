@@ -23,9 +23,9 @@ from flytekit.common.utils import _dnsify
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models
-from flytekit.models.admin import node_execution as _node_execution_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import node_execution as _node_execution_models
 from flytekit.models.core import execution as _execution_models
-from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 
 
@@ -184,7 +184,7 @@ class SdkNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node, metaclass=
         :param flytekit.models.core.workflow.Node model:
         :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.workflow.WorkflowTemplate]
             sub_workflows:
-        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.core.task.TaskTemplate] tasks: If specified,
+        :param dict[flytekit.models.core.identifier.Identifier, flytekit.models.task.TaskTemplate] tasks: If specified,
             these task templates will be passed to the SdkTaskNode promote_from_model call, and used
             instead of fetching from Admin.
         :rtype: SdkNode

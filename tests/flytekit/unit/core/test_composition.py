@@ -3,7 +3,7 @@ import typing
 from flytekit.core import launch_plan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.models.core import literals as _literal_models
+from flytekit.models import literals as _literal_models
 
 
 def test_wf1_with_subwf():

@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 from typing_extensions import Protocol
 
-import flytekit.models.core.types
 from flytekit.common import constants as _common_constants
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core import context_manager as _flyte_context
@@ -17,11 +16,13 @@ from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteC
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
-from flytekit.models.core import interface as _interface_models
-from flytekit.models.core import literals as _literal_models
-from flytekit.models.core import literals as _literals_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import literals as _literals_models
+from flytekit.models import types as _type_models
+from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.core.literals import Primitive
+from flytekit.models.literals import Primitive
 
 
 def translate_inputs_to_literals(
@@ -63,7 +64,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: flytekit.models.core.types.LiteralType
+        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
         if isinstance(input_val, list):
             if flyte_literal_type.collection_type is None:
@@ -79,11 +80,11 @@ def translate_inputs_to_literals(
         elif isinstance(input_val, dict):
             if (
                 flyte_literal_type.map_value_type is None
-                and flyte_literal_type.simple != flytekit.models.core.types.SimpleType.STRUCT
+                and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
             ):
                 raise TypeError(f"Not a map type {flyte_literal_type} but got a map {input_val}")
             k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
-            if flyte_literal_type.simple == flytekit.models.core.types.SimpleType.STRUCT:
+            if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
                 return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
             else:
                 literal_map = {
@@ -548,7 +549,7 @@ def create_task_output(
 
 def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
-    expected_literal_type: flytekit.models.core.types.LiteralType,
+    expected_literal_type: _type_models.LiteralType,
     t_value: typing.Any,
     t_value_type: type,
 ) -> _literals_models.BindingData:
@@ -578,13 +579,13 @@ def binding_data_from_python_std(
     elif isinstance(t_value, dict):
         if (
             expected_literal_type.map_value_type is None
-            and expected_literal_type.simple != flytekit.models.core.types.SimpleType.STRUCT
+            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
         ):
             raise AssertionError(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
             )
         k_type, v_type = DictTransformer.get_dict_types(t_value_type)
-        if expected_literal_type.simple == flytekit.models.core.types.SimpleType.STRUCT:
+        if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
@@ -612,7 +613,7 @@ def binding_data_from_python_std(
 def binding_from_python_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
-    expected_literal_type: flytekit.models.core.types.LiteralType,
+    expected_literal_type: _type_models.LiteralType,
     t_value: typing.Any,
     t_value_type: type,
 ) -> _literals_models.Binding:
@@ -689,7 +690,7 @@ class VoidPromise(object):
         raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
 
 
-class NodeOutput(flytekit.models.core.types.OutputReference):
+class NodeOutput(type_models.OutputReference):
     def __init__(self, node: Node, var: str):
         """
         :param node:

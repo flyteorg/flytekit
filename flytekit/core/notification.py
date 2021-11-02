@@ -17,7 +17,7 @@ and Pagerduty is incumbent on those email API being set-up correctly.
 """
 from typing import List
 
-from flytekit.models.admin import common as _common_model
+from flytekit.models import common as _common_model
 from flytekit.models.core import execution as _execution_model
 
 

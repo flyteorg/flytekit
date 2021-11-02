@@ -1,10 +1,10 @@
 import pytest
 
-from flytekit.models.admin import common as _common_models
-from flytekit.models.admin import execution as _execution
+from flytekit.models import common as _common_models
+from flytekit.models import execution as _execution
+from flytekit.models import literals as _literals
 from flytekit.models.core import execution as _core_exec
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.core import literals as _literals
 from tests.flytekit.common import parameterizers as _parameterizers
 
 _INPUT_MAP = _literals.LiteralMap(

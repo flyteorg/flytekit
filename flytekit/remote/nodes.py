@@ -1,7 +1,7 @@
 import logging as _logging
 from typing import Any, Dict, List, Optional, Union
 
-import flytekit.models.core.task
+import flytekit
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import system as _system_exceptions
@@ -11,8 +11,9 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.utils import _dnsify
 from flytekit.core.promise import NodeOutput
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models.admin import launch_plan as _launch_plan_model
-from flytekit.models.admin import node_execution as _node_execution_models
+from flytekit.models import launch_plan as _launch_plan_model
+from flytekit.models import node_execution as _node_execution_models
+from flytekit.models import task as _task_model
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import component_nodes as _component_nodes
@@ -71,7 +72,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         model: _workflow_model.Node,
         sub_workflows: Optional[Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate]],
         node_launch_plans: Optional[Dict[_identifier.Identifier, _launch_plan_model.LaunchPlanSpec]],
-        tasks: Optional[Dict[_identifier.Identifier, flytekit.models.core.task.TaskTemplate]],
+        tasks: Optional[Dict[_identifier.Identifier, _task_model.TaskTemplate]],
     ) -> "FlyteNode":
         id = model.id
         if id in {_constants.START_NODE_ID, _constants.END_NODE_ID}:
