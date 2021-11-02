@@ -532,8 +532,11 @@ class FlyteRemote(object):
                 domain or self.default_domain,
                 version or self.version,
                 self.image_config,
+<<<<<<< HEAD
                 # https://github.com/flyteorg/flyte/issues/1359
                 env={internal.IMAGE.env_var: self.image_config.default_image.full},
+=======
+>>>>>>> c9e4223c92a8a94fd1b7524dfb51f0dadc5fb2d4
                 entrypoint_settings=EntrypointSettings(
                     path=os.path.join(
                         serialize._DEFAULT_FLYTEKIT_VIRTUALENV_ROOT, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC
