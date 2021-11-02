@@ -113,66 +113,38 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
             elif "valid" in key:
                 validation_key = key
 
-        dataset_train = kwargs[train_key]
-        dataset_test = kwargs[test_key]
-
         if not (train_key and test_key):
             raise ValueError("Must have train and test inputs")
 
-        # generate DMatrix for the train data
-        if issubclass(self.python_interface.inputs[train_key], str):
-            if "csv" in dataset_train:
-                dtrain = xgboost.DMatrix(dataset_train + "?format=csv&label_column=" + str(self._label_column))
-            else:
-                dtrain = xgboost.DMatrix(dataset_train)
-        elif issubclass(self.python_interface.inputs[train_key], FlyteFile):
-            if FlyteContext.current_context().file_access.is_remote(dataset_train):
-                dataset_train.download()
-            if dataset_train.extension() == "csv":
-                dtrain = xgboost.DMatrix(dataset_train.path + "?format=csv&label_column=" + str(self._label_column))
-            else:
-                dtrain = xgboost.DMatrix(dataset_train.path)
-        else:
-            raise ValueError("Invalid type for train input")
-
-        # generate DMatrix for the test data
-        if issubclass(self.python_interface.inputs[test_key], str):
-            if "csv" in dataset_test:
-                dtest = xgboost.DMatrix(dataset_test + "?format=csv&label_column=" + str(self._label_column))
-            else:
-                dtest = xgboost.DMatrix(dataset_test)
-        elif issubclass(self.python_interface.inputs[test_key], FlyteFile):
-            if FlyteContext.current_context().file_access.is_remote(dataset_test):
-                dataset_test.download()
-            if dataset_test.extension() == "csv":
-                dtest = xgboost.DMatrix(dataset_test.path + "?format=csv&label_column=" + str(self._label_column))
-            else:
-                dtest = xgboost.DMatrix(dataset_test.path)
-        else:
-            raise ValueError("Invalid type for test input")
-
-        # generate DMatrix for the validation data
+        dtrain = None
         dvalid = None
-        if validation_key:
-            dataset_validation = kwargs[validation_key]
-            if issubclass(self.python_interface.inputs[validation_key], str):
-                if "csv" in dataset_validation:
-                    dvalid = xgboost.DMatrix(dataset_validation + "?format=csv&label_column=" + str(self._label_column))
-                else:
-                    dvalid = xgboost.DMatrix(dataset_validation)
-            elif issubclass(self.python_interface.inputs[validation_key], FlyteFile):
-                if FlyteContext.current_context().file_access.is_remote(dataset_validation):
-                    dataset_validation.download()
-                if dataset_validation.extension() == "csv":
-                    dvalid = xgboost.DMatrix(
-                        dataset_validation.path + "?format=csv&label_column=" + str(self._label_column)
-                    )
-                else:
-                    dvalid = xgboost.DMatrix(dataset_validation.path)
-            else:
-                raise ValueError("Invalid type for validation input")
+        dtest = None
 
-        model, evals_result = self.train(dtrain=dtrain, dvalid=dvalid)
-        predictions = self.test(booster_model=model, dtest=dtest)
+        dataset_vars = {train_key: dtrain, test_key: dtest, validation_key: dvalid}
+
+        for each_key in [train_key, test_key, validation_key]:
+            if each_key:
+                dataset = kwargs[each_key]
+                if issubclass(self.python_interface.inputs[each_key], str):
+                    if "csv" in dataset:
+                        dataset_vars[each_key] = xgboost.DMatrix(
+                            dataset + "?format=csv&label_column=" + str(self._label_column)
+                        )
+                    else:
+                        dataset_vars[each_key] = xgboost.DMatrix(dataset)
+                elif issubclass(self.python_interface.inputs[each_key], FlyteFile):
+                    if FlyteContext.current_context().file_access.is_remote(dataset):
+                        dataset.download()
+                    if dataset.extension() == "csv":
+                        dataset_vars[each_key] = xgboost.DMatrix(
+                            dataset.path + "?format=csv&label_column=" + str(self._label_column)
+                        )
+                    else:
+                        dataset_vars[each_key] = xgboost.DMatrix(dataset.path)
+                else:
+                    raise ValueError(f"Invalid type for {each_key} input")
+
+        model, evals_result = self.train(dtrain=dataset_vars[train_key], dvalid=dataset_vars[validation_key])
+        predictions = self.test(booster_model=model, dtest=dataset_vars[test_key])
 
         return model, predictions, evals_result
