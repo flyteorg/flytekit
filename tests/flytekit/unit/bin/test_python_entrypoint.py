@@ -24,9 +24,9 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.persistence.gcs_gsutil import GCSPersistence
 from flytekit.extras.persistence.s3_awscli import S3Persistence
+from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
-from flytekit.models.core import literals as _literal_models
 from tests.flytekit.common import task_definitions as _task_defs
 
 

@@ -8,10 +8,10 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from pytimeparse import parse as _parse_duration_string
 
-import flytekit.models.core.types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
-from flytekit.models.core import literals as _literals
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 
 
 class Integer(_base_sdk_types.FlyteSdkValue):
@@ -54,9 +54,9 @@ class Integer(_base_sdk_types.FlyteSdkValue):
     @classmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.core.types.LiteralType
+        :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER)
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.INTEGER)
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -135,7 +135,7 @@ class Float(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.FLOAT)
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.FLOAT)
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -215,7 +215,7 @@ class Boolean(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.BOOLEAN)
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.BOOLEAN)
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -294,7 +294,7 @@ class String(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.STRING)
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.STRING)
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -390,7 +390,7 @@ class Datetime(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.DATETIME)
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.DATETIME)
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -470,7 +470,7 @@ class Timedelta(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.DURATION)
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.DURATION)
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -552,9 +552,7 @@ class Generic(_base_sdk_types.FlyteSdkValue):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(
-            simple=flytekit.models.core.types.SimpleType.STRUCT, metadata=metadata
-        )
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT, metadata=metadata)
 
     @classmethod
     def promote_from_model(cls, literal_model):

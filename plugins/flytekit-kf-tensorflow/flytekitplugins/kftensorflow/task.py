@@ -9,7 +9,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask
 from flytekit.extend import SerializationSettings, TaskPlugins
-from flytekit.models.plugins import task as _task_model
+from flytekit.models import task as _task_model
 
 
 @dataclass

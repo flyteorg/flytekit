@@ -7,7 +7,7 @@ from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
-from flytekit.models.core.security import Secret
+from flytekit.models.security import Secret
 
 
 class TaskPlugins(object):

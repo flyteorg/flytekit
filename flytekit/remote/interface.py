@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Tuple
 
-from flytekit.models.core import interface as _interface_models
-from flytekit.models.core import literals as _literal_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models
 from flytekit.remote import nodes as _nodes
 
 

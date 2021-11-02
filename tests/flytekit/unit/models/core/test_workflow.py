@@ -1,12 +1,12 @@
 from datetime import timedelta
 
-import flytekit.models.core.types
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literals
+from flytekit.models import types as _types
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.core import interface as _interface
-from flytekit.models.core import literals as _literals
 from flytekit.models.core import workflow as _workflow
-from flytekit.models.core.task import Resources
+from flytekit.models.task import Resources
 
 _generic_id = _identifier.Identifier(_identifier.ResourceType.WORKFLOW, "project", "domain", "name", "version")
 
@@ -34,7 +34,7 @@ def test_alias():
 def test_workflow_template():
     task = _workflow.TaskNode(reference_id=_generic_id)
     nm = _get_sample_node_metadata()
-    int_type = flytekit.models.core.types.LiteralType(flytekit.models.core.types.SimpleType.INTEGER)
+    int_type = _types.LiteralType(_types.SimpleType.INTEGER)
     wf_metadata = _workflow.WorkflowMetadata()
     wf_metadata_defaults = _workflow.WorkflowMetadataDefaults()
     typed_interface = _interface.TypedInterface(

@@ -5,7 +5,7 @@ from flyteidl.core.literals_pb2 import Literal
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_models
-from flytekit.models.core import literals as _literal_models
+from flytekit.models import literals as _literal_models
 
 
 class FlyteSdkType(_sdk_bases.ExtendedSdkType, metaclass=_common_models.FlyteABCMeta):
@@ -46,7 +46,7 @@ class FlyteSdkType(_sdk_bases.ExtendedSdkType, metaclass=_common_models.FlyteABC
     @_abc.abstractmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.core.types.LiteralType
+        :rtype: flytekit.models.types.LiteralType
         """
         pass
 
@@ -103,7 +103,7 @@ class Void(FlyteSdkValue):
     @classmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.core.types.LiteralType
+        :rtype: flytekit.models.types.LiteralType
         """
         raise _user_exceptions.FlyteAssertion(
             "A Void type does not have a literal type and cannot be used in this " "manner."

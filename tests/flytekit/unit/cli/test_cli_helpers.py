@@ -7,11 +7,10 @@ from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from flyteidl.core.identifier_pb2 import LAUNCH_PLAN
 
-import flytekit.models.core.types
 from flytekit.clis import helpers
 from flytekit.clis.helpers import _hydrate_identifier, _hydrate_workflow_template_nodes, hydrate_registration_parameters
-from flytekit.models.core import literals
-from flytekit.models.core.interface import Parameter, ParameterMap, Variable
+from flytekit.models import literals, types
+from flytekit.models.interface import Parameter, ParameterMap, Variable
 
 
 def test_parse_args_into_dict():
@@ -30,10 +29,7 @@ def test_parse_args_into_dict():
 
 
 def test_construct_literal_map_from_variable_map():
-    v = Variable(
-        type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER),
-        description="some description",
-    )
+    v = Variable(type=types.LiteralType(simple=types.SimpleType.INTEGER), description="some description")
     variable_map = {
         "inputa": v,
     }
@@ -47,10 +43,7 @@ def test_construct_literal_map_from_variable_map():
 
 
 def test_construct_literal_map_from_parameter_map():
-    v = Variable(
-        type=flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.INTEGER),
-        description="some description",
-    )
+    v = Variable(type=types.LiteralType(simple=types.SimpleType.INTEGER), description="some description")
     p = Parameter(var=v, required=True)
     pm = ParameterMap(parameters={"inputa": p})
 

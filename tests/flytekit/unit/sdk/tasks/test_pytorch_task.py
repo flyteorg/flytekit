@@ -1,9 +1,9 @@
 import datetime as _datetime
 
-import flytekit.models.core.types
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import pytorch_task as _pytorch_task
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk.tasks import inputs, outputs, pytorch_task
 from flytekit.sdk.types import Types
@@ -23,12 +23,12 @@ def test_simple_pytorch_task():
     assert isinstance(simple_pytorch_task, _pytorch_task.SdkPyTorchTask)
     assert isinstance(simple_pytorch_task, _sdk_runnable.SdkRunnableTask)
     assert simple_pytorch_task.interface.inputs["in1"].description == ""
-    assert simple_pytorch_task.interface.inputs["in1"].type == flytekit.models.core.types.LiteralType(
-        simple=flytekit.models.core.types.SimpleType.INTEGER
+    assert simple_pytorch_task.interface.inputs["in1"].type == _type_models.LiteralType(
+        simple=_type_models.SimpleType.INTEGER
     )
     assert simple_pytorch_task.interface.outputs["out1"].description == ""
-    assert simple_pytorch_task.interface.outputs["out1"].type == flytekit.models.core.types.LiteralType(
-        simple=flytekit.models.core.types.SimpleType.STRING
+    assert simple_pytorch_task.interface.outputs["out1"].type == _type_models.LiteralType(
+        simple=_type_models.SimpleType.STRING
     )
     assert simple_pytorch_task.type == _common_constants.SdkTaskType.PYTORCH_TASK
     assert simple_pytorch_task.task_function_name == "simple_pytorch_task"

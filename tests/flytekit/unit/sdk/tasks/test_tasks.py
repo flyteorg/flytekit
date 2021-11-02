@@ -1,11 +1,11 @@
 import datetime as _datetime
 import os as _os
 
-import flytekit.models.core.task
-import flytekit.models.core.types
 from flytekit import configuration as _configuration
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
+from flytekit.models import task as _task_models
+from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
@@ -24,12 +24,10 @@ default_task._id = _identifier.Identifier(_identifier.ResourceType.TASK, "projec
 def test_default_python_task():
     assert isinstance(default_task, _sdk_runnable.SdkRunnableTask)
     assert default_task.interface.inputs["in1"].description == ""
-    assert default_task.interface.inputs["in1"].type == flytekit.models.core.types.LiteralType(
-        simple=flytekit.models.core.types.SimpleType.INTEGER
-    )
+    assert default_task.interface.inputs["in1"].type == _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER)
     assert default_task.interface.outputs["out1"].description == ""
-    assert default_task.interface.outputs["out1"].type == flytekit.models.core.types.LiteralType(
-        simple=flytekit.models.core.types.SimpleType.STRING
+    assert default_task.interface.outputs["out1"].type == _type_models.LiteralType(
+        simple=_type_models.SimpleType.STRING
     )
     assert default_task.type == _common_constants.SdkTaskType.PYTHON_TASK
     assert default_task.task_function_name == "default_task"
@@ -61,15 +59,15 @@ def test_default_resources():
 
         limit_map = {l.name: l.value for l in default_task2.container.resources.limits}
 
-        assert request_map[flytekit.models.core.task.Resources.ResourceName.CPU] == "500m"
-        assert request_map[flytekit.models.core.task.Resources.ResourceName.MEMORY] == "500Gi"
-        assert request_map[flytekit.models.core.task.Resources.ResourceName.GPU] == "1"
-        assert request_map[flytekit.models.core.task.Resources.ResourceName.STORAGE] == "500Gi"
+        assert request_map[_task_models.Resources.ResourceName.CPU] == "500m"
+        assert request_map[_task_models.Resources.ResourceName.MEMORY] == "500Gi"
+        assert request_map[_task_models.Resources.ResourceName.GPU] == "1"
+        assert request_map[_task_models.Resources.ResourceName.STORAGE] == "500Gi"
 
-        assert limit_map[flytekit.models.core.task.Resources.ResourceName.CPU] == "501m"
-        assert limit_map[flytekit.models.core.task.Resources.ResourceName.MEMORY] == "501Gi"
-        assert limit_map[flytekit.models.core.task.Resources.ResourceName.GPU] == "2"
-        assert limit_map[flytekit.models.core.task.Resources.ResourceName.STORAGE] == "501Gi"
+        assert limit_map[_task_models.Resources.ResourceName.CPU] == "501m"
+        assert limit_map[_task_models.Resources.ResourceName.MEMORY] == "501Gi"
+        assert limit_map[_task_models.Resources.ResourceName.GPU] == "2"
+        assert limit_map[_task_models.Resources.ResourceName.STORAGE] == "501Gi"
 
 
 def test_overriden_resources():
@@ -99,12 +97,12 @@ def test_overriden_resources():
 
         limit_map = {l.name: l.value for l in default_task2.container.resources.limits}
 
-        assert request_map[flytekit.models.core.task.Resources.ResourceName.CPU] == "500m"
-        assert request_map[flytekit.models.core.task.Resources.ResourceName.MEMORY] == "50Gi"
-        assert request_map[flytekit.models.core.task.Resources.ResourceName.GPU] == "0"
-        assert request_map[flytekit.models.core.task.Resources.ResourceName.STORAGE] == "100Gi"
+        assert request_map[_task_models.Resources.ResourceName.CPU] == "500m"
+        assert request_map[_task_models.Resources.ResourceName.MEMORY] == "50Gi"
+        assert request_map[_task_models.Resources.ResourceName.GPU] == "0"
+        assert request_map[_task_models.Resources.ResourceName.STORAGE] == "100Gi"
 
-        assert limit_map[flytekit.models.core.task.Resources.ResourceName.CPU] == "1000m"
-        assert limit_map[flytekit.models.core.task.Resources.ResourceName.MEMORY] == "100Gi"
-        assert limit_map[flytekit.models.core.task.Resources.ResourceName.GPU] == "1"
-        assert limit_map[flytekit.models.core.task.Resources.ResourceName.STORAGE] == "200Gi"
+        assert limit_map[_task_models.Resources.ResourceName.CPU] == "1000m"
+        assert limit_map[_task_models.Resources.ResourceName.MEMORY] == "100Gi"
+        assert limit_map[_task_models.Resources.ResourceName.GPU] == "1"
+        assert limit_map[_task_models.Resources.ResourceName.STORAGE] == "200Gi"

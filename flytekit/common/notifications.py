@@ -1,6 +1,6 @@
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.models.admin import common as _common_model
+from flytekit.models import common as _common_model
 from flytekit.models.core import execution as _execution_model
 
 
@@ -59,7 +59,7 @@ class PagerDuty(Notification):
     @classmethod
     def promote_from_model(cls, base_model):
         """
-        :param flytekit.models.admin.common.Notification base_model:
+        :param flytekit.models.common.Notification base_model:
         :rtype: Notification
         """
         return cls(base_model.phases, base_model.pager_duty.recipients_email)
@@ -77,7 +77,7 @@ class Email(Notification):
     @classmethod
     def promote_from_model(cls, base_model):
         """
-        :param flytekit.models.admin.common.Notification base_model:
+        :param flytekit.models.common.Notification base_model:
         :rtype: Notification
         """
         return cls(base_model.phases, base_model.email.recipients_email)
@@ -95,7 +95,7 @@ class Slack(Notification):
     @classmethod
     def promote_from_model(cls, base_model):
         """
-        :param flytekit.models.admin.common.Notification base_model:
+        :param flytekit.models.common.Notification base_model:
         :rtype: Notification
         """
         return cls(base_model.phases, base_model.slack.recipients_email)

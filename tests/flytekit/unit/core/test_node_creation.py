@@ -13,8 +13,8 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.models.core import literals as _literal_models
-from flytekit.models.core.task import Resources as _resources_models
+from flytekit.models import literals as _literal_models
+from flytekit.models.task import Resources as _resources_models
 
 
 def test_normal_task():

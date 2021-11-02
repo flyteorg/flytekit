@@ -7,8 +7,6 @@ import six as _six
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
-import flytekit.models.admin.common
-import flytekit.models.admin.launch_plan
 from flytekit.common import interface as _interfaces
 from flytekit.common import nodes as _nodes
 from flytekit.common import sdk_bases as _sdk_bases
@@ -24,20 +22,19 @@ from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.models import common as _common_model
+from flytekit.models import execution as _admin_execution_models
+from flytekit.models import task as _task_model
 from flytekit.models.admin import common as _admin_common
-from flytekit.models.admin import execution as _admin_execution_models
-from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
-from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.core.task import TaskTemplate as _taskTemplate
 
 
 class SdkTask(
     _hash_mixin.HashOnReferenceMixin,
     _registerable.RegisterableEntity,
     _launchable_mixin.LaunchableEntity,
-    _taskTemplate,
+    _task_model.TaskTemplate,
     metaclass=_sdk_bases.ExtendedSdkType,
 ):
     def __init__(
@@ -99,7 +96,7 @@ class SdkTask(
     @classmethod
     def promote_from_model(cls, base_model):
         """
-        :param flytekit.models.core.task.TaskTemplate base_model:
+        :param flytekit.models.task.TaskTemplate base_model:
         :rtype: SdkTask
         """
         t = cls(
@@ -173,7 +170,7 @@ class SdkTask(
         client = _flyte_engine.get_client()
         try:
             self._id = id_to_register
-            client.create_task(id_to_register, _taskSpec(self))
+            client.create_task(id_to_register, _task_model.TaskSpec(self))
             self._id = old_id
             self._has_registered = True
             return str(id_to_register)
@@ -188,7 +185,7 @@ class SdkTask(
         """
         :rtype: flyteidl.admin.task_pb2.TaskSpec
         """
-        return _taskSpec(self).to_flyte_idl()
+        return _task_model.TaskSpec(self).to_flyte_idl()
 
     @classmethod
     @_exception_scopes.system_entry_point
@@ -219,7 +216,7 @@ class SdkTask(
         :param Text name:
         :rtype: SdkTask
         """
-        named_task = _namedEntityIdentifier(project, domain, name)
+        named_task = _common_model.NamedEntityIdentifier(project, domain, name)
         client = _flyte_engine.get_client()
         task_list, _ = client.list_tasks_paginated(
             named_task,
@@ -369,9 +366,9 @@ class SdkTask(
         :param list[flytekit.common.notifications.Notification] notification_overrides: [Optional] If specified, these
             are the notifications that will be honored for this execution.  An empty list signals to disable all
             notifications.
-        :param flytekit.models.admin.common.Labels label_overrides:
-        :param flytekit.models.admin.common.Annotations annotation_overrides:
-        :param flytekit.models.admin.common.AuthRole auth_role:
+        :param flytekit.models.common.Labels label_overrides:
+        :param flytekit.models.common.Annotations annotation_overrides:
+        :param flytekit.models.common.AuthRole auth_role:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
         """
         disable_all = notification_overrides == []
@@ -393,7 +390,7 @@ class SdkTask(
                     "Please update your config to use `assumable_iam_role` instead"
                 )
                 assumable_iam_role = _sdk_config.ROLE.get()
-            auth_role = flytekit.models.admin.common.AuthRole(
+            auth_role = _common_model.AuthRole(
                 assumable_iam_role=assumable_iam_role,
                 kubernetes_service_account=kubernetes_service_account,
             )

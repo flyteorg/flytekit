@@ -3,10 +3,10 @@ import base64 as _base64
 import pytest as _pytest
 from flyteidl.core import errors_pb2 as _errors_pb2
 
-import flytekit.models.core.types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import proto as _proto
 from flytekit.common.types.proto import ProtobufType
+from flytekit.models import types as _type_models
 
 
 def test_wrong_type():
@@ -16,7 +16,7 @@ def test_wrong_type():
 
 def test_proto_to_literal_type():
     proto_type = _proto.create_protobuf(_errors_pb2.ContainerError)
-    assert proto_type.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.BINARY
+    assert proto_type.to_flyte_literal_type().simple == _type_models.SimpleType.BINARY
     assert len(proto_type.to_flyte_literal_type().metadata) == 1
     assert (
         proto_type.to_flyte_literal_type().metadata[_proto.Protobuf.PB_FIELD_KEY]

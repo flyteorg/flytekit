@@ -64,10 +64,8 @@ flytekit==0.22.1
     # via
     #   flytekitplugins-papermill
     #   flytekitplugins-spark
-flytekitplugins-spark==0.23.1
-    # via
-    #   -r ./requirements.in
-    #   flytekitplugins-papermill
+flytekitplugins-spark==0.22.1
+    # via -r ./requirements.in
 grpcio==1.40.0
     # via flytekit
 idna==3.2

@@ -13,7 +13,7 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.types import schema as _schema
 from flytekit.common.types.impl.schema import Schema
 from flytekit.engines import common as _common_engine
-from flytekit.models.core import literals as _literals
+from flytekit.models import literals as _literals
 from flytekit.models.core.identifier import WorkflowExecutionIdentifier
 from flytekit.sdk.tasks import hive_task, inputs, outputs, qubole_hive_task
 from flytekit.sdk.types import Types

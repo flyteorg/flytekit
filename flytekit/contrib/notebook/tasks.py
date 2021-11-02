@@ -9,7 +9,6 @@ import six as _six
 from google.protobuf import json_format as _json_format
 from google.protobuf import text_format as _text_format
 
-import flytekit.models.core.task
 from flytekit import __version__
 from flytekit.bin import entrypoint as _entrypoint
 from flytekit.common import constants as _constants
@@ -23,11 +22,9 @@ from flytekit.common.tasks import task as _base_tasks
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook.supported_types import notebook_types_map as _notebook_types_map
 from flytekit.engines import loader as _engine_loader
-from flytekit.models.core import interface as _interface
-from flytekit.models.core import literals as _literal_models
-from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
-from flytekit.models.core.task import TaskMetadata as _task_matadata
-from flytekit.models.plugins import task as _task_models
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
 from flytekit.plugins import papermill as _pm
 from flytekit.sdk.spark_types import SparkType as _spark_type
 from flytekit.sdk.types import Types as _Types
@@ -123,10 +120,10 @@ class SdkNotebookTask(_base_tasks.SdkTask):
 
         super(SdkNotebookTask, self).__init__(
             task_type,
-            _task_matadata(
+            _task_models.TaskMetadata(
                 discoverable,
-                _runtimeMetadata(
-                    _runtimeMetadata.RuntimeType.FLYTE_SDK,
+                _task_models.RuntimeMetadata(
+                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     __version__,
                     "notebook",
                 ),
@@ -499,7 +496,7 @@ class SdkNotebookSparkTask(SdkNotebookTask):
         return _spark_task.SdkRunnableSparkContainer(
             command=[],
             args=[],
-            resources=flytekit.models.core.task.Resources(limits=[], requests=[]),
+            resources=_task_models.Resources(limits=[], requests=[]),
             env=environment or {},
             config={},
         )

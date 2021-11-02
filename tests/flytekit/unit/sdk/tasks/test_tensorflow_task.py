@@ -1,9 +1,9 @@
 import datetime as _datetime
 
-import flytekit.models.core.types
 from flytekit.common import constants as _common_constants
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import tensorflow_task as _tensorflow_task
+from flytekit.models import types as _type_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk.tasks import inputs, outputs, tensorflow_task
 from flytekit.sdk.types import Types
@@ -25,12 +25,12 @@ def test_simple_tensorflow_task():
     assert isinstance(simple_tensorflow_task, _tensorflow_task.SdkTensorFlowTask)
     assert isinstance(simple_tensorflow_task, _sdk_runnable.SdkRunnableTask)
     assert simple_tensorflow_task.interface.inputs["in1"].description == ""
-    assert simple_tensorflow_task.interface.inputs["in1"].type == flytekit.models.core.types.LiteralType(
-        simple=flytekit.models.core.types.SimpleType.INTEGER
+    assert simple_tensorflow_task.interface.inputs["in1"].type == _type_models.LiteralType(
+        simple=_type_models.SimpleType.INTEGER
     )
     assert simple_tensorflow_task.interface.outputs["out1"].description == ""
-    assert simple_tensorflow_task.interface.outputs["out1"].type == flytekit.models.core.types.LiteralType(
-        simple=flytekit.models.core.types.SimpleType.STRING
+    assert simple_tensorflow_task.interface.outputs["out1"].type == _type_models.LiteralType(
+        simple=_type_models.SimpleType.STRING
     )
     assert simple_tensorflow_task.type == _common_constants.SdkTaskType.TENSORFLOW_TASK
     assert simple_tensorflow_task.task_function_name == "simple_tensorflow_task"

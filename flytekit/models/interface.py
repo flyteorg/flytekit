@@ -3,15 +3,15 @@ import typing
 import six as _six
 from flyteidl.core import interface_pb2 as _interface_pb2
 
-import flytekit.models.core.types
 from flytekit.models import common as _common
-from flytekit.models.core import literals as _literals
+from flytekit.models import literals as _literals
+from flytekit.models import types as _types
 
 
 class Variable(_common.FlyteIdlEntity):
     def __init__(self, type, description):
         """
-        :param flytekit.models.core.types.LiteralType type: This describes the type of value that must be provided to
+        :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
             satisfy this variable.
         :param Text description: This is a help string that can provide context for what this variable means in relation
             to a task or workflow.
@@ -23,7 +23,7 @@ class Variable(_common.FlyteIdlEntity):
     def type(self):
         """
         This describes the type of value that must be provided to satisfy this variable.
-        :rtype: flytekit.models.core.types.LiteralType
+        :rtype: flytekit.models.types.LiteralType
         """
         return self._type
 
@@ -48,7 +48,7 @@ class Variable(_common.FlyteIdlEntity):
         :rtype: Variable
         """
         return cls(
-            type=flytekit.models.core.types.LiteralType.from_flyte_idl(variable_proto.type),
+            type=_types.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
         )
 

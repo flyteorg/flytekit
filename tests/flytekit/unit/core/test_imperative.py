@@ -13,7 +13,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow, get_promise, workflow
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
-from flytekit.models.core import literals as literal_models
+from flytekit.models import literals as literal_models
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 

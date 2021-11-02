@@ -1,7 +1,7 @@
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
-from flytekit.models.plugins import task as _task_models
+from flytekit.models import task as _task_models
 
 
 class SdkRunnablePytorchContainer(_sdk_runnable.SdkRunnableContainer):

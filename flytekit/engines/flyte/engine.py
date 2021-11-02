@@ -8,8 +8,6 @@ from deprecated import deprecated as _deprecated
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 import flytekit
-import flytekit.models.admin.common
-import flytekit.models.admin.launch_plan
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
@@ -24,14 +22,14 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines import common as _common_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
+from flytekit.models import common as _common_models
+from flytekit.models import execution as _execution_models
+from flytekit.models import literals as _literals
+from flytekit.models import task as _task_models
 from flytekit.models.admin import common as _common
-from flytekit.models.admin import execution as _execution_models
 from flytekit.models.admin import workflow as _workflow_model
-from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
-from flytekit.models.admin.task import TaskSpec as _taskSpec
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.core import literals as _literals
 
 
 class _FlyteClientManager(object):
@@ -162,7 +160,9 @@ class FlyteEngineFactory(_common_engine.BaseExecutionEngineFactory):
                 _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_launch_plan(launch_plan_id)
         else:
-            named_entity_id = _namedEntityIdentifier(launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name)
+            named_entity_id = _common_models.NamedEntityIdentifier(
+                launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
+            )
             return _FlyteClientManager(
                 _platform_config.URL.get(), insecure=_platform_config.INSECURE.get()
             ).client.get_active_launch_plan(named_entity_id)
@@ -317,7 +317,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
     def register(self, identifier):
         client = _FlyteClientManager(_platform_config.URL.get(), insecure=_platform_config.INSECURE.get()).client
         try:
-            client.create_task(identifier, _taskSpec(self.sdk_task))
+            client.create_task(identifier, _task_models.TaskSpec(self.sdk_task))
         except _user_exceptions.FlyteEntityAlreadyExistsException:
             pass
 
@@ -426,7 +426,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
             notifications.
         :param flytekit.models.common.Labels label_overrides:
         :param flytekit.models.common.Annotations annotation_overrides:
-        :param flytekit.models.admin.common.AuthRole auth_role:
+        :param flytekit.models.common.AuthRole auth_role:
         :rtype: flytekit.models.execution.Execution
         """
         disable_all = notification_overrides == []
@@ -446,7 +446,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                     "Please update your config to use `assumable_iam_role` instead"
                 )
                 assumable_iam_role = _sdk_config.ROLE.get()
-            auth_role = flytekit.models.admin.common.AuthRole(
+            auth_role = _common_models.AuthRole(
                 assumable_iam_role=assumable_iam_role,
                 kubernetes_service_account=kubernetes_service_account,
             )

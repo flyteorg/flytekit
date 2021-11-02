@@ -21,7 +21,7 @@ from flytekit.configuration.internal import IMAGE as _IMAGE
 from flytekit.configuration.internal import PROJECT as _PROJECT
 from flytekit.configuration.internal import VERSION as _VERSION
 from flytekit.configuration.internal import look_up_version_from_image_tag as _look_up_version_from_image_tag
-from flytekit.models.admin import launch_plan as _launch_plan_model
+from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
 

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Generic, Type, TypeVar, Union
 
-import flytekit.models.core.task
 from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager, logger
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models.core import dynamic_job as _dynamic_job
-from flytekit.models.core import literals as _literal_models
+from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_model
 
 
 class ExecutableTemplateShimTask(object):
@@ -34,16 +34,14 @@ class ExecutableTemplateShimTask(object):
     that the ``entrypoint.py`` can execute, even though this class doesn't inherit from ``PythonTask``.
     """
 
-    def __init__(
-        self, tt: flytekit.models.core.task.TaskTemplate, executor_type: Type[ShimTaskExecutor], *args, **kwargs
-    ):
+    def __init__(self, tt: _task_model.TaskTemplate, executor_type: Type[ShimTaskExecutor], *args, **kwargs):
         self._executor_type = executor_type
         self._executor = executor_type()
         self._task_template = tt
         super().__init__(*args, **kwargs)
 
     @property
-    def task_template(self) -> flytekit.models.core.task.TaskTemplate:
+    def task_template(self) -> _task_model.TaskTemplate:
         return self._task_template
 
     @property
@@ -151,7 +149,7 @@ T = TypeVar("T")
 
 
 class ShimTaskExecutor(TrackedInstance, Generic[T]):
-    def execute_from_model(self, tt: flytekit.models.core.task.TaskTemplate, **kwargs) -> Any:
+    def execute_from_model(self, tt: _task_model.TaskTemplate, **kwargs) -> Any:
         """
         This function must be overridden and is where all the business logic for running a task should live. Keep in
         mind that you're only working with the ``TaskTemplate``. You won't have access to any information in the task

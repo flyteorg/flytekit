@@ -1,9 +1,10 @@
 import logging as _logging
 from typing import Dict
 
-import flytekit.models.core.task
+import flytekit
 from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.models.admin import launch_plan as _launch_plan_model
+from flytekit.models import launch_plan as _launch_plan_model
+from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import identifier as _identifier
 
@@ -28,7 +29,7 @@ class FlyteTaskNode(_workflow_model.TaskNode):
     def promote_from_model(
         cls,
         base_model: _workflow_model.TaskNode,
-        tasks: Dict[_identifier.Identifier, flytekit.models.core.task.TaskTemplate],
+        tasks: Dict[_identifier.Identifier, _task_model.TaskTemplate],
     ) -> "FlyteTaskNode":
         """
         Takes the idl wrapper for a TaskNode and returns the hydrated Flytekit object for it by fetching it with the
@@ -97,7 +98,7 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         base_model: _workflow_model.WorkflowNode,
         sub_workflows: Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate],
         node_launch_plans: Dict[_identifier.Identifier, _launch_plan_model.LaunchPlanSpec],
-        tasks: Dict[_identifier.Identifier, flytekit.models.core.task.TaskTemplate],
+        tasks: Dict[_identifier.Identifier, _task_model.TaskTemplate],
     ) -> "FlyteWorkflowNode":
         from flytekit.remote import launch_plan as _launch_plan
         from flytekit.remote import workflow as _workflow

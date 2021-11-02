@@ -3,8 +3,6 @@ import typing
 
 from google.protobuf.json_format import MessageToDict
 
-import flytekit.models.core.task
-import flytekit.models.core.types
 from flytekit import __version__
 from flytekit.common import interface as _interface
 from flytekit.common.constants import SdkTaskType
@@ -12,8 +10,10 @@ from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.tasks.sagemaker.built_in_training_job_task import SdkBuiltinAlgorithmTrainingJobTask
 from flytekit.common.tasks.sagemaker.custom_training_job_task import CustomTrainingJobTask
 from flytekit.common.tasks.sagemaker.types import HyperparameterTuningJobConfig, ParameterRange
-from flytekit.models.core import interface as _interface_model
-from flytekit.models.core import literals as _literal_models
+from flytekit.models import interface as _interface_model
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
+from flytekit.models import types as _types_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.sagemaker import hpo_job as _hpo_job_model
 
@@ -79,9 +79,9 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
 
         super().__init__(
             type=SdkTaskType.SAGEMAKER_HYPERPARAMETER_TUNING_JOB_TASK,
-            metadata=flytekit.models.core.task.TaskMetadata(
-                runtime=flytekit.models.core.task.RuntimeMetadata(
-                    type=flytekit.models.core.task.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+            metadata=_task_models.TaskMetadata(
+                runtime=_task_models.RuntimeMetadata(
+                    type=_task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     version=__version__,
                     flavor="sagemaker",
                 ),
@@ -96,7 +96,7 @@ class SdkSimpleHyperparameterTuningJobTask(_sdk_task.SdkTask):
                 inputs=inputs,
                 outputs={
                     "model": _interface_model.Variable(
-                        type=flytekit.models.core.types.LiteralType(
+                        type=_types_models.LiteralType(
                             blob=_core_types.BlobType(
                                 format="",
                                 dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,

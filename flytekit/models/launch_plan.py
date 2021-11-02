@@ -1,12 +1,10 @@
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
 
 from flytekit.models import common as _common
-from flytekit.models.admin import common as _admin_common
-from flytekit.models.admin import schedule as _schedule
-from flytekit.models.admin.common import AuthRole
+from flytekit.models import interface as _interface
+from flytekit.models import literals as _literals
+from flytekit.models import schedule as _schedule
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.core import interface as _interface
-from flytekit.models.core import literals as _literals
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
@@ -14,7 +12,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         """
 
         :param flytekit.models.schedule.Schedule schedule: Schedule to execute the Launch Plan
-        :param list[flytekit.models.admin.common.Notification] notifications: List of notifications based on
+        :param list[flytekit.models.common.Notification] notifications: List of notifications based on
             execution status transitions
         """
         self._schedule = schedule
@@ -32,7 +30,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
     def notifications(self):
         """
         List of notifications based on Execution status transitions
-        :rtype: list[flytekit.models.admin.common.Notification]
+        :rtype: list[flytekit.models.common.Notification]
         """
         return self._notifications
 
@@ -56,7 +54,56 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
             schedule=_schedule.Schedule.from_flyte_idl(pb2_object.schedule)
             if pb2_object.HasField("schedule")
             else None,
-            notifications=[_admin_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
+            notifications=[_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
+        )
+
+
+class Auth(_common.FlyteIdlEntity):
+    def __init__(self, assumable_iam_role=None, kubernetes_service_account=None):
+        """
+        DEPRECATED. Do not use. Use flytekit.models.common.AuthRole instead
+        At most one of assumable_iam_role or kubernetes_service_account can be set.
+        :param Text assumable_iam_role: IAM identity with set permissions policies.
+        :param Text kubernetes_service_account: Provides an identity for workflow execution resources. Flyte deployment
+            administrators are responsible for handling permissions as they relate to the service account.
+        """
+        self._assumable_iam_role = assumable_iam_role
+        self._kubernetes_service_account = kubernetes_service_account
+
+    @property
+    def assumable_iam_role(self):
+        """
+        The IAM role to execute the workflow with
+        :rtype: Text
+        """
+        return self._assumable_iam_role
+
+    @property
+    def kubernetes_service_account(self):
+        """
+        The kubernetes service account to execute the workflow with
+        :rtype: Text
+        """
+        return self._kubernetes_service_account
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.launch_plan_pb2.Auth
+        """
+        return _launch_plan.Auth(
+            assumable_iam_role=self.assumable_iam_role if self.assumable_iam_role else None,
+            kubernetes_service_account=self.kubernetes_service_account if self.kubernetes_service_account else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.launch_plan_pb2.Auth pb2_object:
+        :rtype: Auth
+        """
+        return cls(
+            assumable_iam_role=pb2_object.assumable_iam_role,
+            kubernetes_service_account=pb2_object.kubernetes_service_account,
         )
 
 
@@ -67,10 +114,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         entity_metadata,
         default_inputs,
         fixed_inputs,
-        labels: _admin_common.Labels,
-        annotations: _admin_common.Annotations,
-        auth_role: AuthRole,
-        raw_output_data_config: _admin_common.RawOutputDataConfig,
+        labels: _common.Labels,
+        annotations: _common.Annotations,
+        auth_role: _common.AuthRole,
+        raw_output_data_config: _common.RawOutputDataConfig,
         max_parallelism=None,
     ):
         """
@@ -82,10 +129,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         :param flytekit.models.literals.LiteralMap fixed_inputs: Fixed, non-overridable inputs for the Launch Plan
         :param flytekit.models.common.Labels:
             Any custom kubernetes labels to apply to workflows executed by this launch plan.
-        :param flytekit.models.admin.common.Annotations annotations:
+        :param flytekit.models.common.Annotations annotations:
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.admin.common.AuthRole auth_role: The auth method with which to execute the workflow.
-        :param flytekit.models.admin.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
+        :param flytekit.models.common.AuthRole auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
             data like Blobs and Schemas.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
@@ -133,18 +180,18 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._fixed_inputs
 
     @property
-    def labels(self) -> _admin_common.Labels:
+    def labels(self) -> _common.Labels:
         """
         The labels to execute the workflow with
-        :rtype: flytekit.models.admin.common.Labels
+        :rtype: flytekit.models.common.Labels
         """
         return self._labels
 
     @property
-    def annotations(self) -> _admin_common.Annotations:
+    def annotations(self) -> _common.Annotations:
         """
         The annotations to execute the workflow with
-        :rtype: flytekit.models.admin.common.Annotations
+        :rtype: flytekit.models.common.Annotations
         """
         return self._annotations
 
@@ -152,7 +199,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def auth_role(self):
         """
         The authorization method with which to execute the workflow.
-        :rtype: flytekit.models.admin.common.AuthRole
+        :rtype: flytekit.models.common.AuthRole
         """
         return self._auth_role
 
@@ -160,7 +207,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def raw_output_data_config(self):
         """
         Where to store offloaded data like Blobs and Schemas
-        :rtype: flytekit.models.admin.common.RawOutputDataConfig
+        :rtype: flytekit.models.common.RawOutputDataConfig
         """
         return self._raw_output_data_config
 
@@ -193,23 +240,23 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         auth_role = None
         # First check the newer field, auth_role.
         if pb2.auth_role is not None and (pb2.auth_role.assumable_iam_role or pb2.auth_role.kubernetes_service_account):
-            auth_role = AuthRole.from_flyte_idl(pb2.auth_role)
+            auth_role = _common.AuthRole.from_flyte_idl(pb2.auth_role)
         # Fallback to the deprecated field.
         elif pb2.auth is not None:
             if pb2.auth.assumable_iam_role:
-                auth_role = AuthRole(assumable_iam_role=pb2.auth.assumable_iam_role)
+                auth_role = _common.AuthRole(assumable_iam_role=pb2.auth.assumable_iam_role)
             else:
-                auth_role = AuthRole(assumable_iam_role=pb2.auth.kubernetes_service_account)
+                auth_role = _common.AuthRole(assumable_iam_role=pb2.auth.kubernetes_service_account)
 
         return cls(
             workflow_id=_identifier.Identifier.from_flyte_idl(pb2.workflow_id),
             entity_metadata=LaunchPlanMetadata.from_flyte_idl(pb2.entity_metadata),
             default_inputs=_interface.ParameterMap.from_flyte_idl(pb2.default_inputs),
             fixed_inputs=_literals.LiteralMap.from_flyte_idl(pb2.fixed_inputs),
-            labels=_admin_common.Labels.from_flyte_idl(pb2.labels),
-            annotations=_admin_common.Annotations.from_flyte_idl(pb2.annotations),
+            labels=_common.Labels.from_flyte_idl(pb2.labels),
+            annotations=_common.Annotations.from_flyte_idl(pb2.annotations),
             auth_role=auth_role,
-            raw_output_data_config=_admin_common.RawOutputDataConfig.from_flyte_idl(pb2.raw_output_data_config),
+            raw_output_data_config=_common.RawOutputDataConfig.from_flyte_idl(pb2.raw_output_data_config),
             max_parallelism=pb2.max_parallelism,
         )
 
