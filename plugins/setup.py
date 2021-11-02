@@ -23,7 +23,7 @@ SOURCES = {
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-modin": "flytekit-modin",
-    # "flytekitplugins-xgboost": "flytekit-xgboost",
+    "flytekitplugins-xgboost": "flytekit-xgboost",
 }
 
 
