@@ -31,6 +31,7 @@ class BlobType(_common.FlyteIdlEntity):
     """
     This type represents offloaded data and is typically used for things like files.
     """
+
     class BlobDimensionality(object):
         SINGLE = _types_pb2.BlobType.SINGLE
         MULTIPART = _types_pb2.BlobType.MULTIPART
