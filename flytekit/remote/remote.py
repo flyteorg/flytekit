@@ -37,13 +37,20 @@ except ImportError:
 
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.clis.flyte_cli.main import _detect_default_config_file
+from flytekit.clis.sdk_in_container import serialize
 from flytekit.common import constants
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
 from flytekit.configuration import auth as auth_config
 from flytekit.configuration.internal import DOMAIN, PROJECT
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings, get_image_config
+from flytekit.core.context_manager import (
+    EntrypointSettings,
+    FlyteContextManager,
+    ImageConfig,
+    SerializationSettings,
+    get_image_config,
+)
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
@@ -527,6 +534,11 @@ class FlyteRemote(object):
                 self.image_config,
                 # https://github.com/flyteorg/flyte/issues/1359
                 env={internal.IMAGE.env_var: self.image_config.default_image.full},
+                entrypoint_settings=EntrypointSettings(
+                    path=os.path.join(
+                        serialize._DEFAULT_FLYTEKIT_VIRTUALENV_ROOT, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC
+                    )
+                ),
             ),
             entity=entity,
         )
