@@ -34,10 +34,10 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.loggers import logger
+from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.admin.task import TaskSpec as _taskSpec
-from flytekit.models.core import dynamic_job as _dynamic_job
-from flytekit.models.core import literals as _literal_models
 
 T = TypeVar("T")
 
@@ -222,9 +222,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 if isinstance(entity, ReferenceTask):
                     raise Exception("Reference tasks are currently unsupported within dynamic tasks")
 
-                if not isinstance(model, _taskSpec):
+                if not isinstance(model, task_models.TaskSpec):
                     raise TypeError(
-                        f"Unexpected type for serialized form of task. Expected {_taskSpec}, but got {type(model)}"
+                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
                     )
 
                 # Store the valid task template so that we can pass it to the

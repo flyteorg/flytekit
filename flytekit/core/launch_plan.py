@@ -3,17 +3,15 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Type
 
-import flytekit.models.admin.common
-import flytekit.models.admin.launch_plan
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_inputs_to_parameters, transform_signature_to_interface
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
-from flytekit.models.admin import common as _admin_common
-from flytekit.models.admin import schedule as _schedule_model
-from flytekit.models.core import interface as _interface_models
-from flytekit.models.core import literals as _literal_models
+from flytekit.models import common as _common_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import workflow as _workflow_model
 
 
@@ -111,11 +109,11 @@ class LaunchPlan(object):
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
-        notifications: List[_admin_common.Notification] = None,
-        labels: _admin_common.Labels = None,
-        annotations: _admin_common.Annotations = None,
-        raw_output_data_config: _admin_common.RawOutputDataConfig = None,
-        auth_role: flytekit.models.admin.common.AuthRole = None,
+        notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
@@ -177,11 +175,11 @@ class LaunchPlan(object):
         default_inputs: Dict[str, Any] = None,
         fixed_inputs: Dict[str, Any] = None,
         schedule: _schedule_model.Schedule = None,
-        notifications: List[_admin_common.Notification] = None,
-        labels: _admin_common.Labels = None,
-        annotations: _admin_common.Annotations = None,
-        raw_output_data_config: _admin_common.RawOutputDataConfig = None,
-        auth_role: flytekit.models.admin.common.AuthRole = None,
+        notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
     ) -> LaunchPlan:
         """
@@ -277,11 +275,11 @@ class LaunchPlan(object):
         parameters: _interface_models.ParameterMap,
         fixed_inputs: _literal_models.LiteralMap,
         schedule: _schedule_model.Schedule = None,
-        notifications: List[_admin_common.Notification] = None,
-        labels: _admin_common.Labels = None,
-        annotations: _admin_common.Annotations = None,
-        raw_output_data_config: _admin_common.RawOutputDataConfig = None,
-        auth_role: flytekit.models.admin.common.AuthRole = None,
+        notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
     ):
         self._name = name
@@ -336,19 +334,19 @@ class LaunchPlan(object):
         return self._schedule
 
     @property
-    def notifications(self) -> List[_admin_common.Notification]:
+    def notifications(self) -> List[_common_models.Notification]:
         return self._notifications
 
     @property
-    def labels(self) -> Optional[_admin_common.Labels]:
+    def labels(self) -> Optional[_common_models.Labels]:
         return self._labels
 
     @property
-    def annotations(self) -> Optional[_admin_common.Annotations]:
+    def annotations(self) -> Optional[_common_models.Annotations]:
         return self._annotations
 
     @property
-    def raw_output_data_config(self) -> Optional[_admin_common.RawOutputDataConfig]:
+    def raw_output_data_config(self) -> Optional[_common_models.RawOutputDataConfig]:
         return self._raw_output_data_config
 
     @property

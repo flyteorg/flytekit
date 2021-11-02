@@ -19,16 +19,16 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_jsonschema import JSONSchema
 
-import flytekit.models.core.types
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.loggers import logger
-from flytekit.models.core import interface as _interface_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.core.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
-from flytekit.models.core.types import LiteralType, SimpleType
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -576,7 +576,7 @@ class ListTransformer(TypeTransformer[T]):
         """
         try:
             sub_type = TypeEngine.to_literal_type(self.get_sub_type(t))
-            return flytekit.models.core.types.LiteralType(collection_type=sub_type)
+            return _type_models.LiteralType(collection_type=sub_type)
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
@@ -631,7 +631,7 @@ class DictTransformer(TypeTransformer[dict]):
             if tp[0] == str:
                 try:
                     sub_type = TypeEngine.to_literal_type(tp[1])
-                    return flytekit.models.core.types.LiteralType(map_value_type=sub_type)
+                    return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
         return _primitives.Generic.to_flyte_literal_type()
@@ -699,7 +699,7 @@ class TextIOTransformer(TypeTransformer[typing.TextIO]):
         )
 
     def get_literal_type(self, t: typing.TextIO) -> LiteralType:
-        return flytekit.models.core.types.LiteralType(
+        return _type_models.LiteralType(
             blob=self._blob_type(),
         )
 
@@ -733,7 +733,7 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
         )
 
     def get_literal_type(self, t: Type[typing.BinaryIO]) -> LiteralType:
-        return flytekit.models.core.types.LiteralType(
+        return _type_models.LiteralType(
             blob=self._blob_type(),
         )
 
@@ -904,7 +904,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "none",
             None,
-            flytekit.models.core.types.LiteralType(simple=flytekit.models.core.types.SimpleType.NONE),
+            _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
             lambda x: None,
             lambda x: None,
         )

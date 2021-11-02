@@ -181,10 +181,11 @@ from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
-from flytekit.models.admin.common import Annotations, AuthRole, Labels
+from flytekit.models.common import Annotations, AuthRole, Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
-from flytekit.models.core.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.core.types import BlobType, LiteralType
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, schema
 
 __version__ = "0.0.0+develop"

@@ -15,7 +15,7 @@ from flytekit.common.tasks import task as _task
 from flytekit.common.tasks import tensorflow_task as _sdk_tensorflow_tasks
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.contrib.notebook import tasks as _nb_tasks
-from flytekit.models.core import interface as _interface_model
+from flytekit.models import interface as _interface_model
 from flytekit.sdk.spark_types import SparkType as _spark_type
 
 

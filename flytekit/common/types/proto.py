@@ -9,12 +9,12 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.reflection import GeneratedProtocolMessageType
 from google.protobuf.struct_pb2 import Struct
 
-import flytekit.models.core.types
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
+from flytekit.models import literals as _literals
+from flytekit.models import types as _idl_types
 from flytekit.models.common import FlyteIdlEntity, FlyteType
-from flytekit.models.core import literals as _literals
-from flytekit.models.core.types import LiteralType
+from flytekit.models.types import LiteralType
 
 ProtobufT = Type[_proto_reflection.GeneratedProtocolMessageType]
 
@@ -118,11 +118,9 @@ class Protobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
     @classmethod
     def to_flyte_literal_type(cls):
         """
-        :rtype: flytekit.models.core.types.LiteralType
+        :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(
-            simple=flytekit.models.core.types.SimpleType.BINARY, metadata={cls.PB_FIELD_KEY: cls.descriptor}
-        )
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.BINARY, metadata={cls.PB_FIELD_KEY: cls.descriptor})
 
     @classmethod
     def promote_from_model(cls, literal_model):
@@ -244,9 +242,7 @@ class GenericProtobuf(_base_sdk_types.FlyteSdkValue, metaclass=ProtobufType):
         """
         :rtype: flytekit.models.types.LiteralType
         """
-        return flytekit.models.core.types.LiteralType(
-            simple=flytekit.models.core.types.SimpleType.STRUCT, metadata={cls.PB_FIELD_KEY: cls.descriptor}
-        )
+        return _idl_types.LiteralType(simple=_idl_types.SimpleType.STRUCT, metadata={cls.PB_FIELD_KEY: cls.descriptor})
 
     @classmethod
     def promote_from_model(cls, literal_model):

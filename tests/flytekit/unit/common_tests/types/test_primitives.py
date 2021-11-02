@@ -3,14 +3,14 @@ import datetime
 import pytest
 from dateutil import tz
 
-import flytekit.models.core.types
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import base_sdk_types, primitives
+from flytekit.models import types as literal_types
 
 
 def test_integer():
     # Check type specification
-    assert primitives.Integer.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.INTEGER
+    assert primitives.Integer.to_flyte_literal_type().simple == literal_types.SimpleType.INTEGER
 
     # Test value behavior
     obj = primitives.Integer.from_python_std(1)
@@ -45,7 +45,7 @@ def test_integer():
 
 def test_float():
     # Check type specification
-    assert primitives.Float.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.FLOAT
+    assert primitives.Float.to_flyte_literal_type().simple == literal_types.SimpleType.FLOAT
 
     # Test value behavior
     obj = primitives.Float.from_python_std(1.0)
@@ -80,7 +80,7 @@ def test_float():
 
 def test_boolean():
     # Check type specification
-    assert primitives.Boolean.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.BOOLEAN
+    assert primitives.Boolean.to_flyte_literal_type().simple == literal_types.SimpleType.BOOLEAN
 
     # Test value behavior
     obj = primitives.Boolean.from_python_std(True)
@@ -119,7 +119,7 @@ def test_boolean():
 
 def test_string():
     # Check type specification
-    assert primitives.String.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.STRING
+    assert primitives.String.to_flyte_literal_type().simple == literal_types.SimpleType.STRING
 
     # Test value behavior
     obj = primitives.String.from_python_std("abc")
@@ -172,7 +172,7 @@ class UTC(datetime.tzinfo):
 
 def test_datetime():
     # Check type specification
-    assert primitives.Datetime.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.DATETIME
+    assert primitives.Datetime.to_flyte_literal_type().simple == literal_types.SimpleType.DATETIME
 
     # Test value behavior
     dt = datetime.datetime.now(tz=tz.UTC)
@@ -205,7 +205,7 @@ def test_datetime():
 
 def test_timedelta():
     # Check type specification
-    assert primitives.Timedelta.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.DURATION
+    assert primitives.Timedelta.to_flyte_literal_type().simple == literal_types.SimpleType.DURATION
 
     # Test value behavior
     obj = primitives.Timedelta.from_python_std(datetime.timedelta(seconds=1))
@@ -258,7 +258,7 @@ def test_void():
 
 def test_generic():
     # Check type specification
-    assert primitives.Generic.to_flyte_literal_type().simple == flytekit.models.core.types.SimpleType.STRUCT
+    assert primitives.Generic.to_flyte_literal_type().simple == literal_types.SimpleType.STRUCT
 
     # Test value behavior
     d = {"a": [1, 2, 3], "b": "abc", "c": 1, "d": {"a": 1}}

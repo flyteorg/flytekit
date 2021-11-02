@@ -10,7 +10,7 @@ from flytekit.common.tasks import task as _task
 from flytekit.common.tasks.presto_task import SdkPrestoTask
 from flytekit.common.types import primitives
 from flytekit.configuration import TemporaryConfiguration
-from flytekit.models.admin import task as _task_models
+from flytekit.models import task as _task_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
