@@ -98,3 +98,10 @@ class FlyteCustomIdlEntity(FlyteIdlEntity):
         :rtype: dict[Text, T]
         """
         pass
+
+
+from flytekit.models.admin.common import Labels, Annotations  # noqa
+
+
+
+
