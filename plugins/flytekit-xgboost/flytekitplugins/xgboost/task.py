@@ -116,11 +116,7 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
         if not (train_key and test_key):
             raise ValueError("Must have train and test inputs")
 
-        dtrain = None
-        dvalid = None
-        dtest = None
-
-        dataset_vars = {train_key: dtrain, test_key: dtest, validation_key: dvalid}
+        dataset_vars = {}
 
         for each_key in [train_key, test_key, validation_key]:
             if each_key:
@@ -144,7 +140,11 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
                 else:
                     raise ValueError(f"Invalid type for {each_key} input")
 
-        model, evals_result = self.train(dtrain=dataset_vars[train_key], dvalid=dataset_vars[validation_key])
+        print(dataset_vars)
+
+        model, evals_result = self.train(
+            dtrain=dataset_vars[train_key], dvalid=dataset_vars[validation_key] if validation_key else None
+        )
         predictions = self.test(booster_model=model, dtest=dataset_vars[test_key])
 
         return model, predictions, evals_result
