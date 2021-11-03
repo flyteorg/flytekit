@@ -9,7 +9,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask
 from flytekit.extend import SerializationSettings, TaskPlugins
-from flytekit.models import task as _task_model
+from .models import TensorFlowJob
 
 
 @dataclass
@@ -50,7 +50,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        job = _task_model.TensorFlowJob(
+        job = TensorFlowJob(
             workers_count=self.task_config.num_workers,
             ps_replicas_count=self.task_config.num_ps_replicas,
             chief_replicas_count=self.task_config.num_chief_replicas,
