@@ -10,7 +10,7 @@ import flytekit
 from flytekit import task
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.extend import Image, ImageConfig, SerializationSettings
-from flytekit.models.sagemaker.training_job import (
+from flytekitplugins.sagemaker.models.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
     DistributedProtocol,
