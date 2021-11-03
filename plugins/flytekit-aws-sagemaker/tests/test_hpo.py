@@ -13,14 +13,14 @@ from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask
 
 from flytekit import FlyteContext
 from flytekit.common.types.primitives import Generic
-from flytekit.models.sagemaker.hpo_job import (
+from flytekitplugins.awssagemaker.models.hpo_job import (
     HyperparameterTuningJobConfig,
     HyperparameterTuningObjective,
     HyperparameterTuningObjectiveType,
     TrainingJobEarlyStoppingType,
 )
-from flytekit.models.sagemaker.parameter_ranges import IntegerParameterRange, ParameterRangeOneOf
-from flytekit.models.sagemaker.training_job import AlgorithmName, AlgorithmSpecification, TrainingJobResourceConfig
+from flytekitplugins.awssagemaker.models.parameter_ranges import IntegerParameterRange, ParameterRangeOneOf
+from flytekitplugins.awssagemaker.models.training_job import AlgorithmName, AlgorithmSpecification, TrainingJobResourceConfig
 
 from .test_training import _get_reg_settings
 
