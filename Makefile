@@ -48,7 +48,6 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 .PHONY: test
 test: lint ## Run tests
 	pytest tests/flytekit/unit
-	pytest tests/scripts
 
 .PHONY: unit_test
 unit_test:
