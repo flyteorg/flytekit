@@ -9,10 +9,6 @@ from flytekitplugins.awssagemaker.hpo import (
     ParameterRangesTransformer,
     SagemakerHPOTask,
 )
-from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
-
-from flytekit import FlyteContext
-from flytekit.common.types.primitives import Generic
 from flytekitplugins.awssagemaker.models.hpo_job import (
     HyperparameterTuningJobConfig,
     HyperparameterTuningObjective,
@@ -20,7 +16,15 @@ from flytekitplugins.awssagemaker.models.hpo_job import (
     TrainingJobEarlyStoppingType,
 )
 from flytekitplugins.awssagemaker.models.parameter_ranges import IntegerParameterRange, ParameterRangeOneOf
-from flytekitplugins.awssagemaker.models.training_job import AlgorithmName, AlgorithmSpecification, TrainingJobResourceConfig
+from flytekitplugins.awssagemaker.models.training_job import (
+    AlgorithmName,
+    AlgorithmSpecification,
+    TrainingJobResourceConfig,
+)
+from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
+
+from flytekit import FlyteContext
+from flytekit.common.types.primitives import Generic
 
 from .test_training import _get_reg_settings
 

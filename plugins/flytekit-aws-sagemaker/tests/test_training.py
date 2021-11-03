@@ -5,17 +5,17 @@ import tempfile
 import pytest
 from flytekitplugins.awssagemaker.distributed_training import setup_envars_for_testing
 from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
-
-import flytekit
-from flytekit import task
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.extend import Image, ImageConfig, SerializationSettings
 from flytekitplugins.sagemaker.models.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
     DistributedProtocol,
     TrainingJobResourceConfig,
 )
+
+import flytekit
+from flytekit import task
+from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.extend import Image, ImageConfig, SerializationSettings
 
 
 def _get_reg_settings():

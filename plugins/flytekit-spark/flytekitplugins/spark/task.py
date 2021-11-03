@@ -9,8 +9,9 @@ from pyspark.sql import SparkSession
 from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.extend import ExecutionState, SerializationSettings, TaskPlugins
-from .models import SparkJob
 from flytekit.sdk.spark_types import SparkType
+
+from .models import SparkJob
 
 
 @dataclass

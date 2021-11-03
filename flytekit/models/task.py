@@ -609,6 +609,7 @@ class SparkJob(_common.FlyteIdlEntity):
     This model is deprecated and will be removed in 1.0.0. Please use the definition in the
     flytekit spark plugin instead.
     """
+
     def __init__(
         self,
         spark_type,
@@ -1107,6 +1108,7 @@ class PyTorchJob(_common.FlyteIdlEntity):
     This model is deprecated and will be removed in 1.0.0. Please use the definition in the
     flytekit kfpytorch plugin instead.
     """
+
     def __init__(self, workers_count):
         self._workers_count = workers_count
 

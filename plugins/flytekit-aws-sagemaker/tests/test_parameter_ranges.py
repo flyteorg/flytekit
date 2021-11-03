@@ -1,7 +1,6 @@
 import unittest
 
 import pytest
-
 from flytekitplugins.sagemaker.models import parameter_ranges
 
 
