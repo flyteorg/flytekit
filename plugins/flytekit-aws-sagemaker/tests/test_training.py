@@ -5,7 +5,7 @@ import tempfile
 import pytest
 from flytekitplugins.awssagemaker.distributed_training import setup_envars_for_testing
 from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
-from flytekitplugins.sagemaker.models.training_job import (
+from flytekitplugins.awssagemaker.models.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
     DistributedProtocol,

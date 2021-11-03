@@ -1,4 +1,4 @@
-from flytekitplugins.sagemaker.models import hpo_job, training_job
+from flytekitplugins.awssagemaker.models import hpo_job, training_job
 
 
 def test_hyperparameter_tuning_objective():
