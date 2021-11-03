@@ -12,6 +12,10 @@ def test_spark_template_with_remote(mock_insecure, mock_url):
     def my_spark(a: str) -> int:
         return 10
 
+    @task
+    def my_python_task(a: str) -> int:
+        return 10
+
     mock_url.get.return_value = "localhost"
 
     mock_insecure.get.return_value = True
@@ -25,6 +29,12 @@ def test_spark_template_with_remote(mock_insecure, mock_url):
     remote.register(my_spark)
     serialized_spec = mock_client.create_task.call_args.kwargs["task_spec"]
 
-    # Check if the serialized task has mainApplicaitonFile field set.
+    # Check if the serialized spark task has mainApplicaitonFile field set.
     assert serialized_spec.template.custom["mainApplicationFile"]
     assert serialized_spec.template.custom["sparkConf"]
+
+    remote.register(my_python_task)
+    serialized_spec = mock_client.create_task.call_args.kwargs["task_spec"]
+
+    # Check if the serialized python task has no mainApplicaitonFile field set by default.
+    assert serialized_spec.template.custom is None
