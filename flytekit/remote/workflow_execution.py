@@ -15,7 +15,6 @@ class FlyteWorkflowExecution(_execution_models.Execution):
         self._node_executions = None
         self._inputs = None
         self._outputs = None
-        self._closure = None
 
     @property
     def node_executions(self) -> Dict[str, _nodes.FlyteNodeExecution]:

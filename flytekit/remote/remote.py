@@ -1030,12 +1030,9 @@ class FlyteRemote(object):
         lp_id = execution.spec.launch_plan
         if execution.spec.launch_plan.resource_type == ResourceType.TASK:
             flyte_entity = self.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
-        elif execution.spec.launch_plan.resource_type in {ResourceType.WORKFLOW, ResourceType.LAUNCH_PLAN}:
-            flyte_entity = self.fetch_workflow(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
         else:
-            raise user_exceptions.FlyteAssertion(
-                f"Resource type {execution.spec.launch_plan.resource_type} not recognized. Must be a TASK or WORKFLOW."
-            )
+            wf_id = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version).workflow_id
+            flyte_entity = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
 
         # sync closure, node executions, and inputs/outputs
         execution._closure = self.client.get_execution(execution.id).closure
