@@ -48,12 +48,10 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 .PHONY: test
 test: lint ## Run tests
 	pytest tests/flytekit/unit
-	pytest tests/scripts
 
 .PHONY: unit_test
 unit_test:
 	pytest tests/flytekit/unit
-	pytest tests/scripts
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools

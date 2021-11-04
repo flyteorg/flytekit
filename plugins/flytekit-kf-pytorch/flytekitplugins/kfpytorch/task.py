@@ -9,7 +9,8 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask
 from flytekit.extend import SerializationSettings, TaskPlugins
-from flytekit.models import task as _task_model
+
+from .models import PyTorchJob
 
 
 @dataclass
@@ -44,7 +45,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        job = _task_model.PyTorchJob(workers_count=self.task_config.num_workers)
+        job = PyTorchJob(workers_count=self.task_config.num_workers)
         return MessageToDict(job.to_flyte_idl())
 
 

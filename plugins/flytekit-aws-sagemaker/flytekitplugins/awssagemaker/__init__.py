@@ -1,18 +1,18 @@
-from flytekit.models.sagemaker.hpo_job import (
+from flytekitplugins.awssagemaker.models.hpo_job import (
     HyperparameterTuningJobConfig,
     HyperparameterTuningObjective,
     HyperparameterTuningObjectiveType,
     HyperparameterTuningStrategy,
     TrainingJobEarlyStoppingType,
 )
-from flytekit.models.sagemaker.parameter_ranges import (
+from flytekitplugins.awssagemaker.models.parameter_ranges import (
     CategoricalParameterRange,
     ContinuousParameterRange,
     HyperparameterScalingType,
     IntegerParameterRange,
     ParameterRangeOneOf,
 )
-from flytekit.models.sagemaker.training_job import (
+from flytekitplugins.awssagemaker.models.training_job import (
     AlgorithmName,
     AlgorithmSpecification,
     DistributedProtocol,
