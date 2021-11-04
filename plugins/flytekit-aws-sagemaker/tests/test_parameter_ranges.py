@@ -1,8 +1,7 @@
 import unittest
 
 import pytest
-
-from flytekit.models.sagemaker import parameter_ranges
+from flytekitplugins.awssagemaker.models import parameter_ranges
 
 
 # assert statements cannot be written inside lambda expressions. This is a convenient function to work around that.

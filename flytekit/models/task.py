@@ -6,9 +6,7 @@ from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
-from flyteidl.plugins import pytorch_pb2 as _pytorch_task
 from flyteidl.plugins import spark_pb2 as _spark_task
-from flyteidl.plugins import tensorflow_pb2 as _tensorflow_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
@@ -605,6 +603,11 @@ class CompiledTask(_common.FlyteIdlEntity):
 
 
 class SparkJob(_common.FlyteIdlEntity):
+    """
+    This model is deprecated and will be removed in 1.0.0. Please use the definition in the
+    flytekit spark plugin instead.
+    """
+
     def __init__(
         self,
         spark_type,
@@ -1095,56 +1098,4 @@ class SidecarJob(_common.FlyteIdlEntity):
             primary_container_name=pb2_object.primary_container_name,
             annotations=pb2_object.annotations,
             labels=pb2_object.labels,
-        )
-
-
-class PyTorchJob(_common.FlyteIdlEntity):
-    def __init__(self, workers_count):
-        self._workers_count = workers_count
-
-    @property
-    def workers_count(self):
-        return self._workers_count
-
-    def to_flyte_idl(self):
-        return _pytorch_task.DistributedPyTorchTrainingTask(
-            workers=self.workers_count,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        return cls(
-            workers_count=pb2_object.workers,
-        )
-
-
-class TensorFlowJob(_common.FlyteIdlEntity):
-    def __init__(self, workers_count, ps_replicas_count, chief_replicas_count):
-        self._workers_count = workers_count
-        self._ps_replicas_count = ps_replicas_count
-        self._chief_replicas_count = chief_replicas_count
-
-    @property
-    def workers_count(self):
-        return self._workers_count
-
-    @property
-    def ps_replicas_count(self):
-        return self._ps_replicas_count
-
-    @property
-    def chief_replicas_count(self):
-        return self._chief_replicas_count
-
-    def to_flyte_idl(self):
-        return _tensorflow_task.DistributedTensorflowTrainingTask(
-            workers=self.workers_count, ps_replicas=self.ps_replicas_count, chief_replicas=self.chief_replicas_count
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        return cls(
-            workers_count=pb2_object.workers,
-            ps_replicas_count=pb2_object.ps_replicas,
-            chief_replicas_count=pb2_object.chief_replicas,
         )

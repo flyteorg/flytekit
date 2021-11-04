@@ -9,8 +9,9 @@ from pyspark.sql import SparkSession
 from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.extend import ExecutionState, SerializationSettings, TaskPlugins
-from flytekit.models import task as _task_model
 from flytekit.sdk.spark_types import SparkType
+
+from .models import SparkJob
 
 
 @dataclass
@@ -91,7 +92,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         self.sess: Optional[SparkSession] = None
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        job = _task_model.SparkJob(
+        job = SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
             application_file="local://" + settings.entrypoint_settings.path if settings.entrypoint_settings else "",

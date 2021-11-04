@@ -1,3 +1,8 @@
+"""
+This is a deprecated module. Model files for plugins should go alongside the microlib.
+See ``plugins/flytekit-kf-pytorch/flytekitplugins/kfpytorch/models.py`` as an example.
+"""
+
 from flyteidl.plugins import qubole_pb2 as _qubole
 
 from flytekit.models import common as _common
