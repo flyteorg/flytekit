@@ -24,8 +24,12 @@ def init():
     }
     cookiecutter(
         # TODO move this to the main repo. Possibly maintain a branch before cutting over the documentation.
-        "https://github.com/eapolinario/flytekit-python-template.git",
+        "https://github.com/flyteorg/flytekit-python-template.git",
+        # TODO: remove this once we make the transition to cookie-cutter official.
+        checkout="cookie-cutter",
         no_input=True,
+        # We do not want to clobber existing files/directories.
+        overwrite_if_exists=False,
         extra_context=config,
         # By specifying directory we can have multiple templates in the same repository,
         # as described in https://cookiecutter.readthedocs.io/en/1.7.2/advanced/directories.html.
