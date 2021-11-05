@@ -13,7 +13,7 @@ def init(template, project_name):
         "What should we call your application? This serves as the top level package where your workflows will live.",
         default="myapp",
     )
-    workflow_name = click.prompt("What should be the name of your example workflow?", default="workflow_example")
+    workflow_name = click.prompt("What should be the name of your example workflow?", default="my_wf")
 
     config = {
         "project_name": project_name,
