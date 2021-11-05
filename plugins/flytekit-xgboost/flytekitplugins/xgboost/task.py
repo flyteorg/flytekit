@@ -10,6 +10,7 @@ from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
 from flytekit.types.file import JoblibSerializedFile
 from flytekit.types.file.file import FlyteFile
+from flytekit.types.schema.types import FlyteSchema
 
 
 @dataclass_json
@@ -71,30 +72,31 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
         )
 
     # Train method
-    def train(self, dtrain, dvalid, **kwargs) -> Tuple[str, Dict[str, Dict[str, List[float]]]]:
+    def train(
+        self, dtrain: xgboost.DMatrix, dvalid: xgboost.DMatrix, **kwargs
+    ) -> Tuple[str, Dict[str, Dict[str, List[float]]]]:
         evals_result = {}
         # if validation data is provided, then populate evals and evals_result
-        booster_model = (
-            xgboost.train(
+        if dvalid:
+            booster_model = xgboost.train(
                 params=self._hyperparameters,
                 dtrain=dtrain,
                 **asdict(self._train_parameters if self._train_parameters else TrainParameters()),
                 evals=[(dvalid, "validation")],
                 evals_result=evals_result,
             )
-            if dvalid
-            else xgboost.train(
+        else:
+            booster_model = xgboost.train(
                 params=self._hyperparameters,
                 dtrain=dtrain,
                 **asdict(self._train_parameters if self._train_parameters else TrainParameters()),
             )
-        )
         fname = "booster_model.joblib.dat"
         joblib.dump(booster_model, fname)
         return fname, evals_result
 
     # Test method
-    def test(self, booster_model, dtest, **kwargs) -> List[float]:
+    def test(self, booster_model: str, dtest: xgboost.DMatrix, **kwargs) -> List[float]:
         booster_model = joblib.load(booster_model)
         y_pred = booster_model.predict(dtest).tolist()
         return y_pred
@@ -121,14 +123,8 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
         for each_key in [train_key, test_key, validation_key]:
             if each_key:
                 dataset = kwargs[each_key]
-                if issubclass(self.python_interface.inputs[each_key], str):
-                    if "csv" in dataset:
-                        dataset_vars[each_key] = xgboost.DMatrix(
-                            dataset + "?format=csv&label_column=" + str(self._label_column)
-                        )
-                    else:
-                        dataset_vars[each_key] = xgboost.DMatrix(dataset)
-                elif issubclass(self.python_interface.inputs[each_key], FlyteFile):
+                # FlyteFile
+                if issubclass(self.python_interface.inputs[each_key], FlyteFile):
                     if FlyteContext.current_context().file_access.is_remote(dataset):
                         dataset.download()
                     if dataset.extension() == "csv":
@@ -137,6 +133,12 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
                         )
                     else:
                         dataset_vars[each_key] = xgboost.DMatrix(dataset.path)
+                # FlyteSchema
+                elif issubclass(self.python_interface.inputs[each_key], FlyteSchema):
+                    df = dataset.open().all()
+                    target = df[df.columns[self._label_column]]
+                    df = df.drop(df.columns[self._label_column], axis=1)
+                    dataset_vars[each_key] = xgboost.DMatrix(df.values, target.values)
                 else:
                     raise ValueError(f"Invalid type for {each_key} input")
 

@@ -12,6 +12,7 @@ from sklearn import model_selection
 import flytekit
 from flytekit import kwtypes, task, workflow
 from flytekit.types.file import CSVFile, FlyteFile, JoblibSerializedFile
+from flytekit.types.schema import FlyteSchema
 
 
 @dataclass_json
@@ -36,7 +37,7 @@ class CSVHyperparameters:
 
 
 def test_simple_model():
-    task_obj = XGBoostTask(
+    xgboost_trainer = XGBoostTask(
         name="test1",
         hyperparameters=asdict(Hyperparameters()),
         task_config=TrainParameters(num_boost_round=2),
@@ -48,10 +49,10 @@ def test_simple_model():
         train: FlyteFile = "https://raw.githubusercontent.com/dmlc/xgboost/master/demo/data/agaricus.txt.train",
         test: FlyteFile = "https://raw.githubusercontent.com/dmlc/xgboost/master/demo/data/agaricus.txt.test",
     ) -> List[float]:
-        _, predictions, _ = task_obj(train=train, test=test)
+        _, predictions, _ = xgboost_trainer(train=train, test=test)
         return predictions
 
-    assert task_obj.python_interface.inputs == {"train": FlyteFile, "test": FlyteFile}
+    assert xgboost_trainer.python_interface.inputs == {"train": FlyteFile, "test": FlyteFile}
     train_test_wf()
 
 
@@ -60,7 +61,7 @@ def test_csv_data():
     Note: For CSV training, the algorithm assumes that the CSV does not have a header record.
     To set the target variable, set the label_column parameter, which by default is 0.
     """
-    task_obj = XGBoostTask(
+    xgboost_trainer = XGBoostTask(
         name="test2",
         hyperparameters=asdict(CSVHyperparameters()),
         inputs=kwtypes(train_data=CSVFile, test_data=CSVFile),
@@ -118,33 +119,57 @@ def test_csv_data():
     @workflow
     def wf() -> wf_output:
         train_data, test_data = partition_data(dataset="abalone.data")
-        return task_obj(train_data=train_data, test_data=test_data)
+        return xgboost_trainer(train_data=train_data, test_data=test_data)
 
-    assert task_obj.python_interface.inputs == {"train_data": CSVFile, "test_data": CSVFile}
-    assert task_obj._label_column == 0
+    assert xgboost_trainer.python_interface.inputs == {"train_data": CSVFile, "test_data": CSVFile}
+    assert xgboost_trainer._label_column == 0
     wf()
 
 
-def test_str_data():
-    task_obj = XGBoostTask(
+def test_local_data():
+    xgboost_trainer = XGBoostTask(
         name="test3",
         hyperparameters=asdict(CSVHyperparameters()),
-        inputs=kwtypes(train_data=str, test_data=str),
+        inputs=kwtypes(train_data=CSVFile, test_data=CSVFile),
         label_column=0,
     )
 
     @workflow
-    def wf(train_data: str = "abalone_train.csv", test_data: str = "abalone_test.csv") -> List[float]:
-        _, predictions, _ = task_obj(train_data=train_data, test_data=test_data)
+    def wf(train_data: CSVFile = "abalone_train.csv", test_data: CSVFile = "abalone_test.csv") -> List[float]:
+        _, predictions, _ = xgboost_trainer(train_data=train_data, test_data=test_data)
         return predictions
 
-    assert task_obj.python_interface.inputs == {"train_data": str, "test_data": str}
+    assert xgboost_trainer.python_interface.inputs == {"train_data": CSVFile, "test_data": CSVFile}
+    wf()
+
+
+def test_schema_data():
+    """
+    Note: To set the target variable, set the label_column parameter, which by default is 0.
+    """
+    xgboost_trainer = XGBoostTask(
+        name="test4",
+        hyperparameters=asdict(CSVHyperparameters()),
+        inputs=kwtypes(train_data=FlyteSchema, test_data=FlyteSchema),
+        label_column=0,
+    )
+
+    @task
+    def csv_to_df(data: str) -> pd.DataFrame:
+        return pd.read_csv(data)
+
+    @workflow
+    def wf(train_data: str = "abalone_train.csv", test_data: str = "abalone_test.csv") -> List[float]:
+        _, predictions, _ = xgboost_trainer(train_data=csv_to_df(data=train_data), test_data=csv_to_df(data=test_data))
+        return predictions
+
+    assert xgboost_trainer.python_interface.inputs == {"train_data": FlyteSchema, "test_data": FlyteSchema}
     wf()
 
 
 def test_pipeline():
-    task_obj = XGBoostTask(
-        name="test4",
+    xgboost_trainer = XGBoostTask(
+        name="test5",
         hyperparameters=asdict(Hyperparameters()),
         task_config=TrainParameters(num_boost_round=2),
         inputs=kwtypes(train=FlyteFile, test=FlyteFile, validation=FlyteFile),
@@ -169,8 +194,8 @@ def test_pipeline():
         test: FlyteFile = "https://raw.githubusercontent.com/dmlc/xgboost/master/demo/data/agaricus.txt.test",
         validation: FlyteFile = "https://raw.githubusercontent.com/dmlc/xgboost/master/demo/data/agaricus.txt.test",
     ) -> wf_output:
-        model, predictions, evaluation_result = task_obj(train=train, test=test, validation=validation)
+        model, predictions, evaluation_result = xgboost_trainer(train=train, test=test, validation=validation)
         return model, estimate_accuracy(predictions=predictions, test=test), evaluation_result
 
-    assert task_obj.python_interface.inputs == {"train": FlyteFile, "test": FlyteFile, "validation": FlyteFile}
+    assert xgboost_trainer.python_interface.inputs == {"train": FlyteFile, "test": FlyteFile, "validation": FlyteFile}
     assert full_pipeline().accuracy >= 0.7
