@@ -69,7 +69,7 @@ mypy-extensions==0.4.3
     # via typing-inspect
 natsort==8.0.0
     # via flytekit
-numpy==1.21.3
+numpy==1.21.4
     # via
     #   matplotlib
     #   opencv-python

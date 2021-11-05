@@ -29,7 +29,7 @@ black==21.10b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.19.10
+boto3==1.19.11
     # via sagemaker-training
 botocore==1.22.11
     # via
@@ -190,7 +190,7 @@ nest-asyncio==1.5.1
     # via
     #   jupyter-client
     #   nbclient
-numpy==1.21.3
+numpy==1.21.4
     # via
     #   flytekit
     #   pandas
