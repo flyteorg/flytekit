@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Type
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.extend import SerializationSettings, SQLTask
-from flytekit.models.plugins.qubole import HiveQuery, QuboleHiveJob
+from flytekit.models.qubole import HiveQuery, QuboleHiveJob
 from flytekit.types.schema import FlyteSchema
 
 

@@ -7,8 +7,8 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
-from flytekit.models.core.types import OutputReference as _OutputReference
-from flytekit.models.core.types import SchemaType as _SchemaType
+from flytekit.models.types import OutputReference as _OutputReference
+from flytekit.models.types import SchemaType as _SchemaType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
@@ -206,6 +206,10 @@ class Binary(_common.FlyteIdlEntity):
 
 
 class BlobMetadata(_common.FlyteIdlEntity):
+    """
+    This is metadata for the Blob literal.
+    """
+
     def __init__(self, type):
         """
         :param flytekit.models.core.types.BlobType type: The type of the underlying blob
@@ -237,6 +241,9 @@ class BlobMetadata(_common.FlyteIdlEntity):
 class Blob(_common.FlyteIdlEntity):
     def __init__(self, metadata, uri):
         """
+        This literal model is used to represent binary data offloaded to some storage location which is
+        identifiable with a unique string. See :py:class:`flytekit.FlyteFile` as an example.
+
         :param BlobMetadata metadata:
         :param Text uri: The location of this blob
         """
@@ -361,7 +368,7 @@ class BindingData(_common.FlyteIdlEntity):
         :param Scalar scalar: [Optional] A simple scalar value.
         :param BindingDataCollection collection: [Optional] A collection of binding data. This allows nesting of
             binding data to any number of levels.
-        :param flytekit.models.core.types.OutputReference promise: [Optional] References an output promised by another node.
+        :param flytekit.models.types.OutputReference promise: [Optional] References an output promised by another node.
         :param BindingDataMap map: [Optional] A map of bindings. The key is always a string.
         """
         self._scalar = scalar
@@ -389,7 +396,7 @@ class BindingData(_common.FlyteIdlEntity):
     def promise(self):
         """
         [Optional] References an output promised by another node.
-        :rtype: flytekit.models.core.types.OutputReference
+        :rtype: flytekit.models.types.OutputReference
         """
         return self._promise
 
@@ -505,7 +512,7 @@ class Schema(_common.FlyteIdlEntity):
         A strongly typed schema that defines the interface of data retrieved from the underlying storage medium.
 
         :param Text uri:
-        :param flytekit.models.core.types.SchemaType type:
+        :param flytekit.models.types.SchemaType type:
         """
         self._uri = uri
         self._type = type
@@ -520,7 +527,7 @@ class Schema(_common.FlyteIdlEntity):
     @property
     def type(self):
         """
-        :rtype: flytekit.models.core.types.SchemaType
+        :rtype: flytekit.models.types.SchemaType
         """
         return self._type
 
@@ -721,6 +728,8 @@ class Scalar(_common.FlyteIdlEntity):
 class Literal(_common.FlyteIdlEntity):
     def __init__(self, scalar: Scalar = None, collection: LiteralCollection = None, map: LiteralMap = None):
         """
+        This IDL message represents a literal value in the Flyte ecosystem.
+
         :param Scalar scalar:
         :param LiteralCollection collection:
         :param LiteralMap map:

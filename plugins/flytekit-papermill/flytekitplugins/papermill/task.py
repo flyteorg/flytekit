@@ -13,7 +13,7 @@ from nbconvert import HTMLExporter
 from flytekit import FlyteContext, PythonInstanceTask
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
-from flytekit.models.core.literals import LiteralMap
+from flytekit.models.literals import LiteralMap
 from flytekit.types.file import HTMLPage, PythonNotebook
 
 T = typing.TypeVar("T")

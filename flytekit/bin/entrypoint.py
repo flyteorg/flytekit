@@ -37,11 +37,11 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.models.core import dynamic_job as _dynamic_job
+from flytekit.models import dynamic_job as _dynamic_job
+from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.core import literals as _literal_models
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
 

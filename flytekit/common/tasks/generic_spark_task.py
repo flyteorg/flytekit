@@ -3,7 +3,6 @@ import sys as _sys
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
-import flytekit.models.core.task
 from flytekit import __version__
 from flytekit.common import interface as _interface
 from flytekit.common.exceptions import scopes as _exception_scopes
@@ -12,10 +11,8 @@ from flytekit.common.tasks import task as _base_tasks
 from flytekit.common.types import helpers as _helpers
 from flytekit.common.types import primitives as _primitives
 from flytekit.configuration import internal as _internal_config
-from flytekit.models.core import literals as _literal_models
-from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
-from flytekit.models.core.task import TaskMetadata as _taskMetadata
-from flytekit.models.plugins import task as _task_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import task as _task_models
 
 input_types_supported = {
     _primitives.Integer,
@@ -77,10 +74,10 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
 
         super(SdkGenericSparkTask, self).__init__(
             task_type,
-            _taskMetadata(
+            _task_models.TaskMetadata(
                 discoverable,
-                _runtimeMetadata(
-                    _runtimeMetadata.RuntimeType.FLYTE_SDK,
+                _task_models.RuntimeMetadata(
+                    _task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                     __version__,
                     "spark",
                 ),
@@ -140,11 +137,11 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
             args.append("--{}".format(k))
             args.append("{{{{.Inputs.{}}}}}".format(k))
 
-        return flytekit.models.core.task.Container(
+        return _task_models.Container(
             image=_internal_config.IMAGE.get(),
             command=[],
             args=args,
-            resources=flytekit.models.core.task.Resources([], []),
+            resources=_task_models.Resources([], []),
             env=environment,
             config={},
         )

@@ -13,7 +13,7 @@ from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models.core import interface as _interface_models
+from flytekit.models import interface as _interface_models
 from flytekit.types.pickle import FlytePickle
 
 T = typing.TypeVar("T")

@@ -1,6 +1,6 @@
 import unittest
 
-from flytekit.models.sagemaker import training_job
+from flytekitplugins.awssagemaker.models import training_job
 
 
 def test_training_job_resource_config():

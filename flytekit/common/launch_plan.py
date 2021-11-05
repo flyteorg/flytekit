@@ -5,8 +5,6 @@ import uuid as _uuid
 import six as _six
 from deprecated import deprecated as _deprecated
 
-import flytekit.models.admin.common
-import flytekit.models.admin.launch_plan
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _promises
@@ -22,14 +20,13 @@ from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.engines.flyte import engine as _flyte_engine
-from flytekit.models.admin import common as _common
-from flytekit.models.admin import execution as _execution_models
-from flytekit.models.admin import launch_plan as _launch_plan_models
-from flytekit.models.admin import schedule as _schedule_model
-from flytekit.models.admin.common import NamedEntityIdentifier as _namedEntityIdentifier
+from flytekit.models import common as _common_models
+from flytekit.models import execution as _execution_models
+from flytekit.models import interface as _interface_models
+from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import schedule as _schedule_model
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.models.core import interface as _interface_models
-from flytekit.models.core import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_models
 
 
@@ -114,7 +111,9 @@ class SdkLaunchPlan(
         if launch_plan_id.version:
             lp = _flyte_engine.get_client().get_launch_plan(launch_plan_id)
         else:
-            named_entity_id = _namedEntityIdentifier(launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name)
+            named_entity_id = _common_models.NamedEntityIdentifier(
+                launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name
+            )
             lp = _flyte_engine.get_client().get_active_launch_plan(named_entity_id)
 
         sdk_lp = cls.promote_from_model(lp.spec)
@@ -169,7 +168,7 @@ class SdkLaunchPlan(
     @property
     def auth_role(self):
         """
-        :rtype: flytekit.models.admin.common.AuthRole
+        :rtype: flytekit.models.common.AuthRole
         """
         fixed_auth = super(SdkLaunchPlan, self).auth_role
         if fixed_auth is not None and (
@@ -185,7 +184,7 @@ class SdkLaunchPlan(
                 "Using deprecated `role` from config. Please update your config to use `assumable_iam_role` instead"
             )
             assumable_iam_role = _sdk_config.ROLE.get()
-        return flytekit.models.admin.common.AuthRole(
+        return _common_models.AuthRole(
             assumable_iam_role=assumable_iam_role,
             kubernetes_service_account=kubernetes_service_account,
         )
@@ -225,14 +224,14 @@ class SdkLaunchPlan(
     @property
     def raw_output_data_config(self):
         """
-        :rtype: flytekit.models.admin.common.RawOutputDataConfig
+        :rtype: flytekit.models.common.RawOutputDataConfig
         """
         raw_output_data_config = super(SdkLaunchPlan, self).raw_output_data_config
         if raw_output_data_config is not None and raw_output_data_config.output_location_prefix != "":
             return raw_output_data_config
 
         # If it was not set explicitly then let's use the value found in the configuration.
-        return _common.RawOutputDataConfig(_auth_config.RAW_OUTPUT_DATA_PREFIX.get())
+        return _common_models.RawOutputDataConfig(_auth_config.RAW_OUTPUT_DATA_PREFIX.get())
 
     @_exception_scopes.system_entry_point
     def validate(self):
@@ -310,10 +309,10 @@ class SdkLaunchPlan(
         :param list[flytekit.common.notifications.Notification] notification_overrides: [Optional] If specified, these
             are the notifications that will be honored for this execution.  An empty list signals to disable all
             notifications.
-        :param flytekit.models.admin.common.Labels label_overrides:
-        :param flytekit.models.admin.common.Annotations annotation_overrides:
+        :param flytekit.models.common.Labels label_overrides:
+        :param flytekit.models.common.Annotations annotation_overrides:
         :rtype: flytekit.common.workflow_execution.SdkWorkflowExecution
-        :param flytekit.models.admin.common.AuthRole auth_role:
+        :param flytekit.models.common.AuthRole auth_role:
         """
         # Kubernetes requires names starting with an alphabet for some resources.
         name = name or "f" + _uuid.uuid4().hex[:19]
@@ -408,13 +407,13 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
         :param Text role: Deprecated. IAM role to execute this launch plan with.
         :param flytekit.models.schedule.Schedule: Schedule to apply to this workflow.
         :param list[flytekit.models.common.Notification]: List of notifications to apply to this launch plan.
-        :param flytekit.models.admin.common.Labels labels: Any custom kubernetes labels to apply to workflows executed by this
+        :param flytekit.models.common.Labels labels: Any custom kubernetes labels to apply to workflows executed by this
             launch plan.
-        :param flytekit.models.admin.common.Annotations annotations: Any custom kubernetes annotations to apply to workflows
+        :param flytekit.models.common.Annotations annotations: Any custom kubernetes annotations to apply to workflows
             executed by this launch plan.
             Any custom kubernetes annotations to apply to workflows executed by this launch plan.
-        :param flytekit.models.admin.common.Authrole auth_role: The auth method with which to execute the workflow.
-        :param flytekit.models.admin.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
+        :param flytekit.models.common.Authrole auth_role: The auth method with which to execute the workflow.
+        :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Config for offloading data
         """
         if role and auth_role:
             raise ValueError("Cannot set both role and auth. Role is deprecated, use auth instead.")
@@ -423,7 +422,7 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
         default_inputs = default_inputs or {}
 
         if role:
-            auth_role = flytekit.models.admin.common.AuthRole(assumable_iam_role=role)
+            auth_role = _common_models.AuthRole(assumable_iam_role=role)
 
         # The constructor for SdkLaunchPlan sets the id to None anyways so we don't bother passing in an ID. The ID
         # should be set in one of three places,
@@ -446,10 +445,10 @@ class SdkRunnableLaunchPlan(_hash_mixin.HashOnReferenceMixin, SdkLaunchPlan):
                     if k in fixed_inputs
                 },
             ),
-            labels or _common.Labels({}),
-            annotations or _common.Annotations({}),
+            labels or _common_models.Labels({}),
+            annotations or _common_models.Annotations({}),
             auth_role,
-            raw_output_data_config or _common.RawOutputDataConfig(""),
+            raw_output_data_config or _common_models.RawOutputDataConfig(""),
         )
         self._interface = _interface.TypedInterface(
             {k: v.var for k, v in _six.iteritems(default_inputs)},

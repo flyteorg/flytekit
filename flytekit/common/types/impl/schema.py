@@ -4,7 +4,6 @@ import uuid as _uuid
 
 import six as _six
 
-import flytekit.models.core.types
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import scopes as _exception_scopes
@@ -15,7 +14,8 @@ from flytekit.common.types import primitives as _primitives
 from flytekit.common.types.impl import blobs as _blob_impl
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.models.core import literals as _literal_models
+from flytekit.models import literals as _literal_models
+from flytekit.models import types as _type_models
 from flytekit.plugins import numpy as _np
 from flytekit.plugins import pandas as _pd
 
@@ -396,14 +396,14 @@ class _SchemaBackingMpBlob(_blob_impl.MultiPartBlob):
         return super(_SchemaBackingMpBlob, self).__exit__(exc_type, exc_val, exc_tb)
 
 
-class SchemaType(flytekit.models.core.types.SchemaType, metaclass=_sdk_bases.ExtendedSdkType):
+class SchemaType(_type_models.SchemaType, metaclass=_sdk_bases.ExtendedSdkType):
     _LITERAL_TYPE_TO_PROTO_ENUM = {
-        _primitives.Integer.to_flyte_literal_type(): flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-        _primitives.Float.to_flyte_literal_type(): flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-        _primitives.Boolean.to_flyte_literal_type(): flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
-        _primitives.Datetime.to_flyte_literal_type(): flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
-        _primitives.Timedelta.to_flyte_literal_type(): flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION,
-        _primitives.String.to_flyte_literal_type(): flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        _primitives.Integer.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _primitives.Float.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+        _primitives.Boolean.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
+        _primitives.Datetime.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
+        _primitives.Timedelta.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.DURATION,
+        _primitives.String.to_flyte_literal_type(): _type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING,
     }
 
     def __init__(self, columns=None):
@@ -425,9 +425,7 @@ class SchemaType(flytekit.models.core.types.SchemaType, metaclass=_sdk_bases.Ext
         :rtype: list[flytekit.models.types.SchemaType.SchemaColumn]
         """
         return [
-            flytekit.models.core.types.SchemaType.SchemaColumn(
-                n, type(self)._LITERAL_TYPE_TO_PROTO_ENUM[v.to_flyte_literal_type()]
-            )
+            _type_models.SchemaType.SchemaColumn(n, type(self)._LITERAL_TYPE_TO_PROTO_ENUM[v.to_flyte_literal_type()])
             for n, v in _six.iteritems(self.sdk_columns)
         ]
 
@@ -438,22 +436,22 @@ class SchemaType(flytekit.models.core.types.SchemaType, metaclass=_sdk_bases.Ext
         :rtype: SchemaType
         """
         _PROTO_ENUM_TO_SDK_TYPE = {
-            flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER: _helpers.get_sdk_type_from_literal_type(
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER: _helpers.get_sdk_type_from_literal_type(
                 _primitives.Integer.to_flyte_literal_type()
             ),
-            flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT: _helpers.get_sdk_type_from_literal_type(
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT: _helpers.get_sdk_type_from_literal_type(
                 _primitives.Float.to_flyte_literal_type()
             ),
-            flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN: _helpers.get_sdk_type_from_literal_type(
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN: _helpers.get_sdk_type_from_literal_type(
                 _primitives.Boolean.to_flyte_literal_type()
             ),
-            flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME: _helpers.get_sdk_type_from_literal_type(
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.DATETIME: _helpers.get_sdk_type_from_literal_type(
                 _primitives.Datetime.to_flyte_literal_type()
             ),
-            flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION: _helpers.get_sdk_type_from_literal_type(
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.DURATION: _helpers.get_sdk_type_from_literal_type(
                 _primitives.Timedelta.to_flyte_literal_type()
             ),
-            flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING: _helpers.get_sdk_type_from_literal_type(
+            _type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING: _helpers.get_sdk_type_from_literal_type(
                 _primitives.String.to_flyte_literal_type()
             ),
         }
