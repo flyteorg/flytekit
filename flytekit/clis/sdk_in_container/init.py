@@ -1,6 +1,5 @@
 import click
 from cookiecutter.main import cookiecutter
-from cookiecutter.prompt import read_user_variable
 
 
 @click.command("init")
@@ -10,12 +9,11 @@ def init(template, project_name):
     """
     Create flyte-ready projects.
     """
-    click.echo(
-        "What should we call your application? This serves as the top level package where your workflows will live."
+    app = click.prompt(
+        "What should we call your application? This serves as the top level package where your workflows will live.",
+        default="myapp",
     )
-    app = read_user_variable("app", "myapp")
-    click.echo("What should be the name of your example workflow?")
-    workflow_name = read_user_variable("workflow", "workflow_example")
+    workflow_name = click.prompt("What should be the name of your example workflow?", default="workflow_example")
 
     config = {
         "project_name": project_name,
