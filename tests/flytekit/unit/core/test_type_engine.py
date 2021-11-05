@@ -434,10 +434,10 @@ def test_dataclass_transformer():
             "InnerstructSchema": {
                 "additionalProperties": False,
                 "properties": {
-                    "a": {"format": "integer", "title": "a", "type": "number"},
+                    "a": {"title": "a", "type": "integer"},
                     "b": {"default": None, "title": "b", "type": ["string", "null"]},
                     "c": {
-                        "items": {"format": "integer", "title": "c", "type": "number"},
+                        "items": {"title": "c", "type": "integer"},
                         "title": "c",
                         "type": "array",
                     },
