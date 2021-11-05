@@ -71,7 +71,7 @@ py==1.10.0
     # via retry
 py4j==0.10.9
     # via pyspark
-pyarrow==3.0.0
+pyarrow==6.0.0
     # via flytekit
 pyspark==3.1.2
     # via flytekitplugins-spark
