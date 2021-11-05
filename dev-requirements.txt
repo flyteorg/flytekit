@@ -202,7 +202,7 @@ py==1.11.0
     #   -c requirements.txt
     #   pytest
     #   retry
-pyarrow==3.0.0
+pyarrow==6.0.0
     # via
     #   -c requirements.txt
     #   flytekit

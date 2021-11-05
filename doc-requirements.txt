@@ -234,7 +234,7 @@ py==1.11.0
     # via retry
 py4j==0.10.9.2
     # via pyspark
-pyarrow==3.0.0
+pyarrow==6.0.0
     # via flytekit
 pycparser==2.20
     # via cffi
