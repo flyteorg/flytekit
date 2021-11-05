@@ -2,9 +2,6 @@
 -e file:.#egg=flytekit
 cookiecutter
 attrs<21
-# Restrict mashmallow-jsonschema while we figure out if 0.13.0 is backwards
-# compatible.
-marshmallow-jsonschema<0.13.0
 # We need to restrict constrain the versions of both jsonschema and pyyaml because of docker-compose (which is
 # used to run integration tests) pins those 2 libraries. We are in the process of removing docker-compose in
 # favor of a more generic solution that involves flytectl to stand-up the sandbox, described in

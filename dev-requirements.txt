@@ -154,7 +154,7 @@ marshmallow-enum==1.5.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
-marshmallow-jsonschema==0.12.0
+marshmallow-jsonschema==0.13.0
     # via
     #   -c requirements.txt
     #   flytekit

@@ -133,7 +133,7 @@ jmespath==0.10.0
     # via
     #   boto3
     #   botocore
-jsonschema==4.2.0
+jsonschema==4.2.1
     # via nbformat
 jupyter-client==7.0.6
     # via
