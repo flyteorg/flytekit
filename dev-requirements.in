@@ -8,3 +8,6 @@ pytest
 mypy
 pre-commit
 codespell
+# Restrict mashmallow-jsonschema while we figure out if 0.13.0 is backwards
+# compatible.
+marshmallow-jsonschema<0.13.0
