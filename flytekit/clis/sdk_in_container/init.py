@@ -3,7 +3,11 @@ from cookiecutter.main import cookiecutter
 
 
 @click.command("init")
-@click.option("--template", default="simple-example", help="cookiecutter template to be used")
+@click.option(
+    "--template",
+    default="simple-example",
+    help="cookiecutter template folder name to be used in the repo - https://github.com/flyteorg/flytekit-python-template.git",
+)
 @click.argument("project-name")
 def init(template, project_name):
     """
