@@ -157,7 +157,6 @@ marshmallow-enum==1.5.1
 marshmallow-jsonschema==0.12.0
     # via
     #   -c requirements.txt
-    #   -r dev-requirements.in
     #   flytekit
 mock==4.0.3
     # via -r dev-requirements.in
