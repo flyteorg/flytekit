@@ -44,9 +44,13 @@ click==7.1.2
     # via
     #   -c requirements.txt
     #   flytekit
+cloudpickle==2.0.0
+    # via
+    #   -c requirements.txt
+    #   flytekit
 codespell==2.1.0
     # via -r dev-requirements.in
-coverage[toml]==6.0.2
+coverage[toml]==6.1.1
     # via -r dev-requirements.in
 croniter==1.0.15
     # via
@@ -95,17 +99,17 @@ docstring-parser==0.12
     # via
     #   -c requirements.txt
     #   flytekit
-filelock==3.3.1
+filelock==3.3.2
     # via virtualenv
-flyteidl==0.21.6
+flyteidl==0.21.8
     # via
     #   -c requirements.txt
     #   flytekit
-grpcio==1.41.0
+grpcio==1.41.1
     # via
     #   -c requirements.txt
     #   flytekit
-identify==2.3.0
+identify==2.3.3
     # via pre-commit
 idna==3.3
     # via
@@ -150,7 +154,7 @@ marshmallow-enum==1.5.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
-marshmallow-jsonschema==0.12.0
+marshmallow-jsonschema==0.13.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -163,7 +167,7 @@ mypy-extensions==0.4.3
     #   -c requirements.txt
     #   mypy
     #   typing-inspect
-natsort==7.1.1
+natsort==8.0.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -174,7 +178,7 @@ numpy==1.21.3
     #   -c requirements.txt
     #   pandas
     #   pyarrow
-packaging==21.0
+packaging==21.2
     # via
     #   -c requirements.txt
     #   pytest
@@ -194,12 +198,12 @@ pluggy==1.0.0
     # via pytest
 pre-commit==2.15.0
     # via -r dev-requirements.in
-protobuf==3.19.0
+protobuf==3.19.1
     # via
     #   -c requirements.txt
     #   flyteidl
     #   flytekit
-py==1.10.0
+py==1.11.0
     # via
     #   -c requirements.txt
     #   pytest
@@ -259,7 +263,7 @@ pyyaml==5.4.1
     #   -c requirements.txt
     #   docker-compose
     #   pre-commit
-regex==2021.10.21
+regex==2021.11.2
     # via
     #   -c requirements.txt
     #   docker-image-py
@@ -270,7 +274,7 @@ requests==2.26.0
     #   docker-compose
     #   flytekit
     #   responses
-responses==0.14.0
+responses==0.15.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -310,7 +314,7 @@ toml==0.10.2
     #   mypy
     #   pre-commit
     #   pytest
-tomli==1.2.1
+tomli==1.2.2
     # via
     #   -c requirements.txt
     #   coverage
@@ -329,7 +333,7 @@ urllib3==1.26.7
     #   flytekit
     #   requests
     #   responses
-virtualenv==20.8.1
+virtualenv==20.10.0
     # via pre-commit
 websocket-client==0.59.0
     # via
@@ -339,7 +343,7 @@ wheel==0.37.0
     # via
     #   -c requirements.txt
     #   flytekit
-wrapt==1.13.2
+wrapt==1.13.3
     # via
     #   -c requirements.txt
     #   deprecated
