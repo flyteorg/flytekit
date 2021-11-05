@@ -9,16 +9,10 @@ def init(template, project_name):
     """
     Create flyte-ready projects.
     """
-    app = click.prompt(
-        "What should we call your application? This serves as the top level package where your workflows will live.",
-        default="myapp",
-    )
-    workflow_name = click.prompt("What should be the name of your example workflow?", default="my_wf")
-
     config = {
         "project_name": project_name,
-        "app": app,
-        "workflow": workflow_name,
+        "app": "myapp",
+        "workflow": "my_wf",
     }
     cookiecutter(
         "https://github.com/flyteorg/flytekit-python-template.git",
@@ -34,3 +28,5 @@ def init(template, project_name):
         # a tensorflow-based example.
         directory=template,
     )
+
+    click.echo(f"Visit the {project_name} directory and follow the next steps in the Getting started guide.")
