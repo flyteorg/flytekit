@@ -10,6 +10,10 @@
     #   -r requirements-spark2.in
 ansiwrap==0.8.4
     # via papermill
+appnope==0.1.2
+    # via
+    #   ipykernel
+    #   ipython
 attrs==20.3.0
     # via
     #   -c requirements.in
@@ -22,9 +26,9 @@ black==21.10b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.19.11
+boto3==1.19.12
     # via sagemaker-training
-botocore==1.22.11
+botocore==1.22.12
     # via
     #   boto3
     #   s3transfer
@@ -50,9 +54,7 @@ cloudpickle==2.0.0
 croniter==1.0.15
     # via flytekit
 cryptography==35.0.0
-    # via
-    #   paramiko
-    #   secretstorage
+    # via paramiko
 dataclasses-json==0.5.6
     # via flytekit
 decorator==5.1.0
@@ -100,10 +102,6 @@ ipython-genutils==0.2.0
     #   nbformat
 jedi==0.18.0
     # via ipython
-jeepney==0.7.1
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.0.2
     # via nbconvert
 jmespath==0.10.0
@@ -165,7 +163,7 @@ nest-asyncio==1.5.1
     # via
     #   jupyter-client
     #   nbclient
-numpy==1.21.3
+numpy==1.21.4
     # via
     #   flytekit
     #   pandas
@@ -267,8 +265,6 @@ sagemaker-training==3.9.2
     # via flytekit
 scipy==1.7.1
     # via sagemaker-training
-secretstorage==3.3.1
-    # via keyring
 six==1.16.0
     # via
     #   bcrypt
