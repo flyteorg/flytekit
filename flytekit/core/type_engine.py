@@ -124,11 +124,19 @@ class SimpleTransformer(TypeTransformer[T]):
         lt: LiteralType,
         to_literal_transformer: typing.Callable[[T], Literal],
         from_literal_transformer: typing.Callable[[Literal], T],
+        assert_type: typing.Optional[typing.Callable[[Type[T], T]]] = None,
     ):
         super().__init__(name, t)
         self._lt = lt
         self._to_literal_transformer = to_literal_transformer
         self._from_literal_transformer = from_literal_transformer
+        self._assert_type = assert_type
+
+    def assert_type(self, t: Type[T], v: T):
+        if self._assert_type:
+            return self._assert_type(t, v)
+        else:
+            super().assert_type(t, v)
 
     def get_literal_type(self, t: Type[T] = None) -> LiteralType:
         return self._lt
@@ -850,6 +858,13 @@ def _register_default_type_transformers():
         )
     )
 
+    def float_assert(t: Type[T], v: T):
+        if not isinstance(t, float):
+            try:
+                float(v)
+            except ValueError as e:
+                raise TypeError(f"Could not convert {v} to a float {e}")
+
     TypeEngine.register(
         SimpleTransformer(
             "float",
@@ -857,6 +872,7 @@ def _register_default_type_transformers():
             _primitives.Float.to_flyte_literal_type(),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
             _check_and_covert_float,
+            float_assert,
         )
     )
 

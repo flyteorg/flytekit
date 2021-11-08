@@ -636,3 +636,10 @@ def test_dict_to_literal_map_with_wrong_input_type():
     guessed_python_types = {"a": str}
     with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
+
+
+def test_int_float_conversion():
+    ctx = FlyteContext.current_context()
+    float_transformer = TypeEngine.get_transformer(float)
+    lt = float_transformer.get_literal_type(float)
+    TypeEngine.to_literal(ctx, 1, float, lt)
