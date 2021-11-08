@@ -109,7 +109,7 @@ grpcio==1.41.1
     # via
     #   -c requirements.txt
     #   flytekit
-identify==2.3.3
+identify==2.3.4
     # via pre-commit
 idna==3.3
     # via
@@ -212,7 +212,7 @@ pyarrow==3.0.0
     # via
     #   -c requirements.txt
     #   flytekit
-pycparser==2.20
+pycparser==2.21
     # via
     #   -c requirements.txt
     #   cffi

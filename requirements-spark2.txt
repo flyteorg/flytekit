@@ -26,9 +26,9 @@ black==21.10b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.19.11
+boto3==1.19.12
     # via sagemaker-training
-botocore==1.22.11
+botocore==1.22.12
     # via
     #   boto3
     #   s3transfer
@@ -164,7 +164,7 @@ mypy-extensions==0.4.3
     #   typing-inspect
 natsort==8.0.0
     # via flytekit
-nbclient==0.5.4
+nbclient==0.5.5
     # via
     #   nbconvert
     #   papermill
@@ -226,7 +226,7 @@ py4j==0.10.9.2
     # via pyspark
 pyarrow==3.0.0
     # via flytekit
-pycparser==2.20
+pycparser==2.21
     # via cffi
 pygments==2.10.0
     # via
@@ -285,7 +285,7 @@ s3transfer==0.5.0
     # via boto3
 sagemaker-training==3.9.2
     # via flytekit
-scipy==1.7.1
+scipy==1.7.2
     # via sagemaker-training
 secretstorage==3.3.1
     # via keyring

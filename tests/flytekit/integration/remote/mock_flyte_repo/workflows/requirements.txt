@@ -91,9 +91,9 @@ py==1.11.0
     # via retry
 pyarrow==3.0.0
     # via flytekit
-pycparser==2.20
+pycparser==2.21
     # via cffi
-pyparsing==3.0.4
+pyparsing==3.0.5
     # via matplotlib
 python-dateutil==2.8.1
     # via
