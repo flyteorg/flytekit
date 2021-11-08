@@ -10,6 +10,8 @@ alabaster==0.7.12
     # via sphinx
 ansiwrap==0.8.4
     # via papermill
+arrow==1.2.1
+    # via jinja2-time
 astroid==2.8.4
     # via sphinx-autoapi
 attrs==21.2.0
@@ -25,13 +27,15 @@ beautifulsoup4==4.10.0
     #   furo
     #   sphinx-code-include
     #   sphinx-material
+binaryornot==0.4.4
+    # via cookiecutter
 black==21.10b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.19.12
+boto3==1.20.0
     # via sagemaker-training
-botocore==1.22.12
+botocore==1.23.0
     # via
     #   boto3
     #   s3transfer
@@ -42,6 +46,8 @@ cffi==1.15.0
     #   bcrypt
     #   cryptography
     #   pynacl
+chardet==4.0.0
+    # via binaryornot
 charset-normalizer==2.0.7
     # via requests
 checksumdir==1.2.0
@@ -49,10 +55,13 @@ checksumdir==1.2.0
 click==7.1.2
     # via
     #   black
+    #   cookiecutter
     #   flytekit
     #   hmsclient
     #   papermill
 cloudpickle==2.0.0
+    # via flytekit
+cookiecutter==1.7.3
     # via flytekit
 croniter==1.0.15
     # via flytekit
@@ -126,9 +135,13 @@ jeepney==0.7.1
     #   secretstorage
 jinja2==3.0.2
     # via
+    #   cookiecutter
+    #   jinja2-time
     #   nbconvert
     #   sphinx
     #   sphinx-autoapi
+jinja2-time==0.2.0
+    # via cookiecutter
 jmespath==0.10.0
     # via
     #   boto3
@@ -219,6 +232,8 @@ pickleshare==0.7.5
     # via ipython
 platformdirs==2.4.0
     # via black
+poyo==0.5.0
+    # via cookiecutter
 prompt-toolkit==3.0.22
     # via ipython
 protobuf==3.19.1
@@ -256,6 +271,7 @@ pyspark==3.2.0
     # via flytekit
 python-dateutil==2.8.1
     # via
+    #   arrow
     #   botocore
     #   croniter
     #   flytekit
@@ -264,7 +280,9 @@ python-dateutil==2.8.1
 python-json-logger==2.0.2
     # via flytekit
 python-slugify[unidecode]==5.0.2
-    # via sphinx-material
+    # via
+    #   cookiecutter
+    #   sphinx-material
 pytimeparse==1.1.8
     # via flytekit
 pytz==2018.4
@@ -284,6 +302,7 @@ regex==2021.11.2
     #   docker-image-py
 requests==2.26.0
     # via
+    #   cookiecutter
     #   flytekit
     #   papermill
     #   responses
@@ -306,6 +325,7 @@ six==1.16.0
     # via
     #   bcrypt
     #   bleach
+    #   cookiecutter
     #   flytekit
     #   grpcio
     #   pynacl
