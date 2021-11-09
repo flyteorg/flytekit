@@ -2,11 +2,11 @@ from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import joblib
+import pandas as pd
 import xgboost
 from dataclasses_json import dataclass_json
 
 from flytekit import PythonInstanceTask
-from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
 from flytekit.types.file import JoblibSerializedFile
 from flytekit.types.file.file import FlyteFile
@@ -101,6 +101,11 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
         y_pred = booster_model.predict(dtest).tolist()
         return y_pred
 
+    def df_to_dmatrix(self, df: pd.DataFrame, dataset_vars: Dict[str, xgboost.DMatrix], each_key: str):
+        target = df[df.columns[self._label_column]]
+        df = df.drop(df.columns[self._label_column], axis=1)
+        dataset_vars[each_key] = xgboost.DMatrix(df.values, target.values)
+
     def execute(self, **kwargs) -> Any:
         train_key = ""
         test_key = ""
@@ -125,20 +130,16 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
                 dataset = kwargs[each_key]
                 # FlyteFile
                 if issubclass(self.python_interface.inputs[each_key], FlyteFile):
-                    if FlyteContext.current_context().file_access.is_remote(dataset):
-                        dataset.download()
                     if dataset.extension() == "csv":
-                        dataset_vars[each_key] = xgboost.DMatrix(
-                            dataset.path + "?format=csv&label_column=" + str(self._label_column)
-                        )
+                        df = pd.read_csv(dataset)
+                        self.df_to_dmatrix(df, dataset_vars, each_key)
                     else:
-                        dataset_vars[each_key] = xgboost.DMatrix(dataset.path)
+                        with open(dataset) as _:
+                            dataset_vars[each_key] = xgboost.DMatrix(dataset.path)
                 # FlyteSchema
                 elif issubclass(self.python_interface.inputs[each_key], FlyteSchema):
                     df = dataset.open().all()
-                    target = df[df.columns[self._label_column]]
-                    df = df.drop(df.columns[self._label_column], axis=1)
-                    dataset_vars[each_key] = xgboost.DMatrix(df.values, target.values)
+                    self.df_to_dmatrix(df, dataset_vars, each_key)
                 else:
                     raise ValueError(f"Invalid type for {each_key} input")
 
