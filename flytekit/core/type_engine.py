@@ -369,6 +369,15 @@ class TypeEngine(typing.Generic[T]):
             cls._REGISTRY[t] = transformer
 
     @classmethod
+    def register_additional_type(cls, transformer: TypeTransformer, additional_type: Type):
+        if additional_type in cls._REGISTRY:
+            raise ValueError(
+                f"Transformer {cls._REGISTRY[additional_type].name} for type {additional_type} is already registered."
+                f" Cannot override with {transformer.name}"
+            )
+        cls._REGISTRY[additional_type] = transformer
+
+    @classmethod
     def register_restricted_type(
         cls,
         name: str,

@@ -195,7 +195,9 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
         ) -> StructuredDatasetType.DatasetColumn:
             return cls(name=proto.name, literal_type=proto.literal_type)
 
-    def __init__(self, columns: typing.List[DatasetColumn], external_schema_type: str, external_schema_bytes: bytes):
+    def __init__(
+        self, columns: typing.List[DatasetColumn], external_schema_type: str = None, external_schema_bytes: bytes = None
+    ):
         self._columns = columns
         self._external_schema_type = external_schema_type
         self._external_schema_bytes = external_schema_bytes
