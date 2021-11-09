@@ -101,7 +101,7 @@ psutil==5.8.0
     # via sagemaker-training
 py==1.10.0
     # via retry
-pyarrow==3.0.0
+pyarrow==6.0.0
     # via flytekit
 pycparser==2.20
     # via cffi

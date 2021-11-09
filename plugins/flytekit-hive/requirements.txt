@@ -69,7 +69,7 @@ protobuf==3.17.3
     #   flytekit
 py==1.10.0
     # via retry
-pyarrow==3.0.0
+pyarrow==6.0.0
     # via flytekit
 python-dateutil==2.8.1
     # via
