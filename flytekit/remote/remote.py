@@ -1037,10 +1037,13 @@ class FlyteRemote(object):
         # sync closure, node executions, and inputs/outputs
         execution._closure = self.client.get_execution(execution.id).closure
         if sync_nodes:
-            execution._node_executions = {
-                node.id.node_id: self.sync_node_execution(FlyteNodeExecution.promote_from_model(node), flyte_entity)
-                for node in iterate_node_executions(self.client, execution.id)
-            }
+            node_execs = {}
+            underlying_nodes = [n for n in iterate_node_executions(self.client, execution.id)]
+            for n in underlying_nodes:
+                node_execs[n.id.node_id] = self.sync_node_execution(
+                    FlyteNodeExecution.promote_from_model(n), flyte_entity
+                )
+            execution._node_executions = node_execs
         return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
 
     def sync_node_execution(
@@ -1107,7 +1110,12 @@ class FlyteRemote(object):
     # Helper Methods #
     ##################
 
-    def _assign_inputs_and_outputs(self, execution, execution_data, interface):
+    def _assign_inputs_and_outputs(
+        self,
+        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        execution_data,
+        interface,
+    ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         with self.remote_context() as ctx:
             execution._inputs = TypeEngine.literal_map_to_kwargs(

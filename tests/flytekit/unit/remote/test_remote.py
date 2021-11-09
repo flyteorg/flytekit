@@ -268,3 +268,15 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     assert mock_secure_channel.called
     assert mock_secure_channel.call_args[0][1] == credentials
     assert not mock_ssl_channel_credentials.called
+
+
+def test_remote_sub_wf():
+    r = FlyteRemote.from_config(
+        default_project="flytesnacks",
+        default_domain="development",
+        config_file_path="/Users/ytong/.flyte/local_sandbox",
+    )
+    we = r.fetch_workflow_execution(name="fqixhdqy")
+    r.sync(we)
+    print(we.inputs)
+    print(we.outputs)
