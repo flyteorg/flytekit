@@ -95,6 +95,7 @@ setup(
         "diskcache>=5.2.1",
         "checksumdir>=1.2.0",
         "cloudpickle>=2.0.0",
+        "cookiecutter>=1.7.3",
     ],
     extras_require=extras_require,
     scripts=[

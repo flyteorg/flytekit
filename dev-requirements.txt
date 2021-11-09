@@ -8,6 +8,10 @@
     # via
     #   -c requirements.txt
     #   pytest-flyte
+arrow==1.2.1
+    # via
+    #   -c requirements.txt
+    #   jinja2-time
 attrs==20.3.0
     # via
     #   -c requirements.txt
@@ -20,6 +24,10 @@ bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
+binaryornot==0.4.4
+    # via
+    #   -c requirements.txt
+    #   cookiecutter
 certifi==2021.10.8
     # via
     #   -c requirements.txt
@@ -32,6 +40,10 @@ cffi==1.15.0
     #   pynacl
 cfgv==3.3.1
     # via pre-commit
+chardet==4.0.0
+    # via
+    #   -c requirements.txt
+    #   binaryornot
 charset-normalizer==2.0.7
     # via
     #   -c requirements.txt
@@ -43,6 +55,7 @@ checksumdir==1.2.0
 click==7.1.2
     # via
     #   -c requirements.txt
+    #   cookiecutter
     #   flytekit
 cloudpickle==2.0.0
     # via
@@ -50,6 +63,10 @@ cloudpickle==2.0.0
     #   flytekit
 codespell==2.1.0
     # via -r dev-requirements.in
+cookiecutter==1.7.3
+    # via
+    #   -c requirements.txt
+    #   flytekit
 coverage[toml]==6.1.1
     # via -r dev-requirements.in
 croniter==1.0.15
@@ -60,6 +77,7 @@ cryptography==35.0.0
     # via
     #   -c requirements.txt
     #   paramiko
+    #   secretstorage
 dataclasses-json==0.5.6
     # via
     #   -c requirements.txt
@@ -108,7 +126,7 @@ grpcio==1.41.1
     # via
     #   -c requirements.txt
     #   flytekit
-identify==2.3.3
+identify==2.3.4
     # via pre-commit
 idna==3.3
     # via
@@ -120,10 +138,21 @@ importlib-metadata==4.8.1
     #   keyring
 iniconfig==1.1.1
     # via pytest
+jeepney==0.7.1
+    # via
+    #   -c requirements.txt
+    #   keyring
+    #   secretstorage
 jinja2==3.0.2
     # via
     #   -c requirements.txt
+    #   cookiecutter
+    #   jinja2-time
     #   pytest-flyte
+jinja2-time==0.2.0
+    # via
+    #   -c requirements.txt
+    #   cookiecutter
 joblib==1.1.0
     # via -r dev-requirements.in
 jsonschema==3.2.0
@@ -190,6 +219,10 @@ platformdirs==2.4.0
     #   virtualenv
 pluggy==1.0.0
     # via pytest
+poyo==0.5.0
+    # via
+    #   -c requirements.txt
+    #   cookiecutter
 pre-commit==2.15.0
     # via -r dev-requirements.in
 protobuf==3.19.1
@@ -206,7 +239,7 @@ pyarrow==3.0.0
     # via
     #   -c requirements.txt
     #   flytekit
-pycparser==2.20
+pycparser==2.21
     # via
     #   -c requirements.txt
     #   cffi
@@ -234,6 +267,7 @@ pytest-flyte @ git+git://github.com/flyteorg/pytest-flyte@main
 python-dateutil==2.8.1
     # via
     #   -c requirements.txt
+    #   arrow
     #   croniter
     #   flytekit
     #   pandas
@@ -243,6 +277,10 @@ python-json-logger==2.0.2
     # via
     #   -c requirements.txt
     #   flytekit
+python-slugify==5.0.2
+    # via
+    #   -c requirements.txt
+    #   cookiecutter
 pytimeparse==1.1.8
     # via
     #   -c requirements.txt
@@ -264,6 +302,7 @@ regex==2021.11.2
 requests==2.26.0
     # via
     #   -c requirements.txt
+    #   cookiecutter
     #   docker
     #   docker-compose
     #   flytekit
@@ -276,10 +315,15 @@ retry==0.9.2
     # via
     #   -c requirements.txt
     #   flytekit
+secretstorage==3.3.1
+    # via
+    #   -c requirements.txt
+    #   keyring
 six==1.16.0
     # via
     #   -c requirements.txt
     #   bcrypt
+    #   cookiecutter
     #   dockerpty
     #   flytekit
     #   grpcio
@@ -297,6 +341,10 @@ statsd==3.3.0
     # via
     #   -c requirements.txt
     #   flytekit
+text-unidecode==1.3
+    # via
+    #   -c requirements.txt
+    #   python-slugify
 texttable==1.6.4
     # via docker-compose
 toml==0.10.2
