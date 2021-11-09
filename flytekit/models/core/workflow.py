@@ -3,11 +3,11 @@ import typing
 
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-import flytekit.models.core.types
 from flytekit.models import common as _common
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import interface as _interface
+from flytekit.models.core import types as type_models
 from flytekit.models.core.literals import Binding as _Binding
 from flytekit.models.core.literals import RetryStrategy as _RetryStrategy
 from flytekit.models.core.task import Resources
@@ -61,7 +61,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
         :param IfBlock case:
         :param list[IfBlock] other:
         :param Node else_node:
-        :param flytekit.models.core.types.Error error:
+        :param type_models.Error error:
         """
         self._case = case
         self._other = other
@@ -121,9 +121,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
             case=IfBlock.from_flyte_idl(pb2_object.case),
             other=[IfBlock.from_flyte_idl(a) for a in pb2_object.other],
             else_node=Node.from_flyte_idl(pb2_object.else_node) if pb2_object.HasField("else_node") else None,
-            error=flytekit.models.core.types.Error.from_flyte_idl(pb2_object.error)
-            if pb2_object.HasField("error")
-            else None,
+            error=type_models.Error.from_flyte_idl(pb2_object.error) if pb2_object.HasField("error") else None,
         )
 
 

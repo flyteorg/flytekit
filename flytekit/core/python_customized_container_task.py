@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from flyteidl.core import tasks_pb2 as _tasks_pb2
 
-import flytekit.models.core.task
 from flytekit.common import utils as common_utils
 from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
@@ -16,6 +15,7 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.loggers import logger
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.core.security import Secret, SecurityContext
+from flytekit.models.core.task import Container
 from flytekit.models.core.task import TaskTemplate as _taskTemplate
 from flytekit.tools.module_loader import load_object_from_module
 
@@ -158,7 +158,7 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
 
         return container_args
 
-    def get_container(self, settings: SerializationSettings) -> flytekit.models.core.task.Container:
+    def get_container(self, settings: SerializationSettings) -> Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=self.container_image,
