@@ -15,7 +15,7 @@ def init(template, project_name):
     """
     config = {
         "project_name": project_name,
-        "app": "myapp",
+        "app": "flyte",
         "workflow": "my_wf",
     }
     cookiecutter(
@@ -33,4 +33,6 @@ def init(template, project_name):
         directory=template,
     )
 
-    click.echo(f"Visit the {project_name} directory and follow the next steps in the Getting started guide.")
+    click.echo(
+        f"Visit the {project_name} directory and follow the next steps in the Getting started guide (https://docs.flyte.org/en/latest/getting_started.html) to proceed."
+    )
