@@ -4,15 +4,15 @@ from flyteidl.core import tasks_pb2 as _core_task
 from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements
 
-import flytekit.models.core.task
 from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.extend import Promise, SerializationSettings, TaskPlugins
+from flytekit.models.core import task as task_models
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 
 
-def _sanitize_resource_name(resource: flytekit.models.core.task.Resources.ResourceEntry) -> str:
+def _sanitize_resource_name(resource: task_models.Resources.ResourceEntry) -> str:
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
@@ -104,16 +104,16 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
         return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
 
-    def get_k8s_pod(self, settings: SerializationSettings) -> flytekit.models.core.task.K8sPod:
-        return flytekit.models.core.task.K8sPod(
+    def get_k8s_pod(self, settings: SerializationSettings) -> task_models.K8sPod:
+        return task_models.K8sPod(
             pod_spec=self._serialize_pod_spec(settings),
-            metadata=flytekit.models.core.task.K8sObjectMetadata(
+            metadata=task_models.K8sObjectMetadata(
                 labels=self.task_config.labels,
                 annotations=self.task_config.annotations,
             ),
         )
 
-    def get_container(self, settings: SerializationSettings) -> flytekit.models.core.task.Container:
+    def get_container(self, settings: SerializationSettings) -> task_models.Container:
         return None
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:

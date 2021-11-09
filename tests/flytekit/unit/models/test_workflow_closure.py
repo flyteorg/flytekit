@@ -1,10 +1,10 @@
 from datetime import timedelta
 
-import flytekit.models.core.task
-import flytekit.models.core.types
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import interface as _interface
 from flytekit.models.core import literals as _literals
+from flytekit.models.core import task as task_models
+from flytekit.models.core import types as type_models
 from flytekit.models.core import workflow as _workflow
 from flytekit.models.core import workflow_closure as _workflow_closure
 from flytekit.models.core.task import RuntimeMetadata as _runtimeMetadata
@@ -13,7 +13,7 @@ from flytekit.models.core.task import TaskTemplate as _taskTemplate
 
 
 def test_workflow_closure():
-    int_type = flytekit.models.core.types.LiteralType(flytekit.models.core.types.SimpleType.INTEGER)
+    int_type = type_models.LiteralType(type_models.SimpleType.INTEGER)
     typed_interface = _interface.TypedInterface(
         {"a": _interface.Variable(int_type, "description1")},
         {"b": _interface.Variable(int_type, "description2"), "c": _interface.Variable(int_type, "description3")},
@@ -23,12 +23,8 @@ def test_workflow_closure():
         "a",
         _literals.BindingData(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=5))),
     )
-    b1 = _literals.Binding(
-        "b", _literals.BindingData(promise=flytekit.models.core.types.OutputReference("my_node", "b"))
-    )
-    b2 = _literals.Binding(
-        "c", _literals.BindingData(promise=flytekit.models.core.types.OutputReference("my_node", "c"))
-    )
+    b1 = _literals.Binding("b", _literals.BindingData(promise=type_models.OutputReference("my_node", "b")))
+    b2 = _literals.Binding("c", _literals.BindingData(promise=type_models.OutputReference("my_node", "c")))
 
     node_metadata = _workflow.NodeMetadata(
         name="node1", timeout=timedelta(seconds=10), retries=_literals.RetryStrategy(0)
@@ -44,10 +40,8 @@ def test_workflow_closure():
         "This is deprecated!",
     )
 
-    cpu_resource = flytekit.models.core.task.Resources.ResourceEntry(
-        flytekit.models.core.task.Resources.ResourceName.CPU, "1"
-    )
-    resources = flytekit.models.core.task.Resources(requests=[cpu_resource], limits=[cpu_resource])
+    cpu_resource = task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.CPU, "1")
+    resources = task_models.Resources(requests=[cpu_resource], limits=[cpu_resource])
 
     task = _taskTemplate(
         _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version"),
@@ -55,7 +49,7 @@ def test_workflow_closure():
         task_metadata,
         typed_interface,
         {"a": 1, "b": {"c": 2, "d": 3}},
-        container=flytekit.models.core.task.Container(
+        container=task_models.Container(
             "my_image",
             ["this", "is", "a", "cmd"],
             ["this", "is", "an", "arg"],

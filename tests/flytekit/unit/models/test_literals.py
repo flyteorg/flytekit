@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 import pytest
 import pytz
 
-import flytekit.models.core.types
 from flytekit.models.core import literals
+from flytekit.models.core import types as type_models
 from tests.flytekit.common import parameterizers
 
 
@@ -324,26 +324,14 @@ def test_scalar_binary():
 
 
 def test_scalar_schema():
-    schema_type = flytekit.models.core.types.SchemaType(
+    schema_type = type_models.SchemaType(
         [
-            flytekit.models.core.types.SchemaType.SchemaColumn(
-                "a", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER
-            ),
-            flytekit.models.core.types.SchemaType.SchemaColumn(
-                "b", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT
-            ),
-            flytekit.models.core.types.SchemaType.SchemaColumn(
-                "c", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.STRING
-            ),
-            flytekit.models.core.types.SchemaType.SchemaColumn(
-                "d", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME
-            ),
-            flytekit.models.core.types.SchemaType.SchemaColumn(
-                "e", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.DURATION
-            ),
-            flytekit.models.core.types.SchemaType.SchemaColumn(
-                "f", flytekit.models.core.types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN
-            ),
+            type_models.SchemaType.SchemaColumn("a", type_models.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
+            type_models.SchemaType.SchemaColumn("b", type_models.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
+            type_models.SchemaType.SchemaColumn("c", type_models.SchemaType.SchemaColumn.SchemaColumnType.STRING),
+            type_models.SchemaType.SchemaColumn("d", type_models.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
+            type_models.SchemaType.SchemaColumn("e", type_models.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
+            type_models.SchemaType.SchemaColumn("f", type_models.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
         ]
     )
 
@@ -410,7 +398,7 @@ def test_binding_data_map():
 
 
 def test_binding_data_promise():
-    obj = literals.BindingData(promise=flytekit.models.core.types.OutputReference("some_node", "myvar"))
+    obj = literals.BindingData(promise=type_models.OutputReference("some_node", "myvar"))
     assert obj.scalar is None
     assert obj.promise is not None
     assert obj.collection is None

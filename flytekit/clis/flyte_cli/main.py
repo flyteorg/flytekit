@@ -19,7 +19,6 @@ from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from google.protobuf.json_format import MessageToJson
 from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
-import flytekit.models.admin.common
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
@@ -698,7 +697,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
     _click.echo("{:50} {:40}".format("Version", "Urn"))
     while True:
         task_list, next_token = client.list_tasks_paginated(
-            flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
+            _admin_common.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -853,7 +852,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
     _click.echo("{:50} {:40}".format("Version", "Urn"))
     while True:
         wf_list, next_token = client.list_workflows_paginated(
-            flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
+            _admin_common.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -1031,7 +1030,7 @@ def list_launch_plan_versions(
 
     while True:
         lp_list, next_token = client.list_launch_plans_paginated(
-            flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
+            _admin_common.NamedEntityIdentifier(project, domain, name),
             limit=limit,
             token=token,
             filters=[_filters.Filter.from_python_std(f) for f in filter],
@@ -1099,7 +1098,7 @@ def get_active_launch_plan(project, domain, name, host, insecure):
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
 
-    lp = client.get_active_launch_plan(flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name))
+    lp = client.get_active_launch_plan(_admin_common.NamedEntityIdentifier(project, domain, name))
     _click.echo("Active Launch Plan for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
     _click.echo(lp)
     _click.echo("")
@@ -2088,13 +2087,13 @@ def update_workflow_meta(description, state, host, insecure, project, domain, na
     _welcome_message()
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     if state == "active":
-        state = flytekit.models.admin.common.NamedEntityState.ACTIVE
+        state = _admin_common.NamedEntityState.ACTIVE
     elif state == "archived":
-        state = flytekit.models.admin.common.NamedEntityState.ARCHIVED
+        state = _admin_common.NamedEntityState.ARCHIVED
     client.update_named_entity(
         _core_identifier.ResourceType.WORKFLOW,
-        flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
-        flytekit.models.admin.common.NamedEntityMetadata(description, state),
+        _admin_common.NamedEntityIdentifier(project, domain, name),
+        _admin_common.NamedEntityMetadata(description, state),
     )
     _click.echo("Successfully updated workflow")
 
@@ -2114,10 +2113,8 @@ def update_task_meta(description, host, insecure, project, domain, name):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.update_named_entity(
         _core_identifier.ResourceType.TASK,
-        flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
-        flytekit.models.admin.common.NamedEntityMetadata(
-            description, flytekit.models.admin.common.NamedEntityState.ACTIVE
-        ),
+        _admin_common.NamedEntityIdentifier(project, domain, name),
+        _admin_common.NamedEntityMetadata(description, _admin_common.NamedEntityState.ACTIVE),
     )
     _click.echo("Successfully updated task")
 
@@ -2137,10 +2134,8 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
     client.update_named_entity(
         _core_identifier.ResourceType.LAUNCH_PLAN,
-        flytekit.models.admin.common.NamedEntityIdentifier(project, domain, name),
-        flytekit.models.admin.common.NamedEntityMetadata(
-            description, flytekit.models.admin.common.NamedEntityState.ACTIVE
-        ),
+        _admin_common.NamedEntityIdentifier(project, domain, name),
+        _admin_common.NamedEntityMetadata(description, _admin_common.NamedEntityState.ACTIVE),
     )
     _click.echo("Successfully updated launch plan")
 

@@ -8,12 +8,12 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-import flytekit.models.core.task
 from flytekit import FlyteContext, kwtypes
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
+from flytekit.models.core.task import TaskTemplate
 from flytekit.types.schema import FlyteSchema
 
 
@@ -111,7 +111,7 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
 
 
 class SQLite3TaskExecutor(ShimTaskExecutor[SQLite3Task]):
-    def execute_from_model(self, tt: flytekit.models.core.task.TaskTemplate, **kwargs) -> typing.Any:
+    def execute_from_model(self, tt: TaskTemplate, **kwargs) -> typing.Any:
         with tempfile.TemporaryDirectory() as temp_dir:
             ctx = FlyteContext.current_context()
             file_ext = os.path.basename(tt.custom["uri"])

@@ -1,15 +1,13 @@
-import flytekit.models.admin.common
+from flytekit.models.admin import common as admin_models
 
 
 def test_identifier():
-    obj = flytekit.models.admin.common.NamedEntityIdentifier("proj", "development", "MyWorkflow")
-    obj2 = flytekit.models.admin.common.NamedEntityIdentifier.from_flyte_idl(obj.to_flyte_idl())
+    obj = admin_models.NamedEntityIdentifier("proj", "development", "MyWorkflow")
+    obj2 = admin_models.NamedEntityIdentifier.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
 
 
 def test_metadata():
-    obj = flytekit.models.admin.common.NamedEntityMetadata(
-        "i am a description", flytekit.models.admin.common.NamedEntityState.ACTIVE
-    )
-    obj2 = flytekit.models.admin.common.NamedEntityMetadata.from_flyte_idl(obj.to_flyte_idl())
+    obj = admin_models.NamedEntityMetadata("i am a description", admin_models.NamedEntityState.ACTIVE)
+    obj2 = admin_models.NamedEntityMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2

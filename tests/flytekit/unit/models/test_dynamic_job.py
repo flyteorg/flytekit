@@ -4,10 +4,10 @@ from itertools import product
 import pytest
 from google.protobuf import text_format
 
-import flytekit.models.core.task
 from flytekit.models.core import dynamic_job as _dynamic_job
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import literals as _literals
+from flytekit.models.core import task as task_models
 from flytekit.models.core import workflow as _workflow
 from flytekit.models.core.task import TaskTemplate as _taskTemplate
 from flytekit.models.plugins import array_job as _array_job
@@ -20,7 +20,7 @@ LIST_OF_DYNAMIC_TASKS = [
         task_metadata,
         interfaces,
         _array_job.ArrayJob(2, 2, 2).to_dict(),
-        container=flytekit.models.core.task.Container(
+        container=task_models.Container(
             "my_image",
             ["this", "is", "a", "cmd"],
             ["this", "is", "an", "arg"],
