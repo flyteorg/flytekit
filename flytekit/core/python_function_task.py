@@ -101,6 +101,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: Optional[ExecutionBehavior] = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
+        module_name: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -117,10 +118,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         self._native_interface = transform_signature_to_interface(
             inspect.signature(task_function), Docstring(callable_=task_function)
         )
+        self._module_name = module_name
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
             task_type=task_type,
-            name=f"{task_function.__module__}.{task_function.__name__}",
+            name=f"{module_name or task_function.__module__}.{task_function.__name__}",
             interface=mutated_interface,
             task_config=task_config,
             task_resolver=task_resolver,
@@ -149,6 +151,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
     @property
     def execution_mode(self) -> ExecutionBehavior:
         return self._execution_mode
+
+    @property
+    def module_name(self) -> Optional[str]:
+        return self._module_name
 
     @property
     def task_function(self):
