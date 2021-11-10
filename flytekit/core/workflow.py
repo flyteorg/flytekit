@@ -167,6 +167,7 @@ class WorkflowBase(object):
         workflow_metadata: WorkflowMetadata,
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
+        module_name: Optional[str],
         **kwargs,
     ):
         self._name = name
@@ -174,6 +175,7 @@ class WorkflowBase(object):
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
         self._interface = transform_interface_to_typed_interface(python_interface)
+        self._module_name = module_name
         self._inputs = {}
         self._unbound_inputs = set()
         self._nodes = []
@@ -212,6 +214,10 @@ class WorkflowBase(object):
     @property
     def nodes(self) -> List[Node]:
         return self._nodes
+
+    @property
+    def module_name(self) -> Optional[str]:
+        return self._module_name
 
     def __repr__(self):
         return (
@@ -571,8 +577,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         metadata: Optional[WorkflowMetadata],
         default_metadata: Optional[WorkflowMetadataDefaults],
         docstring: Docstring = None,
+        module_name: Optional[str] = None,
     ):
-        name = f"{workflow_function.__module__}.{workflow_function.__name__}"
+        name = f"{module_name or workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
         native_interface = transform_signature_to_interface(inspect.signature(workflow_function), docstring=docstring)
 
@@ -585,6 +592,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata=metadata,
             workflow_metadata_defaults=default_metadata,
             python_interface=native_interface,
+            module_name=module_name,
         )
 
     @property
@@ -689,6 +697,7 @@ def workflow(
     _workflow_function=None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
+    module_name: str = None,
 ):
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -729,6 +738,7 @@ def workflow(
             metadata=workflow_metadata,
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
+            module_name=module_name,
         )
         workflow_instance.compile()
         return workflow_instance
