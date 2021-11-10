@@ -512,6 +512,7 @@ class FlyteRemote(object):
         project: str = None,
         domain: str = None,
         version: str = None,
+        task_module: str = None,
         **kwargs,
     ) -> FlyteControlPlaneEntity:
         """Serialize an entity for registration."""
@@ -523,6 +524,7 @@ class FlyteRemote(object):
                 domain or self.default_domain,
                 version or self.version,
                 self.image_config,
+                task_module,
                 # https://github.com/flyteorg/flyte/issues/1359
                 env={internal.IMAGE.env_var: self.image_config.default_image.full},
             ),
@@ -548,19 +550,19 @@ class FlyteRemote(object):
         :param project: register entity into this project. If None, uses ``default_project`` attribute
         :param domain: register entity into this domain. If None, uses ``default_domain`` attribute
         :param name: register entity with this name. If None, uses ``entity.name``
-        :param version: register entity with this version. If None, uses auto-generated version.
+        :param version: register entity with this version. If None, uses ``auto-generated`` version.
         """
         raise NotImplementedError(f"entity type {type(entity)} not recognized for registration")
 
     @register.register
     def _(
-        self, entity: PythonTask, project: str = None, domain: str = None, name: str = None, version: str = None
+        self, entity: PythonTask, project: str = None, domain: str = None, name: str = None, version: str = None, task_module: str = None
     ) -> FlyteTask:
         """Register an @task-decorated function or TaskTemplate task to flyte admin."""
         resolved_identifiers = asdict(self._resolve_identifier_kwargs(entity, project, domain, name, version))
         self.client.create_task(
             Identifier(ResourceType.TASK, **resolved_identifiers),
-            task_spec=self._serialize(entity, **resolved_identifiers),
+            task_spec=self._serialize(entity, task_module=task_module, **resolved_identifiers),
         )
         return self.fetch_task(**resolved_identifiers)
 
@@ -670,11 +672,11 @@ class FlyteRemote(object):
         remote_logger.debug(
             f"Using {msg_project}-supplied value for project and {msg_domain}-supplied value for domain."
         )
-
+        entity.name = name or entity.name
         return ResolvedIdentifiers(
             resolved_project,
             resolved_domain,
-            name or entity.name,
+            entity.name,
             version or self.version,
         )
 

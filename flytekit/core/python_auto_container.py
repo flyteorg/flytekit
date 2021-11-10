@@ -191,14 +191,14 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         if isinstance(task, PythonFunctionTask):
             return [
                 "task-module",
-                task.task_function.__module__,
+                settings.task_module or task.task_function.__module__,
                 "task-name",
                 task.task_function.__name__,
             ]
         if isinstance(task, TrackedInstance):
             return [
                 "task-module",
-                task.instantiated_in,
+                settings.task_module or task.instantiated_in,
                 "task-name",
                 task.lhs,
             ]

@@ -185,6 +185,10 @@ class WorkflowBase(object):
     def name(self) -> str:
         return self._name
 
+    @name.setter
+    def name(self, name):
+        self._name = name
+
     @property
     def short_name(self) -> str:
         return extract_obj_name(self._name)

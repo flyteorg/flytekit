@@ -173,6 +173,10 @@ class Task(object):
     def name(self) -> str:
         return self._name
 
+    @name.setter
+    def name(self, name):
+        self._name = name
+
     @property
     def task_type(self) -> str:
         return self._task_type

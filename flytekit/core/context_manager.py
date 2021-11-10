@@ -165,6 +165,7 @@ class SerializationSettings(object):
         domain (str): The domain (if any) with which to register entities under.
         version (str): The version (if any) with which to register entities under.
         image_config (ImageConfig): The image config used to define task container images.
+        task_module (str): The task module that is going to override the args in pyflyte-execute
         env (Optional[Dict[str, str]]): Environment variables injected into task container definitions.
         flytekit_virtualenv_root (Optional[str]):  During out of container serialize the absolute path of the flytekit
             virtualenv at serialization time won't match the in-container value at execution time. This optional value
@@ -182,6 +183,7 @@ class SerializationSettings(object):
     domain: str
     version: str
     image_config: ImageConfig
+    task_module: Optional[str] = None
     env: Optional[Dict[str, str]] = None
     flytekit_virtualenv_root: Optional[str] = None
     python_interpreter: Optional[str] = None
@@ -194,6 +196,7 @@ class SerializationSettings(object):
         domain: str
         version: str
         image_config: ImageConfig
+        task_module: Optional[str]
         env: Optional[Dict[str, str]] = None
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
@@ -210,6 +213,7 @@ class SerializationSettings(object):
                 domain=self.domain,
                 version=self.version,
                 image_config=self.image_config,
+                task_module=self.task_module,
                 env=self.env,
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,
@@ -227,6 +231,7 @@ class SerializationSettings(object):
             domain=self.domain,
             version=self.version,
             image_config=self.image_config,
+            task_module=self.task_module,
             env=self.env,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
