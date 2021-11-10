@@ -171,6 +171,8 @@ def task(
                      Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
                      may change based on the backend provider.
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
+    :param module_name: Explicitly pass which module the workflow belongs to, can be used to override default
+                     __main__.<workflow name>
     """
 
     def wrapper(fn) -> PythonFunctionTask:

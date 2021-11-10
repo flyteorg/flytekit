@@ -112,6 +112,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
             executing normally or specially handling a dynamic case.
         :param Optional[TaskResolverMixin] task_type: String task type to be associated with this Task
+        :param module_name: Explicitly pass which module the workflow belongs to, can be used to override default
+            __main__.<workflow name>
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")

@@ -579,6 +579,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         docstring: Docstring = None,
         module_name: Optional[str] = None,
     ):
+        # If module name is passed explicitly use that instead of workflow_function.__module__
         name = f"{module_name or workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
         native_interface = transform_signature_to_interface(inspect.signature(workflow_function), docstring=docstring)
@@ -726,6 +727,8 @@ def workflow(
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
+    :param module_name: Explicitly pass which module the workflow belongs to, can be used to override default
+        __main__.<workflow name>
     """
 
     def wrapper(fn):
