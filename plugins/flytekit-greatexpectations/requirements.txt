@@ -8,10 +8,6 @@
     # via -r requirements.in
 altair==4.1.0
     # via great-expectations
-appnope==0.1.2
-    # via
-    #   ipykernel
-    #   ipython
 argon2-cffi==21.1.0
     # via notebook
 attrs==21.2.0
@@ -27,7 +23,9 @@ bleach==4.1.0
 certifi==2021.5.30
     # via requests
 cffi==1.14.6
-    # via argon2-cffi
+    # via
+    #   argon2-cffi
+    #   cryptography
 charset-normalizer==2.0.4
     # via requests
 click==7.1.2
@@ -36,6 +34,8 @@ click==7.1.2
     #   great-expectations
 croniter==1.0.15
     # via flytekit
+cryptography==35.0.0
+    # via secretstorage
 dataclasses-json==0.5.5
     # via flytekit
 debugpy==1.4.1
@@ -95,6 +95,10 @@ ipywidgets==7.6.4
     # via great-expectations
 jedi==0.18.0
     # via ipython
+jeepney==0.7.1
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.0.1
     # via
     #   altair
@@ -204,7 +208,7 @@ ptyprocess==0.7.0
     #   terminado
 py==1.10.0
     # via retry
-pyarrow==6.0.0
+pyarrow==3.0.0
     # via flytekit
 pycparser==2.20
     # via cffi
@@ -258,6 +262,8 @@ scantree==0.0.1
     # via dirhash
 scipy==1.7.1
     # via great-expectations
+secretstorage==3.3.1
+    # via keyring
 send2trash==1.8.0
     # via notebook
 six==1.16.0
@@ -273,7 +279,9 @@ six==1.16.0
 sortedcontainers==2.4.0
     # via flytekit
 sqlalchemy==1.4.23
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   flytekitplugins-great-expectations
 statsd==3.3.0
     # via flytekit
 termcolor==1.1.0

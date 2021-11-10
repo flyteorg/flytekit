@@ -14,12 +14,16 @@ certifi==2021.5.30
     # via
     #   kubernetes
     #   requests
+cffi==1.15.0
+    # via cryptography
 charset-normalizer==2.0.4
     # via requests
 click==7.1.2
     # via flytekit
 croniter==1.0.15
     # via flytekit
+cryptography==35.0.0
+    # via secretstorage
 dataclasses-json==0.5.5
     # via flytekit
 decorator==5.0.9
@@ -46,6 +50,10 @@ idna==3.2
     # via requests
 importlib-metadata==4.8.1
     # via keyring
+jeepney==0.7.1
+    # via
+    #   keyring
+    #   secretstorage
 keyring==23.1.0
     # via flytekit
 kubernetes==18.20.0
@@ -79,7 +87,7 @@ protobuf==3.17.3
     #   flytekit
 py==1.10.0
     # via retry
-pyarrow==6.0.0
+pyarrow==3.0.0
     # via flytekit
 pyasn1==0.4.8
     # via
@@ -87,6 +95,8 @@ pyasn1==0.4.8
     #   rsa
 pyasn1-modules==0.2.8
     # via google-auth
+pycparser==2.21
+    # via cffi
 python-dateutil==2.8.1
     # via
     #   croniter
@@ -121,6 +131,8 @@ rsa==4.7.2
     # via google-auth
 scantree==0.0.1
     # via dirhash
+secretstorage==3.3.1
+    # via keyring
 six==1.16.0
     # via
     #   flytekit
