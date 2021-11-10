@@ -28,7 +28,10 @@ class InstanceTrackingMeta(type):
 
     def __call__(cls, *args, **kwargs):
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
-        o._instantiated_in = InstanceTrackingMeta._find_instance_module()
+        if hasattr(o, "_module_name"):
+            o._instantiated_in = o._module_name
+        else:
+            o._instantiated_in = InstanceTrackingMeta._find_instance_module()
         return o
 
 
