@@ -18,7 +18,7 @@ attrs==20.3.0
     #   jsonschema
     #   pytest
     #   pytest-docker
-backports.entry-points-selectable==1.1.0
+backports.entry-points-selectable==1.1.1
     # via virtualenv
 bcrypt==3.2.0
     # via
@@ -126,13 +126,13 @@ grpcio==1.41.1
     # via
     #   -c requirements.txt
     #   flytekit
-identify==2.3.4
+identify==2.3.5
     # via pre-commit
 idna==3.3
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.8.1
+importlib-metadata==4.8.2
     # via
     #   -c requirements.txt
     #   keyring
@@ -143,7 +143,7 @@ jeepney==0.7.1
     #   -c requirements.txt
     #   keyring
     #   secretstorage
-jinja2==3.0.2
+jinja2==3.0.3
     # via
     #   -c requirements.txt
     #   cookiecutter
@@ -295,7 +295,7 @@ pyyaml==5.4.1
     #   -c requirements.txt
     #   docker-compose
     #   pre-commit
-regex==2021.11.2
+regex==2021.11.9
     # via
     #   -c requirements.txt
     #   docker-image-py
