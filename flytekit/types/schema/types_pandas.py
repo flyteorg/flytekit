@@ -145,7 +145,8 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         return r.all()
 
 
-SchemaEngine.register_handler(
-    SchemaHandler("pandas-dataframe-schema", pandas.DataFrame, PandasSchemaReader, PandasSchemaWriter)
-)
-TypeEngine.register(PandasDataFrameTransformer())
+# Temporarily disable pandas transformer
+# SchemaEngine.register_handler(
+#     SchemaHandler("pandas-dataframe-schema", pandas.DataFrame, PandasSchemaReader, PandasSchemaWriter)
+# )
+# TypeEngine.register(PandasDataFrameTransformer())
