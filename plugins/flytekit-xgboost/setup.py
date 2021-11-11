@@ -4,7 +4,7 @@ PLUGIN_NAME = "xgboost"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.23.1,<1.0.0", "xgboost>=1.5.0", "scikit-learn>=1.0.1"]
+plugin_requires = ["flytekit>=0.25.0b0,<1.0.0", "xgboost>=1.5.0", "scikit-learn>=1.0.1"]
 
 __version__ = "0.0.0+develop"
 
