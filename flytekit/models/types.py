@@ -1,4 +1,5 @@
 import json as _json
+import typing
 
 from flyteidl.core import types_pb2 as _types_pb2
 from google.protobuf import json_format as _json_format
@@ -98,6 +99,70 @@ class SchemaType(_common.FlyteIdlEntity):
         return cls(columns=[SchemaType.SchemaColumn.from_flyte_idl(c) for c in proto.columns])
 
 
+class StructuredDatasetType(_common.FlyteIdlEntity):
+    class DatasetColumn(_common.FlyteIdlEntity):
+        def __init__(self, name: str, literal_type: _types_pb2.LiteralType):
+            self._name = name
+            self._literal_type = literal_type
+
+        @property
+        def name(self) -> str:
+            """
+            Name for the column
+            """
+            return self._name
+
+        @property
+        def literal_type(self) -> _types_pb2.LiteralType:
+            """
+            A LiteralType that defines the type of this column
+            """
+            return self._literal_type
+
+        def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType.DatasetColumn:
+            return _types_pb2.StructuredDatasetType.DatasetColumn(name=self.name, literal_type=self.literal_type)
+
+        @classmethod
+        def from_flyte_idl(
+            cls, proto: _types_pb2.StructuredDatasetType.DatasetColumn
+        ) -> _types_pb2.StructuredDatasetType.DatasetColumn:
+            return cls(name=proto.name, literal_type=proto.literal_type)
+
+    def __init__(
+        self, columns: typing.List[DatasetColumn], external_schema_type: str = None, external_schema_bytes: bytes = None
+    ):
+        self._columns = columns
+        self._external_schema_type = external_schema_type
+        self._external_schema_bytes = external_schema_bytes
+
+    @property
+    def columns(self) -> typing.List[DatasetColumn]:
+        return self._columns
+
+    @property
+    def external_schema_type(self) -> str:
+        return self._external_schema_type
+
+    @property
+    def external_schema_bytes(self) -> bytes:
+        return self._external_schema_bytes
+
+    def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType:
+        return _types_pb2.StructuredDatasetType(
+            columns=self.columns,
+            external_schema_type=self.external_schema_type,
+            external_schema_bytes=self.external_schema_bytes,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: _types_pb2.StructuredDatasetType) -> _types_pb2.StructuredDatasetType:
+        return cls(
+            columns=proto.columns,
+            external_schema_type=proto.external_schema_type,
+            external_schema_bytes=proto.external_schema_bytes,
+        )
+
+
 class LiteralType(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -107,6 +172,7 @@ class LiteralType(_common.FlyteIdlEntity):
         map_value_type=None,
         blob=None,
         enum_type=None,
+        structured_dataset_type=None,
         metadata=None,
     ):
         """
@@ -119,6 +185,7 @@ class LiteralType(_common.FlyteIdlEntity):
             string.
         :param flytekit.models.core.types.BlobType blob: For blob objects, this describes the type.
         :param flytekit.models.core.types.EnumType enum_type: For enum objects, describes an enum
+        :param flytekit.models.core.types.StructuredDatasetType structured_dataset_type: structured dataset
         :param dict[Text, T] metadata: Additional data describing the type
         """
         self._simple = simple
@@ -127,6 +194,7 @@ class LiteralType(_common.FlyteIdlEntity):
         self._map_value_type = map_value_type
         self._blob = blob
         self._enum_type = enum_type
+        self._structured_dataset_type = structured_dataset_type
         self._metadata = metadata
 
     @property
@@ -160,6 +228,10 @@ class LiteralType(_common.FlyteIdlEntity):
         return self._enum_type
 
     @property
+    def structured_dataset_type(self) -> StructuredDatasetType:
+        return self._structured_dataset_type
+
+    @property
     def metadata(self):
         """
         :rtype: dict[Text, T]
@@ -185,6 +257,9 @@ class LiteralType(_common.FlyteIdlEntity):
             map_value_type=self.map_value_type.to_flyte_idl() if self.map_value_type is not None else None,
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
+            structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
+            if self.structured_dataset_type
+            else None,
             metadata=metadata,
         )
         return t
@@ -208,6 +283,9 @@ class LiteralType(_common.FlyteIdlEntity):
             map_value_type=map_value_type,
             blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
             enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
+            structured_dataset_type=StructuredDatasetType.from_flyte_idl(proto.structured_dataset_type)
+            if proto.HasField("structured_dataset_type")
+            else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
         )
 

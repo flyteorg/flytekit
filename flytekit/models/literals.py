@@ -9,6 +9,7 @@ from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
+from flytekit.models.types import StructuredDatasetType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
@@ -546,6 +547,56 @@ class Schema(_common.FlyteIdlEntity):
         return cls(uri=pb2_object.uri, type=_SchemaType.from_flyte_idl(pb2_object.type))
 
 
+class StructuredDatasetMetadata(_common.FlyteIdlEntity):
+    def __init__(self, format: str, structured_dataset_type: StructuredDatasetType):
+        self._format = format
+        self._structured_dataset_type = structured_dataset_type
+
+    @property
+    def format(self) -> str:
+        return self._format
+
+    @property
+    def structured_dataset_type(self) -> StructuredDatasetType:
+        return self._structured_dataset_type
+
+    def to_flyte_idl(self) -> _literals_pb2.StructuredDatasetMetadata:
+        return _literals_pb2.StructuredDatasetMetadata(
+            format=self.format, structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _literals_pb2.StructuredDatasetMetadata) -> "StructuredDatasetMetadata":
+        return cls(
+            format=pb2_object.format,
+            structured_dataset_type=StructuredDatasetType.from_flyte_idl(pb2_object.structured_dataset_type),
+        )
+
+
+class StructuredDataset(_common.FlyteIdlEntity):
+    def __init__(self, uri: str, metadata: StructuredDatasetMetadata):
+        """
+        A strongly typed schema that defines the interface of data retrieved from the underlying storage medium.
+        """
+        self._uri = uri
+        self._metadata = metadata
+
+    @property
+    def uri(self) -> str:
+        return self._uri
+
+    @property
+    def metadata(self) -> StructuredDatasetMetadata:
+        return self._metadata
+
+    def to_flyte_idl(self) -> _literals_pb2.StructuredDataset:
+        return _literals_pb2.StructuredDataset(uri=self.uri, metadata=self.metadata.to_flyte_idl())
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _literals_pb2.StructuredDataset) -> "StructuredDataset":
+        return cls(uri=pb2_object.uri, metadata=StructuredDatasetMetadata.from_flyte_idl(pb2_object.metadata))
+
+
 class LiteralCollection(_common.FlyteIdlEntity):
     def __init__(self, literals):
         """
@@ -615,6 +666,7 @@ class Scalar(_common.FlyteIdlEntity):
         none_type: Void = None,
         error=None,
         generic: Struct = None,
+        structured_dataset: StructuredDataset = None,
     ):
         """
         Scalar wrapper around Flyte types.  Only one can be specified.
@@ -626,6 +678,7 @@ class Scalar(_common.FlyteIdlEntity):
         :param Void none_type:
         :param error:
         :param google.protobuf.struct_pb2.Struct generic:
+        :param StructuredDataset structured_dataset:
         """
 
         self._primitive = primitive
@@ -635,6 +688,7 @@ class Scalar(_common.FlyteIdlEntity):
         self._none_type = none_type
         self._error = error
         self._generic = generic
+        self._structured_dataset = structured_dataset
 
     @property
     def primitive(self):
@@ -686,12 +740,25 @@ class Scalar(_common.FlyteIdlEntity):
         return self._generic
 
     @property
+    def structured_dataset(self) -> StructuredDataset:
+        return self._structured_dataset
+
+    @property
     def value(self):
         """
         Returns whichever value is set
         :rtype: T
         """
-        return self.primitive or self.blob or self.binary or self.schema or self.none_type or self.error
+        return (
+            self.primitive
+            or self.blob
+            or self.binary
+            or self.schema
+            or self.none_type
+            or self.error
+            or self.generic
+            or self.structured_dataset
+        )
 
     def to_flyte_idl(self):
         """
@@ -705,6 +772,7 @@ class Scalar(_common.FlyteIdlEntity):
             none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
             error=self.error if self.error is not None else None,
             generic=self.generic,
+            structured_dataset=self.structured_dataset.to_flyte_idl() if self.structured_dataset is not None else None,
         )
 
     @classmethod
@@ -722,6 +790,9 @@ class Scalar(_common.FlyteIdlEntity):
             none_type=Void.from_flyte_idl(pb2_object.none_type) if pb2_object.HasField("none_type") else None,
             error=pb2_object.error if pb2_object.HasField("error") else None,
             generic=pb2_object.generic if pb2_object.HasField("generic") else None,
+            structured_dataset=StructuredDataset.from_flyte_idl(pb2_object.structured_dataset)
+            if pb2_object.HasField("structured_dataset")
+            else None,
         )
 
 
