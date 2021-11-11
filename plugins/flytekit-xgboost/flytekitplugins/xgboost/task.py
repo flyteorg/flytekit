@@ -124,13 +124,13 @@ class XGBoostTask(PythonInstanceTask[TrainParameters]):
                 dataset = kwargs[each_key]
                 # FlyteFile
                 if issubclass(self.python_interface.inputs[each_key], FlyteFile):
-                    with open(dataset) as _:
-                        if dataset.extension() == "csv":
-                            dataset_vars[each_key] = xgboost.DMatrix(
-                                dataset.path + "?format=csv&label_column=" + str(self._label_column)
-                            )
-                        else:
-                            dataset_vars[each_key] = xgboost.DMatrix(dataset.path)
+                    dataset.download()
+                    if dataset.extension() == "csv":
+                        dataset_vars[each_key] = xgboost.DMatrix(
+                            dataset.path + "?format=csv&label_column=" + str(self._label_column)
+                        )
+                    else:
+                        dataset_vars[each_key] = xgboost.DMatrix(dataset.path)
                 # FlyteSchema
                 elif issubclass(self.python_interface.inputs[each_key], FlyteSchema):
                     df = dataset.open().all()
