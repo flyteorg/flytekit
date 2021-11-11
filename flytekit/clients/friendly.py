@@ -676,12 +676,11 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def get_node_execution_data(self, node_execution_identifier):
+    def get_node_execution_data(self, node_execution_identifier) -> _execution.NodeExecutionGetDataResponse:
         """
         Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
 
         :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
-        :rtype: flytekit.models.execution.NodeExecutionGetDataResponse
         """
         return _execution.NodeExecutionGetDataResponse.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_node_execution_data(

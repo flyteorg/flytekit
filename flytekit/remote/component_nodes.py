@@ -1,7 +1,6 @@
 import logging as _logging
 from typing import Dict
 
-import flytekit
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model

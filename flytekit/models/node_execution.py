@@ -1,13 +1,100 @@
+import typing
+
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import pytz as _pytz
 
 from flytekit.models import common as _common_models
+from flytekit.models.core import catalog as catalog_models
+from flytekit.models.core import compiler as core_compiler_models
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
 
 
+class WorkflowNodeMetadata(_common_models.FlyteIdlEntity):
+    def __init__(self, execution_id: _identifier.WorkflowExecutionIdentifier):
+        self._execution_id = execution_id
+
+    @property
+    def execution_id(self) -> _identifier.WorkflowExecutionIdentifier:
+        return self._execution_id
+
+    def to_flyte_idl(self) -> _node_execution_pb2.WorkflowNodeMetadata:
+        _node_execution_pb2.WorkflowNodeMetadata(
+            executionId=self.execution_id.to_flyte_idl(),
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, p: _node_execution_pb2.WorkflowNodeMetadata) -> "WorkflowNodeMetadata":
+        return cls(
+            execution_id=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(p.executionId),
+        )
+
+
+class DynamicWorkflowNodeMetadata(_common_models.FlyteIdlEntity):
+    def __init__(self, id: _identifier.Identifier, compiled_workflow: core_compiler_models.CompiledWorkflowClosure):
+        self._id = id
+        self._compiled_workflow = compiled_workflow
+
+    @property
+    def id(self) -> _identifier.Identifier:
+        return self._id
+
+    @property
+    def compiled_workflow(self) -> core_compiler_models.CompiledWorkflowClosure:
+        return self._compiled_workflow
+
+    def to_flyte_idl(self) -> _node_execution_pb2.DynamicWorkflowNodeMetadata:
+        _node_execution_pb2.DynamicWorkflowNodeMetadata(
+            id=self.id.to_flyte_idl(),
+            compiled_workflow=self.compiled_workflow.to_flyte_idl(),
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, p: _node_execution_pb2.DynamicWorkflowNodeMetadata) -> "DynamicWorkflowNodeMetadata":
+        return cls(
+            id=_identifier.Identifier.from_flyte_idl(p.id),
+            compiled_workflow=core_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow),
+        )
+
+
+class TaskNodeMetadata(_common_models.FlyteIdlEntity):
+    def __init__(self, cache_status: int, catalog_key: catalog_models.CatalogMetadata):
+        self._cache_status = cache_status
+        self._catalog_key = catalog_key
+
+    @property
+    def cache_status(self) -> int:
+        return self._cache_status
+
+    @property
+    def catalog_key(self) -> catalog_models.CatalogMetadata:
+        return self._catalog_key
+
+    def to_flyte_idl(self) -> _node_execution_pb2.TaskNodeMetadata:
+        _node_execution_pb2.TaskNodeMetadata(
+            cache_status=self.cache_status,
+            catalog_key=self.catalog_key.to_flyte_idl(),
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, p: _node_execution_pb2.TaskNodeMetadata) -> "TaskNodeMetadata":
+        return cls(
+            cache_status=p.cache_status,
+            catalog_key=catalog_models.CatalogMetadata.from_flyte_idl(p.catalog_key),
+        )
+
+
 class NodeExecutionClosure(_common_models.FlyteIdlEntity):
-    def __init__(self, phase, started_at, duration, output_uri=None, error=None):
+    def __init__(
+        self,
+        phase,
+        started_at,
+        duration,
+        output_uri=None,
+        error=None,
+        workflow_node_metadata: typing.Optional[WorkflowNodeMetadata] = None,
+        task_node_metadata: typing.Optional[TaskNodeMetadata] = None,
+    ):
         """
         :param int phase:
         :param datetime.datetime started_at:
@@ -20,6 +107,8 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         self._duration = duration
         self._output_uri = output_uri
         self._error = error
+        self._workflow_node_metadata = workflow_node_metadata
+        self._task_node_metadata = task_node_metadata
 
     @property
     def phase(self):
@@ -56,6 +145,18 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         """
         return self._error
 
+    @property
+    def workflow_node_metadata(self) -> typing.Optional[WorkflowNodeMetadata]:
+        return self._workflow_node_metadata
+
+    @property
+    def task_node_metadata(self) -> typing.Optional[TaskNodeMetadata]:
+        return self._task_node_metadata
+
+    @property
+    def target_metadata(self) -> typing.Union[WorkflowNodeMetadata, TaskNodeMetadata]:
+        return self.workflow_node_metadata or self.task_node_metadata
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionClosure
@@ -64,6 +165,10 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
             phase=self.phase,
             output_uri=self.output_uri,
             error=self.error.to_flyte_idl() if self.error is not None else None,
+            workflow_node_metadata=self.workflow_node_metadata.to_flyte_idl()
+            if self.workflow_node_metadata is not None
+            else None,
+            task_node_metadata=self.task_node_metadata.to_flyte_idl() if self.task_node_metadata is not None else None,
         )
         obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
@@ -81,6 +186,12 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
             error=_core_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
             started_at=p.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
             duration=p.duration.ToTimedelta(),
+            workflow_node_metadata=WorkflowNodeMetadata.from_flyte_idl(p.workflow_node_metadata)
+            if p.HasField("workflow_node_metadata")
+            else None,
+            task_node_metadata=TaskNodeMetadata.from_flyte_idl(p.task_node_metadata)
+            if p.HasField("task_node_metadata")
+            else None,
         )
 
 
