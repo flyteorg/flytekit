@@ -172,14 +172,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         return typing.cast(str, self._remote_source)
 
     def download(self) -> str:
-        if self._downloaded:
-            return self.path
-        if self._downloader is not noop:
-            self._downloader()
-            self._downloaded = True
-            return self.path
-        else:
-            raise ValueError(f"Attempting to trigger download on non-downloadable folder {self}")
+        return self.__fspath__()
 
     def __repr__(self):
         return self._path
