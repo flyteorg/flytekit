@@ -167,9 +167,7 @@ def test_file_non_downloadable():
 
     # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
-        scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file)
-        )
+        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file))
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
@@ -185,9 +183,7 @@ def test_dir_non_downloadable():
     local_dir = "/usr/local/bin/"
     # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
-        scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir)
-        )
+        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir))
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteDirectory)
