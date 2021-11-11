@@ -1,2 +1,2 @@
 .[all-spark2.4]
--c requirements.in
+-r requirements.in
