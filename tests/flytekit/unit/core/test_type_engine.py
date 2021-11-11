@@ -159,13 +159,14 @@ def test_list_of_dataclass_getting_python_value():
     assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
 
 
-def test_file_non_downloadable():
+def test_file_no_downloader_default():
+    # The idea of this test is to assert that if a FlyteFile is created with no download specified,
+    # then it should return the set path itself. This matches if we use open method
     transformer = TypeEngine.get_transformer(FlyteFile)
 
     ctx = FlyteContext.current_context()
     local_file = "/usr/local/bin/file"
 
-    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
         scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file))
     )
@@ -175,13 +176,14 @@ def test_file_non_downloadable():
     assert pv.download() == local_file
 
 
-def test_dir_non_downloadable():
+def test_dir_no_downloader_default():
+    # The idea of this test is to assert that if a FlyteFile is created with no download specified,
+    # then it should return the set path itself. This matches if we use open method
     transformer = TypeEngine.get_transformer(FlyteDirectory)
 
     ctx = FlyteContext.current_context()
 
     local_dir = "/usr/local/bin/"
-    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
         scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir))
     )
