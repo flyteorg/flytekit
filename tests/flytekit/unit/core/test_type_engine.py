@@ -163,18 +163,18 @@ def test_file_non_downloadable():
     transformer = TypeEngine.get_transformer(FlyteFile)
 
     ctx = FlyteContext.current_context()
+    local_file = "/usr/local/bin/file"
 
     # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
         scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri="/usr/local/bin/file")
+            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file)
         )
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
     assert isinstance(pv, FlyteFile)
-    with pytest.raises(ValueError):
-        pv.download()
+    assert pv.download() == local_file
 
 
 def test_dir_non_downloadable():
@@ -182,17 +182,17 @@ def test_dir_non_downloadable():
 
     ctx = FlyteContext.current_context()
 
+    local_dir = "/usr/local/bin/"
     # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
         scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri="/usr/local/bin/")
+            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir)
         )
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteDirectory)
     assert isinstance(pv, FlyteDirectory)
-    with pytest.raises(ValueError):
-        pv.download()
+    assert pv.download() == local_dir
 
 
 def test_dict_transformer():
