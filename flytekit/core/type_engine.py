@@ -378,6 +378,15 @@ class TypeEngine(typing.Generic[T]):
         cls.register(RestrictedTypeTransformer(name, type))
 
     @classmethod
+    def register_additional_type(cls, transformer: TypeTransformer, additional_type: Type):
+        if additional_type in cls._REGISTRY:
+            raise ValueError(
+                f"Transformer {cls._REGISTRY[additional_type].name} for type {additional_type} is already registered."
+                f" Cannot override with {transformer.name}"
+            )
+        cls._REGISTRY[additional_type] = transformer
+
+    @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
