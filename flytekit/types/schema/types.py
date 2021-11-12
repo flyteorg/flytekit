@@ -30,14 +30,6 @@ class SchemaFormat(Enum):
     # CSV = "csv"
     # RECORDIO = "recordio"
 
-    @classmethod
-    def value_of(cls, value):
-        for k, v in cls.__members__.items():
-            if k == value:
-                return v
-        else:
-            raise ValueError(f"'{cls.__name__}' enum not found for '{value}'")
-
 
 class SchemaOpenMode(Enum):
     READ = "r"

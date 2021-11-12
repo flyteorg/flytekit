@@ -10,9 +10,9 @@ from google.cloud import bigquery, bigquery_storage
 from google.cloud.bigquery import LoadJob, LoadJobConfig
 from google.cloud.bigquery_storage_v1 import types
 
-from flytekit.types.schema import SchemaFormat
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
+    DatasetFormat,
     DatasetPersistenceHandler,
     DatasetRetrievalHandler,
 )
@@ -61,8 +61,8 @@ class BQToArrowRetrievalHandler(DatasetRetrievalHandler, ABC):
         return pa.Table.from_pandas(pd.concat(frames))
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(SchemaFormat.PARQUET, pa.Table, ParquetToArrowRetrievalHandler())
-FLYTE_DATASET_TRANSFORMER.register_handler(SchemaFormat.BIGQUERY, pa.Table, BQToArrowRetrievalHandler())
+FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.PARQUET, pa.Table, ParquetToArrowRetrievalHandler())
+FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.BIGQUERY, pa.Table, BQToArrowRetrievalHandler())
 
-FLYTE_DATASET_TRANSFORMER.register_handler(pa.Table, SchemaFormat.PARQUET, ArrowToParquetPersistenceHandlers())
-FLYTE_DATASET_TRANSFORMER.register_handler(pa.Table, SchemaFormat.BIGQUERY, ArrowToBQPersistenceHandlers())
+FLYTE_DATASET_TRANSFORMER.register_handler(pa.Table, DatasetFormat.PARQUET, ArrowToParquetPersistenceHandlers())
+FLYTE_DATASET_TRANSFORMER.register_handler(pa.Table, DatasetFormat.BIGQUERY, ArrowToBQPersistenceHandlers())

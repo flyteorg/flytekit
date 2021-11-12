@@ -387,6 +387,10 @@ class TypeEngine(typing.Generic[T]):
         cls._REGISTRY[additional_type] = transformer
 
     @classmethod
+    def override_transformer(cls, transformer: TypeTransformer, additional_type: Type):
+        cls._REGISTRY[additional_type] = transformer
+
+    @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is

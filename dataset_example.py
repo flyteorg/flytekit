@@ -6,11 +6,11 @@ import pandas as pd
 import pyarrow as pa
 
 from flytekit import kwtypes, task, workflow
-from flytekit.types.schema import SchemaFormat
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
     DatasetDecodingHandler,
     DatasetEncodingHandler,
+    DatasetFormat,
     StructuredDataset,
 )
 
@@ -69,7 +69,7 @@ def t4(dataset: StructuredDataset[column_type]) -> pd.DataFrame:
 @task
 def t5(dataframe: pd.DataFrame) -> StructuredDataset[column_type]:
     # s3 (parquet) -> pandas -> bq
-    return StructuredDataset(dataframe=dataframe, remote_path=BQ_PATH, file_format=SchemaFormat.BIGQUERY)
+    return StructuredDataset(dataframe=dataframe, remote_path=BQ_PATH, file_format=DatasetFormat.BIGQUERY)
 
 
 @task
@@ -83,7 +83,7 @@ def t6(dataset: StructuredDataset[column_type]) -> pd.DataFrame:
 def t7(df1: pd.DataFrame, df2: pd.DataFrame) -> (StructuredDataset[column_type], StructuredDataset[column_type]):
     # df1: pandas -> bq
     # df2: pandas -> s3 (parquet)
-    return StructuredDataset(dataframe=df1, remote_path=BQ_PATH, file_format=SchemaFormat.BIGQUERY), df2
+    return StructuredDataset(dataframe=df1, remote_path=BQ_PATH, file_format=DatasetFormat.BIGQUERY), df2
 
 
 @task
@@ -131,7 +131,7 @@ def t11(
 ) -> StructuredDataset[column_type]:
     # numpy -> Arrow table -> bq
     return StructuredDataset(
-        dataframe=dataframe, remote_path="bq://photo-313016:flyte.new_table5", file_format=SchemaFormat.BIGQUERY
+        dataframe=dataframe, remote_path="bq://photo-313016:flyte.new_table5", file_format=DatasetFormat.BIGQUERY
     )
 
 
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     t3a(dataset=StructuredDataset(remote_path=PANDAS_PATH))
     t4(dataset=StructuredDataset(remote_path=PANDAS_PATH))
     t5(dataframe=df)
-    t6(dataset=StructuredDataset(remote_path=BQ_PATH, file_format=SchemaFormat.BIGQUERY))
+    t6(dataset=StructuredDataset(remote_path=BQ_PATH, file_format=DatasetFormat.BIGQUERY))
     t7(df1=df, df2=df)
     t8(dataframe=pa.Table.from_pandas(df))
     t9(dataframe=np_array)

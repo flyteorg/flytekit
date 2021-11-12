@@ -3,8 +3,10 @@ from __future__ import annotations
 import datetime as _datetime
 import os
 import typing
+from enum import Enum
 from typing import Any, Dict, List, Type, Union
 
+import fsspec
 import numpy as _np
 import pyarrow as pa
 
@@ -12,12 +14,25 @@ from flytekit import FlyteContext
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
 from flytekit.models import types as type_models
-from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
+from flytekit.models.literals import Literal, Scalar
 from flytekit.models.literals import StructuredDataset as _StructuredDataset
+from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, StructuredDatasetType
-from flytekit.types.schema.types import SchemaFormat
 
 T = typing.TypeVar("T")
+
+
+class DatasetFormat(Enum):
+    PARQUET = "parquet"
+    BIGQUERY = "bigquery"
+
+    @classmethod
+    def value_of(cls, value):
+        for k, v in cls.__members__.items():
+            if k == value:
+                return v
+        else:
+            raise ValueError(f"'{cls.__name__}' enum not found for '{value}'")
 
 
 class StructuredDataset(object):
@@ -61,7 +76,7 @@ class StructuredDataset(object):
         dataframe: typing.Optional[typing.Any] = None,
         local_path: typing.Union[os.PathLike, str] = None,
         remote_path: str = None,
-        file_format: SchemaFormat = SchemaFormat.PARQUET,
+        file_format: DatasetFormat = DatasetFormat.PARQUET,
         downloader: typing.Callable[[str, os.PathLike], None] = None,
     ):
         self._dataframe = dataframe
@@ -85,7 +100,7 @@ class StructuredDataset(object):
         return typing.cast(str, self._remote_path)
 
     @property
-    def file_format(self) -> SchemaFormat:
+    def file_format(self) -> DatasetFormat:
         return self._file_format
 
     def open_as(self, df_type: Type) -> typing.Any:
@@ -248,11 +263,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         """
         if from_type not in self._REGISTER_TYPES:
             self._REGISTER_TYPES.append(from_type)
-            TypeEngine.register_additional_type(self, from_type)
+            TypeEngine.override_transformer(self, from_type)
 
         if to_type not in self._REGISTER_TYPES:
             self._REGISTER_TYPES.append(to_type)
-            TypeEngine.register_additional_type(self, to_type)
+            TypeEngine.override_transformer(self, to_type)
 
         registry: dict
 
@@ -276,10 +291,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[StructuredDataset], expected: LiteralType
     ) -> Literal:
         uri: str = ""
-        file_format: SchemaFormat
+        file_format: DatasetFormat
         # 1. Python value is StructuredDataset
         if isinstance(python_val, StructuredDataset):
-            uri = python_val.remote_path or ctx.file_access.get_random_remote_path()
+            # TODO: change to get_random_remote_path
+            uri = python_val.remote_path or ctx.file_access.get_random_local_directory()
             df = python_val.dataframe
             file_format = python_val.file_format
             if python_val.local_path:
@@ -288,8 +304,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 self.upload(type(df), file_format, uri, df)
         # 2. Python value is Dataframe
         else:
+            # TODO: change to get_random_remote_path
             uri = ctx.file_access.get_random_remote_path()
-            file_format = SchemaFormat.PARQUET
+            file_format = DatasetFormat.PARQUET
             self.upload(type(python_val), file_format, uri, python_val)
 
         return Literal(
@@ -304,7 +321,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         )
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        fmt = SchemaFormat.value_of(lv.scalar.structured_dataset.metadata.format)
+        fmt = DatasetFormat.value_of(lv.scalar.structured_dataset.metadata.format)
         uri = lv.scalar.structured_dataset.uri
 
         if StructuredDataset in expected_python_type.mro():
@@ -318,7 +335,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         raise ValueError(f"Not yet implemented {literal_type}")
 
-    def download(self, from_type: Union[Type, SchemaFormat], to_type: Union[Type, SchemaFormat], uri: str) -> Any:
+    def download(self, from_type: Union[Type, DatasetFormat], to_type: Union[Type, DatasetFormat], uri: str) -> Any:
         retrieve_handler = self._get_handler(from_type, to_type, self.DATASET_RETRIEVAL_HANDLERS)
         if retrieve_handler:
             return retrieve_handler.retrieve(path=uri)
@@ -331,7 +348,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return decoding_handler.decode(table)
         raise ValueError(f"Not yet implemented download data {to_type} from {from_type}")
 
-    def upload(self, from_type: Type, to_type: Union[Type, SchemaFormat], uri: str, df: Any):
+    def upload(self, from_type: Type, to_type: Union[Type, DatasetFormat], uri: str, df: Any):
         persist_handler = self._get_handler(from_type, to_type, self.DATASET_PERSISTENCE_HANDLERS)
         if persist_handler:
             persist_handler.persist(df, uri)
