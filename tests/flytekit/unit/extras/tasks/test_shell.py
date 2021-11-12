@@ -9,6 +9,10 @@ from flytekit.extras.tasks.shell import OutputLocation, ShellTask
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
+testdata = os.path.join(os.path.dirname(os.path.realpath(__file__)), "testdata")
+script_sh = os.path.join(testdata, "script.sh")
+test_csv = os.path.join(testdata, "test.csv")
+
 
 def test_shell_task_no_io():
     t = ShellTask(
@@ -60,7 +64,7 @@ def test_input_substitution_files():
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
     )
 
-    assert t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
+    assert t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
 
 
 def test_input_output_substitution_files():
@@ -80,7 +84,7 @@ def test_input_output_substitution_files():
     )
 
     assert t.script == s
-    x, y = t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    x, y = t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
     assert x is not None
     assert y.path[-4:] == ".pyc"
 
@@ -99,7 +103,7 @@ def test_input_single_output_substitution_files():
     )
 
     assert t.script == s
-    y = t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    y = t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
     assert y.path[-4:] == ".pyc"
 
 
@@ -119,14 +123,14 @@ def test_input_output_missing_var():
     )
 
     with pytest.raises(ValueError):
-        t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+        t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
 def test_shell_script():
     t = ShellTask(
-        name="test",
+        name="test2",
         debug=True,
-        script_file="testdata/script.sh",
+        script_file=script_sh,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
             OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
@@ -134,5 +138,5 @@ def test_shell_script():
         ],
     )
 
-    assert t.script_file == os.path.abspath("testdata/script.sh")
-    t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    assert t.script_file == script_sh
+    t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
