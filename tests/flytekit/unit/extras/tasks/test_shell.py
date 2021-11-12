@@ -5,7 +5,7 @@ from subprocess import CalledProcessError
 import pytest
 
 from flytekit import kwtypes
-from flytekit.extras.tasks.shell import ShellTask, OutputLocation
+from flytekit.extras.tasks.shell import OutputLocation, ShellTask
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -60,7 +60,7 @@ def test_input_substitution_files():
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
     )
 
-    t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    assert t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
 
 
 def test_input_output_substitution_files():
@@ -73,12 +73,34 @@ def test_input_output_substitution_files():
         debug=True,
         script=s,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
-        output_locs=[OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
-                     OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc")]
+        output_locs=[
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+        ],
     )
 
     assert t.script == s
-    t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    x, y = t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    assert x is not None
+    assert y.path[-4:] == ".pyc"
+
+
+def test_input_single_output_substitution_files():
+    s = """
+        cat {{ .inputs.f }} >> {{ .outputs.y }}
+        echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }}"
+        """
+    t = ShellTask(
+        name="test",
+        debug=True,
+        script=s,
+        inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
+        output_locs=[OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc")],
+    )
+
+    assert t.script == s
+    y = t(f="testdata/test.csv", y="testdata", j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    assert y.path[-4:] == ".pyc"
 
 
 def test_input_output_missing_var():
@@ -90,8 +112,10 @@ def test_input_output_missing_var():
         echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
         """,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
-        output_locs=[OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
-                     OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc")]
+        output_locs=[
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+        ],
     )
 
     with pytest.raises(ValueError):
@@ -104,8 +128,10 @@ def test_shell_script():
         debug=True,
         script_file="testdata/script.sh",
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
-        output_locs=[OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
-                     OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc")]
+        output_locs=[
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+        ],
     )
 
     assert t.script_file == os.path.abspath("testdata/script.sh")

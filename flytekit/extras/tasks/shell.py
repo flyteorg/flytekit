@@ -6,7 +6,7 @@ import subprocess
 import typing
 from dataclasses import dataclass
 
-from flytekit import PythonInstanceTask, ExecutionParameters
+from flytekit import ExecutionParameters, PythonInstanceTask
 from flytekit.core.interface import Interface
 from flytekit.core.task import TaskPlugins
 from flytekit.types.directory import FlyteDirectory
@@ -23,6 +23,7 @@ class OutputLocation:
                   vars and generates the path. Of the form ``"{{ .inputs.v }}.tmp.md"``.
                   This example for a given input v, at path `/tmp/abc.csv` will resolve to `/tmp/abc.csv.tmp.md`
     """
+
     var: str
     var_type: typing.Type
     location: typing.Union[os.PathLike, str]
@@ -46,8 +47,8 @@ def _stringify(v: typing.Any) -> str:
 
 def _interpolate(tmpl: str, regex: re.Pattern, validate_all_match: bool = True, **kwargs) -> str:
     """
-    Substitutes all templates that match the input regex - ``r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE`` with the
-    given inputs and returns the substituted string. The result is non destructive towards the given string.
+    Substitutes all templates that match the supplied regex
+    with the given inputs and returns the substituted string. The result is non destructive towards the given string.
     """
     modified = tmpl
     matched = set()
@@ -79,22 +80,21 @@ T = typing.TypeVar("T")
 
 
 class ShellTask(PythonInstanceTask[T]):
-    """
-    """
+    """ """
 
     _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
     _OUTPUT_REGEX = re.compile(r"({{\s*.outputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
-            self,
-            name: str,
-            debug: bool = False,
-            script: typing.Optional[str] = None,
-            script_file: typing.Optional[str] = None,
-            task_config: T = None,
-            inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-            output_locs: typing.Optional[typing.List[OutputLocation]] = None,
-            **kwargs,
+        self,
+        name: str,
+        debug: bool = False,
+        script: typing.Optional[str] = None,
+        script_file: typing.Optional[str] = None,
+        task_config: T = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        output_locs: typing.Optional[typing.List[OutputLocation]] = None,
+        **kwargs,
     ):
         """
         Args:
@@ -133,8 +133,11 @@ class ShellTask(PythonInstanceTask[T]):
         self._output_locs = output_locs if output_locs else []
         outputs = self._validate_output_locs()
         super().__init__(
-            name, task_config, task_type=self._config_task_instance.task_type,
-            interface=Interface(inputs=inputs, outputs=outputs), **kwargs
+            name,
+            task_config,
+            task_type=self._config_task_instance.task_type,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            **kwargs,
         )
 
     def _validate_output_locs(self) -> typing.Dict[str, typing.Type]:
@@ -147,8 +150,9 @@ class ShellTask(PythonInstanceTask[T]):
             if v.location is None:
                 raise ValueError(f"Output Location not provided for output var {v.var}")
             if not issubclass(v.var_type, FlyteFile) and not issubclass(v.var_type, FlyteDirectory):
-                raise ValueError(f"Currently only outputs of type FlyteFile/FlyteDirectory and their derived types"
-                                 f" are supported")
+                raise ValueError(
+                    "Currently only outputs of type FlyteFile/FlyteDirectory and their derived types are supported"
+                )
             outputs[v.var] = v.var_type
         return outputs
 
@@ -191,10 +195,12 @@ class ShellTask(PythonInstanceTask[T]):
         except subprocess.CalledProcessError as e:
             files = os.listdir("./")
             fstr = "\n-".join(files)
-            logging.error(f"Failed to Execute Script, return-code {e.returncode} \n"
-                          f"StdErr: {e.stderr}\n"
-                          f"StdOut: {e.stdout}\n"
-                          f" Current directory contents: .\n-{fstr}")
+            logging.error(
+                f"Failed to Execute Script, return-code {e.returncode} \n"
+                f"StdErr: {e.stderr}\n"
+                f"StdOut: {e.stdout}\n"
+                f" Current directory contents: .\n-{fstr}"
+            )
             raise
 
         final_outputs = []
@@ -203,7 +209,11 @@ class ShellTask(PythonInstanceTask[T]):
                 final_outputs.append(FlyteFile(outputs[v.var]))
             if issubclass(v.var_type, FlyteDirectory):
                 final_outputs.append(FlyteDirectory(outputs[v.var]))
-        return tuple(final_outputs)
+        if len(final_outputs) == 1:
+            return final_outputs[0]
+        if len(final_outputs) > 1:
+            return tuple(final_outputs)
+        return None
 
     def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
         return self._config_task_instance.post_execute(user_params, rval)

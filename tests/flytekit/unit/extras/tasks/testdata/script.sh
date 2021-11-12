@@ -1,4 +1,6 @@
+#!/bin/bash
+
 set -ex
 
-cat {{ .inputs.f }} >> {{ .outputs.y }}
+cat "{{ .inputs.f }}" >> "{{ .outputs.y }}"
 echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
