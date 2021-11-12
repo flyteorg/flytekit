@@ -90,7 +90,7 @@ class ShellTask(PythonInstanceTask[T]):
             name: str,
             debug: bool = False,
             script: typing.Optional[str] = None,
-            script_file: typing.Optional[os.PathLike] = None,
+            script_file: typing.Optional[str] = None,
             task_config: T = None,
             inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
             output_locs: typing.Optional[typing.List[OutputLocation]] = None,
@@ -114,6 +114,7 @@ class ShellTask(PythonInstanceTask[T]):
         if script_file:
             if not os.path.exists(script_file):
                 raise ValueError(f"FileNotFound: the specified Script file at path {script_file} cannot be loaded")
+            script_file = os.path.abspath(script_file)
 
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
         # to run pre- and post- execute functions using the corresponding task plugin.
