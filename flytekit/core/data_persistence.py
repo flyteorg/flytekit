@@ -225,12 +225,10 @@ class DiskPersistence(DataPersistence):
 
     def construct_path(self, _: bool, add_prefix: bool, *args: str) -> str:
         # Ignore add_protocol for now. Only complicates things
-        path = os.path.join(*args)
         if add_prefix:
             prefix = self.default_prefix if self.default_prefix else ""
-            path = os.path.join(prefix, *args)
-        self._make_local_path(os.path.dirname(self.strip_file_header(path)))
-        return path
+            return os.path.join(prefix, *args)
+        return os.path.join(*args)
 
 
 def stringify_path(filepath):

@@ -4,18 +4,15 @@ import typing
 from abc import ABC
 from typing import Any, Type, TypeVar
 
-import fsspec
 import pandas
 import pandas as pd
-from fsspec.core import split_protocol
 from google.cloud import bigquery, bigquery_storage
 from google.cloud.bigquery import LoadJob, LoadJobConfig
 from google.cloud.bigquery_storage_v1 import types
 
-from flytekit.types.schema import SchemaFormat
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
-    DatasetDecodingHandler,
+    DatasetFormat,
     DatasetPersistenceHandler,
     DatasetRetrievalHandler,
 )
@@ -82,8 +79,8 @@ class BQToPandasRetrievalHandler(DatasetRetrievalHandler, ABC):
         return pd.concat(frames)
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, SchemaFormat.PARQUET, PandasToParquetPersistenceHandlers())
-FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, SchemaFormat.BIGQUERY, PandasToBQPersistenceHandlers())
+FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, DatasetFormat.PARQUET, PandasToParquetPersistenceHandlers())
+FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, DatasetFormat.BIGQUERY, PandasToBQPersistenceHandlers())
 
-FLYTE_DATASET_TRANSFORMER.register_handler(SchemaFormat.PARQUET, pd.DataFrame, ParquetToPandasRetrievalHandler())
-FLYTE_DATASET_TRANSFORMER.register_handler(SchemaFormat.BIGQUERY, pd.DataFrame, BQToPandasRetrievalHandler())
+FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.PARQUET, pd.DataFrame, ParquetToPandasRetrievalHandler())
+FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.BIGQUERY, pd.DataFrame, BQToPandasRetrievalHandler())
