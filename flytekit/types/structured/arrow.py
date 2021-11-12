@@ -18,7 +18,7 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
-class ArrowToParquetPersistenceHandlers(DatasetPersistenceHandler, ABC):
+class ArrowToParquetPersistenceHandlers(DatasetPersistenceHandler):
     def persist(
         self,
         table: pa.Table,
@@ -27,19 +27,19 @@ class ArrowToParquetPersistenceHandlers(DatasetPersistenceHandler, ABC):
         pq.write_table(table, to_file)
 
 
-class ArrowToBQPersistenceHandlers(DatasetPersistenceHandler, ABC):
+class ArrowToBQPersistenceHandlers(DatasetPersistenceHandler):
     def persist(self, table: pa.Table, path: str, job_config: typing.Optional[LoadJobConfig] = None) -> LoadJob:
         table_id = path.split("://", 1)[1].replace(":", ".")
         client = bigquery.Client()
         return client.load_table_from_dataframe(table.to_pandas(), table_id, job_config=job_config)
 
 
-class ParquetToArrowRetrievalHandler(DatasetRetrievalHandler, ABC):
+class ParquetToArrowRetrievalHandler(DatasetRetrievalHandler):
     def retrieve(self, path: str) -> pa.Table:
         return pq.read_table(path)
 
 
-class BQToArrowRetrievalHandler(DatasetRetrievalHandler, ABC):
+class BQToArrowRetrievalHandler(DatasetRetrievalHandler):
     def retrieve(self, path: str, **kwargs) -> pa.Table:
         # path will be like bq://photo-313016:flyte.new_table1
         _, project_id, dataset_id, table_id = re.split("\.|://|:", path)

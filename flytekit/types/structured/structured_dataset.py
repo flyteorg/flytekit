@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as _datetime
 import os
 import typing
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Type, Union
 
@@ -107,7 +108,7 @@ class StructuredDataset(object):
         return FLYTE_DATASET_TRANSFORMER.download(self.file_format, df_type, self.remote_path)
 
 
-class DatasetEncodingHandler:
+class DatasetEncodingHandler(ABC):
     """
     Inherit from this base class if you want to tell flytekit how to turn an instance of a dataframe (e.g.
     pd.DataFrame or spark.DataFrame or even your own custom data frame object) into a serialized structure of
@@ -122,11 +123,12 @@ class DatasetEncodingHandler:
     - Write Pandera data frame objects to Parquet files
     """
 
+    @abstractmethod
     def encode(self, *args, **kwargs):
         raise NotImplementedError
 
 
-class DatasetPersistenceHandler:
+class DatasetPersistenceHandler(ABC):
     """
     Inherit from this base class if you want to tell flytekit how to take an encoded dataset (e.g. a local Parquet
     file, a block of Arrow memory, even possibly a Python object), and persist it in some kind of a store, and
@@ -139,11 +141,12 @@ class DatasetPersistenceHandler:
     - Write Arrow objects/files to AWS/GCS/BigQuery
     """
 
+    @abstractmethod
     def persist(self, *args, **kwargs):
         raise NotImplementedError
 
 
-class DatasetDecodingHandler:
+class DatasetDecodingHandler(ABC):
     """
     Inherit from this base class if you want to convert from an intermediate storage type (e.g. a local
     Parquet file, local serialized Arrow BatchRecord file, etc.) to a Python value.
@@ -154,6 +157,7 @@ class DatasetDecodingHandler:
     - Turn an Arrow RecordBatch into a pandas DataFrame
     """
 
+    @abstractmethod
     def decode(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -161,13 +165,14 @@ class DatasetDecodingHandler:
         raise NotImplementedError
 
 
-class DatasetRetrievalHandler:
+class DatasetRetrievalHandler(ABC):
     """
     Inherit from this base class if you want to tell flytekit how to read persisted data, and turn it into
     either a Python object ready for user consumption, or an intermediate construct like a Parquet file,
     an Arrow RecordBatch, or anything else that has a DatasetDecodingHandler associated with it.
     """
 
+    @abstractmethod
     def retrieve(self, path: str, *args, **kwargs):
         raise NotImplementedError
 
@@ -242,7 +247,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return type_models.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
         raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 
-    def _get_dataset_type(self, t: Type[StructuredDataset]) -> StructuredDatasetType:
+    def _get_dataset_type(self, t: Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
         # TODO: Convert pandas, arrow, and other dataframes column datatype to StructuredDatasetType
         if t != StructuredDataset:
             return StructuredDatasetType(columns=[])
@@ -295,7 +300,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # 1. Python value is StructuredDataset
         if isinstance(python_val, StructuredDataset):
             # TODO: change to get_random_remote_path
-            uri = python_val.remote_path or ctx.file_access.get_random_local_directory()
+            uri = python_val.remote_path or ctx.file_access.get_random_local_path()
             df = python_val.dataframe
             file_format = python_val.file_format
             if python_val.local_path:
@@ -305,7 +310,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # 2. Python value is Dataframe
         else:
             # TODO: change to get_random_remote_path
-            uri = ctx.file_access.get_random_remote_path()
+            uri = ctx.file_access.get_random_local_path()
             file_format = DatasetFormat.PARQUET
             self.upload(type(python_val), file_format, uri, python_val)
 
@@ -324,7 +329,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         fmt = DatasetFormat.value_of(lv.scalar.structured_dataset.metadata.format)
         uri = lv.scalar.structured_dataset.uri
 
-        if StructuredDataset in expected_python_type.mro():
+        if issubclass(expected_python_type, StructuredDataset):
             return expected_python_type(remote_path=uri, file_format=fmt)
 
         return self.download(fmt, expected_python_type, uri)
