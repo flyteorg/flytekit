@@ -12,26 +12,15 @@ from flytekit import FlyteContext
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
 from flytekit.models import types as type_models
-from flytekit.models.literals import Literal, Scalar, StructuredDataset, StructuredDatasetMetadata
+from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
+from flytekit.models.literals import StructuredDataset as _StructuredDataset
 from flytekit.models.types import LiteralType, StructuredDatasetType
 from flytekit.types.schema.types import SchemaFormat
 
 T = typing.TypeVar("T")
 
 
-class FlyteDatasetMetadata(object):
-    def __init__(
-        self,
-        columns: Dict[str, typing.Type],
-        fmt: SchemaFormat = None,
-        path: Union[os.PathLike, str] = None,
-    ):
-        self.columns = columns
-        self.fmt = fmt
-        self.path = path
-
-
-class FlyteDataset(object):
+class StructuredDataset(object):
     """
     This is the main schema class that users should use.
     """
@@ -44,7 +33,7 @@ class FlyteDataset(object):
     def column_names(cls) -> typing.List[str]:
         return [k for k, v in cls.columns().items()]
 
-    def __class_getitem__(cls, columns: typing.Dict[str, typing.Type]) -> Type[FlyteDataset]:
+    def __class_getitem__(cls, columns: typing.Dict[str, typing.Type]) -> Type[StructuredDataset]:
         if columns is None:
             return cls
 
@@ -57,15 +46,15 @@ class FlyteDataset(object):
         if len(columns) == 0:
             return cls
 
-        class _TypedFlyteDataset(FlyteDataset):
+        class _TypedStructuredDataset(StructuredDataset):
             # Get the type engine to see this as kind of a generic
-            __origin__ = FlyteDataset
+            __origin__ = StructuredDataset
 
             @classmethod
             def columns(cls) -> typing.Dict[str, typing.Type]:
                 return columns
 
-        return _TypedFlyteDataset
+        return _TypedStructuredDataset
 
     def __init__(
         self,
@@ -168,7 +157,7 @@ class DatasetRetrievalHandler:
         raise NotImplementedError
 
 
-class FlyteDatasetTransformerEngine(TypeTransformer[FlyteDataset]):
+class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     """
     Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
     If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
@@ -227,7 +216,7 @@ class FlyteDatasetTransformerEngine(TypeTransformer[FlyteDataset]):
     _REGISTER_TYPES: List[Type] = []
 
     def __init__(self):
-        super().__init__("FlyteDataset Transformer", FlyteDataset)
+        super().__init__("StructuredDataset Transformer", StructuredDataset)
 
     def _get_dataset_column_literal_type(self, t: Type):
         if t in self._SUPPORTED_TYPES:
@@ -236,11 +225,11 @@ class FlyteDatasetTransformerEngine(TypeTransformer[FlyteDataset]):
             return type_models.LiteralType(collection_type=self._get_dataset_column_literal_type(t.__args__[0]))
         if hasattr(t, "__origin__") and t.__origin__ == dict:
             return type_models.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
-        raise AssertionError(f"type {t} is currently not supported by FlyteDataset")
+        raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 
-    def _get_dataset_type(self, t: Type[FlyteDataset]) -> StructuredDatasetType:
+    def _get_dataset_type(self, t: Type[StructuredDataset]) -> StructuredDatasetType:
         # TODO: Convert pandas, arrow, and other dataframes column datatype to StructuredDatasetType
-        if t != FlyteDataset:
+        if t != StructuredDataset:
             return StructuredDatasetType(columns=[])
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         for k, v in t.columns().items():
@@ -280,16 +269,16 @@ class FlyteDatasetTransformerEngine(TypeTransformer[FlyteDataset]):
             registry[from_type] = {}
         registry[from_type][to_type] = h
 
-    def assert_type(self, t: Type[FlyteDataset], v: typing.Any):
+    def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[FlyteDataset], expected: LiteralType
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[StructuredDataset], expected: LiteralType
     ) -> Literal:
         uri: str = ""
         file_format: SchemaFormat
-        # 1. Python value is FlyteDataset
-        if isinstance(python_val, FlyteDataset):
+        # 1. Python value is StructuredDataset
+        if isinstance(python_val, StructuredDataset):
             uri = python_val.remote_path or ctx.file_access.get_random_remote_path()
             df = python_val.dataframe
             file_format = python_val.file_format
@@ -305,7 +294,7 @@ class FlyteDatasetTransformerEngine(TypeTransformer[FlyteDataset]):
 
         return Literal(
             scalar=Scalar(
-                structured_dataset=StructuredDataset(
+                structured_dataset=_StructuredDataset(
                     uri=uri,
                     metadata=StructuredDatasetMetadata(
                         format=file_format.name, structured_dataset_type=self._get_dataset_type(python_type)
@@ -318,12 +307,12 @@ class FlyteDatasetTransformerEngine(TypeTransformer[FlyteDataset]):
         fmt = SchemaFormat.value_of(lv.scalar.structured_dataset.metadata.format)
         uri = lv.scalar.structured_dataset.uri
 
-        if FlyteDataset in expected_python_type.mro():
+        if StructuredDataset in expected_python_type.mro():
             return expected_python_type(remote_path=uri, file_format=fmt)
 
         return self.download(fmt, expected_python_type, uri)
 
-    def get_literal_type(self, t: typing.Union[Type[FlyteDataset], typing.Any]) -> LiteralType:
+    def get_literal_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> LiteralType:
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
@@ -370,5 +359,5 @@ class FlyteDatasetTransformerEngine(TypeTransformer[FlyteDataset]):
         return handler[from_type][to_type]
 
 
-FLYTE_DATASET_TRANSFORMER = FlyteDatasetTransformerEngine()
+FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
 TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
