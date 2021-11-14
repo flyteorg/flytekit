@@ -6,6 +6,7 @@ import random
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from enum import Enum
 
 import pandas
 import pytest
@@ -1061,6 +1062,29 @@ def test_dataclass_more():
         return add(x=stringify(x=x), y=stringify(x=y))
 
     wf(x=10, y=20)
+
+
+def test_enum_in_dataclass():
+    class Color(Enum):
+        RED = "red"
+        GREEN = "green"
+        BLUE = "blue"
+
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    @task
+    def t1(x: int) -> Datum:
+        return Datum(x=x, y=Color.RED)
+
+    @workflow
+    def wf(x: int) -> Datum:
+        return t1(x=x)
+
+    assert wf(x=10) == Datum(10, Color.RED)
 
 
 def test_environment():
