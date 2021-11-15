@@ -167,7 +167,7 @@ class WorkflowBase(object):
         workflow_metadata: WorkflowMetadata,
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
-        module_name: Optional[str],
+        module_name: Optional[str] = None,
         **kwargs,
     ):
         self._name = name
@@ -698,7 +698,7 @@ def workflow(
     _workflow_function=None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
-    module_name: str = None,
+    module_name: Optional[str] = None,
 ):
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
