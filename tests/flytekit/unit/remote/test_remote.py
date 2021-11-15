@@ -3,6 +3,7 @@ import os
 import pytest
 from mock import MagicMock, patch
 
+from flytekit import task, workflow
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import internal
 from flytekit.models import common as common_models
@@ -19,7 +20,7 @@ from flytekit.models.launch_plan import LaunchPlan
 from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
 from flytekit.models.task import Task
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.remote import FlyteWorkflow, workflow
+from flytekit.remote import FlyteWorkflow
 from flytekit.remote.remote import FlyteRemote
 
 CLIENT_METHODS = {
@@ -273,9 +274,6 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
 def test_explicit_module_name(mock_insecure, mock_url):
-
-    from flytekit import task, workflow
-
     custom_module_name = "flytedemo.workflows.tester"
 
     version = "v1"
@@ -318,8 +316,6 @@ def test_explicit_module_name(mock_insecure, mock_url):
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
 def test_missing_explicit_module_name(mock_insecure, mock_url):
-
-    from flytekit import task, workflow
 
     custom_module_name = "flytedemo.workflows.tester"
 
