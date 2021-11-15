@@ -270,13 +270,63 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     assert not mock_ssl_channel_credentials.called
 
 
-def test_remote_sub_wf():
+def test_remote_static_sub_wf():
+    exec_name = "kna2ucovg1"
     r = FlyteRemote.from_config(
         default_project="flytesnacks",
         default_domain="development",
         config_file_path="/Users/ytong/.flyte/local_sandbox",
     )
-    we = r.fetch_workflow_execution(name="fqixhdqy")
+    we = r.fetch_workflow_execution(name=exec_name)
+    r.sync(we)
+    print(we.inputs)
+    print(we.outputs)
+
+
+def test_remote_sub_wf_fetch():
+    r = FlyteRemote.from_config(
+        default_project="flytesnacks",
+        default_domain="development",
+        config_file_path="/Users/ytong/.flyte/local_sandbox",
+    )
+    wf = r.fetch_workflow(name="core.control_flow.subworkflows.parent_wf")
+    print(wf)
+
+
+def test_remote_dynamic_sub_wf():
+    exec_name = "ap4g4xtuor"
+    r = FlyteRemote.from_config(
+        default_project="flytesnacks",
+        default_domain="development",
+        config_file_path="/Users/ytong/.flyte/local_sandbox",
+    )
+    we = r.fetch_workflow_execution(name=exec_name)
+    r.sync(we)
+    print(we.inputs)
+    print(we.outputs)
+
+
+def test_remote_dynamic_lp():
+    exec_name = "m4mne22c19"
+    r = FlyteRemote.from_config(
+        default_project="flytesnacks",
+        default_domain="development",
+        config_file_path="/Users/ytong/.flyte/local_sandbox",
+    )
+    we = r.fetch_workflow_execution(name=exec_name)
+    r.sync(we)
+    print(we.inputs)
+    print(we.outputs)
+
+
+def test_remote_static_lp():
+    exec_name = "x6i3823zt5"
+    r = FlyteRemote.from_config(
+        default_project="flytesnacks",
+        default_domain="development",
+        config_file_path="/Users/ytong/.flyte/local_sandbox",
+    )
+    we = r.fetch_workflow_execution(name=exec_name)
     r.sync(we)
     print(we.inputs)
     print(we.outputs)

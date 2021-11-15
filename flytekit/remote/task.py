@@ -61,7 +61,7 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
         )
         # Override the newly generated name if one exists in the base model
         if not base_model.id.is_empty:
-            t._id = _identifier.Identifier.promote_from_model(base_model.id)
+            t._id = base_model.id
 
         if t.interface is not None:
             try:

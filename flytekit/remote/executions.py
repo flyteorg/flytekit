@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.exceptions import user as user_exceptions
@@ -7,7 +9,7 @@ from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
 from flytekit.remote import identifier as remote_identifier
-from flytekit.remote import nodes as _nodes
+from flytekit.remote.workflow import FlyteWorkflow
 
 
 class FlyteTaskExecution(admin_task_execution_models.TaskExecution):
@@ -81,9 +83,10 @@ class FlyteWorkflowExecution(execution_models.Execution):
         self._node_executions = None
         self._inputs = None
         self._outputs = None
+        self._flyte_workflow: Optional[FlyteWorkflow] = None
 
     @property
-    def node_executions(self) -> Dict[str, _nodes.FlyteNodeExecution]:
+    def node_executions(self) -> Dict[str, "FlyteNodeExecution"]:
         """Get a dictionary of node executions that are a part of this workflow execution."""
         return self._node_executions or {}
 
@@ -137,7 +140,7 @@ class FlyteWorkflowExecution(execution_models.Execution):
     def promote_from_model(cls, base_model: execution_models.Execution) -> "FlyteWorkflowExecution":
         return cls(
             closure=base_model.closure,
-            id=remote_identifier.WorkflowExecutionIdentifier.promote_from_model(base_model.id),
+            id=base_model.id,
             spec=base_model.spec,
         )
 
@@ -148,27 +151,35 @@ class FlyteNodeExecution(node_execution_models.NodeExecution):
     def __init__(self, *args, **kwargs):
         super(FlyteNodeExecution, self).__init__(*args, **kwargs)
         self._task_executions = None
-        self._subworkflow_node_executions = None
+        self._workflow_executions = []
+        self._underlying_node_executions = None
         self._inputs = None
         self._outputs = None
         self._interface = None
 
     @property
-    def task_executions(self) -> List["flytekit.remote.tasks.executions.FlyteTaskExecution"]:
+    def task_executions(self) -> List[FlyteTaskExecution]:
         return self._task_executions or []
 
     @property
-    # TODO: Rename
-    def subworkflow_node_executions(self) -> Dict[str, "flytekit.remote.nodes.FlyteNodeExecution"]:
+    def workflow_executions(self) -> List[FlyteWorkflowExecution]:
+        return self._workflow_executions
+
+    @property
+    def subworkflow_node_executions(self) -> Dict[str, FlyteNodeExecution]:
+        """
+        This returns underlying node executions in instances where the current node execution is
+        a parent node. This happens when it's either a static or dynamic subworkflow.
+        """
         return (
             {}
-            if self._subworkflow_node_executions is None
-            else {n.id.node_id: n for n in self._subworkflow_node_executions}
+            if self._underlying_node_executions is None
+            else {n.id.node_id: n for n in self._underlying_node_executions}
         )
 
     @property
-    def executions(self) -> List[FlyteTaskExecution, FlyteWorkflowExecution]:
-        return self.task_executions or self._subworkflow_node_executions or []
+    def executions(self) -> List[Union[FlyteTaskExecution, FlyteWorkflowExecution]]:
+        return self.task_executions or self._underlying_node_executions or []
 
     @property
     def inputs(self) -> Dict[str, Any]:

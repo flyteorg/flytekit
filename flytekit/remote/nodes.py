@@ -1,24 +1,19 @@
-import logging as _logging
-from typing import Any, Dict, List, Optional, Union
+from __future__ import annotations
 
-import flytekit
-from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
+import logging as _logging
+from typing import Dict, List, Optional, Union
+
 from flytekit.common import constants as _constants
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import artifact as _artifact_mixin
 from flytekit.common.mixins import hash as _hash_mixin
-from flytekit.common.utils import _dnsify
 from flytekit.core.promise import NodeOutput
-from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import launch_plan as _launch_plan_model
-from flytekit.models import node_execution as _node_execution_models
 from flytekit.models import task as _task_model
-from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import component_nodes as _component_nodes
 from flytekit.remote import identifier as _identifier
-from flytekit.remote.tasks.executions import FlyteTaskExecution
+from flytekit.models.core import identifier as id_models
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
@@ -34,7 +29,6 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         flyte_workflow: Optional["FlyteWorkflow"] = None,
         flyte_launch_plan: Optional["FlyteLaunchPlan"] = None,
         flyte_branch=None,
-        parameter_mapping=True,
     ):
         non_none_entities = list(filter(None, [flyte_task, flyte_workflow, flyte_launch_plan, flyte_branch]))
         if len(non_none_entities) != 1:
@@ -50,15 +44,20 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         elif flyte_launch_plan is not None:
             workflow_node = _component_nodes.FlyteWorkflowNode(flyte_launch_plan=flyte_launch_plan)
 
+        task_node = None
+        if flyte_task:
+            task_node = _component_nodes.FlyteTaskNode(flyte_task)
+        branch_node = None
+
         super(FlyteNode, self).__init__(
-            id=_dnsify(id) if id else None,
+            id=id,
             metadata=metadata,
             inputs=bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            task_node=_component_nodes.FlyteTaskNode(flyte_task) if flyte_task else None,
+            task_node=task_node,
             workflow_node=workflow_node,
-            branch_node=flyte_branch,
+            branch_node=branch_node,
         )
         self._upstream = upstream_nodes
 
@@ -70,11 +69,12 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
     def promote_from_model(
         cls,
         model: _workflow_model.Node,
-        sub_workflows: Optional[Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate]],
-        node_launch_plans: Optional[Dict[_identifier.Identifier, _launch_plan_model.LaunchPlanSpec]],
-        tasks: Optional[Dict[_identifier.Identifier, _task_model.TaskTemplate]],
-    ) -> "FlyteNode":
-        id = model.id
+        sub_workflows: Optional[Dict[id_models.Identifier, _workflow_model.WorkflowTemplate]],
+        node_launch_plans: Optional[Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec]],
+        tasks: Optional[Dict[id_models.Identifier, _task_model.TaskTemplate]],
+    ) -> FlyteNode:
+        node_model_id = model.id
+        # TODO: Consider removing
         if id in {_constants.START_NODE_ID, _constants.END_NODE_ID}:
             _logging.warning(f"Should not call promote from model on a start node or end node {model}")
             return None
@@ -97,6 +97,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
 
         # When WorkflowTemplate models (containing node models) are returned by Admin, they've been compiled with a
         # start node. In order to make the promoted FlyteWorkflow look the same, we strip the start-node text back out.
+        # TODO: Consider removing
         for model_input in model.inputs:
             if (
                 model_input.binding.promise is not None
@@ -106,7 +107,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
 
         if flyte_task_node is not None:
             return cls(
-                id=id,
+                id=node_model_id,
                 upstream_nodes=[],  # set downstream, model doesn't contain this information
                 bindings=model.inputs,
                 metadata=model.metadata,
@@ -115,7 +116,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         elif flyte_workflow_node is not None:
             if flyte_workflow_node.flyte_workflow is not None:
                 return cls(
-                    id=id,
+                    id=node_model_id,
                     upstream_nodes=[],  # set downstream, model doesn't contain this information
                     bindings=model.inputs,
                     metadata=model.metadata,
@@ -123,7 +124,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 )
             elif flyte_workflow_node.flyte_launch_plan is not None:
                 return cls(
-                    id=id,
+                    id=node_model_id,
                     upstream_nodes=[],  # set downstream, model doesn't contain this information
                     bindings=model.inputs,
                     metadata=model.metadata,
@@ -135,7 +136,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         raise _system_exceptions.FlyteSystemException("Bad FlyteNode model, both task and workflow nodes are empty")
 
     @property
-    def upstream_nodes(self) -> List["FlyteNode"]:
+    def upstream_nodes(self) -> List[FlyteNode]:
         return self._upstream
 
     @property
@@ -145,20 +146,6 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
     @property
     def outputs(self) -> Dict[str, NodeOutput]:
         return self._outputs
-
-    def assign_id_and_return(self, id: str):
-        if self.id:
-            raise _user_exceptions.FlyteAssertion(
-                f"Error assigning ID: {id} because {self} is already assigned. Has this node been ssigned to another "
-                "workflow already?"
-            )
-        self._id = _dnsify(id) if id else None
-        self._metadata.name = id
-        return self
-
-    def with_overrides(self, *args, **kwargs):
-        # TODO: Implement overrides
-        raise NotImplementedError("Overrides are not supported in Flyte yet.")
 
     def __repr__(self) -> str:
         return f"Node(ID: {self.id})"

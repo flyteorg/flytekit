@@ -44,17 +44,18 @@ class DynamicWorkflowNodeMetadata(_common_models.FlyteIdlEntity):
         return self._compiled_workflow
 
     def to_flyte_idl(self) -> _node_execution_pb2.DynamicWorkflowNodeMetadata:
-        _node_execution_pb2.DynamicWorkflowNodeMetadata(
+        return _node_execution_pb2.DynamicWorkflowNodeMetadata(
             id=self.id.to_flyte_idl(),
             compiled_workflow=self.compiled_workflow.to_flyte_idl(),
         )
 
     @classmethod
     def from_flyte_idl(cls, p: _node_execution_pb2.DynamicWorkflowNodeMetadata) -> "DynamicWorkflowNodeMetadata":
-        return cls(
+        yy = cls(
             id=_identifier.Identifier.from_flyte_idl(p.id),
             compiled_workflow=core_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow),
         )
+        return yy
 
 
 class TaskNodeMetadata(_common_models.FlyteIdlEntity):
@@ -109,6 +110,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         self._error = error
         self._workflow_node_metadata = workflow_node_metadata
         self._task_node_metadata = task_node_metadata
+        # TODO: Add output_data field as well.
 
     @property
     def phase(self):

@@ -29,8 +29,12 @@ class CatalogArtifactTag(_common_models.FlyteIdlEntity):
 
 
 class CatalogMetadata(_common_models.FlyteIdlEntity):
-    def __init__(self, dataset_id: _identifier.Identifier, artifact_tag: CatalogArtifactTag,
-                 source_task_execution: _identifier.TaskExecutionIdentifier):
+    def __init__(
+        self,
+        dataset_id: _identifier.Identifier,
+        artifact_tag: CatalogArtifactTag,
+        source_task_execution: _identifier.TaskExecutionIdentifier,
+    ):
         self._dataset_id = dataset_id
         self._artifact_tag = artifact_tag
         self._source_task_execution = source_task_execution
@@ -67,5 +71,5 @@ class CatalogMetadata(_common_models.FlyteIdlEntity):
             dataset_id=_identifier.Identifier.from_flyte_idl(pb.dataset_id),
             artifact_tag=CatalogArtifactTag.from_flyte_idl(pb.artifact_tag),
             # Add HasField check if more things are ever added to the one of
-            source_task_execution=_identifier.TaskExecutionIdentifier.from_flyte_idl(pb.source_task_execution)
+            source_task_execution=_identifier.TaskExecutionIdentifier.from_flyte_idl(pb.source_task_execution),
         )

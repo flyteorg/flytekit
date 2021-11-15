@@ -1,3 +1,5 @@
+import typing
+
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
@@ -239,7 +241,6 @@ class Execution(_common_models.FlyteIdlEntity):
     def __init__(self, id, spec, closure):
         """
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
-        :param Text id:
         :param ExecutionSpec spec:
         :param ExecutionClosure closure:
         """
@@ -494,12 +495,12 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
 
 
 class NodeExecutionGetDataResponse(_CommonDataResponse):
-    def __init__(self, dynamic_workflow: DynamicWorkflowNodeMetadata, **kwargs):
+    def __init__(self, dynamic_workflow: typing.Optional[DynamicWorkflowNodeMetadata], **kwargs):
         super().__init__(**kwargs)
         self._dynamic_workflow = dynamic_workflow
 
     @property
-    def dynamic_workflow(self) -> DynamicWorkflowNodeMetadata:
+    def dynamic_workflow(self) -> typing.Optional[DynamicWorkflowNodeMetadata]:
         return self._dynamic_workflow
 
     @classmethod
@@ -513,7 +514,9 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
             outputs=_common_models.UrlBlob.from_flyte_idl(pb2_object.outputs),
             full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
             full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
-            dynamic_workflow=DynamicWorkflowNodeMetadata.from_flyte_idl(pb2_object.dynamic_workflow),
+            dynamic_workflow=DynamicWorkflowNodeMetadata.from_flyte_idl(pb2_object.dynamic_workflow)
+            if pb2_object.HasField("dynamic_workflow")
+            else None,
         )
 
     def to_flyte_idl(self):
@@ -525,5 +528,5 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
             outputs=self.outputs.to_flyte_idl(),
             full_inputs=self.full_inputs.to_flyte_idl(),
             full_outputs=self.full_outputs.to_flyte_idl(),
-            dynamic_workflow=self.dynamic_workflow.to_flyte_idl(),
+            dynamic_workflow=self.dynamic_workflow.to_flyte_idl() if self.dynamic_workflow else None,
         )

@@ -2,7 +2,7 @@ from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models.core import identifier as _core_identifier
 
 
-class Identifier(_core_identifier.Identifier):
+class OldIdentifier(_core_identifier.Identifier):
 
     _STRING_TO_TYPE_MAP = {
         "lp": _core_identifier.ResourceType.LAUNCH_PLAN,
@@ -49,7 +49,7 @@ class Identifier(_core_identifier.Identifier):
         )
 
 
-class WorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier):
+class OldWorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier):
     @classmethod
     def promote_from_model(
         cls, base_model: _core_identifier.WorkflowExecutionIdentifier
@@ -83,7 +83,7 @@ class WorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier):
         return f"ex:{self.project}:{self.domain}:{self.name}"
 
 
-class TaskExecutionIdentifier(_core_identifier.TaskExecutionIdentifier):
+class OldTaskExecutionIdentifier(_core_identifier.TaskExecutionIdentifier):
     @classmethod
     def promote_from_model(cls, base_model: _core_identifier.TaskExecutionIdentifier) -> "TaskExecutionIdentifier":
         return cls(
