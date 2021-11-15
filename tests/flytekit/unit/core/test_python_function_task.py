@@ -96,3 +96,21 @@ def test_metadata():
     metadata = foo.metadata
     assert metadata.cache is True
     assert metadata.cache_version == "1.0"
+
+
+def test_module_name():
+    # Test if the flyte tasks can be registered with overwritten module names
+    @task(cache=True, cache_version="1.0")
+    def foo(i: str):
+        print(f"{i}")
+
+    @task(cache=True, cache_version="1.0", module_name="flytedemo.workflows.example")
+    def bar(i: str):
+        print(f"{i}")
+
+    assert foo.name != bar.name
+    # Should be the module name the tests are called
+    assert __name__ in foo.name
+    assert __name__ not in bar.name
+    assert foo._module_name is None
+    assert bar._module_name is not None
