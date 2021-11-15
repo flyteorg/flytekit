@@ -1,12 +1,10 @@
 import os
-from dataclasses import asdict, dataclass
 from typing import Dict, List, NamedTuple, Tuple
 
 import numpy as np
 import pandas as pd
 import xgboost
-from dataclasses_json import dataclass_json
-from flytekitplugins.xgboost import TrainParameters, XGBoostTask
+from flytekitplugins.xgboost import HyperParameters, ModelParameters, XGBoostParameters, XGBoostTrainerTask
 from sklearn import model_selection
 
 import flytekit
@@ -15,33 +13,14 @@ from flytekit.types.file import CSVFile, FlyteFile, JoblibSerializedFile
 from flytekit.types.schema import FlyteSchema
 
 
-@dataclass_json
-@dataclass
-class Hyperparameters:
-    max_depth: int = 2
-    eta: int = 1
-    objective: str = "binary:logistic"
-    verbosity: int = 2
-
-
-@dataclass_json
-@dataclass
-class CSVHyperparameters:
-    objective: str = "reg:linear"
-    eta: float = 0.2
-    gamma: int = 4
-    max_depth: int = 5
-    subsample: float = 0.7
-    silent: int = 0
-    min_child_weight: int = 6
-
-
 def test_simple_model():
-    xgboost_trainer = XGBoostTask(
+    xgboost_trainer = XGBoostTrainerTask(
         name="test1",
-        hyperparameters=asdict(Hyperparameters()),
-        task_config=TrainParameters(num_boost_round=2),
-        inputs=kwtypes(train=FlyteFile, test=FlyteFile),
+        config=XGBoostParameters(
+            hyper_parameters=HyperParameters(max_depth=2, eta=1, objective="binary:logistic", verbosity=2),
+            model_parameters=ModelParameters(num_boost_round=1),
+        ),
+        inputs=kwtypes(train=FlyteFile, test=FlyteFile, model_parameters=ModelParameters),
     )
 
     @workflow
@@ -49,10 +28,18 @@ def test_simple_model():
         train: FlyteFile = "https://raw.githubusercontent.com/dmlc/xgboost/master/demo/data/agaricus.txt.train",
         test: FlyteFile = "https://raw.githubusercontent.com/dmlc/xgboost/master/demo/data/agaricus.txt.test",
     ) -> List[float]:
-        _, predictions, _ = xgboost_trainer(train=train, test=test)
+        _, predictions, _ = xgboost_trainer(
+            train=train,
+            test=test,
+            model_parameters=ModelParameters(num_boost_round=2),
+        )
         return predictions
 
-    assert xgboost_trainer.python_interface.inputs == {"train": FlyteFile, "test": FlyteFile}
+    assert xgboost_trainer.python_interface.inputs == {
+        "train": FlyteFile,
+        "test": FlyteFile,
+        "model_parameters": ModelParameters,
+    }
     train_test_wf()
 
 
@@ -61,11 +48,10 @@ def test_csv_data():
     Note: For CSV training, the algorithm assumes that the CSV does not have a header record.
     To set the target variable, set the label_column parameter, which by default is 0.
     """
-    xgboost_trainer = XGBoostTask(
+    xgboost_trainer = XGBoostTrainerTask(
         name="test2",
-        hyperparameters=asdict(CSVHyperparameters()),
-        inputs=kwtypes(train_data=CSVFile, test_data=CSVFile),
-        label_column=0,
+        config=XGBoostParameters(label_column=0),
+        inputs=kwtypes(train=CSVFile, test=CSVFile, hyper_parameters=HyperParameters),
     )
 
     @task
@@ -119,27 +105,63 @@ def test_csv_data():
     @workflow
     def wf() -> wf_output:
         train_data, test_data = partition_data(dataset="abalone.data")
-        return xgboost_trainer(train_data=train_data, test_data=test_data)
+        return xgboost_trainer(
+            train=train_data,
+            test=test_data,
+            hyper_parameters=HyperParameters(
+                objective="reg:linear",
+                eta=0.2,
+                gamma=4,
+                max_depth=5,
+                subsample=0.7,
+                verbosity=0,
+                min_child_weight=6,
+            ),
+        )
 
-    assert xgboost_trainer.python_interface.inputs == {"train_data": CSVFile, "test_data": CSVFile}
-    assert xgboost_trainer._label_column == 0
+    assert xgboost_trainer.python_interface.inputs == {
+        "train": CSVFile,
+        "test": CSVFile,
+        "hyper_parameters": HyperParameters,
+    }
+    assert xgboost_trainer._config.label_column == 0
     wf()
 
 
 def test_local_data():
-    xgboost_trainer = XGBoostTask(
+    xgboost_trainer = XGBoostTrainerTask(
         name="test3",
-        hyperparameters=asdict(CSVHyperparameters()),
-        inputs=kwtypes(train_data=CSVFile, test_data=CSVFile),
-        label_column=0,
+        config=XGBoostParameters(
+            hyper_parameters=HyperParameters(
+                objective="reg:linear",
+                eta=0.2,
+                gamma=4,
+                max_depth=5,
+                subsample=0.7,
+                verbosity=0,
+            ),
+            label_column=0,
+        ),
+        inputs=kwtypes(train=CSVFile, test=CSVFile, hyper_parameters=HyperParameters),
     )
 
     @workflow
-    def wf(train_data: CSVFile = "abalone_train.csv", test_data: CSVFile = "abalone_test.csv") -> List[float]:
-        _, predictions, _ = xgboost_trainer(train_data=train_data, test_data=test_data)
+    def wf(
+        train_data: CSVFile = "abalone_train.csv",
+        test_data: CSVFile = "abalone_test.csv",
+    ) -> List[float]:
+        _, predictions, _ = xgboost_trainer(
+            train=train_data,
+            test=test_data,
+            hyper_parameters=HyperParameters(min_child_weight=6),
+        )
         return predictions
 
-    assert xgboost_trainer.python_interface.inputs == {"train_data": CSVFile, "test_data": CSVFile}
+    assert xgboost_trainer.python_interface.inputs == {
+        "train": CSVFile,
+        "test": CSVFile,
+        "hyper_parameters": HyperParameters,
+    }
     wf()
 
 
@@ -147,11 +169,20 @@ def test_schema_data():
     """
     Note: To set the target variable, set the label_column parameter, which by default is 0.
     """
-    xgboost_trainer = XGBoostTask(
+    xgboost_trainer = XGBoostTrainerTask(
         name="test4",
-        hyperparameters=asdict(CSVHyperparameters()),
-        inputs=kwtypes(train_data=FlyteSchema, test_data=FlyteSchema),
-        label_column=0,
+        config=XGBoostParameters(
+            hyper_parameters=HyperParameters(
+                objective="reg:linear",
+                eta=0.2,
+                gamma=4,
+                max_depth=5,
+                subsample=0.7,
+                verbosity=0,
+            ),
+            label_column=0,
+        ),
+        inputs=kwtypes(train=FlyteSchema, test=FlyteSchema),
     )
 
     @task
@@ -160,19 +191,28 @@ def test_schema_data():
 
     @workflow
     def wf(train_data: str = "abalone_train.csv", test_data: str = "abalone_test.csv") -> List[float]:
-        _, predictions, _ = xgboost_trainer(train_data=csv_to_df(data=train_data), test_data=csv_to_df(data=test_data))
+        _, predictions, _ = xgboost_trainer(train=csv_to_df(data=train_data), test=csv_to_df(data=test_data))
         return predictions
 
-    assert xgboost_trainer.python_interface.inputs == {"train_data": FlyteSchema, "test_data": FlyteSchema}
+    assert xgboost_trainer.python_interface.inputs == {
+        "train": FlyteSchema,
+        "test": FlyteSchema,
+    }
     wf()
 
 
 def test_pipeline():
-    xgboost_trainer = XGBoostTask(
+    xgboost_trainer = XGBoostTrainerTask(
         name="test5",
-        hyperparameters=asdict(Hyperparameters()),
-        task_config=TrainParameters(num_boost_round=2),
-        inputs=kwtypes(train=FlyteFile, test=FlyteFile, validation=FlyteFile),
+        config=XGBoostParameters(
+            hyper_parameters=HyperParameters(max_depth=2, eta=1, objective="binary:logistic", verbosity=2)
+        ),
+        inputs=kwtypes(
+            train=FlyteFile,
+            test=FlyteFile,
+            validation=FlyteFile,
+            model_parameters=ModelParameters,
+        ),
     )
 
     @task
@@ -185,7 +225,10 @@ def test_pipeline():
         )
 
     wf_output = NamedTuple(
-        "wf_output", model=JoblibSerializedFile, accuracy=float, evaluation_result=Dict[str, Dict[str, List[float]]]
+        "wf_output",
+        model=JoblibSerializedFile,
+        accuracy=float,
+        evaluation_result=Dict[str, Dict[str, List[float]]],
     )
 
     @workflow
@@ -194,8 +237,22 @@ def test_pipeline():
         test: FlyteFile = "https://raw.githubusercontent.com/dmlc/xgboost/master/demo/data/agaricus.txt.test",
         validation: FlyteFile = "https://raw.githubusercontent.com/dmlc/xgboost/master/demo/data/agaricus.txt.test",
     ) -> wf_output:
-        model, predictions, evaluation_result = xgboost_trainer(train=train, test=test, validation=validation)
-        return model, estimate_accuracy(predictions=predictions, test=test), evaluation_result
+        model, predictions, evaluation_result = xgboost_trainer(
+            train=train,
+            test=test,
+            validation=validation,
+            model_parameters=ModelParameters(num_boost_round=2),
+        )
+        return (
+            model,
+            estimate_accuracy(predictions=predictions, test=test),
+            evaluation_result,
+        )
 
-    assert xgboost_trainer.python_interface.inputs == {"train": FlyteFile, "test": FlyteFile, "validation": FlyteFile}
+    assert xgboost_trainer.python_interface.inputs == {
+        "train": FlyteFile,
+        "test": FlyteFile,
+        "validation": FlyteFile,
+        "model_parameters": ModelParameters,
+    }
     assert full_pipeline().accuracy >= 0.7

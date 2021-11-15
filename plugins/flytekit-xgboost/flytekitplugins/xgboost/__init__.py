@@ -1,1 +1,1 @@
-from .task import TrainParameters, XGBoostTask
+from .task import HyperParameters, ModelParameters, XGBoostParameters, XGBoostTrainerTask
