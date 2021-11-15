@@ -19,7 +19,7 @@ from flytekit.models.launch_plan import LaunchPlan
 from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
 from flytekit.models.task import Task
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.remote import FlyteWorkflow
+from flytekit.remote import FlyteWorkflow, workflow
 from flytekit.remote.remote import FlyteRemote
 
 CLIENT_METHODS = {
@@ -268,3 +268,92 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     assert mock_secure_channel.called
     assert mock_secure_channel.call_args[0][1] == credentials
     assert not mock_ssl_channel_credentials.called
+
+
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_explicit_module_name(mock_insecure, mock_url):
+
+    from flytekit import task, workflow
+
+    custom_module_name = "flytedemo.workflows.tester"
+
+    version = "v1"
+
+    @task(module_name=custom_module_name)
+    def my_python_task(a: str) -> int:
+        return 10
+
+    @workflow(module_name=custom_module_name)
+    def my_wf(a: str) -> int:
+        res = my_python_task(a=a)
+        return res
+
+    mock_url.get.return_value = "localhost"
+
+    mock_insecure.get.return_value = True
+    mock_client = MagicMock()
+
+    remote = FlyteRemote.from_config("p1", "d1")
+
+    remote._image_config = MagicMock()
+    remote._client = mock_client
+
+    remote.register(my_python_task, name="flytedemo.workflows.tester.my_python_task", version=version)
+
+    serialized_task_spec = mock_client.create_task.call_args.kwargs["task_spec"]
+
+    assert custom_module_name in serialized_task_spec.template.id.name
+
+    remote.register(my_wf, name="flytedemo.workflows.tester.my_wf", version=version)
+
+    serialized_spec = mock_client.create_workflow.call_args.kwargs["workflow_spec"]
+
+    task_name_in_workflow_spec = serialized_spec.template.nodes[0].task_node.reference_id.name
+
+    assert custom_module_name in task_name_in_workflow_spec
+    assert task_name_in_workflow_spec == serialized_task_spec.template.id.name
+
+
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_missing_explicit_module_name(mock_insecure, mock_url):
+
+    from flytekit import task, workflow
+
+    custom_module_name = "flytedemo.workflows.tester"
+
+    version = "v1"
+
+    @task()
+    def my_python_task(a: str) -> int:
+        return 10
+
+    @workflow(module_name=custom_module_name)
+    def my_wf(a: str) -> int:
+        res = my_python_task(a=a)
+        return res
+
+    mock_url.get.return_value = "localhost"
+
+    mock_insecure.get.return_value = True
+    mock_client = MagicMock()
+
+    remote = FlyteRemote.from_config("p1", "d1")
+
+    remote._image_config = MagicMock()
+    remote._client = mock_client
+
+    remote.register(my_python_task, name="flytedemo.workflows.tester.my_python_task", version=version)
+
+    serialized_task_spec = mock_client.create_task.call_args.kwargs["task_spec"]
+
+    assert custom_module_name not in serialized_task_spec.template.id.name
+
+    remote.register(my_wf, name="flytedemo.workflows.tester.my_python_task", version=version)
+
+    serialized_spec = mock_client.create_workflow.call_args.kwargs["workflow_spec"]
+
+    task_name_in_workflow_spec = serialized_spec.template.nodes[0].task_node.reference_id.name
+
+    assert custom_module_name not in task_name_in_workflow_spec
