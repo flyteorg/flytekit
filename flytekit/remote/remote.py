@@ -137,6 +137,7 @@ class FlyteRemote(object):
         default_domain: typing.Optional[str] = None,
         config_file_path: typing.Optional[str] = None,
         grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
+        venv_root: typing.Optional[str] = None,
     ) -> FlyteRemote:
         """Create a FlyteRemote object using flyte configuration variables and/or environment variable overrides.
 
@@ -160,6 +161,11 @@ class FlyteRemote(object):
             raw_output_prefix=raw_output_data_prefix,
         )
 
+        venv_root = venv_root or serialize._DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
+        entrypoint = context_manager.EntrypointSettings(
+            path=os.path.join(venv_root, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
+        )
+
         return cls(
             flyte_admin_url=platform_config.URL.get(),
             insecure=platform_config.INSECURE.get(),
@@ -178,6 +184,7 @@ class FlyteRemote(object):
                 admin_common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
             ),
             grpc_credentials=grpc_credentials,
+            entrypoint_settings=entrypoint,
         )
 
     def __init__(
@@ -194,6 +201,7 @@ class FlyteRemote(object):
         image_config: typing.Optional[ImageConfig] = None,
         raw_output_data_config: typing.Optional[admin_common_models.RawOutputDataConfig] = None,
         grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
+        entrypoint_settings: typing.Optional[context_manager.EntrypointSettings] = None,
     ):
         """Initialize a FlyteRemote object.
 
@@ -226,6 +234,7 @@ class FlyteRemote(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
+        self._entrypoint_settings = entrypoint_settings
 
         # Save the file access object locally, but also make it available for use from the context.
         FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
