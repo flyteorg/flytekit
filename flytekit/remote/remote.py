@@ -1102,6 +1102,7 @@ class FlyteRemote(object):
                 workflow_execution_identifier=execution.id.execution_id,
                 unique_parent_id=execution.id.node_id,
             )
+            xx = [x for x in child_node_executions]
 
             # If this was a dynamic task, then there should be a CompiledWorkflowClosure inside the
             # NodeExecutionGetDataResponse
@@ -1128,19 +1129,18 @@ class FlyteRemote(object):
                     for t in iterate_task_executions(self.client, execution.id)
                 ]
                 execution._interface = dynamic_flyte_wf.interface
-
-            # If it does not, then it should be a static subworkflow
-            if not isinstance(execution._node.flyte_entity, FlyteWorkflow):
-                print(f"Node execution {execution}, node {execution._node}")
-                raise Exception("jfdklsa")
-            sub_flyte_workflow = execution._node.flyte_entity
-            sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
-            xx = [x for x in child_node_executions]
-            execution._underlying_node_executions = [
-                self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
-                for cne in child_node_executions
-            ]
-            execution._interface = sub_flyte_workflow.interface
+            else:
+                # If it does not, then it should be a static subworkflow
+                if not isinstance(execution._node.flyte_entity, FlyteWorkflow):
+                    print(f"Node execution {execution}, node {execution._node}")
+                    raise Exception("jfdklsa")
+                sub_flyte_workflow = execution._node.flyte_entity
+                sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
+                execution._underlying_node_executions = [
+                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                    for cne in child_node_executions
+                ]
+                execution._interface = sub_flyte_workflow.interface
 
         # This is the plain ol' task execution case
         else:
@@ -1149,7 +1149,7 @@ class FlyteRemote(object):
                 for t in iterate_task_executions(self.client, execution.id)
             ]
             execution._interface = execution._node.flyte_entity.interface
-        # execution._interface = self._get_node_execution_interface(execution, entity_definition)
+
         self._assign_inputs_and_outputs(
             execution,
             node_execution_get_data_response,
