@@ -556,9 +556,6 @@ def test_enum_in_dataclass():
         x: int
         y: Color
 
-        def __str__(self):
-            return self.value
-
     lt = TypeEngine.to_literal_type(Datum)
     schema = Datum.schema()
     schema.fields["y"].load_by = LoadDumpOptions.name
