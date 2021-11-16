@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: [3.7, 3.8, 3.9]
         spark-version-suffix: ["", "-spark2"]
@@ -38,7 +39,7 @@ jobs:
         pip freeze
     - name: Test with coverage
       run: |
-        coverage run -m pytest tests/flytekit/unit tests/scripts
+        coverage run -m pytest tests/flytekit/unit
     - name: Integration Tests with coverage
       # https://github.com/actions/runner/issues/241#issuecomment-577360161
       shell: 'script -q -e -c "bash {0}"'
@@ -63,6 +64,7 @@ jobs:
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-k8s-pod
+          - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
           - flytekit-papermill
@@ -89,8 +91,8 @@ jobs:
         python -m pip install --upgrade pip==21.2.4 setuptools wheel
         make setup
         cd plugins/${{ matrix.plugin-names }}
-        # install in develop mode so setuptools doesn't override flytekit on current branch
         pip install -e .
+        pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
         pip freeze
     - name: Test with coverage
       run: |

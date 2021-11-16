@@ -68,6 +68,9 @@ def my_workflow(x: int, y: int) -> int:
 ## 📖 How to Contribute to Flytekit
 You can find the detailed contribution guide [here](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html). Plugins' contribution guide is included as well.
 
+## Code Structure
+Please see the [contributor's guide](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html) for a quick summary of how this code is structured.
+
 ## 🐞 File an Issue
 Refer to the [issues](https://docs.flyte.org/en/latest/community/contribute.html#issues) section in the contribution guide if you'd like to file an issue.
 

@@ -110,7 +110,8 @@ class LiteralType(_common.FlyteIdlEntity):
         metadata=None,
     ):
         """
-        Only one of the kwargs may be set.
+        This is a oneof message, only one of the kwargs may be set, representing one of the Flyte types.
+
         :param int simple: Enum type from SimpleType
         :param SchemaType schema: Type definition for a dataframe-like object.
         :param LiteralType collection_type: For list-like objects, this is the type of each entry in the list.
@@ -164,6 +165,10 @@ class LiteralType(_common.FlyteIdlEntity):
         :rtype: dict[Text, T]
         """
         return self._metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        self._metadata = value
 
     def to_flyte_idl(self):
         """

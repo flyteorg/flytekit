@@ -14,6 +14,7 @@ SOURCES = {
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
     "flytekitplugins-hive": "flytekit-hive",
     "flytekitplugins-pod": "flytekit-k8s-pod",
+    "flytekitplugins-kfmpi": "flytekit-kf-mpi",
     "flytekitplugins-kfpytorch": "flytekit-kf-pytorch",
     "flytekitplugins-kftensorflow": "flytekit-kf-tensorflow",
     "flytekitplugins-pandera": "flytekit-pandera",

@@ -543,7 +543,7 @@ class TypeEngine(typing.Generic[T]):
             except ValueError:
                 logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
 
-        # Because the dataclass transformer is handled explicity in the get_transformer code, we have to handle it
+        # Because the dataclass transformer is handled explicitly in the get_transformer code, we have to handle it
         # separately here too.
         try:
             return cls._DATACLASS_TRANSFORMER.guess_python_type(literal_type=flyte_type)

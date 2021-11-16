@@ -206,6 +206,10 @@ class Binary(_common.FlyteIdlEntity):
 
 
 class BlobMetadata(_common.FlyteIdlEntity):
+    """
+    This is metadata for the Blob literal.
+    """
+
     def __init__(self, type):
         """
         :param flytekit.models.core.types.BlobType type: The type of the underlying blob
@@ -237,6 +241,9 @@ class BlobMetadata(_common.FlyteIdlEntity):
 class Blob(_common.FlyteIdlEntity):
     def __init__(self, metadata, uri):
         """
+        This literal model is used to represent binary data offloaded to some storage location which is
+        identifiable with a unique string. See :py:class:`flytekit.FlyteFile` as an example.
+
         :param BlobMetadata metadata:
         :param Text uri: The location of this blob
         """
@@ -721,6 +728,8 @@ class Scalar(_common.FlyteIdlEntity):
 class Literal(_common.FlyteIdlEntity):
     def __init__(self, scalar: Scalar = None, collection: LiteralCollection = None, map: LiteralMap = None):
         """
+        This IDL message represents a literal value in the Flyte ecosystem.
+
         :param Scalar scalar:
         :param LiteralCollection collection:
         :param LiteralMap map:

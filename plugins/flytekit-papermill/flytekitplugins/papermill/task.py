@@ -168,10 +168,14 @@ class NotebookTask(PythonInstanceTask[T]):
             for p in data["cells"]:
                 meta = p["metadata"]
                 if "outputs" in meta["tags"]:
-                    outputs = " ".join(p["outputs"][0]["data"]["text/plain"])
-                    m = _pb2_LiteralMap()
-                    _text_format.Parse(outputs, m)
-                    return LiteralMap.from_flyte_idl(m)
+                    # Sometimes log messages will be in the list of outputs, so iterate to find where
+                    # the data is.
+                    for record in p["outputs"]:
+                        if "data" in record:
+                            outputs = " ".join(record["data"]["text/plain"])
+                            m = _pb2_LiteralMap()
+                            _text_format.Parse(outputs, m)
+                            return LiteralMap.from_flyte_idl(m)
         return None
 
     @staticmethod

@@ -30,6 +30,8 @@ from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.pickle import FlytePickle
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
 def test_type_engine():
@@ -61,6 +63,7 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
+    assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
 
     with pytest.raises(ValueError):
         TypeEngine.get_transformer(typing.Any)
@@ -156,40 +159,38 @@ def test_list_of_dataclass_getting_python_value():
     assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
 
 
-def test_file_non_downloadable():
+def test_file_no_downloader_default():
+    # The idea of this test is to assert that if a FlyteFile is created with no download specified,
+    # then it should return the set path itself. This matches if we use open method
     transformer = TypeEngine.get_transformer(FlyteFile)
 
     ctx = FlyteContext.current_context()
+    local_file = "/usr/local/bin/file"
 
-    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
-        scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri="/usr/local/bin/file")
-        )
+        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file))
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
     assert isinstance(pv, FlyteFile)
-    with pytest.raises(ValueError):
-        pv.download()
+    assert pv.download() == local_file
 
 
-def test_dir_non_downloadable():
+def test_dir_no_downloader_default():
+    # The idea of this test is to assert that if a FlyteFile is created with no download specified,
+    # then it should return the set path itself. This matches if we use open method
     transformer = TypeEngine.get_transformer(FlyteDirectory)
 
     ctx = FlyteContext.current_context()
 
-    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
+    local_dir = "/usr/local/bin/"
     lv = Literal(
-        scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri="/usr/local/bin/")
-        )
+        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir))
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteDirectory)
     assert isinstance(pv, FlyteDirectory)
-    with pytest.raises(ValueError):
-        pv.download()
+    assert pv.download() == local_dir
 
 
 def test_dict_transformer():
@@ -431,10 +432,10 @@ def test_dataclass_transformer():
             "InnerstructSchema": {
                 "additionalProperties": False,
                 "properties": {
-                    "a": {"format": "integer", "title": "a", "type": "number"},
+                    "a": {"title": "a", "type": "integer"},
                     "b": {"default": None, "title": "b", "type": ["string", "null"]},
                     "c": {
-                        "items": {"format": "integer", "title": "c", "type": "number"},
+                        "items": {"title": "c", "type": "integer"},
                         "title": "c",
                         "type": "array",
                     },

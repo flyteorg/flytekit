@@ -4,6 +4,11 @@ from flytekit.models import common as _common
 
 
 class WorkflowExecutionPhase(object):
+    """
+    This class holds enum values used for setting notifications. See :py:class:`flytekit.Email`
+    for sample usage.
+    """
+
     UNDEFINED = _execution_pb2.WorkflowExecution.UNDEFINED
     QUEUED = _execution_pb2.WorkflowExecution.QUEUED
     RUNNING = _execution_pb2.WorkflowExecution.RUNNING
