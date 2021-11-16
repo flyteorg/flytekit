@@ -49,7 +49,7 @@ from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
-from flytekit.models.core.identifier import ResourceType
+from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import (
     ExecutionMetadata,
     ExecutionSpec,
@@ -58,13 +58,11 @@ from flytekit.models.execution import (
     WorkflowExecutionGetDataResponse,
 )
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
-from flytekit.models.core.identifier import Identifier, WorkflowExecutionIdentifier
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.launch_plan import FlyteLaunchPlan
+from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.remote.nodes import FlyteNode
-
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -1037,7 +1035,8 @@ class FlyteRemote(object):
         return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
 
     def sync_node_execution(
-        self, execution: FlyteNodeExecution, node_mapping: typing.Dict[str, FlyteNode]) -> FlyteNodeExecution:
+        self, execution: FlyteNodeExecution, node_mapping: typing.Dict[str, FlyteNode]
+    ) -> FlyteNodeExecution:
         """
         Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
         fields already populated correctly. For purposes of the remote experience, we'd like to supplement the object
@@ -1060,8 +1059,8 @@ class FlyteRemote(object):
         # First see if it's a dummy node, if it is, we just skip it.
         # TODO: Add check for metadata name
         if (
-            constants.START_NODE_ID in execution.metadata.spec_node_id or
-            constants.END_NODE_ID in execution.metadata.spec_node_id
+            constants.START_NODE_ID in execution.metadata.spec_node_id
+            or constants.END_NODE_ID in execution.metadata.spec_node_id
         ):
             return execution
 
@@ -1111,7 +1110,11 @@ class FlyteRemote(object):
                 node_launch_plans = {}
                 # TODO: Inspect branch nodes for launch plans
                 for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
-                    if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None and node.workflow_node.launchplan_ref not in node_launch_plans:
+                    if (
+                        node.workflow_node is not None
+                        and node.workflow_node.launchplan_ref is not None
+                        and node.workflow_node.launchplan_ref not in node_launch_plans
+                    ):
                         node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
                             node.workflow_node.launchplan_ref
                         ).spec

@@ -9,8 +9,9 @@ from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import task as _task_models
+from flytekit.models.core import compiler as compiler_models
 from flytekit.models.core import identifier as id_models
-from flytekit.models.core import workflow as _workflow_models, compiler as compiler_models
+from flytekit.models.core import workflow as _workflow_models
 from flytekit.remote import identifier as _identifier
 from flytekit.remote import interface as _interfaces
 from flytekit.remote import nodes as _nodes
@@ -136,9 +137,11 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         return wf
 
     @classmethod
-    def promote_from_closure(cls, closure: compiler_models.CompiledWorkflowClosure,
-                             node_launch_plans: Optional[Dict[id_models, launch_plan_models.LaunchPlanSpec]] = None,
-                             ):
+    def promote_from_closure(
+        cls,
+        closure: compiler_models.CompiledWorkflowClosure,
+        node_launch_plans: Optional[Dict[id_models, launch_plan_models.LaunchPlanSpec]] = None,
+    ):
         """
         Extracts out the relevant portions of a FlyteWorkflow from a closure from the control plane.
 

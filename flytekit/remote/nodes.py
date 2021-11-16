@@ -10,10 +10,10 @@ from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.core.promise import NodeOutput
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
+from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import component_nodes as _component_nodes
 from flytekit.remote import identifier as _identifier
-from flytekit.models.core import identifier as id_models
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
