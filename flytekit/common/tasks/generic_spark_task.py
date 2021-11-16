@@ -38,6 +38,7 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
         interruptible,
         task_inputs,
         deprecated,
+        architecture,
         discoverable,
         timeout,
         spark_type,
@@ -127,6 +128,7 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
     def _get_container_definition(
         self,
         environment=None,
+        architecture=None,
     ):
         """
         :rtype: Container
@@ -144,4 +146,5 @@ class SdkGenericSparkTask(_base_tasks.SdkTask):
             resources=_task_models.Resources([], []),
             env=environment,
             config={},
+            architecture=architecture,
         )

@@ -75,6 +75,7 @@ class CustomTrainingJobTask(_sdk_runnable.SdkRunnableTask):
             retries=retries,
             interruptible=False,
             deprecated=deprecated,
+            architecture=None,
             storage_request=storage_request,
             cpu_request=cpu_request,
             gpu_request=gpu_request,
