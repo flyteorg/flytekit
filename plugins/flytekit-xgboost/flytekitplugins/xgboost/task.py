@@ -1,6 +1,7 @@
+import typing
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_type_hints
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import joblib
 import xgboost
@@ -26,7 +27,7 @@ class ModelParameters(object):
         verbose_eval: If verbose_eval is True then the evaluation metric on the validation set is printed at each boosting stage.
     """
 
-    num_boost_round: int = 10
+    num_boost_round: int = 4
     early_stopping_rounds: Optional[int] = None
     verbose_eval: Optional[Union[bool, int]] = True
 
@@ -47,6 +48,8 @@ class HyperParameters(object):
         booster: Specifies the booster type to use.
         tree_method: Specifies the tree construction algorithm.
         min_child_weight: Minimum sum of instance weight(hessian) needed in a child.
+
+    NOTE: There are a lot more hyperparameters available. We are using only a couple of them for demo purposes.
     """
 
     verbosity: int = 2
@@ -60,16 +63,9 @@ class HyperParameters(object):
     min_child_weight: int = 1
 
 
-class Updateable(object):
-    def update(self, new):
-        for key, value in new.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-
-
 @dataclass_json
 @dataclass
-class XGBoostParameters(Updateable):
+class XGBoostParameters:
     """
     XGBoost Parameter = Model Parameters + Hyperparameters
 
@@ -79,28 +75,64 @@ class XGBoostParameters(Updateable):
         label_column: Index of the column containing the labels.
     """
 
-    model_parameters: ModelParameters = ModelParameters()
-    hyper_parameters: HyperParameters = HyperParameters()
+    model_parameters: Optional[ModelParameters] = None
+    hyper_parameters: Optional[HyperParameters] = None
     label_column: int = 0
 
 
-class XGBoostTrainerTask(PythonInstanceTask[XGBoostParameters]):
+def load_flytefile(dataset: FlyteFile, label_column: int) -> xgboost.DMatrix:
+    """
+    Function to load a FlyteFile as a xgboost.DMatrix
+    """
+    filepath = dataset.download()
 
+    # Load CSV
+    if dataset.extension() == "csv":
+        return xgboost.DMatrix(filepath + "?format=csv&label_column=" + str(label_column))
+    # Load libSVM
+    return xgboost.DMatrix(filepath)
+
+
+def load_flyteschema(dataset: FlyteSchema, label_column: int) -> xgboost.DMatrix:
+    """
+    Function to load a FlyteSchema as an xgboost.DMatrix
+    """
+    # Load as a pandas DataFrame
+    df = dataset.open().all()
+    target = df[df.columns[label_column]]
+    df = df.drop(df.columns[label_column], axis=1)
+    return xgboost.DMatrix(df.values, target.values)
+
+
+class XGBoostTrainerTask(PythonInstanceTask[XGBoostParameters]):
     _TASK_TYPE = "xgboost"
+    _PARAMS_ARG = "params"
+    _TRAIN_ARG = "train"
+    _TEST_ARG = "test"
+    _VALIDATION_ARG = "validation"
+
+    _OUTPUT_MODEL = "model"
+    _OUTPUT_PREDICTIONS = "predictions"
+    _OUTPUT_EVAL_RESULT = "evaluation_result"
 
     def __init__(
         self,
         name: str,
-        inputs: Dict[str, Type],
+        dataset_type: typing.Union[typing.Type[FlyteFile], typing.Type[FlyteSchema]] = typing.Type[FlyteFile],
+        validate: bool = False,
         config: Optional[XGBoostParameters] = None,
         **kwargs,
     ):
         """
         A task that runs an XGBoost model.
+        This task takes 3 implicit inputs - train, test, and validation. The type for these inputs depends on
+        dataset_type.
+        This task produces 3 outputs - the model, predictions for the test dataset, and evaluation result.
 
         Args:
             name: Name of the task.
-            inputs: Inputs to the task.
+            dataset_type: Type of the dataset, supported types are FlyteFile[csv, libsvm], FlyteSchema
+            validate: Indicate if a validation dataset will be provided
             config: Configuration for the task.
         Returns:
             model: The trained model.
@@ -108,11 +140,24 @@ class XGBoostTrainerTask(PythonInstanceTask[XGBoostParameters]):
             evaluation_result: The evaluation result for the validation dataset.
         """
         self._config = config
+        self._dataset_type = dataset_type
 
+        # NOTE: how we are defining implicit inputs for this model
+        inputs = {
+            self._TRAIN_ARG: dataset_type,
+            self._TEST_ARG: dataset_type,
+            self._PARAMS_ARG: XGBoostParameters,
+        }
+
+        self._validate = validate
+        if validate:
+            inputs[self._VALIDATION_ARG] = dataset_type
+
+        # These are the implicit outputs
         outputs = {
-            "model": JoblibSerializedFile,
-            "predictions": List[float],
-            "evaluation_result": Dict[str, Dict[str, List[float]]],
+            self._OUTPUT_MODEL: JoblibSerializedFile,
+            self._OUTPUT_PREDICTIONS: List[float],
+            self._OUTPUT_EVAL_RESULT: Dict[str, Dict[str, List[float]]],
         }
 
         super(XGBoostTrainerTask, self).__init__(
@@ -125,73 +170,88 @@ class XGBoostTrainerTask(PythonInstanceTask[XGBoostParameters]):
 
     # Train method
     def train(
-        self, dtrain: xgboost.DMatrix, dvalid: xgboost.DMatrix, **kwargs
+        self,
+        dtrain: xgboost.DMatrix,
+        dvalid: xgboost.DMatrix,
+        params: XGBoostParameters,
     ) -> Tuple[str, Dict[str, Dict[str, List[float]]]]:
+        """
+        This implements a default XGboost training method
+        """
         evals_result = {}
-        # if validation data is provided, then populate evals and evals_result
+        validation = []
+
         if dvalid:
-            booster_model = xgboost.train(
-                params=asdict(self._config.hyper_parameters),
-                dtrain=dtrain,
-                **asdict(self._config.model_parameters if self._config.model_parameters else ModelParameters()),
-                evals=[(dvalid, "validation")],
-                evals_result=evals_result,
-            )
-        else:
-            booster_model = xgboost.train(
-                params=asdict(self._config.hyper_parameters),
-                dtrain=dtrain,
-                **asdict(self._config.model_parameters if self._config.model_parameters else ModelParameters()),
-            )
+            validation = [(dvalid, "validation")]
+
+        booster_model = xgboost.train(
+            params=asdict(params.hyper_parameters if params.hyper_parameters else HyperParameters()),
+            dtrain=dtrain,
+            **asdict(params.model_parameters if params.model_parameters else ModelParameters()),
+            evals=validation,
+            evals_result=evals_result,
+        )
         fname = Path(flytekit.current_context().working_directory) / "model.joblib.dat"
         joblib.dump(booster_model, fname)
         return str(fname), evals_result
 
     # Test method
-    def test(self, booster_model: str, dtest: xgboost.DMatrix, **kwargs) -> List[float]:
+    def test(self, booster_model: str, dtest: xgboost.DMatrix) -> List[float]:
+        """
+        Using joblib, we load the model and generate predictions.
+        """
         booster_model = joblib.load(booster_model)
         y_pred = booster_model.predict(dtest).tolist()
         return y_pred
 
     def execute(self, **kwargs) -> Any:
-        if not all(x in kwargs for x in ["train", "test"]):
-            raise ValueError("Must have train and test inputs; 'train' and 'test' should be the actual parameter keys")
+        """
+        This is the entrypoint for your plugin. Check out the base API. There are numerous other methods available.
+        For example: pre_execute and post_execute.
+        """
+        params: XGBoostParameters = kwargs[self._PARAMS_ARG]
+        test = kwargs[self._TEST_ARG]
+        train = kwargs[self._TRAIN_ARG]
+        if self._validate:
+            valid = kwargs[self._VALIDATION_ARG]
 
-        # replace model_parameters, hyper_parameters, label_column with the user-given values
-        for key, type in get_type_hints(XGBoostParameters).items():
-            if key in kwargs:
-                if issubclass(self.python_interface.inputs[key], type):
-                    self._config.update({key: kwargs[key]})
-                else:
-                    raise TypeError(f"{key} has to be of the type {type}")
+        if not params.model_parameters:
+            params.model_parameters = self._config.model_parameters
+        if not params.hyper_parameters:
+            params.hyper_parameters = self._config.hyper_parameters
 
-        dataset_vars = {}
+        print(f"Finalized parameters = {params}")
 
-        for each_key in ["train", "test", "validation"]:
-            if each_key in kwargs:
-                dataset = kwargs[each_key]
-                # FlyteFile
-                if issubclass(self.python_interface.inputs[each_key], FlyteFile):
-                    filepath = dataset.download()
-                    if dataset.extension() == "csv":
-                        dataset_vars[each_key] = xgboost.DMatrix(
-                            filepath + "?format=csv&label_column=" + str(self._config.label_column)
-                        )
-                    else:
-                        dataset_vars[each_key] = xgboost.DMatrix(filepath)
-                # FlyteSchema
-                elif issubclass(self.python_interface.inputs[each_key], FlyteSchema):
-                    df = dataset.open().all()
-                    target = df[df.columns[self._config.label_column]]
-                    df = df.drop(df.columns[self._config.label_column], axis=1)
-                    dataset_vars[each_key] = xgboost.DMatrix(df.values, target.values)
-                else:
-                    raise ValueError(f"Invalid type for {each_key} input")
+        #######################
+        # Now, let us write the plugin body.
 
-        model, evals_result = self.train(
-            dtrain=dataset_vars["train"],
-            dvalid=dataset_vars["validation"] if "validation" in kwargs else None,
-        )
-        predictions = self.test(booster_model=model, dtest=dataset_vars["test"])
+        # Step 1: use the helper methods - load_flytefile and load_flyteschema to get dtrain, dtest and dvalid
+        # dtrain -> is the training dataset in the format xgboost.DMatrix. We can load a FlyteFile using load Flytefile
+        # and we can load a FlyteSchema using load_flyteschema.
+
+        # Step 2: Use the helper method train to train the xgboost model. check the training code too.
+
+        # Step 3: Use the test method to test the model and compute the predictions.
+
+        #######################
+
+        dvalid = None
+        if issubclass(self._dataset_type, FlyteFile):
+            dtrain = load_flytefile(train, params.label_column)
+            # We could delay the loading to reduce memory pressure
+            dtest = load_flytefile(test, params.label_column)
+            if self._validate:
+                dvalid = load_flytefile(valid, params.label_column)
+        elif issubclass(self._dataset_type, FlyteSchema):
+            dtrain = load_flyteschema(train, params.label_column)
+            # We could delay the loading to reduce memory pressure
+            dtest = load_flyteschema(test, params.label_column)
+            if self._validate:
+                dvalid = load_flyteschema(valid, params.label_column)
+        else:
+            raise ValueError("Invalid type for input")
+
+        model, evals_result = self.train(dtrain=dtrain, dvalid=dvalid, params=params)
+        predictions = self.test(booster_model=model, dtest=dtest)
 
         return JoblibSerializedFile(model), predictions, evals_result
