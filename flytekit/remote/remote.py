@@ -1057,7 +1057,6 @@ class FlyteRemote(object):
         """
 
         # First see if it's a dummy node, if it is, we just skip it.
-        # TODO: Add check for metadata name
         if (
             constants.START_NODE_ID in execution.metadata.spec_node_id
             or constants.END_NODE_ID in execution.metadata.spec_node_id
@@ -1101,7 +1100,7 @@ class FlyteRemote(object):
                 workflow_execution_identifier=execution.id.execution_id,
                 unique_parent_id=execution.id.node_id,
             )
-            xx = [x for x in child_node_executions]
+            child_node_executions = [x for x in child_node_executions]
 
             # If this was a dynamic task, then there should be a CompiledWorkflowClosure inside the
             # NodeExecutionGetDataResponse

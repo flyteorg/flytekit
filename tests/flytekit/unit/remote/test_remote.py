@@ -279,8 +279,9 @@ def test_remote_static_sub_wf():
     )
     we = r.fetch_workflow_execution(name=exec_name)
     r.sync(we)
-    print(we.inputs)
-    print(we.outputs)
+    exec_name = "aocexyrni1"
+
+    nes = [n for n in we.node_executions.values()]
 
 
 def test_remote_sub_wf_fetch():
@@ -302,8 +303,6 @@ def test_remote_dynamic_sub_wf():
     )
     we = r.fetch_workflow_execution(name=exec_name)
     r.sync(we)
-    print(we.inputs)
-    print(we.outputs)
 
 
 def test_remote_dynamic_lp():
