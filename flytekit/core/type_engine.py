@@ -28,7 +28,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.types import LiteralType, SimpleType, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -444,8 +444,6 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
         """
-        if python_val is None:
-            raise AssertionError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
             transformer.assert_type(python_type, python_val)
@@ -594,6 +592,55 @@ class ListTransformer(TypeTransformer[T]):
             ct = TypeEngine.guess_python_type(literal_type.collection_type)
             return typing.List[ct]
         raise ValueError(f"List transformer cannot reverse {literal_type}")
+
+
+class UnionTransformer(TypeTransformer[T]):
+    """
+    Transformer that handles a univariate typing.Union[T]
+    """
+
+    def __init__(self):
+        super().__init__("Typed Union", typing.Union)
+
+    @staticmethod
+    def get_sub_type(t: Type[T]) -> Type[T]:
+        """
+        Return the generic Type T of the Union
+        """
+        if hasattr(t, "__origin__") and t.__origin__ is typing.Union:  # type: ignore
+            if hasattr(t, "__args__"):
+                return t.__args__  # type: ignore
+        raise ValueError("Only generic univariate typing.Union[T] type is supported.")
+
+    def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
+        try:
+            sub_type = [TypeEngine.to_literal_type(v) if v else "" for v in self.get_sub_type(t)]
+            return _type_models.LiteralType(union_type=UnionType(sub_type))
+        except Exception as e:
+            raise ValueError(f"Type of Generic Union type is not supported, {e}")
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        t = type(python_val)
+        return TypeEngine.to_literal(ctx, python_val, t, expected)
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
+        st = self.get_sub_type(expected_python_type)
+        has_none_type = False
+        for v in st:
+            try:
+                if isinstance(v, type(None)):
+                    has_none_type = True
+                val = TypeEngine.to_python_value(ctx, lv, v)
+                if val:
+                    return val
+            except Exception as e:
+                logger.debug(f"Failed to convert from {lv} to {v}")
+        if has_none_type:
+            return True
+        raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
+
+    def guess_python_type(self, literal_type: LiteralType) -> type:
+        return TypeEngine.guess_python_type(literal_type)
 
 
 class DictTransformer(TypeTransformer[dict]):
@@ -907,9 +954,11 @@ def _register_default_type_transformers():
             _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
             lambda x: None,
             lambda x: None,
-        )
+        ),
+        [type(None)],
     )
     TypeEngine.register(ListTransformer())
+    TypeEngine.register(UnionTransformer())
     TypeEngine.register(DictTransformer())
     TypeEngine.register(TextIOTransformer())
     TypeEngine.register(BinaryIOTransformer())

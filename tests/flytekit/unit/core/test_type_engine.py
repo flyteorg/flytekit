@@ -547,6 +547,39 @@ def test_enum_type():
         TypeEngine.to_literal_type(UnsupportedEnumValues)
 
 
+def test_union_type():
+    pt = typing.Union[str, int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.values == [LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
+def test_optional_type():
+    pt = typing.Optional[int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.values == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.NONE)]
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, None, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert v is None
+
+
 @pytest.mark.parametrize(
     "python_value,python_types,expected_literal_map",
     [

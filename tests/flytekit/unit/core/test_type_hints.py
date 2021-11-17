@@ -1427,3 +1427,43 @@ def test_error_messages():
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
         foo3(a=[{"hello": 2}])
+
+
+def test_union_type():
+    @task
+    def t1(a: typing.Union[int, str]) -> typing.Union[int, str]:
+        return a
+
+    @workflow
+    def wf(a: typing.Union[int, str]) -> typing.Union[int, str]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a="2") == "2"
+
+    @task
+    def t1(a: typing.Union[float, dict]) -> typing.Union[float, dict]:
+        return a
+
+    @workflow
+    def wf(a: typing.Union[int, str]) -> typing.Union[int, str]:
+        return t1(a=a)
+
+    with pytest.raises(
+        TypeError,
+        match='Cannot convert from scalar {\n  primitive {\n    string_value: "2"\n  }\n}\n to typing.Union\[float, dict\]',
+    ):
+        assert wf(a="2") == "2"
+
+
+def test_optional_type():
+    @task
+    def t1(a: typing.Optional[int]) -> typing.Optional[int]:
+        return a
+
+    @workflow
+    def wf(a: typing.Optional[int]) -> typing.Optional[int]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=None) is None
