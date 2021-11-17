@@ -216,7 +216,11 @@ class FlyteRemote(object):
         :param annotations: annotation config
         :param image_config: image config
         :param raw_output_data_config: location for offloaded data, e.g. in S3
-        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned by :func:`grpc.ssl_channel_credentials`
+        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned
+          by :func:`grpc.ssl_channel_credentials`
+        :param entrypoint_settings: EntrypointSettings object for use with Spark tasks. If supplied, this will be
+          used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
+          inside the container.
         """
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
         if flyte_admin_url is None:
@@ -234,6 +238,7 @@ class FlyteRemote(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
+        # Not exposing this as a property for now.
         self._entrypoint_settings = entrypoint_settings
 
         # Save the file access object locally, but also make it available for use from the context.
@@ -543,11 +548,7 @@ class FlyteRemote(object):
                 self.image_config,
                 # https://github.com/flyteorg/flyte/issues/1359
                 env={internal.IMAGE.env_var: self.image_config.default_image.full},
-                entrypoint_settings=EntrypointSettings(
-                    path=os.path.join(
-                        serialize._DEFAULT_FLYTEKIT_VIRTUALENV_ROOT, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC
-                    )
-                ),
+                entrypoint_settings=self._entrypoint_settings,
             ),
             entity=entity,
         )
