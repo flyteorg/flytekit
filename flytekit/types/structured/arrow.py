@@ -1,7 +1,6 @@
 import os
 import re
 import typing
-from abc import ABC
 
 import pandas as pd
 import pyarrow as pa
@@ -42,7 +41,7 @@ class ParquetToArrowRetrievalHandler(DatasetRetrievalHandler):
 class BQToArrowRetrievalHandler(DatasetRetrievalHandler):
     def retrieve(self, path: str, **kwargs) -> pa.Table:
         # path will be like bq://photo-313016:flyte.new_table1
-        _, project_id, dataset_id, table_id = re.split("\.|://|:", path)
+        _, project_id, dataset_id, table_id = re.split("\\.|://|:", path)
         client = bigquery_storage.BigQueryReadClient()
         table = f"projects/{project_id}/datasets/{dataset_id}/tables/{table_id}"
         parent = "projects/{}".format(project_id)
