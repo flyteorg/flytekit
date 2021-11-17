@@ -1442,18 +1442,18 @@ def test_union_type():
     assert wf(a="2") == "2"
 
     @task
-    def t1(a: typing.Union[float, dict]) -> typing.Union[float, dict]:
+    def t2(a: typing.Union[float, dict]) -> typing.Union[float, dict]:
         return a
 
     @workflow
-    def wf(a: typing.Union[int, str]) -> typing.Union[int, str]:
-        return t1(a=a)
+    def wf2(a: typing.Union[int, str]) -> typing.Union[int, str]:
+        return t2(a=a)
 
     with pytest.raises(
         TypeError,
-        match='Cannot convert from scalar {\n  primitive {\n    string_value: "2"\n  }\n}\n to typing.Union\[float, dict\]',
+        match='Cannot convert from scalar {\n  primitive {\n    string_value: "2"\n  }\n}\n to typing.Union\\[float, dict\\]',
     ):
-        assert wf(a="2") == "2"
+        assert wf2(a="2") == "2"
 
 
 def test_optional_type():
