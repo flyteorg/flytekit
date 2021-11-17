@@ -41,12 +41,7 @@ from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity
 from flytekit.configuration import auth as auth_config
 from flytekit.configuration.internal import DOMAIN, PROJECT
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import (
-    FlyteContextManager,
-    ImageConfig,
-    SerializationSettings,
-    get_image_config,
-)
+from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings, get_image_config
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import TypeEngine
