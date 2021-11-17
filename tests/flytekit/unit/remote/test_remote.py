@@ -314,8 +314,9 @@ def test_remote_dynamic_lp():
     )
     we = r.fetch_workflow_execution(name=exec_name)
     r.sync(we)
-    print(we.inputs)
-    print(we.outputs)
+    nes = [n for n in we.node_executions.values()]
+    ne = nes[1]
+    subnes = [x for x in ne.subworkflow_node_executions.values()]
 
 
 def test_remote_static_lp():
@@ -327,5 +328,3 @@ def test_remote_static_lp():
     )
     we = r.fetch_workflow_execution(name=exec_name)
     r.sync(we)
-    print(we.inputs)
-    print(we.outputs)
