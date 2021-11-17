@@ -45,7 +45,6 @@ from flytekit.configuration import auth as auth_config
 from flytekit.configuration.internal import DOMAIN, PROJECT
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import (
-    EntrypointSettings,
     FlyteContextManager,
     ImageConfig,
     SerializationSettings,
