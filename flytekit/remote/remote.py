@@ -1,4 +1,8 @@
-"""Module defining main Flyte backend entrypoint."""
+"""
+This module provides the ``FlyteRemote`` object, which is the end-user's main starting point for interacting
+with a Flyte backend in an interactive and programmatic way. This of this experience as kind of like the web UI
+but in Python object form.
+"""
 from __future__ import annotations
 
 import logging
@@ -59,7 +63,6 @@ from flytekit.models.execution import (
     WorkflowExecutionGetDataResponse,
 )
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
-from flytekit.remote.interface import TypedInterface
 from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
@@ -1252,49 +1255,3 @@ class FlyteRemote(object):
                     common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
-
-    def _get_node_execution_interface(
-        self, node_execution: FlyteNodeExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask]
-    ) -> TypedInterface:
-        """Return the interface of the task or subworkflow associated with this node execution."""
-        if isinstance(entity_definition, FlyteTask):
-            # A single task execution consists of a Flyte workflow with single node whose interface matches that of
-            # the underlying task
-            return entity_definition.interface
-
-        for node in entity_definition.flyte_nodes:
-            if node.id == node_execution.id.node_id:
-                if node.task_node is not None:
-                    return node.task_node.flyte_task.interface
-                elif node.workflow_node is not None and node.workflow_node.sub_workflow_ref is not None:
-                    # Fetch the workflow and use its interface
-                    sub_workflow_ref = node.workflow_node.sub_workflow_ref
-                    workflow = self.fetch_workflow(
-                        sub_workflow_ref.project,
-                        sub_workflow_ref.domain,
-                        sub_workflow_ref.name,
-                        sub_workflow_ref.version,
-                    )
-                    return workflow.interface
-                elif node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
-                    # Fetch the launch plan this node launched, and from there fetch the referenced workflow and use its
-                    # interface.
-                    lp_ref = node.workflow_node.launchplan_ref
-                    launch_plan = self.fetch_launch_plan(lp_ref.project, lp_ref.domain, lp_ref.name, lp_ref.version)
-                    workflow = self.fetch_workflow(
-                        launch_plan.workflow_id.project,
-                        launch_plan.workflow_id.domain,
-                        launch_plan.workflow_id.name,
-                        launch_plan.workflow_id.version,
-                    )
-                    return workflow.interface
-
-        # dynamically generated nodes won't have a corresponding node in the compiled workflow closure.
-        # in that case, we fetch the interface from the underlying task execution they ran
-        if len(node_execution.task_executions) > 0:
-            # if not a parent node, assume a task execution node
-            task_id = node_execution.task_executions[0].id.task_id
-            task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-            return task.interface
-
-        remote_logger.info("failed to find node interface from entity definition closure")

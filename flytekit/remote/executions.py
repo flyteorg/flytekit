@@ -8,7 +8,6 @@ from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
-from flytekit.remote import identifier as remote_identifier
 from flytekit.remote.workflow import FlyteWorkflow
 
 

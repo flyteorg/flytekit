@@ -6,7 +6,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.remote import identifier as _identifier
 from flytekit.remote import interface as _interfaces
 
 

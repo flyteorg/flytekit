@@ -84,6 +84,6 @@ from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.remote import FlyteRemote
 
-# from flytekit.remote.tasks.executions import FlyteTaskExecution
-# from flytekit.remote.tasks.task import FlyteTask
+from flytekit.remote.executions import FlyteTaskExecution
+from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow

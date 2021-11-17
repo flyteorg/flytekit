@@ -12,7 +12,6 @@ from flytekit.models import task as _task_models
 from flytekit.models.core import compiler as compiler_models
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_models
-from flytekit.remote import identifier as _identifier
 from flytekit.remote import interface as _interfaces
 from flytekit.remote import nodes as _nodes
 
@@ -28,9 +27,9 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         id: id_models.Identifier,
         metadata,
         metadata_defaults,
-        subworkflows: Optional[Dict[_identifier.Identifier, _workflow_models.WorkflowTemplate]] = None,
-        tasks: Optional[Dict[_identifier.Identifier, _task_models.TaskSpec]] = None,
-        launch_plans: Optional[Dict[_identifier.Identifier, launch_plan_models.LaunchPlanSpec]] = None,
+        subworkflows: Optional[Dict[id_models.Identifier, _workflow_models.WorkflowTemplate]] = None,
+        tasks: Optional[Dict[id_models.Identifier, _task_models.TaskSpec]] = None,
+        launch_plans: Optional[Dict[id_models.Identifier, launch_plan_models.LaunchPlanSpec]] = None,
         compiled_closure: Optional[compiler_models.CompiledWorkflowClosure] = None,
     ):
         # TODO: Remove check

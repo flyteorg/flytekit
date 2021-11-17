@@ -13,7 +13,6 @@ from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.remote import component_nodes as _component_nodes
-from flytekit.remote import identifier as _identifier
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):

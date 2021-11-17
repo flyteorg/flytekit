@@ -204,9 +204,8 @@ class CompiledWorkflowClosure(_common.FlyteIdlEntity):
         # TODO: properly sort out the model code and remove the duplicate CompiledTask
         from flytekit.models.task import CompiledTask as _CompiledTask
 
-        xx = cls(
+        return cls(
             primary=CompiledWorkflow.from_flyte_idl(p.primary),
             sub_workflows=[CompiledWorkflow.from_flyte_idl(s) for s in p.sub_workflows],
             tasks=[_CompiledTask.from_flyte_idl(t) for t in p.tasks],
         )
-        return xx
