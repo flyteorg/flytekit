@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Type, Union
 
-import fsspec
 import numpy as _np
 import pyarrow as pa
 
@@ -284,6 +283,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             registry = self.DATASET_ENCODING_HANDLERS
         elif isinstance(h, DatasetDecodingHandler):
             registry = self.DATASET_DECODING_HANDLERS
+        else:
+            raise TypeError(f"We don't support this type of handlers {h}")
 
         if from_type not in registry:
             registry[from_type] = {}
