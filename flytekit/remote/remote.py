@@ -34,6 +34,7 @@ except ImportError:
 
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.clis.flyte_cli.main import _detect_default_config_file
+from flytekit.clis.sdk_in_container import serialize
 from flytekit.common import constants
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
@@ -126,6 +127,7 @@ class FlyteRemote(object):
         default_domain: typing.Optional[str] = None,
         config_file_path: typing.Optional[str] = None,
         grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
+        venv_root: typing.Optional[str] = None,
     ) -> FlyteRemote:
         """Create a FlyteRemote object using flyte configuration variables and/or environment variable overrides.
 
@@ -149,6 +151,11 @@ class FlyteRemote(object):
             raw_output_prefix=raw_output_data_prefix,
         )
 
+        venv_root = venv_root or serialize._DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
+        entrypoint = context_manager.EntrypointSettings(
+            path=os.path.join(venv_root, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
+        )
+
         return cls(
             flyte_admin_url=platform_config.URL.get(),
             insecure=platform_config.INSECURE.get(),
@@ -167,6 +174,7 @@ class FlyteRemote(object):
                 common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
             ),
             grpc_credentials=grpc_credentials,
+            entrypoint_settings=entrypoint,
         )
 
     def __init__(
@@ -183,6 +191,7 @@ class FlyteRemote(object):
         image_config: typing.Optional[ImageConfig] = None,
         raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
         grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
+        entrypoint_settings: typing.Optional[context_manager.EntrypointSettings] = None,
     ):
         """Initialize a FlyteRemote object.
 
@@ -197,7 +206,11 @@ class FlyteRemote(object):
         :param annotations: annotation config
         :param image_config: image config
         :param raw_output_data_config: location for offloaded data, e.g. in S3
-        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned by :func:`grpc.ssl_channel_credentials`
+        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned
+          by :func:`grpc.ssl_channel_credentials`
+        :param entrypoint_settings: EntrypointSettings object for use with Spark tasks. If supplied, this will be
+          used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
+          inside the container.
         """
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
         if flyte_admin_url is None:
@@ -215,6 +228,8 @@ class FlyteRemote(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
+        # Not exposing this as a property for now.
+        self._entrypoint_settings = entrypoint_settings
 
         # Save the file access object locally, but also make it available for use from the context.
         FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
@@ -510,6 +525,7 @@ class FlyteRemote(object):
                 self.image_config,
                 # https://github.com/flyteorg/flyte/issues/1359
                 env={internal.IMAGE.env_var: self.image_config.default_image.full},
+                entrypoint_settings=self._entrypoint_settings,
             ),
             entity=entity,
         )

@@ -37,7 +37,7 @@ lint: ## Run linters
 	mypy flytekit/core || true
 	mypy flytekit/types || true
 	mypy tests/flytekit/unit/core || true
-	# Exclude setup.py to fix erorr: Duplicate module named "setup"
+	# Exclude setup.py to fix error: Duplicate module named "setup"
 	mypy plugins --exclude setup.py || true
 	pre-commit run --all-files
 
