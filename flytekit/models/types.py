@@ -1,4 +1,5 @@
 import json as _json
+import typing
 
 from flyteidl.core import types_pb2 as _types_pb2
 from google.protobuf import json_format as _json_format
@@ -98,6 +99,28 @@ class SchemaType(_common.FlyteIdlEntity):
         return cls(columns=[SchemaType.SchemaColumn.from_flyte_idl(c) for c in proto.columns])
 
 
+class UnionType(_common.FlyteIdlEntity):
+    """
+    Models _types_pb2.UnionType
+    """
+
+    def __init__(self, values: typing.List["LiteralType"]):
+        self._values = values
+
+    @property
+    def values(self) -> typing.List["LiteralType"]:
+        return self._values
+
+    def to_flyte_idl(self) -> _types_pb2.UnionType:
+        return _types_pb2.UnionType(
+            values=[val.to_flyte_idl() if val else None for val in self._values],
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: _types_pb2.UnionType):
+        return cls(values=proto.values)
+
+
 class LiteralType(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -107,6 +130,7 @@ class LiteralType(_common.FlyteIdlEntity):
         map_value_type=None,
         blob=None,
         enum_type=None,
+        union_type=None,
         metadata=None,
     ):
         """
@@ -119,6 +143,7 @@ class LiteralType(_common.FlyteIdlEntity):
             string.
         :param flytekit.models.core.types.BlobType blob: For blob objects, this describes the type.
         :param flytekit.models.core.types.EnumType enum_type: For enum objects, describes an enum
+        :param flytekit.models.core.types.UnionType union_type: For union objects, describes an python union type.
         :param dict[Text, T] metadata: Additional data describing the type
         """
         self._simple = simple
@@ -127,6 +152,7 @@ class LiteralType(_common.FlyteIdlEntity):
         self._map_value_type = map_value_type
         self._blob = blob
         self._enum_type = enum_type
+        self._union_type = union_type
         self._metadata = metadata
 
     @property
@@ -160,6 +186,10 @@ class LiteralType(_common.FlyteIdlEntity):
         return self._enum_type
 
     @property
+    def union_type(self) -> UnionType:
+        return self._union_type
+
+    @property
     def metadata(self):
         """
         :rtype: dict[Text, T]
@@ -185,6 +215,7 @@ class LiteralType(_common.FlyteIdlEntity):
             map_value_type=self.map_value_type.to_flyte_idl() if self.map_value_type is not None else None,
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
+            union_type=self.union_type.to_flyte_idl() if self.union_type else None,
             metadata=metadata,
         )
         return t
@@ -208,6 +239,7 @@ class LiteralType(_common.FlyteIdlEntity):
             map_value_type=map_value_type,
             blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
             enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
+            union_type=UnionType.from_flyte_idl(proto.union_type) if proto.HasField("union_type") else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
         )
 
