@@ -626,11 +626,11 @@ class UnionTransformer(TypeTransformer[T]):
         return TypeEngine.to_literal(ctx, python_val, t, expected)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
+        if lv is None:
+            return None
         st = self.get_sub_type(expected_python_type)
         for v in st:
             try:
-                if v == type(None) and lv is None:
-                    return None
                 val = TypeEngine.to_python_value(ctx, lv, v)
                 if val:
                     return val
