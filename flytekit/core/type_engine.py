@@ -625,22 +625,21 @@ class UnionTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         st = self.get_sub_type(expected_python_type)
-        has_none_type = False
         for v in st:
             try:
-                if isinstance(v, type(None)):
-                    has_none_type = True
+                if v == type(None) and lv is None:
+                    return None
                 val = TypeEngine.to_python_value(ctx, lv, v)
                 if val:
                     return val
             except Exception as e:
-                logger.debug(f"Failed to convert from {lv} to {v}")
-        if has_none_type:
-            return True
+                logger.debug(f"Failed to convert from {lv} to {v}", e)
         raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
-        return TypeEngine.guess_python_type(literal_type)
+        if literal_type.union_type:
+            return typing.Union[[TypeEngine.guess_python_type(v) for v in literal_type.union_type.values]]
+        raise ValueError(f"Union transformer cannot reverse {literal_type}")
 
 
 class DictTransformer(TypeTransformer[dict]):
