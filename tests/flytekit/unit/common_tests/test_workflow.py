@@ -271,8 +271,7 @@ def test_workflow_node():
     w.id = None
 
     # Test that outputs are promised
-    n._id = "node-id"
-    n._metadata.name = "node-id"
+    n.assign_id_and_return("node-id*")  # dns'ified
     assert n.outputs["scalar_out"].sdk_type.to_flyte_literal_type() == primitives.Integer.to_flyte_literal_type()
     assert n.outputs["scalar_out"].var == "scalar_out"
     assert n.outputs["scalar_out"].node_id == "node-id"
