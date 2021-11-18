@@ -3,6 +3,7 @@ import datetime
 import functools
 import os
 import random
+import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -31,6 +32,7 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 serialization_settings = context_manager.SerializationSettings(
@@ -1430,16 +1432,24 @@ def test_error_messages():
 
 
 def test_union_type():
+    ut = typing.Union[int, str, float, FlyteFile, FlyteSchema, typing.List[int], typing.Dict[str, int]]
+
     @task
-    def t1(a: typing.Union[int, str]) -> typing.Union[int, str]:
+    def t1(a: ut) -> ut:
         return a
 
     @workflow
-    def wf(a: typing.Union[int, str]) -> typing.Union[int, str]:
+    def wf(a: ut) -> ut:
         return t1(a=a)
 
     assert wf(a=2) == 2
     assert wf(a="2") == "2"
+    assert wf(a=2.0) == 2.0
+    file = tempfile.NamedTemporaryFile()
+    assert isinstance(wf(a=FlyteFile(file.name)), FlyteFile)
+    assert isinstance(wf(a=FlyteSchema()), FlyteSchema)
+    assert wf(a=[1, 2, 3]) == [1, 2, 3]
+    assert wf(a={"a": 1}) == {"a": 1}
 
     @task
     def t2(a: typing.Union[float, dict]) -> typing.Union[float, dict]:

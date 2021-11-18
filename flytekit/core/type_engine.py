@@ -622,8 +622,12 @@ class UnionTransformer(TypeTransformer[T]):
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        t = type(python_val)
-        return TypeEngine.to_literal(ctx, python_val, t, expected)
+        for t in python_type.__args__:
+            try:
+                return TypeEngine.to_literal(ctx, python_val, t, expected)
+            except Exception as e:
+                logger.debug(f"Failed to convert from {python_val} to {t}", e)
+        raise TypeError(f"Cannot convert from {python_val} to {python_type}")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         if lv is None:

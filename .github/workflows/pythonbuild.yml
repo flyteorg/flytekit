@@ -94,7 +94,7 @@ jobs:
         cd plugins/${{ matrix.plugin-names }}
         pip install -e .
         pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
-        git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout union_type && pip install . && cd ..
+        git clone https://github.com/flyteorg/flyteidl.git && cd flyteidl && git checkout union_type && pip install . && cd ..
         pip freeze
     - name: Test with coverage
       run: |
