@@ -101,7 +101,7 @@ class SchemaType(_common.FlyteIdlEntity):
 
 class StructuredDatasetType(_common.FlyteIdlEntity):
     class DatasetColumn(_common.FlyteIdlEntity):
-        def __init__(self, name: str, literal_type: _types_pb2.LiteralType):
+        def __init__(self, name: str, literal_type: "LiteralType"):
             self._name = name
             self._literal_type = literal_type
 
@@ -113,14 +113,16 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
             return self._name
 
         @property
-        def literal_type(self) -> _types_pb2.LiteralType:
+        def literal_type(self) -> "LiteralType":
             """
             A LiteralType that defines the type of this column
             """
             return self._literal_type
 
         def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType.DatasetColumn:
-            return _types_pb2.StructuredDatasetType.DatasetColumn(name=self.name, literal_type=self.literal_type)
+            return _types_pb2.StructuredDatasetType.DatasetColumn(
+                name=self.name, literal_type=self.literal_type.to_flyte_idl()
+            )
 
         @classmethod
         def from_flyte_idl(
@@ -149,7 +151,7 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType:
         return _types_pb2.StructuredDatasetType(
-            columns=self.columns,
+            columns=[c.to_flyte_idl() for c in self._columns],
             external_schema_type=self.external_schema_type,
             external_schema_bytes=self.external_schema_bytes,
         )
