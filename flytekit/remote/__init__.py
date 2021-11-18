@@ -22,6 +22,9 @@ the following code fetches and executes a workflow:
     # inspect the execution's outputs
     print(workflow_execution.outputs)
 
+
+In addition to ``inputs`` and ``outputs``, the
+
 .. _remote-entrypoint:
 
 Entrypoint

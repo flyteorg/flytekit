@@ -6,20 +6,11 @@ from mock import MagicMock, patch
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import internal
 from flytekit.models import common as common_models
-from flytekit.models.admin.workflow import Workflow
 from flytekit.models.core.identifier import (
-    Identifier,
-    NodeExecutionIdentifier,
     ResourceType,
     WorkflowExecutionIdentifier,
 )
 from flytekit.models.execution import Execution
-from flytekit.models.interface import TypedInterface, Variable
-from flytekit.models.launch_plan import LaunchPlan
-from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
-from flytekit.models.task import Task
-from flytekit.models.types import LiteralType, SimpleType
-from flytekit.remote import FlyteWorkflow
 from flytekit.remote.remote import FlyteRemote
 
 CLIENT_METHODS = {
@@ -44,50 +35,6 @@ ENTITY_TYPE_TEXT = {
 @patch("flytekit.clients.friendly.SynchronousFlyteClient")
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
-@pytest.mark.parametrize(
-    "entity_cls,resource_type",
-    [
-        [Workflow, ResourceType.WORKFLOW],
-        [Task, ResourceType.TASK],
-        [LaunchPlan, ResourceType.LAUNCH_PLAN],
-    ],
-)
-def test_remote_fetch_execute_entities_task_workflow_launchplan(
-    mock_insecure,
-    mock_url,
-    mock_client,
-    entity_cls,
-    resource_type,
-):
-    admin_entities = [
-        entity_cls(
-            Identifier(resource_type, "p1", "d1", "n1", version),
-            *([MagicMock()] if resource_type != ResourceType.LAUNCH_PLAN else [MagicMock(), MagicMock()]),
-        )
-        for version in ["latest", "old"]
-    ]
-
-    mock_url.get.return_value = "localhost"
-    mock_insecure.get.return_value = True
-    mock_client = MagicMock()
-    getattr(mock_client, CLIENT_METHODS[resource_type]).return_value = admin_entities, ""
-
-    remote = FlyteRemote.from_config("p1", "d1")
-    remote._client = mock_client
-    fetch_method = getattr(remote, REMOTE_METHODS[resource_type])
-    flyte_entity_latest = fetch_method(name="n1", version="latest")
-    flyte_entity_latest_implicit = fetch_method(name="n1")
-    flyte_entity_old = fetch_method(name="n1", version="old")
-
-    assert flyte_entity_latest.entity_type_text == ENTITY_TYPE_TEXT[resource_type]
-    assert flyte_entity_latest.id == admin_entities[0].id
-    assert flyte_entity_latest.id == flyte_entity_latest_implicit.id
-    assert flyte_entity_latest.id != flyte_entity_old.id
-
-
-@patch("flytekit.clients.friendly.SynchronousFlyteClient")
-@patch("flytekit.configuration.platform.URL")
-@patch("flytekit.configuration.platform.INSECURE")
 def test_remote_fetch_workflow_execution(mock_insecure, mock_url, mock_client_manager):
     admin_workflow_execution = Execution(
         id=WorkflowExecutionIdentifier("p1", "d1", "n1"),
@@ -106,7 +53,7 @@ def test_remote_fetch_workflow_execution(mock_insecure, mock_url, mock_client_ma
     assert flyte_workflow_execution.id == admin_workflow_execution.id
 
 
-@patch("flytekit.remote.workflow_execution.FlyteWorkflowExecution.promote_from_model")
+@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
 def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url, mock_wf_exec):
@@ -139,7 +86,7 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url,
     )
 
 
-@patch("flytekit.remote.workflow_execution.FlyteWorkflowExecution.promote_from_model")
+@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
 @patch("flytekit.configuration.auth.ASSUMABLE_IAM_ROLE")
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
@@ -169,7 +116,7 @@ def test_underscore_execute_fall_back_remote_attributes(mock_insecure, mock_url,
     )
 
 
-@patch("flytekit.remote.workflow_execution.FlyteWorkflowExecution.promote_from_model")
+@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
 def test_execute_with_wrong_input_key(mock_insecure, mock_url, mock_wf_exec):
@@ -238,61 +185,61 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     assert not mock_ssl_channel_credentials.called
 
 
-def test_remote_static_sub_wf():
-    exec_name = "kna2ucovg1"
-    r = FlyteRemote.from_config(
-        default_project="flytesnacks",
-        default_domain="development",
-        config_file_path="/Users/ytong/.flyte/local_sandbox",
-    )
-    we = r.fetch_workflow_execution(name=exec_name)
-    r.sync(we)
-    exec_name = "aocexyrni1"
-
-    nes = [n for n in we.node_executions.values()]
-
-
-def test_remote_sub_wf_fetch():
-    r = FlyteRemote.from_config(
-        default_project="flytesnacks",
-        default_domain="development",
-        config_file_path="/Users/ytong/.flyte/local_sandbox",
-    )
-    wf = r.fetch_workflow(name="core.control_flow.subworkflows.parent_wf")
-    print(wf)
-
-
-def test_remote_dynamic_sub_wf():
-    exec_name = "ap4g4xtuor"
-    r = FlyteRemote.from_config(
-        default_project="flytesnacks",
-        default_domain="development",
-        config_file_path="/Users/ytong/.flyte/local_sandbox",
-    )
-    we = r.fetch_workflow_execution(name=exec_name)
-    r.sync(we)
-
-
-def test_remote_dynamic_lp():
-    exec_name = "m4mne22c19"
-    r = FlyteRemote.from_config(
-        default_project="flytesnacks",
-        default_domain="development",
-        config_file_path="/Users/ytong/.flyte/local_sandbox",
-    )
-    we = r.fetch_workflow_execution(name=exec_name)
-    r.sync(we)
-    nes = [n for n in we.node_executions.values()]
-    ne = nes[1]
-    subnes = [x for x in ne.subworkflow_node_executions.values()]
-
-
-def test_remote_static_lp():
-    exec_name = "x6i3823zt5"
-    r = FlyteRemote.from_config(
-        default_project="flytesnacks",
-        default_domain="development",
-        config_file_path="/Users/ytong/.flyte/local_sandbox",
-    )
-    we = r.fetch_workflow_execution(name=exec_name)
-    r.sync(we)
+# def test_remote_static_sub_wf():
+#     exec_name = "kna2ucovg1"
+#     r = FlyteRemote.from_config(
+#         default_project="flytesnacks",
+#         default_domain="development",
+#         config_file_path="/Users/ytong/.flyte/local_sandbox",
+#     )
+#     we = r.fetch_workflow_execution(name=exec_name)
+#     r.sync(we)
+#     exec_name = "aocexyrni1"
+#
+#     nes = [n for n in we.node_executions.values()]
+#
+#
+# def test_remote_sub_wf_fetch():
+#     r = FlyteRemote.from_config(
+#         default_project="flytesnacks",
+#         default_domain="development",
+#         config_file_path="/Users/ytong/.flyte/local_sandbox",
+#     )
+#     wf = r.fetch_workflow(name="core.control_flow.subworkflows.parent_wf")
+#     print(wf)
+#
+#
+# def test_remote_dynamic_sub_wf():
+#     exec_name = "ap4g4xtuor"
+#     r = FlyteRemote.from_config(
+#         default_project="flytesnacks",
+#         default_domain="development",
+#         config_file_path="/Users/ytong/.flyte/local_sandbox",
+#     )
+#     we = r.fetch_workflow_execution(name=exec_name)
+#     r.sync(we)
+#
+#
+# def test_remote_dynamic_lp():
+#     exec_name = "m4mne22c19"
+#     r = FlyteRemote.from_config(
+#         default_project="flytesnacks",
+#         default_domain="development",
+#         config_file_path="/Users/ytong/.flyte/local_sandbox",
+#     )
+#     we = r.fetch_workflow_execution(name=exec_name)
+#     r.sync(we)
+#     nes = [n for n in we.node_executions.values()]
+#     ne = nes[1]
+#     subnes = [x for x in ne.subworkflow_node_executions.values()]
+#
+#
+# def test_remote_static_lp():
+#     exec_name = "x6i3823zt5"
+#     r = FlyteRemote.from_config(
+#         default_project="flytesnacks",
+#         default_domain="development",
+#         config_file_path="/Users/ytong/.flyte/local_sandbox",
+#     )
+#     we = r.fetch_workflow_execution(name=exec_name)
+#     r.sync(we)
