@@ -6,10 +6,7 @@ from mock import MagicMock, patch
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import internal
 from flytekit.models import common as common_models
-from flytekit.models.core.identifier import (
-    ResourceType,
-    WorkflowExecutionIdentifier,
-)
+from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.remote.remote import FlyteRemote
 
