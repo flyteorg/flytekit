@@ -298,6 +298,7 @@ class FileAccessProvider(object):
 
         self._default_remote = DataPersistencePlugins.find_plugin(raw_output_prefix)(default_prefix=raw_output_prefix)
         self._raw_output_prefix = raw_output_prefix
+        os.mkdir(raw_output_prefix)
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
