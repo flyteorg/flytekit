@@ -1153,8 +1153,8 @@ class FlyteRemote(object):
             else:
                 # If it does not, then it should be a static subworkflow
                 if not isinstance(execution._node.flyte_entity, FlyteWorkflow):
-                    print(f"Node execution {execution}, node {execution._node}")
-                    raise Exception("jfdklsa")
+                    remote_logger.error(f"NE {execution} entity should be a workflow, {type(execution._node)}, {execution._node}")
+                    raise Exception(f"Node entity has type {type(execution._node)}")
                 sub_flyte_workflow = execution._node.flyte_entity
                 sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
                 execution._underlying_node_executions = [

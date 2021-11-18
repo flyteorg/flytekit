@@ -19,7 +19,7 @@ class WorkflowNodeMetadata(_common_models.FlyteIdlEntity):
         return self._execution_id
 
     def to_flyte_idl(self) -> _node_execution_pb2.WorkflowNodeMetadata:
-        _node_execution_pb2.WorkflowNodeMetadata(
+        return _node_execution_pb2.WorkflowNodeMetadata(
             executionId=self.execution_id.to_flyte_idl(),
         )
 
@@ -72,7 +72,7 @@ class TaskNodeMetadata(_common_models.FlyteIdlEntity):
         return self._catalog_key
 
     def to_flyte_idl(self) -> _node_execution_pb2.TaskNodeMetadata:
-        _node_execution_pb2.TaskNodeMetadata(
+        return _node_execution_pb2.TaskNodeMetadata(
             cache_status=self.cache_status,
             catalog_key=self.catalog_key.to_flyte_idl(),
         )
