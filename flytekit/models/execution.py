@@ -495,8 +495,8 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
 
 
 class NodeExecutionGetDataResponse(_CommonDataResponse):
-    def __init__(self, dynamic_workflow: typing.Optional[DynamicWorkflowNodeMetadata], **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, *args, dynamic_workflow: typing.Optional[DynamicWorkflowNodeMetadata] = None, **kwargs):
+        super().__init__(*args, **kwargs)
         self._dynamic_workflow = dynamic_workflow
 
     @property
