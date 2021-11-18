@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any, Dict, List, Type, Union
 
 import numpy as _np
+import pandas as pd
 import pyarrow as pa
 
 from flytekit import FlyteContext
@@ -123,7 +124,7 @@ class DatasetEncodingHandler(ABC):
     """
 
     @abstractmethod
-    def encode(self, *args, **kwargs):
+    def encode(self, Any, **kwargs):
         raise NotImplementedError
 
 
@@ -210,11 +211,19 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         _np.uint32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         _np.uint64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         int: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
+        pa.int8(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
+        pa.int16(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
+        pa.int32(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
+        pa.int64(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         _np.float32: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
         _np.float64: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
         float: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
+        pa.float16(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
+        pa.float32(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
+        pa.float64(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
         _np.bool_: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),  # type: ignore
         bool: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),
+        pa.bool_(): type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),
         _np.datetime64: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
         _datetime.datetime: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
         _np.timedelta64: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
@@ -223,6 +232,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         _np.str_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
+        pa.string(): type_models.LiteralType(simple=type_models.SimpleType.STRING),
     }
 
     DATASET_DECODING_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetDecodingHandler]] = {}
@@ -246,20 +256,33 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return type_models.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
         raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 
-    def _get_dataset_type(self, t: Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
-        # TODO: Convert pandas, arrow, and other dataframes column datatype to StructuredDatasetType
-        if t != StructuredDataset:
-            return StructuredDatasetType(columns=[])
+    def _get_dataset_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
-        for k, v in t.columns().items():
-            lt = self._get_dataset_column_literal_type(v)
-            converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
+        if issubclass(t, StructuredDataset):
+            for k, v in t.columns().items():
+                lt = self._get_dataset_column_literal_type(v)
+                converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
+        return StructuredDatasetType(columns=converted_cols)
+
+    def _get_dataset_type_from_value(
+        self, python_value: Union[StructuredDataset, pa.Table, pd.DataFrame]
+    ) -> StructuredDatasetType:
+        converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
+        if isinstance(python_value, pa.Table):
+            converted_cols = [self._SUPPORTED_TYPES[s.type] for s in python_value.schema]
+        elif isinstance(python_value, pd.DataFrame):
+            schema = pa.Table.from_pandas(python_value).schema
+            converted_cols = [self._SUPPORTED_TYPES[s.type] for s in schema]
+        elif isinstance(python_value, StructuredDataset):
+            for k, v in python_value.columns().items():
+                lt = self._get_dataset_column_literal_type(v)
+                converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
         return StructuredDatasetType(columns=converted_cols)
 
     def register_handler(
         self,
-        from_type: Type[T],
-        to_type: Type[T],
+        from_type: Union[Type[T], DatasetFormat],
+        to_type: Union[Type[T], DatasetFormat],
         h: Handlers,
     ):
         """
@@ -300,8 +323,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         file_format: DatasetFormat
         # 1. Python value is StructuredDataset
         if isinstance(python_val, StructuredDataset):
-            # TODO: change to get_random_remote_path
-            uri = python_val.remote_path or ctx.file_access.get_random_local_path()
+            uri = python_val.remote_path or ctx.file_access.get_random_remote_path()
             df = python_val.dataframe
             file_format = python_val.file_format
             if python_val.local_path:
@@ -310,8 +332,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 self.upload(type(df), file_format, uri, df)
         # 2. Python value is Dataframe
         else:
-            # TODO: change to get_random_remote_path
-            uri = ctx.file_access.get_random_local_path()
+            uri = ctx.file_access.get_random_remote_path()
             file_format = DatasetFormat.PARQUET
             self.upload(type(python_val), file_format, uri, python_val)
 
@@ -320,7 +341,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 structured_dataset=_StructuredDataset(
                     uri=uri,
                     metadata=StructuredDatasetMetadata(
-                        format=file_format.name, structured_dataset_type=self._get_dataset_type(python_type)
+                        format=file_format.name, structured_dataset_type=self._get_dataset_type_from_value(python_val)
                     ),
                 )
             )

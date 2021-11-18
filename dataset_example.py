@@ -95,6 +95,13 @@ def t8(dataframe: pa.Table) -> StructuredDataset[my_cols]:
     return StructuredDataset(dataframe=dataframe, remote_path=PANDAS_PATH)
 
 
+@task
+def t8a(dataframe: pa.Table) -> pa.Table:
+    # Arrow table -> s3 (parquet)
+    print(dataframe.columns)
+    return dataframe
+
+
 class NumpyEncodingHandlers(DatasetEncodingHandler):
     def encode(self, dataframe: np.ndarray, name: typing.Optional[typing.List[str]] = None):
         if name is None:
@@ -157,6 +164,7 @@ if __name__ == "__main__":
     t6(dataset=StructuredDataset(remote_path=BQ_PATH, file_format=DatasetFormat.BIGQUERY))
     t7(df1=df, df2=df)
     t8(dataframe=pa.Table.from_pandas(df))
+    t8a(dataframe=pa.Table.from_pandas(df))
     t9(dataframe=np_array)
     t10(dataset=StructuredDataset(local_path=NUMPY_PATH))
     t11(dataframe=np_array)
