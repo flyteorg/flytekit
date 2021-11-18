@@ -118,7 +118,7 @@ class UnionType(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, proto: _types_pb2.UnionType):
-        return cls(values=proto.values)
+        return cls(values=[LiteralType.from_flyte_idl(v) for v in proto.values])
 
 
 class LiteralType(_common.FlyteIdlEntity):
