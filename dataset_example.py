@@ -23,11 +23,6 @@ my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typin
 
 
 @task
-def t0() -> pd.DataFrame:
-    return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
-
-
-@task
 def t1(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
     # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
     return dataframe
@@ -143,17 +138,26 @@ def t11(
     )
 
 
+@task
+def generate_pandas() -> pd.DataFrame:
+    return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+
+@task
+def generate_numpy() -> np.ndarray:
+    return np.array([[1, 2], [4, 5]])
+
+
+@task
+def generate_arrow() -> pa.Table:
+    return pa.Table.from_pandas(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]}))
+
+
 @workflow()
 def wf():
-    df = t0()
-    t7(df1=df, df2=df)
-
-
-if __name__ == "__main__":
-    data = {"Name": ["Tom", "Joseph"], "Age": [20, 22]}
-    df = pd.DataFrame(data)
-    np_array = np.array([[1, 2], [4, 5]])
-
+    df = generate_pandas()
+    np_array = generate_numpy()
+    arrow_df = generate_arrow()
     t1(dataframe=df)
     t1a(dataframe=df)
     t2(dataframe=df)
@@ -163,8 +167,12 @@ if __name__ == "__main__":
     t5(dataframe=df)
     t6(dataset=StructuredDataset(remote_path=BQ_PATH, file_format=DatasetFormat.BIGQUERY))
     t7(df1=df, df2=df)
-    t8(dataframe=pa.Table.from_pandas(df))
-    t8a(dataframe=pa.Table.from_pandas(df))
+    t8(dataframe=arrow_df)
+    t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
     t10(dataset=StructuredDataset(local_path=NUMPY_PATH))
     t11(dataframe=np_array)
+
+
+if __name__ == "__main__":
+    wf()
