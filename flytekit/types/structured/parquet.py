@@ -1,14 +1,12 @@
 import os
-import re
 import typing
 from typing import TypeVar
 
 import pandas
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from fsspec.core import split_protocol
-from google.cloud import bigquery, bigquery_storage
-from google.cloud.bigquery import LoadJob, LoadJobConfig
-from google.cloud.bigquery_storage_v1 import types
 
 from flytekit.configuration import aws as _aws_config
 from flytekit.types.structured.structured_dataset import (
@@ -48,38 +46,9 @@ class PandasToParquetPersistenceHandlers(DatasetPersistenceHandler):
         )
 
 
-class PandasToBQPersistenceHandlers(DatasetPersistenceHandler):
-    def persist(self, df: pandas.DataFrame, path: str, job_config: typing.Optional[LoadJobConfig] = None) -> LoadJob:
-        table_id = path.split("://", 1)[1].replace(":", ".")
-        client = bigquery.Client()
-        return client.load_table_from_dataframe(df, table_id, job_config=job_config)
-
-
 class ParquetToPandasRetrievalHandler(DatasetRetrievalHandler):
     def retrieve(self, path) -> pd.DataFrame:
         return pandas.read_parquet(path, storage_options=_s3_setup_args())
-
-
-class BQToPandasRetrievalHandler(DatasetRetrievalHandler):
-    def retrieve(self, path: str, **kwargs) -> pd.DataFrame:
-        # path will be like bq://photo-313016:flyte.new_table1
-        _, project_id, dataset_id, table_id = re.split("\\.|://|:", path)
-        client = bigquery_storage.BigQueryReadClient()
-        table = f"projects/{project_id}/datasets/{dataset_id}/tables/{table_id}"
-        parent = "projects/{}".format(project_id)
-
-        requested_session = types.ReadSession(
-            table=table,
-            data_format=types.DataFormat.ARROW,
-        )
-        read_session = client.create_read_session(parent=parent, read_session=requested_session)
-
-        stream = read_session.streams[0]
-        reader = client.read_rows(stream.name)
-        frames = []
-        for message in reader.rows().pages:
-            frames.append(message.to_dataframe())
-        return pd.concat(frames)
 
 
 def _get_storage_optionals(path: str) -> dict:
@@ -111,8 +80,21 @@ def _s3_setup_args():
     return kwargs
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, DatasetFormat.PARQUET, PandasToParquetPersistenceHandlers())
-FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, DatasetFormat.BIGQUERY, PandasToBQPersistenceHandlers())
+class ArrowToParquetPersistenceHandlers(DatasetPersistenceHandler):
+    def persist(
+        self,
+        table: pa.Table,
+        to_file: os.PathLike,
+    ):
+        pq.write_table(table, to_file)
 
+
+class ParquetToArrowRetrievalHandler(DatasetRetrievalHandler):
+    def retrieve(self, path: str) -> pa.Table:
+        return pq.read_table(path)
+
+
+FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, DatasetFormat.PARQUET, PandasToParquetPersistenceHandlers())
 FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.PARQUET, pd.DataFrame, ParquetToPandasRetrievalHandler())
-FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.BIGQUERY, pd.DataFrame, BQToPandasRetrievalHandler())
+FLYTE_DATASET_TRANSFORMER.register_handler(pa.Table, DatasetFormat.PARQUET, ArrowToParquetPersistenceHandlers())
+FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.PARQUET, pa.Table, ParquetToArrowRetrievalHandler())
