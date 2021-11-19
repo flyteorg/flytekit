@@ -18,7 +18,7 @@ from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar
 from flytekit.models.literals import StructuredDataset as _StructuredDataset
 from flytekit.models.literals import StructuredDatasetMetadata
-from flytekit.models.types import LiteralType, StructuredDatasetType
+from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 
 T = typing.TypeVar("T")
 
@@ -177,7 +177,7 @@ class DatasetRetrievalHandler(ABC):
         raise NotImplementedError
 
 
-class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
+class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
     """
     Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
     If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
@@ -269,10 +269,16 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     ) -> StructuredDatasetType:
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         if isinstance(python_value, pa.Table):
-            converted_cols = [self._SUPPORTED_TYPES[s.type] for s in python_value.schema]
+            converted_cols = [
+                StructuredDatasetType.DatasetColumn(name=s.name, literal_type=self._SUPPORTED_TYPES[s.type])
+                for s in python_value.schema
+            ]
         elif isinstance(python_value, pd.DataFrame):
             schema = pa.Table.from_pandas(python_value).schema
-            converted_cols = [self._SUPPORTED_TYPES[s.type] for s in schema]
+            converted_cols = [
+                StructuredDatasetType.DatasetColumn(name=s.name, literal_type=self._SUPPORTED_TYPES[s.type])
+                for s in schema
+            ]
         elif isinstance(python_value, StructuredDataset):
             for k, v in python_value.columns().items():
                 lt = self._get_dataset_column_literal_type(v)
@@ -360,7 +366,25 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
-        raise ValueError(f"Not yet implemented {literal_type}")
+        if not literal_type.structured_dataset_type:
+            raise ValueError(f"Cannot reverse {literal_type}")
+        columns: dict[Type] = {}
+        for literal_column in literal_type.structured_dataset_type.columns:
+            if literal_column.literal_type.simple == SimpleType.INTEGER:
+                columns[literal_column.name] = int
+            elif literal_column.literal_type.simple == SimpleType.FLOAT:
+                columns[literal_column.name] = float
+            elif literal_column.literal_type.simple == SimpleType.STRING:
+                columns[literal_column.name] = str
+            elif literal_column.literal_type.simple == SimpleType.DATETIME:
+                columns[literal_column.name] = _datetime.datetime
+            elif literal_column.literal_type.simple == SimpleType.DURATION:
+                columns[literal_column.name] = _datetime.timedelta
+            elif literal_column.literal_type.simple == SimpleType.BOOLEAN:
+                columns[literal_column.name] = bool
+            else:
+                raise ValueError(f"Unknown structured dataset column type {literal_column}")
+        return StructuredDataset[columns]
 
     def download(self, from_type: Union[Type, DatasetFormat], to_type: Union[Type, DatasetFormat], uri: str) -> Any:
         retrieve_handler = self._get_handler(from_type, to_type, self.DATASET_RETRIEVAL_HANDLERS)
@@ -403,5 +427,5 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return handler[from_type][to_type]
 
 
-FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
+FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformer()
 TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
