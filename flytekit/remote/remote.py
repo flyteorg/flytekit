@@ -1003,7 +1003,7 @@ class FlyteRemote(object):
         self,
         execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-        sync_nodes: bool = True,
+        sync_nodes: bool = False,
     ) -> FlyteWorkflowExecution:
         """
         This function was previously a singledispatchmethod. We've removed that but this function remains
@@ -1024,7 +1024,7 @@ class FlyteRemote(object):
         self,
         execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-        sync_nodes: bool = True,
+        sync_nodes: bool = False,
     ) -> FlyteWorkflowExecution:
         """
         Sync a FlyteWorkflowExecution object with its corresponding remote state.
@@ -1153,7 +1153,9 @@ class FlyteRemote(object):
             else:
                 # If it does not, then it should be a static subworkflow
                 if not isinstance(execution._node.flyte_entity, FlyteWorkflow):
-                    remote_logger.error(f"NE {execution} entity should be a workflow, {type(execution._node)}, {execution._node}")
+                    remote_logger.error(
+                        f"NE {execution} entity should be a workflow, {type(execution._node)}, {execution._node}"
+                    )
                     raise Exception(f"Node entity has type {type(execution._node)}")
                 sub_flyte_workflow = execution._node.flyte_entity
                 sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}

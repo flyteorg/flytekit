@@ -1,11 +1,8 @@
-from flytekit.models.core import catalog
-from flytekit.models.core import identifier
+from flytekit.models.core import catalog, identifier
 
 
 def test_catalog_artifact_tag():
-    obj = catalog.CatalogArtifactTag(
-        "my-artifact-id", "some name"
-    )
+    obj = catalog.CatalogArtifactTag("my-artifact-id", "some name")
     assert obj.artifact_id == "my-artifact-id"
     assert obj.name == "some name"
 
@@ -24,9 +21,7 @@ def test_catalog_metadata():
     )
     te_id = identifier.TaskExecutionIdentifier(task_id, node_exec_id, 3)
     ds_id = identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "t1", "abcdef")
-    tag = catalog.CatalogArtifactTag(
-        "my-artifact-id", "some name"
-    )
+    tag = catalog.CatalogArtifactTag("my-artifact-id", "some name")
     obj = catalog.CatalogMetadata(dataset_id=ds_id, artifact_tag=tag, source_task_execution=te_id)
     assert obj.dataset_id is ds_id
     assert obj.source_execution is te_id

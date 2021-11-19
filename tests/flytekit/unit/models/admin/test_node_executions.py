@@ -1,6 +1,5 @@
 from flytekit.models import node_execution as node_execution_models
-from flytekit.models.core import catalog
-from flytekit.models.core import identifier
+from flytekit.models.core import catalog, identifier
 from tests.flytekit.unit.common_tests.test_workflow_promote import get_compiled_workflow_closure
 
 
@@ -29,9 +28,7 @@ def test_task_node_metadata():
     )
     te_id = identifier.TaskExecutionIdentifier(task_id, node_exec_id, 3)
     ds_id = identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "t1", "abcdef")
-    tag = catalog.CatalogArtifactTag(
-        "my-artifact-id", "some name"
-    )
+    tag = catalog.CatalogArtifactTag("my-artifact-id", "some name")
     catalog_metadata = catalog.CatalogMetadata(dataset_id=ds_id, artifact_tag=tag, source_task_execution=te_id)
 
     obj = node_execution_models.TaskNodeMetadata(cache_status=0, catalog_key=catalog_metadata)
