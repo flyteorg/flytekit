@@ -37,6 +37,7 @@ jobs:
         python -m pip install --upgrade pip==21.2.4 setuptools wheel
         make setup${{ matrix.spark-version-suffix }}
         git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout new-schema && pip install . && cd ..
+        pip install fsspec
         pip freeze
     - name: Test with coverage
       run: |
@@ -95,6 +96,7 @@ jobs:
         pip install -e .
         pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
         git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout new-schema && pip install . && cd ..
+        pip install fsspec
         pip freeze
     - name: Test with coverage
       run: |

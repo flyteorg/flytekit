@@ -124,7 +124,7 @@ class DatasetEncodingHandler(ABC):
     """
 
     @abstractmethod
-    def encode(self, Any, **kwargs):
+    def encode(self, *args, **kwargs):
         raise NotImplementedError
 
 
@@ -173,8 +173,13 @@ class DatasetRetrievalHandler(ABC):
     """
 
     @abstractmethod
-    def retrieve(self, path: str, *args, **kwargs):
+    def retrieve(self, *args, **kwargs):
         raise NotImplementedError
+
+
+Handlers = typing.Union[
+    DatasetDecodingHandler, DatasetEncodingHandler, DatasetPersistenceHandler, DatasetRetrievalHandler
+]
 
 
 class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
@@ -239,9 +244,7 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
     DATASET_ENCODING_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetEncodingHandler]] = {}
     DATASET_PERSISTENCE_HANDLERS: Dict[Type[typing.Any], Dict[Type[Any], DatasetPersistenceHandler]] = {}
     DATASET_RETRIEVAL_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetRetrievalHandler]] = {}
-    Handlers = typing.Union[
-        DatasetDecodingHandler, DatasetEncodingHandler, DatasetPersistenceHandler, DatasetRetrievalHandler
-    ]
+
     _REGISTER_TYPES: List[Type] = []
 
     def __init__(self):
@@ -368,7 +371,7 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if not literal_type.structured_dataset_type:
             raise ValueError(f"Cannot reverse {literal_type}")
-        columns: dict[Type] = {}
+        columns: dict[str, Type] = {}
         for literal_column in literal_type.structured_dataset_type.columns:
             if literal_column.literal_type.simple == SimpleType.INTEGER:
                 columns[literal_column.name] = int
@@ -387,25 +390,23 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
         return StructuredDataset[columns]
 
     def download(self, from_type: Union[Type, DatasetFormat], to_type: Union[Type, DatasetFormat], uri: str) -> Any:
-        retrieve_handler = self._get_handler(from_type, to_type, self.DATASET_RETRIEVAL_HANDLERS)
+        retrieve_handler = _get_handler(from_type, to_type, self.DATASET_RETRIEVAL_HANDLERS)
         if retrieve_handler:
             return retrieve_handler.retrieve(path=uri)
-        retrieve_handler = self._get_handler(
-            from_type, self._get_intermediate_format(), self.DATASET_RETRIEVAL_HANDLERS
-        )
-        decoding_handler = self._get_handler(self._get_intermediate_format(), to_type, self.DATASET_DECODING_HANDLERS)
+        retrieve_handler = _get_handler(from_type, _get_intermediate_format(), self.DATASET_RETRIEVAL_HANDLERS)
+        decoding_handler = _get_handler(_get_intermediate_format(), to_type, self.DATASET_DECODING_HANDLERS)
         if retrieve_handler and decoding_handler:
             table = retrieve_handler.retrieve(uri)
             return decoding_handler.decode(table)
         raise ValueError(f"Not yet implemented download data {to_type} from {from_type}")
 
     def upload(self, from_type: Type, to_type: Union[Type, DatasetFormat], uri: str, df: Any):
-        persist_handler = self._get_handler(from_type, to_type, self.DATASET_PERSISTENCE_HANDLERS)
+        persist_handler = _get_handler(from_type, to_type, self.DATASET_PERSISTENCE_HANDLERS)
         if persist_handler:
             persist_handler.persist(df, uri)
             return
-        encoding_handler = self._get_handler(from_type, self._get_intermediate_format(), self.DATASET_ENCODING_HANDLERS)
-        persist_handler = self._get_handler(self._get_intermediate_format(), to_type, self.DATASET_PERSISTENCE_HANDLERS)
+        encoding_handler = _get_handler(from_type, _get_intermediate_format(), self.DATASET_ENCODING_HANDLERS)
+        persist_handler = _get_handler(_get_intermediate_format(), to_type, self.DATASET_PERSISTENCE_HANDLERS)
 
         if encoding_handler and persist_handler:
             table = encoding_handler.encode(df)
@@ -413,18 +414,18 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
         else:
             raise NotImplementedError(f"Not yet implemented upload data {to_type} from {from_type}")
 
-    @classmethod
-    def _get_intermediate_format(cls):
-        # This type should be configurable
-        return pa.Table
 
-    @classmethod
-    def _get_handler(cls, from_type: Type, to_type: Type, handler: Dict[Type, dict]) -> typing.Optional[Handlers]:
-        if from_type not in handler:
-            return None
-        elif to_type not in handler[from_type]:
-            return None
-        return handler[from_type][to_type]
+def _get_intermediate_format():
+    # This type should be configurable
+    return pa.Table
+
+
+def _get_handler(from_type: Type, to_type: Type, handler: Dict[Type, dict]) -> typing.Optional[Handlers]:
+    if from_type not in handler:
+        return None
+    elif to_type not in handler[from_type]:
+        return None
+    return handler[from_type][to_type]
 
 
 FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformer()
