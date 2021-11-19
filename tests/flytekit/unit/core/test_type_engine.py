@@ -5,12 +5,15 @@ from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 
+import pandas as pd
+import pyarrow as pa
 import pytest
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_jsonschema import JSONSchema
+from pandas._testing import assert_frame_equal
 
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -514,6 +517,37 @@ class UnsupportedEnumValues(Enum):
     RED = 1
     GREEN = 2
     BLUE = 3
+
+
+def test_structured_dataset_type():
+    name = "Name"
+    age = "Age"
+    data = {name: ["Tom", "Joseph"], age: [20, 22]}
+    df = pd.DataFrame(data)
+
+    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformer
+
+    tf = StructuredDatasetTransformer()
+    lt = tf.get_literal_type(StructuredDataset[{name: str, age: int}])
+    assert lt.structured_dataset_type is not None
+
+    ctx = FlyteContextManager.current_context()
+    lv = tf.to_literal(ctx, df, pd.DataFrame, lt)
+    assert "/tmp/flyte" in lv.scalar.structured_dataset.uri
+    metadata = lv.scalar.structured_dataset.metadata
+    assert metadata.format == "PARQUET"
+    assert metadata.structured_dataset_type.columns[0].literal_type.simple == SimpleType.STRING
+    assert metadata.structured_dataset_type.columns[1].literal_type.simple == SimpleType.INTEGER
+    assert metadata.structured_dataset_type.columns[0].name == name
+    assert metadata.structured_dataset_type.columns[1].name == age
+    gt = tf.guess_python_type(lt)
+    assert gt.columns()[name] == str
+    assert gt.columns()[age] == int
+
+    v1 = tf.to_python_value(ctx, lv, pd.DataFrame)
+    v2 = tf.to_python_value(ctx, lv, pa.Table)
+    assert_frame_equal(df, v1)
+    assert_frame_equal(df, v2.to_pandas())
 
 
 def test_enum_type():
