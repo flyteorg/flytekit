@@ -128,7 +128,7 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
         def from_flyte_idl(
             cls, proto: _types_pb2.StructuredDatasetType.DatasetColumn
         ) -> _types_pb2.StructuredDatasetType.DatasetColumn:
-            return cls(name=proto.name, literal_type=proto.literal_type)
+            return cls(name=proto.name, literal_type=LiteralType.from_flyte_idl(proto.literal_type))
 
     def __init__(
         self, columns: typing.List[DatasetColumn], external_schema_type: str = None, external_schema_bytes: bytes = None
@@ -151,7 +151,7 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType:
         return _types_pb2.StructuredDatasetType(
-            columns=[c.to_flyte_idl() for c in self._columns],
+            columns=[c.to_flyte_idl() for c in self.columns] if self.columns else None,
             external_schema_type=self.external_schema_type,
             external_schema_bytes=self.external_schema_bytes,
         )
@@ -159,7 +159,7 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, proto: _types_pb2.StructuredDatasetType) -> _types_pb2.StructuredDatasetType:
         return cls(
-            columns=proto.columns,
+            columns=[StructuredDatasetType.DatasetColumn.from_flyte_idl(c) for c in proto.columns],
             external_schema_type=proto.external_schema_type,
             external_schema_bytes=proto.external_schema_bytes,
         )
