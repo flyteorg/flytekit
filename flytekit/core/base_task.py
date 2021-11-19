@@ -23,8 +23,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
-from task_models import RuntimeMetadata, TaskMetadata
-
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
@@ -106,15 +104,17 @@ class TaskMetadata(object):
     def retry_strategy(self) -> _literal_models.RetryStrategy:
         return _literal_models.RetryStrategy(self.retries)
 
-    def to_taskmetadata_model(self) -> TaskMetadata:
+    def to_taskmetadata_model(self) -> task_models.TaskMetadata:
         """
-        Converts to _task_model.TaskMetadata
+        Converts to task_models.TaskMetadata
         """
         from flytekit import __version__
 
-        return TaskMetadata(
+        return task_models.TaskMetadata(
             discoverable=self.cache,
-            runtime=RuntimeMetadata(RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
+            runtime=task_models.RuntimeMetadata(
+                task_models.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
+            ),
             timeout=self.timeout,
             retries=self.retry_strategy,
             interruptible=self.interruptible,
