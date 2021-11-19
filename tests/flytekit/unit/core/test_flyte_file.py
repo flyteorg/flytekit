@@ -85,7 +85,7 @@ def test_file_handling_local_file_gets_copied():
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
         top_level_files = os.listdir(random_dir)
-        assert len(top_level_files) == 1  # the local_flytekit folder
+        assert len(top_level_files) == 2  # the sandbox and raw folder
 
         x = my_wf()
 
@@ -111,12 +111,12 @@ def test_file_handling_local_file_gets_force_no_copy():
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
         top_level_files = os.listdir(random_dir)
-        assert len(top_level_files) == 1  # the flytekit_local folder
+        assert len(top_level_files) == 2  # the sandbox and raw folder
 
         workflow_output = my_wf()
 
         # After running, this test file should've been copied to the mock remote location.
-        assert not os.path.exists(os.path.join(random_dir, "mock_remote"))
+        assert len(os.listdir(os.path.join(random_dir, "mock_remote"))) == 0
 
         # Because Flyte doesn't presume to handle a uri that look like a raw path, the path that is returned is
         # the original.
@@ -142,13 +142,12 @@ def test_file_handling_remote_file_handling():
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
         working_dir = os.listdir(random_dir)
-        assert len(working_dir) == 1  # the local_flytekit folder
+        assert len(working_dir) == 2  # the sandbox and raw folder
 
         workflow_output = my_wf()
 
         # After running the mock remote dir should still be empty, since the workflow_output has not been used
-        with pytest.raises(FileNotFoundError):
-            os.listdir(os.path.join(random_dir, "mock_remote"))
+        assert len(os.listdir(os.path.join(random_dir, "mock_remote"))) == 0
 
         # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
         # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)
@@ -188,21 +187,17 @@ def test_file_handling_remote_file_handling_flyte_file():
 
     # This creates a random directory that we know is empty.
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
-    print(f"Random {random_dir}")
     # Creating a new FileAccessProvider will add two folderst to the random dir
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
         working_dir = os.listdir(random_dir)
-        assert len(working_dir) == 1  # the local_flytekit dir
+        assert len(working_dir) == 2  # the sandbox and raw dir
 
         mock_remote_path = os.path.join(random_dir, "mock_remote")
-        assert not os.path.exists(mock_remote_path)  # the persistence layer won't create the folder yet
+        assert os.path.exists(mock_remote_path)
 
         workflow_output = my_wf()
-
-        # After running the mock remote dir should still be empty, since the workflow_output has not been used
-        assert not os.path.exists(mock_remote_path)
 
         # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
         # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)

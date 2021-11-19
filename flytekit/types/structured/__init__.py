@@ -1,12 +1,12 @@
-from .arrow import (
+from .bigquery import (
     ArrowToBQPersistenceHandlers,
-    ArrowToParquetPersistenceHandlers,
     BQToArrowRetrievalHandler,
-    ParquetToArrowRetrievalHandler,
-)
-from .pandas import (
     BQToPandasRetrievalHandler,
     PandasToBQPersistenceHandlers,
+)
+from .parquet import (
+    ArrowToParquetPersistenceHandlers,
     PandasToParquetPersistenceHandlers,
+    ParquetToArrowRetrievalHandler,
     ParquetToPandasRetrievalHandler,
 )
