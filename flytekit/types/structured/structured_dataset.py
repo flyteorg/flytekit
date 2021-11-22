@@ -19,6 +19,7 @@ from flytekit.models.literals import Literal, Scalar
 from flytekit.models.literals import StructuredDataset as _StructuredDataset
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
+from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 
 T = typing.TypeVar("T")
 
@@ -330,6 +331,8 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
     ) -> Literal:
         uri: str = ""
         file_format: DatasetFormat
+        if expected.structured_dataset_type is None and python_type == pd.DataFrame:
+            return PandasDataFrameTransformer().to_literal(ctx, python_val, python_type, expected)
         # 1. Python value is StructuredDataset
         if isinstance(python_val, StructuredDataset):
             uri = python_val.remote_path or ctx.file_access.get_random_remote_path()
@@ -357,6 +360,8 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
         )
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        if lv.scalar.structured_dataset is None and expected_python_type == pd.DataFrame:
+            return PandasDataFrameTransformer().to_python_value(ctx, lv, expected_python_type)
         fmt = DatasetFormat.value_of(lv.scalar.structured_dataset.metadata.format)
         uri = lv.scalar.structured_dataset.uri
 
