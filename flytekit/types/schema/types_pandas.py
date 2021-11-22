@@ -15,8 +15,8 @@ from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, Sche
 class ParquetIO(object):
     PARQUET_ENGINE = "pyarrow"
 
-    def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs) -> pandas.DataFrame:
-        return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
+    def _read(self, chunk: os.PathLike, _columns: typing.List[str], **kwargs) -> pandas.DataFrame:
+        return pandas.read_parquet(chunk, columns=_columns, engine=self.PARQUET_ENGINE, **kwargs)
 
     def read(self, *files: os.PathLike, columns: typing.List[str] = None, **kwargs) -> pandas.DataFrame:
         frames = [self._read(chunk=f, columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
@@ -59,13 +59,13 @@ class ParquetIO(object):
 class FastParquetIO(ParquetIO):
     PARQUET_ENGINE = "fastparquet"
 
-    def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs) -> pandas.DataFrame:
+    def _read(self, chunk: os.PathLike, _columns: typing.List[str], **kwargs) -> pandas.DataFrame:
         from fastparquet import ParquetFile as _ParquetFile
         from fastparquet import thrift_structures as _ts
 
         # TODO Follow up to figure out if this is not needed anymore
         # https://github.com/dask/fastparquet/issues/414#issuecomment-478983811
-        df = pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, index=False)
+        df = pandas.read_parquet(chunk, columns=_columns, engine=self.PARQUET_ENGINE, index=False)
         df_column_types = df.dtypes
         pf = _ParquetFile(chunk)
         schema_column_dtypes = {l.name: l.type for l in list(pf.schema.schema_elements)}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
+from pydoc import locate
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -220,7 +221,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
     @staticmethod
-    def get_format(t: typing.Union[typing.Type[FlyteFile]]) -> str:
+    def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
         if t is os.PathLike:
             return ""
         return t.extension()
@@ -342,14 +343,14 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        ff = FlyteFile[expected_format](local_path, _downloader)
+        ff = FlyteFile[locate(expected_format)](local_path, _downloader)
         ff._remote_source = uri
 
         return ff
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
         if literal_type.blob is not None and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
-            return FlyteFile[typing.TypeVar(literal_type.blob.format)]
+            return FlyteFile[literal_type.blob.format]
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
