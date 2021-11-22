@@ -1042,7 +1042,8 @@ class FlyteRemote(object):
             flyte_entity = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
             execution._flyte_workflow = flyte_entity
 
-        # sync closure, node executions, and inputs/outputs
+        # update closure, node executions (if requested), and inputs/outputs
+        execution._closure = self.client.get_execution(execution.id).closure
         if sync_nodes:
             node_execs = {}
             underlying_node_executions = [
