@@ -91,8 +91,8 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         phase,
         started_at,
         duration,
-        output_uri=None,
-        error=None,
+        output_uri: typing.Optional[str] = None,
+        error: typing.Optional[_core_execution.ExecutionError] = None,
         workflow_node_metadata: typing.Optional[WorkflowNodeMetadata] = None,
         task_node_metadata: typing.Optional[TaskNodeMetadata] = None,
     ):
@@ -100,7 +100,10 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         :param int phase:
         :param datetime.datetime started_at:
         :param datetime.timedelta duration:
-        :param Text output_uri:
+        :param output_uri:
+        :param error:
+        :param workflow_node_metadata:
+        :param task_node_metadata:
         """
         self._phase = phase
         self._started_at = started_at
