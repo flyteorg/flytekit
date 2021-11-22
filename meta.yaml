@@ -67,47 +67,24 @@ test:
     - flytekit.clis.auth
     - flytekit.clis.flyte_cli
     - flytekit.clis.sdk_in_container
-    - flytekit.common
-    - flytekit.common.core
-    - flytekit.common.exceptions
-    - flytekit.common.mixins
-    - flytekit.common.tasks
-    - flytekit.common.tasks.sagemaker
-    - flytekit.common.types
-    - flytekit.common.types.impl
     - flytekit.configuration
     - flytekit.contrib
     - flytekit.contrib.notebook
     - flytekit.contrib.sensors
     - flytekit.core
-    - flytekit.engines
-    - flytekit.engines.flyte
-    - flytekit.engines.unit
     - flytekit.extend
     - flytekit.extras
     - flytekit.extras.persistence
     - flytekit.extras.sqlite3
-    - flytekit.interfaces
-    - flytekit.interfaces.data
-    - flytekit.interfaces.data.gcs
-    - flytekit.interfaces.data.http
-    - flytekit.interfaces.data.local
-    - flytekit.interfaces.data.s3
-    - flytekit.interfaces.stats
     - flytekit.models
     - flytekit.models.admin
     - flytekit.models.core
     - flytekit.models.plugins
     - flytekit.models.sagemaker
-    - flytekit.plugins
     - flytekit.remote
     - flytekit.remote.tasks
-    - flytekit.sdk
-    - flytekit.sdk.sagemaker
     - flytekit.testing
     - flytekit.tools
-    - flytekit.type_engines
-    - flytekit.type_engines.default
     - flytekit.types
     - flytekit.types.directory
     - flytekit.types.file
@@ -131,4 +108,6 @@ about:
 
 extra:
   recipe-maintainers:
+    - kumare3
+    - cosmicBboy
     - Qiwen-Yu
