@@ -1052,22 +1052,21 @@ class FlyteRemote(object):
                         underlying_node_executions,
                     )
                 ]
-                if len(task_node_exec) != 1:
-                    raise user_exceptions.FlyteValidationException(
-                        f"Incorrect number of node executions"
-                        f"for a task {len(underlying_node_executions)}, "
-                        f"nodes {underlying_node_executions}"
-                    )
                 # We need to manually make a map of the nodes since there is none for single task executions
-                node_mapping = {
-                    task_node_exec[0].id.node_id: FlyteNode(
-                        id=flyte_entity.id,
-                        upstream_nodes=[],
-                        bindings=[],
-                        metadata=NodeMetadata(name=""),
-                        flyte_task=flyte_entity,
-                    )
-                }
+                # Assume the first one is the only one.
+                node_mapping = (
+                    {
+                        task_node_exec[0].id.node_id: FlyteNode(
+                            id=flyte_entity.id,
+                            upstream_nodes=[],
+                            bindings=[],
+                            metadata=NodeMetadata(name=""),
+                            flyte_task=flyte_entity,
+                        )
+                    }
+                    if len(task_node_exec) >= 1
+                    else {}  # This is for the case where node executions haven't appeared yet
+                )
         else:
             # This is the default case, an execution of a normal workflow through a launch plan
             wf_id = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version).workflow_id
