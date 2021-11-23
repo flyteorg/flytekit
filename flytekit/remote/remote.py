@@ -55,6 +55,7 @@ from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
+from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.execution import (
     ExecutionMetadata,
     ExecutionSpec,
@@ -1033,24 +1034,53 @@ class FlyteRemote(object):
             raise ValueError("Entity definition arguments aren't supported when syncing workflow executions")
         execution_data = self.client.get_execution_data(execution.id)
         lp_id = execution.spec.launch_plan
+        if sync_nodes:
+            underlying_node_executions = [
+                FlyteNodeExecution.promote_from_model(n) for n in iterate_node_executions(self.client, execution.id)
+            ]
+
         if execution.spec.launch_plan.resource_type == ResourceType.TASK:
             # This condition is only true for single-task executions
             flyte_entity = self.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            if sync_nodes:
+                # Need to construct the mapping. There should've been returned exactly three nodes, a start,
+                # an end, and a task node.
+                task_node_exec = [
+                    x
+                    for x in filter(
+                        lambda x: x.id.node_id != constants.START_NODE_ID and x.id.node_id != constants.END_NODE_ID,
+                        underlying_node_executions,
+                    )
+                ]
+                if len(task_node_exec) != 1:
+                    raise user_exceptions.FlyteValidationException(
+                        f"Incorrect number of node executions"
+                        f"for a task {len(underlying_node_executions)}, "
+                        f"nodes {underlying_node_executions}"
+                    )
+                # We need to manually make a map of the nodes since there is none for single task executions
+                node_mapping = {
+                    task_node_exec[0].id.node_id: FlyteNode(
+                        id=flyte_entity.id,
+                        upstream_nodes=[],
+                        bindings=[],
+                        metadata=NodeMetadata(name=""),
+                        flyte_task=flyte_entity,
+                    )
+                }
         else:
             # This is the default case, an execution of a normal workflow through a launch plan
             wf_id = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version).workflow_id
             flyte_entity = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
             execution._flyte_workflow = flyte_entity
+            node_mapping = flyte_entity._node_map
 
         # update closure, node executions (if requested), and inputs/outputs
         execution._closure = self.client.get_execution(execution.id).closure
         if sync_nodes:
             node_execs = {}
-            underlying_node_executions = [
-                FlyteNodeExecution.promote_from_model(n) for n in iterate_node_executions(self.client, execution.id)
-            ]
             for n in underlying_node_executions:
-                node_execs[n.id.node_id] = self.sync_node_execution(n, flyte_entity._node_map)
+                node_execs[n.id.node_id] = self.sync_node_execution(n, node_mapping)
             execution._node_executions = node_execs
         return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
 
@@ -1075,19 +1105,21 @@ class FlyteRemote(object):
         The data model is complicated, so ascertaining which of these happened is a bit tricky. That logic is
         encapsulated in this function.
         """
+        # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
+        node_id = execution.metadata.spec_node_id
+        if not node_id:
+            node_id = execution.id.node_id
+            remote_logger.debug(f"No metadata spec_node_id found, using {node_id}")
 
         # First see if it's a dummy node, if it is, we just skip it.
-        if (
-            constants.START_NODE_ID in execution.metadata.spec_node_id
-            or constants.END_NODE_ID in execution.metadata.spec_node_id
-        ):
+        if constants.START_NODE_ID in node_id or constants.END_NODE_ID in node_id:
             return execution
 
         # Look for the Node object in the mapping supplied
-        if execution.metadata.spec_node_id in node_mapping:
-            execution._node = node_mapping[execution.metadata.spec_node_id]
+        if node_id in node_mapping:
+            execution._node = node_mapping[node_id]
         else:
-            raise Exception(f"Missing node from mapping: {execution.id.node_id}")
+            raise Exception(f"Missing node from mapping: {node_id}")
 
         # Get the node execution data
         node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
