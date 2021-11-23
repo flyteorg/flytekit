@@ -1136,9 +1136,10 @@ class FlyteRemote(object):
                 project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
             )
             self.sync_workflow_execution(launched_exec)
-            # The synced underlying execution should've had these populated.
-            execution._inputs = launched_exec.inputs
-            execution._outputs = launched_exec.outputs
+            if launched_exec.is_complete:
+                # The synced underlying execution should've had these populated.
+                execution._inputs = launched_exec.inputs
+                execution._outputs = launched_exec.outputs
             execution._workflow_executions.append(launched_exec)
             execution._interface = launched_exec._flyte_workflow.interface
             return execution
