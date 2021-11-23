@@ -18,6 +18,7 @@ from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
+from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.exceptions import user as user_exceptions
@@ -251,7 +252,13 @@ class DataclassTransformer(TypeTransformer[object]):
             )
         schema = None
         try:
-            schema = JSONSchema().dump(cast(DataClassJsonMixin, t).schema())
+            s = cast(DataClassJsonMixin, t).schema()
+            for _, v in s.fields.items():
+                # marshmallow-jsonschema only supports enums loaded by name.
+                # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
+                if isinstance(v, EnumField):
+                    v.load_by = LoadDumpOptions.name
+            schema = JSONSchema().dump(s)
         except Exception as e:
             logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
 

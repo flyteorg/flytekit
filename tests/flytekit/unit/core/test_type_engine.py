@@ -10,6 +10,7 @@ from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
 import flytekit.common.exceptions.user as user_exceptions
@@ -37,6 +38,7 @@ from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 T = typing.TypeVar("T")
+
 
 def test_type_engine():
     t = int
@@ -566,7 +568,7 @@ def test_union_type():
     lt = TypeEngine.to_literal_type(pt)
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
-        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int"))
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
     ]
     assert union_type_tags_unique(lt)
 
@@ -589,7 +591,7 @@ def test_optional_type():
     lt = TypeEngine.to_literal_type(pt)
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
-        LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none"))
+        LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none")),
     ]
     assert union_type_tags_unique(lt)
 
@@ -606,12 +608,13 @@ def test_optional_type():
     assert lv.scalar.union.value.scalar.none_type == Void()
     assert v is None
 
+
 def test_union_from_unambiguous_literal():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
-        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int"))
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
     ]
     assert union_type_tags_unique(lt)
 
@@ -621,6 +624,7 @@ def test_union_from_unambiguous_literal():
 
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert v == 3
+
 
 def test_union_custom_transformer():
     class MyInt:
@@ -646,7 +650,7 @@ def test_union_custom_transformer():
     lt = TypeEngine.to_literal_type(pt)
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
-        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="MyInt"))
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="MyInt")),
     ]
     assert union_type_tags_unique(lt)
 
@@ -672,6 +676,7 @@ def test_union_custom_transformer():
 
     del TypeEngine._REGISTRY[MyInt]
 
+
 def test_union_custom_transformer_sanity_check():
     class UnsignedInt:
         def __init__(self, x: int):
@@ -690,7 +695,9 @@ def test_union_custom_transformer_sanity_check():
         def get_literal_type(self, t: typing.Type[T]) -> LiteralType:
             return primitives.Integer.to_flyte_literal_type()
 
-        def to_literal(self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType) -> Literal:
+        def to_literal(
+            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType
+        ) -> Literal:
             if type(python_val) != int:
                 raise TypeTransformerFailedError("Expected an integer")
 
@@ -705,12 +712,11 @@ def test_union_custom_transformer_sanity_check():
 
     TypeEngine.register(UnsignedIntTransformer())
 
-
     pt = typing.Union[int, UnsignedInt]
     lt = TypeEngine.to_literal_type(pt)
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
-        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="UnsignedInt"))
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="UnsignedInt")),
     ]
     assert union_type_tags_unique(lt)
 
@@ -727,14 +733,14 @@ def test_union_of_lists():
     assert lt.union_type.variants == [
         LiteralType(
             collection_type=LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
-            structure=TypeStructure(tag="Typed List")
+            structure=TypeStructure(tag="Typed List"),
         ),
         LiteralType(
             collection_type=LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
-            structure=TypeStructure(tag="Typed List")
+            structure=TypeStructure(tag="Typed List"),
         ),
     ]
-    assert not union_type_tags_unique(lt) # tags are deliberately NOT unique
+    assert not union_type_tags_unique(lt)  # tags are deliberately NOT unique
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", "world"], pt, lt)
@@ -758,13 +764,36 @@ def test_list_of_unions():
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
     ]
-    assert union_type_tags_unique(lt.collection_type) # tags are deliberately NOT unique
+    assert union_type_tags_unique(lt.collection_type)  # tags are deliberately NOT unique
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert [x.scalar.union.stored_type.structure.tag for x in lv.collection.literals] == ["str", "int", "str"]
     assert v == ["hello", 123, "world"]
+
+
+def test_enum_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    lt = TypeEngine.to_literal_type(Datum)
+    schema = Datum.schema()
+    schema.fields["y"].load_by = LoadDumpOptions.name
+    assert lt.metadata == JSONSchema().dump(schema)
+
+    transformer = DataclassTransformer()
+    ctx = FlyteContext.current_context()
+    datum = Datum(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum.x == pv.x
+    assert datum.y.value == pv.y
+
 
 @pytest.mark.parametrize(
     "python_value,python_types,expected_literal_map",

@@ -7,6 +7,7 @@ import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from enum import Enum
 from textwrap import dedent
 
 import pandas
@@ -1067,6 +1068,29 @@ def test_dataclass_more():
     wf(x=10, y=20)
 
 
+def test_enum_in_dataclass():
+    class Color(Enum):
+        RED = "red"
+        GREEN = "green"
+        BLUE = "blue"
+
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    @task
+    def t1(x: int) -> Datum:
+        return Datum(x=x, y=Color.RED)
+
+    @workflow
+    def wf(x: int) -> Datum:
+        return t1(x=x)
+
+    assert wf(x=10) == Datum(10, Color.RED)
+
+
 def test_environment():
     @task(environment={"FOO": "foofoo", "BAZ": "baz"})
     def t1(a: int) -> str:
@@ -1463,7 +1487,8 @@ def test_union_type():
 
     with pytest.raises(
         TypeError,
-        match=dedent(r'''
+        match=dedent(
+            r"""
             Cannot convert from scalar {
               union {
                 value {
@@ -1482,7 +1507,8 @@ def test_union_type():
               }
             }
              to typing.Union\[float, dict\] \(using tag str\)
-        ''')[1:-1],
+        """
+        )[1:-1],
     ):
         assert wf2(a="2") == "2"
 
@@ -1541,7 +1567,9 @@ def test_union_type_ambiguity_checking():
             "MyInt",
             MyInt,
             primitives.Integer.to_flyte_literal_type(),
-            lambda x: _literal_models.Literal(scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))),
+            lambda x: _literal_models.Literal(
+                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))
+            ),
             lambda x: MyInt(x.scalar.primitive.integer),
         )
     )
@@ -1557,8 +1585,7 @@ def test_union_type_ambiguity_checking():
         return t1(a=a)
 
     with pytest.raises(
-        TypeError,
-        match="Ambiguous choice of variant for union type. Both int and MyInt transformers match"
+        TypeError, match="Ambiguous choice of variant for union type. Both int and MyInt transformers match"
     ):
         assert wf(a=10) == 10
 
@@ -1580,7 +1607,9 @@ def test_union_type_ambiguity_resolution():
             "MyInt",
             MyInt,
             primitives.Integer.to_flyte_literal_type(),
-            lambda x: _literal_models.Literal(scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))),
+            lambda x: _literal_models.Literal(
+                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))
+            ),
             lambda x: MyInt(x.scalar.primitive.integer),
         )
     )
