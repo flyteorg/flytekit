@@ -1,18 +1,18 @@
 from flytekit.loggers import logger
 
 from .parquet import (
-    ArrowToParquetPersistenceHandlers,
-    PandasToParquetPersistenceHandlers,
-    ParquetToArrowRetrievalHandler,
-    ParquetToPandasRetrievalHandler,
+    ArrowToParquetEncodingHandlers,
+    PandasToParquetEncodingHandlers,
+    ParquetToArrowDecodingHandler,
+    ParquetToPandasDecodingHandler,
 )
 
 try:
     from .bigquery import (
-        ArrowToBQPersistenceHandlers,
-        BQToArrowRetrievalHandler,
-        BQToPandasRetrievalHandler,
-        PandasToBQPersistenceHandlers,
+        ArrowToBQEncodingHandlers,
+        BQToArrowDecodingHandler,
+        BQToPandasDecodingHandler,
+        PandasToBQEncodingHandlers,
     )
 except ImportError:
     logger.info(

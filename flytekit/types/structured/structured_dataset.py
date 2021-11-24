@@ -79,15 +79,11 @@ class StructuredDataset(object):
         local_path: typing.Union[os.PathLike, str] = None,
         remote_path: str = None,
         file_format: DatasetFormat = DatasetFormat.PARQUET,
-        downloader: typing.Callable[[str, os.PathLike], None] = None,
     ):
         self._dataframe = dataframe
         self._local_path = local_path
         self._remote_path = remote_path
         self._file_format = file_format
-        # This is a special attribute that indicates if the data was either downloaded or uploaded
-        self._downloaded = False
-        self._downloader = downloader
 
     @property
     def dataframe(self) -> Type[typing.Any]:
@@ -106,7 +102,7 @@ class StructuredDataset(object):
         return self._file_format
 
     def open_as(self, df_type: Type) -> typing.Any:
-        return FLYTE_DATASET_TRANSFORMER.download(self.file_format, df_type, self.remote_path)
+        return FLYTE_DATASET_TRANSFORMER.read(self.file_format, df_type, self.remote_path)
 
 
 class DatasetEncodingHandler(ABC):
@@ -115,72 +111,51 @@ class DatasetEncodingHandler(ABC):
     pd.DataFrame or spark.DataFrame or even your own custom data frame object) into a serialized structure of
     some kind (e.g. a Parquet file on local disk, in-memory block of Arrow data).
 
-    This only represents half of the story of taking an object in Python memory, and turning it into a Flyte literal.
-    The other half is persisting it somehow. See DatasetPersistenceHandler.
-
     Flytekit ships with default handlers that can:
 
     - Write pandas DataFrame objects to Parquet files
+    - Write pandas DataFrame objects to Arrow table
+    - Write Arrow table to a Parquet files
     - Write Pandera data frame objects to Parquet files
     """
 
     @abstractmethod
-    def encode(self, *args, **kwargs):
-        raise NotImplementedError
-
-
-class DatasetPersistenceHandler(ABC):
-    """
-    Inherit from this base class if you want to tell flytekit how to take an encoded dataset (e.g. a local Parquet
-    file, a block of Arrow memory, even possibly a Python object), and persist it in some kind of a store, and
-    return a flyte Literal.
-
-    Flytekit ships with default handlers that know how to:
-
-    - Write Parquet files to AWS/GCS
-    - Write pandas DataFrame objects directly to BigQuery
-    - Write Arrow objects/files to AWS/GCS/BigQuery
-    """
-
-    @abstractmethod
-    def persist(self, *args, **kwargs):
+    def encode(
+        self, df: typing.Optional[Any] = None, path: typing.Optional[os.PathLike] = None
+    ) -> typing.Optional[Any]:
+        """
+        :param typing.Optional[Any] df: Dataframe will be serialized to a blob store, database or intermediate dataframe
+        :param typing.Optional[os.PathLike] path: The place where dataframe will be write to. (e.g. s3://bucket/key, bq://project:dataset_table)
+        :rtype: typing.Optional[Any]: intermediate dataframe if return value is not None
+        """
         raise NotImplementedError
 
 
 class DatasetDecodingHandler(ABC):
     """
-    Inherit from this base class if you want to convert from an intermediate storage type (e.g. a local
-    Parquet file, local serialized Arrow BatchRecord file, etc.) to a Python value.
+    Inherit from this base class if you want to
+    1. Convert from an storage type (e.g. a Parquet file, serialized Arrow BatchRecord file, etc.) to a Python value.
+    2. Convert from a intermediate data type (Arrow) to python value
 
     Flytekit ships with default handlers that know how to:
 
     - Turn a local Parquet file into a pandas DataFrame
     - Turn an Arrow RecordBatch into a pandas DataFrame
+    - Turn a local Parquet file into a Arrow table
+    - Turn a Arrow table to a pandas DataFrame
     """
 
     @abstractmethod
-    def decode(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def python_type(self):
-        raise NotImplementedError
-
-
-class DatasetRetrievalHandler(ABC):
-    """
-    Inherit from this base class if you want to tell flytekit how to read persisted data, and turn it into
-    either a Python object ready for user consumption, or an intermediate construct like a Parquet file,
-    an Arrow RecordBatch, or anything else that has a DatasetDecodingHandler associated with it.
-    """
-
-    @abstractmethod
-    def retrieve(self, *args, **kwargs):
+    def decode(self, df: typing.Optional[Any] = None, path: typing.Optional[os.PathLike] = None) -> Any:
+        """
+        :param typing.Optional[Any] df: Dataframe will be deserialize from a blob store, database or intermediate dataframe
+        :param typing.Optional[os.PathLike] path: The place where we stores the file or table (e.g. s3://bucket/key, bq://project:dataset_table)
+        :rtype: Any: Any kind of dataframe
+        """
         raise NotImplementedError
 
 
-Handlers = typing.Union[
-    DatasetDecodingHandler, DatasetEncodingHandler, DatasetPersistenceHandler, DatasetRetrievalHandler
-]
+Handlers = Union[DatasetDecodingHandler, DatasetEncodingHandler]
 
 
 class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
@@ -243,8 +218,6 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
 
     DATASET_DECODING_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetDecodingHandler]] = {}
     DATASET_ENCODING_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetEncodingHandler]] = {}
-    DATASET_PERSISTENCE_HANDLERS: Dict[Type[typing.Any], Dict[Type[Any], DatasetPersistenceHandler]] = {}
-    DATASET_RETRIEVAL_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetRetrievalHandler]] = {}
 
     _REGISTER_TYPES: List[Type] = []
 
@@ -271,6 +244,9 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
     def _get_dataset_type_from_value(
         self, python_value: Union[StructuredDataset, pa.Table, pd.DataFrame]
     ) -> StructuredDatasetType:
+        """
+        Get Dataset Column type from dataframe, and convert it to Literal Type
+        """
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         if isinstance(python_value, pa.Table):
             converted_cols = [
@@ -300,19 +276,15 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
         """
         if from_type not in self._REGISTER_TYPES:
             self._REGISTER_TYPES.append(from_type)
-            TypeEngine.override_transformer(self, from_type)
+            TypeEngine.register_additional_type(self, from_type)
 
         if to_type not in self._REGISTER_TYPES:
             self._REGISTER_TYPES.append(to_type)
-            TypeEngine.override_transformer(self, to_type)
+            TypeEngine.register_additional_type(self, to_type)
 
         registry: dict
 
-        if isinstance(h, DatasetRetrievalHandler):
-            registry = self.DATASET_RETRIEVAL_HANDLERS
-        elif isinstance(h, DatasetPersistenceHandler):
-            registry = self.DATASET_PERSISTENCE_HANDLERS
-        elif isinstance(h, DatasetEncodingHandler):
+        if isinstance(h, DatasetEncodingHandler):
             registry = self.DATASET_ENCODING_HANDLERS
         elif isinstance(h, DatasetDecodingHandler):
             registry = self.DATASET_DECODING_HANDLERS
@@ -331,8 +303,6 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
     ) -> Literal:
         uri: str = ""
         file_format: DatasetFormat
-        if expected.structured_dataset_type is None and python_type == pd.DataFrame:
-            return PandasDataFrameTransformer().to_literal(ctx, python_val, python_type, expected)
         # 1. Python value is StructuredDataset
         if isinstance(python_val, StructuredDataset):
             uri = python_val.remote_path or ctx.file_access.get_random_remote_path()
@@ -341,12 +311,12 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
             if python_val.local_path:
                 ctx.file_access.put_data(python_val.local_path, uri, is_multipart=False)
             elif df is not None:
-                self.upload(type(df), file_format, uri, df)
+                self.write(type(df), file_format, uri, df)
         # 2. Python value is Dataframe
         else:
             uri = ctx.file_access.get_random_remote_path()
             file_format = DatasetFormat.PARQUET
-            self.upload(type(python_val), file_format, uri, python_val)
+            self.write(type(python_val), file_format, uri, python_val)
 
         return Literal(
             scalar=Scalar(
@@ -360,15 +330,13 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
         )
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        if lv.scalar.structured_dataset is None and expected_python_type == pd.DataFrame:
-            return PandasDataFrameTransformer().to_python_value(ctx, lv, expected_python_type)
         fmt = DatasetFormat.value_of(lv.scalar.structured_dataset.metadata.format)
         uri = lv.scalar.structured_dataset.uri
 
         if issubclass(expected_python_type, StructuredDataset):
             return expected_python_type(remote_path=uri, file_format=fmt)
 
-        return self.download(fmt, expected_python_type, uri)
+        return self.read(fmt, expected_python_type, uri)
 
     def get_literal_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> LiteralType:
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
@@ -394,28 +362,30 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
                 raise ValueError(f"Unknown structured dataset column type {literal_column}")
         return StructuredDataset[columns]
 
-    def download(self, from_type: Union[Type, DatasetFormat], to_type: Union[Type, DatasetFormat], uri: str) -> Any:
-        retrieve_handler = _get_handler(from_type, to_type, self.DATASET_RETRIEVAL_HANDLERS)
-        if retrieve_handler:
-            return retrieve_handler.retrieve(path=uri)
-        retrieve_handler = _get_handler(from_type, _get_intermediate_format(), self.DATASET_RETRIEVAL_HANDLERS)
-        decoding_handler = _get_handler(_get_intermediate_format(), to_type, self.DATASET_DECODING_HANDLERS)
-        if retrieve_handler and decoding_handler:
-            table = retrieve_handler.retrieve(uri)
-            return decoding_handler.decode(table)
+    def read(
+        self, from_type: Union[Type, DatasetFormat], to_type: Union[Type, DatasetFormat], path: os.PathLike
+    ) -> Any:
+        final_handler = _get_handler(from_type, to_type, self.DATASET_DECODING_HANDLERS)
+        if final_handler:
+            return final_handler.decode(path=path)
+        intermediate_handler = _get_handler(from_type, _get_intermediate_format(), self.DATASET_DECODING_HANDLERS)
+        final_handler = _get_handler(_get_intermediate_format(), to_type, self.DATASET_DECODING_HANDLERS)
+        if intermediate_handler and final_handler:
+            intermediate_dataframe = intermediate_handler.decode(path=path)
+            return final_handler.decode(df=intermediate_dataframe)
         raise ValueError(f"Not yet implemented download data {to_type} from {from_type}")
 
-    def upload(self, from_type: Type, to_type: Union[Type, DatasetFormat], uri: str, df: Any):
-        persist_handler = _get_handler(from_type, to_type, self.DATASET_PERSISTENCE_HANDLERS)
-        if persist_handler:
-            persist_handler.persist(df, uri)
+    def write(self, from_type: Type, to_type: Union[Type, DatasetFormat], path: os.PathLike, df: Any):
+        final_handler = _get_handler(from_type, to_type, self.DATASET_ENCODING_HANDLERS)
+        if final_handler:
+            final_handler.encode(df=df, path=path)
             return
-        encoding_handler = _get_handler(from_type, _get_intermediate_format(), self.DATASET_ENCODING_HANDLERS)
-        persist_handler = _get_handler(_get_intermediate_format(), to_type, self.DATASET_PERSISTENCE_HANDLERS)
+        intermediate_handler = _get_handler(from_type, _get_intermediate_format(), self.DATASET_ENCODING_HANDLERS)
+        final_handler = _get_handler(_get_intermediate_format(), to_type, self.DATASET_ENCODING_HANDLERS)
 
-        if encoding_handler and persist_handler:
-            table = encoding_handler.encode(df)
-            persist_handler.persist(table, uri)
+        if intermediate_handler and final_handler:
+            intermediate_dataframe = intermediate_handler.encode(df=df)
+            final_handler.encode(df=intermediate_dataframe, path=path)
         else:
             raise NotImplementedError(f"Not yet implemented upload data {to_type} from {from_type}")
 

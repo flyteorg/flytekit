@@ -1,7 +1,7 @@
+import os
 import re
-import typing
+from typing import Any, Optional
 
-import pandas
 import pandas as pd
 import pyarrow as pa
 from google.cloud import bigquery, bigquery_storage
@@ -10,21 +10,21 @@ from google.cloud.bigquery_storage_v1 import types
 
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
+    DatasetDecodingHandler,
+    DatasetEncodingHandler,
     DatasetFormat,
-    DatasetPersistenceHandler,
-    DatasetRetrievalHandler,
 )
 
 
-class PandasToBQPersistenceHandlers(DatasetPersistenceHandler):
-    def persist(self, df: pandas.DataFrame, path: str, job_config: typing.Optional[LoadJobConfig] = None) -> LoadJob:
+class PandasToBQEncodingHandlers(DatasetEncodingHandler):
+    def encode(self, df: Optional[pd.DataFrame] = None, path: Optional[os.PathLike] = None) -> LoadJob:
         table_id = path.split("://", 1)[1].replace(":", ".")
         client = bigquery.Client()
-        return client.load_table_from_dataframe(df, table_id, job_config=job_config)
+        return client.load_table_from_dataframe(df, table_id)
 
 
-class BQToPandasRetrievalHandler(DatasetRetrievalHandler):
-    def retrieve(self, path: str, **kwargs) -> pd.DataFrame:
+class BQToPandasDecodingHandler(DatasetDecodingHandler):
+    def decode(self, df: Optional[Any] = None, path: Optional[os.PathLike] = None) -> pd.DataFrame:
         # path will be like bq://photo-313016:flyte.new_table1
         _, project_id, dataset_id, table_id = re.split("\\.|://|:", path)
         client = bigquery_storage.BigQueryReadClient()
@@ -45,18 +45,18 @@ class BQToPandasRetrievalHandler(DatasetRetrievalHandler):
         return pd.concat(frames)
 
 
-class ArrowToBQPersistenceHandlers(DatasetPersistenceHandler):
-    def persist(self, table: pa.Table, path: str, job_config: typing.Optional[LoadJobConfig] = None) -> LoadJob:
-        return PandasToBQPersistenceHandlers().persist(table.to_pandas(), path, job_config)
+class ArrowToBQEncodingHandlers(DatasetEncodingHandler):
+    def encode(self, df: Optional[pa.Table] = None, path: Optional[os.PathLike] = None) -> LoadJob:
+        return PandasToBQEncodingHandlers().encode(df.to_pandas(), path)
 
 
-class BQToArrowRetrievalHandler(DatasetRetrievalHandler):
-    def retrieve(self, path: str, **kwargs) -> pa.Table:
-        pd_dataframe = BQToPandasRetrievalHandler().retrieve(path)
+class BQToArrowDecodingHandler(DatasetDecodingHandler):
+    def decode(self, df: Optional[Any] = None, path: Optional[os.PathLike] = None) -> pa.Table:
+        pd_dataframe = BQToPandasDecodingHandler().decode(path)
         return pa.Table.from_pandas(pd.concat(pd_dataframe))
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, DatasetFormat.BIGQUERY, PandasToBQPersistenceHandlers())
-FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.BIGQUERY, pd.DataFrame, BQToPandasRetrievalHandler())
-FLYTE_DATASET_TRANSFORMER.register_handler(pa.Table, DatasetFormat.BIGQUERY, ArrowToBQPersistenceHandlers())
-FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.BIGQUERY, pa.Table, BQToArrowRetrievalHandler())
+FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, DatasetFormat.BIGQUERY, PandasToBQEncodingHandlers())
+FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.BIGQUERY, pd.DataFrame, BQToPandasDecodingHandler())
+FLYTE_DATASET_TRANSFORMER.register_handler(pa.Table, DatasetFormat.BIGQUERY, ArrowToBQEncodingHandlers())
+FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.BIGQUERY, pa.Table, BQToArrowDecodingHandler())

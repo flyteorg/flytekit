@@ -1,3 +1,4 @@
+import os
 import typing
 
 import numpy as np
@@ -98,15 +99,14 @@ def t8a(dataframe: pa.Table) -> pa.Table:
 
 
 class NumpyEncodingHandlers(DatasetEncodingHandler):
-    def encode(self, dataframe: np.ndarray, name: typing.Optional[typing.List[str]] = None):
-        if name is None:
-            name = ["col" + str(i) for i in range(len(dataframe))]
-        return pa.Table.from_arrays(dataframe, name)
+    def encode(self, df: typing.Optional[np.ndarray] = None, path: typing.Optional[os.PathLike] = None):
+        name = ["col" + str(i) for i in range(len(df))]
+        return pa.Table.from_arrays(df, name)
 
 
 class NumpyDecodingHandlers(DatasetDecodingHandler):
-    def decode(self, table: pa.Table):
-        return table.to_pandas().to_numpy()
+    def decode(self, df: typing.Optional[pa.Table] = None, path: typing.Optional[os.PathLike] = None):
+        return df.to_pandas().to_numpy()
 
 
 FLYTE_DATASET_TRANSFORMER.register_handler(np.ndarray, pa.Table, NumpyEncodingHandlers())
