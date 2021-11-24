@@ -667,8 +667,15 @@ TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
 @dataclass_json
 @dataclass
-class Result:
+class InnerResult:
     number: int
+    schema: TestSchema
+
+
+@dataclass_json
+@dataclass
+class Result:
+    result: InnerResult
     schema: TestSchema
 
 
@@ -676,15 +683,11 @@ def test_schema_in_dataclass():
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
     schema.open().write(df)
-    o = Result(number=1, schema=schema)
+    o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
     lt = tf.get_literal_type(Result)
-    gt = tf.guess_python_type(lt)
     lv = tf.to_literal(ctx, o, Result, lt)
-    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=gt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
-    assert o.number == ot.number
-    assert o.schema.local_path == ot.schema.local_path
-    assert o.schema.remote_path == ot.schema.remote_path
-    assert o.schema.supported_mode.value == ot.schema.supported_mode
+    assert o == ot

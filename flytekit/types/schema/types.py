@@ -172,8 +172,6 @@ class SchemaEngine(object):
 @dataclass_json
 @dataclass
 class FlyteSchema(object):
-    supported_mode: str = field(default=SchemaOpenMode.WRITE, metadata=config(mm_field=fields.String()))
-    local_path: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
     remote_path: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
@@ -241,14 +239,23 @@ class FlyteSchema(object):
         ):
             raise ValueError("To create a FlyteSchema in write mode, local_path is required")
 
-        if local_path is None:
-            local_path = FlyteContextManager.current_context().file_access.get_random_local_directory()
-        self.local_path = local_path
-        self.remote_path = remote_path
-        self.supported_mode = supported_mode
+        local_path = local_path or FlyteContextManager.current_context().file_access.get_random_local_directory()
+        self._local_path = local_path
+        # Make this field public, so that the dataclass transformer can set a value for it
+        # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
+        self.remote_path = remote_path or FlyteContextManager.current_context().file_access.get_random_remote_path()
+        self._supported_mode = supported_mode
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._downloaded = False
         self._downloader = downloader
+
+    @property
+    def local_path(self) -> os.PathLike:
+        return self._local_path
+
+    @property
+    def supported_mode(self) -> SchemaOpenMode:
+        return self._supported_mode
 
     def open(
         self, dataframe_fmt: type = pandas.DataFrame, override_mode: SchemaOpenMode = None
