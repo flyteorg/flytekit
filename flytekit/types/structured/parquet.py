@@ -38,7 +38,7 @@ class ParquetToArrowDecodingHandler(DatasetDecodingHandler):
 
 
 def _get_filesystem(path: Union[str, os.PathLike]) -> Optional["fsspec.AbstractFileSystem"]:
-    from fsspec.core import split_protocol
+    from flytekit.core.data_persistence import split_protocol
 
     protocol, _ = split_protocol(path)
     if protocol == "s3":
@@ -48,7 +48,7 @@ def _get_filesystem(path: Union[str, os.PathLike]) -> Optional["fsspec.AbstractF
 
 
 def _get_storage_config(path: Union[str, os.PathLike]) -> dict:
-    from fsspec.core import split_protocol
+    from flytekit.core.data_persistence import split_protocol
 
     protocol, _ = split_protocol(path)
     if protocol == "s3":
