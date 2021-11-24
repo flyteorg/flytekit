@@ -262,7 +262,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         for f in dataclasses.fields(python_type):
             v = python_val.__getattribute__(f.name)
-            if issubclass(f.type, FlyteSchema):
+            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
                 FlyteSchemaTransformer().to_literal(FlyteContext.current_context(), v, f.type, None)
             elif dataclasses.is_dataclass(f.type):
                 self._serialize_flyte_type(v, f.type)
@@ -272,7 +272,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         for f in dataclasses.fields(expected_python_type):
             v = python_val.__getattribute__(f.name)
-            if issubclass(f.type, FlyteSchema):
+            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
                 t = FlyteSchemaTransformer()
                 t.to_python_value(
                     FlyteContext.current_context(),
