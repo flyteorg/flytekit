@@ -1032,6 +1032,10 @@ class FlyteRemote(object):
         """
         if entity_definition is not None:
             raise ValueError("Entity definition arguments aren't supported when syncing workflow executions")
+
+        # Update closure, and then data, because we don't want the execution to finish between when we get the data,
+        # and then for the closure to have is_complete to be true.
+        execution._closure = self.client.get_execution(execution.id).closure
         execution_data = self.client.get_execution_data(execution.id)
         lp_id = execution.spec.launch_plan
         if sync_nodes:
@@ -1074,8 +1078,7 @@ class FlyteRemote(object):
             execution._flyte_workflow = flyte_entity
             node_mapping = flyte_entity._node_map
 
-        # update closure, node executions (if requested), and inputs/outputs
-        execution._closure = self.client.get_execution(execution.id).closure
+        # update node executions (if requested), and inputs/outputs
         if sync_nodes:
             node_execs = {}
             for n in underlying_node_executions:
