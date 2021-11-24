@@ -5,7 +5,7 @@ from typing import Any, Optional
 import pandas as pd
 import pyarrow as pa
 from google.cloud import bigquery, bigquery_storage
-from google.cloud.bigquery import LoadJob, LoadJobConfig
+from google.cloud.bigquery import LoadJob
 from google.cloud.bigquery_storage_v1 import types
 
 from flytekit.types.structured.structured_dataset import (

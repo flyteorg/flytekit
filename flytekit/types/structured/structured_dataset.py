@@ -19,7 +19,6 @@ from flytekit.models.literals import Literal, Scalar
 from flytekit.models.literals import StructuredDataset as _StructuredDataset
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
-from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 
 T = typing.TypeVar("T")
 
