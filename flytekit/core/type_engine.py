@@ -28,7 +28,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Schema
 from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
@@ -249,12 +249,12 @@ class DataclassTransformer(TypeTransformer[object]):
             raise AssertionError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
-        self._flyte_type_to_literal(python_val, python_type)
+        self._serialize_flyte_type(python_val, python_type)
         return Literal(
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
 
-    def _flyte_type_to_literal(self, python_val: T, python_type: Type[T]):
+    def _serialize_flyte_type(self, python_val: T, python_type: Type[T]):
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
         """
@@ -265,9 +265,9 @@ class DataclassTransformer(TypeTransformer[object]):
             if issubclass(f.type, FlyteSchema):
                 FlyteSchemaTransformer().to_literal(FlyteContext.current_context(), v, f.type, None)
             elif dataclasses.is_dataclass(f.type):
-                self._flyte_type_to_literal(v, f.type)
+                self._serialize_flyte_type(v, f.type)
 
-    def _flyte_type_to_python_value(self, python_val: T, expected_python_type: Type["FlyteSchema"]):
+    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type["FlyteSchema"]):
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
 
         for f in dataclasses.fields(expected_python_type):
@@ -280,7 +280,7 @@ class DataclassTransformer(TypeTransformer[object]):
                     f.type,
                 )
             elif dataclasses.is_dataclass(f.type):
-                self._flyte_type_to_python_value(v, f.type)
+                self._deserialize_flyte_type(v, f.type)
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if t == int:
@@ -326,7 +326,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
 
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
-        self._flyte_type_to_python_value(dc, expected_python_type)
+        self._deserialize_flyte_type(dc, expected_python_type)
         return self._fix_dataclass_int(expected_python_type, dc)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:

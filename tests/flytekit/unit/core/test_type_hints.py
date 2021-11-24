@@ -1086,6 +1086,7 @@ def test_enum_in_dataclass():
 
     assert wf(x=10) == Datum(10, Color.RED)
 
+
 def test_flyte_schema_dataclass():
     TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
