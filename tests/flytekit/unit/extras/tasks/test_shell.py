@@ -9,7 +9,8 @@ from flytekit.extras.tasks.shell import OutputLocation, ShellTask
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
-testdata = os.path.join(os.path.dirname(os.path.realpath(__file__)), "testdata")
+test_file_path = os.path.dirname(os.path.realpath(__file__))
+testdata = os.path.join(test_file_path, "testdata")
 script_sh = os.path.join(testdata, "script.sh")
 test_csv = os.path.join(testdata, "test.csv")
 
@@ -48,8 +49,8 @@ def test_input_substitution_primitive():
         inputs=kwtypes(f=str, y=int, j=datetime.datetime),
     )
 
-    t(f="__init__.py", y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
-    t(f="test_shell.py", y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    t(f=os.path.join(test_file_path, "__init__.py"), y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    t(f=os.path.join(test_file_path, "test_shell.py"), y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
     with pytest.raises(CalledProcessError):
         t(f="non_exist.py", y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
@@ -107,12 +108,31 @@ def test_input_single_output_substitution_files():
     assert y.path[-4:] == ".pyc"
 
 
-def test_input_output_missing_var():
+def test_input_output_extra_var_in_template():
     t = ShellTask(
         name="test",
         debug=True,
         script="""
         cat {{ .inputs.f }} {{ .inputs.missing }} >> {{ .outputs.y }}
+        echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
+        """,
+        inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
+        output_locs=[
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+
+
+def test_input_output_extra_input():
+    t = ShellTask(
+        name="test",
+        debug=True,
+        script="""
+        cat {{ .inputs.missing }} >> {{ .outputs.y }}
         echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
         """,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),

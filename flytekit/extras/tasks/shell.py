@@ -65,7 +65,7 @@ def _interpolate(tmpl: str, regex: re.Pattern, validate_all_match: bool = True, 
     if validate_all_match:
         if len(matched) < len(kwargs.keys()):
             diff = set(kwargs.keys()).difference(matched)
-            raise ValueError(f"Extra Inputs have no matches in query template - missing {diff}")
+            raise ValueError(f"Extra Inputs have no matches in script template - missing {diff}")
     return modified
 
 
