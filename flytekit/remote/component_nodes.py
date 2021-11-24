@@ -1,23 +1,22 @@
 import logging as _logging
 from typing import Dict
 
-import flytekit
 from flytekit.common.exceptions import system as _system_exceptions
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
+from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.remote import identifier as _identifier
 
 
 class FlyteTaskNode(_workflow_model.TaskNode):
     """A class encapsulating a task that a Flyte node needs to execute."""
 
-    def __init__(self, flyte_task: "flytekit.remote.tasks.task.FlyteTask"):
+    def __init__(self, flyte_task: "flytekit.remote.task.FlyteTask"):
         self._flyte_task = flyte_task
         super(FlyteTaskNode, self).__init__(None)
 
     @property
-    def reference_id(self) -> _identifier.Identifier:
+    def reference_id(self) -> id_models.Identifier:
         """A globally unique identifier for the task."""
         return self._flyte_task.id
 
@@ -29,7 +28,7 @@ class FlyteTaskNode(_workflow_model.TaskNode):
     def promote_from_model(
         cls,
         base_model: _workflow_model.TaskNode,
-        tasks: Dict[_identifier.Identifier, _task_model.TaskTemplate],
+        tasks: Dict[id_models.Identifier, _task_model.TaskTemplate],
     ) -> "FlyteTaskNode":
         """
         Takes the idl wrapper for a TaskNode and returns the hydrated Flytekit object for it by fetching it with the
@@ -38,12 +37,12 @@ class FlyteTaskNode(_workflow_model.TaskNode):
         :param base_model:
         :param tasks:
         """
-        from flytekit.remote.tasks import task as _task
+        from flytekit.remote.task import FlyteTask
 
         if base_model.reference_id in tasks:
             task = tasks[base_model.reference_id]
             _logging.info(f"Found existing task template for {task.id}, will not retrieve from Admin")
-            flyte_task = _task.FlyteTask.promote_from_model(task)
+            flyte_task = FlyteTask.promote_from_model(task)
             return cls(flyte_task)
 
         raise _system_exceptions.FlyteSystemException(f"Task template {base_model.reference_id} not found.")
@@ -76,7 +75,7 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         return f"FlyteWorkflowNode with launch plan: {self.flyte_launch_plan}"
 
     @property
-    def launchplan_ref(self) -> _identifier.Identifier:
+    def launchplan_ref(self) -> id_models.Identifier:
         """A globally unique identifier for the launch plan, which should map to Admin."""
         return self._flyte_launch_plan.id if self._flyte_launch_plan else None
 
@@ -96,9 +95,9 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
     def promote_from_model(
         cls,
         base_model: _workflow_model.WorkflowNode,
-        sub_workflows: Dict[_identifier.Identifier, _workflow_model.WorkflowTemplate],
-        node_launch_plans: Dict[_identifier.Identifier, _launch_plan_model.LaunchPlanSpec],
-        tasks: Dict[_identifier.Identifier, _task_model.TaskTemplate],
+        sub_workflows: Dict[id_models.Identifier, _workflow_model.WorkflowTemplate],
+        node_launch_plans: Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec],
+        tasks: Dict[id_models.Identifier, _task_model.TaskTemplate],
     ) -> "FlyteWorkflowNode":
         from flytekit.remote import launch_plan as _launch_plan
         from flytekit.remote import workflow as _workflow

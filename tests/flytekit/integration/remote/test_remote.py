@@ -86,7 +86,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
     poll_interval = datetime.timedelta(seconds=1)
     time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
 
-    execution = remote.sync_workflow_execution(execution)
+    execution = remote.sync_workflow_execution(execution, sync_nodes=True)
     while datetime.datetime.utcnow() < time_to_give_up:
 
         if execution.is_complete:
@@ -98,7 +98,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
             execution.outputs
 
         time.sleep(poll_interval.total_seconds())
-        execution = remote.sync_workflow_execution(execution)
+        execution = remote.sync_workflow_execution(execution, sync_nodes=True)
 
         if execution.node_executions:
             assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEEDED
