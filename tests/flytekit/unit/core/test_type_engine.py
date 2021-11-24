@@ -10,6 +10,7 @@ from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.exceptions import user as user_exceptions
@@ -545,6 +546,28 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+def test_enum_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    lt = TypeEngine.to_literal_type(Datum)
+    schema = Datum.schema()
+    schema.fields["y"].load_by = LoadDumpOptions.name
+    assert lt.metadata == JSONSchema().dump(schema)
+
+    transformer = DataclassTransformer()
+    ctx = FlyteContext.current_context()
+    datum = Datum(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum.x == pv.x
+    assert datum.y.value == pv.y
 
 
 @pytest.mark.parametrize(
