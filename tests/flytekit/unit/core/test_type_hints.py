@@ -844,7 +844,7 @@ def test_wf_typed_schema():
 
     @task
     def t1() -> schema1:
-        s = schema1()
+        s = schema1(None)
         s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
         return s
 
@@ -881,7 +881,7 @@ def test_wf_schema_to_df():
 
     @task
     def t1() -> schema1:
-        s = schema1()
+        s = schema1(None)
         s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
         return s
 

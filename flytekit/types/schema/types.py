@@ -362,6 +362,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
         schema = python_type(
+            downloader=None,
             local_path=ctx.file_access.get_random_local_directory(),
             remote_path=ctx.file_access.get_random_remote_directory(),
         )

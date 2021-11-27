@@ -196,7 +196,7 @@ def test_wf_schema_to_df():
         global n_cached_task_calls
         n_cached_task_calls += 1
 
-        s = schema1()
+        s = schema1(downloader=None)
         s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
         return s
 
