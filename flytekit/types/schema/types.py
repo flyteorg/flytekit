@@ -6,8 +6,8 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Type
 from pathlib import Path
+from typing import Type
 
 import numpy as _np
 
@@ -16,7 +16,6 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.plugins import pandas
-
 
 T = typing.TypeVar("T")
 
