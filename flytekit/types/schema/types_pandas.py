@@ -19,7 +19,7 @@ class ParquetIO(object):
         return pandas.read_parquet(chunk, columns=_columns, engine=self.PARQUET_ENGINE, **kwargs)
 
     def read(self, *files: os.PathLike, columns: typing.List[str] = None, **kwargs) -> pandas.DataFrame:
-        frames = [self._read(chunk=f, columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
+        frames = [self._read(chunk=f, _columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
         if len(frames) == 1:
             return frames[0]
         elif len(frames) > 1:
