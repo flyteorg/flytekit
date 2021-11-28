@@ -6,7 +6,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.remote import identifier as _identifier
 from flytekit.remote import interface as _interfaces
 
 
@@ -61,7 +60,7 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
         )
         # Override the newly generated name if one exists in the base model
         if not base_model.id.is_empty:
-            t._id = _identifier.Identifier.promote_from_model(base_model.id)
+            t._id = base_model.id
 
         if t.interface is not None:
             try:
