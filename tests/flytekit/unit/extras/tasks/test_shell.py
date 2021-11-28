@@ -1,5 +1,6 @@
 import datetime
 import os
+import tempfile
 from subprocess import CalledProcessError
 
 import pytest
@@ -70,24 +71,32 @@ def test_input_substitution_files():
 
 def test_input_output_substitution_files():
     s = """
-        cat {{ .inputs.f }} >> {{ .outputs.y }}
-        echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
+        cat {{ .inputs.f }} > {{ .outputs.y }}
         """
     t = ShellTask(
         name="test",
         debug=True,
         script=s,
-        inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
+        inputs=kwtypes(f=CSVFile),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
-            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.mod"),
         ],
     )
 
     assert t.script == s
-    x, y = t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
-    assert x is not None
-    assert y.path[-4:] == ".pyc"
+
+    contents = "1,2,3,4\n"
+    with tempfile.TemporaryDirectory() as tmp:
+        csv = os.path.join(tmp, "abc.csv")
+        print(csv)
+        with open(csv, "w") as f:
+            f.write(contents)
+        y = t(f=csv)
+        assert y.path[-4:] == ".mod"
+        assert os.path.exists(y.path)
+        with open(y.path) as f:
+            s = f.read()
+        assert s == contents
 
 
 def test_input_single_output_substitution_files():

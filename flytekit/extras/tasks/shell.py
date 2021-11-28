@@ -6,8 +6,9 @@ import subprocess
 import typing
 from dataclasses import dataclass
 
-from flytekit import ExecutionParameters, PythonInstanceTask
+from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.interface import Interface
+from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.task import TaskPlugins
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
@@ -104,7 +105,7 @@ class ShellTask(PythonInstanceTask[T]):
             script_file: A path to the file that contains the script (Only script or script_file) can be provided
             task_config: T Configuration for the task, can be either a Pod (or coming soon, BatchJob) config
             inputs: A Dictionary of input names to types
-            output_locs: A list of :ref:class:`OutputLocations`
+            output_locs: A list of :py:class:`OutputLocations`
             **kwargs: Other arguments that can be passed to :ref:class:`PythonInstanceTask`
         """
         if script and script_file:
@@ -115,6 +116,10 @@ class ShellTask(PythonInstanceTask[T]):
             if not os.path.exists(script_file):
                 raise ValueError(f"FileNotFound: the specified Script file at path {script_file} cannot be loaded")
             script_file = os.path.abspath(script_file)
+
+        if task_config is not None:
+            if str(type(task_config)) != "flytekitplugins.pod.task.Pod":
+                raise ValueError("TaskConfig can either be empty - indicating simple container task or a PodConfig.")
 
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
         # to run pre- and post- execute functions using the corresponding task plugin.
