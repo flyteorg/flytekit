@@ -8,9 +8,11 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 import pandas
+import pandas as pd
 import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
+from pandas._testing import assert_frame_equal
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
@@ -32,6 +34,7 @@ from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 serialization_settings = context_manager.SerializationSettings(
     project="proj",
@@ -1427,3 +1430,23 @@ def test_error_messages():
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
         foo3(a=[{"hello": 2}])
+
+
+def test_structured_dataset():
+    my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
+
+    @task
+    def t1(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
+        return dataframe
+
+    @task
+    def t2(dataframe: StructuredDataset[my_cols]) -> pd.DataFrame:
+        return dataframe.open_as(pd.DataFrame)
+
+    @workflow
+    def wf(dataframe: pd.DataFrame) -> pd.DataFrame:
+        v = t1(dataframe=dataframe)
+        return t2(dataframe=v)
+
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    assert_frame_equal(wf(dataframe=df), df)

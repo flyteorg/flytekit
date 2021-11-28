@@ -97,3 +97,14 @@ def test_output_reference():
     assert obj.var == "var1"
     obj2 = _types.OutputReference.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
+
+
+def test_structured_dataset():
+    columns = [
+        _types.StructuredDatasetType.DatasetColumn(
+            name="c1", literal_type=_types.LiteralType(simple=_types.SimpleType.INTEGER)
+        )
+    ]
+    obj = _types.StructuredDatasetType(columns=columns)
+    assert obj.columns == columns
+    obj2 = _types.StructuredDatasetType.from_flyte_idl(obj.to_flyte_idl())
