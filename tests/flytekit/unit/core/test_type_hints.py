@@ -7,8 +7,10 @@ import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 
+import mock
 import pandas
 import pandas as pd
+import pyarrow as pa
 import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
@@ -34,7 +36,6 @@ from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
-from flytekit.types.structured.structured_dataset import StructuredDataset
 
 serialization_settings = context_manager.SerializationSettings(
     project="proj",
@@ -1432,21 +1433,53 @@ def test_error_messages():
         foo3(a=[{"hello": 2}])
 
 
-def test_structured_dataset():
+@mock.patch("fsspec.filesystem")
+@mock.patch("pyarrow.parquet.read_table")
+@mock.patch("pyarrow.parquet.write_table")
+@mock.patch("flytekit.types.structured.bigquery.BQToPandasDecodingHandler.decode")
+@mock.patch("flytekit.types.structured.bigquery.PandasToBQEncodingHandlers.encode")
+def test_structured_dataset(mock_encode, mock_decode, mock_write_table, mock_read_table, mock_filesystem):
+    from flytekit.types.structured.structured_dataset import DatasetFormat, StructuredDataset
+
     my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    mock_encode.return_value = None
+    mock_decode.return_value = df
+    mock_read_table.return_value = pa.Table.from_pandas(df)
+    mock_write_table.return_value = None
+    mock_filesystem.return_value = None
 
     @task
     def t1(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
-        return dataframe
+        return StructuredDataset(
+            dataframe=dataframe, remote_path="bq://photo:flyte.table", file_format=DatasetFormat.BIGQUERY
+        )
 
     @task
-    def t2(dataframe: StructuredDataset[my_cols]) -> pd.DataFrame:
-        return dataframe.open_as(pd.DataFrame)
+    def t2(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
+        return dataset.open_as(pd.DataFrame)
+
+    @task
+    def t3(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
+        table = pa.Table.from_pandas(dataframe)
+        return StructuredDataset(
+            dataframe=table, remote_path="bq://photo:flyte.table", file_format=DatasetFormat.BIGQUERY
+        )
+
+    @task
+    def t4(dataset: StructuredDataset[my_cols]) -> pa.Table:
+        return dataset.open_as(pa.Table)
+
+    @task
+    def t5(dataframe: pa.Table) -> StructuredDataset[my_cols]:
+        return StructuredDataset(dataframe=dataframe, remote_path="s3://somewhere/", file_format=DatasetFormat.PARQUET)
 
     @workflow
-    def wf(dataframe: pd.DataFrame) -> pd.DataFrame:
-        v = t1(dataframe=dataframe)
-        return t2(dataframe=v)
+    def wf(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
+        v1 = t1(dataframe=dataframe)
+        v2 = t2(dataset=v1)
+        v3 = t3(dataframe=v2)
+        v4 = t4(dataset=v3)
+        return t5(dataframe=v4)
 
-    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
-    assert_frame_equal(wf(dataframe=df), df)
+    assert_frame_equal(wf(dataframe=df).open_as(pa.Table).to_pandas(), df)

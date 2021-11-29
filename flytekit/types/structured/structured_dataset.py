@@ -76,7 +76,7 @@ class StructuredDataset(object):
         self,
         dataframe: typing.Optional[typing.Any] = None,
         local_path: typing.Union[os.PathLike, str] = None,
-        remote_path: str = None,
+        remote_path: typing.Union[os.PathLike, str] = None,
         file_format: DatasetFormat = DatasetFormat.PARQUET,
     ):
         self._dataframe = dataframe
@@ -89,12 +89,12 @@ class StructuredDataset(object):
         return self._dataframe
 
     @property
-    def local_path(self) -> os.PathLike:
+    def local_path(self) -> typing.Union[os.PathLike, str]:
         return self._local_path
 
     @property
-    def remote_path(self) -> str:
-        return typing.cast(str, self._remote_path)
+    def remote_path(self) -> typing.Union[os.PathLike, str]:
+        return self._remote_path
 
     @property
     def file_format(self) -> DatasetFormat:

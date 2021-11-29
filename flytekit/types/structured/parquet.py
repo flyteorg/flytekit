@@ -38,6 +38,8 @@ class ParquetToArrowDecodingHandler(DatasetDecodingHandler):
 
 
 def _get_filesystem(path: Union[str, os.PathLike]) -> Optional["fsspec.AbstractFileSystem"]:
+    import fsspec
+
     from flytekit.core.data_persistence import split_protocol
 
     protocol, _ = split_protocol(path)

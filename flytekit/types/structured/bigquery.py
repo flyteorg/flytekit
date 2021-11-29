@@ -53,7 +53,7 @@ class ArrowToBQEncodingHandlers(DatasetEncodingHandler):
 class BQToArrowDecodingHandler(DatasetDecodingHandler):
     def decode(self, df: Optional[Any] = None, path: Optional[os.PathLike] = None) -> pa.Table:
         pd_dataframe = BQToPandasDecodingHandler().decode(path)
-        return pa.Table.from_pandas(pd.concat(pd_dataframe))
+        return pa.Table.from_pandas(pd_dataframe)
 
 
 FLYTE_DATASET_TRANSFORMER.register_handler(pd.DataFrame, DatasetFormat.BIGQUERY, PandasToBQEncodingHandlers())

@@ -108,3 +108,4 @@ def test_structured_dataset():
     obj = _types.StructuredDatasetType(columns=columns)
     assert obj.columns == columns
     obj2 = _types.StructuredDatasetType.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
