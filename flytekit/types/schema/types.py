@@ -222,10 +222,10 @@ class FlyteSchema(object):
 
     def __init__(
         self,
-        downloader: typing.Callable[[str, os.PathLike], None],
         local_path: os.PathLike = None,
         remote_path: str = None,
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
+        downloader: typing.Callable[[str, os.PathLike], None] = None,
     ):
 
         if supported_mode == SchemaOpenMode.READ and remote_path is None:
@@ -301,7 +301,6 @@ class FlyteSchema(object):
             # Dummy path is ok, as we will assume data is already downloaded and will not download again
             remote_path=self.remote_path if self.remote_path else "",
             supported_mode=SchemaOpenMode.READ,
-            downloader=self._downloader,
         )
         s._downloaded = True
         return s
@@ -362,7 +361,6 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
         schema = python_type(
-            downloader=None,
             local_path=ctx.file_access.get_random_local_directory(),
             remote_path=ctx.file_access.get_random_remote_directory(),
         )
