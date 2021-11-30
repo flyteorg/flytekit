@@ -23,7 +23,7 @@ class FlytePickle(typing.Generic[T]):
     def python_type(cls) -> typing.Type:
         return type(None)
 
-    def __class_getitem__(cls, python_type: typing.Type) -> typing.Type[T]:
+    def __class_getitem__(cls, python_type: typing.Type) -> typing.Type:
         if python_type is None:
             return cls
 
@@ -35,7 +35,7 @@ class FlytePickle(typing.Generic[T]):
             def python_type(cls) -> typing.Type:
                 return python_type
 
-        return _SpecificFormatClass.python_type()
+        return _SpecificFormatClass
 
 
 class FlytePickleTransformer(TypeTransformer[FlytePickle]):
