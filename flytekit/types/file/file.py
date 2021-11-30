@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
@@ -171,7 +171,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
         """
-        ctx = FlyteContextManager.current_context()
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
         self.path = path
