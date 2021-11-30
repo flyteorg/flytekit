@@ -29,7 +29,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Schema, Union, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 
 try:
@@ -38,14 +38,18 @@ except ImportError:
     try:
         from typing_extensions import get_args as _get_args
     except ImportError:
+
         def _get_args(t):
             return t.__args__
+
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 
+
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
     ...
+
 
 class TypeTransformer(typing.Generic[T]):
     """
@@ -154,9 +158,11 @@ class SimpleTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if expected_python_type != self._type:
-            raise TypeTransformerFailedError(f"Cannot convert to type {expected_python_type}, only {self._type} is supported")
+            raise TypeTransformerFailedError(
+                f"Cannot convert to type {expected_python_type}, only {self._type} is supported"
+            )
 
-        try: # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
+        try:  # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
             res = self._from_literal_transformer(lv)
             if type(res) != self._type:
                 raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
@@ -274,9 +280,38 @@ class DataclassTransformer(TypeTransformer[object]):
             raise TypeTransformerFailedError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
+        self._serialize_flyte_type(python_val, python_type)
         return Literal(
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
+
+    def _serialize_flyte_type(self, python_val: T, python_type: Type[T]):
+        """
+        If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
+        """
+        from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+
+        for f in dataclasses.fields(python_type):
+            v = python_val.__getattribute__(f.name)
+            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
+                FlyteSchemaTransformer().to_literal(FlyteContext.current_context(), v, f.type, None)
+            elif dataclasses.is_dataclass(f.type):
+                self._serialize_flyte_type(v, f.type)
+
+    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type["FlyteSchema"]):
+        from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+
+        for f in dataclasses.fields(expected_python_type):
+            v = python_val.__getattribute__(f.name)
+            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
+                t = FlyteSchemaTransformer()
+                t.to_python_value(
+                    FlyteContext.current_context(),
+                    Literal(scalar=Scalar(schema=Schema(v.remote_path, t._get_schema_type(f.type)))),
+                    f.type,
+                )
+            elif dataclasses.is_dataclass(f.type):
+                self._deserialize_flyte_type(v, f.type)
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if t == int:
@@ -320,7 +355,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json to be "
                 f"serialized correctly"
             )
+
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
+        self._deserialize_flyte_type(dc, expected_python_type)
         return self._fix_dataclass_int(expected_python_type, dc)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
@@ -633,9 +670,11 @@ class ListTransformer(TypeTransformer[T]):
             return typing.List[ct]
         raise ValueError(f"List transformer cannot reverse {literal_type}")
 
+
 def _add_tag_to_type(x: LiteralType, tag: str) -> LiteralType:
     x._structure = TypeStructure(tag=tag)
     return x
+
 
 class UnionTransformer(TypeTransformer[T]):
     """
@@ -678,7 +717,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         union_tag = None
-        if lv.scalar is not None and lv.scalar.union  is not None:
+        if lv.scalar is not None and lv.scalar.union is not None:
             union_type = lv.scalar.union.stored_type
             if union_type.structure is not None:
                 union_tag = union_type.structure.tag
@@ -693,22 +732,24 @@ class UnionTransformer(TypeTransformer[T]):
                     if trans.name != union_tag:
                         continue
 
-                    assert lv.scalar is not None # type checker
-                    assert lv.scalar.union is not None # type checker
+                    assert lv.scalar is not None  # type checker
+                    assert lv.scalar.union is not None  # type checker
 
                     res = trans.to_python_value(ctx, lv.scalar.union.value, v)
                     res_tag = trans.name
                     if found_res:
                         raise TypeError(
-                            "Ambiguous choice of variant for union type. " +
-                            f"Both {res_tag} and {trans.name} transformers match")
+                            "Ambiguous choice of variant for union type. "
+                            + f"Both {res_tag} and {trans.name} transformers match"
+                        )
                     found_res = True
                 else:
                     res = trans.to_python_value(ctx, lv, v)
                     if found_res:
                         raise TypeError(
-                            "Ambiguous choice of variant for union type. " +
-                            f"Both {res_tag} and {trans.name} transformers match")
+                            "Ambiguous choice of variant for union type. "
+                            + f"Both {res_tag} and {trans.name} transformers match"
+                        )
                     res_tag = trans.name
                     found_res = True
             except TypeTransformerFailedError as e:
@@ -976,10 +1017,12 @@ def _check_and_covert_float(lv: Literal) -> float:
         return float(lv.scalar.primitive.integer)
     raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
 
+
 def _check_and_convert_void(lv: Literal) -> None:
     if lv.scalar.none_type is None:
         raise TypeTransformerFailedError(f"Cannot conver literal {lv} to None")
     return None
+
 
 def _register_default_type_transformers():
     TypeEngine.register(
@@ -1048,7 +1091,7 @@ def _register_default_type_transformers():
             type(None),
             _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
             lambda x: Literal(scalar=Scalar(none_type=Void())),
-            lambda x: _check_and_convert_void(x)
+            lambda x: _check_and_convert_void(x),
         ),
         [None],
     )

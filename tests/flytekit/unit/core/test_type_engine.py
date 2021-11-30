@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 
+import pandas as pd
 import pytest
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
@@ -14,6 +15,8 @@ from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
 import flytekit.common.exceptions.user as user_exceptions
+from flytekit import kwtypes
+from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
@@ -36,6 +39,7 @@ from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.schema import FlyteSchema
 
 T = typing.TypeVar("T")
 
@@ -882,3 +886,34 @@ def test_dict_to_literal_map_with_wrong_input_type():
     guessed_python_types = {"a": str}
     with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
+
+
+TestSchema = FlyteSchema[kwtypes(some_str=str)]
+
+
+@dataclass_json
+@dataclass
+class InnerResult:
+    number: int
+    schema: TestSchema
+
+
+@dataclass_json
+@dataclass
+class Result:
+    result: InnerResult
+    schema: TestSchema
+
+
+def test_schema_in_dataclass():
+    schema = TestSchema()
+    df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
+    schema.open().write(df)
+    o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(Result)
+    lv = tf.to_literal(ctx, o, Result, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
+
+    assert o == ot

@@ -1091,6 +1091,35 @@ def test_enum_in_dataclass():
     assert wf(x=10) == Datum(10, Color.RED)
 
 
+def test_flyte_schema_dataclass():
+    TestSchema = FlyteSchema[kwtypes(some_str=str)]
+
+    @dataclass_json
+    @dataclass
+    class InnerResult:
+        number: int
+        schema: TestSchema
+
+    @dataclass_json
+    @dataclass
+    class Result:
+        result: InnerResult
+        schema: TestSchema
+
+    schema = TestSchema()
+
+    @task
+    def t1(x: int) -> Result:
+
+        return Result(result=InnerResult(number=x, schema=schema), schema=schema)
+
+    @workflow
+    def wf(x: int) -> Result:
+        return t1(x=x)
+
+    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
+
+
 def test_environment():
     @task(environment={"FOO": "foofoo", "BAZ": "baz"})
     def t1(a: int) -> str:
