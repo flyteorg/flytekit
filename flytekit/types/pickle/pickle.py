@@ -35,7 +35,7 @@ class FlytePickle(typing.Generic[T]):
             def python_type(cls) -> typing.Type:
                 return python_type
 
-        return _SpecificFormatClass
+        return _SpecificFormatClass.python_type()
 
 
 class FlytePickleTransformer(TypeTransformer[FlytePickle]):
