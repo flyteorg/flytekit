@@ -33,7 +33,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollect
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
-from flytekit.types.file import JPEGImageFile, PNGImageFile
+from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
@@ -564,7 +564,7 @@ def test_flyte_directory_in_dataclass():
     lt = tf.get_literal_type(TestFileStruct)
     lv = tf.to_literal(ctx, o, TestFileStruct, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
-    # assert o == ot
+    assert o == ot
 
 
 # Enums should have string values
