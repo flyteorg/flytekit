@@ -280,6 +280,8 @@ class FlyteSchema(object):
         if not h.handles_remote_io:
             # The Schema Handler does not manage its own IO, and this it will expect the files are on local file-system
             if self._supported_mode == SchemaOpenMode.READ and not self._downloaded:
+                if self._downloader is None:
+                    raise AssertionError("downloader cannot be None in read mode!")
                 # Only for readable objects if they are not downloaded already, we should download them
                 # Write objects should already have everything written to
                 self._downloader(self.remote_path, self.local_path)
