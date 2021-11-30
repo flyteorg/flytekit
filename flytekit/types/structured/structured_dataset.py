@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import datetime as _datetime
 import os
 import typing
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Type, Union
-from flytekit.loggers import logger
 
 import numpy as _np
 import pandas as pd
@@ -15,12 +13,11 @@ import pyarrow as pa
 from flytekit import FlyteContext
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
-from flytekit.models import types as type_models
+from flytekit.loggers import logger
+from flytekit.models import types as type_models, literals as literal_models
 from flytekit.models.literals import Literal, Scalar
-from flytekit.models.literals import StructuredDataset as _StructuredDataset
-from flytekit.models.literals import StructuredDatasetMetadata
-from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
-from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
+from flytekit.models.types import LiteralType, StructuredDatasetType
+
 
 T = typing.TypeVar("T")  # Local dataframe type
 FT = typing.TypeVar("FT")  # Local dataframe type
@@ -83,7 +80,7 @@ class StructuredDataset(object):
         remote_path: str = None,
         file_format: DatasetFormat = DatasetFormat.PARQUET,
         downloader: typing.Callable[[str, os.PathLike], None] = None,
-        metadata: typing.Optional[StructuredDatasetMetadata] = None,
+        metadata: typing.Optional[literal_models.StructuredDatasetMetadata] = None,
     ):
         self._dataframe = dataframe
         self._local_path = local_path
@@ -115,6 +112,9 @@ class StructuredDataset(object):
 
 
 class DataFrameTransformer(TypeTransformer[T], ABC):
+    """
+    Slimmed down version of the regular TypeTransformer contributors typically implement.
+    """
     def __init__(self, name: str, dataframe_type: Type[T]):
         super().__init__(name, dataframe_type)
 
@@ -136,13 +136,15 @@ class PartialDataFrameTransformer(ABC):
     def intermediate_type(self) -> Type[IT]:
         raise NotImplementedError
 
-    @abstractmethod
     def to_intermediate_value(
-        self, ctx: FlyteContext, python_value: typing.Any, python_type: Type[T], literal_type: typing.Optional[LiteralType]
+        self,
+        ctx: FlyteContext,
+        python_value: typing.Any,
+        python_type: Type[T],
+        literal_type: typing.Optional[LiteralType],
     ) -> IT:
         raise NotImplementedError
 
-    @abstractmethod
     def to_python_value(self, ctx: FlyteContext, python_type: Type[T], intermediate_value: IT, literal: Literal) -> T:
         raise NotImplementedError
 
@@ -153,7 +155,6 @@ class IntermediateTypeHandler(ABC):
     def intermediate_type(self) -> Type[IT]:
         raise NotImplementedError
 
-    @abstractmethod
     def to_literal(
         self,
         ctx: FlyteContext,
@@ -175,7 +176,6 @@ class IntermediateTypeHandler(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def to_intermediate_value(self, ctx: FlyteContext, lv: Literal, python_type: Type[T]) -> IT:
         """
         :raises:
@@ -184,6 +184,69 @@ class IntermediateTypeHandler(ABC):
             incoming value. The engine will automatically try the next one.
         """
         raise NotImplementedError
+
+
+class CombinedHandlerPattern(ABC):
+    """
+
+    to_literal
+
+        Python value -> encode() -> persist() -> Flyte Literal
+
+    to_python_value
+
+        Flyte Literal -> read() -> decode() -> Python value
+
+    """
+    @abstractmethod
+    @property
+    def python_type(self) -> Type[T]:
+        raise NotImplementedError
+
+    @abstractmethod
+    @property
+    def intermediate_type(self) -> Type[IT]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def encode(
+            self,
+            ctx: FlyteContext,
+            python_value: typing.Any,
+            python_type: Type[T],
+            literal_type: typing.Optional[LiteralType],
+    ) -> IT:
+        raise NotImplementedError
+
+    @abstractmethod
+    def decode(self, ctx: FlyteContext, python_type: Type[T], intermediate_value: IT, literal: Literal) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def persist(
+            self,
+            ctx: FlyteContext,
+            intermediate_value: IT,
+            literal_type: LiteralType,
+            python_val: typing.Optional[T],
+            python_type: typing.Optional[Type[T]],
+    ) -> Literal:
+        """
+        :param ctx:
+        :param intermediate_value:
+        :param literal_type:
+        :param python_val:
+        :param python_type:
+        :return:
+        :raises:
+            TypeError: When converting from an intermediate value to a Literal, raise this if the handler is
+            incapable of handling the incoming value. The type engine will automatically try the next one.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def read(self, ctx: FlyteContext, lv: Literal, python_type: Type[T]) -> IT:
+        ...
 
 
 class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
@@ -212,20 +275,18 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
     Note that the paths taken for a given data frame type do not have to be the same. Let's say you
     want to store a custom dataframe into BigQuery. You can
-    #. When going in the ``to_literal`` direction: Write a custom handler that converts directly from the dataframe type to a literal, persisting the data
-      into BigQuery.
+    #. When going in the ``to_literal`` direction: Write a custom handler that converts directly from the dataframe
+      type to a literal, persisting the data into BigQuery.
     #. When going in the ``to_python_value`` direction: Write a custom handler that converts from a local
     Parquet file into your custom data frame type. The handlers that come bundled with flytekit will automatically
     handle the translation from BigQuery into a local Parquet file.
     """
 
-    FULL_DF_TRANSFORMERS: Dict[Type[T], DataFrameTransformer] = {}
+    FULL_DF_TRANSFORMERS: Dict[Type, DataFrameTransformer] = {}
     PARTIAL_DF_TRANSFORMERS: List[PartialDataFrameTransformer] = {}
     INTERMEDIATE_HANDLERS: List[IntermediateTypeHandler] = []
 
     Handlers = Union[DataFrameTransformer, IntermediateTypeHandler, PartialDataFrameTransformer]
-
-    _REGISTER_TYPES: List[Type] = []
 
     def __init__(self):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
@@ -251,20 +312,27 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: Union[StructuredDataset, typing.Any], python_type: Union[Type[StructuredDataset], Type], expected: LiteralType
+        self,
+        ctx: FlyteContext,
+        python_val: Union[StructuredDataset, typing.Any],
+        python_type: Union[Type[StructuredDataset], Type],
+        expected: LiteralType,
     ) -> Literal:
         # If the type signature has the StructuredDataset class, it will, or at least should, also be a
         # StructuredDataset instance.
         if issubclass(python_type, StructuredDataset):
             assert isinstance(python_val, StructuredDataset)
-            return self.encode(ctx, python_val.dataframe, python_type, )
+            return self.encode(
+                ctx,
+                python_val.dataframe,
+                type(python_val.dataframe),
+                expected
+            )
 
+        # Otherwise it's a dataframe object and there's nothing to unwrap.
         return self.encode(ctx, python_val, python_type, expected)
-    
-    def encode(
-            self, ctx: FlyteContext, python_val: typing.Any,
-            python_type: Union[Type[StructuredDataset], Type], expected: LiteralType
-    ) -> Literal:
+
+    def encode(self, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Literal:
         # Otherwise, it's a dataframe instance/type of some kind.
         if python_type in self.FULL_DF_TRANSFORMERS:
             transformer = self.FULL_DF_TRANSFORMERS[python_type]
@@ -273,7 +341,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         for partial in self.PARTIAL_DF_TRANSFORMERS:
             try:
                 inter_value = partial.to_intermediate_value(ctx, python_val, python_type, expected)
-            except TypeError:
+            except (TypeError, NotImplementedError):
                 logger.debug(f"Skipping partial transformer {partial}")
                 continue
             for handler in self.INTERMEDIATE_HANDLERS:
@@ -283,8 +351,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 if issubclass(partial.intermediate_type, handler.intermediate_type):
                     try:
                         return handler.to_literal(ctx, inter_value, expected, python_val, python_type)
-                    except TypeError as e:
-                        # todo: same caveat here, may need to except all exceptions.
+                    except (TypeError, NotImplementedError):
+                        # todo: same caveat here as in open_as, may need to except all exceptions.
                         logger.debug(f"Skipping intermediate handler {handler}")
                         continue
 
@@ -311,7 +379,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             intermediate_type = handler.intermediate_type
             try:
                 inter_value = handler.to_intermediate_value(ctx, lv, python_type)
-            except TypeError as e:
+            except (TypeError, NotImplementedError) as e:
                 logger.debug(f"Intermediate handler {handler} doesn't handle value {lv} {e}")
                 continue
 
@@ -320,7 +388,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 if issubclass(partial.intermediate_type, intermediate_type):
                     try:
                         return partial.to_python_value(ctx, python_type, inter_value, literal=lv)
-                    except TypeError as e:
+                    except (TypeError, NotImplementedError) as e:
                         logger.debug(f"Partial transformer {partial} doesn't handle value {inter_value} {e}")
                         continue
                     # TODO: Need to make this except more errors, maybe all Exceptions.
@@ -347,7 +415,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return StructuredDataset
 
 
-FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformer()
+FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
 TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
 
 
