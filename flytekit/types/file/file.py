@@ -224,7 +224,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
         if t is os.PathLike:
             return ""
-        return t.extension()
+        return typing.cast(FlyteFile, t).extension()
 
     def _blob_type(self, format: str) -> BlobType:
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
