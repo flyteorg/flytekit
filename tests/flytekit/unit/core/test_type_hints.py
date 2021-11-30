@@ -18,7 +18,13 @@ from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
+from flytekit.core.context_manager import (
+    ExecutionState,
+    FastSerializationSettings,
+    FlyteContextManager,
+    Image,
+    ImageConfig,
+)
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
@@ -32,6 +38,8 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.types.directory import FlyteDirectory, TensorboardLogs
+from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 serialization_settings = context_manager.SerializationSettings(
@@ -346,6 +354,68 @@ def test_wf1_with_sql_with_patch():
     # Have to call because tests inside tests don't run
     test_user_demo_test()
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_flyte_file_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class InnerFileStruct(object):
+        a: FlyteFile
+        b: PNGImageFile
+
+    @dataclass_json
+    @dataclass
+    class FileStruct(object):
+        a: FlyteFile
+        b: InnerFileStruct
+
+    @task
+    def t1(path: str) -> FileStruct:
+        file = FlyteFile(path)
+        fs = FileStruct(a=file, b=InnerFileStruct(a=file, b=PNGImageFile(path)))
+        return fs
+
+    @task
+    def t2(fs: FileStruct) -> os.PathLike:
+        return fs.a.path
+
+    @workflow
+    def wf(path: str) -> os.PathLike:
+        n1 = t1(path=path)
+        return t2(fs=n1)
+
+    assert wf(path="s3://somewhere") == "s3://somewhere"
+
+
+def test_flyte_directory_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class InnerFileStruct(object):
+        a: FlyteDirectory
+        b: TensorboardLogs
+
+    @dataclass_json
+    @dataclass
+    class FileStruct(object):
+        a: FlyteDirectory
+        b: InnerFileStruct
+
+    @task
+    def t1(path: str) -> FileStruct:
+        dir = FlyteDirectory(path)
+        fs = FileStruct(a=dir, b=InnerFileStruct(a=dir, b=TensorboardLogs(path)))
+        return fs
+
+    @task
+    def t2(fs: FileStruct) -> os.PathLike:
+        return fs.a.path
+
+    @workflow
+    def wf(path: str) -> os.PathLike:
+        n1 = t1(path=path)
+        return t2(fs=n1)
+
+    assert wf(path="s3://somewhere") == "s3://somewhere"
 
 
 def test_wf1_with_map():
@@ -1429,7 +1499,7 @@ def test_guess_dict4():
     @dataclass
     class Bar(object):
         x: int
-        y: str
+        y: dict
         z: Foo
 
     @task
@@ -1448,14 +1518,14 @@ def test_guess_dict4():
 
     @task
     def t2() -> Bar:
-        return Bar(x=1, y="bar", z=Foo(x=1, y="foo", z={"hello": "world"}))
+        return Bar(x=1, y={"hello": "world"}, z=Foo(x=1, y="foo", z={"hello": "world"}))
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": "bar", "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
+    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 

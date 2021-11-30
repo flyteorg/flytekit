@@ -3,9 +3,13 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from flytekit.core.context_manager import FlyteContext
+from dataclasses_json import config, dataclass_json
+from marshmallow import fields
+
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
@@ -19,7 +23,10 @@ def noop():
     ...
 
 
+@dataclass_json
+@dataclass
 class FlyteDirectory(os.PathLike, typing.Generic[T]):
+    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     .. warning::
 
@@ -106,15 +113,17 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     field in the ``BlobType``.
     """
 
-    def __init__(self, path: str, downloader: typing.Callable = None, remote_directory=None):
+    def __init__(self, path: typing.Union[str, os.PathLike], downloader: typing.Callable = None, remote_directory=None):
         """
         :param path: The source path that users are expected to call open() on
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
         :param remote_directory: If the user wants to return something and also specify where it should be uploaded to.
         """
-
-        self._path = path
+        ctx = FlyteContextManager.current_context()
+        # Make this field public, so that the dataclass transformer can set a value for it
+        # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
+        self.path = path
         self._downloader = downloader or noop
         self._downloaded = False
         self._remote_directory = remote_directory
@@ -127,7 +136,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         if not self._downloaded:
             self._downloader()
             self._downloaded = True
-        return self._path
+        return self.path
 
     @classmethod
     def extension(cls) -> str:
@@ -160,10 +169,6 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         return self._remote_directory
 
     @property
-    def path(self) -> str:
-        return self._path
-
-    @property
     def remote_source(self) -> str:
         """
         If this is an input to a task, and the original path is s3://something, flytekit will download the
@@ -175,10 +180,10 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         return self.__fspath__()
 
     def __repr__(self):
-        return self._path
+        return self.path
 
     def __str__(self):
-        return self._path
+        return self.path
 
 
 class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
@@ -238,7 +243,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
                 return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=python_val._remote_source)))
 
             source_path = python_val.path
-            # If the user specified the remote_path to be False, that means no matter what, do not upload. Also if the
+            # If the user specified the remote_directory to be False, that means no matter what, do not upload. Also if the
             # path given is already a remote path, say https://www.google.com, the concept of uploading to the Flyte
             # blob store doesn't make sense.
             if python_val.remote_directory is False or ctx.file_access.is_remote(source_path):
