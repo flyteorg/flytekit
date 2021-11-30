@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.exceptions import user as user_exceptions
+from flytekit.core.type_engine import LiteralsResolver
 from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
@@ -83,6 +84,8 @@ class FlyteWorkflowExecution(execution_models.Execution):
         self._inputs = None
         self._outputs = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
+        self._raw_inputs: Optional[LiteralsResolver] = None
+        self._raw_outputs: Optional[LiteralsResolver] = None
 
     @property
     def node_executions(self) -> Dict[str, "FlyteNodeExecution"]:
@@ -110,6 +113,18 @@ class FlyteWorkflowExecution(execution_models.Execution):
         if self.error:
             raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
         return self._outputs
+
+    @property
+    def raw_outputs(self) -> LiteralsResolver:
+        if self._raw_outputs is None:
+            raise ValueError(f"WF execution: {self} doesn't have raw outputs set")
+        return self._raw_outputs
+
+    @property
+    def raw_inputs(self) -> LiteralsResolver:
+        if self._raw_inputs is None:
+            raise ValueError(f"WF execution: {self} doesn't have raw inputs set")
+        return self._raw_inputs
 
     @property
     def error(self) -> core_execution_models.ExecutionError:

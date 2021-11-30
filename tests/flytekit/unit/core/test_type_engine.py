@@ -737,8 +737,15 @@ def test_guess_of_dataclass():
     class Foo(object):
         x: int
         y: str
-        z: typing.Dict[int, str]
+        z: typing.Dict[str, int]
+
+        def hello(self):
+            ...
 
     lt = TypeEngine.to_literal_type(Foo)
-    # This will need to be improved in the future after fixing the Model class.
-    TypeEngine.guess_python_type(lt)
+    foo = Foo(1, "hello", {"world": 3})
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), foo, Foo, lt)
+    lit_dict = {"a": lv}
+    lr = LiteralsResolver(lit_dict)
+    assert lr.get("a", Foo) == foo
+    assert hasattr(lr.get("a", Foo), "hello") is True
