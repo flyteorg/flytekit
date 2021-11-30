@@ -6,6 +6,7 @@ import typing
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Type, Union
+from flytekit.loggers import logger
 
 import numpy as _np
 import pandas as pd
@@ -21,7 +22,9 @@ from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 
-T = typing.TypeVar("T")
+T = typing.TypeVar("T")  # Local dataframe type
+FT = typing.TypeVar("FT")  # Local dataframe type
+IT = typing.TypeVar("IT")  # Intermediate type
 
 
 class DatasetFormat(Enum):
@@ -80,6 +83,7 @@ class StructuredDataset(object):
         remote_path: str = None,
         file_format: DatasetFormat = DatasetFormat.PARQUET,
         downloader: typing.Callable[[str, os.PathLike], None] = None,
+        metadata: typing.Optional[StructuredDatasetMetadata] = None,
     ):
         self._dataframe = dataframe
         self._local_path = local_path
@@ -88,6 +92,7 @@ class StructuredDataset(object):
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._downloaded = False
         self._downloader = downloader
+        self._metadata = metadata
 
     @property
     def dataframe(self) -> Type[typing.Any]:
@@ -109,81 +114,79 @@ class StructuredDataset(object):
         return FLYTE_DATASET_TRANSFORMER.download(self.file_format, df_type, self.remote_path)
 
 
-class DatasetEncodingHandler(ABC):
-    """
-    Inherit from this base class if you want to tell flytekit how to turn an instance of a dataframe (e.g.
-    pd.DataFrame or spark.DataFrame or even your own custom data frame object) into a serialized structure of
-    some kind (e.g. a Parquet file on local disk, in-memory block of Arrow data).
+class DataFrameTransformer(TypeTransformer[T], ABC):
+    def __init__(self, name: str, dataframe_type: Type[T]):
+        super().__init__(name, dataframe_type)
 
-    This only represents half of the story of taking an object in Python memory, and turning it into a Flyte literal.
-    The other half is persisting it somehow. See DatasetPersistenceHandler.
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        raise NotImplementedError
 
-    Flytekit ships with default handlers that can:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        raise NotImplementedError
 
-    - Write pandas DataFrame objects to Parquet files
-    - Write Pandera data frame objects to Parquet files
-    """
+
+class PartialDataFrameTransformer(ABC):
+    @abstractmethod
+    @property
+    def python_type(self) -> Type[T]:
+        raise NotImplementedError
 
     @abstractmethod
-    def encode(self, *args, **kwargs):
+    @property
+    def intermediate_type(self) -> Type[IT]:
         raise NotImplementedError
-
-
-class DatasetPersistenceHandler(ABC):
-    """
-    Inherit from this base class if you want to tell flytekit how to take an encoded dataset (e.g. a local Parquet
-    file, a block of Arrow memory, even possibly a Python object), and persist it in some kind of a store, and
-    return a flyte Literal.
-
-    Flytekit ships with default handlers that know how to:
-
-    - Write Parquet files to AWS/GCS
-    - Write pandas DataFrame objects directly to BigQuery
-    - Write Arrow objects/files to AWS/GCS/BigQuery
-    """
 
     @abstractmethod
-    def persist(self, *args, **kwargs):
+    def to_intermediate_value(
+        self, ctx: FlyteContext, python_value: typing.Any, python_type: Type[T], literal_type: typing.Optional[LiteralType]
+    ) -> IT:
         raise NotImplementedError
-
-
-class DatasetDecodingHandler(ABC):
-    """
-    Inherit from this base class if you want to convert from an intermediate storage type (e.g. a local
-    Parquet file, local serialized Arrow BatchRecord file, etc.) to a Python value.
-
-    Flytekit ships with default handlers that know how to:
-
-    - Turn a local Parquet file into a pandas DataFrame
-    - Turn an Arrow RecordBatch into a pandas DataFrame
-    """
 
     @abstractmethod
-    def decode(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def python_type(self):
+    def to_python_value(self, ctx: FlyteContext, python_type: Type[T], intermediate_value: IT, literal: Literal) -> T:
         raise NotImplementedError
 
 
-class DatasetRetrievalHandler(ABC):
-    """
-    Inherit from this base class if you want to tell flytekit how to read persisted data, and turn it into
-    either a Python object ready for user consumption, or an intermediate construct like a Parquet file,
-    an Arrow RecordBatch, or anything else that has a DatasetDecodingHandler associated with it.
-    """
+class IntermediateTypeHandler(ABC):
+    @abstractmethod
+    @property
+    def intermediate_type(self) -> Type[IT]:
+        raise NotImplementedError
 
     @abstractmethod
-    def retrieve(self, *args, **kwargs):
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        intermediate_value: IT,
+        literal_type: LiteralType,
+        python_val: typing.Optional[T],
+        python_type: typing.Optional[Type[T]],
+    ) -> Literal:
+        """
+        :param ctx:
+        :param intermediate_value:
+        :param literal_type:
+        :param python_val:
+        :param python_type:
+        :return:
+        :raises:
+            TypeError: When converting from an intermediate value to a Literal, raise this if the handler is
+            incapable of handling the incoming value. The type engine will automatically try the next one.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def to_intermediate_value(self, ctx: FlyteContext, lv: Literal, python_type: Type[T]) -> IT:
+        """
+        :raises:
+            TypeError: When converting from a Literal to an intermediate value, contributors should raise this
+            to signal to the StructuredDatasetTransformerEngine that the code isn't capable of handling the
+            incoming value. The engine will automatically try the next one.
+        """
         raise NotImplementedError
 
 
-Handlers = typing.Union[
-    DatasetDecodingHandler, DatasetEncodingHandler, DatasetPersistenceHandler, DatasetRetrievalHandler
-]
-
-
-class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
+class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     """
     Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
     If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
@@ -193,14 +196,19 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
 
     to_literal
 
-        Python value -> DatasetEncodingHandler -> DatasetPersistenceHandler -> Flyte Literal
+        Python value -> DataFrameTransformer -> Flyte Literal
+        or
+        Python value -> PartialDataFrameTransformer -> IntermediateFormatHandler -> Flyte Literal
 
     to_python_value
 
-        Flyte Literal -> DatasetRetrievalHandler -> DatasetDecodingHandler -> Python value
+        Flyte Literal -> DataFrameTransformer -> Python value
+        or
+        Flyte Literal -> IntermediateFormatHandler -> PartialDataFrameTransformer -> Python value
 
-    Basically the union of these four components have to comprise one of the original regular type engine
-    transformers.
+    Basically the plugin contributor needs to write either
+      i.) a concrete class that's effectively a regular type engine transformer (minus a couple functions)
+      ii.) concrete classes for one or both of the two step transformer base classes.
 
     Note that the paths taken for a given data frame type do not have to be the same. Let's say you
     want to store a custom dataframe into BigQuery. You can
@@ -211,227 +219,149 @@ class StructuredDatasetTransformer(TypeTransformer[StructuredDataset]):
     handle the translation from BigQuery into a local Parquet file.
     """
 
-    _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {
-        _np.int32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        _np.int64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        _np.uint32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        _np.uint64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        int: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        pa.int8(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        pa.int16(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        pa.int32(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        pa.int64(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        _np.float32: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        _np.float64: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        float: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        pa.float16(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        pa.float32(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        pa.float64(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        _np.bool_: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),  # type: ignore
-        bool: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),
-        pa.bool_(): type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),
-        _np.datetime64: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
-        _datetime.datetime: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
-        _np.timedelta64: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
-        _datetime.timedelta: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
-        _np.string_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-        _np.str_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-        _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-        str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-        pa.string(): type_models.LiteralType(simple=type_models.SimpleType.STRING),
-    }
+    FULL_DF_TRANSFORMERS: Dict[Type[T], DataFrameTransformer] = {}
+    PARTIAL_DF_TRANSFORMERS: List[PartialDataFrameTransformer] = {}
+    INTERMEDIATE_HANDLERS: List[IntermediateTypeHandler] = []
 
-    DATASET_DECODING_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetDecodingHandler]] = {}
-    DATASET_ENCODING_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetEncodingHandler]] = {}
-    DATASET_PERSISTENCE_HANDLERS: Dict[Type[typing.Any], Dict[Type[Any], DatasetPersistenceHandler]] = {}
-    DATASET_RETRIEVAL_HANDLERS: Dict[Type[Any], Dict[Type[Any], DatasetRetrievalHandler]] = {}
+    Handlers = Union[DataFrameTransformer, IntermediateTypeHandler, PartialDataFrameTransformer]
 
     _REGISTER_TYPES: List[Type] = []
 
     def __init__(self):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
-
-    def _get_dataset_column_literal_type(self, t: Type):
-        if t in self._SUPPORTED_TYPES:
-            return self._SUPPORTED_TYPES[t]
-        if hasattr(t, "__origin__") and t.__origin__ == list:
-            return type_models.LiteralType(collection_type=self._get_dataset_column_literal_type(t.__args__[0]))
-        if hasattr(t, "__origin__") and t.__origin__ == dict:
-            return type_models.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
-        raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
-
-    def _get_dataset_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
-        converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
-        if issubclass(t, StructuredDataset):
-            for k, v in t.columns().items():
-                lt = self._get_dataset_column_literal_type(v)
-                converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
-        return StructuredDatasetType(columns=converted_cols)
-
-    def _get_dataset_type_from_value(
-        self, python_value: Union[StructuredDataset, pa.Table, pd.DataFrame]
-    ) -> StructuredDatasetType:
-        converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
-        if isinstance(python_value, pa.Table):
-            converted_cols = [
-                StructuredDatasetType.DatasetColumn(name=s.name, literal_type=self._SUPPORTED_TYPES[s.type])
-                for s in python_value.schema
-            ]
-        elif isinstance(python_value, pd.DataFrame):
-            schema = pa.Table.from_pandas(python_value).schema
-            converted_cols = [
-                StructuredDatasetType.DatasetColumn(name=s.name, literal_type=self._SUPPORTED_TYPES[s.type])
-                for s in schema
-            ]
-        elif isinstance(python_value, StructuredDataset):
-            for k, v in python_value.columns().items():
-                lt = self._get_dataset_column_literal_type(v)
-                converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
-        return StructuredDatasetType(columns=converted_cols)
+        self._type_assertions_enabled = False
 
     def register_handler(
         self,
-        from_type: Union[Type[T], DatasetFormat],
-        to_type: Union[Type[T], DatasetFormat],
         h: Handlers,
     ):
         """
         Call this with any handler to register it with this dataframe meta-transformer
         """
-        if from_type not in self._REGISTER_TYPES:
-            self._REGISTER_TYPES.append(from_type)
-            TypeEngine.override_transformer(self, from_type)
-
-        if to_type not in self._REGISTER_TYPES:
-            self._REGISTER_TYPES.append(to_type)
-            TypeEngine.override_transformer(self, to_type)
-
-        registry: dict
-
-        if isinstance(h, DatasetRetrievalHandler):
-            registry = self.DATASET_RETRIEVAL_HANDLERS
-        elif isinstance(h, DatasetPersistenceHandler):
-            registry = self.DATASET_PERSISTENCE_HANDLERS
-        elif isinstance(h, DatasetEncodingHandler):
-            registry = self.DATASET_ENCODING_HANDLERS
-        elif isinstance(h, DatasetDecodingHandler):
-            registry = self.DATASET_DECODING_HANDLERS
+        if isinstance(h, DataFrameTransformer):
+            self.FULL_DF_TRANSFORMERS[h.python_type] = h
+        elif isinstance(h, PartialDataFrameTransformer):
+            self.PARTIAL_DF_TRANSFORMERS.append(h)
+        elif isinstance(h, IntermediateTypeHandler):
+            self.INTERMEDIATE_HANDLERS.append(h)
         else:
-            raise TypeError(f"We don't support this type of handlers {h}")
-
-        if from_type not in registry:
-            registry[from_type] = {}
-        registry[from_type][to_type] = h
+            raise TypeError(f"We don't support this type of handler {h}")
 
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[StructuredDataset], expected: LiteralType
+        self, ctx: FlyteContext, python_val: Union[StructuredDataset, typing.Any], python_type: Union[Type[StructuredDataset], Type], expected: LiteralType
     ) -> Literal:
-        uri: str = ""
-        file_format: DatasetFormat
-        if expected.structured_dataset_type is None and python_type == pd.DataFrame:
-            return PandasDataFrameTransformer().to_literal(ctx, python_val, python_type, expected)
-        # 1. Python value is StructuredDataset
-        if isinstance(python_val, StructuredDataset):
-            uri = python_val.remote_path or ctx.file_access.get_random_remote_path()
-            df = python_val.dataframe
-            file_format = python_val.file_format
-            if python_val.local_path:
-                ctx.file_access.put_data(python_val.local_path, uri, is_multipart=False)
-            elif df is not None:
-                self.upload(type(df), file_format, uri, df)
-        # 2. Python value is Dataframe
-        else:
-            uri = ctx.file_access.get_random_remote_path()
-            file_format = DatasetFormat.PARQUET
-            self.upload(type(python_val), file_format, uri, python_val)
+        # If the type signature has the StructuredDataset class, it will, or at least should, also be a
+        # StructuredDataset instance.
+        if issubclass(python_type, StructuredDataset):
+            assert isinstance(python_val, StructuredDataset)
+            return self.encode(ctx, python_val.dataframe, python_type, )
 
-        return Literal(
-            scalar=Scalar(
-                structured_dataset=_StructuredDataset(
-                    uri=uri,
-                    metadata=StructuredDatasetMetadata(
-                        format=file_format.name, structured_dataset_type=self._get_dataset_type_from_value(python_val)
-                    ),
-                )
-            )
-        )
+        return self.encode(ctx, python_val, python_type, expected)
+    
+    def encode(
+            self, ctx: FlyteContext, python_val: typing.Any,
+            python_type: Union[Type[StructuredDataset], Type], expected: LiteralType
+    ) -> Literal:
+        # Otherwise, it's a dataframe instance/type of some kind.
+        if python_type in self.FULL_DF_TRANSFORMERS:
+            transformer = self.FULL_DF_TRANSFORMERS[python_type]
+            return transformer.to_literal(ctx, python_val, python_type, expected)
+
+        for partial in self.PARTIAL_DF_TRANSFORMERS:
+            try:
+                inter_value = partial.to_intermediate_value(ctx, python_val, python_type, expected)
+            except TypeError:
+                logger.debug(f"Skipping partial transformer {partial}")
+                continue
+            for handler in self.INTERMEDIATE_HANDLERS:
+                # This issubclass relationship is intentional - it's more likely that an intermediate value
+                # handler can handle multiple intermediate types, than a partial DF transformer can handle
+                # multiple intermediate types.
+                if issubclass(partial.intermediate_type, handler.intermediate_type):
+                    try:
+                        return handler.to_literal(ctx, inter_value, expected, python_val, python_type)
+                    except TypeError as e:
+                        # todo: same caveat here, may need to except all exceptions.
+                        logger.debug(f"Skipping intermediate handler {handler}")
+                        continue
+
+        raise ValueError(f"Cannot turn {python_val} with signature {python_type} to literal")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        if lv.scalar.structured_dataset is None and expected_python_type == pd.DataFrame:
-            return PandasDataFrameTransformer().to_python_value(ctx, lv, expected_python_type)
         fmt = DatasetFormat.value_of(lv.scalar.structured_dataset.metadata.format)
         uri = lv.scalar.structured_dataset.uri
+        meta = lv.scalar.structured_dataset.metadata
 
+        # Either a StructuredDataset type or some dataframe type.
         if issubclass(expected_python_type, StructuredDataset):
-            return expected_python_type(remote_path=uri, file_format=fmt)
+            return expected_python_type(remote_path=uri, file_format=fmt, metadata=meta)
 
-        return self.download(fmt, expected_python_type, uri)
+        return self.open_as(ctx, lv, python_type=expected_python_type)
+
+    def open_as(self, ctx: FlyteContext, lv: Literal, python_type: Type[FT]) -> FT:
+        if python_type in self.FULL_DF_TRANSFORMERS:
+            t = self.FULL_DF_TRANSFORMERS[python_type]
+            return t.to_python_value(ctx, lv=lv, expected_python_type=python_type)
+
+        # If not, we need to try all the things.
+        for handler in self.INTERMEDIATE_HANDLERS:
+            intermediate_type = handler.intermediate_type
+            try:
+                inter_value = handler.to_intermediate_value(ctx, lv, python_type)
+            except TypeError as e:
+                logger.debug(f"Intermediate handler {handler} doesn't handle value {lv} {e}")
+                continue
+
+            for partial in self.PARTIAL_DF_TRANSFORMERS:
+                # This issubclass relationship is intentional, see comment in to_literal
+                if issubclass(partial.intermediate_type, intermediate_type):
+                    try:
+                        return partial.to_python_value(ctx, python_type, inter_value, literal=lv)
+                    except TypeError as e:
+                        logger.debug(f"Partial transformer {partial} doesn't handle value {inter_value} {e}")
+                        continue
+                    # TODO: Need to make this except more errors, maybe all Exceptions.
+
+        # At this point, we've tried all the intermediate handlers, and for all the intermediate handlers that
+        # didn't raise an error, we tried all the partial transformers that have that intermediate type.
+        raise ValueError(f"Could not handle {lv}")
 
     def get_literal_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> LiteralType:
-        return LiteralType(structured_dataset_type=self._get_dataset_type(t))
+        """
+        Provide a concrete implementation so that writers of custom dataframe handlers since there's nothing that
+        special about the literal type. Any dataframe type will always be associated with the structured dataset type.
+        The other aspects of it - columns, external schema type, etc. can be read from associated metadata.
+
+        :param t: The python dataframe type, which is mostly ignored.
+        """
+        # todo: fill in columns by checking for typing.annotated metadata
+        return LiteralType(structured_dataset_type=StructuredDatasetType(columns=[]))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
-        if not literal_type.structured_dataset_type:
-            raise ValueError(f"Cannot reverse {literal_type}")
-        columns: dict[str, Type] = {}
-        for literal_column in literal_type.structured_dataset_type.columns:
-            if literal_column.literal_type.simple == SimpleType.INTEGER:
-                columns[literal_column.name] = int
-            elif literal_column.literal_type.simple == SimpleType.FLOAT:
-                columns[literal_column.name] = float
-            elif literal_column.literal_type.simple == SimpleType.STRING:
-                columns[literal_column.name] = str
-            elif literal_column.literal_type.simple == SimpleType.DATETIME:
-                columns[literal_column.name] = _datetime.datetime
-            elif literal_column.literal_type.simple == SimpleType.DURATION:
-                columns[literal_column.name] = _datetime.timedelta
-            elif literal_column.literal_type.simple == SimpleType.BOOLEAN:
-                columns[literal_column.name] = bool
-            else:
-                raise ValueError(f"Unknown structured dataset column type {literal_column}")
-        return StructuredDataset[columns]
-
-    def download(self, from_type: Union[Type, DatasetFormat], to_type: Union[Type, DatasetFormat], uri: str) -> Any:
-        retrieve_handler = _get_handler(from_type, to_type, self.DATASET_RETRIEVAL_HANDLERS)
-        if retrieve_handler:
-            return retrieve_handler.retrieve(path=uri)
-        retrieve_handler = _get_handler(from_type, _get_intermediate_format(), self.DATASET_RETRIEVAL_HANDLERS)
-        decoding_handler = _get_handler(_get_intermediate_format(), to_type, self.DATASET_DECODING_HANDLERS)
-        if retrieve_handler and decoding_handler:
-            table = retrieve_handler.retrieve(uri)
-            return decoding_handler.decode(table)
-        raise ValueError(f"Not yet implemented download data {to_type} from {from_type}")
-
-    def upload(self, from_type: Type, to_type: Union[Type, DatasetFormat], uri: str, df: Any):
-        persist_handler = _get_handler(from_type, to_type, self.DATASET_PERSISTENCE_HANDLERS)
-        if persist_handler:
-            persist_handler.persist(df, uri)
-            return
-        encoding_handler = _get_handler(from_type, _get_intermediate_format(), self.DATASET_ENCODING_HANDLERS)
-        persist_handler = _get_handler(_get_intermediate_format(), to_type, self.DATASET_PERSISTENCE_HANDLERS)
-
-        if encoding_handler and persist_handler:
-            table = encoding_handler.encode(df)
-            persist_handler.persist(table, uri)
-        else:
-            raise NotImplementedError(f"Not yet implemented upload data {to_type} from {from_type}")
-
-
-def _get_intermediate_format():
-    # This type should be configurable
-    return pa.Table
-
-
-def _get_handler(from_type: Type, to_type: Type, handler: Dict[Type, dict]) -> typing.Optional[Handlers]:
-    if from_type not in handler:
-        return None
-    elif to_type not in handler[from_type]:
-        return None
-    return handler[from_type][to_type]
+        # todo: technically we should return the dataframe type specified in the constructor, but to do that,
+        #   we'd have to store that, which we don't do today. See possibly #1363
+        if literal_type.structured_dataset_type is not None:
+            return StructuredDataset
 
 
 FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformer()
 TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
+
+
+class PDtoBQ:
+    ...
+
+
+class PDtoPQ:
+    ...
+
+
+class PQtoS3:
+    ...
+
+
+class S3toPD:
+    ...
