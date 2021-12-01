@@ -22,11 +22,13 @@ from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
+from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
+from flytekit.models.annotation import TypeAnnotation as _annotation_model
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import (
     Blob,
@@ -516,14 +518,22 @@ class TypeEngine(typing.Generic[T]):
             TODO lets make this deterministic by using an ordered dict
 
         """
+
         # Step 1
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
         # Step 2
         if hasattr(python_type, "__origin__"):
+
+            # Handling of annotated generics, eg:
+            # typing.Annotated[typing.List[int], 'foo']
+            if isinstance(python_type, typing._AnnotatedAlias):
+                return cls.get_transformer(python_type.__origin__)
+
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
+
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
         # Step 3
@@ -552,7 +562,29 @@ class TypeEngine(typing.Generic[T]):
         Converts a python type into a flyte specific ``LiteralType``
         """
         transformer = cls.get_transformer(python_type)
-        return transformer.get_literal_type(python_type)
+        res = transformer.get_literal_type(python_type)
+        data = None
+        if hasattr(python_type, "__metadata__"):
+            for x in python_type.__metadata__:
+                if not isinstance(x, FlyteAnnotation):
+                    continue
+                if x.data.get("__consumed", False):
+                    continue
+                data = x.data
+                x.data["__consumed"] = True
+        if data is not None:
+            idl_type_annotation = _annotation_model(annotations=data)
+            return LiteralType(
+                simple=res.simple,
+                schema=res.schema,
+                collection_type=res.collection_type,
+                map_value_type=res.map_value_type,
+                blob=res.blob,
+                enum_type=res.enum_type,
+                metadata=res.metadata,
+                annotation=idl_type_annotation,
+            )
+        return res
 
     @classmethod
     def to_literal(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Literal:
@@ -680,9 +712,17 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
-        if hasattr(t, "__origin__") and t.__origin__ is list:  # type: ignore
-            if hasattr(t, "__args__"):
-                return t.__args__[0]  # type: ignore
+
+        if hasattr(t, "__origin__"):
+
+            # Handle annotation on list generic, eg:
+            # typing.Annotated[typing.List[int, 'foo']]
+            if isinstance(t, typing._AnnotatedAlias) and hasattr(t.__origin__, "__origin__"):
+                return ListTransformer.get_sub_type(t.__origin__)
+
+            if t.__origin__ is list and hasattr(t, "__args__"):
+                return t.__args__[0]
+
         raise ValueError("Only generic univariate typing.List[T] type is supported.")
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
