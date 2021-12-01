@@ -4,6 +4,8 @@ import typing
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyspark.sql.dataframe
+from pyspark.sql import SparkSession
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import (
@@ -16,7 +18,9 @@ from flytekit.types.structured.structured_dataset import (
 
 PANDAS_PATH = "/tmp/pandas.pq"
 NUMPY_PATH = "/tmp/numpy.pq"
+SPARK_PATH = "/tmp/spark.pq"
 BQ_PATH = "bq://photo-313016:flyte.new_table3"
+
 
 # https://github.com/flyteorg/flyte/issues/523
 # We should also support map and list in schema column
@@ -98,6 +102,7 @@ def t8a(dataframe: pa.Table) -> pa.Table:
     return dataframe
 
 
+# Register Numpy handlers
 class NumpyEncodingHandlers(DatasetEncodingHandler):
     def encode(self, df: typing.Optional[np.ndarray] = None, path: typing.Optional[os.PathLike] = None):
         name = ["col" + str(i) for i in range(len(df))]
@@ -138,6 +143,35 @@ def t11(
     )
 
 
+# Register spark dataframe handler
+class SparkEncodingHandlers(DatasetEncodingHandler):
+    def encode(self, df: pyspark.sql.dataframe.DataFrame = None, path: typing.Optional[os.PathLike] = None):
+        df.write.parquet(path)
+
+
+class SparkDecodingHandlers(DatasetDecodingHandler):
+    def decode(self, df: pyspark.sql.dataframe.DataFrame = None, path: typing.Optional[os.PathLike] = None):
+        spark = SparkSession.builder.getOrCreate()
+        return spark.read.parquet(path)
+
+
+FLYTE_DATASET_TRANSFORMER.register_handler(pyspark.sql.dataframe.DataFrame, DatasetFormat.PARQUET, SparkEncodingHandlers())
+FLYTE_DATASET_TRANSFORMER.register_handler(DatasetFormat.PARQUET, pyspark.sql.dataframe.DataFrame, SparkDecodingHandlers())
+
+
+@task
+def t12(dataframe: pyspark.sql.dataframe.DataFrame) -> StructuredDataset[my_cols]:
+    # spark dataframe -> s3 (parquet)
+    return dataframe
+
+
+@task
+def t13(dataset: StructuredDataset[my_cols]) -> pyspark.sql.dataframe.DataFrame:
+    # s3 (parquet) -> spark dataframe -> numpy
+    spark_df = dataset.open_as(pyspark.sql.dataframe.DataFrame)
+    return spark_df
+
+
 @task
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
@@ -153,11 +187,23 @@ def generate_arrow() -> pa.Table:
     return pa.Table.from_pandas(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]}))
 
 
+@task
+def generate_spark_dataframe() -> pyspark.sql.dataframe.DataFrame:
+    data = [{"Category": 'A', "ID": 1, "Value": 121.44, "Truth": True},
+            {"Category": 'B', "ID": 2, "Value": 300.01, "Truth": False},
+            {"Category": 'C', "ID": 3, "Value": 10.99, "Truth": None},
+            {"Category": 'E', "ID": 4, "Value": 33.87, "Truth": True}
+            ]
+    spark = SparkSession.builder.getOrCreate()
+    return spark.createDataFrame(data)
+
+
 @workflow()
 def wf():
     df = generate_pandas()
     np_array = generate_numpy()
     arrow_df = generate_arrow()
+    spark_df = generate_spark_dataframe()
     t1(dataframe=df)
     t1a(dataframe=df)
     t2(dataframe=df)
@@ -172,6 +218,8 @@ def wf():
     t9(dataframe=np_array)
     t10(dataset=StructuredDataset(local_path=NUMPY_PATH))
     t11(dataframe=np_array)
+    dataset = t12(dataframe=spark_df)
+    t13(dataset=dataset)
 
 
 if __name__ == "__main__":
