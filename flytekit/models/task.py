@@ -208,7 +208,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._retries = retries
         self._discovery_version = discovery_version
         self._deprecated_error_message = deprecated_error_message
-        self.cache_serializable = cache_serializable
+        self._cache_serializable = cache_serializable
 
     @property
     def discoverable(self):
