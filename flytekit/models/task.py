@@ -182,7 +182,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         interruptible,
         discovery_version,
         deprecated_error_message,
-        discovery_serializable,
+        cache_serializable,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -200,7 +200,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             task are the same and the discovery_version is also the same.
         :param Text deprecated: This string can be used to mark the task as deprecated.  Consumers of the task will
             receive deprecation warnings.
-        :param bool discovery_serializable: Whether or not caching operations are executed in serial. This means only a
+        :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
         """
         self._discoverable = discoverable
@@ -210,7 +210,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._retries = retries
         self._discovery_version = discovery_version
         self._deprecated_error_message = deprecated_error_message
-        self._discovery_serializable = discovery_serializable
+        self.cache_serializable = cache_serializable
 
     @property
     def discoverable(self):
@@ -272,13 +272,13 @@ class TaskMetadata(_common.FlyteIdlEntity):
         return self._deprecated_error_message
 
     @property
-    def discovery_serializable(self):
+    def cache_serializable(self):
         """
         Whether or not caching operations are executed in serial. This means only a single instance over identical
         inputs is executed, other concurrent executions wait for the cached results.
         :rtype: bool
         """
-        return self._discovery_serializable
+        return self._cache_serializable
 
     def to_flyte_idl(self):
         """
@@ -291,7 +291,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             interruptible=self.interruptible,
             discovery_version=self.discovery_version,
             deprecated_error_message=self.deprecated_error_message,
-            discovery_serializable=self.discovery_serializable,
+            cache_serializable=self.cache_serializable,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -311,7 +311,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             retries=_literals.RetryStrategy.from_flyte_idl(pb2_object.retries),
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message,
-            discovery_serializable=pb2_object.discovery_serializable,
+            cache_serializable=pb2_object.cache_serializable,
         )
 
 
