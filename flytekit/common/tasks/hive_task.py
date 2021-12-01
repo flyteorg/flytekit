@@ -49,6 +49,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         cluster_label,
         tags,
         environment,
+        cache_serializable,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -69,6 +70,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
         :param Text cluster_label:
         :param list[Text] tags:
         :param dict[Text, Text] environment:
+        :param bool cache_serializable:
         """
         self._task_function = task_function
         super(SdkHiveTask, self).__init__(
@@ -89,6 +91,7 @@ class SdkHiveTask(_sdk_runnable.SdkRunnableTask):
             discoverable,
             timeout,
             environment,
+            cache_serializable,
             {},
         )
         self._validate_task_parameters(cluster_label, tags)
