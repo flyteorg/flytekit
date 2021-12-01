@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
-from pydoc import locate
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
