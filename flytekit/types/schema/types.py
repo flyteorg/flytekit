@@ -406,7 +406,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 columns[literal_column.name] = bool
             else:
                 raise ValueError(f"Unknown schema column type {literal_column}")
-        return FlyteSchema[columns]
+        return FlyteSchema.__class_getitem__(columns)
 
 
 TypeEngine.register(FlyteSchemaTransformer())

@@ -138,7 +138,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     def extension(cls) -> str:
         return ""
 
-    def __class_getitem__(cls, item: typing.Type) -> typing.Type[FlyteFile]:
+    def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
         if item is None:
             return cls
         item_string = str(item)
@@ -343,14 +343,14 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        ff = FlyteFile[locate(expected_format)](local_path, _downloader)
+        ff = FlyteFile.__class_getitem__(expected_format)(local_path, _downloader)
         ff._remote_source = uri
 
         return ff
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
         if literal_type.blob is not None and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
-            return FlyteFile[literal_type.blob.format]
+            return FlyteFile.__class_getitem__(literal_type.blob.format)
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 

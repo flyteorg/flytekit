@@ -133,7 +133,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     def extension(cls) -> str:
         return ""
 
-    def __class_getitem__(cls, item: typing.Type) -> typing.Type[FlyteDirectory]:
+    def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:
             return cls
         item_string = str(item)
@@ -290,7 +290,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
         expected_format = self.get_format(expected_python_type)
 
-        fd = FlyteDirectory[expected_format](local_folder, _downloader)
+        fd = FlyteDirectory.__class_getitem__(expected_format)(local_folder, _downloader)
         fd._remote_source = uri
 
         return fd
@@ -300,7 +300,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
         ):
-            return FlyteDirectory[literal_type.blob.format]
+            return FlyteDirectory.__class_getitem__(literal_type.blob.format)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
