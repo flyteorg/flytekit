@@ -127,8 +127,8 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             discoverable,
             timeout,
             environment,
-            _MessageToDict(self._spark_job.to_flyte_idl()),
             cache_serializable,
+            _MessageToDict(self._spark_job.to_flyte_idl()),
         )
 
     @_exception_scopes.system_entry_point

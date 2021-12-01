@@ -185,7 +185,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
             interruptible,
             discovery_version,
             None,
-            cache_serializabe,
+            cache_serializable,
         )
 
         # The interface is defined using the inputs and outputs

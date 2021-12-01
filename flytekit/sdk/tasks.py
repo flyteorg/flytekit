@@ -547,7 +547,7 @@ def generic_spark_task(
         spark_conf=spark_conf or {},
         hadoop_conf=hadoop_conf or {},
         environment=environment or {},
-        cache_serializable=cache_serialize
+        cache_serializable=cache_serialize,
     )
 
 
