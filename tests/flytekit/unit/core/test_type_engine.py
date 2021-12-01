@@ -662,6 +662,7 @@ def test_dict_to_literal_map_with_wrong_input_type():
     with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
 
+
 TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
 
