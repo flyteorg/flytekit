@@ -76,7 +76,19 @@ _default_config_file_name = "config"
 
 
 def _welcome_message():
-    _click.secho("Welcome to Flyte CLI! Version: {}".format(_tt(__version__)), bold=True)
+    _click.secho(
+        "\n################################################################################################################################",
+        bold=True,
+    )
+    _click.secho(
+        "# flyte-cli is being deprecated in favor of flytectl. More details about flytectl in https://docs.flyte.org/projects/flytectl/ #",
+        bold=True,
+    )
+    _click.secho(
+        "################################################################################################################################\n",
+        bold=True,
+    )
+    _click.secho("Welcome to Flyte CLI! Version: {}\n".format(_tt(__version__)), bold=True)
 
 
 def _get_user_filepath_home():
@@ -596,7 +608,7 @@ class _FlyteSubCommand(_click.Command):
     "the sub-command's parameter takes precedence.",
 )
 @_insecure_option
-@_click.group("flyte-cli")
+@_click.group("flyte-cli", deprecated=True)
 @_click.pass_context
 def _flyte_cli(ctx, host, config, project, domain, name, insecure):
     """
@@ -1950,6 +1962,17 @@ def register_files(
     _extract_and_register(host, insecure, project, domain, version, files, patches)
 
 
+def _substitute_fast_register_task_args(args: List[str], full_remote_path: str, dest_dir: str) -> List[str]:
+    complete_args = []
+    for arg in args:
+        if arg == "{{ .remote_package_path }}":
+            arg = full_remote_path
+        elif arg == "{{ .dest_dir }}":
+            arg = dest_dir if dest_dir else "."
+        complete_args.append(arg)
+    return complete_args
+
+
 @_flyte_cli.command("fast-register-files", cls=_FlyteSubCommand)
 @_click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to register with.")
 @_click.option(*_DOMAIN_FLAGS, required=True, help="The domain namespace to register with.")
@@ -2032,18 +2055,25 @@ def fast_register_files(
         task execution.
         """
         # entity is of type flyteidl.admin.task_pb2.TaskSpec
-        if not entity.template.HasField("container") or len(entity.template.container.args) == 0:
-            # Containerless tasks are always fast registerable without modification
-            return entity
-        complete_args = []
-        for arg in entity.template.container.args:
-            if arg == "{{ .remote_package_path }}":
-                arg = full_remote_path
-            elif arg == "{{ .dest_dir }}":
-                arg = dest_dir if dest_dir else "."
-            complete_args.append(arg)
-        del entity.template.container.args[:]
-        entity.template.container.args.extend(complete_args)
+
+        if entity.template.HasField("container") and len(entity.template.container.args) > 0:
+            complete_args = _substitute_fast_register_task_args(
+                entity.template.container.args, full_remote_path, dest_dir
+            )
+            # Because we're dealing with a proto list, we have to delete the existing args before we can extend the list
+            # with the substituted ones.
+            del entity.template.container.args[:]
+            entity.template.container.args.extend(complete_args)
+
+        if entity.template.HasField("k8s_pod"):
+            pod_spec_struct = entity.template.k8s_pod.pod_spec
+            if "containers" in pod_spec_struct:
+                for idx in range(len(pod_spec_struct["containers"])):
+                    if "args" in pod_spec_struct["containers"][idx]:
+                        # We can directly overwrite the args in the pod spec struct definition.
+                        pod_spec_struct["containers"][idx]["args"] = _substitute_fast_register_task_args(
+                            pod_spec_struct["containers"][idx]["args"], full_remote_path, dest_dir
+                        )
         return entity
 
     patches = {
@@ -2393,7 +2423,8 @@ def setup_config(host, insecure):
         if not insecure:
             parser.add_section("credentials")
             for key in credentials_config.keys():
-                parser.set("credentials", key, credentials_config[key])
+                # ConfigParser needs all keys to be strings
+                parser.set("credentials", key, str(credentials_config[key]))
         parser.write(f)
     set_flyte_config_file(config_file_path=config_file)
     _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg="blue")

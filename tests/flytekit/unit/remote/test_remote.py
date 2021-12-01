@@ -1,22 +1,13 @@
+import os
+
 import pytest
 from mock import MagicMock, patch
 
 from flytekit.common.exceptions import user as user_exceptions
+from flytekit.configuration import internal
 from flytekit.models import common as common_models
-from flytekit.models.admin.workflow import Workflow
-from flytekit.models.core.identifier import (
-    Identifier,
-    NodeExecutionIdentifier,
-    ResourceType,
-    WorkflowExecutionIdentifier,
-)
+from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
-from flytekit.models.interface import TypedInterface, Variable
-from flytekit.models.launch_plan import LaunchPlan
-from flytekit.models.node_execution import NodeExecution, NodeExecutionMetaData
-from flytekit.models.task import Task
-from flytekit.models.types import LiteralType, SimpleType
-from flytekit.remote import FlyteWorkflow
 from flytekit.remote.remote import FlyteRemote
 
 CLIENT_METHODS = {
@@ -41,50 +32,6 @@ ENTITY_TYPE_TEXT = {
 @patch("flytekit.clients.friendly.SynchronousFlyteClient")
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
-@pytest.mark.parametrize(
-    "entity_cls,resource_type",
-    [
-        [Workflow, ResourceType.WORKFLOW],
-        [Task, ResourceType.TASK],
-        [LaunchPlan, ResourceType.LAUNCH_PLAN],
-    ],
-)
-def test_remote_fetch_execute_entities_task_workflow_launchplan(
-    mock_insecure,
-    mock_url,
-    mock_client,
-    entity_cls,
-    resource_type,
-):
-    admin_entities = [
-        entity_cls(
-            Identifier(resource_type, "p1", "d1", "n1", version),
-            *([MagicMock()] if resource_type != ResourceType.LAUNCH_PLAN else [MagicMock(), MagicMock()]),
-        )
-        for version in ["latest", "old"]
-    ]
-
-    mock_url.get.return_value = "localhost"
-    mock_insecure.get.return_value = True
-    mock_client = MagicMock()
-    getattr(mock_client, CLIENT_METHODS[resource_type]).return_value = admin_entities, ""
-
-    remote = FlyteRemote.from_config("p1", "d1")
-    remote._client = mock_client
-    fetch_method = getattr(remote, REMOTE_METHODS[resource_type])
-    flyte_entity_latest = fetch_method(name="n1", version="latest")
-    flyte_entity_latest_implicit = fetch_method(name="n1")
-    flyte_entity_old = fetch_method(name="n1", version="old")
-
-    assert flyte_entity_latest.entity_type_text == ENTITY_TYPE_TEXT[resource_type]
-    assert flyte_entity_latest.id == admin_entities[0].id
-    assert flyte_entity_latest.id == flyte_entity_latest_implicit.id
-    assert flyte_entity_latest.id != flyte_entity_old.id
-
-
-@patch("flytekit.clients.friendly.SynchronousFlyteClient")
-@patch("flytekit.configuration.platform.URL")
-@patch("flytekit.configuration.platform.INSECURE")
 def test_remote_fetch_workflow_execution(mock_insecure, mock_url, mock_client_manager):
     admin_workflow_execution = Execution(
         id=WorkflowExecutionIdentifier("p1", "d1", "n1"),
@@ -103,39 +50,7 @@ def test_remote_fetch_workflow_execution(mock_insecure, mock_url, mock_client_ma
     assert flyte_workflow_execution.id == admin_workflow_execution.id
 
 
-@patch("flytekit.configuration.platform.URL")
-@patch("flytekit.configuration.platform.INSECURE")
-def test_get_node_execution_interface(mock_insecure, mock_url):
-    expected_interface = TypedInterface(
-        {"in1": Variable(LiteralType(simple=SimpleType.STRING), "in1 description")},
-        {"out1": Variable(LiteralType(simple=SimpleType.INTEGER), "out1 description")},
-    )
-
-    node_exec_id = NodeExecutionIdentifier("node_id", WorkflowExecutionIdentifier("p1", "d1", "exec_name"))
-
-    mock_node = MagicMock()
-    mock_node.id = node_exec_id.node_id
-    task_node = MagicMock()
-    flyte_task = MagicMock()
-    flyte_task.interface = expected_interface
-    task_node.flyte_task = flyte_task
-    mock_node.task_node = task_node
-
-    flyte_workflow = FlyteWorkflow([mock_node], None, None, None, None, None)
-
-    mock_url.get.return_value = "localhost"
-    mock_insecure.get.return_value = True
-    mock_client = MagicMock()
-
-    remote = FlyteRemote.from_config("p1", "d1")
-    remote._client = mock_client
-    actual_interface = remote._get_node_execution_interface(
-        NodeExecution(node_exec_id, None, None, NodeExecutionMetaData(None, True, None)), flyte_workflow
-    )
-    assert actual_interface == expected_interface
-
-
-@patch("flytekit.remote.workflow_execution.FlyteWorkflowExecution.promote_from_model")
+@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
 def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url, mock_wf_exec):
@@ -168,7 +83,7 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_insecure, mock_url,
     )
 
 
-@patch("flytekit.remote.workflow_execution.FlyteWorkflowExecution.promote_from_model")
+@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
 @patch("flytekit.configuration.auth.ASSUMABLE_IAM_ROLE")
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
@@ -198,7 +113,7 @@ def test_underscore_execute_fall_back_remote_attributes(mock_insecure, mock_url,
     )
 
 
-@patch("flytekit.remote.workflow_execution.FlyteWorkflowExecution.promote_from_model")
+@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
 @patch("flytekit.configuration.platform.URL")
 @patch("flytekit.configuration.platform.INSECURE")
 def test_execute_with_wrong_input_key(mock_insecure, mock_url, mock_wf_exec):
@@ -220,3 +135,48 @@ def test_execute_with_wrong_input_key(mock_insecure, mock_url, mock_wf_exec):
             project="proj",
             domain="dev",
         )
+
+
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_form_config(mock_insecure, mock_url):
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = True
+
+    FlyteRemote.from_config("p1", "d1")
+    assert ".flyte/config" in os.environ[internal.CONFIGURATION_PATH.env_var]
+    remote = FlyteRemote.from_config("p1", "d1", "fake_config")
+    assert "fake_config" in os.environ[internal.CONFIGURATION_PATH.env_var]
+
+    assert remote._flyte_admin_url == "localhost"
+    assert remote._insecure is True
+    assert remote.default_project == "p1"
+    assert remote.default_domain == "d1"
+
+
+@patch("flytekit.clients.raw._ssl_channel_credentials")
+@patch("flytekit.clients.raw._secure_channel")
+@patch("flytekit.configuration.platform.URL")
+@patch("flytekit.configuration.platform.INSECURE")
+def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_channel, mock_ssl_channel_credentials):
+    mock_url.get.return_value = "localhost"
+    mock_insecure.get.return_value = False
+
+    # Default mode, no explicit channel credentials
+    mock_ssl_channel_credentials.reset_mock()
+    _ = FlyteRemote.from_config("project", "domain")
+
+    assert mock_ssl_channel_credentials.called
+
+    mock_secure_channel.reset_mock()
+    mock_ssl_channel_credentials.reset_mock()
+
+    # Explicit channel credentials
+    from grpc import ssl_channel_credentials
+
+    credentials = ssl_channel_credentials(b"TEST CERTIFICATE")
+
+    _ = FlyteRemote.from_config("project", "domain", grpc_credentials=credentials)
+    assert mock_secure_channel.called
+    assert mock_secure_channel.call_args[0][1] == credentials
+    assert not mock_ssl_channel_credentials.called

@@ -2,6 +2,7 @@
 
 git+git://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
 coverage[toml]
+joblib
 mock
 pytest
 mypy

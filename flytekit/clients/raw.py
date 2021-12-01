@@ -18,7 +18,7 @@ from flytekit.configuration import creds as _creds_config
 from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import COMMAND as _COMMAND
-from flytekit.configuration.creds import OAUTH_SCOPES
+from flytekit.configuration.creds import DEPRECATED_OAUTH_SCOPES, SCOPES
 from flytekit.configuration.platform import AUTH as _AUTH
 from flytekit.loggers import cli_logger
 
@@ -47,11 +47,11 @@ def _get_basic_flow_scopes() -> List[str]:
     deprecated_single_scope = _DEPRECATED_SCOPE.get()
     if deprecated_single_scope:
         return [deprecated_single_scope]
-    oauth_scopes = OAUTH_SCOPES.get()
-    if "openid" in oauth_scopes:
+    scopes = DEPRECATED_OAUTH_SCOPES.get() or SCOPES.get()
+    if "openid" in scopes:
         cli_logger.warning("Basic flow authentication should never use openid.")
 
-    return oauth_scopes
+    return scopes
 
 
 def _refresh_credentials_basic(flyte_client):
@@ -125,32 +125,35 @@ def _handle_rpc_error(retry=False):
             """
             max_retries = 3
             max_wait_time = 1000
-            try:
-                for i in range(max_retries):
-                    try:
-                        return fn(*args, **kwargs)
-                    except _RpcError as e:
-                        if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
-                            # Always retry auth errors.
-                            if i == (max_retries - 1):
-                                # Exit the loop and wrap the authentication error.
-                                raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
-                            refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
-                            refresh_handler_fn(args[0])
+
+            for i in range(max_retries):
+                try:
+                    return fn(*args, **kwargs)
+                except _RpcError as e:
+                    if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
+                        # Always retry auth errors.
+                        if i == (max_retries - 1):
+                            # Exit the loop and wrap the authentication error.
+                            raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+                        cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
+                        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+                        refresh_handler_fn(args[0])
+                    # There are two cases that we should throw error immediately
+                    # 1. Entity already exists when we register entity
+                    # 2. Entity not found when we fetch entity
+                    elif e.code() == _GrpcStatusCode.ALREADY_EXISTS:
+                        raise _user_exceptions.FlyteEntityAlreadyExistsException(e)
+                    elif e.code() == _GrpcStatusCode.NOT_FOUND:
+                        raise _user_exceptions.FlyteEntityNotExistException(e)
+                    else:
+                        # No more retries if retry=False or max_retries reached.
+                        if (retry is False) or i == (max_retries - 1):
+                            raise
                         else:
-                            # No more retries if retry=False or max_retries reached.
-                            if (retry is False) or i == (max_retries - 1):
-                                raise
-                            else:
-                                # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
-                                wait_time = min(200 * (2 ** i), max_wait_time)
-                                cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
-                                time.sleep(wait_time / 1000)
-            except _RpcError as e:
-                if e.code() == _GrpcStatusCode.ALREADY_EXISTS:
-                    raise _user_exceptions.FlyteEntityAlreadyExistsException(_six.text_type(e))
-                else:
-                    raise
+                            # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
+                            wait_time = min(200 * (2 ** i), max_wait_time)
+                            cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
+                            time.sleep(wait_time / 1000)
 
         return handler
 

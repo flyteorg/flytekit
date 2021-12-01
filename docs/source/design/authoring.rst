@@ -114,7 +114,7 @@ Before going further, there is a special object that's worth mentioning, the :py
 Let's assume we have a workflow like ::
 
     @task
-    def t1(a: int) -> (int, str):
+    def t1(a: int) -> Tuple[int, str]:
         return a + 2, "world"
 
     @task
@@ -122,7 +122,7 @@ Let's assume we have a workflow like ::
         return b + a
 
     @workflow
-    def my_wf(a: int, b: str) -> (int, str):
+    def my_wf(a: int, b: str) -> Tuple[int, str]:
         x, y = t1(a=a).with_overrides(...)
         d = t2(a=y, b=b)
         return x, d

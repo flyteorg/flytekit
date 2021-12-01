@@ -114,7 +114,7 @@ def test_setup_config_secure_mode():
     data = {
         "client_id": "123abc123",
         "redirect_uri": "http://localhost:53593/callback",
-        "scopes": "my_scopes",
+        "scopes": ["scope_1", "scope_2"],
         "authorization_metadata_key": "fake_key",
     }
     _responses.add(_responses.GET, "https://flyte.company.com/config/v1/flyte_client", json=data, status=200)

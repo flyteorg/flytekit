@@ -92,7 +92,8 @@ class ImageConfig(object):
         """
         Return an image, by name, if it exists.
         """
-        for i in self.images:
+        lookup_images = self.images + [self.default_image] if self.images else [self.default_image]
+        for i in lookup_images:
             if i.name == name:
                 return i
         return None

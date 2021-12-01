@@ -252,7 +252,7 @@ def test_dont_convert_remotes():
                 env={},
             )
         )
-    ) as ctx:
+    ):
         ctx = context_manager.FlyteContextManager.current_context()
         with context_manager.FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
@@ -263,6 +263,11 @@ def test_dont_convert_remotes():
             lm = LiteralMap(literals={"in1": lit})
             wf = dyn.dispatch_execute(ctx, lm)
             assert wf.nodes[0].inputs[0].binding.scalar.blob.uri == "s3://anything"
+
+            with pytest.raises(TypeError, match="No automatic conversion found from type <class 'int'>"):
+                TypeEngine.to_literal(
+                    ctx, 3, FlyteFile, BlobType("", dimensionality=BlobType.BlobDimensionality.SINGLE)
+                )
 
 
 def test_download_caching():
@@ -355,7 +360,7 @@ def test_returning_folder_instead_of_file():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         wf1()
 
     @task
@@ -367,7 +372,7 @@ def test_returning_folder_instead_of_file():
     def wf2() -> FlyteFile:
         return t2()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         wf2()
 
 
@@ -381,7 +386,7 @@ def test_bad_return():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         wf1()
 
 

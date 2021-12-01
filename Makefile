@@ -1,6 +1,7 @@
 export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose
+MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
 
 .SILENT: help
 .PHONY: help
@@ -11,7 +12,7 @@ help:
 
 .PHONY: install-piptools
 install-piptools:
-	pip install -U pip-tools
+	pip install -U pip-tools pip==21.2.4
 
 .PHONY: update_boilerplate
 update_boilerplate:
@@ -36,7 +37,7 @@ lint: ## Run linters
 	mypy flytekit/core || true
 	mypy flytekit/types || true
 	mypy tests/flytekit/unit/core || true
-	# Exclude setup.py to fix erorr: Duplicate module named "setup"
+	# Exclude setup.py to fix error: Duplicate module named "setup"
 	mypy plugins --exclude setup.py || true
 	pre-commit run --all-files
 
@@ -47,12 +48,10 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 .PHONY: test
 test: lint ## Run tests
 	pytest tests/flytekit/unit
-	pytest tests/scripts
 
 .PHONY: unit_test
 unit_test:
 	pytest tests/flytekit/unit
-	pytest tests/scripts
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools
@@ -70,8 +69,12 @@ doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
 	$(PIP_COMPILE) $<
 
+${MOCK_FLYTE_REPO}/requirements.txt: export CUSTOM_COMPILE_COMMAND := make ${MOCK_FLYTE_REPO}/requirements.txt
+${MOCK_FLYTE_REPO}/requirements.txt: ${MOCK_FLYTE_REPO}/requirements.in install-piptools
+	$(PIP_COMPILE) $<
+
 .PHONY: requirements
-requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-requirements.txt ## Compile requirements
+requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compile requirements
 
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage

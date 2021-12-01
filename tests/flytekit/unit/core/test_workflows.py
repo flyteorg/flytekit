@@ -191,7 +191,7 @@ def test_wf_nested_comp():
 
     sub_wf = model_wf.sub_workflows[0]
     assert len(sub_wf.nodes) == 1
-    assert sub_wf.nodes[0].id == "wf2-n0"
+    assert sub_wf.nodes[0].id == "n0"
     assert sub_wf.nodes[0].task_node.reference_id.name == "test_workflows.t1"
 
 

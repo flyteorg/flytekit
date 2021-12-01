@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import functools
 import os
@@ -5,6 +6,7 @@ import random
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from enum import Enum
 
 import pandas
 import pytest
@@ -644,12 +646,14 @@ def test_wf1_branches_no_else_malformed_but_no_error():
     def t2(a: str) -> str:
         return a
 
-    @workflow
-    def my_wf(a: int, b: str) -> (int, str):
-        x, y = t1(a=a)
-        d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
-        conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
-        return x, d
+    with pytest.raises(TypeError):
+
+        @workflow
+        def my_wf(a: int, b: str) -> (int, str):
+            x, y = t1(a=a)
+            d = conditional("test1").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y))
+            conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
+            return x, d
 
     assert context_manager.FlyteContextManager.size() == 1
 
@@ -682,7 +686,15 @@ def test_wf1_branches_failing():
     assert context_manager.FlyteContextManager.size() == 1
 
 
-def test_cant_use_normal_tuples():
+def test_cant_use_normal_tuples_as_input():
+    with pytest.raises(RestrictedTypeError):
+
+        @task
+        def t1(a: tuple) -> str:
+            return a[0]
+
+
+def test_cant_use_normal_tuples_as_output():
     with pytest.raises(RestrictedTypeError):
 
         @task
@@ -1005,13 +1017,27 @@ def test_wf_custom_types():
 
 def test_arbit_class():
     class Foo(object):
-        pass
+        def __init__(self, number: int):
+            self.number = number
 
-    with pytest.raises(ValueError):
+    @task
+    def t1(a: int) -> Foo:
+        return Foo(number=a)
 
-        @task
-        def t1(a: int) -> Foo:
-            return Foo()
+    @task
+    def t2(a: Foo) -> typing.List[Foo]:
+        return [a, a]
+
+    @task
+    def t3(a: typing.List[Foo]) -> typing.Dict[str, Foo]:
+        return {"hello": a[0]}
+
+    def wf(a: int) -> typing.Dict[str, Foo]:
+        o1 = t1(a=a)
+        o2 = t2(a=o1)
+        return t3(a=o2)
+
+    assert wf(1)["hello"].number == 1
 
 
 def test_dataclass_more():
@@ -1036,6 +1062,58 @@ def test_dataclass_more():
         return add(x=stringify(x=x), y=stringify(x=y))
 
     wf(x=10, y=20)
+
+
+def test_enum_in_dataclass():
+    class Color(Enum):
+        RED = "red"
+        GREEN = "green"
+        BLUE = "blue"
+
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    @task
+    def t1(x: int) -> Datum:
+        return Datum(x=x, y=Color.RED)
+
+    @workflow
+    def wf(x: int) -> Datum:
+        return t1(x=x)
+
+    assert wf(x=10) == Datum(10, Color.RED)
+
+
+def test_flyte_schema_dataclass():
+    TestSchema = FlyteSchema[kwtypes(some_str=str)]
+
+    @dataclass_json
+    @dataclass
+    class InnerResult:
+        number: int
+        schema: TestSchema
+
+    @dataclass_json
+    @dataclass
+    class Result:
+        result: InnerResult
+        schema: TestSchema
+
+    schema = TestSchema()
+
+    @task
+    def t1(x: int) -> Result:
+
+        return Result(result=InnerResult(number=x, schema=schema), schema=schema)
+
+    @workflow
+    def wf(x: int) -> Result:
+        return t1(x=x)
+
+    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
 
 
 def test_environment():
@@ -1328,7 +1406,6 @@ def test_guess_dict3():
         return {"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}}
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
-    print(task_spec.template.interface.outputs["o0"])
 
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert pt_map["o0"] is dict
@@ -1338,3 +1415,68 @@ def test_guess_dict3():
     expected_struct = Struct()
     expected_struct.update({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+
+def test_guess_dict4():
+    @dataclass_json
+    @dataclass
+    class Foo(object):
+        x: int
+        y: str
+        z: typing.Dict[str, str]
+
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+        y: str
+        z: Foo
+
+    @task
+    def t1() -> Foo:
+        return Foo(x=1, y="foo", z={"hello": "world"})
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
+    assert dataclasses.is_dataclass(pt_map["o0"])
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    expected_struct = Struct()
+    expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
+    assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+    @task
+    def t2() -> Bar:
+        return Bar(x=1, y="bar", z=Foo(x=1, y="foo", z={"hello": "world"}))
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
+    assert dataclasses.is_dataclass(pt_map["o0"])
+
+    output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    expected_struct.update({"x": 1, "y": "bar", "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
+    assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+
+def test_error_messages():
+    @task
+    def foo(a: int, b: str) -> typing.Tuple[int, str]:
+        return 10, "hello"
+
+    @task
+    def foo2(a: int, b: str) -> typing.Tuple[int, str]:
+        return "hello", 10
+
+    @task
+    def foo3(a: typing.Dict) -> typing.Dict:
+        return a
+
+    with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
+        foo(a="hello", b=10)
+
+    with pytest.raises(TypeError, match="Failed to convert return value for var o0 for function test_type_hints.foo2"):
+        foo2(a=10, b="hello")
+
+    with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
+        foo3(a=[{"hello": 2}])

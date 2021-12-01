@@ -28,12 +28,31 @@ class SQLAlchemyConfig(object):
         uri: default sqlalchemy connector
         connect_args: sqlalchemy kwarg overrides -- ex: host
         secret_connect_args: flyte secrets loaded into sqlalchemy connect args
-            -- ex: {"password": {"name": SECRET_NAME, "group": SECRET_GROUP}}
+            -- ex: {"password": flytekit.models.security.Secret(name=SECRET_NAME, group=SECRET_GROUP)}
     """
 
     uri: str
     connect_args: typing.Optional[typing.Dict[str, typing.Any]] = None
     secret_connect_args: typing.Optional[typing.Dict[str, Secret]] = None
+
+    @staticmethod
+    def _secret_to_dict(secret: Secret) -> typing.Dict[str, typing.Optional[str]]:
+        return {
+            "group": secret.group,
+            "key": secret.key,
+            "group_version": secret.group_version,
+            "mount_requirement": secret.mount_requirement.value,
+        }
+
+    def secret_connect_args_to_dicts(self) -> typing.Optional[typing.Dict[str, typing.Dict[str, typing.Optional[str]]]]:
+        if self.secret_connect_args is None:
+            return None
+
+        secret_connect_args_dicts = {}
+        for key, secret in self.secret_connect_args.items():
+            secret_connect_args_dicts[key] = self._secret_to_dict(secret)
+
+        return secret_connect_args_dicts
 
 
 class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
@@ -53,6 +72,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         task_config: SQLAlchemyConfig,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+        container_image: str = "ghcr.io/flyteorg/flytekit:sqlalchemy-75fc68cd2d0a71588359039f94daab09d68cac11",
         **kwargs,
     ):
         output_schema = output_schema_type if output_schema_type else FlyteSchema
@@ -61,10 +81,10 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         super().__init__(
             name=name,
             task_config=task_config,
-            container_image="ghcr.io/flyteorg/flytekit:sqlalchemy-6deb81af74ce8f3768553c188ab35660c717420a",
             executor_type=SQLAlchemyTaskExecutor,
             task_type=self._SQLALCHEMY_TASK_TYPE,
             query_template=query_template,
+            container_image=container_image,
             inputs=inputs,
             outputs=outputs,
             **kwargs,
@@ -80,15 +100,15 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
             "query_template": self.query_template,
             "uri": self.task_config.uri,
             "connect_args": self.task_config.connect_args or {},
-            "secret_connect_args": self.task_config.secret_connect_args,
+            "secret_connect_args": self.task_config.secret_connect_args_to_dicts(),
         }
 
 
 class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
     def execute_from_model(self, tt: task_models.TaskTemplate, **kwargs) -> typing.Any:
         if tt.custom["secret_connect_args"] is not None:
-            for key, secret in tt.custom["secret_connect_args"].items():
-                value = current_context().secrets.get(secret.group, secret.key)
+            for key, secret_dict in tt.custom["secret_connect_args"].items():
+                value = current_context().secrets.get(group=secret_dict["group"], key=secret_dict["key"])
                 tt.custom["connect_args"][key] = value
 
         engine = create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)

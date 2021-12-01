@@ -109,6 +109,48 @@ def isnested(func: Callable) -> bool:
     return func.__code__.co_flags & inspect.CO_NESTED != 0
 
 
+def is_functools_wrapped_module_level(func: Callable) -> bool:
+    """Returns true if the function is a functools.wraps-updated function that is defined in the module-level scope.
+
+    .. code:: python
+
+        import functools
+
+        def decorator(fn):
+            @functools.wraps(fn)
+            def wrapper(*args, **kwargs):
+                return fn(*arks, **kwargs)
+
+            return wrapper
+
+        @decorator
+        def foo():
+            ...
+
+        def define_inner_wrapped_fn():
+
+            @decorator
+            def foo_inner(*args, **kwargs):
+                return fn(*arks, **kwargs)
+
+            return foo_inner
+
+        bar = define_inner_wrapped_fn()
+
+        is_functools_wrapped_module_level(foo)  # True
+        is_functools_wrapped_module_level(bar)  # False
+
+    In this case, applying this function to ``foo`` returns true because ``foo`` was defined in the module-level scope.
+    Applying this function to ``bar`` returns false because it's being assigned to ``foo_inner``, which is a
+    functools-wrapped function but is actually defined in the local scope of ``define_inner_wrapped_fn``.
+
+    This works because functools.wraps updates the __name__ and __qualname__ attributes of the wrapper to match the
+    wrapped function. Since ``define_inner_wrapped_fn`` doesn't update the __qualname__ of ``foo_inner``, the inner
+    function's __qualname__ won't match its __name__.
+    """
+    return hasattr(func, "__wrapped__") and func.__name__ == func.__qualname__
+
+
 def istestfunction(func) -> bool:
     """
     Returns true if the function is defined in a test module. A test module has to have `test_` as the prefix.

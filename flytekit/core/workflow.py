@@ -27,6 +27,7 @@ from flytekit.core.promise import (
     VoidPromise,
     binding_from_python_std,
     create_task_output,
+    extract_obj_name,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
@@ -186,7 +187,7 @@ class WorkflowBase(object):
 
     @property
     def short_name(self) -> str:
-        return self._name.split(".")[-1]
+        return extract_obj_name(self._name)
 
     @property
     def workflow_metadata(self) -> Optional[WorkflowMetadata]:
@@ -222,7 +223,7 @@ class WorkflowBase(object):
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return _workflow_model.NodeMetadata(
-            name=f"{self.__module__}.{self.name}",
+            name=extract_obj_name(self.name),
             interruptible=self.workflow_metadata_defaults.interruptible,
         )
 
@@ -601,7 +602,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ctx = FlyteContextManager.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
-        prefix = f"{ctx.compilation_state.prefix}-{self.short_name}-" if ctx.compilation_state is not None else ""
+        prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""
 
         with FlyteContextManager.with_context(
             ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))

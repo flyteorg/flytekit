@@ -1,6 +1,6 @@
 .PHONY: test
 test:
-	pytest tests
+	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 pytest
 
 .PHONY: build_all_plugins
 build_all_plugins:
@@ -12,7 +12,7 @@ publish_all_plugins:
 
 .PHONY: all_requirements
 all_requirements:
-	./run_all_plugins.sh pip-compile requirements.in
+	./run_all_plugins.sh pip-compile requirements.in --upgrade --verbose
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
 VERSION_FILE := "setup.py"

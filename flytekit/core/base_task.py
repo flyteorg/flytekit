@@ -32,6 +32,7 @@ from flytekit.core.promise import (
     VoidPromise,
     create_and_link_node,
     create_task_output,
+    extract_obj_name,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
@@ -240,7 +241,8 @@ class Task(object):
         if self.metadata.cache:
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
-                f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+                f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
+                f"and inputs: {input_literal_map}"
             )
             outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
             # The cache returns None iff the key does not exist in the cache
@@ -250,7 +252,8 @@ class Task(object):
                 # TODO: need `native_inputs`
                 LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
                 logger.info(
-                    f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} and inputs: {input_literal_map}"
+                    f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} "
+                    f"and inputs: {input_literal_map}"
                 )
             else:
                 logger.info("Cache hit")
@@ -420,7 +423,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         Used when constructing the node that encapsulates this task as part of a broader workflow definition.
         """
         return _workflow_model.NodeMetadata(
-            name=f"{self.__module__}.{self.name}",
+            name=extract_obj_name(self.name),
             timeout=self.metadata.timeout,
             retries=self.metadata.retry_strategy,
             interruptible=self.metadata.interruptible,
@@ -506,12 +509,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 py_type = self.get_type_for_output_var(k, v)
 
                 if isinstance(v, tuple):
-                    raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
+                    raise TypeError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
                 try:
                     literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
                 except Exception as e:
-                    logger.error(f"failed to convert return value for var {k} with error {type(e)}: {e}")
-                    raise e
+                    logger.error(f"Failed to convert return value for var {k} with error {type(e)}: {e}")
+                    raise TypeError(
+                        f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
+                    ) from e
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed

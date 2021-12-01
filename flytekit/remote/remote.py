@@ -1,6 +1,11 @@
-"""Module defining main Flyte backend entrypoint."""
+"""
+This module provides the ``FlyteRemote`` object, which is the end-user's main starting point for interacting
+with a Flyte backend in an interactive and programmatic way. This of this experience as kind of like the web UI
+but in Python object form.
+"""
 from __future__ import annotations
 
+import logging
 import os
 import time
 import typing
@@ -10,12 +15,17 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
+from flytekit.common.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
+from flytekit.configuration import internal
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
+from flytekit.configuration import set_flyte_config_file
+from flytekit.core import context_manager
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
@@ -28,6 +38,7 @@ except ImportError:
 
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.clis.flyte_cli.main import _detect_default_config_file
+from flytekit.clis.sdk_in_container import serialize
 from flytekit.common import constants
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
@@ -43,7 +54,8 @@ from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models.admin.common import Sort
-from flytekit.models.core.identifier import ResourceType
+from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
+from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.execution import (
     ExecutionMetadata,
     ExecutionSpec,
@@ -51,14 +63,11 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
-from flytekit.remote.identifier import Identifier, WorkflowExecutionIdentifier
-from flytekit.remote.interface import TypedInterface
+from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.launch_plan import FlyteLaunchPlan
-from flytekit.remote.nodes import FlyteNodeExecution
-from flytekit.remote.tasks.executions import FlyteTaskExecution
-from flytekit.remote.tasks.task import FlyteTask
+from flytekit.remote.nodes import FlyteNode
+from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.remote.workflow_execution import FlyteWorkflowExecution
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -117,16 +126,26 @@ class FlyteRemote(object):
 
     @classmethod
     def from_config(
-        cls, default_project: typing.Optional[str] = None, default_domain: typing.Optional[str] = None
+        cls,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        config_file_path: typing.Optional[str] = None,
+        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
+        venv_root: typing.Optional[str] = None,
     ) -> FlyteRemote:
         """Create a FlyteRemote object using flyte configuration variables and/or environment variable overrides.
 
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
+        :param config_file_path: config file to use when connecting to flyte admin. we will use '~/.flyte/config' by default.
+        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned by :func:`grpc.ssl_channel_credentials`
         """
-        # TODO: flyte-cli already support users to set different flyte config file path, we should
-        #  also support it in the flyte remote.
-        _detect_default_config_file()
+
+        if config_file_path is None:
+            _detect_default_config_file()
+        else:
+            set_flyte_config_file(config_file_path)
+
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
             sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
         )
@@ -134,6 +153,11 @@ class FlyteRemote(object):
         file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
             raw_output_prefix=raw_output_data_prefix,
+        )
+
+        venv_root = venv_root or serialize._DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
+        entrypoint = context_manager.EntrypointSettings(
+            path=os.path.join(venv_root, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
         )
 
         return cls(
@@ -153,6 +177,8 @@ class FlyteRemote(object):
             raw_output_data_config=(
                 common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
             ),
+            grpc_credentials=grpc_credentials,
+            entrypoint_settings=entrypoint,
         )
 
     def __init__(
@@ -168,6 +194,8 @@ class FlyteRemote(object):
         annotations: typing.Optional[common_models.Annotations] = None,
         image_config: typing.Optional[ImageConfig] = None,
         raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
+        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
+        entrypoint_settings: typing.Optional[context_manager.EntrypointSettings] = None,
     ):
         """Initialize a FlyteRemote object.
 
@@ -182,13 +210,17 @@ class FlyteRemote(object):
         :param annotations: annotation config
         :param image_config: image config
         :param raw_output_data_config: location for offloaded data, e.g. in S3
+        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned
+          by :func:`grpc.ssl_channel_credentials`
+        :param entrypoint_settings: EntrypointSettings object for use with Spark tasks. If supplied, this will be
+          used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
+          inside the container.
         """
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
         if flyte_admin_url is None:
             raise user_exceptions.FlyteAssertion("Cannot find flyte admin url in config file.")
 
-        self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure)
-
+        self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure, credentials=grpc_credentials)
         # read config files, env vars, host, ssl options for admin client
         self._flyte_admin_url = flyte_admin_url
         self._insecure = insecure
@@ -200,6 +232,8 @@ class FlyteRemote(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
+        # Not exposing this as a property for now.
+        self._entrypoint_settings = entrypoint_settings
 
         # Save the file access object locally, but also make it available for use from the context.
         FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
@@ -346,8 +380,6 @@ class FlyteRemote(object):
         :param domain: fetch entity from this domain. If None, uses the default_domain attribute.
         :param name: fetch entity with matching name.
         :param version: fetch entity with matching version. If None, gets the latest version of the entity.
-        :returns: :class:`~flytekit.remote.workflow.FlyteWorkflow`
-
         :raises: FlyteAssertion if name is None
         """
         if name is None:
@@ -363,26 +395,15 @@ class FlyteRemote(object):
         admin_workflow = self.client.get_workflow(workflow_id)
         compiled_wf = admin_workflow.closure.compiled_workflow
 
-        base_model = compiled_wf.primary.template
-        sub_workflows = {sw.template.id: sw.template for sw in compiled_wf.sub_workflows}
-        tasks = {t.template.id: t.template for t in compiled_wf.tasks}
-
         node_launch_plans = {}
         # TODO: Inspect branch nodes for launch plans
-        for node in FlyteWorkflow.get_non_system_nodes(base_model.nodes):
+        for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
             if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
                 node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
                     node.workflow_node.launchplan_ref
                 ).spec
 
-        flyte_workflow = FlyteWorkflow.promote_from_model(
-            base_model=compiled_wf.primary.template,
-            sub_workflows=sub_workflows,
-            node_launch_plans=node_launch_plans,
-            tasks=tasks,
-        )
-        flyte_workflow._id = workflow_id
-        return flyte_workflow
+        return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
     def fetch_launch_plan(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
@@ -506,6 +527,9 @@ class FlyteRemote(object):
                 domain or self.default_domain,
                 version or self.version,
                 self.image_config,
+                # https://github.com/flyteorg/flyte/issues/1359
+                env={internal.IMAGE.env_var: self.image_config.default_image.full},
+                entrypoint_settings=self._entrypoint_settings,
             ),
             entity=entity,
         )
@@ -589,6 +613,24 @@ class FlyteRemote(object):
             launch_plan_spec=serialized_lp.spec,
         )
         return self.fetch_launch_plan(**resolved_identifiers)
+
+    def _register_entity_if_not_exists(self, entity: WorkflowBase, resolved_identifiers_dict: dict):
+        # Try to register all the entity in WorkflowBase including LaunchPlan, PythonTask, or subworkflow.
+        node_identifiers_dict = deepcopy(resolved_identifiers_dict)
+        for node in entity.nodes:
+            try:
+                node_identifiers_dict["name"] = node.flyte_entity.name
+                if isinstance(node.flyte_entity, WorkflowBase):
+                    self._register_entity_if_not_exists(node.flyte_entity, node_identifiers_dict)
+                    self.register(node.flyte_entity, **node_identifiers_dict)
+                elif isinstance(node.flyte_entity, PythonTask) or isinstance(node.flyte_entity, LaunchPlan):
+                    self.register(node.flyte_entity, **node_identifiers_dict)
+                else:
+                    raise NotImplementedError(f"We don't support registering this kind of entity: {node.flyte_entity}")
+            except FlyteEntityAlreadyExistsException:
+                logging.info(f"{entity.name} already exists")
+            except Exception as e:
+                logging.info(f"Failed to register entity {entity.name} with error {e}")
 
     ####################
     # Execute Entities #
@@ -870,11 +912,23 @@ class FlyteRemote(object):
         """Execute an @workflow-decorated function."""
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+
         try:
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
-        except Exception:
+        except FlyteEntityNotExistException:
+            logging.info("Try to register FlyteWorkflow because it wasn't found in Flyte Admin!")
+            self._register_entity_if_not_exists(entity, resolved_identifiers_dict)
             flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
         flyte_workflow.guessed_python_interface = entity.python_interface
+
+        ctx = context_manager.FlyteContext.current_context()
+        try:
+            self.fetch_launch_plan(**resolved_identifiers_dict)
+        except FlyteEntityNotExistException:
+            logging.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
+            default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
+            self.register(default_lp, **resolved_identifiers_dict)
+
         return self.execute(
             flyte_workflow,
             inputs,
@@ -919,21 +973,23 @@ class FlyteRemote(object):
 
     def wait(
         self,
-        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        execution: FlyteWorkflowExecution,
         timeout: typing.Optional[timedelta] = None,
         poll_interval: typing.Optional[timedelta] = None,
-    ):
+        sync_nodes: bool = True,
+    ) -> FlyteWorkflowExecution:
         """Wait for an execution to finish.
 
         :param execution: execution object to wait on
         :param timeout: maximum amount of time to wait
         :param poll_interval: sync workflow execution at this interval
+        :param sync_nodes: passed along to the sync call for the workflow execution
         """
         poll_interval = poll_interval or timedelta(seconds=30)
         time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
 
         while datetime.utcnow() < time_to_give_up:
-            execution = self.sync(execution)
+            execution = self.sync_workflow_execution(execution, sync_nodes=sync_nodes)
             if execution.is_complete:
                 return execution
             time.sleep(poll_interval.total_seconds())
@@ -944,102 +1000,236 @@ class FlyteRemote(object):
     # Sync Execution State #
     ########################
 
-    @singledispatchmethod
     def sync(
         self,
-        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-    ):
-        """Sync a flyte execution object with its corresponding remote state.
-
-        This method syncs the inputs and outputs of the execution object and all of its child node executions.
-
-        :param execution: workflow execution to sync.
-        :param entity_definition: optional, reference entity definition which adds more context to this execution entity
-        """
-        raise NotImplementedError(f"Execution type {type(execution)} cannot be synced.")
-
-    @sync.register
-    def _(
-        self, execution: FlyteWorkflowExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
+        sync_nodes: bool = False,
     ) -> FlyteWorkflowExecution:
+        """
+        This function was previously a singledispatchmethod. We've removed that but this function remains
+        so that we don't break people.
 
-        """Sync a FlyteWorkflowExecution object with its corresponding remote state."""
+        :param execution:
+        :param entity_definition:
+        :param sync_nodes: By default sync will fetch data on all underlying node executions (recursively,
+          so subworkflows will also get picked up). Set this to False in order to prevent that (which
+          will make this call faster).
+        :return: Returns the same execution object, but with additional information pulled in.
+        """
+        if not isinstance(execution, FlyteWorkflowExecution):
+            raise ValueError(f"remote.sync should only be called on workflow executions, got {type(execution)}")
+        return self.sync_workflow_execution(execution, entity_definition, sync_nodes)
+
+    def sync_workflow_execution(
+        self,
+        execution: FlyteWorkflowExecution,
+        entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
+        sync_nodes: bool = False,
+    ) -> FlyteWorkflowExecution:
+        """
+        Sync a FlyteWorkflowExecution object with its corresponding remote state.
+        """
         if entity_definition is not None:
             raise ValueError("Entity definition arguments aren't supported when syncing workflow executions")
+
+        # Update closure, and then data, because we don't want the execution to finish between when we get the data,
+        # and then for the closure to have is_complete to be true.
+        execution._closure = self.client.get_execution(execution.id).closure
         execution_data = self.client.get_execution_data(execution.id)
         lp_id = execution.spec.launch_plan
+        if sync_nodes:
+            underlying_node_executions = [
+                FlyteNodeExecution.promote_from_model(n) for n in iterate_node_executions(self.client, execution.id)
+            ]
+
         if execution.spec.launch_plan.resource_type == ResourceType.TASK:
+            # This condition is only true for single-task executions
             flyte_entity = self.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
-        elif execution.spec.launch_plan.resource_type in {ResourceType.WORKFLOW, ResourceType.LAUNCH_PLAN}:
-            flyte_entity = self.fetch_workflow(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            if sync_nodes:
+                # Need to construct the mapping. There should've been returned exactly three nodes, a start,
+                # an end, and a task node.
+                task_node_exec = [
+                    x
+                    for x in filter(
+                        lambda x: x.id.node_id != constants.START_NODE_ID and x.id.node_id != constants.END_NODE_ID,
+                        underlying_node_executions,
+                    )
+                ]
+                # We need to manually make a map of the nodes since there is none for single task executions
+                # Assume the first one is the only one.
+                node_mapping = (
+                    {
+                        task_node_exec[0].id.node_id: FlyteNode(
+                            id=flyte_entity.id,
+                            upstream_nodes=[],
+                            bindings=[],
+                            metadata=NodeMetadata(name=""),
+                            flyte_task=flyte_entity,
+                        )
+                    }
+                    if len(task_node_exec) >= 1
+                    else {}  # This is for the case where node executions haven't appeared yet
+                )
         else:
-            raise user_exceptions.FlyteAssertion(
-                f"Resource type {execution.spec.launch_plan.resource_type} not recognized. Must be a TASK or WORKFLOW."
-            )
+            # This is the default case, an execution of a normal workflow through a launch plan
+            wf_id = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version).workflow_id
+            flyte_entity = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
+            execution._flyte_workflow = flyte_entity
+            node_mapping = flyte_entity._node_map
 
-        synced_execution = deepcopy(execution)
-        # sync closure, node executions, and inputs/outputs
-        synced_execution._closure = self.client.get_execution(execution.id).closure
+        # update node executions (if requested), and inputs/outputs
+        if sync_nodes:
+            node_execs = {}
+            for n in underlying_node_executions:
+                node_execs[n.id.node_id] = self.sync_node_execution(n, node_mapping)
+            execution._node_executions = node_execs
+        return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
 
-        synced_execution._node_executions = {
-            node.id.node_id: self.sync(FlyteNodeExecution.promote_from_model(node), flyte_entity)
-            for node in iterate_node_executions(self.client, execution.id)
-        }
-        return self._assign_inputs_and_outputs(synced_execution, execution_data, flyte_entity.interface)
-
-    @sync.register
-    def _(
-        self, execution: FlyteNodeExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
+    def sync_node_execution(
+        self, execution: FlyteNodeExecution, node_mapping: typing.Dict[str, FlyteNode]
     ) -> FlyteNodeExecution:
-        """Sync a FlyteNodeExecution object with its corresponding remote state."""
-        if (
-            execution.id.node_id in {constants.START_NODE_ID, constants.END_NODE_ID}
-            or execution.id.node_id.endswith(constants.START_NODE_ID)
-            or execution.id.node_id.endswith(constants.END_NODE_ID)
-        ):
+        """
+        Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
+        fields already populated correctly. For purposes of the remote experience, we'd like to supplement the object
+        with some additional fields:
+          - inputs/outputs
+          - task/workflow executions, and/or underlying node executions in the case of parent nodes
+          - TypedInterface (remote wrapper type)
+
+        A node can have several different types of executions behind it. That is, the node could've run (perhaps
+        multiple times because of retries):
+          - A task
+          - A static subworkflow
+          - A dynamic subworkflow (which in turn may have run additional tasks, subwfs, and/or launch plans)
+          - A launch plan
+
+        The data model is complicated, so ascertaining which of these happened is a bit tricky. That logic is
+        encapsulated in this function.
+        """
+        # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
+        node_id = execution.metadata.spec_node_id
+        if not node_id:
+            node_id = execution.id.node_id
+            remote_logger.debug(f"No metadata spec_node_id found, using {node_id}")
+
+        # First see if it's a dummy node, if it is, we just skip it.
+        if constants.START_NODE_ID in node_id or constants.END_NODE_ID in node_id:
             return execution
 
-        synced_execution = deepcopy(execution)
-
-        # sync closure, child nodes, interface, and inputs/outputs
-        synced_execution._closure = self.client.get_node_execution(execution.id).closure
-        if synced_execution.metadata.is_parent_node:
-            synced_execution._subworkflow_node_executions = [
-                self.sync(FlyteNodeExecution.promote_from_model(node), entity_definition)
-                for node in iterate_node_executions(
-                    self.client,
-                    workflow_execution_identifier=synced_execution.id.execution_id,
-                    unique_parent_id=synced_execution.id.node_id,
-                )
-            ]
+        # Look for the Node object in the mapping supplied
+        if node_id in node_mapping:
+            execution._node = node_mapping[node_id]
         else:
-            synced_execution._task_executions = [
-                self.sync(FlyteTaskExecution.promote_from_model(t))
-                for t in iterate_task_executions(self.client, synced_execution.id)
+            raise Exception(f"Missing node from mapping: {node_id}")
+
+        # Get the node execution data
+        node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
+
+        # Calling a launch plan directly case
+        # If a node ran a launch plan directly (i.e. not through a dynamic task or anything) then
+        # the closure should have a workflow_node_metadata populated with the launched execution id.
+        # The parent node flag should not be populated here
+        # This is the simplest case
+        if not execution.metadata.is_parent_node and execution.closure.workflow_node_metadata:
+            launched_exec_id = execution.closure.workflow_node_metadata.execution_id
+            # This is a recursive call, basically going through the same process that brought us here in the first
+            # place, but on the launched execution.
+            launched_exec = self.fetch_workflow_execution(
+                project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
+            )
+            self.sync_workflow_execution(launched_exec)
+            if launched_exec.is_complete:
+                # The synced underlying execution should've had these populated.
+                execution._inputs = launched_exec.inputs
+                execution._outputs = launched_exec.outputs
+            execution._workflow_executions.append(launched_exec)
+            execution._interface = launched_exec._flyte_workflow.interface
+            return execution
+
+        # If a node ran a static subworkflow or a dynamic subworkflow then the parent flag will be set.
+        if execution.metadata.is_parent_node:
+            # We'll need to query child node executions regardless since this is a parent node
+            child_node_executions = iterate_node_executions(
+                self.client,
+                workflow_execution_identifier=execution.id.execution_id,
+                unique_parent_id=execution.id.node_id,
+            )
+            child_node_executions = [x for x in child_node_executions]
+
+            # If this was a dynamic task, then there should be a CompiledWorkflowClosure inside the
+            # NodeExecutionGetDataResponse
+            if node_execution_get_data_response.dynamic_workflow is not None:
+                compiled_wf = node_execution_get_data_response.dynamic_workflow.compiled_workflow
+                node_launch_plans = {}
+                # TODO: Inspect branch nodes for launch plans
+                for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
+                    if (
+                        node.workflow_node is not None
+                        and node.workflow_node.launchplan_ref is not None
+                        and node.workflow_node.launchplan_ref not in node_launch_plans
+                    ):
+                        node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
+                            node.workflow_node.launchplan_ref
+                        ).spec
+
+                dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
+                execution._underlying_node_executions = [
+                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
+                    for cne in child_node_executions
+                ]
+                # This is copied from below - dynamic tasks have both task executions (executions of the parent
+                # task) as well as underlying node executions (of the generated subworkflow). Feel free to refactor
+                # if you can think of a better way.
+                execution._task_executions = [
+                    self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
+                    for t in iterate_task_executions(self.client, execution.id)
+                ]
+                execution._interface = dynamic_flyte_wf.interface
+            else:
+                # If it does not, then it should be a static subworkflow
+                if not isinstance(execution._node.flyte_entity, FlyteWorkflow):
+                    remote_logger.error(
+                        f"NE {execution} entity should be a workflow, {type(execution._node)}, {execution._node}"
+                    )
+                    raise Exception(f"Node entity has type {type(execution._node)}")
+                sub_flyte_workflow = execution._node.flyte_entity
+                sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
+                execution._underlying_node_executions = [
+                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                    for cne in child_node_executions
+                ]
+                execution._interface = sub_flyte_workflow.interface
+
+        # This is the plain ol' task execution case
+        else:
+            execution._task_executions = [
+                self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
+                for t in iterate_task_executions(self.client, execution.id)
             ]
-        synced_execution._interface = self._get_node_execution_interface(synced_execution, entity_definition)
-        return self._assign_inputs_and_outputs(
-            synced_execution,
-            self.client.get_node_execution_data(execution.id),
-            synced_execution.interface,
+            execution._interface = execution._node.flyte_entity.interface
+
+        self._assign_inputs_and_outputs(
+            execution,
+            node_execution_get_data_response,
+            execution.interface,
         )
 
-    @sync.register
-    def _(
+        return execution
+
+    def sync_task_execution(
         self, execution: FlyteTaskExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
         if entity_definition is not None:
             raise ValueError("Entity definition arguments aren't supported when syncing task executions")
-        synced_execution = deepcopy(execution)
 
         # sync closure and inputs/outputs
-        synced_execution._closure = self.client.get_task_execution(synced_execution.id).closure
-        execution_data = self.client.get_task_execution_data(synced_execution.id)
+        execution._closure = self.client.get_task_execution(execution.id).closure
+        execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
         task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-        return self._assign_inputs_and_outputs(synced_execution, execution_data, task.interface)
+        return self._assign_inputs_and_outputs(execution, execution_data, task.interface)
 
     #############################
     # Terminate Execution State #
@@ -1057,7 +1247,12 @@ class FlyteRemote(object):
     # Helper Methods #
     ##################
 
-    def _assign_inputs_and_outputs(self, execution, execution_data, interface):
+    def _assign_inputs_and_outputs(
+        self,
+        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        execution_data,
+        interface,
+    ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         with self.remote_context() as ctx:
             execution._inputs = TypeEngine.literal_map_to_kwargs(
@@ -1098,49 +1293,3 @@ class FlyteRemote(object):
                     common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
-
-    def _get_node_execution_interface(
-        self, node_execution: FlyteNodeExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask]
-    ) -> TypedInterface:
-        """Return the interface of the task or subworkflow associated with this node execution."""
-        if isinstance(entity_definition, FlyteTask):
-            # A single task execution consists of a Flyte workflow with single node whose interface matches that of
-            # the underlying task
-            return entity_definition.interface
-
-        for node in entity_definition.flyte_nodes:
-            if node.id == node_execution.id.node_id:
-                if node.task_node is not None:
-                    return node.task_node.flyte_task.interface
-                elif node.workflow_node is not None and node.workflow_node.sub_workflow_ref is not None:
-                    # Fetch the workflow and use its interface
-                    sub_workflow_ref = node.workflow_node.sub_workflow_ref
-                    workflow = self.fetch_workflow(
-                        sub_workflow_ref.project,
-                        sub_workflow_ref.domain,
-                        sub_workflow_ref.name,
-                        sub_workflow_ref.version,
-                    )
-                    return workflow.interface
-                elif node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
-                    # Fetch the launch plan this node launched, and from there fetch the referenced workflow and use its
-                    # interface.
-                    lp_ref = node.workflow_node.launchplan_ref
-                    launch_plan = self.fetch_launch_plan(lp_ref.project, lp_ref.domain, lp_ref.name, lp_ref.version)
-                    workflow = self.fetch_workflow(
-                        launch_plan.workflow_id.project,
-                        launch_plan.workflow_id.domain,
-                        launch_plan.workflow_id.name,
-                        launch_plan.workflow_id.version,
-                    )
-                    return workflow.interface
-
-        # dynamically generated nodes won't have a corresponding node in the compiled workflow closure.
-        # in that case, we fetch the interface from the underlying task execution they ran
-        if len(node_execution.task_executions) > 0:
-            # if not a parent node, assume a task execution node
-            task_id = node_execution.task_executions[0].id.task_id
-            task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-            return task.interface
-
-        remote_logger.info("failed to find node interface from entity definition closure")

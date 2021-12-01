@@ -1,14 +1,20 @@
 import datetime
 import os
 import typing
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 
+import pandas as pd
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
+from marshmallow_enum import LoadDumpOptions
+from marshmallow_jsonschema import JSONSchema
 
+from flytekit import kwtypes
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
@@ -17,13 +23,19 @@ from flytekit.core.type_engine import (
     ListTransformer,
     SimpleTransformer,
     TypeEngine,
+    convert_json_schema_to_python_class,
+    dataclass_from_dict,
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.pickle import FlytePickle
+from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.schema import FlyteSchema
 
 
 def test_type_engine():
@@ -55,6 +67,7 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
+    assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
 
     with pytest.raises(ValueError):
         TypeEngine.get_transformer(typing.Any)
@@ -98,40 +111,90 @@ def test_file_format_getting_python_value():
     assert pv.extension() == "txt"
 
 
-def test_file_non_downloadable():
+def test_list_of_dict_getting_python_value():
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+    lv = Literal(
+        collection=LiteralCollection(
+            literals=[Literal(map=LiteralMap({"foo": Literal(scalar=Scalar(primitive=Primitive(integer=1)))}))]
+        )
+    )
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[typing.Dict[str, int]])
+    assert isinstance(pv, list)
+
+
+def test_list_of_dataclass_getting_python_value():
+    @dataclass_json
+    @dataclass()
+    class Bar(object):
+        w: typing.Optional[str]
+        x: float
+        y: str
+        z: typing.Dict[str, bool]
+
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        w: int
+        x: typing.List[int]
+        y: typing.Dict[str, str]
+        z: Bar
+
+    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
+    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
+    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+
+    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
+    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    assert isinstance(pv, list)
+    assert pv[0].w == foo.w
+    assert pv[0].x == foo.x
+    assert pv[0].y == foo.y
+    assert pv[0].z.x == foo.z.x
+    assert type(pv[0].z.x) == float
+    assert pv[0].z.y == foo.z.y
+    assert pv[0].z.z == foo.z.z
+    assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
+
+
+def test_file_no_downloader_default():
+    # The idea of this test is to assert that if a FlyteFile is created with no download specified,
+    # then it should return the set path itself. This matches if we use open method
     transformer = TypeEngine.get_transformer(FlyteFile)
 
     ctx = FlyteContext.current_context()
+    local_file = "/usr/local/bin/file"
 
-    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
-        scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri="/usr/local/bin/file")
-        )
+        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file))
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
     assert isinstance(pv, FlyteFile)
-    with pytest.raises(ValueError):
-        pv.download()
+    assert pv.download() == local_file
 
 
-def test_dir_non_downloadable():
+def test_dir_no_downloader_default():
+    # The idea of this test is to assert that if a FlyteFile is created with no download specified,
+    # then it should return the set path itself. This matches if we use open method
     transformer = TypeEngine.get_transformer(FlyteDirectory)
 
     ctx = FlyteContext.current_context()
 
-    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
+    local_dir = "/usr/local/bin/"
     lv = Literal(
-        scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri="/usr/local/bin/")
-        )
+        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir))
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteDirectory)
     assert isinstance(pv, FlyteDirectory)
-    with pytest.raises(ValueError):
-        pv.download()
+    assert pv.download() == local_dir
 
 
 def test_dict_transformer():
@@ -208,6 +271,23 @@ def test_dict_transformer():
         Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
         typing.Dict[str, int],
     )
+
+
+def test_convert_json_schema_to_python_class():
+    @dataclass_json
+    @dataclass
+    class Foo(object):
+        x: int
+        y: str
+
+    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
+    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
+    foo = foo_class(x=1, y="hello")
+    foo.x = 2
+    assert foo.x == 2
+    assert foo.y == "hello"
+    with pytest.raises(AttributeError):
+        _ = foo.c
 
 
 def test_list_transformer():
@@ -356,10 +436,10 @@ def test_dataclass_transformer():
             "InnerstructSchema": {
                 "additionalProperties": False,
                 "properties": {
-                    "a": {"format": "integer", "title": "a", "type": "number"},
+                    "a": {"title": "a", "type": "integer"},
                     "b": {"default": None, "title": "b", "type": ["string", "null"]},
                     "c": {
-                        "items": {"format": "integer", "title": "c", "type": "number"},
+                        "items": {"title": "c", "type": "integer"},
                         "title": "c",
                         "type": "array",
                     },
@@ -471,6 +551,28 @@ def test_enum_type():
         TypeEngine.to_literal_type(UnsupportedEnumValues)
 
 
+def test_enum_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    lt = TypeEngine.to_literal_type(Datum)
+    schema = Datum.schema()
+    schema.fields["y"].load_by = LoadDumpOptions.name
+    assert lt.metadata == JSONSchema().dump(schema)
+
+    transformer = DataclassTransformer()
+    ctx = FlyteContext.current_context()
+    datum = Datum(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum.x == pv.x
+    assert datum.y.value == pv.y
+
+
 @pytest.mark.parametrize(
     "python_value,python_types,expected_literal_map",
     [
@@ -507,6 +609,43 @@ def test_enum_type():
                 }
             ),
         ),
+        (
+            {"p1": TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})},
+            {"p1": TestStructD},
+            LiteralMap(
+                literals={
+                    "p1": Literal(
+                        scalar=Scalar(
+                            generic=_json_format.Parse(
+                                typing.cast(
+                                    DataClassJsonMixin,
+                                    TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]}),
+                                ).to_json(),
+                                _struct.Struct(),
+                            )
+                        )
+                    )
+                }
+            ),
+        ),
+        (
+            {"p1": "s3://tmp/file.jpeg"},
+            {"p1": JPEGImageFile},
+            LiteralMap(
+                literals={
+                    "p1": Literal(
+                        scalar=Scalar(
+                            blob=Blob(
+                                metadata=BlobMetadata(
+                                    type=BlobType(format="jpeg", dimensionality=BlobType.BlobDimensionality.SINGLE)
+                                ),
+                                uri="s3://tmp/file.jpeg",
+                            )
+                        )
+                    )
+                }
+            ),
+        ),
     ],
 )
 def test_dict_to_literal_map(python_value, python_types, expected_literal_map):
@@ -521,3 +660,34 @@ def test_dict_to_literal_map_with_wrong_input_type():
     guessed_python_types = {"a": str}
     with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
+
+
+TestSchema = FlyteSchema[kwtypes(some_str=str)]
+
+
+@dataclass_json
+@dataclass
+class InnerResult:
+    number: int
+    schema: TestSchema
+
+
+@dataclass_json
+@dataclass
+class Result:
+    result: InnerResult
+    schema: TestSchema
+
+
+def test_schema_in_dataclass():
+    schema = TestSchema()
+    df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
+    schema.open().write(df)
+    o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(Result)
+    lv = tf.to_literal(ctx, o, Result, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
+
+    assert o == ot

@@ -231,6 +231,52 @@ class DiskPersistence(DataPersistence):
         return os.path.join(*args)
 
 
+def stringify_path(filepath):
+    """
+    Copied from `filesystem_spec <https://github.com/intake/filesystem_spec/blob/master/fsspec/utils.py#L287:5>`__
+
+    Attempt to convert a path-like object to a string.
+    Parameters
+    ----------
+    filepath: object to be converted
+    Returns
+    -------
+    filepath_str: maybe a string version of the object
+    Notes
+    -----
+    Objects supporting the fspath protocol (Python 3.6+) are coerced
+    according to its __fspath__ method.
+    For backwards compatibility with older Python version, pathlib.Path
+    objects are specially coerced.
+    Any other object is passed through unchanged, which includes bytes,
+    strings, buffers, or anything else that's not even path-like.
+    """
+    if isinstance(filepath, str):
+        return filepath
+    elif hasattr(filepath, "__fspath__"):
+        return filepath.__fspath__()
+    elif isinstance(filepath, pathlib.Path):
+        return str(filepath)
+    elif hasattr(filepath, "path"):
+        return filepath.path
+    else:
+        return filepath
+
+
+def split_protocol(urlpath):
+    """
+    Copied from `filesystem_spec <https://github.com/intake/filesystem_spec/blob/master/fsspec/core.py#L502>`__
+    Return protocol, path pair
+    """
+    urlpath = stringify_path(urlpath)
+    if "://" in urlpath:
+        protocol, path = urlpath.split("://", 1)
+        if len(protocol) > 1:
+            # excludes Windows paths
+            return protocol, path
+    return None, urlpath
+
+
 class FileAccessProvider(object):
     """
     This is the class that is available through the FlyteContext and can be used for persisting data to the remote
@@ -258,7 +304,10 @@ class FileAccessProvider(object):
         """
         Deprecated. Lets find a replacement
         """
-        return not (path.startswith("/") or path.startswith("file://"))  # type: ignore
+        protocol, _ = split_protocol(path)
+        if protocol is None:
+            return False
+        return protocol != "file"
 
     @property
     def local_sandbox_dir(self) -> os.PathLike:

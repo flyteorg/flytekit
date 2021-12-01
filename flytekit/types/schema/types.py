@@ -4,11 +4,13 @@ import datetime as _datetime
 import os
 import typing
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Type
 
 import numpy as _np
+from dataclasses_json import config, dataclass_json
+from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import T, TypeEngine, TypeTransformer
@@ -167,7 +169,10 @@ class SchemaEngine(object):
         return cls._SCHEMA_HANDLERS[t]
 
 
+@dataclass_json
+@dataclass
 class FlyteSchema(object):
+    remote_path: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
@@ -220,7 +225,7 @@ class FlyteSchema(object):
     def __init__(
         self,
         local_path: os.PathLike = None,
-        remote_path: str = None,
+        remote_path: os.PathLike = None,
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
         downloader: typing.Callable[[str, os.PathLike], None] = None,
     ):
@@ -234,10 +239,11 @@ class FlyteSchema(object):
         ):
             raise ValueError("To create a FlyteSchema in write mode, local_path is required")
 
-        if local_path is None:
-            local_path = FlyteContextManager.current_context().file_access.get_random_local_directory()
+        local_path = local_path or FlyteContextManager.current_context().file_access.get_random_local_directory()
         self._local_path = local_path
-        self._remote_path = remote_path
+        # Make this field public, so that the dataclass transformer can set a value for it
+        # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
+        self.remote_path = remote_path or FlyteContextManager.current_context().file_access.get_random_remote_path()
         self._supported_mode = supported_mode
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._downloaded = False
@@ -246,10 +252,6 @@ class FlyteSchema(object):
     @property
     def local_path(self) -> os.PathLike:
         return self._local_path
-
-    @property
-    def remote_path(self) -> str:
-        return typing.cast(str, self._remote_path)
 
     @property
     def supported_mode(self) -> SchemaOpenMode:
@@ -335,6 +337,14 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 raise AssertionError(f"type {v} is currently not supported by FlyteSchema")
             converted_cols.append(SchemaType.SchemaColumn(name=k, type=self._SUPPORTED_TYPES[v]))
         return SchemaType(columns=converted_cols)
+
+    def assert_type(self, t: Type[FlyteSchema], v: typing.Any):
+        if issubclass(t, FlyteSchema) or isinstance(v, FlyteSchema):
+            return
+        try:
+            SchemaEngine.get_handler(type(v))
+        except ValueError as e:
+            raise TypeError(f"No automatic conversion found from type {type(v)} to FlyteSchema") from e
 
     def get_literal_type(self, t: Type[FlyteSchema]) -> LiteralType:
         return LiteralType(schema=self._get_schema_type(t))
