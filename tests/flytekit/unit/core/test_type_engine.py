@@ -21,6 +21,7 @@ from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
     ListTransformer,
+    LiteralsResolver,
     SimpleTransformer,
     TypeEngine,
     convert_json_schema_to_python_class,
@@ -691,3 +692,61 @@ def test_schema_in_dataclass():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
     assert o == ot
+
+
+@pytest.mark.parametrize(
+    "literal_value,python_type,expected_python_value",
+    [
+        (
+            Literal(
+                collection=LiteralCollection(
+                    literals=[
+                        Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                        Literal(scalar=Scalar(primitive=Primitive(integer=2))),
+                        Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                    ]
+                )
+            ),
+            typing.List[int],
+            [1, 2, 3],
+        ),
+        (
+            Literal(
+                map=LiteralMap(
+                    literals={
+                        "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
+                        "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
+                    },
+                )
+            ),
+            typing.Dict[str, str],
+            {"k1": "v1", "k2": "2"},
+        ),
+    ],
+)
+def test_literals_resolver(literal_value, python_type, expected_python_value):
+    lit_dict = {"a": literal_value}
+
+    lr = LiteralsResolver(lit_dict)
+    out = lr.get("a", python_type)
+    assert out == expected_python_value
+
+
+def test_guess_of_dataclass():
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        x: int
+        y: str
+        z: typing.Dict[str, int]
+
+        def hello(self):
+            ...
+
+    lt = TypeEngine.to_literal_type(Foo)
+    foo = Foo(1, "hello", {"world": 3})
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), foo, Foo, lt)
+    lit_dict = {"a": lv}
+    lr = LiteralsResolver(lit_dict)
+    assert lr.get("a", Foo) == foo
+    assert hasattr(lr.get("a", Foo), "hello") is True

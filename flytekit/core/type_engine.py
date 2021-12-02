@@ -965,4 +965,27 @@ def _register_default_type_transformers():
     TypeEngine.register_restricted_type("named tuple", NamedTuple)
 
 
+class LiteralsResolver(object):
+    """
+    LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
+    where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
+    correspond to an element of the map.
+    TODO: Add an optional Flyte idl interface model object to the constructor
+    """
+
+    def __init__(self, literals: typing.Dict[str, Literal]):
+        self._literals = literals
+
+    @property
+    def literals(self):
+        return self._literals
+
+    def get(self, attr: str, as_type: Optional[typing.Type] = None):
+        if attr not in self._literals:
+            raise AttributeError(f"Attribute {attr} not found")
+        if as_type is None:
+            raise ValueError("as_type argument can't be None yet.")
+        return TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
+
+
 _register_default_type_transformers()
