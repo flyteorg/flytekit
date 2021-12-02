@@ -111,13 +111,13 @@ class LocalIOSchemaReader(SchemaReader[T]):
                     yield self._read(Path(entry.path), **kwargs)
 
     def all(self, **kwargs) -> T:
-        files = []
+        files: typing.List[os.PathLike] = []
         with os.scandir(self._from_path) as it:
             for entry in it:
                 if not entry.name.startswith(".") and entry.is_file():
-                    files.append(entry.path)
+                    files.append(Path(entry.path))
 
-        return self._read(Path(*files), **kwargs)
+        return self._read(*files, **kwargs)
 
 
 class LocalIOSchemaWriter(SchemaWriter[T]):
