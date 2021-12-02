@@ -320,8 +320,8 @@ class SdkDynamicTask(
         allowed_failure_ratio,
         max_concurrency,
         environment,
-        custom,
         cache_serializable,
+        custom,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -343,8 +343,8 @@ class SdkDynamicTask(
         :param float allowed_failure_ratio:
         :param int max_concurrency:
         :param dict[Text, Text] environment:
-        :param dict[Text, T] custom:
         :param bool cache_serializable:
+        :param dict[Text, T] custom:
         """
         _sdk_runnable.SdkRunnableTask.__init__(
             self,
@@ -365,8 +365,8 @@ class SdkDynamicTask(
             discoverable,
             timeout,
             environment,
-            custom,
             cache_serializable,
+            custom,
         )
 
         SdkDynamicTaskMixin.__init__(self, allowed_failure_ratio, max_concurrency)

@@ -225,7 +225,9 @@ def python_task(
 
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
 
-    :param bool cache_serialize: TODO hamersaw - document
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
 
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
@@ -380,7 +382,9 @@ def dynamic_task(
         This is a stand-in pending better concurrency controls for special use-cases.  The existence of this parameter
         is not guaranteed between versions and therefore it is NOT recommended that it be used.
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
-    :param bool cache_serialize: TODO hamersaw - document
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  Generally, it should be a
         subclass of flytekit.common.tasks.sdk_dynamic.SdkDynamicTask.  A user can use this parameter to inject bespoke
@@ -479,7 +483,9 @@ def spark_task(
     :param dict[Text,Text] spark_conf: A definition of key-value pairs for spark config for the job.
     :param dict[Text,Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
-    :param bool cache_serialize: TODO hamersaw - document
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  Generally, it should be a
         subclass of flytekit.common.tasks.spark_task.SdkSparkTask.  A user can use this parameter to inject bespoke
@@ -661,7 +667,9 @@ def hive_task(
         indefinitely.  If a null timedelta is passed (i.e. timedelta(seconds=0)), the task will not timeout.
     :param dict[Text,Text] environment: Environment variables to set for the execution of the query-generating
         container.
-    :param bool cache_serialize: TODO hamersaw - document
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided should be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask. Generally, it should be
         a subclass of flytekit.common.tasks.hive_task.SdkHiveTask. A user can use this to inject bespoke logic into
@@ -809,7 +817,9 @@ def qubole_hive_task(
         passed to Qubole.
     :param dict[Text,Text] environment: Environment variables to set for the execution of the query-generating
         container.
-    :param bool cache_serialize: TODO hamersaw - document
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided should be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask. Generally, it should be
         a subclass of flytekit.common.tasks.hive_task.SdkHiveTask. A user can use this to inject bespoke logic into
@@ -996,7 +1006,9 @@ def sidecar_task(
 
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
 
-    :param bool cache_serialize: TODO hamersaw - document
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
 
     :param k8s.io.api.core.v1.generated_pb2.PodSpec pod_spec: [optional] PodSpec to bring up alongside task execution.
 
@@ -1184,7 +1196,9 @@ def dynamic_sidecar_task(
         This is a stand-in pending better concurrency controls for special use-cases.  The existence of this parameter
         is not guaranteed between versions and therefore it is NOT recommended that it be used.
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
-    :param bool cache_serialize: TODO hamersaw - document
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param k8s.io.api.core.v1.generated_pb2.PodSpec pod_spec: PodSpec to bring up alongside task execution.
     :param Text primary_container_name: primary container to monitor for the duration of the task.
     :param dict[Text, Text] annotations: [optional] kubernetes annotations

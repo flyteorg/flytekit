@@ -124,7 +124,7 @@ def task(
     :param cache: Boolean that indicates if caching should be enabled
     :param cache_serialize: Boolean that indicates if identical (ie. same inputs) instances of this task should be
           executed in serial when caching is enabled. This means that given multiple concurrent executions over
-          identical inputs, only a single instance executes and the resr wait to reuse the cached results. This
+          identical inputs, only a single instance executes and the rest wait to reuse the cached results. This
           parameter does nothing without also setting the cache parameter.
     :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
            but you can always manually update this field as well to force a cache miss. You should also manually bump

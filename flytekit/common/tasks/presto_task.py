@@ -49,8 +49,8 @@ class SdkPrestoTask(_base_task.SdkTask):
         :param int retries: Number of retries to attempt
         :param datetime.timedelta timeout:
         :param Text deprecated: This string can be used to mark the task as deprecated.  Consumers of the task will
-        :param bool cache_serializable: TODO hamersaw - document
             receive deprecation warnings.
+        :param bool cache_serializable:
         """
 
         # Set as class fields which are used down below to configure implicit
