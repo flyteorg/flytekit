@@ -5,11 +5,13 @@ from dataclasses import dataclass
 import pandas
 from dataclasses_json import dataclass_json
 from pytest import fixture
+from typing_extensions import Annotated
 
-from flytekit import SQLTask, kwtypes
+from flytekit import SQLTask, dynamic, kwtypes
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import task_mock
+from flytekit.core.type_engine import HashMethod
 from flytekit.core.workflow import workflow
 from flytekit.types.schema import FlyteSchema
 
@@ -250,3 +252,100 @@ def test_dict_wf_with_constants():
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
     assert n_cached_task_calls == 2
+
+
+def test_set_integer_literal_hash_is_not_cached():
+    """
+    Test to confirm that the local cache is not set in the case of integers, even if we
+    return an annotated integer. In order to make this very explicit, we define a constant hash
+    function, i.e. the same value is returned by it regardless of the input.
+    """
+
+    def constant_hash_function(a: int) -> str:
+        return "hash"
+
+    @task
+    def t0(a: int) -> Annotated[int, HashMethod(function=constant_hash_function)]:
+        return a
+
+    @task(cache=True, cache_version="0.0.1")
+    def t1(cached_a: int) -> int:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return cached_a
+
+    @workflow
+    def wf(a: int) -> int:
+        annotated_a = t0(a=a)
+        return t1(cached_a=annotated_a)
+
+    assert n_cached_task_calls == 0
+    assert wf(a=3) == 3
+    assert n_cached_task_calls == 1
+    # Confirm that the value is not cached, even though we set a hash function that
+    # returns a constant value and that the task has only one input.
+    assert wf(a=2) == 2
+    assert n_cached_task_calls == 2
+    # Confirm that the cache is hit if we execute the workflow with the same value as previous run.
+    assert wf(a=2) == 2
+    assert n_cached_task_calls == 2
+
+
+def test_pass_annotated_to_downstream_tasks():
+    @task
+    def t0(a: int) -> Annotated[int, HashMethod(function=str)]:
+        return a + 1
+
+    @task(cache=True, cache_version="42")
+    def downstream_t(a: int) -> int:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return a + 2
+
+    @dynamic
+    def t1(a: int) -> int:
+        v = t0(a=a)
+
+        # We should have a cache miss in the first call to downstream_t and have a cache hit
+        # on the second call.
+        v_1 = downstream_t(a=v)
+        v_2 = downstream_t(a=v)
+
+        return v_1 + v_2
+
+    assert n_cached_task_calls == 0
+    assert t1(a=3) == (6 + 6)
+    assert n_cached_task_calls == 1
+
+
+def test_pandas_dataframe_hash():
+    """
+    Test that cache is hit in the case of pandas dataframes where we annotated dataframes to hash
+    the contents of the dataframes.
+    """
+
+    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
+        return str(pandas.util.hash_pandas_object(df))
+
+    @task
+    def uncached_data_reading_task() -> Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]:
+        return pandas.DataFrame({"column_1": [1, 2, 3]})
+
+    @task(cache=True, cache_version="0.1")
+    def cached_data_processing_task(data: pandas.DataFrame) -> pandas.DataFrame:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return data * 2
+
+    @workflow
+    def my_workflow():
+        raw_data = uncached_data_reading_task()
+        cached_data_processing_task(data=raw_data)
+
+    assert n_cached_task_calls == 0
+    my_workflow()
+    assert n_cached_task_calls == 1
+
+    # Confirm that we see a cache hit in the case of annotated dataframes.
+    my_workflow()
+    assert n_cached_task_calls == 1
