@@ -48,7 +48,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings, get_image_config
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
@@ -1255,15 +1255,19 @@ class FlyteRemote(object):
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         with self.remote_context() as ctx:
+            input_literal_map = self._get_input_literal_map(execution_data)
+            execution._raw_inputs = LiteralsResolver(input_literal_map.literals)
             execution._inputs = TypeEngine.literal_map_to_kwargs(
                 ctx=ctx,
-                lm=self._get_input_literal_map(execution_data),
+                lm=input_literal_map,
                 python_types=TypeEngine.guess_python_types(interface.inputs),
             )
             if execution.is_complete and not execution.error:
+                output_literal_map = self._get_output_literal_map(execution_data)
+                execution._raw_outputs = LiteralsResolver(output_literal_map.literals)
                 execution._outputs = TypeEngine.literal_map_to_kwargs(
                     ctx=ctx,
-                    lm=self._get_output_literal_map(execution_data),
+                    lm=output_literal_map,
                     python_types=TypeEngine.guess_python_types(interface.outputs),
                 )
         return execution
