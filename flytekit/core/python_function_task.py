@@ -23,7 +23,7 @@ from typing import Any, Callable, List, Optional, TypeVar, Union
 from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, FlyteContext, FlyteContextManager
-from flytekit.core.docstring import Docstring
+from flytekit.core.docstring import parse_docstring
 from flytekit.core.interface import transform_signature_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import is_functools_wrapped_module_level, isnested, istestfunction
@@ -115,7 +115,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
         self._native_interface = transform_signature_to_interface(
-            inspect.signature(task_function), Docstring(callable_=task_function)
+            inspect.signature(task_function), parse_docstring(task_function)
         )
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         super().__init__(
