@@ -1,10 +1,11 @@
 import inspect
+import json
 import os
 import typing
 from typing import Dict, List
 
 from flytekit.core import context_manager
-from flytekit.core.docstring import Docstring
+from flytekit.core.docstring import Docstring, parse_docstring
 from flytekit.core.interface import (
     extract_return_annotation,
     transform_inputs_to_parameters,
@@ -193,10 +194,22 @@ def test_parameters_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), parse_docstring(z))
     params = transform_inputs_to_parameters(ctx, our_interface)
-    assert params.parameters["a"].var.description == "foo"
-    assert params.parameters["b"].var.description == "bar"
+
+    assert json.loads(params.parameters["a"].var.description) == {
+        "idx": 0,
+        "name": "a",
+        "default": None,
+        "description": "foo",
+        "__workflow_meta__": {"short_description": "function z", "long_description": None},
+    }
+    assert json.loads(params.parameters["b"].var.description) == {
+        "idx": 1,
+        "name": "b",
+        "default": None,
+        "description": "bar",
+    }
 
 
 def test_transform_interface_to_typed_interface_with_docstring():
@@ -211,11 +224,22 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), parse_docstring(z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
-    assert typed_interface.inputs.get("a").description == "foo"
-    assert typed_interface.inputs.get("b").description == "bar"
-    assert typed_interface.outputs.get("o1").description == "ramen"
+    assert json.loads(typed_interface.inputs.get("a").description) == {
+        "idx": 0,
+        "name": "a",
+        "default": None,
+        "description": "foo",
+        "__workflow_meta__": {"short_description": "function z", "long_description": None},
+    }
+    assert json.loads(typed_interface.inputs.get("b").description) == {
+        "idx": 1,
+        "name": "b",
+        "default": None,
+        "description": "bar",
+    }
+    assert json.loads(typed_interface.outputs.get("o1").description) == {"idx": 0, "description": "ramen"}
 
     # numpy style, multiple return values, shared descriptions
     def z(a: int, b: str) -> typing.Tuple[int, str]:
@@ -236,12 +260,23 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), parse_docstring(z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
-    assert typed_interface.inputs.get("a").description == "foo"
-    assert typed_interface.inputs.get("b").description == "bar"
-    assert typed_interface.outputs.get("o0").description == "ramen"
-    assert typed_interface.outputs.get("o1").description == "ramen"
+    assert json.loads(typed_interface.inputs.get("a").description) == {
+        "idx": 0,
+        "name": "a",
+        "default": None,
+        "description": "foo",
+        "__workflow_meta__": {"short_description": "function z", "long_description": None},
+    }
+    assert json.loads(typed_interface.inputs.get("b").description) == {
+        "idx": 1,
+        "name": "b",
+        "default": None,
+        "description": "bar",
+    }
+    assert json.loads(typed_interface.outputs.get("o0").description) == {"idx": 0, "description": "ramen"}
+    assert json.loads(typed_interface.outputs.get("o1").description) == {"idx": 0, "description": "ramen"}
 
     # numpy style, multiple return values, named
     def z(a: int, b: str) -> typing.NamedTuple("NT", x_str=str, y_int=int):
@@ -264,12 +299,32 @@ def test_transform_interface_to_typed_interface_with_docstring():
         """
         ...
 
-    our_interface = transform_signature_to_interface(inspect.signature(z), Docstring(callable_=z))
+    our_interface = transform_signature_to_interface(inspect.signature(z), parse_docstring(z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
-    assert typed_interface.inputs.get("a").description == "foo"
-    assert typed_interface.inputs.get("b").description == "bar"
-    assert typed_interface.outputs.get("x_str").description == "description for x_str"
-    assert typed_interface.outputs.get("y_int").description == "description for y_int"
+
+    assert json.loads(typed_interface.inputs.get("a").description) == {
+        "idx": 0,
+        "name": "a",
+        "default": None,
+        "description": "foo",
+        "__workflow_meta__": {"short_description": "function z", "long_description": None},
+    }
+    assert json.loads(typed_interface.inputs.get("b").description) == {
+        "idx": 1,
+        "name": "b",
+        "default": None,
+        "description": "bar",
+    }
+    assert json.loads(typed_interface.outputs.get("x_str").description) == {
+        "idx": 0,
+        "name": "x_str",
+        "description": "description for x_str",
+    }
+    assert json.loads(typed_interface.outputs.get("y_int").description) == {
+        "idx": 1,
+        "name": "y_int",
+        "description": "description for y_int",
+    }
 
 
 def test_parameter_change_to_pickle_type():

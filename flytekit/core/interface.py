@@ -209,11 +209,11 @@ def transform_interface_to_typed_interface(
         input_descriptions = param_metadata_from_docstring(interface.docstring)
         output_descriptions = returns_metadata_from_docstring(interface.docstring)
 
-    # Single unnamed return value docstring is shared by all return values.
+    # Single return value docstring is shared by all return values.
     if len(output_descriptions) == 1:
         name, desc = next(iter(output_descriptions.items()))
-        if name is None:
-            output_descriptions = {k: output_descriptions.get(k, desc) for k in interface.outputs}
+        stripped_desc = {"idx": 0, "description": desc["description"]}
+        output_descriptions = {k: stripped_desc for k in interface.outputs}
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
