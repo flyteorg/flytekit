@@ -8,7 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Optional, Type, cast
+from typing import Callable, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -18,6 +18,7 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_jsonschema import JSONSchema
+from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
@@ -34,15 +35,27 @@ T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 
 
+# TODO: expose this in flytekit.__init__
+class HashMethod(typing.Generic[T]):
+    def __init__(self, function: Callable[[T], str]):
+        self._function = function
+
+    def calculate(self, obj: T) -> str:
+        return self._function(obj)
+
+
 class TypeTransformer(typing.Generic[T]):
     """
     Base transformer type that should be implemented for every python native type that can be handled by flytekit
     """
 
-    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True):
+    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True, hash_overridable: bool = False):
         self._t = t
         self._name = name
         self._type_assertions_enabled = enable_type_assertions
+        # `hash_overridable` indicates that the literals produced by this type transformer can set their hashes if needed.
+        # See (link to documentation where this feature is explained).
+        self._hash_overridable = hash_overridable
 
     @property
     def name(self):
@@ -61,6 +74,10 @@ class TypeTransformer(typing.Generic[T]):
         Indicates if the transformer wants type assertions to be enabled at the core type engine layer
         """
         return self._type_assertions_enabled
+
+    @property
+    def hash_overridable(self) -> bool:
+        return self._hash_overridable
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, t):
@@ -449,7 +466,25 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
             transformer.assert_type(python_type, python_val)
+
+        # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
+        hash = None
+        if transformer.hash_overridable and get_origin(python_type) is Annotated:
+            # We are now dealing with one of two cases:
+            # 1. The annotated type is a `HashMethod`, which indicates that we should we should produce the hash using
+            #    the method indicated in the annotation.
+            # 2. The annotated type is being used for a different purpose other than calculating hash values, in which case
+            #    we should just continue.
+            for annotation in get_args(python_type)[1:]:
+                if not isinstance(annotation, HashMethod):
+                    continue
+                hash = annotation.calculate(python_val)
+                break
+
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
+        # TODO: should we worry about empty string?
+        if hash is not None:
+            lv.hash = hash
         return lv
 
     @classmethod
