@@ -11,7 +11,7 @@ import numpy as _np
 import pandas as pd
 import pyarrow as pa
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
 from flytekit.models import types as type_models
@@ -102,6 +102,11 @@ class StructuredDataset(object):
 
     def open_as(self, df_type: Type) -> typing.Any:
         return FLYTE_DATASET_TRANSFORMER.read(self.file_format, df_type, self.remote_path)
+
+    def iter(self, df_type: Type) -> typing.Generator[T, None, None]:
+        ctx = FlyteContextManager.current_context()
+        for f in ctx.file_access._default_remote.listdir(self.remote_path):
+            yield FLYTE_DATASET_TRANSFORMER.read(self.file_format, df_type, f)
 
 
 class DatasetEncodingHandler(ABC):
