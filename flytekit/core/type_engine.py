@@ -413,8 +413,8 @@ class TypeEngine(typing.Generic[T]):
 
             # Handling of annotated generics, eg:
             # typing.Annotated[typing.List[int], 'foo']
-            if isinstance(python_type, typing._AnnotatedAlias):
-                return cls.get_transformer(python_type.__origin__)
+            if typing.get_origin(python_type) is typing.Annotated:
+                return cls.get_transformer(typing.get_args(python_type)[0])
 
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
@@ -449,8 +449,8 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(python_type)
         res = transformer.get_literal_type(python_type)
         data = None
-        if hasattr(python_type, "__metadata__"):
-            for x in python_type.__metadata__:
+        if typing.get_origin(python_type) is typing.Annotated:
+            for x in typing.get_args(python_type)[1:]:
                 if not isinstance(x, FlyteAnnotation):
                     continue
                 if x.data.get("__consumed", False):
