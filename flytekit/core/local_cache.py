@@ -2,7 +2,7 @@ from typing import Optional
 
 from diskcache import Cache
 
-from flytekit.models.literals import LiteralMap
+from flytekit.models.literals import Literal, LiteralMap
 
 # Location on the filesystem where serialized objects will be stored
 # TODO: read from config
@@ -10,7 +10,15 @@ CACHE_LOCATION = "~/.flyte/local-cache"
 
 
 def _calculate_cache_key(task_name: str, cache_version: str, input_literal_map: LiteralMap) -> str:
-    return f"{task_name}-{cache_version}-{input_literal_map}"
+    # TODO: document this.
+    literal_map_overridden = {}
+    for key, literal in input_literal_map.literals.items():
+        if literal.hash is not None:
+            literal_map_overridden[key] = Literal(hash=literal.hash)
+        else:
+            literal_map_overridden[key] = literal
+
+    return f"{task_name}-{cache_version}-{LiteralMap(literal_map_overridden)}"
 
 
 class LocalTaskCache(object):
