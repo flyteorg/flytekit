@@ -3,14 +3,17 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
+import json
 import logging as _logging
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
+from docstring_parser.common import Docstring
+
 from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core import context_manager
-from flytekit.core.docstring import Docstring
+from flytekit.core.docstring import param_metadata_from_docstring, returns_metadata_from_docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -178,7 +181,7 @@ def transform_inputs_to_parameters(
     if interface.docstring is None:
         inputs_vars = transform_variable_map(interface.inputs)
     else:
-        inputs_vars = transform_variable_map(interface.inputs, interface.docstring.input_descriptions)
+        inputs_vars = transform_variable_map(interface.inputs, param_metadata_from_docstring(interface.docstring))
     params = {}
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
@@ -203,10 +206,14 @@ def transform_interface_to_typed_interface(
     if interface.docstring is None:
         input_descriptions = output_descriptions = {}
     else:
-        input_descriptions = interface.docstring.input_descriptions
-        output_descriptions = remap_shared_output_descriptions(
-            interface.docstring.output_descriptions, interface.outputs
-        )
+        input_descriptions = param_metadata_from_docstring(interface.docstring)
+        output_descriptions = returns_metadata_from_docstring(interface.docstring)
+
+    # Single unnamed return value docstring is shared by all return values.
+    if len(output_descriptions) == 1:
+        name, desc = next(iter(output_descriptions.items()))
+        if name is None:
+            output_descriptions = {k: output_descriptions.get(k, desc) for k in interface.outputs}
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
@@ -299,7 +306,7 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
 
 def transform_variable_map(
     variable_map: Dict[str, type],
-    descriptions: Dict[str, str] = {},
+    descriptions: Dict[str, Any] = {},
 ) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
@@ -308,7 +315,7 @@ def transform_variable_map(
     res = OrderedDict()
     if variable_map:
         for k, v in variable_map.items():
-            res[k] = transform_type(v, descriptions.get(k, k))
+            res[k] = transform_type(v, descriptions.get(k, {"name": k}))
             sub_type: Type[T] = v
             if hasattr(v, "__origin__") and hasattr(v, "__args__"):
                 if v.__origin__ is list:
@@ -321,8 +328,8 @@ def transform_variable_map(
     return res
 
 
-def transform_type(x: type, description: str = None) -> _interface_models.Variable:
-    return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=description)
+def transform_type(x: type, description: Optional[Any] = None) -> _interface_models.Variable:
+    return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=json.dumps(description))
 
 
 def default_output_name(index: int = 0) -> str:
@@ -400,17 +407,3 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
         # Handle all other single return types
         logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return {default_output_name(): return_annotation}
-
-
-def remap_shared_output_descriptions(output_descriptions: Dict[str, str], outputs: Dict[str, Type]) -> Dict[str, str]:
-    """
-    Deals with mixed styles of return value descriptions used in docstrings. If the docstring contains a single entry of return value description, that output description is shared by each output variable.
-    :param output_descriptions: Dict of output variable names mapping to output description
-    :param outputs: Interface outputs
-    :return: Dict of output variable names mapping to shared output description
-    """
-    # no need to remap
-    if len(output_descriptions) != 1:
-        return output_descriptions
-    _, shared_description = next(iter(output_descriptions.items()))
-    return {k: shared_description for k, _ in outputs.items()}
