@@ -17,6 +17,7 @@ from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
+from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -28,7 +29,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Schema
 from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
@@ -243,7 +244,13 @@ class DataclassTransformer(TypeTransformer[object]):
             )
         schema = None
         try:
-            schema = JSONSchema().dump(cast(DataClassJsonMixin, t).schema())
+            s = cast(DataClassJsonMixin, t).schema()
+            for _, v in s.fields.items():
+                # marshmallow-jsonschema only supports enums loaded by name.
+                # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
+                if isinstance(v, EnumField):
+                    v.load_by = LoadDumpOptions.name
+            schema = JSONSchema().dump(s)
         except Exception as e:
             logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
 
@@ -259,9 +266,38 @@ class DataclassTransformer(TypeTransformer[object]):
             raise AssertionError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
+        self._serialize_flyte_type(python_val, python_type)
         return Literal(
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
+
+    def _serialize_flyte_type(self, python_val: T, python_type: Type[T]):
+        """
+        If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
+        """
+        from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+
+        for f in dataclasses.fields(python_type):
+            v = python_val.__getattribute__(f.name)
+            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
+                FlyteSchemaTransformer().to_literal(FlyteContext.current_context(), v, f.type, None)
+            elif dataclasses.is_dataclass(f.type):
+                self._serialize_flyte_type(v, f.type)
+
+    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type["FlyteSchema"]):
+        from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+
+        for f in dataclasses.fields(expected_python_type):
+            v = python_val.__getattribute__(f.name)
+            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
+                t = FlyteSchemaTransformer()
+                t.to_python_value(
+                    FlyteContext.current_context(),
+                    Literal(scalar=Scalar(schema=Schema(v.remote_path, t._get_schema_type(f.type)))),
+                    f.type,
+                )
+            elif dataclasses.is_dataclass(f.type):
+                self._deserialize_flyte_type(v, f.type)
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if t == int:
@@ -305,7 +341,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json to be "
                 f"serialized correctly"
             )
+
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
+        self._deserialize_flyte_type(dc, expected_python_type)
         return self._fix_dataclass_int(expected_python_type, dc)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
@@ -960,6 +998,29 @@ def _register_default_type_transformers():
     TypeEngine.register_restricted_type("non typed tuple", tuple)
     TypeEngine.register_restricted_type("non typed tuple", typing.Tuple)
     TypeEngine.register_restricted_type("named tuple", NamedTuple)
+
+
+class LiteralsResolver(object):
+    """
+    LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
+    where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
+    correspond to an element of the map.
+    TODO: Add an optional Flyte idl interface model object to the constructor
+    """
+
+    def __init__(self, literals: typing.Dict[str, Literal]):
+        self._literals = literals
+
+    @property
+    def literals(self):
+        return self._literals
+
+    def get(self, attr: str, as_type: Optional[typing.Type] = None):
+        if attr not in self._literals:
+            raise AttributeError(f"Attribute {attr} not found")
+        if as_type is None:
+            raise ValueError("as_type argument can't be None yet.")
+        return TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
 
 
 _register_default_type_transformers()

@@ -6,6 +6,7 @@ import random
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from enum import Enum
 
 import pandas
 import pytest
@@ -1062,6 +1063,58 @@ def test_dataclass_more():
         return add(x=stringify(x=x), y=stringify(x=y))
 
     wf(x=10, y=20)
+
+
+def test_enum_in_dataclass():
+    class Color(Enum):
+        RED = "red"
+        GREEN = "green"
+        BLUE = "blue"
+
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    @task
+    def t1(x: int) -> Datum:
+        return Datum(x=x, y=Color.RED)
+
+    @workflow
+    def wf(x: int) -> Datum:
+        return t1(x=x)
+
+    assert wf(x=10) == Datum(10, Color.RED)
+
+
+def test_flyte_schema_dataclass():
+    TestSchema = FlyteSchema[kwtypes(some_str=str)]
+
+    @dataclass_json
+    @dataclass
+    class InnerResult:
+        number: int
+        schema: TestSchema
+
+    @dataclass_json
+    @dataclass
+    class Result:
+        result: InnerResult
+        schema: TestSchema
+
+    schema = TestSchema()
+
+    @task
+    def t1(x: int) -> Result:
+
+        return Result(result=InnerResult(number=x, schema=schema), schema=schema)
+
+    @workflow
+    def wf(x: int) -> Result:
+        return t1(x=x)
+
+    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
 
 
 def test_environment():

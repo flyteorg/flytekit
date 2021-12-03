@@ -11,9 +11,11 @@ from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from typing_extensions import Annotated
 
+from flytekit import kwtypes
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types.primitives import Integer
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -24,6 +26,7 @@ from flytekit.core.type_engine import (
     DictTransformer,
     HashMethod,
     ListTransformer,
+    LiteralsResolver,
     SimpleTransformer,
     TypeEngine,
     convert_json_schema_to_python_class,
@@ -38,6 +41,7 @@ from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 
 
@@ -554,6 +558,28 @@ def test_enum_type():
         TypeEngine.to_literal_type(UnsupportedEnumValues)
 
 
+def test_enum_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    lt = TypeEngine.to_literal_type(Datum)
+    schema = Datum.schema()
+    schema.fields["y"].load_by = LoadDumpOptions.name
+    assert lt.metadata == JSONSchema().dump(schema)
+
+    transformer = DataclassTransformer()
+    ctx = FlyteContext.current_context()
+    datum = Datum(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum.x == pv.x
+    assert datum.y.value == pv.y
+
+
 @pytest.mark.parametrize(
     "python_value,python_types,expected_literal_map",
     [
@@ -710,3 +736,92 @@ def test_literal_hash_to_python_value():
     python_df = TypeEngine.to_python_value(ctx, literal_with_hash_set, pd.DataFrame)
     expected_df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
     assert expected_df.equals(python_df)
+
+
+TestSchema = FlyteSchema[kwtypes(some_str=str)]
+
+
+@dataclass_json
+@dataclass
+class InnerResult:
+    number: int
+    schema: TestSchema
+
+
+@dataclass_json
+@dataclass
+class Result:
+    result: InnerResult
+    schema: TestSchema
+
+
+def test_schema_in_dataclass():
+    schema = TestSchema()
+    df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
+    schema.open().write(df)
+    o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(Result)
+    lv = tf.to_literal(ctx, o, Result, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
+
+    assert o == ot
+
+
+@pytest.mark.parametrize(
+    "literal_value,python_type,expected_python_value",
+    [
+        (
+            Literal(
+                collection=LiteralCollection(
+                    literals=[
+                        Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                        Literal(scalar=Scalar(primitive=Primitive(integer=2))),
+                        Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                    ]
+                )
+            ),
+            typing.List[int],
+            [1, 2, 3],
+        ),
+        (
+            Literal(
+                map=LiteralMap(
+                    literals={
+                        "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
+                        "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
+                    },
+                )
+            ),
+            typing.Dict[str, str],
+            {"k1": "v1", "k2": "2"},
+        ),
+    ],
+)
+def test_literals_resolver(literal_value, python_type, expected_python_value):
+    lit_dict = {"a": literal_value}
+
+    lr = LiteralsResolver(lit_dict)
+    out = lr.get("a", python_type)
+    assert out == expected_python_value
+
+
+def test_guess_of_dataclass():
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        x: int
+        y: str
+        z: typing.Dict[str, int]
+
+        def hello(self):
+            ...
+
+    lt = TypeEngine.to_literal_type(Foo)
+    foo = Foo(1, "hello", {"world": 3})
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), foo, Foo, lt)
+    lit_dict = {"a": lv}
+    lr = LiteralsResolver(lit_dict)
+    assert lr.get("a", Foo) == foo
+    assert hasattr(lr.get("a", Foo), "hello") is True
