@@ -27,7 +27,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union
 from flytekit.models.types import LiteralType, SimpleType, UnionType
 
 T = typing.TypeVar("T")
@@ -604,47 +604,50 @@ class UnionTransformer(TypeTransformer[T]):
     def __init__(self):
         super().__init__("Typed Union", typing.Union)
 
-    @staticmethod
-    def get_sub_type(t: Type[T]) -> Type[T]:
-        """
-        Return the generic Type T of the Union
-        """
-        if hasattr(t, "__origin__") and t.__origin__ is typing.Union:  # type: ignore
-            if hasattr(t, "__args__"):
-                return t.__args__  # type: ignore
-        raise ValueError("Only generic univariate typing.Union[T] type is supported.")
-
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         try:
-            sub_type = [TypeEngine.to_literal_type(v) if v else "" for v in self.get_sub_type(t)]
+            sub_type = [TypeEngine.to_literal_type(v) for v in typing.get_args(t)]
             return _type_models.LiteralType(union_type=UnionType(sub_type))
         except Exception as e:
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        for t in python_type.__args__:
+        for idx, t in enumerate(typing.get_args(python_type)):
             try:
-                return TypeEngine.to_literal(ctx, python_val, t, expected)
+                val = TypeEngine.to_literal(ctx, python_val, t, expected)
             except Exception as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
+                continue
+
+            return Literal(scalar=Scalar(union=Union(value=val, type=expected, tag=idx)))
+
         raise TypeError(f"Cannot convert from {python_val} to {python_type}")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
-        if lv is None:
-            return None
-        st = self.get_sub_type(expected_python_type)
-        for v in st:
+        for x in typing.get_args(expected_python_type):
+            if x is type(None):
+                if lv is None: # todo(maximsmol): why would this ever be None and not Void?
+                    return None
+
+                if lv.scalar is not None and lv.scalar.none_type is not None:
+                    return None
+
+                break
+
+        for v in typing.get_args(expected_python_type):
             try:
                 val = TypeEngine.to_python_value(ctx, lv, v)
                 if val:
                     return val
-            except Exception as e:
+            except Exception as e: # todo(maximsmol): separate programmer errors from type conversion failures
                 logger.debug(f"Failed to convert from {lv} to {v}", e)
+
         raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
-        if literal_type.union_type:
-            return typing.Union[tuple(TypeEngine.guess_python_type(v) for v in literal_type.union_type.values)]
+        if literal_type.union_type is not None:
+            return typing.Union[tuple(TypeEngine.guess_python_type(v) for v in literal_type.union_type.variants)]
+
         raise ValueError(f"Union transformer cannot reverse {literal_type}")
 
 

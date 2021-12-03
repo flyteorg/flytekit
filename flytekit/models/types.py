@@ -104,21 +104,21 @@ class UnionType(_common.FlyteIdlEntity):
     Models _types_pb2.UnionType
     """
 
-    def __init__(self, values: typing.List["LiteralType"]):
-        self._values = values
+    def __init__(self, variants: typing.List["LiteralType"]):
+        self._variants = variants
 
     @property
-    def values(self) -> typing.List["LiteralType"]:
-        return self._values
+    def variants(self) -> typing.List["LiteralType"]:
+        return self._variants
 
     def to_flyte_idl(self) -> _types_pb2.UnionType:
         return _types_pb2.UnionType(
-            values=[val.to_flyte_idl() if val else None for val in self._values],
+            variants=[val.to_flyte_idl() if val else None for val in self._variants],
         )
 
     @classmethod
     def from_flyte_idl(cls, proto: _types_pb2.UnionType):
-        return cls(values=[LiteralType.from_flyte_idl(v) for v in proto.values])
+        return cls(variants=[LiteralType.from_flyte_idl(v) for v in proto.values])
 
 
 class LiteralType(_common.FlyteIdlEntity):
