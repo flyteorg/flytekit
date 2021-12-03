@@ -57,7 +57,9 @@ def _compute_array_job_index():
     offset = 0
     if _os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
         offset = int(_os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
-    return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+    if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
+        return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+    return offset
 
 
 def _map_job_index_to_child_index(local_input_dir, datadir, index):
@@ -380,11 +382,34 @@ def _execute_map_task(
     raw_output_data_prefix,
     max_concurrency,
     test,
+    is_aws_batch_single_job: bool,
     dynamic_addl_distro: str,
     dynamic_dest_dir: str,
     resolver: str,
     resolver_args: List[str],
 ):
+    """
+    This function should be called by map task and aws-batch task
+    resolver should be something like:
+        flytekit.core.python_auto_container.default_task_resolver
+    resolver args should be something like
+        task_module app.workflows task_name task_1
+    have dashes seems to mess up click, like --task_module seems to interfere
+
+    :param inputs: Where to read inputs
+    :param output_prefix: Where to write primitive outputs
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param test: Dry run
+    :param is_aws_batch_single_job: True if the aws batch job type is Single job
+    :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
+      nested).
+    :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
+    :param dynamic_addl_distro: In the case of parent tasks executed using the 'fast' mode this captures where the
+        compressed code archive has been uploaded.
+    :param dynamic_dest_dir: In the case of parent tasks executed using the 'fast' mode this captures where compressed
+        code archives should be installed in the flyte task container.
+    :return:
+    """
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
@@ -394,8 +419,12 @@ def _execute_map_task(
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
             if not isinstance(_task_def, PythonFunctionTask):
-                raise Exception("Map tasks cannot be run with instance tasks.")
-            map_task = MapPythonTask(_task_def, max_concurrency)
+                raise Exception("Map tasks cannot be run with instance tasks.", _task_def)
+
+            if is_aws_batch_single_job:
+                map_task = _task_def
+            else:
+                map_task = MapPythonTask(_task_def, max_concurrency)
 
             task_index = _compute_array_job_index()
             output_prefix = _os.path.join(output_prefix, str(task_index))
@@ -508,6 +537,7 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--max-concurrency", type=int, required=False)
 @_click.option("--test", is_flag=True)
+@_click.option("--is-aws-batch-single-job", is_flag=True)
 @_click.option("--dynamic-addl-distro", required=False)
 @_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=True)
@@ -522,6 +552,7 @@ def map_execute_task_cmd(
     raw_output_data_prefix,
     max_concurrency,
     test,
+    is_aws_batch_single_job,
     dynamic_addl_distro,
     dynamic_dest_dir,
     resolver,
@@ -535,6 +566,7 @@ def map_execute_task_cmd(
         raw_output_data_prefix,
         max_concurrency,
         test,
+        is_aws_batch_single_job,
         dynamic_addl_distro,
         dynamic_dest_dir,
         resolver,
