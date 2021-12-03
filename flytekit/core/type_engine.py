@@ -290,13 +290,13 @@ class DataclassTransformer(TypeTransformer[object]):
             if inspect.isclass(f.type):
                 if issubclass(f.type, FlyteSchema):
                     t = FlyteSchemaTransformer()
-                    t.to_python_value(
+                    v = t.to_python_value(
                         FlyteContext.current_context(),
                         Literal(scalar=Scalar(schema=Schema(v.remote_path, t._get_schema_type(f.type)))),
                         f.type,
                     )
                 elif issubclass(f.type, FlyteFile):
-                    FlyteFilePathTransformer().to_python_value(
+                    v = FlyteFilePathTransformer().to_python_value(
                         FlyteContext.current_context(),
                         Literal(
                             scalar=Scalar(
@@ -313,7 +313,7 @@ class DataclassTransformer(TypeTransformer[object]):
                         f.type,
                     )
                 elif issubclass(f.type, FlyteDirectory):
-                    FlyteDirToMultipartBlobTransformer().to_python_value(
+                    v = FlyteDirToMultipartBlobTransformer().to_python_value(
                         FlyteContext.current_context(),
                         Literal(
                             scalar=Scalar(
