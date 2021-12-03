@@ -280,57 +280,66 @@ class DataclassTransformer(TypeTransformer[object]):
             elif dataclasses.is_dataclass(f.type):
                 self._serialize_flyte_type(v, f.type)
 
-    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type["FlyteSchema"]):
+    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> T:
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
         from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
 
-        for f in dataclasses.fields(expected_python_type):
-            v = python_val.__getattribute__(f.name)
-            if inspect.isclass(f.type):
-                if issubclass(f.type, FlyteSchema):
-                    t = FlyteSchemaTransformer()
-                    v = t.to_python_value(
-                        FlyteContext.current_context(),
-                        Literal(scalar=Scalar(schema=Schema(v.remote_path, t._get_schema_type(f.type)))),
-                        f.type,
-                    )
-                elif issubclass(f.type, FlyteFile):
-                    v = FlyteFilePathTransformer().to_python_value(
-                        FlyteContext.current_context(),
-                        Literal(
-                            scalar=Scalar(
-                                blob=Blob(
-                                    metadata=BlobMetadata(
-                                        type=_core_types.BlobType(
-                                            format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                                        )
-                                    ),
-                                    uri=v.path,
+        if not dataclasses.is_dataclass(expected_python_type):
+            return python_val
+
+        if issubclass(expected_python_type, FlyteSchema):
+            t = FlyteSchemaTransformer()
+            return t.to_python_value(
+                FlyteContext.current_context(),
+                Literal(scalar=Scalar(schema=Schema(python_val.remote_path, t._get_schema_type(expected_python_type)))),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, FlyteFile):
+            return FlyteFilePathTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
                                 )
-                            )
-                        ),
-                        f.type,
+                            ),
+                            uri=python_val.path,
+                        )
                     )
-                elif issubclass(f.type, FlyteDirectory):
-                    v = FlyteDirToMultipartBlobTransformer().to_python_value(
-                        FlyteContext.current_context(),
-                        Literal(
-                            scalar=Scalar(
-                                blob=Blob(
-                                    metadata=BlobMetadata(
-                                        type=_core_types.BlobType(
-                                            format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-                                        )
-                                    ),
-                                    uri=v.path,
+                ),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, FlyteDirectory):
+            return FlyteDirToMultipartBlobTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                                 )
-                            )
-                        ),
-                        f.type,
+                            ),
+                            uri=python_val.path,
+                        )
                     )
-            elif dataclasses.is_dataclass(f.type):
-                self._deserialize_flyte_type(v, f.type)
+                ),
+                expected_python_type,
+            )
+        else:
+            for f in dataclasses.fields(expected_python_type):
+                value = python_val.__getattribute__(f.name)
+                if hasattr(f.type, "__origin__") and f.type.__origin__ is list:
+                    value = [self._deserialize_flyte_type(v, f.type.__args__[0]) for v in value]
+                elif hasattr(f.type, "__origin__") and f.type.__origin__ is dict:
+                    value = {k: self._deserialize_flyte_type(v, f.type.__args__[1]) for k, v in value.items()}
+                else:
+                    value = self._deserialize_flyte_type(value, f.type)
+                python_val.__setattr__(f.name, value)
+            return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if t == int:
@@ -376,8 +385,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
 
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
-        self._deserialize_flyte_type(dc, expected_python_type)
-        return self._fix_dataclass_int(expected_python_type, dc)
+        return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.simple == SimpleType.STRUCT:

@@ -34,7 +34,7 @@ from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
-from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
@@ -519,22 +519,25 @@ def test_flyte_file_in_dataclass():
     @dataclass
     class TestFileStruct(object):
         a: FlyteFile
-        b: typing.List[FlyteFile]
-        c: typing.Dict[str, FlyteFile]
-        d: TestInnerFileStruct
+        b: TestInnerFileStruct
 
     f = FlyteFile("s3://tmp/file")
-    o = TestFileStruct(
-        a=f, b=[f], c={"hello": f}, d=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f], c={"hello": f})
-    )
+    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f], c={"hello": f}))
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
     lt = tf.get_literal_type(TestFileStruct)
     lv = tf.to_literal(ctx, o, TestFileStruct, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
-    assert o.a.path == ot.a.path
-    assert o == ot
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
+
+    assert o.a.path == ot.a.remote_source
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].remote_source
+    assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
 
 
 def test_flyte_directory_in_dataclass():
@@ -549,22 +552,27 @@ def test_flyte_directory_in_dataclass():
     @dataclass
     class TestFileStruct(object):
         a: FlyteDirectory
-        b: typing.List[FlyteDirectory]
-        c: typing.Dict[str, FlyteDirectory]
-        d: TestInnerFileStruct
+        b: TestInnerFileStruct
 
     tempdir = tempfile.mkdtemp(prefix="flyte-")
     f = FlyteDirectory(tempdir)
-    o = TestFileStruct(
-        a=f, b=[f], c={"hello": f}, d=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f], c={"hello": f})
-    )
+    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f], c={"hello": f}))
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
     lt = tf.get_literal_type(TestFileStruct)
     lv = tf.to_literal(ctx, o, TestFileStruct, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
-    assert o == ot
+
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
+
+    assert o.a.path == ot.a.path
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].path
+    assert o.b.c["hello"].path == ot.b.c["hello"].path
 
 
 # Enums should have string values
