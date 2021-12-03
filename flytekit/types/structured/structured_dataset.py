@@ -4,17 +4,18 @@ import os
 import typing
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Type, Union
-
+from typing import Any, Dict, List, Type, Union, Optional
 import numpy as _np
 import pandas as pd
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 import pyarrow as pa
 
 from flytekit import FlyteContext
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models import types as type_models, literals as literal_models
+from flytekit.models import types as type_models, literals
 from flytekit.models.literals import Literal, Scalar
 from flytekit.models.types import LiteralType, StructuredDatasetType
 
@@ -80,7 +81,7 @@ class StructuredDataset(object):
         remote_path: str = None,
         file_format: DatasetFormat = DatasetFormat.PARQUET,
         downloader: typing.Callable[[str, os.PathLike], None] = None,
-        metadata: typing.Optional[literal_models.StructuredDatasetMetadata] = None,
+        metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
     ):
         self._dataframe = dataframe
         self._local_path = local_path
@@ -111,142 +112,56 @@ class StructuredDataset(object):
         return FLYTE_DATASET_TRANSFORMER.download(self.file_format, df_type, self.remote_path)
 
 
-class DataFrameTransformer(TypeTransformer[T], ABC):
-    """
-    Slimmed down version of the regular TypeTransformer contributors typically implement.
-    """
-    def __init__(self, name: str, dataframe_type: Type[T]):
-        super().__init__(name, dataframe_type)
+class StructuredDatasetEncoder(ABC):
+    def __init__(self, ...):
+        ...
 
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
-        raise NotImplementedError
-
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
-        raise NotImplementedError
-
-
-class PartialDataFrameTransformer(ABC):
-    @abstractmethod
     @property
     def python_type(self) -> Type[T]:
         raise NotImplementedError
 
-    @abstractmethod
     @property
-    def intermediate_type(self) -> Type[IT]:
+    def protocol(self) -> str:
         raise NotImplementedError
 
-    def to_intermediate_value(
-        self,
-        ctx: FlyteContext,
-        python_value: typing.Any,
-        python_type: Type[T],
-        literal_type: typing.Optional[LiteralType],
-    ) -> IT:
-        raise NotImplementedError
-
-    def to_python_value(self, ctx: FlyteContext, python_type: Type[T], intermediate_value: IT, literal: Literal) -> T:
-        raise NotImplementedError
-
-
-class IntermediateTypeHandler(ABC):
-    @abstractmethod
     @property
-    def intermediate_type(self) -> Type[IT]:
-        raise NotImplementedError
-
-    def to_literal(
-        self,
-        ctx: FlyteContext,
-        intermediate_value: IT,
-        literal_type: LiteralType,
-        python_val: typing.Optional[T],
-        python_type: typing.Optional[Type[T]],
-    ) -> Literal:
-        """
-        :param ctx:
-        :param intermediate_value:
-        :param literal_type:
-        :param python_val:
-        :param python_type:
-        :return:
-        :raises:
-            TypeError: When converting from an intermediate value to a Literal, raise this if the handler is
-            incapable of handling the incoming value. The type engine will automatically try the next one.
-        """
-        raise NotImplementedError
-
-    def to_intermediate_value(self, ctx: FlyteContext, lv: Literal, python_type: Type[T]) -> IT:
-        """
-        :raises:
-            TypeError: When converting from a Literal to an intermediate value, contributors should raise this
-            to signal to the StructuredDatasetTransformerEngine that the code isn't capable of handling the
-            incoming value. The engine will automatically try the next one.
-        """
-        raise NotImplementedError
-
-
-class CombinedHandlerPattern(ABC):
-    """
-
-    to_literal
-
-        Python value -> encode() -> persist() -> Flyte Literal
-
-    to_python_value
-
-        Flyte Literal -> read() -> decode() -> Python value
-
-    """
-    @abstractmethod
-    @property
-    def python_type(self) -> Type[T]:
-        raise NotImplementedError
-
-    @abstractmethod
-    @property
-    def intermediate_type(self) -> Type[IT]:
+    def supported_format(self) -> str:
         raise NotImplementedError
 
     @abstractmethod
     def encode(
-            self,
-            ctx: FlyteContext,
-            python_value: typing.Any,
-            python_type: Type[T],
-            literal_type: typing.Optional[LiteralType],
-    ) -> IT:
+        self,
+        ctx: FlyteContext,
+        dataframe: typing.Any,
+        uri: Optional[str],  # if starts with xyz:// prefix must match storage_prefix
+        literal_type: typing.Optional[LiteralType],
+    ) -> literals.StructuredDataset:  # -> StructuredDatasetMiddleware
+        raise NotImplementedError
+
+
+class StructuredDatasetDecoder(ABC):
+    @abstractmethod
+    @property
+    def python_type(self) -> Type[T]:
         raise NotImplementedError
 
     @abstractmethod
-    def decode(self, ctx: FlyteContext, python_type: Type[T], intermediate_value: IT, literal: Literal) -> T:
+    @property
+    def supported_formats(self) -> List[str]:
         raise NotImplementedError
 
     @abstractmethod
-    def persist(
-            self,
-            ctx: FlyteContext,
-            intermediate_value: IT,
-            literal_type: LiteralType,
-            python_val: typing.Optional[T],
-            python_type: typing.Optional[Type[T]],
-    ) -> Literal:
-        """
-        :param ctx:
-        :param intermediate_value:
-        :param literal_type:
-        :param python_val:
-        :param python_type:
-        :return:
-        :raises:
-            TypeError: When converting from an intermediate value to a Literal, raise this if the handler is
-            incapable of handling the incoming value. The type engine will automatically try the next one.
-        """
+    @property
+    def storage_prefix(self) -> str:
         raise NotImplementedError
 
     @abstractmethod
-    def read(self, ctx: FlyteContext, lv: Literal, python_type: Type[T]) -> IT:
-        ...
+    def decode(
+        self,
+        ctx: FlyteContext,
+        flyte_value: literals.StructuredDataset,
+    ) -> T:
+        raise NotImplementedError
 
 
 class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
@@ -255,31 +170,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
     registering with the main type engine, you should register with this transformer instead.
 
-    This transformer is special in that breaks the transformer into two pieces internally.
-
     to_literal
 
-        Python value -> DataFrameTransformer -> Flyte Literal
-        or
-        Python value -> PartialDataFrameTransformer -> IntermediateFormatHandler -> Flyte Literal
 
     to_python_value
 
-        Flyte Literal -> DataFrameTransformer -> Python value
-        or
-        Flyte Literal -> IntermediateFormatHandler -> PartialDataFrameTransformer -> Python value
-
-    Basically the plugin contributor needs to write either
-      i.) a concrete class that's effectively a regular type engine transformer (minus a couple functions)
-      ii.) concrete classes for one or both of the two step transformer base classes.
-
-    Note that the paths taken for a given data frame type do not have to be the same. Let's say you
-    want to store a custom dataframe into BigQuery. You can
-    #. When going in the ``to_literal`` direction: Write a custom handler that converts directly from the dataframe
-      type to a literal, persisting the data into BigQuery.
-    #. When going in the ``to_python_value`` direction: Write a custom handler that converts from a local
-    Parquet file into your custom data frame type. The handlers that come bundled with flytekit will automatically
-    handle the translation from BigQuery into a local Parquet file.
     """
 
     FULL_DF_TRANSFORMERS: Dict[Type, DataFrameTransformer] = {}
