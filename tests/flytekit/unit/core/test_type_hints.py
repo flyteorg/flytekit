@@ -378,7 +378,7 @@ def test_flyte_file_in_dataclass():
         n1 = t1(path=path)
         return t2(fs=n1)
 
-    assert wf(path="s3://somewhere") == "s3://somewhere"
+    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
 
 
 def test_flyte_directory_in_dataclass():
@@ -409,7 +409,7 @@ def test_flyte_directory_in_dataclass():
         n1 = t1(path=path)
         return t2(fs=n1)
 
-    assert wf(path="s3://somewhere") == "s3://somewhere"
+    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
 
 
 def test_wf1_with_map():
