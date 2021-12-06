@@ -6,6 +6,7 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Type
 
 import numpy as _np
@@ -17,6 +18,8 @@ from flytekit.core.type_engine import T, TypeEngine, TypeTransformer, TypeTransf
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.plugins import pandas
+
+T = typing.TypeVar("T")
 
 
 class SchemaFormat(Enum):
@@ -37,7 +40,7 @@ class SchemaOpenMode(Enum):
     WRITE = "w"
 
 
-def generate_ordered_files(directory: os.PathLike, n: int) -> str:
+def generate_ordered_files(directory: os.PathLike, n: int) -> typing.Generator[str, None, None]:
     for i in range(n):
         yield os.path.join(directory, f"{i:05}")
 
@@ -73,12 +76,12 @@ class SchemaReader(typing.Generic[T]):
 
 
 class SchemaWriter(typing.Generic[T]):
-    def __init__(self, to_path: str, cols: typing.Dict[str, type], fmt: SchemaFormat):
+    def __init__(self, to_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         self._to_path = to_path
         self._fmt = fmt
         self._columns = cols
         # TODO This should be change to send a stop instead of hardcoded to 1024
-        self._file_name_gen = generate_ordered_files(self._to_path, 1024)
+        self._file_name_gen = generate_ordered_files(Path(self._to_path), 1024)
 
     @property
     def to_path(self) -> str:
@@ -107,14 +110,14 @@ class LocalIOSchemaReader(SchemaReader[T]):
         with os.scandir(self._from_path) as it:
             for entry in it:
                 if not entry.name.startswith(".") and entry.is_file():
-                    yield self._read(entry.path, **kwargs)
+                    yield self._read(Path(entry.path), **kwargs)
 
     def all(self, **kwargs) -> T:
-        files = []
+        files: typing.List[os.PathLike] = []
         with os.scandir(self._from_path) as it:
             for entry in it:
                 if not entry.name.startswith(".") and entry.is_file():
-                    files.append(entry.path)
+                    files.append(Path(entry.path))
 
         return self._read(*files, **kwargs)
 
@@ -279,13 +282,15 @@ class FlyteSchema(object):
         if not h.handles_remote_io:
             # The Schema Handler does not manage its own IO, and this it will expect the files are on local file-system
             if self._supported_mode == SchemaOpenMode.READ and not self._downloaded:
+                if self._downloader is None:
+                    raise AssertionError("downloader cannot be None in read mode!")
                 # Only for readable objects if they are not downloaded already, we should download them
                 # Write objects should already have everything written to
                 self._downloader(self.remote_path, self.local_path)
                 self._downloaded = True
             if mode == SchemaOpenMode.WRITE:
-                return h.writer(self.local_path, self.columns(), self.format())
-            return h.reader(self.local_path, self.columns(), self.format())
+                return h.writer(typing.cast(str, self.local_path), self.columns(), self.format())
+            return h.reader(typing.cast(str, self.local_path), self.columns(), self.format())
 
         # Remote IO is handled. So we will just pass the remote reference to the object
         if mode == SchemaOpenMode.WRITE:
@@ -387,10 +392,10 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             supported_mode=SchemaOpenMode.READ,
         )
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[FlyteSchema]:
         if not literal_type.schema:
             raise ValueError(f"Cannot reverse {literal_type}")
-        columns: dict[Type] = {}
+        columns: typing.Dict[str, Type] = {}
         for literal_column in literal_type.schema.columns:
             if literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.INTEGER:
                 columns[literal_column.name] = int
@@ -406,7 +411,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 columns[literal_column.name] = bool
             else:
                 raise ValueError(f"Unknown schema column type {literal_column}")
-        return FlyteSchema[columns]
+        return FlyteSchema.__class_getitem__(columns)
 
 
 TypeEngine.register(FlyteSchemaTransformer())
