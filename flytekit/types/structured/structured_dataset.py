@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import types
 import os
 import re
+import types
 import typing
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -352,7 +352,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         :param t: The python dataframe type, which is mostly ignored.
         """
         # todo: fill in columns by checking for typing.annotated metadata
-        return LiteralType(structured_dataset_type=StructuredDatasetType(columns=[]))
+        # todo: fill in format correctly by checking for typing.annotated metadata, using placeholder for now
+        fmt = self.DEFAULT_FORMATS[t] if t in self.DEFAULT_FORMATS else "parquet"
+        return LiteralType(structured_dataset_type=StructuredDatasetType(columns=[], format=fmt))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         # todo: technically we should return the dataframe type specified in the constructor, but to do that,
