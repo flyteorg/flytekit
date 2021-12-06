@@ -235,14 +235,16 @@ class FlyteRemote(object):
         # Not exposing this as a property for now.
         self._entrypoint_settings = entrypoint_settings
 
-        # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
         raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
             sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
         )
         self._file_access = file_access or FileAccessProvider(
             local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
             raw_output_prefix=raw_output_data_prefix,
+        )
+        # Save the file access object locally, but also make it available for use from the context.
+        FlyteContextManager.with_context(
+            FlyteContextManager.current_context().with_file_access(self._file_access).build()
         )
 
         # TODO: Reconsider whether we want this. Probably best to not cache.

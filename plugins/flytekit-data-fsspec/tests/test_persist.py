@@ -10,15 +10,15 @@ from flytekit.configuration import aws
 
 def test_s3_setup_args():
     kwargs = s3_setup_args()
-    assert kwargs == {"client_kwargs": {"endpoint_url": "http://localhost:30084"}}
+    assert kwargs == {}
 
-    with aws.S3_ENDPOINT.get_patcher("http://flyte:30084"):
+    with aws.S3_ENDPOINT.get_patcher("http://localhost:30084"):
         kwargs = s3_setup_args()
-        assert kwargs == {"client_kwargs": {"endpoint_url": "http://flyte:30084"}}
+        assert kwargs == {"client_kwargs": {"endpoint_url": "http://localhost:30084"}}
 
     with aws.S3_ACCESS_KEY_ID.get_patcher("access"):
         kwargs = s3_setup_args()
-        assert kwargs == {"client_kwargs": {"endpoint_url": "http://localhost:30084"}}
+        assert kwargs == {}
         assert os.environ[aws.S3_ACCESS_KEY_ID_ENV_NAME] == "access"
 
 
