@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import types
 import os
 import re
 import typing
@@ -11,7 +12,7 @@ import numpy as _np
 import pandas as pd
 import pyarrow as pa
 
-from flytekit import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
 from flytekit.loggers import logger
@@ -20,8 +21,8 @@ from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, StructuredDatasetType
 
-T = typing.TypeVar("T")  # Local dataframe type
-DF = typing.TypeVar("DF")  # Intermediate type
+T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
+DF = typing.TypeVar("DF")  # Dataframe type
 
 
 class StructuredDataset(object):
@@ -74,6 +75,9 @@ class StructuredDataset(object):
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._metadata = metadata
 
+        # This is not for users to set, the transformer will set this.
+        self._literal_sd: Optional[literals.StructuredDataset] = None
+
     @property
     def dataframe(self) -> Type[typing.Any]:
         return self._dataframe
@@ -89,6 +93,18 @@ class StructuredDataset(object):
     @property
     def metadata(self) -> Optional[StructuredDatasetMetadata]:
         return self._metadata
+
+    @property
+    def literal(self) -> Optional[literals.StructuredDataset]:
+        return self._literal_sd
+
+    def open_as(self, df_type: Type[DF]) -> DF:
+        ctx = FlyteContextManager.current_context()
+        return FLYTE_DATASET_TRANSFORMER.open_as(ctx, self.literal, df_type)
+
+    def iter_as(self, df_type: Type[DF]) -> DF:
+        ctx = FlyteContextManager.current_context()
+        return FLYTE_DATASET_TRANSFORMER.iter_as(ctx, self.literal, df_type)
 
 
 class StructuredDatasetEncoder(ABC):
@@ -144,7 +160,7 @@ class StructuredDatasetEncoder(ABC):
 
 
 class StructuredDatasetDecoder(ABC):
-    def __init__(self, python_type: Type[T], protocol: str, supported_format: Optional[str] = None):
+    def __init__(self, python_type: Type[DF], protocol: str, supported_format: Optional[str] = None):
         """
         Extend this abstract class, implement the decode function, and register your concrete class with the
         FLYTE_DATASET_TRANSFORMER defined at this module level in order for the core flytekit type engine to handle
@@ -161,7 +177,7 @@ class StructuredDatasetDecoder(ABC):
         self._supported_format = supported_format or ""
 
     @property
-    def python_type(self) -> Type[T]:
+    def python_type(self) -> Type[DF]:
         return self._python_type
 
     @property
@@ -177,7 +193,7 @@ class StructuredDatasetDecoder(ABC):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-    ) -> Union[T, Generator[T, None, None]]:
+    ) -> Union[DF, Generator[DF, None, None]]:
         """
         This is code that will be called by the dataset transformer engine to ultimately translate from a Flyte Literal
         value into a Python instance.
@@ -191,17 +207,18 @@ class StructuredDatasetDecoder(ABC):
         raise NotImplementedError
 
 
+def protocol_prefix(uri: str) -> str:
+    g = re.search(r"([\w]+)://.*", uri)
+    if g.groups():
+        return g.groups()[0]
+    raise ValueError(f"No protocol prefix found in {uri}")
+
+
 class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     """
     Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
     If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
     registering with the main type engine, you should register with this transformer instead.
-
-    to_literal
-
-
-    to_python_value
-
     """
 
     ENCODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetEncoder]]] = {}
@@ -238,6 +255,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             # TODO: allow overriding
             raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
         lowest_level[h.supported_format] = h
+        logger.debug(f"Registered {h} as handler for {h.python_type}, protocol {h.protocol}, fmt {h.supported_format}")
 
         if default_for_type:
             # TODO: Add logging, think about better ux, maybe default False and warn if doesn't exist.
@@ -261,10 +279,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             df_type = type(python_val.dataframe)
             format = python_val.file_format
             protocol = self.DEFAULT_PROTOCOLS[df_type]
-            if python_val.uri:
-                g = re.search(r"([\w]+)://.*", python_val.uri)
-                if g.groups():
-                    protocol = g.groups()[0]
+            try:
+                protocol = protocol_prefix(python_val.uri)
+            except ValueError:
+                ...
 
             return self.encode(
                 ctx,
@@ -295,17 +313,35 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return Literal(scalar=Scalar(structured_dataset=sd_model))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        uri = lv.scalar.structured_dataset.uri
-        meta = lv.scalar.structured_dataset.metadata
-
         # Either a StructuredDataset type or some dataframe type.
         if issubclass(expected_python_type, StructuredDataset):
-            return expected_python_type(remote_path=uri, file_format="fmt", metadata=meta)
+            # Just save the literal for now. If in the future we find that we need the StructuredDataset type hint
+            # type also, we can add it.
+            sd = expected_python_type(dataframe=None, file_format="fmt")
+            sd._literal_sd = lv.scalar.structured_dataset
+            return sd
 
-        return self.open_as(ctx, lv, python_type=expected_python_type)
+        # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means
+        # we should do the opening/downloading and whatever else it might entail right now. No iteration option here.
+        return self.open_as(ctx, lv.scalar.structured_dataset, df_type=expected_python_type)
 
-    def open_as(self, ctx: FlyteContext, lv: Literal, python_type: Type[FT]) -> FT:
-        ...
+    def open_as(self, ctx: FlyteContext, sd: literals.StructuredDataset, df_type: Type[DF]) -> DF:
+        protocol = protocol_prefix(sd.uri)
+
+        decoder = self.DECODERS[df_type][protocol][sd.metadata.format]
+        result = decoder.decode(ctx, sd)
+        if isinstance(result, types.GeneratorType):
+            raise ValueError(f"Decoder {decoder} returned iterator {result} but whole value requested from {sd}")
+        return result
+
+    def iter_as(self, ctx: FlyteContext, sd: literals.StructuredDataset, df_type: Type[DF]) -> DF:
+        protocol = protocol_prefix(sd.uri)
+
+        decoder = self.DECODERS[df_type][protocol][sd.metadata.format]
+        result = decoder.decode(ctx, sd)
+        if not isinstance(result, types.GeneratorType):
+            raise ValueError(f"Decoder {decoder} didn't return iterator {result} but should have from {sd}")
+        return result
 
     def get_literal_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> LiteralType:
         """
