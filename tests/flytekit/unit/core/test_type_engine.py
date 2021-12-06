@@ -356,6 +356,14 @@ def test_guessing_basic():
     pt = TypeEngine.guess_python_type(lt)
     assert pt is None
 
+    lt = model_types.LiteralType(
+        blob=BlobType(
+            format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
+        )
+    )
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is FlytePickle
+
 
 def test_guessing_containers():
     b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
@@ -550,6 +558,25 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+def test_pickle_type():
+    class Foo(object):
+        def __init__(self, number: int):
+            self.number = number
+
+    lt = TypeEngine.to_literal_type(FlytePickle)
+    assert lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+    assert lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, Foo(1), FlytePickle, lt)
+    assert "/tmp/flyte/" in lv.scalar.blob.uri
+
+    transformer = FlytePickleTransformer()
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert Foo(1).number == pv.number
 
 
 def test_enum_in_dataclass():

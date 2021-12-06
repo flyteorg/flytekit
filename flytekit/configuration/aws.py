@@ -4,11 +4,11 @@ S3_SHARD_FORMATTER = _config_common.FlyteRequiredStringConfigurationEntry("aws",
 
 S3_SHARD_STRING_LENGTH = _config_common.FlyteIntegerConfigurationEntry("aws", "s3_shard_string_length", default=2)
 
-S3_ENDPOINT = _config_common.FlyteStringConfigurationEntry("aws", "endpoint", default=None)
+S3_ENDPOINT = _config_common.FlyteStringConfigurationEntry("aws", "endpoint", default="http://localhost:30084")
 
-S3_ACCESS_KEY_ID = _config_common.FlyteStringConfigurationEntry("aws", "access_key_id", default=None)
+S3_ACCESS_KEY_ID = _config_common.FlyteStringConfigurationEntry("aws", "access_key_id", default="minio")
 
-S3_SECRET_ACCESS_KEY = _config_common.FlyteStringConfigurationEntry("aws", "secret_access_key", default=None)
+S3_SECRET_ACCESS_KEY = _config_common.FlyteStringConfigurationEntry("aws", "secret_access_key", default="miniostorage")
 
 S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
 

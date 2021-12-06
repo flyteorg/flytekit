@@ -286,6 +286,15 @@ def test_execute_joblib_workflow(flyteclient, flyte_workflows_register, flyte_re
     assert output_obj == input_obj
 
 
+def test_execute_pickle_workflow(flyteclient, flyte_workflows_register, flyte_remote_env):
+    remote = FlyteRemote.from_config(PROJECT, "development")
+    flyte_workflow = remote.fetch_workflow(name="workflows.basic.pickle.wf", version=f"v{VERSION}")
+    input_obj = 3
+    execution = remote.execute(flyte_workflow, {"a": input_obj}, wait=True)
+    output = execution.outputs["o0"]
+    assert output.number == 3
+
+
 def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):
     from mock_flyte_repo.workflows.basic.subworkflows import parent_wf
 
