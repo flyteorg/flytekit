@@ -262,6 +262,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             self.DEFAULT_FORMATS[h.python_type] = h.supported_format
             self.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
 
+        # Register with the type engine as well
+        TypeEngine.register_additional_type(self, h.python_type)
+
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
 
@@ -317,7 +320,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if issubclass(expected_python_type, StructuredDataset):
             # Just save the literal for now. If in the future we find that we need the StructuredDataset type hint
             # type also, we can add it.
-            sd = expected_python_type(dataframe=None, file_format="fmt")
+            sd = expected_python_type(dataframe=None,
+                                      # Specifying these two are just done for completeness. Kind of waste since
+                                      # we're saving the whole incoming literal to _literal_sd.
+                                      file_format=lv.scalar.structured_dataset.metadata.format,
+                                      metadata=lv.scalar.structured_dataset.metadata)
             sd._literal_sd = lv.scalar.structured_dataset
             return sd
 
@@ -353,6 +360,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         """
         # todo: fill in columns by checking for typing.annotated metadata
         # todo: fill in format correctly by checking for typing.annotated metadata, using placeholder for now
+        # todo: fill in external schema type and bytes by checking for typing.annotated
         fmt = self.DEFAULT_FORMATS[t] if t in self.DEFAULT_FORMATS else "parquet"
         return LiteralType(structured_dataset_type=StructuredDatasetType(columns=[], format=fmt))
 
