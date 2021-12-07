@@ -568,10 +568,7 @@ class TypeEngine(typing.Generic[T]):
             for x in typing.get_args(python_type)[1:]:
                 if not isinstance(x, FlyteAnnotation):
                     continue
-                if x.data.get("__consumed", False):
-                    continue
                 data = x.data
-                x.data["__consumed"] = True
         if data is not None:
             idl_type_annotation = _annotation_model(annotations=data)
             return LiteralType(
