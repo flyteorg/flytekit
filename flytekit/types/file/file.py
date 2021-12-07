@@ -10,6 +10,7 @@ from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
 def noop():
@@ -348,7 +349,11 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return ff
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
-        if literal_type.blob is not None and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format != FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+        ):
             return FlyteFile.__class_getitem__(literal_type.blob.format)
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
