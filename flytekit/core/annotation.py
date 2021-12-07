@@ -9,6 +9,9 @@ class FlyteAnnotation:
     runtime but rather can be retrieved from flyteadmin for custom presentation
     of typed parameters.
 
+    Flytekit expects to receive a maximum of one `FlyteAnnotation` object
+    within each typehint.
+
     For a task definition:
 
     .. code-block:: python
