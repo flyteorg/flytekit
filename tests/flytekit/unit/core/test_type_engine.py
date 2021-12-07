@@ -17,6 +17,7 @@ from marshmallow_jsonschema import JSONSchema
 
 from flytekit import kwtypes
 from flytekit.common.exceptions import user as user_exceptions
+from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
     DataclassTransformer,
@@ -29,6 +30,7 @@ from flytekit.core.type_engine import (
     dataclass_from_dict,
 )
 from flytekit.models import types as model_types
+from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
@@ -846,3 +848,30 @@ def test_guess_of_dataclass():
     lr = LiteralsResolver(lit_dict)
     assert lr.get("a", Foo) == foo
     assert hasattr(lr.get("a", Foo), "hello") is True
+
+
+def test_annotated_simple_types():
+
+    t = typing.Annotated[int, FlyteAnnotation({"foo": "bar"})]
+    lt = TypeEngine.to_literal_type(t)
+    assert isinstance(lt.annotation, TypeAnnotation)
+    assert lt.annotation.annotations == {"foo": "bar"}
+
+
+def test_annotated_list():
+
+    t = typing.Annotated[typing.List[int], FlyteAnnotation({"foo": "bar"})]
+    lt = TypeEngine.to_literal_type(t)
+    assert isinstance(lt.annotation, TypeAnnotation)
+    assert lt.annotation.annotations == {"foo": "bar"}
+
+    t = typing.List[typing.Annotated[int, FlyteAnnotation({"foo": "bar"})]]
+    lt = TypeEngine.to_literal_type(t)
+    assert isinstance(lt.collection_type.annotation, TypeAnnotation)
+    assert lt.collection_type.annotation.annotations == {"foo": "bar"}
+
+
+def test_multiple_annotations():
+    t = typing.Annotated[int, FlyteAnnotation({"foo": "bar"}), FlyteAnnotation({"anotha": "one"})]
+    with pytest.raises(Exception):
+        TypeEngine.to_literal_type(t)
