@@ -64,6 +64,7 @@ class MapPythonTask(PythonTask):
             task_type=SdkTaskType.CONTAINER_ARRAY_TASK,
             task_config=None,
             task_type_version=1,
+            metadata=python_function_task.metadata,
             **kwargs,
         )
 
