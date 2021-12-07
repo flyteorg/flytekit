@@ -453,6 +453,10 @@ class TypeEngine(typing.Generic[T]):
             for x in typing.get_args(python_type)[1:]:
                 if not isinstance(x, FlyteAnnotation):
                     continue
+                if data is not None:
+                    raise ValueError(
+                        f"More than one FlyteAnnotation used within {python_type} typehint. Flytekit requires a max of one."
+                    )
                 data = x.data
         if data is not None:
             idl_type_annotation = _annotation_model(annotations=data)
