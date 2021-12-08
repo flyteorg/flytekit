@@ -10,6 +10,7 @@ import _datetime
 import numpy as _np
 import pyarrow as pa
 
+from flytekit.common.constants import SchemaProtocol
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
@@ -212,7 +213,7 @@ def protocol_prefix(uri: str) -> str:
     g = re.search(r"([\w]+)://.*", uri)
     if g and g.groups():
         return g.groups()[0]
-    return "local"
+    return SchemaProtocol.LOCAL
 
 
 class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
@@ -228,19 +229,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         _np.uint32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         _np.uint64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         int: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        pa.int8(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        pa.int16(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        pa.int32(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        pa.int64(): type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         _np.float32: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
         _np.float64: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
         float: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        pa.float16(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        pa.float32(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        pa.float64(): type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
         _np.bool_: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),  # type: ignore
         bool: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),
-        pa.bool_(): type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),
         _np.datetime64: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
         _datetime.datetime: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
         _np.timedelta64: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
@@ -249,7 +242,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         _np.str_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-        pa.string(): type_models.LiteralType(simple=type_models.SimpleType.STRING),
     }
 
     ENCODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetEncoder]]] = {}
@@ -418,6 +410,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         #   we'd have to store that, which we don't do today. See possibly #1363
         if literal_type.structured_dataset_type is not None:
             return StructuredDataset
+        raise ValueError(f"StructuredDatasetTransformerEngine cannot reverse {literal_type}")
 
 
 FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
