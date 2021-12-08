@@ -606,9 +606,9 @@ def test_structured_dataset_type():
     data = {name: ["Tom", "Joseph"], age: [20, 22]}
     df = pd.DataFrame(data)
 
-    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformer
+    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
-    tf = StructuredDatasetTransformer()
+    tf = StructuredDatasetTransformerEngine()
     lt = tf.get_literal_type(StructuredDataset[{name: str, age: int}])
     assert lt.structured_dataset_type is not None
 
@@ -616,14 +616,8 @@ def test_structured_dataset_type():
     lv = tf.to_literal(ctx, df, pd.DataFrame, lt)
     assert "/tmp/flyte" in lv.scalar.structured_dataset.uri
     metadata = lv.scalar.structured_dataset.metadata
-    assert metadata.format == "PARQUET"
-    assert metadata.structured_dataset_type.columns[0].literal_type.simple == SimpleType.STRING
-    assert metadata.structured_dataset_type.columns[1].literal_type.simple == SimpleType.INTEGER
-    assert metadata.structured_dataset_type.columns[0].name == name
-    assert metadata.structured_dataset_type.columns[1].name == age
+    assert metadata.format == "parquet"
     gt = tf.guess_python_type(lt)
-    assert gt.columns()[name] == str
-    assert gt.columns()[age] == int
 
     v1 = tf.to_python_value(ctx, lv, pd.DataFrame)
     v2 = tf.to_python_value(ctx, lv, pa.Table)

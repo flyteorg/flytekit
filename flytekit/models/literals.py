@@ -1,3 +1,4 @@
+import typing
 from datetime import datetime as _datetime
 
 import pytz as _pytz
@@ -548,7 +549,7 @@ class Schema(_common.FlyteIdlEntity):
 
 
 class StructuredDatasetMetadata(_common.FlyteIdlEntity):
-    def __init__(self, format: str, structured_dataset_type: StructuredDatasetType):
+    def __init__(self, format: typing.Optional[str], structured_dataset_type: StructuredDatasetType = None):
         self._format = format
         self._structured_dataset_type = structured_dataset_type
 
@@ -574,7 +575,7 @@ class StructuredDatasetMetadata(_common.FlyteIdlEntity):
 
 
 class StructuredDataset(_common.FlyteIdlEntity):
-    def __init__(self, uri: str, metadata: StructuredDatasetMetadata):
+    def __init__(self, uri: str, metadata: typing.Optional[StructuredDatasetMetadata] = None):
         """
         A strongly typed schema that defines the interface of data retrieved from the underlying storage medium.
         """
