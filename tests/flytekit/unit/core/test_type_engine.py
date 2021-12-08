@@ -432,6 +432,13 @@ class UnsupportedSchemaType:
         self._a = "Hello"
 
 
+@dataclass_json
+@dataclass
+class UnsupportedNestedStruct(object):
+    a: int
+    s: UnsupportedSchemaType
+
+
 def test_dataclass_transformer():
     schema = {
         "$ref": "#/definitions/TeststructSchema",
@@ -474,6 +481,12 @@ def test_dataclass_transformer():
     assert t.simple == SimpleType.STRUCT
     assert t.metadata is not None
     assert t.metadata == schema
+
+    t = tf.get_literal_type(UnsupportedNestedStruct)
+    assert t is not None
+    assert t.simple is not None
+    assert t.simple == SimpleType.STRUCT
+    assert t.metadata is None
 
 
 def test_dataclass_int_preserving():

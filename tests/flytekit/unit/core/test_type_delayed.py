@@ -17,7 +17,11 @@ class Foo(object):
 
 
 def test_jsondc_schemaize():
-    try:
-        TypeEngine.to_literal_type(Foo)
-    except Exception as e:
-        assert "unsupported field type" in f"{e}"
+    lt = TypeEngine.to_literal_type(Foo)
+    pt = TypeEngine.guess_python_type(lt)
+
+    # When postponed annotations are enabled, dataclass_json will not work and we'll end up with a
+    # schemaless generic.
+    # This test basically tests the broken behavior. Remove this test if
+    # https://github.com/lovasoa/marshmallow_dataclass/issues/13 is ever fixed.
+    assert pt is dict
