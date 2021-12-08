@@ -29,7 +29,6 @@ class SchemaFormat(Enum):
     """
 
     PARQUET = "parquet"
-    BIGQUERY = "bigquery"
     # ARROW = "arrow"
     # HDF5 = "hdf5"
     # CSV = "csv"

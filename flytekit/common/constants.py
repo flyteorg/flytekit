@@ -38,3 +38,13 @@ class CloudProvider(object):
     AWS = "aws"
     GCP = "gcp"
     LOCAL = "local"
+
+
+class SchemaProtocol(object):
+    BIGQUERY = "bq"
+    S3 = "s3"
+    LOCAL = "local"
+
+
+class SchemaFileFormat(object):
+    PARQUET = "parquet"

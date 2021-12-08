@@ -7,6 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from flytekit import FlyteContext
+from flytekit.common.constants import SchemaFileFormat, SchemaProtocol
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.types.structured.structured_dataset import (
@@ -31,7 +32,7 @@ class PandasToParquetEncodingHandlers(StructuredDatasetEncoder):
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
         df.to_parquet(path, storage_options=get_storage_config(path))
 
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format="parquet"))
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=SchemaFileFormat.PARQUET))
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
@@ -53,7 +54,7 @@ class ArrowToParquetEncodingHandlers(StructuredDatasetEncoder):
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
         df = structured_dataset.dataframe
         pq.write_table(df, path, filesystem=get_filesystem(path))
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format="parquet"))
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=SchemaFileFormat.PARQUET))
 
 
 class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
@@ -66,7 +67,8 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(path, filesystem=get_filesystem(path))
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandlers(pd.DataFrame, "local", "parquet"))
-FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(pd.DataFrame, "local", "parquet"))
-FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandlers(pa.Table, "local", "parquet"))
-FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(pa.Table, "local", "parquet"))
+for protocol in [SchemaProtocol.S3, SchemaProtocol.LOCAL]:
+    FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandlers(pd.DataFrame, protocol, SchemaFileFormat.PARQUET))
+    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(pd.DataFrame, protocol, SchemaFileFormat.PARQUET))
+    FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandlers(pa.Table, protocol, SchemaFileFormat.PARQUET))
+    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(pa.Table, protocol, SchemaFileFormat.PARQUET))
