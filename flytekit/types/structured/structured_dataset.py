@@ -8,7 +8,6 @@ from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
 import numpy as _np
-import pandas as pd
 import pyarrow as pa
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -294,7 +293,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             self.DEFAULT_FORMATS[h.python_type] = h.supported_format
 
         # Register with the type engine as well
-        TypeEngine.override_transformer(self, h.python_type)
+        TypeEngine.register_additional_type(self, h.python_type)
 
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return

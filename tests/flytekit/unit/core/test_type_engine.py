@@ -617,8 +617,6 @@ def test_structured_dataset_type():
     assert "/tmp/flyte" in lv.scalar.structured_dataset.uri
     metadata = lv.scalar.structured_dataset.metadata
     assert metadata.format == "parquet"
-    gt = tf.guess_python_type(lt)
-
     v1 = tf.to_python_value(ctx, lv, pd.DataFrame)
     v2 = tf.to_python_value(ctx, lv, pa.Table)
     assert_frame_equal(df, v1)
