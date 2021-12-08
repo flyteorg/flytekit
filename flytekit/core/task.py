@@ -1,7 +1,7 @@
 import datetime as _datetime
 from typing import Any, Callable, Dict, List, Optional, Type, Union
 
-from flytekit.core.base_task import TaskMetadata
+from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
@@ -86,6 +86,7 @@ def task(
     limits: Optional[Resources] = None,
     secret_requests: Optional[List[Secret]] = None,
     execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
+    task_resolver: Optional[TaskResolverMixin] = None,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -169,6 +170,7 @@ def task(
                      Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
                      may change based on the backend provider.
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
+    :param task_resolver: Provide a custom task resolver.
     """
 
     def wrapper(fn) -> PythonFunctionTask:
@@ -191,6 +193,7 @@ def task(
             limits=limits,
             secret_requests=secret_requests,
             execution_mode=execution_mode,
+            task_resolver=task_resolver,
         )
 
         return task_instance

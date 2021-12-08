@@ -58,6 +58,8 @@ class MapPythonTask(PythonTask):
         self._max_concurrency = concurrency
         self._min_success_ratio = min_success_ratio
         self._array_task_interface = python_function_task.python_interface
+        if "metadata" not in kwargs and python_function_task.metadata:
+            kwargs["metadata"] = python_function_task.metadata
         super().__init__(
             name=name,
             interface=collection_interface,
