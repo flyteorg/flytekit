@@ -49,7 +49,7 @@ class GenericSparkTask(PythonInstanceTask[GenericSparkConf]):
             application_file="local://" + settings.entrypoint_settings.path if settings.entrypoint_settings else "",
             executor_path=settings.python_interpreter,
             main_class=self.task_config.main_class,
-            spark_type=self.task_config.job_type,
+            spark_type=self.task_config.job_type.value(),
         )
         return MessageToDict(job.to_flyte_idl())
 
