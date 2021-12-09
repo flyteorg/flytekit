@@ -99,26 +99,54 @@ class SchemaType(_common.FlyteIdlEntity):
         return cls(columns=[SchemaType.SchemaColumn.from_flyte_idl(c) for c in proto.columns])
 
 
+class UnionVariant(_common.FlyteIdlEntity):
+    """
+    Models _types_pb2.UnionVariant
+    """
+
+    def __init__(self, type: "LiteralType", tag: str):
+        self._type = type
+        self._tag = tag
+
+    @property
+    def type(self) -> "LiteralType":
+        return self._type
+
+    @property
+    def tag(self) -> str:
+        return self._tag
+
+    def to_flyte_idl(self) -> _types_pb2.UnionVariant:
+        return _types_pb2.UnionVariant(
+            type=self.type,
+            tag=self.tag
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: _types_pb2.UnionVariant):
+        return cls(type=LiteralType.from_flyte_idl(proto.type), tag=proto.tag)
+
+
 class UnionType(_common.FlyteIdlEntity):
     """
     Models _types_pb2.UnionType
     """
 
-    def __init__(self, variants: typing.List["LiteralType"]):
+    def __init__(self, variants: typing.List["UnionVariant"]):
         self._variants = variants
 
     @property
-    def variants(self) -> typing.List["LiteralType"]:
+    def variants(self) -> typing.List["UnionVariant"]:
         return self._variants
 
-    def to_flyte_idl(self) -> _types_pb2.UnionType:
-        return _types_pb2.UnionType(
+    def to_flyte_idl(self) -> _types_pb2.UnionVariant:
+        return _types_pb2.UnionVariant(
             variants=[val.to_flyte_idl() if val else None for val in self._variants],
         )
 
     @classmethod
     def from_flyte_idl(cls, proto: _types_pb2.UnionType):
-        return cls(variants=[LiteralType.from_flyte_idl(v) for v in proto.values])
+        return cls(variants=[UnionVariant.from_flyte_idl(v) for v in proto.variants])
 
 
 class LiteralType(_common.FlyteIdlEntity):

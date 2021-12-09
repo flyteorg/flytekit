@@ -548,16 +548,14 @@ class Schema(_common.FlyteIdlEntity):
 
 
 class Union(_common.FlyteIdlEntity):
-    def __init__(self, value, type, tag):
+    def __init__(self, value, tag):
         """
         The runtime representation of a tagged union value. See `UnionType` for more details.
 
         :param flytekit.models.literals.Literal value:
-        :param flytekit.models.types.UnionType type:
-        :param int tag:
+        :param str tag:
         """
         self._value = value
-        self._type = type
         self._tag = tag
 
     @property
@@ -568,16 +566,9 @@ class Union(_common.FlyteIdlEntity):
         return self._value
 
     @property
-    def type(self):
-        """
-        :rtype: flytekit.models.types.UnionType
-        """
-        return self._type
-
-    @property
     def tag(self):
         """
-        :rtype: int
+        :rtype: str
         """
         return self._tag
 
@@ -585,7 +576,7 @@ class Union(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Union
         """
-        return _literals_pb2.Union(value=self.value.to_flyte_idl(), type=self.type.to_flyte_idl(), tag=self.tag)
+        return _literals_pb2.Union(value=self.value.to_flyte_idl(), tag=self.tag)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -593,7 +584,7 @@ class Union(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.Schema pb2_object:
         :rtype: Schema
         """
-        return cls(value=Literal.from_flyte_idl(pb2_object.value), type=_UnionType.from_flyte_idl(pb2_object.type), tag=pb2_object.tag)
+        return cls(value=Literal.from_flyte_idl(pb2_object.value), tag=pb2_object.tag)
 
 class LiteralCollection(_common.FlyteIdlEntity):
     def __init__(self, literals):
