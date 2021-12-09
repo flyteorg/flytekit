@@ -718,9 +718,9 @@ class ListTransformer(TypeTransformer[T]):
         if hasattr(t, "__origin__"):
 
             # Handle annotation on list generic, eg:
-            # typing.Annotated[typing.List[int, 'foo']]
-            if isinstance(t, typing._AnnotatedAlias) and hasattr(t.__origin__, "__origin__"):
-                return ListTransformer.get_sub_type(t.__origin__)
+            # typing.Annotated[typing.List[int], 'foo']
+            if get_origin(t) is typing.Annotated:
+                return ListTransformer.get_sub_type(typing.get_args(t)[0])
 
             if t.__origin__ is list and hasattr(t, "__args__"):
                 return t.__args__[0]
