@@ -607,13 +607,6 @@ class _FlyteSubCommand(_click.Command):
     help="[Optional] The name to pass to the sub-command (if applicable)  If set again in the sub-command, "
     "the sub-command's parameter takes precedence.",
 )
-@_click.option(
-    *_CERTIFICATE_FLAGS,
-    required=False,
-    type=str,
-    default=None,
-    help="[Optional] Local path to a certificate file. If specified, the file will be read and passed "
-)
 @_insecure_option
 @_click.group("flyte-cli", deprecated=True)
 @_click.pass_context
