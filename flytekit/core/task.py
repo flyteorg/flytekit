@@ -1,9 +1,8 @@
 import datetime as _datetime
-import inspect
 from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
-from flytekit.core.interface import transform_signature_to_interface
+from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
@@ -240,7 +239,7 @@ def reference_task(
     """
 
     def wrapper(fn) -> ReferenceTask:
-        interface = transform_signature_to_interface(inspect.signature(fn))
+        interface = transform_function_to_interface(fn)
         return ReferenceTask(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper
