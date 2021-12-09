@@ -162,8 +162,8 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
         return _types_pb2.StructuredDatasetType(
             columns=[c.to_flyte_idl() for c in self.columns] if self.columns else None,
             format=self.format,
-            external_schema_type=self.external_schema_type,
-            external_schema_bytes=self.external_schema_bytes,
+            external_schema_type=self.external_schema_type if self.external_schema_type else None,
+            external_schema_bytes=self.external_schema_bytes if self.external_schema_bytes else None,
         )
 
     @classmethod

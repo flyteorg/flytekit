@@ -8,7 +8,6 @@ from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
 import numpy as _np
-import pyarrow as pa
 
 from flytekit.common.constants import SchemaProtocol
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -38,7 +37,7 @@ class StructuredDataset(object):
     def column_names(cls) -> typing.List[str]:
         return [k for k, v in cls.columns().items()]
 
-    def __class_getitem__(cls, columns: typing.Dict[str, typing.Type]) -> Type[StructuredDataset]:
+    def __class_getitem__(cls, columns: typing.Dict[str, typing.Type], format: str = None) -> Type[StructuredDataset]:
         if columns is None:
             return cls
 

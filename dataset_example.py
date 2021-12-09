@@ -33,7 +33,7 @@ def t1(dataframe: pd.DataFrame) -> pd.DataFrame:
 
 
 @task
-def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
+def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, "parquet"]:
     # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
     return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH)
 

@@ -68,7 +68,15 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
 
 
 for protocol in [SchemaProtocol.S3, SchemaProtocol.LOCAL]:
-    FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandlers(pd.DataFrame, protocol, SchemaFileFormat.PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(pd.DataFrame, protocol, SchemaFileFormat.PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandlers(pa.Table, protocol, SchemaFileFormat.PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(pa.Table, protocol, SchemaFileFormat.PARQUET))
+    FLYTE_DATASET_TRANSFORMER.register_handler(
+        PandasToParquetEncodingHandlers(pd.DataFrame, protocol, SchemaFileFormat.PARQUET)
+    )
+    FLYTE_DATASET_TRANSFORMER.register_handler(
+        ParquetToPandasDecodingHandler(pd.DataFrame, protocol, SchemaFileFormat.PARQUET)
+    )
+    FLYTE_DATASET_TRANSFORMER.register_handler(
+        ArrowToParquetEncodingHandlers(pa.Table, protocol, SchemaFileFormat.PARQUET)
+    )
+    FLYTE_DATASET_TRANSFORMER.register_handler(
+        ParquetToArrowDecodingHandler(pa.Table, protocol, SchemaFileFormat.PARQUET)
+    )
