@@ -306,6 +306,7 @@ _HOST_FLAGS = ["-h", "--host"]
 _CONFIG_FLAGS = ["-c", "--config"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
+_CERTIFICATE_FLAGS = [, "--certificate"]
 
 _project_option = _click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to query.")
 _optional_project_option = _click.option(
@@ -339,7 +340,6 @@ _optional_principal_option = _click.option(
 )
 _insecure_option = _click.option(*_INSECURE_FLAGS, is_flag=True, help="Do not use SSL")
 _urn_option = _click.option("-u", "--urn", required=True, help="The unique identifier for an entity.")
-
 _optional_urn_option = _click.option("-u", "--urn", required=False, help="The unique identifier for an entity.")
 
 _host_option = _click.option(
@@ -606,6 +606,13 @@ class _FlyteSubCommand(_click.Command):
     default=None,
     help="[Optional] The name to pass to the sub-command (if applicable)  If set again in the sub-command, "
     "the sub-command's parameter takes precedence.",
+)
+@_click.option(
+    *_CERTIFICATE_FLAGS,
+    required=False,
+    type=str,
+    default=None,
+    help="[Optional] Local path to a certificate file. If specified, the file will be read and passed "
 )
 @_insecure_option
 @_click.group("flyte-cli", deprecated=True)

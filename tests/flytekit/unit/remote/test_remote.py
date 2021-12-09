@@ -180,3 +180,9 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     assert mock_secure_channel.called
     assert mock_secure_channel.call_args[0][1] == credentials
     assert not mock_ssl_channel_credentials.called
+
+
+def test_vjkl():
+    rr = FlyteRemote.from_config("flytesnacks", "development")
+    we = rr.fetch_workflow(name="core.control_flow.run_merge_sort.merge_sort?d", version="")
+
