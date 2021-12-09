@@ -71,6 +71,7 @@ Options:
   
 - Both of these are pretty ugly, so you should think of a better option.
 
+These columns should then make their way into the get_literal_type function (search for the todo "fill in columns by checking for typing.annotated metadata" in this .py file.
 
 One more thing...
 
