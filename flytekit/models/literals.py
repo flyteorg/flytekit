@@ -549,7 +549,7 @@ class Schema(_common.FlyteIdlEntity):
 
 
 class StructuredDatasetMetadata(_common.FlyteIdlEntity):
-    def __init__(self, format: typing.Optional[str], structured_dataset_type: StructuredDatasetType = None):
+    def __init__(self, format: str, structured_dataset_type: StructuredDatasetType = None):
         self._format = format
         self._structured_dataset_type = structured_dataset_type
 
@@ -563,7 +563,10 @@ class StructuredDatasetMetadata(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self) -> _literals_pb2.StructuredDatasetMetadata:
         return _literals_pb2.StructuredDatasetMetadata(
-            format=self.format, structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
+            format=self.format,
+            structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
+            if self._structured_dataset_type
+            else None,
         )
 
     @classmethod
@@ -591,7 +594,9 @@ class StructuredDataset(_common.FlyteIdlEntity):
         return self._metadata
 
     def to_flyte_idl(self) -> _literals_pb2.StructuredDataset:
-        return _literals_pb2.StructuredDataset(uri=self.uri, metadata=self.metadata.to_flyte_idl())
+        return _literals_pb2.StructuredDataset(
+            uri=self.uri, metadata=self.metadata.to_flyte_idl() if self.metadata else None
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _literals_pb2.StructuredDataset) -> "StructuredDataset":

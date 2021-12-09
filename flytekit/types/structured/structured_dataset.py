@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import re
 import types
 import typing
@@ -8,8 +9,8 @@ from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
 import numpy as _np
+import pyarrow as pa
 
-from flytekit.common.constants import SchemaProtocol
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
@@ -21,6 +22,13 @@ from flytekit.models.types import LiteralType, StructuredDatasetType
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
+
+BIGQUERY = "bq"
+S3 = "s3"
+LOCAL = "local"
+
+# Dataset File format
+PARQUET = "parquet"
 
 
 class StructuredDataset(object):
@@ -37,15 +45,25 @@ class StructuredDataset(object):
     def column_names(cls) -> typing.List[str]:
         return [k for k, v in cls.columns().items()]
 
-    def __class_getitem__(cls, columns: typing.Dict[str, typing.Type], format: str = None) -> Type[StructuredDataset]:
-        if columns is None:
+    def __class_getitem__(cls, args: typing.Union[typing.Dict[str, typing.Type], tuple]) -> Type[StructuredDataset]:
+        if args is None:
             return cls
+
+        format = ""
+        if isinstance(args, dict):
+            columns = args
+        else:
+            columns = args[0]
+            format = args[1]
 
         if not isinstance(columns, dict):
             raise AssertionError(
                 f"Columns should be specified as an ordered dict "
                 f"of column names and their types, received {type(columns)}"
             )
+
+        if not isinstance(format, str):
+            raise AssertionError(f"format should be specified as an string, received {type(format)}")
 
         if len(columns) == 0:
             return cls
@@ -58,13 +76,17 @@ class StructuredDataset(object):
             def columns(cls) -> typing.Dict[str, typing.Type]:
                 return columns
 
+            @classmethod
+            def file_format(cls) -> str:
+                return format
+
         return _TypedStructuredDataset
 
     def __init__(
         self,
         dataframe: typing.Optional[typing.Any] = None,
         uri: Optional[str] = None,
-        file_format: Optional[str] = None,
+        file_format: str = "",
         metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
     ):
         self._dataframe = dataframe
@@ -124,7 +146,7 @@ class StructuredDatasetEncoder(ABC):
         """
         self._python_type = python_type
         self._protocol = protocol
-        self._supported_format = supported_format
+        self._supported_format = supported_format or ""
 
     @property
     def python_type(self) -> Type[T]:
@@ -175,7 +197,7 @@ class StructuredDatasetDecoder(ABC):
         """
         self._python_type = python_type
         self._protocol = protocol
-        self._supported_format = supported_format
+        self._supported_format = supported_format or ""
 
     @property
     def python_type(self) -> Type[DF]:
@@ -212,7 +234,7 @@ def protocol_prefix(uri: str) -> str:
     g = re.search(r"([\w]+)://.*", uri)
     if g and g.groups():
         return g.groups()[0]
-    return SchemaProtocol.LOCAL
+    return LOCAL
 
 
 class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
@@ -268,13 +290,12 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
         self._type_assertions_enabled = False
 
-    def register_handler(self, h: Handlers, default_for_type: Optional[bool] = True):
+    def register_handler(self, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
         """
         Call this with any handler to register it with this dataframe meta-transformer
         """
         lowest_level = self._handler_finder(h)
-        if h.supported_format in lowest_level:
-            # TODO: allow overriding
+        if h.supported_format in lowest_level and override is False:
             raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
         lowest_level[h.supported_format] = h
         logger.debug(f"Registered {h} as handler for {h.python_type}, protocol {h.protocol}, fmt {h.supported_format}")
@@ -282,6 +303,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if default_for_type:
             # TODO: Add logging, think about better ux, maybe default False and warn if doesn't exist.
             self.DEFAULT_FORMATS[h.python_type] = h.supported_format
+            self.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
 
         # Register with the type engine as well
         TypeEngine.register_additional_type(self, h.python_type)
@@ -300,17 +322,29 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # StructuredDataset instance.
         if issubclass(python_type, StructuredDataset):
             assert isinstance(python_val, StructuredDataset)
-            python_val.uri = python_val.uri or ctx.file_access.get_random_remote_path()
-            protocol = protocol_prefix(python_val.uri)
             format = python_val.file_format
-            if protocol != "bq":
-                format = "parquet"
+            # If task output return a StructuredDataset without dataframe, we can
+            # directly convert it to literal without invoking encoder.
+            # For example,
+            # def t1(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
+            #     return dataset
+            # or
+            # def t2(uri: str) -> StructuredDataset[my_cols]
+            #     return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
                 sd_model = literals.StructuredDataset(
-                    uri=python_val.uri, metadata=StructuredDatasetMetadata(format=format)
+                    uri=python_val.uri,
+                    metadata=StructuredDatasetMetadata(
+                        format=format, structured_dataset_type=expected.structured_dataset_type
+                    ),
                 )
                 return Literal(scalar=Scalar(structured_dataset=sd_model))
             df_type = type(python_val.dataframe)
+            if python_val.uri is None:
+                protocol = self.DEFAULT_PROTOCOLS[df_type]
+            else:
+                protocol = protocol_prefix(python_val.uri)
+            format = python_val.file_format
             return self.encode(
                 ctx,
                 python_val,
@@ -321,9 +355,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # Otherwise assume it's a dataframe instance. Wrap it with some defaults
         fmt = self.DEFAULT_FORMATS[python_type]
-        protocol = protocol_prefix(ctx.file_access.get_random_remote_path())
+        protocol = self.DEFAULT_PROTOCOLS[python_type]
         meta = StructuredDatasetMetadata(format=fmt, structured_dataset_type=expected.structured_dataset_type)
-        sd = StructuredDataset(dataframe=python_val, uri=ctx.file_access.get_random_remote_path(), metadata=meta)
+        sd = StructuredDataset(dataframe=python_val, metadata=meta)
         return self.encode(ctx, sd, python_type, protocol, fmt)
 
     def encode(self, ctx: FlyteContext, sd: StructuredDataset, df_type: Type, protocol: str, format: str) -> Literal:
@@ -382,13 +416,31 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
     def _get_dataset_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
+        # Handle different kinds of annotation
+        # my_cols = kwtypes(x=int, y=str)
+        # 1. StructuredDataset[my_cols]
         if issubclass(t, StructuredDataset):
             for k, v in t.columns().items():
                 lt = self._get_dataset_column_literal_type(v)
                 converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
             return StructuredDatasetType(columns=converted_cols, format=t.file_format)
+        # 2. Annotated[pd.Dataframe, my_cols]
+        elif typing.get_origin(t) is typing.Annotated:
+            _, *hint_args = typing.get_args(t)
+            if type(hint_args[0]) is collections.OrderedDict:
+                for k, v in hint_args[0].items():
+                    lt = self._get_dataset_column_literal_type(v)
+                    converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
+                return StructuredDatasetType(columns=converted_cols, format=PARQUET)
+            elif type(hint_args[0]) is pa.lib.Schema:
+                return StructuredDatasetType(
+                    format=PARQUET,
+                    external_schema_type="arrow",
+                    external_schema_bytes=typing.cast(pa.lib.Schema, hint_args[0]).to_string().encode(),
+                )
+        # 3. pd.Dataframe
         else:
-            return StructuredDatasetType(columns=converted_cols, format="parquet")
+            return StructuredDatasetType(columns=converted_cols, format=PARQUET)
 
     def get_literal_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> LiteralType:
         """
@@ -401,7 +453,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # todo: fill in columns by checking for typing.annotated metadata
         # todo: fill in format correctly by checking for typing.annotated metadata, using placeholder for now
         # todo: fill in external schema type and bytes by checking for typing.annotated
-        # fmt = self.DEFAULT_FORMATS[t] if t in self.DEFAULT_FORMATS else "parquet"
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:

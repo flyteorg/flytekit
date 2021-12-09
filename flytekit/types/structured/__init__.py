@@ -5,6 +5,8 @@ from .parquet import (
     PandasToParquetEncodingHandlers,
     ParquetToArrowDecodingHandler,
     ParquetToPandasDecodingHandler,
+    ParquetToSparkDecodingHandler,
+    SparkToParquetEncodingHandlers,
 )
 
 try:

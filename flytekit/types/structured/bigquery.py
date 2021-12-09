@@ -7,9 +7,9 @@ from google.cloud import bigquery, bigquery_storage
 from google.cloud.bigquery_storage_v1 import types
 
 from flytekit import FlyteContext
-from flytekit.common.constants import SchemaProtocol
 from flytekit.models import literals
 from flytekit.types.structured.structured_dataset import (
+    BIGQUERY,
     DF,
     FLYTE_DATASET_TRANSFORMER,
     StructuredDataset,
@@ -86,7 +86,7 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         return pa.Table.from_pandas(_read_from_bq(flyte_value))
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(PandasToBQEncodingHandlers(pd.DataFrame, SchemaProtocol.BIGQUERY), False)
-FLYTE_DATASET_TRANSFORMER.register_handler(BQToPandasDecodingHandler(pd.DataFrame, SchemaProtocol.BIGQUERY), False)
-FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToBQEncodingHandlers(pa.Table, SchemaProtocol.BIGQUERY), False)
-FLYTE_DATASET_TRANSFORMER.register_handler(BQToArrowDecodingHandler(pa.Table, SchemaProtocol.BIGQUERY), False)
+FLYTE_DATASET_TRANSFORMER.register_handler(PandasToBQEncodingHandlers(pd.DataFrame, BIGQUERY), False)
+FLYTE_DATASET_TRANSFORMER.register_handler(BQToPandasDecodingHandler(pd.DataFrame, BIGQUERY), False)
+FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToBQEncodingHandlers(pa.Table, BIGQUERY), False)
+FLYTE_DATASET_TRANSFORMER.register_handler(BQToArrowDecodingHandler(pa.Table, BIGQUERY), False)

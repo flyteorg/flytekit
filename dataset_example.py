@@ -1,9 +1,12 @@
 import typing
+from typing import Annotated
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pyspark.sql.dataframe
+from pyspark.sql import SparkSession
 
 from flytekit import FlyteContext, kwtypes, task, workflow
 from flytekit.models import literals
@@ -11,6 +14,7 @@ from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.types.structured.structured_dataset import (
     DF,
     FLYTE_DATASET_TRANSFORMER,
+    PARQUET,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -25,21 +29,27 @@ BQ_PATH = "bq://photo-313016:flyte.new_table3"
 # We should also support map and list in schema column
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 
+fields = [
+    ("some_int", pa.int32()),
+    ("some_string", pa.string()),
+]
+arrow_schema = pa.schema(fields)
+
 
 @task
-def t1(dataframe: pd.DataFrame) -> pd.DataFrame:
+def t1(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, my_cols]:
     # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
     return dataframe
 
 
 @task
-def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, "parquet"]:
+def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, PARQUET]:
     # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
-    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH)
+    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH, file_format=PARQUET)
 
 
 @task
-def t2(dataframe: pd.DataFrame) -> pd.DataFrame:
+def t2(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, arrow_schema]:
     # S3 (parquet) -> Pandas -> S3 (parquet)
     return dataframe
 
@@ -83,7 +93,7 @@ def t6(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
 def t7(df1: pd.DataFrame, df2: pd.DataFrame) -> (StructuredDataset[my_cols], StructuredDataset[my_cols]):
     # df1: pandas -> bq
     # df2: pandas -> s3 (parquet)
-    return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df1)
+    return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df1, file_format=PARQUET)
 
 
 @task
@@ -91,7 +101,7 @@ def t8(dataframe: pa.Table) -> StructuredDataset[my_cols]:
     # Arrow table -> s3 (parquet)
     print("Arrow table")
     print(dataframe.columns)
-    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH)
+    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH, file_format=PARQUET)
 
 
 @task
@@ -107,7 +117,7 @@ class NumpyEncodingHandlers(StructuredDatasetEncoder):
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
     ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri)
+        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
         df = structured_dataset.dataframe
         name = ["col" + str(i) for i in range(len(df))]
         table = pa.Table.from_arrays(df, name)
@@ -133,7 +143,7 @@ FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "lo
 @task
 def t9(dataframe: np.ndarray) -> StructuredDataset[my_cols]:
     # numpy -> Arrow table -> s3 (parquet)
-    return StructuredDataset(dataframe=dataframe, uri=NUMPY_PATH)
+    return StructuredDataset(dataframe=dataframe, uri=NUMPY_PATH, file_format=PARQUET)
 
 
 @task
@@ -141,6 +151,17 @@ def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
     # s3 (parquet) -> Arrow table -> numpy
     np_array = dataset.open_as(np.ndarray)
     return np_array
+
+
+@task
+def t11(dataframe: pyspark.sql.dataframe.DataFrame) -> StructuredDataset[my_cols]:
+    return StructuredDataset(dataframe, file_format=PARQUET)
+
+
+@task
+def t12(dataset: StructuredDataset[my_cols]) -> pyspark.sql.dataframe.DataFrame:
+    spark_df = dataset.open_as(pyspark.sql.dataframe.DataFrame)
+    return spark_df
 
 
 @task
@@ -158,24 +179,39 @@ def generate_arrow() -> pa.Table:
     return pa.Table.from_pandas(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]}))
 
 
+@task
+def generate_spark_dataframe() -> pyspark.sql.dataframe.DataFrame:
+    data = [
+        {"Category": "A", "ID": 1, "Value": 121.44, "Truth": True},
+        {"Category": "B", "ID": 2, "Value": 300.01, "Truth": False},
+        {"Category": "C", "ID": 3, "Value": 10.99, "Truth": None},
+        {"Category": "E", "ID": 4, "Value": 33.87, "Truth": True},
+    ]
+    spark = SparkSession.builder.getOrCreate()
+    return spark.createDataFrame(data)
+
+
 @workflow()
 def wf():
     df = generate_pandas()
     np_array = generate_numpy()
     arrow_df = generate_arrow()
+    spark_df = generate_spark_dataframe()
     t1(dataframe=df)
     t1a(dataframe=df)
     t2(dataframe=df)
-    t3(dataset=StructuredDataset(uri=PANDAS_PATH))
-    t3a(dataset=StructuredDataset(uri=PANDAS_PATH))
-    t4(dataset=StructuredDataset(uri=PANDAS_PATH))
+    t3(dataset=StructuredDataset(uri=PANDAS_PATH, file_format=PARQUET))
+    t3a(dataset=StructuredDataset(uri=PANDAS_PATH, file_format=PARQUET))
+    t4(dataset=StructuredDataset(uri=PANDAS_PATH, file_format=PARQUET))
     t5(dataframe=df)
     t6(dataset=StructuredDataset(uri=BQ_PATH))
     t7(df1=df, df2=df)
     t8(dataframe=arrow_df)
     t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
-    t10(dataset=StructuredDataset(uri=NUMPY_PATH))
+    t10(dataset=StructuredDataset(uri=NUMPY_PATH, file_format=PARQUET))
+    dataset = t11(dataframe=spark_df)
+    t12(dataset=dataset)
 
 
 if __name__ == "__main__":

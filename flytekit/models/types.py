@@ -132,8 +132,8 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
 
     def __init__(
         self,
-        columns: typing.List[DatasetColumn],
-        format: str,
+        columns: typing.List[DatasetColumn] = None,
+        format: str = "",
         external_schema_type: str = None,
         external_schema_bytes: bytes = None,
     ):
