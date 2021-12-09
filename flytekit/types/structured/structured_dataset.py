@@ -25,6 +25,76 @@ T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
 
 
+"""
+
+# Python 3.7/3.8
+from typing_extensions import Annotated
+
+# Python 3.9+
+from typing import Annotated
+
+import pandas as pd
+
+my_pd = Annotated[pd.DataFrame, <stuff>]
+
+Read https://www.python.org/dev/peps/pep-0593/ for more info
+
+@task
+def t1() -> my_pd:
+    ...
+
+Make the ux for "stuff" something that you like.
+
+Options:
+- just add it as a list of tuples:
+
+    Annotated[pd.DataFrame, ('col_a', int), ('col_b', str)]
+
+  This is probably a bad idea - there may be additional data that we want to specify in the future, having one big
+  long list is pretty ugly.
+  
+- Make a class that represents a map of names/types:
+    
+    class Columns:
+       blah: OrderedDict[str, Type]
+ 
+   or something like that. Maybe hook it up to kwtypes
+   
+     class ColumnStuff:
+       @classmethod
+       def from_kwtypes(...)
+          ...
+          
+    ColumnStuff.from_kwtypes(kwtypes(cola=int, colb=List[str]))
+    
+  Obviously think of better names.
+  
+- Both of these are pretty ugly, so you should think of a better option.
+
+
+One more thing...
+
+We should support manually specified pyarrow schemas:
+
+    import pyarrow as pa
+    fields = [
+        ('some_int', pa.int32()),
+        ('some_string', pa.string()),
+    ]
+    arr_schema = pa.schema(fields)
+    
+    Annotated[pd.DataFrame, schema]
+    
+In this case, we should serialize arr_schema: `arr_schema.serialize().to_pybytes()` and put it into here:
+https://github.com/flyteorg/flyteidl/blob/804fa1685264ffded80e3ad1c71ae4c27883187b/protos/flyteidl/core/types.proto#L64
+and set the external_schema_type field to "arrow"
+    
+Let's start out with just the arrow schema. We can add detection of more in the future if people want.
+
+
+"""
+
+
 class StructuredDataset(object):
     """
     This is the user facing StructuredDataset class. Please don't confuse it with the literals.StructuredDataset
