@@ -18,6 +18,7 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_jsonschema import JSONSchema
+from typing_extensions import get_origin
 
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
@@ -413,7 +414,7 @@ class TypeEngine(typing.Generic[T]):
 
             # Handling of annotated generics, eg:
             # typing.Annotated[typing.List[int], 'foo']
-            if typing.get_origin(python_type) is typing.Annotated:
+            if get_origin(python_type) is typing.Annotated:
                 return cls.get_transformer(typing.get_args(python_type)[0])
 
             if python_type.__origin__ in cls._REGISTRY:
@@ -449,7 +450,7 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(python_type)
         res = transformer.get_literal_type(python_type)
         data = None
-        if typing.get_origin(python_type) is typing.Annotated:
+        if get_origin(python_type) is typing.Annotated:
             for x in typing.get_args(python_type)[1:]:
                 if not isinstance(x, FlyteAnnotation):
                     continue
