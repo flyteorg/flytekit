@@ -24,6 +24,10 @@ class TypeAnnotation:
         :rtype: flyteidl.core.types_pb2.TypeAnnotation
         """
 
+        import inspect
+
+        print("\nrosa: ", self.annotations, inspect.stack()[1])
+
         if self._annotations is not None:
             annotations = _json_format.Parse(_json.dumps(self.annotations), _struct.Struct())
         else:
@@ -42,4 +46,4 @@ class TypeAnnotation:
         :rtype: TypeAnnotation
         """
 
-        return cls(annotations=proto.annotations)
+        return cls(annotations=_json_format.MessageToDict(proto.annotations))
