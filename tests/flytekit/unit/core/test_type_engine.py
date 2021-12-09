@@ -5,13 +5,16 @@ from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 
+import pandas as pd
 import pytest
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
+from flytekit import kwtypes
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -34,6 +37,7 @@ from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.schema import FlyteSchema
 
 
 def test_type_engine():
@@ -549,6 +553,28 @@ def test_enum_type():
         TypeEngine.to_literal_type(UnsupportedEnumValues)
 
 
+def test_enum_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    lt = TypeEngine.to_literal_type(Datum)
+    schema = Datum.schema()
+    schema.fields["y"].load_by = LoadDumpOptions.name
+    assert lt.metadata == JSONSchema().dump(schema)
+
+    transformer = DataclassTransformer()
+    ctx = FlyteContext.current_context()
+    datum = Datum(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum.x == pv.x
+    assert datum.y.value == pv.y
+
+
 @pytest.mark.parametrize(
     "python_value,python_types,expected_literal_map",
     [
@@ -663,3 +689,32 @@ def test_multiple_annotations():
     t = typing.Annotated[int, FlyteAnnotation({"foo": "bar"}), FlyteAnnotation({"anotha": "one"})]
     with pytest.raises(Exception):
         TypeEngine.to_literal_type(t)
+TestSchema = FlyteSchema[kwtypes(some_str=str)]
+
+
+@dataclass_json
+@dataclass
+class InnerResult:
+    number: int
+    schema: TestSchema
+
+
+@dataclass_json
+@dataclass
+class Result:
+    result: InnerResult
+    schema: TestSchema
+
+
+def test_schema_in_dataclass():
+    schema = TestSchema()
+    df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
+    schema.open().write(df)
+    o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(Result)
+    lv = tf.to_literal(ctx, o, Result, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
+
+    assert o == ot

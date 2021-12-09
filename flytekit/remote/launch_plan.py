@@ -7,8 +7,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models.core import identifier as _identifier_model
-from flytekit.remote import identifier as _identifier
+from flytekit.models.core import identifier as id_models
 from flytekit.remote import interface as _interface
 
 
@@ -27,11 +26,11 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
 
     @classmethod
     def promote_from_model(
-        cls, id: _identifier.Identifier, model: _launch_plan_models.LaunchPlanSpec
+        cls, id: id_models.Identifier, model: _launch_plan_models.LaunchPlanSpec
     ) -> "FlyteLaunchPlan":
         lp = cls(
             id=id,
-            workflow_id=_identifier.Identifier.promote_from_model(model.workflow_id),
+            workflow_id=model.workflow_id,
             default_inputs=_interface_models.ParameterMap(model.default_inputs.parameters),
             fixed_inputs=model.fixed_inputs,
             entity_metadata=model.entity_metadata,
@@ -50,7 +49,7 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         return lp
 
     @property
-    def id(self) -> _identifier.Identifier:
+    def id(self) -> id_models.Identifier:
         return self._id
 
     @property
@@ -65,7 +64,7 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
             return False
 
     @property
-    def workflow_id(self) -> _identifier.Identifier:
+    def workflow_id(self) -> id_models.Identifier:
         return self._workflow_id
 
     @property
@@ -78,8 +77,8 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         return self._interface
 
     @property
-    def resource_type(self) -> _identifier_model.ResourceType:
-        return _identifier_model.ResourceType.LAUNCH_PLAN
+    def resource_type(self) -> id_models.ResourceType:
+        return id_models.ResourceType.LAUNCH_PLAN
 
     @property
     def entity_type_text(self) -> str:
