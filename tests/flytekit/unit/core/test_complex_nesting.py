@@ -97,21 +97,22 @@ def test_dataclass_complex_transform(two_sample_inputs):
     ctx = FlyteContextManager.current_context()
     literal_type = TypeEngine.to_literal_type(MyInput)
     first_literal = TypeEngine.to_literal(ctx, my_input, MyInput, literal_type)
-    print(first_literal)
+    assert first_literal.scalar.generic["apriori_config"] is not None
 
     converted_back_1 = TypeEngine.to_python_value(ctx, first_literal, MyInput)
-    print(converted_back_1)
+    assert converted_back_1.apriori_config is not None
 
     second_literal = TypeEngine.to_literal(ctx, converted_back_1, MyInput, literal_type)
-    print(second_literal)
+    assert second_literal.scalar.generic["apriori_config"] is not None
 
     converted_back_2 = TypeEngine.to_python_value(ctx, second_literal, MyInput)
-    print(converted_back_2)
+    assert converted_back_2.apriori_config is not None
 
     input_list = [my_input, my_input_2]
     input_list_type = TypeEngine.to_literal_type(List[MyInput])
-    literal_list_1 = TypeEngine.to_literal(ctx, input_list, List[MyInput], input_list_type)
-    print(literal_list_1)
+    literal_list = TypeEngine.to_literal(ctx, input_list, List[MyInput], input_list_type)
+    assert literal_list.collection.literals[0].scalar.generic["apriori_config"] is not None
+    assert literal_list.collection.literals[1].scalar.generic["apriori_config"] is not None
 
 
 def test_two(two_sample_inputs):
@@ -123,7 +124,6 @@ def test_two(two_sample_inputs):
         x = []
         for aa in a:
             x.append(aa.main_product)
-
         return x
 
     with FlyteContextManager.with_context(
@@ -152,7 +152,7 @@ def test_two(two_sample_inputs):
                 ctx, d={"a": [my_input, my_input_2]}, guessed_python_types={"a": List[MyInput]}
             )
             dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
-            print(dynamic_job_spec)
+            assert len(dynamic_job_spec.literals["o0"].collection.literals) == 2
 
 
 def test_str_input(folders_and_files_setup):
@@ -172,7 +172,7 @@ def test_str_input(folders_and_files_setup):
     ctx = FlyteContextManager.current_context()
     literal_type = TypeEngine.to_literal_type(MyInput)
     first_literal = TypeEngine.to_literal(ctx, my_input, MyInput, literal_type)
-    print(first_literal)
+    assert first_literal.scalar.generic is not None
 
 
 def test_dc_dyn_directory(folders_and_files_setup):
