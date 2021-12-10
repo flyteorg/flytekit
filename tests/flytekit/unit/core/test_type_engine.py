@@ -597,9 +597,9 @@ def test_optional_type():
     assert v is None
 
 def test_union_from_unambiguous_literal():
-    pt = typing.Optional[int]
+    pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
-    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.NONE)]
+    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()

@@ -147,8 +147,11 @@ class SimpleTransformer(TypeTransformer[T]):
             raise TypeTransformerFailedError(f"Cannot convert to type {expected_python_type}, only {self._type} is supported")
 
         try: # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
-            return self._from_literal_transformer(lv)
-        except AttributeError:
+            res = self._from_literal_transformer(lv)
+            if type(res) != self._type:
+                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
+            return res
+        except AttributeError as e:
             # Assume that this is because a property on `lv` was None
             raise TypeTransformerFailedError(f"Cannot convert literal {lv}")
 
