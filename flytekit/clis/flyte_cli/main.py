@@ -306,7 +306,6 @@ _HOST_FLAGS = ["-h", "--host"]
 _CONFIG_FLAGS = ["-c", "--config"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
-_CERTIFICATE_FLAGS = [, "--certificate"]
 
 _project_option = _click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to query.")
 _optional_project_option = _click.option(

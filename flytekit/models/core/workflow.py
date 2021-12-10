@@ -99,7 +99,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
     def error(self):
         """
         An error to throw in case none of the branches were taken.
-        :rtype: flytekit.models.core.errors.ContainerError
+        :rtype: flytekit.models.types.Error
         """
 
         return self._error

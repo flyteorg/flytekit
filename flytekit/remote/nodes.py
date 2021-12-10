@@ -78,7 +78,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             _logging.warning(f"Should not call promote from model on a start node or end node {model}")
             return None
 
-        flyte_task_node, flyte_workflow_node = None, None
+        flyte_task_node, flyte_workflow_node, flyte_branch_node = None, None, None
         if model.task_node is not None:
             flyte_task_node = _component_nodes.FlyteTaskNode.promote_from_model(model.task_node, tasks)
         elif model.workflow_node is not None:
@@ -89,6 +89,8 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 tasks,
             )
         # TODO: Implement branch node https://github.com/flyteorg/flyte/issues/1116
+        elif model.branch_node is not None:
+            flyte_branch_node = _component_nodes.FlyteBranchNode.promote_from_model(model.branch_node, sub_workflows, node_launch_plans, tasks)
         else:
             raise _system_exceptions.FlyteSystemException(
                 f"Bad Node model, neither task nor workflow detected, node: {model}"
@@ -131,6 +133,14 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 )
             raise _system_exceptions.FlyteSystemException(
                 "Bad FlyteWorkflowNode model, both launch plan and workflow are None"
+            )
+        elif flyte_branch_node is not None:
+            return cls(
+                id=node_model_id,
+                upstream_nodes=[],  # set downstream, model doesn't contain this information
+                bindings=model.inputs,
+                metadata=model.metadata,
+                flyte_branch=flyte_branch_node,
             )
         raise _system_exceptions.FlyteSystemException("Bad FlyteNode model, both task and workflow nodes are empty")
 
