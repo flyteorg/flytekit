@@ -1492,3 +1492,29 @@ def test_optional_type():
 
     assert wf(a=2) == 2
     assert wf(a=None) is None
+
+
+def test_optional_type_implicit_wrapping():
+    @task
+    def t1(a: int) -> typing.Optional[int]:
+        return a if a > 0 else None
+
+    @workflow
+    def wf(a: int) -> typing.Optional[int]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=-10) is None
+
+
+def test_union_type_implicit_wrapping():
+    @task
+    def t1(a: int) -> typing.Union[int, str]:
+        return a if a > 0 else str(a)
+
+    @workflow
+    def wf(a: int) -> typing.Union[int, str]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=-10) == "-10"
