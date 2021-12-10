@@ -143,7 +143,14 @@ class SimpleTransformer(TypeTransformer[T]):
         return self._to_literal_transformer(python_val)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        return self._from_literal_transformer(lv)
+        if expected_python_type != self._type:
+            raise TypeTransformerFailedError(f"Cannot convert to type {expected_python_type}, only {self._type} is supported")
+
+        try: # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
+            return self._from_literal_transformer(lv)
+        except AttributeError:
+            # Assume that this is because a property on `lv` was None
+            raise TypeTransformerFailedError(f"Cannot convert literal {lv}")
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.simple is not None and literal_type.simple == self._lt.simple:
@@ -648,22 +655,13 @@ class UnionTransformer(TypeTransformer[T]):
         raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
-        for x in typing.get_args(expected_python_type):
-            if x is type(None):
-                if lv is None: # todo(maximsmol): why would this ever be None and not Void?
-                    return None
-
-                if lv.scalar is not None and lv.scalar.none_type is not None:
-                    return None
-
-                break
-
         union_tag = None
         if lv.scalar is not None and lv.scalar.union  is not None:
             union_tag = lv.scalar.union.tag
 
         found_res = False
         res = None
+        res_tag = None
         for v in typing.get_args(expected_python_type):
             try:
                 trans = TypeEngine.get_transformer(v)
@@ -675,14 +673,18 @@ class UnionTransformer(TypeTransformer[T]):
                     assert lv.scalar.union is not None # type checker
 
                     res = trans.to_python_value(ctx, lv.scalar.union.value, v)
+                    res_tag = trans.name
                     found_res = True
                     break
                 else:
                     res = trans.to_python_value(ctx, lv, v)
                     if found_res:
-                        raise TypeError(f"Ambiguous choice of vaariant for union type")
+                        raise TypeError(
+                            "Ambiguous choice of variant for union type. " +
+                            f"Both {res_tag} and {trans.name} transformers match")
+                    res_tag = trans.name
                     found_res = True
-            except Exception as e: # todo(maximsmol): separate programmer errors from type conversion failures
+            except TypeTransformerFailedError as e: # todo(maximsmol): separate programmer errors from type conversion failures
                 logger.debug(f"Failed to convert from {lv} to {v}", e)
 
         if found_res:
@@ -945,8 +947,12 @@ def _check_and_covert_float(lv: Literal) -> float:
         return lv.scalar.primitive.float_value
     elif lv.scalar.primitive.integer is not None:
         return float(lv.scalar.primitive.integer)
-    raise RuntimeError(f"Cannot convert literal {lv} to float")
+    raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
 
+def _check_and_convert_void(lv: Literal) -> None:
+    if lv.scalar.none_type is None:
+        raise TypeTransformerFailedError(f"Cannot conver literal {lv} to None")
+    return None
 
 def _register_default_type_transformers():
     TypeEngine.register(
@@ -1015,7 +1021,7 @@ def _register_default_type_transformers():
             type(None),
             _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
             lambda x: Literal(scalar=Scalar(none_type=Void())),
-            lambda x: None,
+            lambda x: _check_and_convert_void(x)
         ),
         [None],
     )

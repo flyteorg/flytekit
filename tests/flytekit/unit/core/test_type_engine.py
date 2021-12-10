@@ -13,6 +13,7 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_jsonschema import JSONSchema
 
 from flytekit.common.exceptions import user as user_exceptions
+from flytekit.common.types import primitives
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
     DataclassTransformer,
@@ -20,6 +21,8 @@ from flytekit.core.type_engine import (
     ListTransformer,
     SimpleTransformer,
     TypeEngine,
+    TypeTransformer,
+    TypeTransformerFailedError,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -33,6 +36,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
+T = typing.TypeVar("T")
 
 def test_type_engine():
     t = int
@@ -591,6 +595,110 @@ def test_optional_type():
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert lv.scalar.union.value.scalar.none_type == Void()
     assert v is None
+
+def test_union_from_unambiguous_literal():
+    pt = typing.Optional[int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.NONE)]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, int, primitives.Integer.to_flyte_literal_type())
+    assert lv.scalar.primitive.integer == 3
+
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert v == 3
+
+def test_union_custom_transformer():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            primitives.Integer.to_flyte_literal_type(),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x.val))),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    pt = typing.Union[int, MyInt]
+    lt = TypeEngine.to_literal_type(pt)
+    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.INTEGER)]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, MyInt(10), pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.value.scalar.primitive.integer == 10
+    assert v == MyInt(10)
+
+    lv = TypeEngine.to_literal(ctx, 4, int, primitives.Integer.to_flyte_literal_type())
+    assert lv.scalar.primitive.integer == 4
+    try:
+        TypeEngine.to_python_value(ctx, lv, pt)
+    except TypeError as e:
+        assert "Ambiguous choice of variant" in str(e)
+
+    del TypeEngine._REGISTRY[MyInt]
+
+def test_union_custom_transformer_sanity_check():
+    class UnsignedInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, UnsignedInt):
+                return False
+            return other.val == self.val
+
+    class UnsignedIntTransformer(TypeTransformer[UnsignedInt]):
+        def __init__(self):
+            super().__init__("UnsignedInt", UnsignedInt)
+
+        def get_literal_type(self, t: typing.Type[T]) -> LiteralType:
+            return primitives.Integer.to_flyte_literal_type()
+
+        def to_literal(self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType) -> Literal:
+            if type(python_val) != int:
+                raise TypeTransformerFailedError("Expected an integer")
+
+            if python_val < 0:
+                raise TypeTransformerFailedError("Expected a non-negative integer")
+
+            return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
+
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> T:
+            val = lv.scalar.primitive.integer
+            return UnsignedInt(0 if val < 0 else val)
+
+    TypeEngine.register(UnsignedIntTransformer())
+
+
+    pt = typing.Union[int, UnsignedInt]
+    lt = TypeEngine.to_literal_type(pt)
+    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.INTEGER)]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    try:
+        TypeEngine.to_literal(ctx, 3, pt, lt)
+    except AssertionError as e:
+        assert str(e) == "Ambiguous choice of variant for union type"
+
+    del TypeEngine._REGISTRY[UnsignedInt]
 
 
 @pytest.mark.parametrize(
