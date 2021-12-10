@@ -7,6 +7,7 @@ import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from textwrap import dedent
 
 import pandas
 import pytest
@@ -1461,7 +1462,21 @@ def test_union_type():
 
     with pytest.raises(
         TypeError,
-        match='Cannot convert from scalar {\n  primitive {\n    string_value: "2"\n  }\n}\n to typing.Union\\[float, dict\\]',
+        match=dedent(r'''
+            Cannot convert from scalar {
+              union {
+                value {
+                  scalar {
+                    primitive {
+                      string_value: "2"
+                    }
+                  }
+                }
+                tag: "str"
+              }
+            }
+             to typing.Union\[float, dict\] \(using tag str\)
+        ''')[1:-1],
     ):
         assert wf2(a="2") == "2"
 
