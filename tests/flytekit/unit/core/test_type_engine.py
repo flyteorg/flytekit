@@ -570,11 +570,13 @@ def test_union_type():
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.tag == "int"
     assert lv.scalar.union.value.scalar.primitive.integer == 3
     assert v == 3
 
     lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.tag == "str"
     assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
     assert v == "hello"
 
@@ -588,11 +590,13 @@ def test_optional_type():
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.tag == "int"
     assert lv.scalar.union.value.scalar.primitive.integer == 3
     assert v == 3
 
     lv = TypeEngine.to_literal(ctx, None, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.tag == "none"
     assert lv.scalar.union.value.scalar.none_type == Void()
     assert v is None
 
@@ -637,11 +641,13 @@ def test_union_custom_transformer():
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.tag == "int"
     assert lv.scalar.union.value.scalar.primitive.integer == 3
     assert v == 3
 
     lv = TypeEngine.to_literal(ctx, MyInt(10), pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.tag == "MyInt"
     assert lv.scalar.union.value.scalar.primitive.integer == 10
     assert v == MyInt(10)
 
@@ -664,6 +670,7 @@ def test_union_custom_transformer_sanity_check():
                 return False
             return other.val == self.val
 
+    # This transformer will not work in the implicit wrapping case
     class UnsignedIntTransformer(TypeTransformer[UnsignedInt]):
         def __init__(self):
             super().__init__("UnsignedInt", UnsignedInt)
@@ -700,6 +707,45 @@ def test_union_custom_transformer_sanity_check():
 
     del TypeEngine._REGISTRY[UnsignedInt]
 
+
+def test_union_of_lists():
+    pt = typing.Union[typing.List[int], typing.List[str]]
+    lt = TypeEngine.to_literal_type(pt)
+    assert [x.type for x in lt.union_type.variants] == [
+        LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER)),
+        LiteralType(collection_type=LiteralType(simple=SimpleType.STRING)),
+    ]
+    assert not union_type_tags_unique(lt) # tags are deliberately NOT unique
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, ["hello", "world"], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.tag == "Typed List"
+    assert [x.scalar.primitive.string_value for x in lv.scalar.union.value.collection.literals] == ["hello", "world"]
+    assert v == ["hello", "world"]
+
+    lv = TypeEngine.to_literal(ctx, [1, 3], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.tag == "Typed List"
+    assert [x.scalar.primitive.integer for x in lv.scalar.union.value.collection.literals] == [1, 3]
+    assert v == [1, 3]
+
+
+def test_list_of_unions():
+    pt = typing.List[typing.Union[str, int]]
+    lt = TypeEngine.to_literal_type(pt)
+    # todo(maximsmol): seems like the order here is non-deterministic
+    assert [x.type for x in lt.collection_type.union_type.variants] == [
+        LiteralType(simple=SimpleType.STRING),
+        LiteralType(simple=SimpleType.INTEGER),
+    ]
+    assert union_type_tags_unique(lt.collection_type) # tags are deliberately NOT unique
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert [x.scalar.union.tag for x in lv.collection.literals] == ["str", "int", "str"]
+    assert v == ["hello", 123, "world"]
 
 @pytest.mark.parametrize(
     "python_value,python_types,expected_literal_map",
@@ -786,5 +832,5 @@ def test_dict_to_literal_map_with_wrong_input_type():
     ctx = FlyteContext.current_context()
     input = {"a": 1}
     guessed_python_types = {"a": str}
-    with pytest.raises(user_exceptions.FlyteTypeException):
+    with pytest.raises(TypeTransformerFailedError):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)

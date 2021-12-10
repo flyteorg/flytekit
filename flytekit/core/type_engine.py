@@ -67,7 +67,7 @@ class TypeTransformer(typing.Generic[T]):
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, t):
-            raise TypeError(f"Type of Val '{v}' is not an instance of {t}")
+            raise TypeTransformerFailedError(f"Type of Val '{v}' is not an instance of {t}")
 
     @abstractmethod
     def get_literal_type(self, t: Type[T]) -> LiteralType:
@@ -677,8 +677,11 @@ class UnionTransformer(TypeTransformer[T]):
 
                     res = trans.to_python_value(ctx, lv.scalar.union.value, v)
                     res_tag = trans.name
+                    if found_res:
+                        raise TypeError(
+                            "Ambiguous choice of variant for union type. " +
+                            f"Both {res_tag} and {trans.name} transformers match")
                     found_res = True
-                    break
                 else:
                     res = trans.to_python_value(ctx, lv, v)
                     if found_res:
