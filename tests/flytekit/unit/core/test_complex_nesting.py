@@ -125,3 +125,78 @@ def test_two():
             )
             dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
             print(dynamic_job_spec)
+
+
+def test_str_input():
+    my_input = MyInput(
+        level1b_product="/tmp/complex/product",
+        apriori_config=apriori,
+        proxy_config=proxy_c,
+        proxy_params=proxy_p,
+    )
+    ctx = FlyteContextManager.current_context()
+    literal_type = TypeEngine.to_literal_type(MyInput)
+    first_literal = TypeEngine.to_literal(ctx, my_input, MyInput, literal_type)
+    print(first_literal)
+
+
+def test_dc_dyn_directory():
+    my_input_gcs = MyInput(
+        level1b_product=level1b_product,
+        apriori_config=MyAprioriConfiguration(
+            static_data_dir=FlyteDirectory("gs://my-bucket/one"),
+            external_data_dir=FlyteDirectory("gs://my-bucket/two"),
+        ),
+        proxy_config=proxy_c,
+        proxy_params=proxy_p,
+    )
+
+    my_input_gcs_2 = MyInput(
+        level1b_product=level1b_product,
+        apriori_config=MyAprioriConfiguration(
+            static_data_dir=FlyteDirectory("gs://my-bucket/three"),
+            external_data_dir=FlyteDirectory("gs://my-bucket/four"),
+        ),
+        proxy_config=proxy_c,
+        proxy_params=proxy_p,
+    )
+
+    @dynamic
+    def dt1(a: List[MyInput]) -> List[FlyteDirectory]:
+        x = []
+        for aa in a:
+            x.append(aa.apriori_config.external_data_dir)
+
+        return x
+
+    with FlyteContextManager.with_context(
+        FlyteContextManager.current_context().with_serialization_settings(
+            SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+            )
+        )
+    ) as ctx:
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                    additional_context={
+                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
+                        "dynamic_dest_dir": "/User/flyte/workflows",
+                    },
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(
+                ctx, d={"a": [my_input_gcs, my_input_gcs_2]}, guessed_python_types={"a": List[MyInput]}
+            )
+            dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
+            assert dynamic_job_spec.literals["o0"].collection.literals[0].scalar.blob.uri == "gs://my-bucket/two"
+            assert dynamic_job_spec.literals["o0"].collection.literals[1].scalar.blob.uri == "gs://my-bucket/four"
+
+
+
