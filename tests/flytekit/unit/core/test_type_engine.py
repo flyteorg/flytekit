@@ -12,7 +12,6 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_jsonschema import JSONSchema
 
-from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (

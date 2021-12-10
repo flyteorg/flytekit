@@ -17,6 +17,7 @@ from google.protobuf.struct_pb2 import Struct
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.common.translator import get_serializable
+from flytekit.common.types import primitives
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
@@ -26,7 +27,7 @@ from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
-from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
+from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
@@ -1518,3 +1519,84 @@ def test_union_type_implicit_wrapping():
 
     assert wf(a=2) == 2
     assert wf(a=-10) == "-10"
+
+
+def test_union_type_ambiguity_checking():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            primitives.Integer.to_flyte_literal_type(),
+            lambda x: _literal_models.Literal(scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    @task
+    def t1(a: typing.Union[int, MyInt]) -> int:
+        if isinstance(a, MyInt):
+            return a.val
+        return a
+
+    @workflow
+    def wf(a: int) -> int:
+        return t1(a=a)
+
+    with pytest.raises(
+        TypeError,
+        match="Ambiguous choice of variant for union type. Both int and MyInt transformers match"
+    ):
+        assert wf(a=10) == 10
+
+    del TypeEngine._REGISTRY[MyInt]
+
+
+def test_union_type_ambiguity_resolution():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            primitives.Integer.to_flyte_literal_type(),
+            lambda x: _literal_models.Literal(scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    @task
+    def t1(a: typing.Union[int, MyInt]) -> str:
+        if isinstance(a, MyInt):
+            return f"MyInt {str(a.val)}"
+        return str(a)
+
+    @task
+    def t2(a: int) -> typing.Union[int, MyInt]:
+        if a < 0:
+            return MyInt(a)
+        return a
+
+    @workflow
+    def wf(a: int) -> str:
+        return t1(a=t2(a=a))
+
+    assert wf(a=10) == "10"
+    assert wf(a=-10) == "MyInt -10"
+
+    del TypeEngine._REGISTRY[MyInt]
