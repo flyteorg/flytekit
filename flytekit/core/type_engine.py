@@ -8,6 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
+from re import L
 from typing import NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -27,12 +28,14 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union
-from flytekit.models.types import LiteralType, SimpleType, UnionType
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
+from flytekit.models.types import LiteralType, SimpleType, UnionType, UnionVariant
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 
+class TypeTransformerFailedError(RuntimeError):
+    ...
 
 class TypeTransformer(typing.Generic[T]):
     """
@@ -126,6 +129,7 @@ class SimpleTransformer(TypeTransformer[T]):
         from_literal_transformer: typing.Callable[[Literal], T],
     ):
         super().__init__(name, t)
+        self._type = t
         self._lt = lt
         self._to_literal_transformer = to_literal_transformer
         self._from_literal_transformer = from_literal_transformer
@@ -134,6 +138,8 @@ class SimpleTransformer(TypeTransformer[T]):
         return self._lt
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        if type(python_val) != self._type:
+            raise TypeTransformerFailedError(f"Expected value of type {self._type} but got type {type(python_val)}")
         return self._to_literal_transformer(python_val)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -234,12 +240,12 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if not dataclasses.is_dataclass(python_val):
-            raise AssertionError(
+            raise TypeTransformerFailedError(
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
         if not issubclass(type(python_val), DataClassJsonMixin):
-            raise AssertionError(
+            raise TypeTransformerFailedError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
         return Literal(
@@ -315,7 +321,10 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         struct = Struct()
-        struct.update(_MessageToDict(python_val))
+        try:
+            struct.update(_MessageToDict(python_val))
+        except:
+            raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
         return Literal(scalar=Scalar(generic=struct))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -581,6 +590,9 @@ class ListTransformer(TypeTransformer[T]):
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        if type(python_val) != list:
+            raise TypeTransformerFailedError("Expected a list")
+
         t = self.get_sub_type(python_type)
         lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
@@ -606,22 +618,34 @@ class UnionTransformer(TypeTransformer[T]):
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         try:
-            sub_type = [TypeEngine.to_literal_type(v) for v in typing.get_args(t)]
-            return _type_models.LiteralType(union_type=UnionType(sub_type))
+            trans = [(TypeEngine.get_transformer(x), x) for x in typing.get_args(t)]
+            variants = [UnionVariant(t.get_literal_type(x), t.name) for (t, x) in trans]
+            return _type_models.LiteralType(union_type=UnionType(variants))
         except Exception as e:
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        for idx, t in enumerate(typing.get_args(python_type)):
+        found_res = False
+        res = None
+        res_tag = None
+        for t in typing.get_args(python_type):
             try:
-                val = TypeEngine.to_literal(ctx, python_val, t, expected)
-            except Exception as e:
+                trans = TypeEngine.get_transformer(t)
+
+                res = trans.to_literal(ctx, python_val, t, expected)
+                res_tag = trans.name
+                if found_res:
+                    # Should really never happen, sanity check
+                    raise AssertionError(f"Ambiguous choice of variant for union type")
+                found_res = True
+            except TypeTransformerFailedError as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
                 continue
 
-            return Literal(scalar=Scalar(union=Union(value=val, type=expected, tag=idx)))
+        if found_res:
+            return Literal(scalar=Scalar(union=Union(value=res, tag=res_tag)))
 
-        raise TypeError(f"Cannot convert from {python_val} to {python_type}")
+        raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         for x in typing.get_args(expected_python_type):
@@ -634,15 +658,37 @@ class UnionTransformer(TypeTransformer[T]):
 
                 break
 
+        union_tag = None
+        if lv.scalar is not None and lv.scalar.union  is not None:
+            union_tag = lv.scalar.union.tag
+
+        found_res = False
+        res = None
         for v in typing.get_args(expected_python_type):
             try:
-                val = TypeEngine.to_python_value(ctx, lv, v)
-                if val:
-                    return val
+                trans = TypeEngine.get_transformer(v)
+                if union_tag:
+                    if trans.name != union_tag:
+                        continue
+
+                    assert lv.scalar is not None # type checker
+                    assert lv.scalar.union is not None # type checker
+
+                    res = trans.to_python_value(ctx, lv.scalar.union.value, v)
+                    found_res = True
+                    break
+                else:
+                    res = trans.to_python_value(ctx, lv, v)
+                    if found_res:
+                        raise TypeError(f"Ambiguous choice of vaariant for union type")
+                    found_res = True
             except Exception as e: # todo(maximsmol): separate programmer errors from type conversion failures
                 logger.debug(f"Failed to convert from {lv} to {v}", e)
 
-        raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
+        if found_res:
+            return res
+
+        raise TypeError(f"Cannot convert from {lv} to {expected_python_type} (using tag {union_tag})")
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
         if literal_type.union_type is not None:
@@ -694,6 +740,9 @@ class DictTransformer(TypeTransformer[dict]):
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
     ) -> Literal:
+        if type(python_val) != dict:
+            raise TypeTransformerFailedError("Expected a dict")
+
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             return self.dict_to_generic_literal(python_val)
 
@@ -821,6 +870,11 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return LiteralType(enum_type=_core_types.EnumType(values=values))
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        if type(python_val).__class__ != enum.EnumMeta:
+            raise TypeTransformerFailedError("Expected an enum")
+        if type(python_val.value) != str:
+            raise TypeTransformerFailedError("Only string-valued enums are sujpportedd")
+
         return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -958,12 +1012,12 @@ def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
             "none",
-            None,
+            type(None),
             _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
-            lambda x: None,
+            lambda x: Literal(scalar=Scalar(none_type=Void())),
             lambda x: None,
         ),
-        [type(None)],
+        [None],
     )
     TypeEngine.register(ListTransformer())
     TypeEngine.register(UnionTransformer())

@@ -25,7 +25,7 @@ from flytekit.core.type_engine import (
 )
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
@@ -349,7 +349,7 @@ def test_guessing_basic():
 
     lt = model_types.LiteralType(simple=model_types.SimpleType.NONE)
     pt = TypeEngine.guess_python_type(lt)
-    assert pt is None
+    assert pt is type(None)
 
 
 def test_guessing_containers():
@@ -547,36 +547,49 @@ def test_enum_type():
         TypeEngine.to_literal_type(UnsupportedEnumValues)
 
 
+def union_type_tags_unique(t: LiteralType):
+    seen = set()
+    for x in t.union_type.variants:
+        if x.tag in seen:
+            return False
+        seen.add(x.tag)
+
+    return True
+
+
 def test_union_type():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
-    assert lt.union_type.values == [LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
+    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
+    assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.primitive.integer == 3
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
     assert v == 3
 
     lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.primitive.string_value == "hello"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
     assert v == "hello"
 
 
 def test_optional_type():
     pt = typing.Optional[int]
     lt = TypeEngine.to_literal_type(pt)
-    assert lt.union_type.values == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.NONE)]
+    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.NONE)]
+    assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.primitive.integer == 3
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
     assert v == 3
 
     lv = TypeEngine.to_literal(ctx, None, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.value.scalar.none_type == Void()
     assert v is None
 
 

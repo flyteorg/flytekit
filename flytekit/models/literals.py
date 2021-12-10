@@ -751,7 +751,7 @@ class Scalar(_common.FlyteIdlEntity):
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             binary=self.binary.to_flyte_idl() if self.binary is not None else None,
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
-            union=self.union.to_flyte_idl() if self.union is not None else None
+            union=self.union.to_flyte_idl() if self.union is not None else None,
             none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
             error=self.error if self.error is not None else None,
             generic=self.generic,
