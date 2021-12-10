@@ -12,11 +12,51 @@ class Checkpoint(object):
     """
 
     @abstractmethod
+    def prev_exists(self) -> bool:
+        raise NotImplementedError("Use one of the derived classes")
+
+    @abstractmethod
     def restore(self, path: typing.Union[Path, str]) -> Path:
+        """
+           Given a path, if a previous checkpoint exists, will be downloaded to this path.
+           If download is successful the downloaded path is returned
+
+           .. note:
+
+               Download will not be performed, if the checkpoint was previously restored. The method will return the
+               previously downloaded path.
+
+         """
         raise NotImplementedError("Use one of the derived classes")
 
     @abstractmethod
     def save(self, cp: typing.Union[Path, str, io.BufferedReader]):
+        """
+        Args:
+            cp: Checkpoint file (path, str path or a io.BufferedReader)
+
+        Usage: If you have a io.BufferedReader then the following should work
+
+        .. code-block: python
+
+            with input_file.open(mode="rb") as b:
+                checkpointer.save(b)
+        """
+        raise NotImplementedError("Use one of the derived classes")
+
+    @abstractmethod
+    def read(self) -> bytes:
+        """
+        This should only be used if there is a singular checkpoint file written. If more than one checkpoint file is
+        found, this will raise a ValueError
+        """
+        raise NotImplementedError("Use one of the derived classes")
+
+    @abstractmethod
+    def write(self, b: bytes):
+        """
+        This will overwrite the checkpoint. It can be retrieved using read or restore
+        """
         raise NotImplementedError("Use one of the derived classes")
 
 
@@ -46,17 +86,11 @@ class SyncCheckpoint(object):
     def __del__(self):
         self._td.cleanup()
 
+    def prev_exists(self) -> bool:
+        return self._checkpoint_src is not None
+
     def restore(self, path: typing.Union[Path, str]) -> Path:
-        """
-        Given a path, if a previous checkpoint exists, will be downloaded to this path.
-        If download is successful the downloaded path is returned
 
-        .. note:
-
-            Download will not be performed, if the checkpoint was previously restored. The method will return the
-            previously downloaded path.
-
-        """
         # We have to lazy load, until we fix the imports
         from flytekit.core.context_manager import FlyteContextManager
 
@@ -66,22 +100,13 @@ class SyncCheckpoint(object):
             return self._prev_download_path
         if isinstance(path, str):
             path = Path(path)
+        if not path.is_dir():
+            raise ValueError("Checkpoints can be restored to a directory only.")
         FlyteContextManager.current_context().file_access.download_directory(self._checkpoint_src, str(path))
         self._prev_download_path = path
         return self._prev_download_path
 
     def save(self, cp: typing.Union[Path, str, io.BufferedReader]):
-        """
-        Args:
-            cp: Checkpoint file (path, str path or a io.BufferedReader)
-
-        Usage: If you have a io.BufferedReader then the following should work
-
-        .. code-block: python
-
-            with input_file.open(mode="rb") as b:
-                checkpointer.save(b)
-        """
         # We have to lazy load, until we fix the imports
         from flytekit.core.context_manager import FlyteContextManager
 
