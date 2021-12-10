@@ -118,7 +118,7 @@ class UnionVariant(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self) -> _types_pb2.UnionVariant:
         return _types_pb2.UnionVariant(
-            type=self.type,
+            type=self.type.to_flyte_idl(),
             tag=self.tag
         )
 
@@ -139,8 +139,8 @@ class UnionType(_common.FlyteIdlEntity):
     def variants(self) -> typing.List["UnionVariant"]:
         return self._variants
 
-    def to_flyte_idl(self) -> _types_pb2.UnionVariant:
-        return _types_pb2.UnionVariant(
+    def to_flyte_idl(self) -> _types_pb2.UnionType:
+        return _types_pb2.UnionType(
             variants=[val.to_flyte_idl() if val else None for val in self._variants],
         )
 

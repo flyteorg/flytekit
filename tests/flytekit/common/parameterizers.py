@@ -55,6 +55,20 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
         )
     ),
+    types.LiteralType(
+        union_type=types.UnionType(
+            variants=[
+                types.UnionVariant(
+                    type=types.LiteralType(simple=types.SimpleType.STRING),
+                    tag="str"
+                ),
+                types.UnionVariant(
+                    type=types.LiteralType(simple=types.SimpleType.INTEGER),
+                    tag="int"
+                )
+            ]
+        )
+    ),
 ]
 
 
@@ -240,6 +254,36 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
             ),
         ),
     ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(
+                    scalar=literals.Scalar(
+                        primitive=literals.Primitive(
+                            integer=10
+                        )
+                    )
+                ),
+                tag="int"
+            )
+        ),
+        10
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(
+                    scalar=literals.Scalar(
+                        primitive=literals.Primitive(
+                            string_value="test"
+                        )
+                    )
+                ),
+                tag="str"
+            )
+        ),
+        "test"
+    )
 ]
 
 LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE = [
