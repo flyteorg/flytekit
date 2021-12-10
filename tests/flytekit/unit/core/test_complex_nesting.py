@@ -1,6 +1,9 @@
+import os
+import tempfile
 from dataclasses import dataclass
 from typing import List
 
+import pytest
 from dataclasses_json import dataclass_json
 
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager, Image, ImageConfig, SerializationSettings
@@ -21,54 +24,76 @@ class MyProxyConfiguration:
 @dataclass_json
 @dataclass
 class MyProxyParameters:
-    id: str  # unique identifier for this collection
-    job_i_step: int  # step size
+    id: str
+    job_i_step: int
 
 
 @dataclass_json
 @dataclass
 class MyAprioriConfiguration:
-    # Directory with static data directories.
-    # TODO: Identify what this data is, possibly split into multiple values if necessary.
     static_data_dir: FlyteDirectory
-    # Directory for external dynamic data.
-    # TODO: Is this just GEOS data? If so, do we need all of it? Can we preprocess?
     external_data_dir: FlyteDirectory
 
 
 @dataclass_json
 @dataclass
 class MyInput:
-    level1b_product: FlyteFile
+    main_product: FlyteFile
     apriori_config: MyAprioriConfiguration
     proxy_config: MyProxyConfiguration
     proxy_params: MyProxyParameters
 
 
-level1b_product = FlyteFile("/tmp/complex/product")
-apriori = MyAprioriConfiguration(
-    static_data_dir=FlyteDirectory("/tmp/apriori/static_data"),
-    external_data_dir=FlyteDirectory("/tmp/apriori/external_data"),
-)
-proxy_c = MyProxyConfiguration(splat_data_dir="/tmp/proxy_splat", apriori_file="/opt/config/a_file")
-proxy_p = MyProxyParameters(id="pp_id", job_i_step=1)
+@pytest.fixture
+def folders_and_files_setup():
+    tmp_dir = tempfile.TemporaryDirectory()
+    fd, path = tempfile.mkstemp(dir=tmp_dir.name)
+    tmp_dir_static_data = tempfile.TemporaryDirectory()
+    tmp_dir_external_data = tempfile.TemporaryDirectory()
 
-my_input = MyInput(
-    level1b_product=level1b_product,
-    apriori_config=apriori,
-    proxy_config=proxy_c,
-    proxy_params=proxy_p,
-)
-
-my_input2 = MyInput(
-    level1b_product=level1b_product,
-    apriori_config=apriori,
-    proxy_config=proxy_c,
-    proxy_params=proxy_p,
-)
+    try:
+        with os.fdopen(fd, "w") as tmp:
+            tmp.write("Hello world")
+        yield path, tmp_dir_static_data.name, tmp_dir_external_data.name
+    finally:
+        tmp_dir.cleanup()
+        tmp_dir_static_data.cleanup()
+        tmp_dir_external_data.cleanup()
 
 
-def test_dataclass_complex_transform():
+@pytest.fixture
+def two_sample_inputs(folders_and_files_setup):
+    (file_path, static_data_path, external_data_path) = folders_and_files_setup
+
+    main_product = FlyteFile(file_path)
+    apriori = MyAprioriConfiguration(
+        static_data_dir=FlyteDirectory(static_data_path),
+        external_data_dir=FlyteDirectory(external_data_path),
+    )
+    proxy_c = MyProxyConfiguration(splat_data_dir="/tmp/proxy_splat", apriori_file="/opt/config/a_file")
+    proxy_p = MyProxyParameters(id="pp_id", job_i_step=1)
+
+    my_input = MyInput(
+        main_product=main_product,
+        apriori_config=apriori,
+        proxy_config=proxy_c,
+        proxy_params=proxy_p,
+    )
+
+    my_input_2 = MyInput(
+        main_product=main_product,
+        apriori_config=apriori,
+        proxy_config=proxy_c,
+        proxy_params=proxy_p,
+    )
+
+    yield my_input, my_input_2
+
+
+def test_dataclass_complex_transform(two_sample_inputs):
+    my_input = two_sample_inputs[0]
+    my_input_2 = two_sample_inputs[1]
+
     ctx = FlyteContextManager.current_context()
     literal_type = TypeEngine.to_literal_type(MyInput)
     first_literal = TypeEngine.to_literal(ctx, my_input, MyInput, literal_type)
@@ -83,18 +108,21 @@ def test_dataclass_complex_transform():
     converted_back_2 = TypeEngine.to_python_value(ctx, second_literal, MyInput)
     print(converted_back_2)
 
-    input_list = [my_input, my_input2]
+    input_list = [my_input, my_input_2]
     input_list_type = TypeEngine.to_literal_type(List[MyInput])
     literal_list_1 = TypeEngine.to_literal(ctx, input_list, List[MyInput], input_list_type)
     print(literal_list_1)
 
 
-def test_two():
+def test_two(two_sample_inputs):
+    my_input = two_sample_inputs[0]
+    my_input_2 = two_sample_inputs[1]
+
     @dynamic
     def dt1(a: List[MyInput]) -> List[FlyteFile]:
         x = []
         for aa in a:
-            x.append(aa.level1b_product)
+            x.append(aa.main_product)
 
         return x
 
@@ -121,16 +149,23 @@ def test_two():
             )
         ) as ctx:
             input_literal_map = TypeEngine.dict_to_literal_map(
-                ctx, d={"a": [my_input, my_input2]}, guessed_python_types={"a": List[MyInput]}
+                ctx, d={"a": [my_input, my_input_2]}, guessed_python_types={"a": List[MyInput]}
             )
             dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
             print(dynamic_job_spec)
 
 
-def test_str_input():
+def test_str_input(folders_and_files_setup):
+    proxy_c = MyProxyConfiguration(splat_data_dir="/tmp/proxy_splat", apriori_file="/opt/config/a_file")
+    proxy_p = MyProxyParameters(id="pp_id", job_i_step=1)
+
+    # Intentionally passing in the wrong type
     my_input = MyInput(
-        level1b_product="/tmp/complex/product",
-        apriori_config=apriori,
+        main_product=folders_and_files_setup[0],  # noqa
+        apriori_config=MyAprioriConfiguration(
+            static_data_dir=FlyteDirectory("gs://my-bucket/one"),
+            external_data_dir=FlyteDirectory("gs://my-bucket/two"),
+        ),
         proxy_config=proxy_c,
         proxy_params=proxy_p,
     )
@@ -140,9 +175,12 @@ def test_str_input():
     print(first_literal)
 
 
-def test_dc_dyn_directory():
+def test_dc_dyn_directory(folders_and_files_setup):
+    proxy_c = MyProxyConfiguration(splat_data_dir="/tmp/proxy_splat", apriori_file="/opt/config/a_file")
+    proxy_p = MyProxyParameters(id="pp_id", job_i_step=1)
+
     my_input_gcs = MyInput(
-        level1b_product=level1b_product,
+        main_product=FlyteFile(folders_and_files_setup[0]),
         apriori_config=MyAprioriConfiguration(
             static_data_dir=FlyteDirectory("gs://my-bucket/one"),
             external_data_dir=FlyteDirectory("gs://my-bucket/two"),
@@ -152,7 +190,7 @@ def test_dc_dyn_directory():
     )
 
     my_input_gcs_2 = MyInput(
-        level1b_product=level1b_product,
+        main_product=FlyteFile(folders_and_files_setup[0]),
         apriori_config=MyAprioriConfiguration(
             static_data_dir=FlyteDirectory("gs://my-bucket/three"),
             external_data_dir=FlyteDirectory("gs://my-bucket/four"),
@@ -197,6 +235,3 @@ def test_dc_dyn_directory():
             dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
             assert dynamic_job_spec.literals["o0"].collection.literals[0].scalar.blob.uri == "gs://my-bucket/two"
             assert dynamic_job_spec.literals["o0"].collection.literals[1].scalar.blob.uri == "gs://my-bucket/four"
-
-
-
