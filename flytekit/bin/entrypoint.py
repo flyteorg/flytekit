@@ -18,6 +18,7 @@ from flytekit.common import utils as _utils
 from flytekit.common.exceptions import scopes as _scoped_exceptions
 from flytekit.common.exceptions import scopes as _scopes
 from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.common.tasks.checkpointer import SyncCheckpoint
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
@@ -181,6 +182,8 @@ def _dispatch_execute(
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
+    checkpoint_path: str,
+    prev_checkpoint: str,
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
@@ -194,6 +197,10 @@ def setup_execution(
     _click.echo(f"Using user directory {user_workspace_dir}")
     pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
     from flytekit import __version__ as _api_version
+
+    checkpointer = None
+    if checkpoint_path is not None:
+        checkpointer = SyncCheckpoint(checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint)
 
     execution_parameters = ExecutionParameters(
         execution_id=_identifier.WorkflowExecutionIdentifier(
@@ -221,6 +228,7 @@ def setup_execution(
         ),
         logging=_logging,
         tmp_dir=user_workspace_dir,
+        checkpointer=checkpointer,
     )
 
     # TODO: Remove this check for flytekit 1.0
@@ -325,10 +333,12 @@ def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_outp
 
 @_scopes.system_entry_point
 def _execute_task(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    test,
+    inputs: str,
+    output_prefix: str,
+    test: bool,
+    raw_output_data_prefix: str,
+    checkpoint_path: str,
+    prev_checkpoint: str,
     resolver: str,
     resolver_args: List[str],
     dynamic_addl_distro: str = None,
@@ -422,6 +432,8 @@ def _pass_through():
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--checkpoint-path", required=False)
+@_click.option("--prev-checkpoint", required=False)
 @_click.option("--test", is_flag=True)
 @_click.option("--dynamic-addl-distro", required=False)
 @_click.option("--dynamic-dest-dir", required=False)
@@ -438,6 +450,8 @@ def execute_task_cmd(
     output_prefix,
     raw_output_data_prefix,
     test,
+    prev_checkpoint,
+    checkpoint_path,
     dynamic_addl_distro,
     dynamic_dest_dir,
     resolver,
@@ -449,6 +463,10 @@ def execute_task_cmd(
     # to the original shard formatter/prefix config.
     if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
         raw_output_data_prefix = None
+    if checkpoint_path == "{{.checkpointOutputPrefix}}":
+        checkpoint_path = None
+    if prev_checkpoint == "{{.prevCheckpointPrefix}}":
+        prev_checkpoint = None
 
     # For new API tasks (as of 0.16.x), we need to call a different function.
     # Use the presence of the resolver to differentiate between old API tasks and new API tasks
@@ -460,14 +478,16 @@ def execute_task_cmd(
     else:
         _click.echo(f"Attempting to run with {resolver}...")
         _execute_task(
-            inputs,
-            output_prefix,
-            raw_output_data_prefix,
-            test,
-            resolver,
-            resolver_args,
-            dynamic_addl_distro,
-            dynamic_dest_dir,
+            inputs=inputs,
+            output_prefix=output_prefix,
+            raw_output_data_prefix=raw_output_data_prefix,
+            test=test,
+            resolver=resolver,
+            resolver_args=resolver_args,
+            dynamic_addl_distro=dynamic_addl_distro,
+            dynamic_dest_dir=dynamic_dest_dir,
+            checkpoint_path=checkpoint_path,
+            prev_checkpoint=prev_checkpoint,
         )
 
 

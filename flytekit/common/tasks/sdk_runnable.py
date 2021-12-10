@@ -21,6 +21,7 @@ from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import task as _base_task
+from flytekit.common.tasks.checkpointer import Checkpoint
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import resources as _resource_config
@@ -114,7 +115,7 @@ class ExecutionParameters(object):
         execution_id: str
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, _common_utils.AutoDeletingTempDir]
-        checkpointer: str
+        checkpointer: typing.Optional[Checkpoint]
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -122,6 +123,7 @@ class ExecutionParameters(object):
             self.working_dir = current.working_directory if current else None
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
+            self.checkpointer = current.checkpointer if current else None
             self.attrs = current._attrs if current else {}
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
@@ -137,6 +139,7 @@ class ExecutionParameters(object):
                 tmp_dir=self.working_dir,
                 execution_id=self.execution_id,
                 logging=self.logging,
+                checkpointer=self.checkpointer,
                 **self.attrs,
             )
 
@@ -147,7 +150,7 @@ class ExecutionParameters(object):
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, checkpointer=None, **kwargs):
         """
         Args:
             execution_date: Date when the execution is running
@@ -155,6 +158,7 @@ class ExecutionParameters(object):
             stats: handle to emit stats
             execution_id: Identifier for the xecution
             logging: handle to logging
+            checkpointer: Checkpoint Handle to the configured checkpoint system
         """
         self._stats = stats
         self._execution_date = execution_date
@@ -165,6 +169,7 @@ class ExecutionParameters(object):
         self._attrs = kwargs
         # It is safe to recreate the Secrets Manager
         self._secrets_manager = SecretsManager()
+        self._checkpointer = checkpointer
 
     @property
     def stats(self) -> taggable.TaggableStats:
@@ -221,6 +226,10 @@ class ExecutionParameters(object):
     @property
     def secrets(self) -> SecretsManager:
         return self._secrets_manager
+
+    @property
+    def checkpointer(self) -> typing.Optional[Checkpoint]:
+        return self._checkpointer
 
     def __getattr__(self, attr_name: str) -> typing.Any:
         """

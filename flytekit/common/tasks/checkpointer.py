@@ -1,54 +1,90 @@
-import contextlib
 import io
 import tempfile
 import typing
+from abc import abstractmethod
 from pathlib import Path
 
-from flytekit import FlyteContextManager
+
+class Checkpoint(object):
+    """
+    Base class for Checkpoint system. Checkpoint system allows reading and writing custom checkpoints from user
+    scripts
+    """
+
+    @abstractmethod
+    def restore(self, path: typing.Union[Path, str]) -> Path:
+        raise NotImplementedError("Use one of the derived classes")
+
+    @abstractmethod
+    def save(self, cp: typing.Union[Path, str, io.BufferedReader]):
+        raise NotImplementedError("Use one of the derived classes")
 
 
 class SyncCheckpoint(object):
     """
+    This class is NOT THREAD-SAFE!
     Sync Checkpoint, will synchronously checkpoint a user given file or folder.
-    It will also synchronously download / restore previous checkpoints
+    It will also synchronously download / restore previous checkpoints, when restore is invoked.
+
+    TODO: Implement an async checkpoint system
     """
+
     SRC_LOCAL_PATH = "_src_cp"
     TMP_DST_PATH = "_dst_cp"
 
     def __init__(self, checkpoint_dest: str, checkpoint_src: typing.Optional[str] = None):
+        """
+        Args:
+            checkpoint_src: If a previous checkpoint should exist, this path should be set to the folder that contains the checkpoint information
+            checkpoint_dest: Location where the new checkpoint should be copied to
+        """
         self._checkpoint_dest = checkpoint_dest
         self._checkpoint_src = checkpoint_src
         self._td = tempfile.TemporaryDirectory()
-        self._downloaded = False
+        self._prev_download_path = None
 
     def __del__(self):
         self._td.cleanup()
 
-    @contextlib.contextmanager
-    def open(self) -> typing.Iterator[typing.Optional[typing.BinaryIO]]:
-        if self._checkpoint_src is None:
-            yield None
-            return
-        p = Path(self._td.name)
-        src_cp = p.joinpath(self.SRC_LOCAL_PATH)
-        FlyteContextManager.current_context().file_access.download_directory(self._checkpoint_src, src_cp.name)
-        if src_cp.is_dir():
-            for f in src_cp.iterdir():
-                if f.is_dir():
-                    continue
-                with f.open("rb") as b:
-                    yield b
-        return
+    def restore(self, path: typing.Union[Path, str]) -> Path:
+        """
+        Given a path, if a previous checkpoint exists, will be downloaded to this path.
+        If download is successful the downloaded path is returned
 
-    def restore(self, path: typing.Union[Path, str]) -> bool:
+        .. note:
+
+            Download will not be performed, if the checkpoint was previously restored. The method will return the
+            previously downloaded path.
+
+        """
+        # We have to lazy load, until we fix the imports
+        from flytekit.core.context_manager import FlyteContextManager
+
         if self._checkpoint_src is None:
             return False
+        if self._prev_download_path:
+            return self._prev_download_path
         if isinstance(path, str):
             path = Path(path)
-        FlyteContextManager.current_context().file_access.download_directory(self._checkpoint_src, path.name)
-        return True
+        FlyteContextManager.current_context().file_access.download_directory(self._checkpoint_src, str(path))
+        self._prev_download_path = path
+        return self._prev_download_path
 
     def save(self, cp: typing.Union[Path, str, io.BufferedReader]):
+        """
+        Args:
+            cp: Checkpoint file (path, str path or a io.BufferedReader)
+
+        Usage: If you have a io.BufferedReader then the following should work
+
+        .. code-block: python
+
+            with input_file.open(mode="rb") as b:
+                checkpointer.save(b)
+        """
+        # We have to lazy load, until we fix the imports
+        from flytekit.core.context_manager import FlyteContextManager
+
         fa = FlyteContextManager.current_context().file_access
         if isinstance(cp, Path) or isinstance(cp, str):
             if isinstance(cp, str):

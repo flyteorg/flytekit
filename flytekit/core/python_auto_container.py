@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import re
+from abc import ABC
 from typing import Callable, Dict, List, Optional, TypeVar
 
 from flytekit.common.tasks.raw_container import _get_container_definition
@@ -17,7 +18,7 @@ from flytekit.models.security import Secret, SecurityContext
 T = TypeVar("T")
 
 
-class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
+class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
     """
     A Python AutoContainer task should be used as the base for all extensions that want the user's code to be in the
     container and the container information to be automatically captured.
@@ -119,6 +120,10 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             "{{.outputPrefix}}",
             "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
+            "--checkpoint-path",
+            "{{.checkpointOutputPrefix}}",
+            "--prev-checkpoint",
+            "{{.prevCheckpointPrefix}}",
             "--resolver",
             self.task_resolver.location,
             "--",
