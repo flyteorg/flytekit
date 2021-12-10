@@ -184,12 +184,14 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
 
 def test_vjkl():
     rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
-    wf = rr.fetch_workflow(name="core.control_flow.run_merge_sort.merge_sort",
-                           version="931da9ead496000fc92379392d482295ab690988")
+    wf = rr.fetch_workflow(
+        name="core.control_flow.run_merge_sort.merge_sort", version="931da9ead496000fc92379392d482295ab690988"
+    )
 
 
 def test_jasilv():
     rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
-    wf = rr.fetch_workflow(name="core.control_flow.run_conditions.nested_conditions",
-                           version="931da9ead496000fc92379392d482295ab690988")
-
+    wf = rr.fetch_workflow(
+        name="core.control_flow.run_conditions.nested_conditions", version="931da9ead496000fc92379392d482295ab690988"
+    )
+    print(wf)

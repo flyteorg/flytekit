@@ -131,12 +131,13 @@ class FlyteBranchNode(_workflow_model.BranchNode):
         super().__init__(if_else)
 
     @classmethod
-    def promote_from_model(cls,
-                           base_model: _workflow_model.BranchNode,
-                           sub_workflows: Dict[id_models.Identifier, _workflow_model.WorkflowTemplate],
-                           node_launch_plans: Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec],
-                           tasks: Dict[id_models.Identifier, _task_model.TaskTemplate],
-                           ) -> "FlyteBranchNode":
+    def promote_from_model(
+        cls,
+        base_model: _workflow_model.BranchNode,
+        sub_workflows: Dict[id_models.Identifier, _workflow_model.WorkflowTemplate],
+        node_launch_plans: Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec],
+        tasks: Dict[id_models.Identifier, _task_model.TaskTemplate],
+    ) -> "FlyteBranchNode":
 
         from flytekit.remote.nodes import FlyteNode
 
@@ -146,7 +147,12 @@ class FlyteBranchNode(_workflow_model.BranchNode):
         if block.else_node:
             else_node = FlyteNode.promote_from_model(block.else_node, sub_workflows, node_launch_plans, tasks)
 
-        block.case._then_node = FlyteNode.promote_from_model(block.case.then_node, sub_workflows, node_launch_plans, tasks)
+        block.case._then_node = FlyteNode.promote_from_model(
+            block.case.then_node, sub_workflows, node_launch_plans, tasks
+        )
+
+        for o in block.other:
+            o._then_node = FlyteNode.promote_from_model(o.then_node, sub_workflows, node_launch_plans, tasks)
 
         new_if_else_block = _workflow_model.IfElseBlock(block.case, block.other, else_node, block.error)
 

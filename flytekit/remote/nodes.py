@@ -27,15 +27,18 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         flyte_task: Optional["FlyteTask"] = None,
         flyte_workflow: Optional["FlyteWorkflow"] = None,
         flyte_launch_plan: Optional["FlyteLaunchPlan"] = None,
-        flyte_branch=None,
+        flyte_branch_node: Optional["FlyteBranchNode"] = None,
     ):
-        non_none_entities = list(filter(None, [flyte_task, flyte_workflow, flyte_launch_plan, flyte_branch]))
+        # todo: flyte_branch_node is the only non-entity here, feels wrong, it should probably be a Condition
+        #   or the other ones changed.
+        non_none_entities = list(filter(None, [flyte_task, flyte_workflow, flyte_launch_plan, flyte_branch_node]))
         if len(non_none_entities) != 1:
             raise _user_exceptions.FlyteAssertion(
                 "An Flyte node must have one underlying entity specified at once.  Received the following "
                 "entities: {}".format(non_none_entities)
             )
-        self._flyte_entity = flyte_task or flyte_workflow or flyte_launch_plan or flyte_branch
+        # todo: wip - flyte_branch_node is a hack kinda, it should be a Condition
+        self._flyte_entity = flyte_task or flyte_workflow or flyte_launch_plan or flyte_branch_node
 
         workflow_node = None
         if flyte_workflow is not None:
@@ -46,7 +49,6 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         task_node = None
         if flyte_task:
             task_node = _component_nodes.FlyteTaskNode(flyte_task)
-        branch_node = None
 
         super(FlyteNode, self).__init__(
             id=id,
@@ -56,7 +58,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             output_aliases=[],
             task_node=task_node,
             workflow_node=workflow_node,
-            branch_node=branch_node,
+            branch_node=flyte_branch_node,
         )
         self._upstream = upstream_nodes
 
@@ -90,7 +92,9 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             )
         # TODO: Implement branch node https://github.com/flyteorg/flyte/issues/1116
         elif model.branch_node is not None:
-            flyte_branch_node = _component_nodes.FlyteBranchNode.promote_from_model(model.branch_node, sub_workflows, node_launch_plans, tasks)
+            flyte_branch_node = _component_nodes.FlyteBranchNode.promote_from_model(
+                model.branch_node, sub_workflows, node_launch_plans, tasks
+            )
         else:
             raise _system_exceptions.FlyteSystemException(
                 f"Bad Node model, neither task nor workflow detected, node: {model}"
@@ -140,7 +144,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 upstream_nodes=[],  # set downstream, model doesn't contain this information
                 bindings=model.inputs,
                 metadata=model.metadata,
-                flyte_branch=flyte_branch_node,
+                flyte_branch_node=flyte_branch_node,
             )
         raise _system_exceptions.FlyteSystemException("Bad FlyteNode model, both task and workflow nodes are empty")
 
