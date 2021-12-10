@@ -34,7 +34,7 @@ from flytekit.models.types import LiteralType, SimpleType, UnionType, UnionVaria
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 
-class TypeTransformerFailedError(TypeError):
+class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
     ...
 
 class TypeTransformer(typing.Generic[T]):

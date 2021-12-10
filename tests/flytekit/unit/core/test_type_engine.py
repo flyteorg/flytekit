@@ -12,6 +12,7 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_jsonschema import JSONSchema
 
+import flytekit.common.exceptions.user as user_exceptions
 from flytekit.common.types import primitives
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
@@ -699,10 +700,8 @@ def test_union_custom_transformer_sanity_check():
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
-    try:
+    with pytest.raises(TypeError, match="Ambiguous choice of variant for union type"):
         TypeEngine.to_literal(ctx, 3, pt, lt)
-    except AssertionError as e:
-        assert str(e) == "Ambiguous choice of variant for union type"
 
     del TypeEngine._REGISTRY[UnsignedInt]
 
@@ -831,5 +830,5 @@ def test_dict_to_literal_map_with_wrong_input_type():
     ctx = FlyteContext.current_context()
     input = {"a": 1}
     guessed_python_types = {"a": str}
-    with pytest.raises(TypeTransformerFailedError):
+    with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
