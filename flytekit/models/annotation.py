@@ -29,7 +29,7 @@ class TypeAnnotation:
         else:
             annotations = None
 
-        return types_pb2.TypeAnnotation(
+        return _types_pb2.TypeAnnotation(
             annotations=annotations,
         )
 
