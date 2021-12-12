@@ -35,7 +35,6 @@ def y1(a: typing.Annotated[typing.List[int], FlyteAnnotation({"foo": {"bar": 1}}
 
 
 def test_get_variable_descriptions():
-
     x_tsk = get_serializable(entity_mapping, serialization_settings, x)
     x_input_vars = x_tsk.template.interface.inputs
 

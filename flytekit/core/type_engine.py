@@ -29,7 +29,7 @@ from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
-from flytekit.models.annotation import TypeAnnotation as _annotation_model
+from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Schema
 from flytekit.models.types import LiteralType, SimpleType
@@ -449,7 +449,6 @@ class TypeEngine(typing.Generic[T]):
 
         # Step 2
         if hasattr(python_type, "__origin__"):
-
             # Handling of annotated generics, eg:
             # typing.Annotated[typing.List[int], 'foo']
             if get_origin(python_type) is typing.Annotated:
@@ -498,7 +497,7 @@ class TypeEngine(typing.Generic[T]):
                     )
                 data = x.data
         if data is not None:
-            idl_type_annotation = _annotation_model(annotations=data)
+            idl_type_annotation = TypeAnnotationModel(annotations=data)
             return LiteralType(
                 simple=res.simple,
                 schema=res.schema,
@@ -639,7 +638,6 @@ class ListTransformer(TypeTransformer[T]):
         """
 
         if hasattr(t, "__origin__"):
-
             # Handle annotation on list generic, eg:
             # typing.Annotated[typing.List[int], 'foo']
             if get_origin(t) is typing.Annotated:
