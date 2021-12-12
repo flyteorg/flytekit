@@ -19,7 +19,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
-from typing_extensions import get_origin
+from typing_extensions import get_args, get_origin
 
 from flytekit.common.exceptions import user as user_exceptions
 from flytekit.common.types import primitives as _primitives
@@ -224,6 +224,13 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
+        if get_origin(t) is typing.Annotated:
+            raise ValueError(
+                f"Flytekit does not currently have support \
+                    for FlyteAnnotations applied to Dataclass. {t} cannot be \
+                    parsed."
+            )
+
         if not issubclass(t, DataClassJsonMixin):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
@@ -688,9 +695,17 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Return the generic Type T of the Dict
         """
-        if hasattr(t, "__origin__") and t.__origin__ is dict:  # type: ignore
-            if hasattr(t, "__args__"):
-                return t.__args__  # type: ignore
+        _origin = get_origin(t)
+        _args = get_args(t)
+        if _origin is not None:
+            if _origin is typing.Annotated:
+                raise ValueError(
+                    f"Flytekit does not currently have support \
+                        for FlyteAnnotations applied to dicts. {t} cannot be \
+                        parsed."
+                )
+            if _origin is dict and _args is not None:
+                return _args
         return None, None
 
     @staticmethod
@@ -838,6 +853,13 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
+        if get_origin(t) is typing.Annotated:
+            raise ValueError(
+                f"Flytekit does not currently have support \
+                    for FlyteAnnotations applied to enums. {t} cannot be \
+                    parsed."
+            )
+
         values = [v.value for v in t]  # type: ignore
         if not isinstance(values[0], str):
             raise AssertionError("Only EnumTypes with value of string are supported")
