@@ -24,20 +24,14 @@ class TypeAnnotation:
         :rtype: flyteidl.core.types_pb2.TypeAnnotation
         """
 
-        import inspect
-
-        print("\nrosa: ", self.annotations, inspect.stack()[1])
-
         if self._annotations is not None:
             annotations = _json_format.Parse(_json.dumps(self.annotations), _struct.Struct())
         else:
             annotations = None
 
-        t = _types_pb2.TypeAnnotation(
+        return types_pb2.TypeAnnotation(
             annotations=annotations,
         )
-
-        return t
 
     @classmethod
     def from_flyte_idl(cls, proto):
