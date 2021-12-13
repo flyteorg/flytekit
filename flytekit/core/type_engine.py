@@ -244,7 +244,12 @@ class DataclassTransformer(TypeTransformer[object]):
                     v.load_by = LoadDumpOptions.name
             schema = JSONSchema().dump(s)
         except Exception as e:
-            logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
+            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
+            logger.warning(
+                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
+                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
+                f"evaluation doesn't work with json dataclasses"
+            )
 
         return _primitives.Generic.to_flyte_literal_type(metadata=schema)
 
