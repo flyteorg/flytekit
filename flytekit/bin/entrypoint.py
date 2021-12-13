@@ -1,6 +1,7 @@
 import contextlib
 import datetime as _datetime
 import importlib as _importlib
+import logging as python_logging
 import os as _os
 import pathlib
 import random as _random
@@ -177,7 +178,7 @@ def _dispatch_execute(
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
-    logger.debug(f"Finished _dispatch_execute")
+    logger.debug("Finished _dispatch_execute")
 
 
 @contextlib.contextmanager
@@ -218,7 +219,7 @@ def setup_execution(
                 "api_version": _api_version,
             },
         ),
-        logging=logger,
+        logging=python_logging,
         tmp_dir=user_workspace_dir,
     )
 
@@ -441,7 +442,7 @@ def execute_task_cmd(
     resolver,
     resolver_args,
 ):
-    _click.echo(_utils.get_version_message())
+    logger.info(_utils.get_version_message())
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
     # to the original shard formatter/prefix config.
@@ -525,7 +526,7 @@ def map_execute_task_cmd(
     resolver,
     resolver_args,
 ):
-    _click.echo(_utils.get_version_message())
+    logger.info(_utils.get_version_message())
 
     _execute_map_task(
         inputs,
