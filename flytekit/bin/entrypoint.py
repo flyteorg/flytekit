@@ -454,7 +454,7 @@ def execute_task_cmd(
     # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
     # pervasive this top level command already (plugins mostly).
     if not resolver:
-        logger.info("No resolver found, assuming legacy API task...")
+        _click.echo("No resolver found, assuming legacy API task...")
         _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
     else:
         logger.debug(f"Running task execution with resolver {resolver}...")
