@@ -109,14 +109,14 @@ def _dispatch_execute(
         outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
         # Step3a
         if isinstance(outputs, VoidPromise):
-            logger.getLogger().warning("Task produces no outputs")
+            logger.warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
             output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
-            logger.getLogger().error(f"SystemError: received unknown outputs from task {outputs}")
+            logger.error(f"SystemError: received unknown outputs from task {outputs}")
             output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
                 _error_models.ContainerError(
                     "UNKNOWN_OUTPUT",
@@ -185,9 +185,6 @@ def setup_execution(
     dynamic_addl_distro: str = None,
     dynamic_dest_dir: str = None,
 ):
-    log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
-    logger.getLogger().setLevel(log_level)
-
     ctx = FlyteContextManager.current_context()
 
     # Create directories
