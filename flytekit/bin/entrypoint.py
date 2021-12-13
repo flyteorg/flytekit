@@ -190,7 +190,7 @@ def setup_execution(
 
     # Create directories
     user_workspace_dir = ctx.file_access.get_random_local_directory()
-    _click.echo(f"Using user directory {user_workspace_dir}")
+    logger.info(f"Using user directory {user_workspace_dir}")
     pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
     from flytekit import __version__ as _api_version
 
