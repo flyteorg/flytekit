@@ -365,7 +365,7 @@ def _execute_task(
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
             if test:
-                _click.echo(
+                logger.info(
                     f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
                 )
                 return
@@ -400,7 +400,7 @@ def _execute_map_task(
             output_prefix = _os.path.join(output_prefix, str(task_index))
 
             if test:
-                _click.echo(
+                logger.info(
                     f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
                     f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
                     f"Resolver and args: {resolver} {resolver_args}"
@@ -454,7 +454,7 @@ def execute_task_cmd(
     # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
     # pervasive this top level command already (plugins mostly).
     if not resolver:
-        _click.echo("No resolver found, assuming legacy API task...")
+        logger.info("No resolver found, assuming legacy API task...")
         _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
     else:
         logger.debug(f"Running task execution with resolver {resolver}...")
