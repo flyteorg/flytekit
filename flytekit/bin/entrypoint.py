@@ -1,7 +1,6 @@
 import contextlib
 import datetime as _datetime
 import importlib as _importlib
-import logging as _logging
 import os as _os
 import pathlib
 import random as _random
@@ -44,6 +43,7 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
+from flytekit.loggers import entrypoint_logger as logger
 
 
 def _compute_array_job_index():
@@ -95,6 +95,7 @@ def _dispatch_execute(
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
     output_file_dict = {}
+    logger.debug(f"Starting  for ")
     try:
         # Step1
         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
@@ -108,14 +109,14 @@ def _dispatch_execute(
         outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
         # Step3a
         if isinstance(outputs, VoidPromise):
-            _logging.getLogger().warning("Task produces no outputs")
+            logger.getLogger().warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
             output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
-            _logging.getLogger().error(f"SystemError: received unknown outputs from task {outputs}")
+            logger.getLogger().error(f"SystemError: received unknown outputs from task {outputs}")
             output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
                 _error_models.ContainerError(
                     "UNKNOWN_OUTPUT",
@@ -128,30 +129,30 @@ def _dispatch_execute(
     # Handle user-scoped errors
     except _scoped_exceptions.FlyteScopedUserException as e:
         if isinstance(e.value, IgnoreOutputs):
-            _logging.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
+            logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.USER
             )
         )
-        _logging.error("!! Begin User Error Captured by Flyte !!")
-        _logging.error(e.verbose_message)
-        _logging.error("!! End Error Captured by Flyte !!")
+        logger.error("!! Begin User Error Captured by Flyte !!")
+        logger.error(e.verbose_message)
+        logger.error("!! End Error Captured by Flyte !!")
 
     # Handle system-scoped errors
     except _scoped_exceptions.FlyteScopedSystemException as e:
         if isinstance(e.value, IgnoreOutputs):
-            _logging.warning(f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
+            logger.warning(f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.SYSTEM
             )
         )
-        _logging.error("!! Begin System Error Captured by Flyte !!")
-        _logging.error(e.verbose_message)
-        _logging.error("!! End Error Captured by Flyte !!")
+        logger.error("!! Begin System Error Captured by Flyte !!")
+        logger.error(e.verbose_message)
+        logger.error("!! End Error Captured by Flyte !!")
 
     # Interpret all other exceptions (some of which may be caused by the code in the try block outside of
     # dispatch_execute) as recoverable system exceptions.
@@ -166,16 +167,16 @@ def _dispatch_execute(
                 _execution_models.ExecutionError.ErrorKind.SYSTEM,
             )
         )
-        _logging.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
-        _logging.error("!! Begin Unknown System Error Captured by Flyte !!")
-        _logging.error(exc_str)
-        _logging.error("!! End Error Captured by Flyte !!")
+        logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
+        logger.error("!! Begin Unknown System Error Captured by Flyte !!")
+        logger.error(exc_str)
+        logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
         _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
-    _logging.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+    logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
 
 @contextlib.contextmanager
@@ -185,7 +186,7 @@ def setup_execution(
     dynamic_dest_dir: str = None,
 ):
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
-    _logging.getLogger().setLevel(log_level)
+    logger.getLogger().setLevel(log_level)
 
     ctx = FlyteContextManager.current_context()
 
@@ -219,7 +220,7 @@ def setup_execution(
                 "api_version": _api_version,
             },
         ),
-        logging=_logging,
+        logging=logger,
         tmp_dir=user_workspace_dir,
     )
 
@@ -231,7 +232,7 @@ def setup_execution(
                 raw_output_prefix=raw_output_data_prefix,
             )
         except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
-            _logging.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
+            logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
             raise
     else:
         raise Exception("No raw output prefix detected. Please upgrade your version of Propeller to 0.4.0 or later.")

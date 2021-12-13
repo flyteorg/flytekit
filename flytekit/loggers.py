@@ -14,6 +14,7 @@ logger.propagate = False
 auth_logger = logger.getChild("auth")
 cli_logger = logger.getChild("cli")
 remote_logger = logger.getChild("remote")
+entrypoint_logger = logger.getChild("entrypoint")
 
 # create console handler
 ch = logging.StreamHandler()
