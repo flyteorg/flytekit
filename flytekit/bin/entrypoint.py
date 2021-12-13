@@ -443,6 +443,8 @@ def execute_task_cmd(
     resolver_args,
 ):
     logger.info(_utils.get_version_message())
+    # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
+    _click.echo("")
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
     # to the original shard formatter/prefix config.
@@ -454,7 +456,7 @@ def execute_task_cmd(
     # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
     # pervasive this top level command already (plugins mostly).
     if not resolver:
-        _click.echo("No resolver found, assuming legacy API task...")
+        logger.info("No resolver found, assuming legacy API task...")
         _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
     else:
         logger.debug(f"Running task execution with resolver {resolver}...")
