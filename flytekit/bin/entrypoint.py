@@ -36,6 +36,7 @@ from flytekit.engines import loader as _engine_loader
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
+from flytekit.loggers import entrypoint_logger as logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
@@ -43,7 +44,6 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
-from flytekit.loggers import entrypoint_logger as logger
 
 
 def _compute_array_job_index():
@@ -95,7 +95,7 @@ def _dispatch_execute(
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
     output_file_dict = {}
-    logger.debug(f"Starting  for ")
+    logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
         # Step1
         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
@@ -177,6 +177,7 @@ def _dispatch_execute(
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+    logger.debug(f"Finished _dispatch_execute")
 
 
 @contextlib.contextmanager
@@ -278,7 +279,6 @@ def _handle_annotated_task(
     """
     Entrypoint for all PythonTask extensions
     """
-    _click.echo("Running native-typed task")
     _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
@@ -456,7 +456,7 @@ def execute_task_cmd(
         _click.echo("No resolver found, assuming legacy API task...")
         _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
     else:
-        _click.echo(f"Attempting to run with {resolver}...")
+        logger.debug(f"Running task execution with resolver {resolver}...")
         _execute_task(
             inputs,
             output_prefix,
