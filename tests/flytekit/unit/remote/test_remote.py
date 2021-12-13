@@ -195,3 +195,6 @@ def test_jasilv():
         name="core.control_flow.run_conditions.nested_conditions", version="931da9ead496000fc92379392d482295ab690988"
     )
     print(wf)
+
+    we = rr.fetch_workflow_execution(name="fahbj6avws")
+    rr.sync_workflow_execution(we, sync_nodes=True)
