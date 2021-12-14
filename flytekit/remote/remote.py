@@ -1117,6 +1117,12 @@ class FlyteRemote(object):
         """
         # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
         node_id = execution.metadata.spec_node_id
+        if node_id and node_id not in node_mapping:
+            node_id = execution.id.node_id
+            remote_logger.debug(
+                f"Using node execution ID {node_id} instead of spec node id "
+                f"{execution.metadata.spec_node_id}, single-task execution likely."
+            )
         if not node_id:
             node_id = execution.id.node_id
             remote_logger.debug(f"No metadata spec_node_id found, using {node_id}")
