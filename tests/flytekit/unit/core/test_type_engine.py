@@ -762,10 +762,20 @@ def test_dict_to_literal_map_with_wrong_input_type():
 
 
 def test_annotated_simple_types():
-    t = typing.Annotated[int, FlyteAnnotation({"foo": "bar"})]
-    lt = TypeEngine.to_literal_type(t)
-    assert isinstance(lt.annotation, TypeAnnotation)
-    assert lt.annotation.annotations == {"foo": "bar"}
+    def _check_annotation(t, annotation):
+        lt = TypeEngine.to_literal_type(t)
+        assert isinstance(lt.annotation, TypeAnnotation)
+        assert lt.annotation.annotations == annotation
+
+    _check_annotation(typing.Annotated[int, FlyteAnnotation({"foo": "bar"})], {"foo": "bar"})
+    _check_annotation(typing.Annotated[int, FlyteAnnotation(["foo", "bar"])], ["foo", "bar"])
+    _check_annotation(
+        typing.Annotated[int, FlyteAnnotation({"d": {"test": "data"}, "l": ["nested", ["list"]]})],
+        {"d": {"test": "data"}, "l": ["nested", ["list"]]},
+    )
+    _check_annotation(
+        typing.Annotated[int, FlyteAnnotation(InnerStruct(a=1, b="fizz", c=[1]))], InnerStruct(a=1, b="fizz", c=[1])
+    )
 
 
 def test_annotated_list():
@@ -788,7 +798,6 @@ def test_type_alias():
 
 
 def test_unsupported_complex_literals():
-
     t = typing.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})]
     with pytest.raises(ValueError):
         TypeEngine.to_literal_type(t)
