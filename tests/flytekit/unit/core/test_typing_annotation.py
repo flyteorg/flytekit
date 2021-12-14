@@ -1,6 +1,8 @@
 import typing
 from collections import OrderedDict
 
+import typing_extensions
+
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.annotation import FlyteAnnotation
@@ -20,17 +22,17 @@ entity_mapping = OrderedDict()
 
 
 @task
-def x(a: typing.Annotated[int, FlyteAnnotation({"foo": {"bar": 1}})], b: str):
+def x(a: typing_extensions.Annotated[int, FlyteAnnotation({"foo": {"bar": 1}})], b: str):
     ...
 
 
 @task
-def y0(a: typing.List[typing.Annotated[int, FlyteAnnotation({"foo": {"bar": 1}})]]):
+def y0(a: typing.List[typing_extensions.Annotated[int, FlyteAnnotation({"foo": {"bar": 1}})]]):
     ...
 
 
 @task
-def y1(a: typing.Annotated[typing.List[int], FlyteAnnotation({"foo": {"bar": 1}})]):
+def y1(a: typing_extensions.Annotated[typing.List[int], FlyteAnnotation({"foo": {"bar": 1}})]):
     ...
 
 
