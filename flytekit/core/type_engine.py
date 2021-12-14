@@ -10,6 +10,7 @@ import typing
 from abc import ABC, abstractmethod
 from typing import NamedTuple, Optional, Type, cast
 
+import typing_extensions
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
@@ -233,7 +234,7 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
-        if get_origin(t) is typing.Annotated:
+        if get_origin(t) is typing_extensions.Annotated:
             raise ValueError(
                 "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
                 f"Type {t} cannot be parsed."
@@ -533,8 +534,8 @@ class TypeEngine(typing.Generic[T]):
         # Step 2
         if hasattr(python_type, "__origin__"):
             # Handling of annotated generics, eg:
-            # typing.Annotated[typing.List[int], 'foo']
-            if get_origin(python_type) is typing.Annotated:
+            # typing_extensions.Annotated[typing.List[int], 'foo']
+            if get_origin(python_type) is typing_extensions.Annotated:
                 return cls.get_transformer(typing.get_args(python_type)[0])
 
             if python_type.__origin__ in cls._REGISTRY:
@@ -570,7 +571,7 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(python_type)
         res = transformer.get_literal_type(python_type)
         data = None
-        if get_origin(python_type) is typing.Annotated:
+        if get_origin(python_type) is typing_extensions.Annotated:
             for x in typing.get_args(python_type)[1:]:
                 if not isinstance(x, FlyteAnnotation):
                     continue
@@ -722,8 +723,8 @@ class ListTransformer(TypeTransformer[T]):
 
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
-            # typing.Annotated[typing.List[int], 'foo']
-            if get_origin(t) is typing.Annotated:
+            # typing_extensions.Annotated[typing.List[int], 'foo']
+            if get_origin(t) is typing_extensions.Annotated:
                 return ListTransformer.get_sub_type(typing.get_args(t)[0])
 
             if t.__origin__ is list and hasattr(t, "__args__"):
@@ -774,7 +775,7 @@ class DictTransformer(TypeTransformer[dict]):
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
-            if _origin is typing.Annotated:
+            if _origin is typing_extensions.Annotated:
                 raise ValueError(
                     f"Flytekit does not currently have support \
                         for FlyteAnnotations applied to dicts. {t} cannot be \
@@ -929,7 +930,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        if get_origin(t) is typing.Annotated:
+        if get_origin(t) is typing_extensions.Annotated:
             raise ValueError(
                 f"Flytekit does not currently have support \
                     for FlyteAnnotations applied to enums. {t} cannot be \
