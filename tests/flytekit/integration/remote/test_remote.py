@@ -310,12 +310,3 @@ def test_fetch_not_exist_launch_plan(flyteclient):
     remote = FlyteRemote.from_config(PROJECT, "development")
     with pytest.raises(FlyteEntityNotExistException):
         remote.fetch_launch_plan(name="workflows.basic.list_float_wf.fake_wf", version=f"v{VERSION}")
-
-
-def test_jfdkl():
-    from flytekit.remote.remote import FlyteRemote
-
-    rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
-    version = "ab2c1fee5fc06c7ea329e1e719f4d1abd06c9175"
-    ft = rr.fetch_task(name="core.control_flow.map_task.a_mappable_task", version=version)
-    ex = rr.execute(ft, inputs={"a": 5}, wait=True)
