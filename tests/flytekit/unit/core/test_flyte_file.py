@@ -407,3 +407,28 @@ def test_file_guess():
     fft = transformer.guess_python_type(lt)
     assert issubclass(fft, FlyteFile)
     assert fft.extension() == ""
+
+
+def test_flyte_file_in_dyn():
+    @task
+    def t1(path: str) -> FlyteFile:
+        return FlyteFile(path)
+
+    @dynamic
+    def dyn(fs: FlyteFile):
+        t2(ff=fs)
+
+    @task
+    def t2(ff: FlyteFile) -> os.PathLike:
+        assert ff.remote_source == "s3://somewhere"
+        assert "/tmp/flyte/" in ff.path
+
+        return ff.path
+
+    @workflow
+    def wf(path: str) -> os.PathLike:
+        n1 = t1(path=path)
+        dyn(fs=n1)
+        return t2(ff=n1)
+
+    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
