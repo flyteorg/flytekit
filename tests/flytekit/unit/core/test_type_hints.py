@@ -369,16 +369,35 @@ def test_flyte_file_in_dataclass():
         fs = FileStruct(a=file, b=InnerFileStruct(a=file, b=PNGImageFile(path)))
         return fs
 
+    @dynamic
+    def dyn(fs: FileStruct):
+        t2(fs=fs)
+        t3(fs=fs)
+
     @task
     def t2(fs: FileStruct) -> os.PathLike:
+        assert fs.a.remote_source == "s3://somewhere"
+        assert fs.b.a.remote_source == "s3://somewhere"
+        assert fs.b.b.remote_source == "s3://somewhere"
+        assert "/tmp/flyte/" in fs.a.path
+        assert "/tmp/flyte/" in fs.b.a.path
+        assert "/tmp/flyte/" in fs.b.b.path
+
         return fs.a.path
 
-    @workflow
-    def wf(path: str) -> os.PathLike:
-        n1 = t1(path=path)
-        return t2(fs=n1)
+    @task
+    def t3(fs: FileStruct) -> FlyteFile:
+        return fs.a
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+    @workflow
+    def wf(path: str) -> (os.PathLike, FlyteFile):
+        n1 = t1(path=path)
+        dyn(fs=n1)
+        return t2(fs=n1), t3(fs=n1)
+
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[0].path
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[1].path
+    assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
 
 
 def test_flyte_directory_in_dataclass():
