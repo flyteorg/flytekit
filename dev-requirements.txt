@@ -77,7 +77,6 @@ cryptography==36.0.1
     # via
     #   -c requirements.txt
     #   paramiko
-    #   secretstorage
 dataclasses-json==0.5.6
     # via
     #   -c requirements.txt
@@ -138,11 +137,6 @@ importlib-metadata==4.10.0
     #   keyring
 iniconfig==1.1.1
     # via pytest
-jeepney==0.7.1
-    # via
-    #   -c requirements.txt
-    #   keyring
-    #   secretstorage
 jinja2==3.0.3
     # via
     #   -c requirements.txt
@@ -228,7 +222,6 @@ pre-commit==2.16.0
 protobuf==3.19.1
     # via
     #   -c requirements.txt
-    #   flyteidl
     #   flytekit
 py==1.11.0
     # via
@@ -315,10 +308,6 @@ retry==0.9.2
     # via
     #   -c requirements.txt
     #   flytekit
-secretstorage==3.3.1
-    # via
-    #   -c requirements.txt
-    #   keyring
 six==1.16.0
     # via
     #   -c requirements.txt
