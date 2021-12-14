@@ -1,7 +1,6 @@
 import pytest
 from flyteidl.core import types_pb2
 
-from flytekit.core.annotation import FlyteAnnotation
 from flytekit.models import types as _types
 from flytekit.models.annotation import TypeAnnotation
 from tests.flytekit.common import parameterizers
