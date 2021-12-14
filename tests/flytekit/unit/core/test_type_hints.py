@@ -372,6 +372,7 @@ def test_flyte_file_in_dataclass():
     @dynamic
     def dyn(fs: FileStruct):
         t2(fs=fs)
+        t3(fs=fs)
 
     @task
     def t2(fs: FileStruct) -> os.PathLike:
@@ -384,13 +385,19 @@ def test_flyte_file_in_dataclass():
 
         return fs.a.path
 
+    @task
+    def t3(fs: FileStruct) -> FlyteFile:
+        return fs.a
+
     @workflow
-    def wf(path: str) -> os.PathLike:
+    def wf(path: str) -> (os.PathLike, FlyteFile):
         n1 = t1(path=path)
         dyn(fs=n1)
-        return t2(fs=n1)
+        return t2(fs=n1), t3(fs=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[0].path
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[1].path
+    assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
 
 
 def test_flyte_directory_in_dataclass():

@@ -287,8 +287,12 @@ class DataclassTransformer(TypeTransformer[object]):
                 lv = TypeEngine.to_literal(FlyteContext.current_context(), v, field_type, None)
                 # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
                 # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
-                # path in FlyteFile and FlyteDirectory could be a local path. Therefore, We reset the python value here,
+                # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
                 # so that dataclass_json can always get a remote path.
+                # In other words, the file transformer has special code that handles the fact that if remote_source is
+                # set, then the real uri in the literal should be the remote source, not the path (which may be an
+                # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
+                # as determined by the transformer.
                 if issubclass(field_type, FlyteFile) or issubclass(field_type, FlyteDirectory):
                     python_val.__setattr__(f.name, field_type(path=lv.scalar.blob.uri))
 
