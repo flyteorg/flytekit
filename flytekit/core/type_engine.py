@@ -226,9 +226,8 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         if get_origin(t) is typing.Annotated:
             raise ValueError(
-                f"Flytekit does not currently have support \
-                    for FlyteAnnotations applied to Dataclass. {t} cannot be \
-                    parsed."
+                "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
+                f"Type {t} cannot be parsed."
             )
 
         if not issubclass(t, DataClassJsonMixin):

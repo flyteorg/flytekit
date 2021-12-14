@@ -5,7 +5,7 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
 from flytekit.models import common as _common
-from flytekit.models.annotation import TypeAnnotation as _annotation_model
+from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 
 
@@ -172,9 +172,9 @@ class LiteralType(_common.FlyteIdlEntity):
         return self._metadata
 
     @property
-    def annotation(self) -> _annotation_model:
+    def annotation(self) -> TypeAnnotationModel:
         """
-        :rtype: flytekit.models.annotation.FlyteAnnotation
+        :rtype: flytekit.models.annotation.TypeAnnotation
         """
         return self._annotation
 
@@ -228,7 +228,7 @@ class LiteralType(_common.FlyteIdlEntity):
             blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
             enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
-            annotation=_annotation_model.from_flyte_idl(proto.annotation) if proto.HasField("annotation") else None,
+            annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.HasField("annotation") else None,
         )
 
 
