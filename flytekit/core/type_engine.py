@@ -459,7 +459,7 @@ class TypeEngine(typing.Generic[T]):
             # Handling of annotated generics, eg:
             # typing_extensions.Annotated[typing.List[int], 'foo']
             if get_origin(python_type) is typing_extensions.Annotated:
-                return cls.get_transformer(typing.get_args(python_type)[0])
+                return cls.get_transformer(typing_extensions.get_args(python_type)[0])
 
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
@@ -495,7 +495,7 @@ class TypeEngine(typing.Generic[T]):
         res = transformer.get_literal_type(python_type)
         data = None
         if get_origin(python_type) is typing_extensions.Annotated:
-            for x in typing.get_args(python_type)[1:]:
+            for x in typing_extensions.get_args(python_type)[1:]:
                 if not isinstance(x, FlyteAnnotation):
                     continue
                 if data is not None:
@@ -648,7 +648,7 @@ class ListTransformer(TypeTransformer[T]):
             # Handle annotation on list generic, eg:
             # typing_extensions.Annotated[typing.List[int], 'foo']
             if get_origin(t) is typing_extensions.Annotated:
-                return ListTransformer.get_sub_type(typing.get_args(t)[0])
+                return ListTransformer.get_sub_type(typing_extensions.get_args(t)[0])
 
             if t.__origin__ is list and hasattr(t, "__args__"):
                 return t.__args__[0]
