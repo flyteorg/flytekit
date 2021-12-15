@@ -111,12 +111,14 @@ def test_metadata():
 
     # test missing cache_version
     with pytest.raises(ValueError):
+
         @task(cache=True)
         def foo_missing_cache_version(i: str):
             print(f"{i}")
 
     # test missing cache
     with pytest.raises(ValueError):
+
         @task(cache_serialize=True)
         def foo_missing_cache(i: str):
             print(f"{i}")
