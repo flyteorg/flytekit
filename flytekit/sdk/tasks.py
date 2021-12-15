@@ -137,6 +137,7 @@ def python_task(
     cache=False,
     timeout=None,
     environment=None,
+    cache_serialize=False,
     cls=None,
 ):
     """
@@ -224,6 +225,10 @@ def python_task(
 
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
 
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
+
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  A user can use this to
         inject bespoke logic into the base Flyte programming model.
@@ -250,6 +255,7 @@ def python_task(
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
             environment=environment,
+            cache_serializable=cache_serialize,
             custom={},
         )
 
@@ -278,6 +284,7 @@ def dynamic_task(
     allowed_failure_ratio=None,
     max_concurrency=None,
     environment=None,
+    cache_serialize=False,
     cls=None,
 ):
     """
@@ -375,6 +382,9 @@ def dynamic_task(
         This is a stand-in pending better concurrency controls for special use-cases.  The existence of this parameter
         is not guaranteed between versions and therefore it is NOT recommended that it be used.
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  Generally, it should be a
         subclass of flytekit.common.tasks.sdk_dynamic.SdkDynamicTask.  A user can use this parameter to inject bespoke
@@ -403,6 +413,7 @@ def dynamic_task(
             allowed_failure_ratio=allowed_failure_ratio,
             max_concurrency=max_concurrency,
             environment=environment or {},
+            cache_serializable=cache_serialize,
             custom={},
         )
 
@@ -423,6 +434,7 @@ def spark_task(
     spark_conf=None,
     hadoop_conf=None,
     environment=None,
+    cache_serialize=False,
     cls=None,
 ):
     """
@@ -471,6 +483,9 @@ def spark_task(
     :param dict[Text,Text] spark_conf: A definition of key-value pairs for spark config for the job.
     :param dict[Text,Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided must be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask.  Generally, it should be a
         subclass of flytekit.common.tasks.spark_task.SdkSparkTask.  A user can use this parameter to inject bespoke
@@ -492,6 +507,7 @@ def spark_task(
             spark_conf=spark_conf or {},
             hadoop_conf=hadoop_conf or {},
             environment=environment or {},
+            cache_serializable=cache_serialize,
         )
 
     if _task_function:
@@ -514,6 +530,7 @@ def generic_spark_task(
     spark_conf=None,
     hadoop_conf=None,
     environment=None,
+    cache_serialize=False,
 ):
     """
     Create a generic spark task. This task will connect to a Spark cluster, configure the environment,
@@ -536,6 +553,7 @@ def generic_spark_task(
         spark_conf=spark_conf or {},
         hadoop_conf=hadoop_conf or {},
         environment=environment or {},
+        cache_serializable=cache_serialize,
     )
 
 
@@ -563,6 +581,7 @@ def hive_task(
     cache=False,
     timeout=None,
     environment=None,
+    cache_serialize=False,
     cls=None,
 ):
     """
@@ -648,6 +667,9 @@ def hive_task(
         indefinitely.  If a null timedelta is passed (i.e. timedelta(seconds=0)), the task will not timeout.
     :param dict[Text,Text] environment: Environment variables to set for the execution of the query-generating
         container.
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided should be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask. Generally, it should be
         a subclass of flytekit.common.tasks.hive_task.SdkHiveTask. A user can use this to inject bespoke logic into
@@ -678,6 +700,7 @@ def hive_task(
             cluster_label="",
             tags=[],
             environment=environment or {},
+            cache_serializable=cache_serialize,
         )
 
     if _task_function:
@@ -705,6 +728,7 @@ def qubole_hive_task(
     cluster_label=None,
     tags=None,
     environment=None,
+    cache_serialize=False,
     cls=None,
 ):
     """
@@ -793,6 +817,9 @@ def qubole_hive_task(
         passed to Qubole.
     :param dict[Text,Text] environment: Environment variables to set for the execution of the query-generating
         container.
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param cls: This can be used to override the task implementation with a user-defined extension. The class
         provided should be a subclass of flytekit.common.tasks.sdk_runnable.SdkRunnableTask. Generally, it should be
         a subclass of flytekit.common.tasks.hive_task.SdkHiveTask. A user can use this to inject bespoke logic into
@@ -823,6 +850,7 @@ def qubole_hive_task(
             cluster_label=cluster_label or "",
             tags=tags or [],
             environment=environment or {},
+            cache_serializable=cache_serialize,
         )
 
     # This is syntactic-sugar, so that when calling this decorator without args, you can either
@@ -850,6 +878,7 @@ def sidecar_task(
     cache=False,
     timeout=None,
     environment=None,
+    cache_serialize=False,
     pod_spec=None,
     primary_container_name=None,
     annotations=None,
@@ -977,6 +1006,10 @@ def sidecar_task(
 
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
 
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
+
     :param k8s.io.api.core.v1.generated_pb2.PodSpec pod_spec: [optional] PodSpec to bring up alongside task execution.
 
     :param Text primary_container_name: primary container to monitor for the duration of the task.
@@ -1013,6 +1046,7 @@ def sidecar_task(
             discoverable=cache,
             timeout=timeout or _datetime.timedelta(seconds=0),
             environment=environment,
+            cache_serializable=cache_serialize,
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
             annotations=annotations,
@@ -1044,6 +1078,7 @@ def dynamic_sidecar_task(
     allowed_failure_ratio=None,
     max_concurrency=None,
     environment=None,
+    cache_serialize=False,
     pod_spec=None,
     primary_container_name=None,
     annotations=None,
@@ -1161,6 +1196,9 @@ def dynamic_sidecar_task(
         This is a stand-in pending better concurrency controls for special use-cases.  The existence of this parameter
         is not guaranteed between versions and therefore it is NOT recommended that it be used.
     :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
+    :param bool cache_serialize: [optional] boolean describing if instances of this cachable task should be executed
+        in serial. This means only a single instances executes and other concurrent executions wait for it to complete
+        and reuse the cached outputs.
     :param k8s.io.api.core.v1.generated_pb2.PodSpec pod_spec: PodSpec to bring up alongside task execution.
     :param Text primary_container_name: primary container to monitor for the duration of the task.
     :param dict[Text, Text] annotations: [optional] kubernetes annotations
@@ -1193,6 +1231,7 @@ def dynamic_sidecar_task(
             allowed_failure_ratio=allowed_failure_ratio,
             max_concurrency=max_concurrency,
             environment=environment,
+            cache_serializable=cache_serialize,
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
             annotations=annotations,

@@ -70,6 +70,7 @@ def test_task_metadata():
         True,
         "0.1.1b0",
         "This is deprecated!",
+        True,
     )
 
     assert obj.discoverable is True
@@ -136,6 +137,7 @@ def test_task_template__k8s_pod_target():
             False,
             "1.0",
             "deprecated",
+            False,
         ),
         interface_models.TypedInterface(
             # inputs

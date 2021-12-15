@@ -89,10 +89,36 @@ def test_py_func_task_get_container():
 
 
 def test_metadata():
-    @task(cache=True, cache_version="1.0")
+    # test cache, cache_serialize, and cache_version are correctly set
+    @task(cache=True, cache_serialize=True, cache_version="1.0")
     def foo(i: str):
         print(f"{i}")
 
-    metadata = foo.metadata
-    assert metadata.cache is True
-    assert metadata.cache_version == "1.0"
+    foo_metadata = foo.metadata
+    assert foo_metadata.cache is True
+    assert foo_metadata.cache_serialize is True
+    assert foo_metadata.cache_version == "1.0"
+
+    # test cache, cache_serialize, and cache_version at no unecessarily set
+    @task()
+    def bar(i: str):
+        print(f"{i}")
+
+    bar_metadata = bar.metadata
+    assert bar_metadata.cache is False
+    assert bar_metadata.cache_serialize is False
+    assert bar_metadata.cache_version == ""
+
+    # test missing cache_version
+    with pytest.raises(ValueError):
+
+        @task(cache=True)
+        def foo_missing_cache_version(i: str):
+            print(f"{i}")
+
+    # test missing cache
+    with pytest.raises(ValueError):
+
+        @task(cache_serialize=True)
+        def foo_missing_cache(i: str):
+            print(f"{i}")
