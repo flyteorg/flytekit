@@ -28,7 +28,16 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Schema
+from flytekit.models.literals import (
+    Blob,
+    BlobMetadata,
+    Literal,
+    LiteralCollection,
+    LiteralMap,
+    Primitive,
+    Scalar,
+    Schema,
+)
 from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
@@ -235,7 +244,12 @@ class DataclassTransformer(TypeTransformer[object]):
                     v.load_by = LoadDumpOptions.name
             schema = JSONSchema().dump(s)
         except Exception as e:
-            logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
+            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
+            logger.warning(
+                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
+                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
+                f"evaluation doesn't work with json dataclasses"
+            )
 
         return _primitives.Generic.to_flyte_literal_type(metadata=schema)
 
@@ -258,29 +272,93 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
         """
-        from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+        from flytekit.types.directory.types import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+        from flytekit.types.schema.types import FlyteSchema
 
         for f in dataclasses.fields(python_type):
             v = python_val.__getattribute__(f.name)
-            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
-                FlyteSchemaTransformer().to_literal(FlyteContext.current_context(), v, f.type, None)
-            elif dataclasses.is_dataclass(f.type):
-                self._serialize_flyte_type(v, f.type)
+            field_type = f.type
+            if inspect.isclass(field_type) and (
+                issubclass(field_type, FlyteSchema)
+                or issubclass(field_type, FlyteFile)
+                or issubclass(field_type, FlyteDirectory)
+            ):
+                lv = TypeEngine.to_literal(FlyteContext.current_context(), v, field_type, None)
+                # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
+                # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
+                # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
+                # so that dataclass_json can always get a remote path.
+                # In other words, the file transformer has special code that handles the fact that if remote_source is
+                # set, then the real uri in the literal should be the remote source, not the path (which may be an
+                # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
+                # as determined by the transformer.
+                if issubclass(field_type, FlyteFile) or issubclass(field_type, FlyteDirectory):
+                    python_val.__setattr__(f.name, field_type(path=lv.scalar.blob.uri))
 
-    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type["FlyteSchema"]):
+            elif dataclasses.is_dataclass(field_type):
+                self._serialize_flyte_type(v, field_type)
+
+    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> T:
+        from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
+        from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
 
-        for f in dataclasses.fields(expected_python_type):
-            v = python_val.__getattribute__(f.name)
-            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
-                t = FlyteSchemaTransformer()
-                t.to_python_value(
-                    FlyteContext.current_context(),
-                    Literal(scalar=Scalar(schema=Schema(v.remote_path, t._get_schema_type(f.type)))),
-                    f.type,
-                )
-            elif dataclasses.is_dataclass(f.type):
-                self._deserialize_flyte_type(v, f.type)
+        if not dataclasses.is_dataclass(expected_python_type):
+            return python_val
+
+        if issubclass(expected_python_type, FlyteSchema):
+            t = FlyteSchemaTransformer()
+            return t.to_python_value(
+                FlyteContext.current_context(),
+                Literal(scalar=Scalar(schema=Schema(python_val.remote_path, t._get_schema_type(expected_python_type)))),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, FlyteFile):
+            return FlyteFilePathTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                )
+                            ),
+                            uri=python_val.path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, FlyteDirectory):
+            return FlyteDirToMultipartBlobTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                                )
+                            ),
+                            uri=python_val.path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        else:
+            for f in dataclasses.fields(expected_python_type):
+                value = python_val.__getattribute__(f.name)
+                if hasattr(f.type, "__origin__") and f.type.__origin__ is list:
+                    value = [self._deserialize_flyte_type(v, f.type.__args__[0]) for v in value]
+                elif hasattr(f.type, "__origin__") and f.type.__origin__ is dict:
+                    value = {k: self._deserialize_flyte_type(v, f.type.__args__[1]) for k, v in value.items()}
+                else:
+                    value = self._deserialize_flyte_type(value, f.type)
+                python_val.__setattr__(f.name, value)
+            return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if t == int:
@@ -326,8 +404,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
 
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
-        self._deserialize_flyte_type(dc, expected_python_type)
-        return self._fix_dataclass_int(expected_python_type, dc)
+        return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.simple == SimpleType.STRUCT:
@@ -817,18 +894,21 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
     """
     attribute_list = []
     for property_key, property_val in schema[schema_name]["properties"].items():
+        property_type = property_val["type"]
         # Handle list
         if property_val["type"] == "array":
             attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))
         # Handle dataclass and dict
-        elif property_val["type"] == "object":
-            if "$ref" in property_val:
+        elif property_type == "object":
+            if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
                 attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
-            else:
+            elif property_val.get("additionalProperties"):
                 attribute_list.append(
                     (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])
                 )
+            else:
+                attribute_list.append((property_key, typing.Dict[str, _get_element_type(property_val)]))
         # Handle int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])
@@ -963,6 +1043,29 @@ def _register_default_type_transformers():
     TypeEngine.register_restricted_type("non typed tuple", tuple)
     TypeEngine.register_restricted_type("non typed tuple", typing.Tuple)
     TypeEngine.register_restricted_type("named tuple", NamedTuple)
+
+
+class LiteralsResolver(object):
+    """
+    LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
+    where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
+    correspond to an element of the map.
+    TODO: Add an optional Flyte idl interface model object to the constructor
+    """
+
+    def __init__(self, literals: typing.Dict[str, Literal]):
+        self._literals = literals
+
+    @property
+    def literals(self):
+        return self._literals
+
+    def get(self, attr: str, as_type: Optional[typing.Type] = None):
+        if attr not in self._literals:
+            raise AttributeError(f"Attribute {attr} not found")
+        if as_type is None:
+            raise ValueError("as_type argument can't be None yet.")
+        return TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
 
 
 _register_default_type_transformers()
