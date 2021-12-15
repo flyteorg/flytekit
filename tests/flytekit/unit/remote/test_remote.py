@@ -180,3 +180,35 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     assert mock_secure_channel.called
     assert mock_secure_channel.call_args[0][1] == credentials
     assert not mock_ssl_channel_credentials.called
+
+
+def test_schemas():
+    from flytekit.remote.remote import FlyteRemote
+
+    rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
+    # version = "88f4568a0d9238b48d17794202be426865489504"
+    we = rr.fetch_workflow_execution(name="x5umh3zej3")
+
+    # Getting the workflow level output is pretty straightforward. Once you have the workflow execution object,
+    # you just sync it and then it'll have inputs/outputs.
+    rr.sync(we)
+    wf_schema_out = we.outputs["o0"]
+    print(wf_schema_out)  # Note this just prints the FlyteSchema python object, which is mainly just a wrapper around
+    # the uri location of the actual data (s3://my-s3-bucket/...)
+    df = wf_schema_out.open().all()  # This tells flytekit to pull the data from the uri location
+    print(f"Workflow output dataframe {df}")  # This is now the dataframe
+
+    # Getting the output of the first task (get_df)/input of the second task (add_df) is more complicated.
+    # You have to traverse the individual nodes of the execution.
+    rr.sync(we, sync_nodes=True)
+    first_task_output = we.node_executions["n0"].outputs["o0"]
+    df = first_task_output.open().all()  # This tells flytekit to pull the data from the uri location
+    # This is dataframe that the first task outputed, that the second task consumed
+    print(f"First task output: {df}")
+
+    # If you look at the input to the second task you'll see that it's the same since it's just being passed
+    # from one to the other
+    second_task_input = we.node_executions["n1"].inputs["df"]
+    df = second_task_input.open().all()  # This tells flytekit to pull the data from the uri location
+    # This is dataframe that the first task outputed, that the second task consumed
+    print(f"Second task input: {df}")
