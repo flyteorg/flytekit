@@ -81,6 +81,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         spark_conf,
         hadoop_conf,
         environment,
+        cache_serializable,
     ):
         """
         :param task_function: Function container user code.  This will be executed via the SDK's engine.
@@ -94,6 +95,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
         :param dict[Text,Text] spark_conf:
         :param dict[Text,Text] hadoop_conf:
         :param dict[Text,Text] environment: [optional] environment variables to set when executing this task.
+        :param bool cache_serializable:
         """
 
         spark_exec_path = _os.path.abspath(_entrypoint.__file__)
@@ -127,6 +129,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
             discoverable,
             timeout,
             environment,
+            cache_serializable,
             _MessageToDict(self._spark_job.to_flyte_idl()),
         )
 
