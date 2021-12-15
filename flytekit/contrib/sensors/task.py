@@ -116,6 +116,7 @@ def sensor_task(
             custom={},
             discovery_version="",
             discoverable=False,
+            cache_serializable=False,
         )
 
     # This is syntactic-sugar, so that when calling this decorator without args, you can either

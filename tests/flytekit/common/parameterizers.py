@@ -116,8 +116,9 @@ LIST_OF_TASK_METADATA = [
         interruptible,
         discovery_version,
         deprecated,
+        cache_serializable,
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
@@ -125,6 +126,7 @@ LIST_OF_TASK_METADATA = [
         LIST_OF_INTERRUPTIBLE,
         ["1.0"],
         ["deprecated"],
+        [True, False],
     )
 ]
 
