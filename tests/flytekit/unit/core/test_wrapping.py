@@ -1,4 +1,3 @@
-# Copyright (C) 2015-2021 Blackshark.ai GmbH. All Rights reserved. www.blackshark.ai
 from flytekit import task, workflow
 
 
