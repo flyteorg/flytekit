@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.common import constants as _common_constants
@@ -730,6 +731,7 @@ def workflow(
             docstring=Docstring(callable_=fn),
         )
         workflow_instance.compile()
+        update_wrapper(workflow_instance, fn)
         return workflow_instance
 
     if _workflow_function:
