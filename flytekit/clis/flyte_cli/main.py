@@ -8,7 +8,6 @@ from typing import Callable, Dict, List, Tuple, Union
 
 import click as _click
 import requests as _requests
-import six as _six
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
@@ -66,7 +65,7 @@ try:  # Python 3
 except ImportError:  # Python 2
     import urlparse as _urlparse
 
-_tt = _six.text_type
+_tt = str
 
 # Similar to how kubectl has a config file in the users home directory, this Flyte CLI will also look for one.
 # The format of this config file is the same as a workflow's config file, except that the relevant fields are different.
@@ -129,7 +128,7 @@ def _get_io_string(literal_map, verbose=False):
                     v.verbose_string() if verbose else v.short_string(),
                 ),
             )
-            for k, v in _six.iteritems(value_dict)
+            for k, v in value_dict.items()
         )
     else:
         return "(None)"
@@ -306,6 +305,7 @@ _HOST_FLAGS = ["-h", "--host"]
 _CONFIG_FLAGS = ["-c", "--config"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
+_CERT_FLAGS = ["-e", "--root_ssl_cert"]
 
 _project_option = _click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to query.")
 _optional_project_option = _click.option(
@@ -505,7 +505,7 @@ class _FlyteSubCommand(_click.Command):
                 and param.name in parent.params
                 and parent.params[param.name] is not None
             ):
-                prefix_args.extend([type(self)._PASSABLE_ARGS[param.name], _six.text_type(parent.params[param.name])])
+                prefix_args.extend([type(self)._PASSABLE_ARGS[param.name], str(parent.params[param.name])])
 
             # For flags, we don't append the value of the flag, otherwise click will fail to parse
             if param.name in type(self)._PASSABLE_FLAGS and param.name in parent.params and parent.params[param.name]:
@@ -516,6 +516,8 @@ class _FlyteSubCommand(_click.Command):
         # flyte-cli setup-config -h localhost:30081 -i
         if cmd_name == "setup-config":
             ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
+            ctx.obj = ctx.obj or {}
+            ctx.obj["root_ssl_cert"] = parent.params["root_ssl_cert"] or None
             return ctx
 
         config = parent.params["config"]
@@ -562,8 +564,10 @@ class _FlyteSubCommand(_click.Command):
 
         # Use host url in config file if users don't specify the host url
         if _HOST_FLAGS[0] not in prefix_args:
-            prefix_args.extend([_HOST_FLAGS[0], _six.text_type(_HOST_URL)])
+            prefix_args.extend([_HOST_FLAGS[0], str(_HOST_URL)])
         ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
+        ctx.obj = ctx.obj or {}
+        ctx.obj["root_ssl_cert"] = parent.params["root_ssl_cert"] or None
         return ctx
 
 
@@ -607,10 +611,17 @@ class _FlyteSubCommand(_click.Command):
     help="[Optional] The name to pass to the sub-command (if applicable)  If set again in the sub-command, "
     "the sub-command's parameter takes precedence.",
 )
+@_click.option(
+    *_CERT_FLAGS,
+    required=False,
+    type=str,
+    default=None,
+    help="[Optional] Path to certificate file to be used to do establish SSL connection with Admin",
+)
 @_insecure_option
 @_click.group("flyte-cli", deprecated=True)
 @_click.pass_context
-def _flyte_cli(ctx, host, config, project, domain, name, insecure):
+def _flyte_cli(ctx, host, config, project, domain, name, root_ssl_cert, insecure):
     """
     Command line tool for interacting with all entities on the Flyte Platform.
     """
@@ -784,7 +795,7 @@ def launch_task(project, domain, name, assumable_iam_role, kubernetes_service_ac
 
         text_args = _parse_args_into_dict(task_args)
         inputs = {}
-        for var_name, variable in _six.iteritems(task.interface.inputs):
+        for var_name, variable in task.interface.inputs.items():
             sdk_type = _type_helpers.get_sdk_type_from_literal_type(variable.type)
             if var_name in text_args and text_args[var_name] is not None:
                 inputs[var_name] = sdk_type.from_string(text_args[var_name]).to_python_std()
@@ -1270,7 +1281,7 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
 
     # Parse text inputs using the LP closure's parameter map to determine types.  However, since all inputs are now
     # optional (because we can default to the original execution's), we reduce first to bare Variables.
-    variable_map = {k: v.var for k, v in _six.iteritems(expected_inputs.parameters)}
+    variable_map = {k: v.var for k, v in expected_inputs.parameters.items()}
     parsed_text_args = _parse_args_into_dict(lp_args)
     new_inputs = _construct_literal_map_from_variable_map(variable_map, parsed_text_args)
     if len(new_inputs.literals) > 0:
@@ -1722,7 +1733,10 @@ def list_projects(host, insecure, token, limit, show_all, filter, sort_by):
 
     """
     _welcome_message()
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure)
+    parent_ctx = _click.get_current_context(silent=True)
+    client = _friendly_client.SynchronousFlyteClient(
+        host, insecure=insecure, root_cert_file=parent_ctx.obj["root_ssl_cert"]
+    )
 
     _click.echo("Projects Found\n")
     while True:
