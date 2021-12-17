@@ -5,7 +5,7 @@ from dataclasses_json import dataclass_json
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit import PythonFunctionTask, TaskMetadata
+from flytekit import PythonFunctionTask
 from flytekit.extend import SerializationSettings, TaskPlugins
 
 
