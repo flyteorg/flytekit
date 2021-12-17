@@ -5,8 +5,13 @@ a reference task as well as run-time parameters that limit execution concurrency
 
 import os
 from contextlib import contextmanager
+from dataclasses import dataclass
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
+
+from dataclasses_json import dataclass_json
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.exceptions import scopes as exception_scopes
@@ -14,9 +19,28 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql
+
+
+@dataclass_json
+@dataclass
+class ArrayJob:
+    """
+    Initializes a new ArrayJob.
+    :param int parallelism: Defines the minimum number of instances to bring up concurrently at any given point.
+    :param int size: Defines the number of instances to launch at most. This number should match the size of
+        the input if the job requires processing of all input data. This has to be a positive number.
+    :param int min_successes: An absolute number of the minimum number of successful completions of subtasks. As
+        soon as this criteria is met, the array job will be marked as successful and outputs will be computed.
+    :param float min_success_ratio: Determines the minimum fraction of total jobs which can complete successfully
+        before terminating the job and marking it successful.
+    """
+
+    parallelism: Optional[int] = None
+    size: Optional[int] = None
+    min_successes: Optional[int] = None
+    min_success_ratio: Optional[float] = None
 
 
 class MapPythonTask(PythonTask):
@@ -109,11 +133,9 @@ class MapPythonTask(PythonTask):
         with self.prepare_target():
             return self._run_task.get_sql(settings)
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
-
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
-        return self._run_task.get_config(settings)
+        array_job = ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+        return {str(key): str(value) for key, value in array_job.items()}
 
     @property
     def run_task(self) -> PythonTask:

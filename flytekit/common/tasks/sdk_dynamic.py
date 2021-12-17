@@ -3,6 +3,8 @@ import math
 import os as _os
 
 import six as _six
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
@@ -18,6 +20,7 @@ from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import _dnsify
 from flytekit.configuration import internal as _internal_config
+from flytekit.core.map_task import ArrayJob
 from flytekit.models import array_job as _array_job
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -74,13 +77,12 @@ class SdkDynamicTaskMixin(object):
         self._allowed_failure_ratio = allowed_failure_ratio
         self._max_concurrency = max_concurrency
 
-    def _create_array_job(self, inputs_prefix):
+    def _create_array_job(self):
         """
         Creates an array job for the passed sdk_task.
-        :param str inputs_prefix:
-        :rtype: _array_job.ArrayJob
+        :rtype: dict
         """
-        return _array_job.ArrayJob(
+        return ArrayJob(
             parallelism=self._max_concurrency if self._max_concurrency else 0,
             size=1,
             min_successes=1,
@@ -213,7 +215,7 @@ class SdkDynamicTaskMixin(object):
                         array_job.size += 1
                         array_job.min_successes = int(math.ceil((1 - effective_failure_ratio) * array_job.size))
                     else:
-                        array_job = self._create_array_job(inputs_prefix=unique_node_id)
+                        array_job = self._create_array_job()
                         node = sub_task_node.assign_id_and_return(unique_node_id)
                         array_job_index[sub_task_node.executable_sdk_object] = (
                             array_job,
@@ -239,8 +241,10 @@ class SdkDynamicTaskMixin(object):
         # assign custom field to the ArrayJob properties computed.
         for task, (array_job, _) in _six.iteritems(array_job_index):
             # TODO: Reconstruct task template object instead of modifying an existing one?
+            s = Struct()
+            s.update(array_job)
             tasks.add(
-                task.assign_custom_and_return(array_job.to_dict()).assign_type_and_return(
+                task.assign_custom_and_return(_json_format.MessageToDict(s)).assign_type_and_return(
                     _constants.SdkTaskType.CONTAINER_ARRAY_TASK
                 )
             )

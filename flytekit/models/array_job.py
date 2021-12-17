@@ -1,11 +1,16 @@
 import json as _json
 
+from deprecated import deprecated as _deprecated
 from flyteidl.plugins import array_job_pb2 as _array_job
 from google.protobuf import json_format as _json_format
 
 from flytekit.models import common as _common
 
 
+@_deprecated(
+    reason="Use ArrayJob in flytekit.core.map_task instead",
+    version="0.25.0",
+)
 class ArrayJob(_common.FlyteCustomIdlEntity):
     def __init__(self, parallelism=None, size=None, min_successes=None, min_success_ratio=None):
         """
