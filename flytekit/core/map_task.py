@@ -10,8 +10,6 @@ from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
 from dataclasses_json import dataclass_json
-from google.protobuf import json_format as _json_format
-from google.protobuf.struct_pb2 import Struct
 
 from flytekit.common.constants import SdkTaskType
 from flytekit.common.exceptions import scopes as exception_scopes
@@ -135,6 +133,7 @@ class MapPythonTask(PythonTask):
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         array_job = ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+        array_job.update(self._run_task.get_config(settings))
         return {str(key): str(value) for key, value in array_job.items()}
 
     @property

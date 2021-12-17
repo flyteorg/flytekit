@@ -329,7 +329,13 @@ def test_map_pod_task_serialization():
         "task-name",
         "simple_pod_task",
     ]
-    assert {"primary_container_name": "primary"} == mapped_task.get_config(serialization_settings)
+    assert {
+        "min_success_ratio": "None",
+        "min_successes": "None",
+        "parallelism": "None",
+        "primary_container_name": "primary",
+        "size": "None",
+    } == mapped_task.get_config(serialization_settings)
 
 
 def test_fast_pod_task_serialization():
