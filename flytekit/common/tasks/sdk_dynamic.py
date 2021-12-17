@@ -80,7 +80,7 @@ class SdkDynamicTaskMixin(object):
     def _create_array_job(self):
         """
         Creates an array job for the passed sdk_task.
-        :rtype: dict
+        :rtype: ArrayJob
         """
         return ArrayJob(
             parallelism=self._max_concurrency if self._max_concurrency else 0,
@@ -242,7 +242,7 @@ class SdkDynamicTaskMixin(object):
         for task, (array_job, _) in _six.iteritems(array_job_index):
             # TODO: Reconstruct task template object instead of modifying an existing one?
             s = Struct()
-            s.update(array_job)
+            s.update(array_job.to_dict())
             tasks.add(
                 task.assign_custom_and_return(_json_format.MessageToDict(s)).assign_type_and_return(
                     _constants.SdkTaskType.CONTAINER_ARRAY_TASK
