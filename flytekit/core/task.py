@@ -1,4 +1,5 @@
 import datetime as _datetime
+from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
@@ -201,7 +202,7 @@ def task(
             execution_mode=execution_mode,
             task_resolver=task_resolver,
         )
-
+        update_wrapper(task_instance, fn)
         return task_instance
 
     if _task_function:
