@@ -133,7 +133,8 @@ class MapPythonTask(PythonTask):
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         array_job = ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
-        array_job.update(self._run_task.get_config(settings))
+        if self._run_task.get_config(settings) is not None:
+            array_job.update(self._run_task.get_config(settings))
         return {str(key): str(value) for key, value in array_job.items()}
 
     @property

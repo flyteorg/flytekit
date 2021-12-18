@@ -17,6 +17,7 @@ from flytekit.core.map_task import ArrayJob
 from flytekit.engines import common as _common_engine
 from flytekit.engines.unit.mock_stats import MockStats
 from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.models import array_job as _array_job
 from flytekit.models import literals as _literals
 from flytekit.models import qubole as _qubole_models
 from flytekit.models.core.identifier import WorkflowExecutionIdentifier
@@ -235,7 +236,7 @@ class DynamicTask(ReturnOutputsTask):
 
     @staticmethod
     def execute_array_task(root_input_path, task, array_inputs):
-        array_job = ArrayJob.from_dict(task.config)
+        array_job = _array_job.ArrayJob.from_dict(task.custom)
         outputs = {}
         for job_index in _six_moves.range(0, array_job.size):
             inputs_path = _os.path.join(
