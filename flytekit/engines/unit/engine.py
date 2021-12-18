@@ -13,7 +13,6 @@ from flytekit.common.exceptions import system as _system_exception
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
-from flytekit.core.map_task import ArrayJob
 from flytekit.engines import common as _common_engine
 from flytekit.engines.unit.mock_stats import MockStats
 from flytekit.interfaces.data import data_proxy as _data_proxy
