@@ -303,7 +303,7 @@ _HOST_FLAGS = ["-h", "--host"]
 _CONFIG_FLAGS = ["-c", "--config"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
-_CERT_FLAGS = ["-e", "--cacert"]
+_CERT_FLAGS = ["--cacert"]
 
 _project_option = _click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to query.")
 _optional_project_option = _click.option(
@@ -673,9 +673,7 @@ def list_task_names(project, domain, host, insecure, token, limit, show_all, sor
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Task Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
@@ -718,9 +716,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Task Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name or "*")))
     _click.echo("{:50} {:40}".format("Version", "Urn"))
@@ -761,9 +757,7 @@ def get_task(urn, host, insecure):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     t = client.get_task(_identifier.Identifier.from_python_std(urn))
     _click.echo(_tt(t))
     _click.echo("")
@@ -837,9 +831,7 @@ def list_workflow_names(project, domain, host, insecure, token, limit, show_all,
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Workflow Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
@@ -882,9 +874,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Workflow Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name or "*")))
     _click.echo("{:50} {:40}".format("Version", "Urn"))
@@ -925,9 +915,7 @@ def get_workflow(urn, host, insecure):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     _click.echo(client.get_workflow(_identifier.Identifier.from_python_std(urn)))
     # TODO: Print workflow pretty
     _click.echo("")
@@ -955,9 +943,7 @@ def list_launch_plan_names(project, domain, host, insecure, token, limit, show_a
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Launch Plan Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
@@ -1002,9 +988,7 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
         _click.echo("{:30} {:50} {:80}".format("Schedule", "Version", "Urn"))
 
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     while True:
         active_lps, next_token = client.list_active_launch_plans_paginated(
@@ -1074,9 +1058,7 @@ def list_launch_plan_versions(
         _click.echo("{:50} {:80} {:30} {:15}".format("Version", "Urn", "Schedule", "Schedule State"))
 
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     while True:
         lp_list, next_token = client.list_launch_plans_paginated(
@@ -1130,9 +1112,7 @@ def get_launch_plan(urn, host, insecure):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     _click.echo(_tt(client.get_launch_plan(_identifier.Identifier.from_python_std(urn))))
     # TODO: Print launch plan pretty
     _click.echo("")
@@ -1150,9 +1130,7 @@ def get_active_launch_plan(project, domain, name, host, insecure):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     lp = client.get_active_launch_plan(_common_models.NamedEntityIdentifier(project, domain, name))
     _click.echo("Active Launch Plan for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
@@ -1168,9 +1146,7 @@ def get_active_launch_plan(project, domain, name, host, insecure):
 def update_launch_plan(state, host, insecure, urn=None):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     if urn is None:
         try:
@@ -1253,9 +1229,7 @@ def watch_execution(host, insecure, urn):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
 
     execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
@@ -1301,9 +1275,7 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Relaunching execution {}\n".format(_tt(urn)))
     existing_workflow_execution_identifier = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
@@ -1378,9 +1350,7 @@ def recover_execution(urn, name, host, insecure):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Recovering execution {}\n".format(_tt(urn)))
 
@@ -1418,9 +1388,7 @@ def terminate_execution(host, insecure, cause, urn=None):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Killing the following executions:\n")
     _click.echo("{:100} {:40}".format("Urn", "Cause"))
@@ -1473,9 +1441,7 @@ def list_executions(project, domain, host, insecure, token, limit, show_all, fil
         _click.echo("{:100} {:40} {:10}".format("Urn", "Name", "Status"))
 
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     while True:
         exec_ids, next_token = client.list_executions_paginated(
@@ -1730,9 +1696,7 @@ def get_execution(urn, host, insecure, show_io, verbose):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     e = client.get_execution(_identifier.WorkflowExecutionIdentifier.from_python_std(urn))
     node_execs = _get_all_node_executions(client, workflow_execution_identifier=e.id)
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure, wf_execution=e)
@@ -1747,9 +1711,7 @@ def get_execution(urn, host, insecure, show_io, verbose):
 def get_child_executions(urn, host, insecure, show_io, verbose):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     node_execs = _get_all_node_executions(
         client,
         task_execution_identifier=_identifier.TaskExecutionIdentifier.from_python_std(urn),
@@ -1770,9 +1732,7 @@ def register_project(identifier, name, description, host, insecure):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     client.register_project(_Project(identifier, name, description))
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
 
@@ -1792,9 +1752,7 @@ def list_projects(host, insecure, token, limit, show_all, filter, sort_by):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Projects Found\n")
     while True:
@@ -1828,9 +1786,7 @@ def archive_project(identifier, host, insecure):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     client.update_project(_Project.archived_project(identifier))
     _click.echo("Archived project [id: {}]".format(identifier))
@@ -1847,9 +1803,7 @@ def activate_project(identifier, host, insecure):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     client.update_project(_Project.active_project(identifier))
     _click.echo("Activated project [id: {}]".format(identifier))
 
@@ -2035,9 +1989,7 @@ def register_files(
         )
     }
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     _extract_and_register(client, project, domain, version, files, patches)
 
 
@@ -2162,9 +2114,7 @@ def fast_register_files(
         ),
     }
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _extract_and_register(client, project, domain, version, pb_files, patches)
 
@@ -2183,9 +2133,7 @@ def update_workflow_meta(description, state, host, insecure, project, domain, na
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     if state == "active":
         state = _named_entity.NamedEntityState.ACTIVE
     elif state == "archived":
@@ -2211,9 +2159,7 @@ def update_task_meta(description, host, insecure, project, domain, name):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     client.update_named_entity(
         _core_identifier.ResourceType.TASK,
         _named_entity.NamedEntityIdentifier(project, domain, name),
@@ -2235,9 +2181,7 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     client.update_named_entity(
         _core_identifier.ResourceType.LAUNCH_PLAN,
         _named_entity.NamedEntityIdentifier(project, domain, name),
@@ -2267,9 +2211,7 @@ def update_cluster_resource_attributes(host, insecure, project, domain, name, at
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     cluster_resource_attributes = _ClusterResourceAttributes({attribute[0]: attribute[1] for attribute in attributes})
     matching_attributes = _MatchingAttributes(cluster_resource_attributes=cluster_resource_attributes)
 
@@ -2304,9 +2246,7 @@ def update_execution_queue_attributes(host, insecure, project, domain, name, tag
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     execution_queue_attributes = _ExecutionQueueAttributes(list(tags))
     matching_attributes = _MatchingAttributes(execution_queue_attributes=execution_queue_attributes)
 
@@ -2341,9 +2281,7 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     execution_cluster_label = _ExecutionClusterLabel(value)
     matching_attributes = _MatchingAttributes(execution_cluster_label=execution_cluster_label)
 
@@ -2382,9 +2320,7 @@ def update_plugin_override(host, insecure, project, domain, name, task_type, plu
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     plugin_override = _PluginOverride(
         task_type, list(plugin_id), _PluginOverride.string_to_enum(missing_plugin_behavior.upper())
     )
@@ -2429,9 +2365,7 @@ def get_matching_attributes(host, insecure, project, domain, name, resource_type
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     if name is not None:
         attributes = client.get_workflow_attributes(
@@ -2468,9 +2402,7 @@ def list_matching_attributes(host, insecure, resource_type):
     """
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
-    )
+    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     attributes = client.list_matchable_attributes(_MatchableResource.string_to_enum(resource_type.upper()))
     for configuration in attributes.configurations:
