@@ -36,7 +36,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip==21.2.4 setuptools wheel
         make setup${{ matrix.spark-version-suffix }}
-        git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout new-schema && pip install . && cd ..
+        git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout structured-dataset-proposal && pip install . && cd ..
         pip install fsspec
         pip freeze
     - name: Test with coverage
@@ -95,7 +95,7 @@ jobs:
         cd plugins/${{ matrix.plugin-names }}
         pip install -e .
         pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
-        git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout new-schema && pip install . && cd ..
+        git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout structured-dataset-proposal && pip install . && cd ..
         pip install fsspec
         pip freeze
     - name: Test with coverage
@@ -144,6 +144,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip==21.2.4 setuptools wheel
           pip install -r doc-requirements.txt
-          git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout new-schema && pip install . && cd ..
+          git clone https://github.com/pingsutw/flyteidl.git && cd flyteidl && git checkout structured-dataset-proposal && pip install . && cd ..
       - name: Build the documentation
         run: make -C docs html
