@@ -305,7 +305,7 @@ _HOST_FLAGS = ["-h", "--host"]
 _CONFIG_FLAGS = ["-c", "--config"]
 _PRINCIPAL_FLAGS = ["-r", "--principal"]
 _INSECURE_FLAGS = ["-i", "--insecure"]
-_CERT_FLAGS = ["-e", "--root_ssl_cert"]
+_CERT_FLAGS = ["-e", "--cacert"]
 
 _project_option = _click.option(*_PROJECT_FLAGS, required=True, help="The project namespace to query.")
 _optional_project_option = _click.option(
@@ -517,7 +517,7 @@ class _FlyteSubCommand(_click.Command):
         if cmd_name == "setup-config":
             ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
             ctx.obj = ctx.obj or {}
-            ctx.obj["root_ssl_cert"] = parent.params["root_ssl_cert"] or None
+            ctx.obj["cacert"] = parent.params["cacert"] or None
             return ctx
 
         config = parent.params["config"]
@@ -567,7 +567,7 @@ class _FlyteSubCommand(_click.Command):
             prefix_args.extend([_HOST_FLAGS[0], str(_HOST_URL)])
         ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
         ctx.obj = ctx.obj or {}
-        ctx.obj["root_ssl_cert"] = parent.params["root_ssl_cert"] or None
+        ctx.obj["cacert"] = parent.params["cacert"] or None
         return ctx
 
 
@@ -621,7 +621,7 @@ class _FlyteSubCommand(_click.Command):
 @_insecure_option
 @_click.group("flyte-cli", deprecated=True)
 @_click.pass_context
-def _flyte_cli(ctx, host, config, project, domain, name, root_ssl_cert, insecure):
+def _flyte_cli(ctx, host, config, project, domain, name, cacert, insecure):
     """
     Command line tool for interacting with all entities on the Flyte Platform.
     """
@@ -1735,7 +1735,7 @@ def list_projects(host, insecure, token, limit, show_all, filter, sort_by):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(
-        host, insecure=insecure, root_cert_file=parent_ctx.obj["root_ssl_cert"]
+        host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"]
     )
 
     _click.echo("Projects Found\n")
