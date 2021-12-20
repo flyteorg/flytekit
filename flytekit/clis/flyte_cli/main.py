@@ -623,6 +623,8 @@ def _flyte_cli(ctx, host, config, project, domain, name, cacert, insecure):
     """
     Command line tool for interacting with all entities on the Flyte Platform.
     """
+    if cacert and insecure:
+        raise _user_exceptions.FlyteValidationException(f"Should not pass both certificate and insecure options!")
 
 
 ########################################################################################################################
