@@ -418,13 +418,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         # Handle different kinds of annotation
         # my_cols = kwtypes(x=int, y=str)
-        # 1. StructuredDataset[my_cols]
+        # 1. Fill in columns by checking for StructuredDataset metadata. For example, StructuredDataset[my_cols, parquet]
         if issubclass(t, StructuredDataset):
             for k, v in t.columns().items():
                 lt = self._get_dataset_column_literal_type(v)
                 converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
             return StructuredDatasetType(columns=converted_cols, format=t.file_format)
-        # 2. Annotated[pd.Dataframe, my_cols]
+        # 2. Fill in format correctly by checking for typing.annotated. For example, Annotated[pd.Dataframe, my_cols]
         elif typing.get_origin(t) is typing.Annotated:
             _, *hint_args = typing.get_args(t)
             if type(hint_args[0]) is collections.OrderedDict:
@@ -432,13 +432,15 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                     lt = self._get_dataset_column_literal_type(v)
                     converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
                 return StructuredDatasetType(columns=converted_cols, format=PARQUET)
+            # 3. Fill in external schema type and bytes by checking for typing.annotated metadata.
+            # For example, Annotated[pd.Dataframe, pa.schema([("col1", pa.int32()), ("col2", pa.string())])]
             elif type(hint_args[0]) is pa.lib.Schema:
                 return StructuredDatasetType(
                     format=PARQUET,
                     external_schema_type="arrow",
                     external_schema_bytes=typing.cast(pa.lib.Schema, hint_args[0]).to_string().encode(),
                 )
-        # 3. pd.Dataframe
+        # 4. pd.Dataframe
         else:
             return StructuredDatasetType(columns=converted_cols, format=PARQUET)
 
@@ -450,9 +452,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         :param t: The python dataframe type, which is mostly ignored.
         """
-        # todo: fill in columns by checking for typing.annotated metadata
-        # todo: fill in format correctly by checking for typing.annotated metadata, using placeholder for now
-        # todo: fill in external schema type and bytes by checking for typing.annotated
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:

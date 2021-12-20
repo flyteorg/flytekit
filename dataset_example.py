@@ -29,10 +29,7 @@ BQ_PATH = "bq://photo-313016:flyte.new_table3"
 # We should also support map and list in schema column
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 
-fields = [
-    ("some_int", pa.int32()),
-    ("some_string", pa.string()),
-]
+fields = [("some_int", pa.int32()), ("some_string", pa.string())]
 arrow_schema = pa.schema(fields)
 
 
