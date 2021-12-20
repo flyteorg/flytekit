@@ -179,4 +179,4 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     _ = FlyteRemote.from_config("project", "domain", grpc_credentials=credentials)
     assert mock_secure_channel.called
     assert mock_secure_channel.call_args[0][1] == credentials
-    assert not mock_ssl_channel_credentials.called
+    assert mock_ssl_channel_credentials.call_count == 1
