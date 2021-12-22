@@ -18,4 +18,4 @@ def t1(n: int) -> int:
 
 
 def test_checkpoint_task():
-    pass
+    print(t1(n=5))

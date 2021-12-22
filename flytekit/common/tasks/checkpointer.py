@@ -60,7 +60,7 @@ class Checkpoint(object):
         raise NotImplementedError("Use one of the derived classes")
 
 
-class SyncCheckpoint(object):
+class SyncCheckpoint(Checkpoint):
     """
     This class is NOT THREAD-SAFE!
     Sync Checkpoint, will synchronously checkpoint a user given file or folder.
@@ -132,3 +132,10 @@ class SyncCheckpoint(object):
 
         rpath = fa._default_remote.construct_path(False, False, self._checkpoint_dest, self.TMP_DST_PATH)
         fa.upload(str(dest_cp), rpath)
+
+    def read(self) -> bytes:
+        pass
+
+    def write(self, b: bytes):
+        buf = io.RawIOBase.readinto(b)
+        self.save(buf)
