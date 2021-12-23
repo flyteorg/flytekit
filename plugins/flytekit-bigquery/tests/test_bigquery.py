@@ -3,6 +3,7 @@ from collections import OrderedDict
 import pytest
 from flytekitplugins.bigquery import BigQueryConfig, BigQueryTask
 from google.cloud.bigquery import QueryJobConfig
+from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit import kwtypes, workflow
@@ -25,7 +26,6 @@ def test_serialization():
             ProjectID="Flyte", Location="Asia", QueryJobConfig=QueryJobConfig(allow_large_results=True)
         ),
         query_template=query_template,
-        # the schema literal's backend uri will be equal to the value of .raw_output_data
         output_schema_type=FlyteSchema,
     )
 
@@ -49,7 +49,7 @@ def test_serialization():
     assert task_spec.template.sql.dialect == task_spec.template.sql.Dialect.ANSI
     s = Struct()
     s.update({"ProjectID": "Flyte", "Location": "Asia", "allowLargeResults": True})
-    assert task_spec.template.custom == s
+    assert task_spec.template.custom == json_format.MessageToDict(s)
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1
 
@@ -66,7 +66,6 @@ def test_local_exec():
         inputs=kwtypes(ds=str),
         query_template=query_template,
         task_config=BigQueryConfig(ProjectID="Flyte", Location="Asia"),
-        # the schema literal's backend uri will be equal to the value of .raw_output_data
         output_schema_type=FlyteSchema,
     )
 

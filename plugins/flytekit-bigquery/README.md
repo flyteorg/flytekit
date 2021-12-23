@@ -9,7 +9,3 @@ pip install flytekitplugins-bigquery
 ```
 
 To configure BigQuery in the Flyte deployment's backend, follow the [configuration guide](https://docs.flyte.org/en/latest/deployment/plugin_setup/gcp/bigquery.html#deployment-plugin-setup-gcp-bigquery).
-
-TODO: Add example
-
-An [example]() showcasing BigQuery service can be found in the documentation.
