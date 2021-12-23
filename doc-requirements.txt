@@ -33,9 +33,9 @@ black==21.12b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.20.24
+boto3==1.20.26
     # via sagemaker-training
-botocore==1.23.24
+botocore==1.23.26
     # via
     #   boto3
     #   s3transfer
@@ -286,6 +286,7 @@ pytimeparse==1.1.8
 pytz==2021.3
     # via
     #   babel
+    #   flytekit
     #   pandas
 pyyaml==6.0
     # via
@@ -429,7 +430,7 @@ webencodings==0.5.1
     # via bleach
 werkzeug==2.0.2
     # via sagemaker-training
-wheel==0.37.0
+wheel==0.37.1
     # via flytekit
 wrapt==1.13.3
     # via
