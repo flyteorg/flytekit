@@ -12,12 +12,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, 3.10]
         spark-version-suffix: ["", "-spark2"]
         exclude:
         - python-version: 3.8
           spark-version-suffix: "-spark2"
         - python-version: 3.9
+          spark-version-suffix: "-spark2"
+        - python-version: 3.10
           spark-version-suffix: "-spark2"
     steps:
     - uses: actions/checkout@v2
@@ -55,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: [3.8, 3.9, 3.10]
         plugin-names:
           - flytekit-aws-athena
           - flytekit-aws-sagemaker
