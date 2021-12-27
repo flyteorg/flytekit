@@ -30,7 +30,7 @@ DF = typing.TypeVar("DF")  # Dataframe type
 
 BIGQUERY = "bq"
 S3 = "s3"
-LOCAL = "local"
+LOCAL = "/"
 
 # Dataset File format
 PARQUET = "parquet"

@@ -1,12 +1,12 @@
 from flytekit.loggers import logger
 
 from .basic_dfs import (
-    ArrowToParquetEncodingHandlers,
+    ArrowToParquetEncodingHandler,
     PandasToParquetEncodingHandler,
     ParquetToArrowDecodingHandler,
     ParquetToPandasDecodingHandler,
     ParquetToSparkDecodingHandler,
-    SparkToParquetEncodingHandlers,
+    SparkToParquetEncodingHandler,
 )
 
 try:
