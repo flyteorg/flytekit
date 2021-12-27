@@ -101,6 +101,8 @@ class StructuredDataset(object):
         self._metadata = metadata
         # This is not for users to set, the transformer will set this.
         self._literal_sd: Optional[literals.StructuredDataset] = None
+        # Not meant for users to set, will be set by an open() call
+        self._dataframe_type = None
 
     @property
     def dataframe(self) -> Type[typing.Any]:
@@ -126,13 +128,20 @@ class StructuredDataset(object):
     def literal(self) -> Optional[literals.StructuredDataset]:
         return self._literal_sd
 
-    def open_as(self, df_type: Type[DF]) -> DF:
-        ctx = FlyteContextManager.current_context()
-        return FLYTE_DATASET_TRANSFORMER.open_as(ctx, self.literal, df_type)
+    def open(self, dataframe_type: Type[DF]):
+        self._dataframe_type = dataframe_type
 
-    def iter_as(self, df_type: Type[DF]) -> DF:
+    def all(self) -> DF:
+        if self._dataframe_type is None:
+            raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
-        return FLYTE_DATASET_TRANSFORMER.iter_as(ctx, self.literal, df_type)
+        return FLYTE_DATASET_TRANSFORMER.open_as(ctx, self.literal, self._dataframe_type)
+
+    def iter(self) -> Generator[DF, None, None]:
+        if self._dataframe_type is None:
+            raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
+        ctx = FlyteContextManager.current_context()
+        return FLYTE_DATASET_TRANSFORMER.iter_as(ctx, self.literal, self._dataframe_type)
 
 
 class StructuredDatasetEncoder(ABC):
@@ -402,7 +411,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             raise ValueError(f"Decoder {decoder} returned iterator {result} but whole value requested from {sd}")
         return result
 
-    def iter_as(self, ctx: FlyteContext, sd: literals.StructuredDataset, df_type: Type[DF]) -> DF:
+    def iter_as(self, ctx: FlyteContext, sd: literals.StructuredDataset, df_type: Type[DF]) -> Generator[DF, None, None]:
         protocol = protocol_prefix(sd.uri)
         decoder = self.DECODERS[df_type][protocol][sd.metadata.format]
         result = decoder.decode(ctx, sd)

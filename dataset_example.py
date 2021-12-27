@@ -55,7 +55,7 @@ def t2(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, arrow_schema]:
 def t3(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
     # s3 (parquet) -> pandas -> s3 (parquet)
     print("Pandas dataframe")
-    print(dataset.open_as(pd.DataFrame))
+    print(dataset.open(pd.DataFrame).all())
     # In the example, we download dataset when we open it.
     # Here we won't upload anything, since we're returning just the input object.
     return dataset
@@ -70,7 +70,7 @@ def t3a(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
 @task
 def t4(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
     # s3 (parquet) -> pandas -> s3 (parquet)
-    return dataset.open_as(pd.DataFrame)
+    return dataset.open(pd.DataFrame).all()
 
 
 @task
@@ -82,7 +82,7 @@ def t5(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
 @task
 def t6(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
     # bq -> pandas -> s3 (parquet)
-    df = dataset.open_as(pd.DataFrame)
+    df = dataset.open(pd.DataFrame).all()
     return df
 
 
@@ -146,7 +146,7 @@ def t9(dataframe: np.ndarray) -> StructuredDataset[my_cols]:
 @task
 def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
     # s3 (parquet) -> Arrow table -> numpy
-    np_array = dataset.open_as(np.ndarray)
+    np_array = dataset.open(np.ndarray).all()
     return np_array
 
 
@@ -157,7 +157,7 @@ def t11(dataframe: pyspark.sql.dataframe.DataFrame) -> StructuredDataset[my_cols
 
 @task
 def t12(dataset: StructuredDataset[my_cols]) -> pyspark.sql.dataframe.DataFrame:
-    spark_df = dataset.open_as(pyspark.sql.dataframe.DataFrame)
+    spark_df = dataset.open(pyspark.sql.dataframe.DataFrame).all()
     return spark_df
 
 
