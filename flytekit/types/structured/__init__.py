@@ -1,8 +1,8 @@
 from flytekit.loggers import logger
 
-from .parquet import (
+from .basic_dfs import (
     ArrowToParquetEncodingHandlers,
-    PandasToParquetEncodingHandlers,
+    PandasToParquetEncodingHandler,
     ParquetToArrowDecodingHandler,
     ParquetToPandasDecodingHandler,
     ParquetToSparkDecodingHandler,

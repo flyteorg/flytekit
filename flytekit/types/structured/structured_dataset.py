@@ -7,6 +7,11 @@ import typing
 from abc import ABC, abstractmethod
 from typing import Dict, Generator, Optional, Type, Union
 
+try:
+    from typing import Annotated, get_args, get_origin
+except ImportError:
+    from typing_extensions import Annotated, get_origin, get_args
+
 import _datetime
 import numpy as _np
 import pyarrow as pa
@@ -109,9 +114,9 @@ class StructuredDataset(object):
     def uri(self, uri: str):
         self._uri = uri
 
-    @property
+    @classmethod
     def file_format(self) -> str:
-        return self._file_format
+        return ""
 
     @property
     def metadata(self) -> Optional[StructuredDatasetMetadata]:
@@ -306,7 +311,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             self.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
 
         # Register with the type engine as well
-        TypeEngine.register_additional_type(self, h.python_type)
+        TypeEngine.register_additional_type(self, h.python_type, True)
 
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
@@ -322,7 +327,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # StructuredDataset instance.
         if issubclass(python_type, StructuredDataset):
             assert isinstance(python_val, StructuredDataset)
-            format = python_val.file_format
+            format = python_val.file_format()
             # If task output return a StructuredDataset without dataframe, we can
             # directly convert it to literal without invoking encoder.
             # For example,
@@ -344,7 +349,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 protocol = self.DEFAULT_PROTOCOLS[df_type]
             else:
                 protocol = protocol_prefix(python_val.uri)
-            format = python_val.file_format
+            format = python_val.file_format()
             return self.encode(
                 ctx,
                 python_val,
@@ -418,15 +423,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         # Handle different kinds of annotation
         # my_cols = kwtypes(x=int, y=str)
-        # 1. Fill in columns by checking for StructuredDataset metadata. For example, StructuredDataset[my_cols, parquet]
-        if issubclass(t, StructuredDataset):
-            for k, v in t.columns().items():
-                lt = self._get_dataset_column_literal_type(v)
-                converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
-            return StructuredDatasetType(columns=converted_cols, format=t.file_format)
-        # 2. Fill in format correctly by checking for typing.annotated. For example, Annotated[pd.Dataframe, my_cols]
-        elif typing.get_origin(t) is typing.Annotated:
-            _, *hint_args = typing.get_args(t)
+        # 1. Fill in format correctly by checking for typing.annotated. For example, Annotated[pd.Dataframe, my_cols]
+        if get_origin(t) is Annotated:
+            _, *hint_args = get_args(t)
             if type(hint_args[0]) is collections.OrderedDict:
                 for k, v in hint_args[0].items():
                     lt = self._get_dataset_column_literal_type(v)
@@ -440,7 +439,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                     external_schema_type="arrow",
                     external_schema_bytes=typing.cast(pa.lib.Schema, hint_args[0]).to_string().encode(),
                 )
-        # 4. pd.Dataframe
+        # 2. Fill in columns by checking for StructuredDataset metadata. For example, StructuredDataset[my_cols, parquet]
+        elif issubclass(t, StructuredDataset):
+            for k, v in t.columns().items():
+                lt = self._get_dataset_column_literal_type(v)
+                converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
+            return StructuredDatasetType(columns=converted_cols, format=t.file_format())
+        # 3. pd.Dataframe
         else:
             return StructuredDatasetType(columns=converted_cols, format=PARQUET)
 

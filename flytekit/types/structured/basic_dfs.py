@@ -25,7 +25,7 @@ from flytekit.types.structured.utils import get_filesystem, get_storage_config
 T = TypeVar("T")
 
 
-class PandasToParquetEncodingHandlers(StructuredDatasetEncoder):
+class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
     def encode(
         self,
         ctx: FlyteContext,
@@ -95,7 +95,7 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
 
 
 for protocol in [S3, LOCAL]:
-    FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandlers(pd.DataFrame, protocol, PARQUET))
+    FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandler(pd.DataFrame, protocol, PARQUET))
     FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(pd.DataFrame, protocol, PARQUET))
     FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandlers(pa.Table, protocol, PARQUET))
     FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(pa.Table, protocol, PARQUET))
