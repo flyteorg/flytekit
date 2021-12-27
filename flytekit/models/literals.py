@@ -7,9 +7,9 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
+from flytekit.models.types import LiteralType as _LiteralType
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
-from flytekit.models.types import UnionType as _UnionType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
@@ -548,15 +548,15 @@ class Schema(_common.FlyteIdlEntity):
 
 
 class Union(_common.FlyteIdlEntity):
-    def __init__(self, value, tag):
+    def __init__(self, value, stored_type):
         """
         The runtime representation of a tagged union value. See `UnionType` for more details.
 
         :param flytekit.models.literals.Literal value:
-        :param str tag:
+        :param flytekit.models.types.LiteralType stored_type:
         """
         self._value = value
-        self._tag = tag
+        self._type = stored_type
 
     @property
     def value(self):
@@ -566,17 +566,17 @@ class Union(_common.FlyteIdlEntity):
         return self._value
 
     @property
-    def tag(self):
+    def stored_type(self):
         """
-        :rtype: str
+        :rtype: flytekit.models.types.LiteralType
         """
-        return self._tag
+        return self._type
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Union
         """
-        return _literals_pb2.Union(value=self.value.to_flyte_idl(), tag=self.tag)
+        return _literals_pb2.Union(value=self.value.to_flyte_idl(), type=self._type.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -584,7 +584,7 @@ class Union(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.Schema pb2_object:
         :rtype: Schema
         """
-        return cls(value=Literal.from_flyte_idl(pb2_object.value), tag=pb2_object.tag)
+        return cls(value=Literal.from_flyte_idl(pb2_object.value), stored_type=_LiteralType.from_flyte_idl(pb2_object.type))
 
 class LiteralCollection(_common.FlyteIdlEntity):
     def __init__(self, literals):

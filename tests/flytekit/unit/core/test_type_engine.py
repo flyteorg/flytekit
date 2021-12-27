@@ -29,7 +29,7 @@ from flytekit.core.type_engine import (
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
@@ -554,9 +554,9 @@ def test_enum_type():
 def union_type_tags_unique(t: LiteralType):
     seen = set()
     for x in t.union_type.variants:
-        if x.tag in seen:
+        if x.structure.tag in seen:
             return False
-        seen.add(x.tag)
+        seen.add(x.structure.tag)
 
     return True
 
@@ -564,19 +564,22 @@ def union_type_tags_unique(t: LiteralType):
 def test_union_type():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
-    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int"))
+    ]
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.tag == "int"
+    assert lv.scalar.union.stored_type.structure.tag == "int"
     assert lv.scalar.union.value.scalar.primitive.integer == 3
     assert v == 3
 
     lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.tag == "str"
+    assert lv.scalar.union.stored_type.structure.tag == "str"
     assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
     assert v == "hello"
 
@@ -584,26 +587,32 @@ def test_union_type():
 def test_optional_type():
     pt = typing.Optional[int]
     lt = TypeEngine.to_literal_type(pt)
-    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.NONE)]
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none"))
+    ]
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.tag == "int"
+    assert lv.scalar.union.stored_type.structure.tag == "int"
     assert lv.scalar.union.value.scalar.primitive.integer == 3
     assert v == 3
 
     lv = TypeEngine.to_literal(ctx, None, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.tag == "none"
+    assert lv.scalar.union.stored_type.structure.tag == "none"
     assert lv.scalar.union.value.scalar.none_type == Void()
     assert v is None
 
 def test_union_from_unambiguous_literal():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
-    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int"))
+    ]
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
@@ -635,19 +644,22 @@ def test_union_custom_transformer():
 
     pt = typing.Union[int, MyInt]
     lt = TypeEngine.to_literal_type(pt)
-    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.INTEGER)]
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="MyInt"))
+    ]
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.tag == "int"
+    assert lv.scalar.union.stored_type.structure.tag == "int"
     assert lv.scalar.union.value.scalar.primitive.integer == 3
     assert v == 3
 
     lv = TypeEngine.to_literal(ctx, MyInt(10), pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.tag == "MyInt"
+    assert lv.scalar.union.stored_type.structure.tag == "MyInt"
     assert lv.scalar.union.value.scalar.primitive.integer == 10
     assert v == MyInt(10)
 
@@ -696,7 +708,10 @@ def test_union_custom_transformer_sanity_check():
 
     pt = typing.Union[int, UnsignedInt]
     lt = TypeEngine.to_literal_type(pt)
-    assert [x.type for x in lt.union_type.variants] == [LiteralType(simple=SimpleType.INTEGER), LiteralType(simple=SimpleType.INTEGER)]
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="UnsignedInt"))
+    ]
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
@@ -709,22 +724,28 @@ def test_union_custom_transformer_sanity_check():
 def test_union_of_lists():
     pt = typing.Union[typing.List[int], typing.List[str]]
     lt = TypeEngine.to_literal_type(pt)
-    assert [x.type for x in lt.union_type.variants] == [
-        LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER)),
-        LiteralType(collection_type=LiteralType(simple=SimpleType.STRING)),
+    assert lt.union_type.variants == [
+        LiteralType(
+            collection_type=LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+            structure=TypeStructure(tag="Typed List")
+        ),
+        LiteralType(
+            collection_type=LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+            structure=TypeStructure(tag="Typed List")
+        ),
     ]
     assert not union_type_tags_unique(lt) # tags are deliberately NOT unique
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", "world"], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.tag == "Typed List"
+    assert lv.scalar.union.stored_type.structure.tag == "Typed List"
     assert [x.scalar.primitive.string_value for x in lv.scalar.union.value.collection.literals] == ["hello", "world"]
     assert v == ["hello", "world"]
 
     lv = TypeEngine.to_literal(ctx, [1, 3], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.tag == "Typed List"
+    assert lv.scalar.union.stored_type.structure.tag == "Typed List"
     assert [x.scalar.primitive.integer for x in lv.scalar.union.value.collection.literals] == [1, 3]
     assert v == [1, 3]
 
@@ -733,16 +754,16 @@ def test_list_of_unions():
     pt = typing.List[typing.Union[str, int]]
     lt = TypeEngine.to_literal_type(pt)
     # todo(maximsmol): seems like the order here is non-deterministic
-    assert [x.type for x in lt.collection_type.union_type.variants] == [
-        LiteralType(simple=SimpleType.STRING),
-        LiteralType(simple=SimpleType.INTEGER),
+    assert lt.collection_type.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
     ]
     assert union_type_tags_unique(lt.collection_type) # tags are deliberately NOT unique
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert [x.scalar.union.tag for x in lv.collection.literals] == ["str", "int", "str"]
+    assert [x.scalar.union.stored_type.structure.tag for x in lv.collection.literals] == ["str", "int", "str"]
     assert v == ["hello", 123, "world"]
 
 @pytest.mark.parametrize(

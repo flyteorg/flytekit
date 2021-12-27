@@ -29,7 +29,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
-from flytekit.models.types import LiteralType, SimpleType, UnionType, UnionVariant
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -617,6 +617,9 @@ class ListTransformer(TypeTransformer[T]):
             return typing.List[ct]
         raise ValueError(f"List transformer cannot reverse {literal_type}")
 
+def _add_tag_to_type(x: LiteralType, tag: str) -> LiteralType:
+    x._structure = TypeStructure(tag=tag)
+    return x
 
 class UnionTransformer(TypeTransformer[T]):
     """
@@ -627,9 +630,10 @@ class UnionTransformer(TypeTransformer[T]):
         super().__init__("Typed Union", typing.Union)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
+
         try:
             trans = [(TypeEngine.get_transformer(x), x) for x in typing.get_args(t)]
-            variants = [UnionVariant(t.get_literal_type(x), t.name) for (t, x) in trans]
+            variants = [_add_tag_to_type(t.get_literal_type(x), t.name) for (t, x) in trans]
             return _type_models.LiteralType(union_type=UnionType(variants))
         except Exception as e:
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
@@ -637,13 +641,13 @@ class UnionTransformer(TypeTransformer[T]):
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         found_res = False
         res = None
-        res_tag = None
+        res_type = None
         for t in typing.get_args(python_type):
             try:
                 trans = TypeEngine.get_transformer(t)
 
                 res = trans.to_literal(ctx, python_val, t, expected)
-                res_tag = trans.name
+                res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 if found_res:
                     # Should really never happen, sanity check
                     raise TypeError(f"Ambiguous choice of variant for union type")
@@ -653,14 +657,16 @@ class UnionTransformer(TypeTransformer[T]):
                 continue
 
         if found_res:
-            return Literal(scalar=Scalar(union=Union(value=res, tag=res_tag)))
+            return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
 
         raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         union_tag = None
         if lv.scalar is not None and lv.scalar.union  is not None:
-            union_tag = lv.scalar.union.tag
+            union_type = lv.scalar.union.stored_type
+            if union_type.structure is not None:
+                union_tag = union_type.structure.tag
 
         found_res = False
         res = None
@@ -668,7 +674,7 @@ class UnionTransformer(TypeTransformer[T]):
         for v in typing.get_args(expected_python_type):
             try:
                 trans = TypeEngine.get_transformer(v)
-                if union_tag:
+                if union_tag is not None:
                     if trans.name != union_tag:
                         continue
 

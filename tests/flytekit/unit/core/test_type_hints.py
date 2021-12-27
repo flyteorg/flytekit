@@ -1473,7 +1473,12 @@ def test_union_type():
                     }
                   }
                 }
-                tag: "str"
+                type {
+                  simple: STRING
+                  structure {
+                    tag: "str"
+                  }
+                }
               }
             }
              to typing.Union\[float, dict\] \(using tag str\)

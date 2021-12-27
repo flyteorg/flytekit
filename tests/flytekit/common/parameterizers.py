@@ -58,14 +58,8 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
     types.LiteralType(
         union_type=types.UnionType(
             variants=[
-                types.UnionVariant(
-                    type=types.LiteralType(simple=types.SimpleType.STRING),
-                    tag="str"
-                ),
-                types.UnionVariant(
-                    type=types.LiteralType(simple=types.SimpleType.INTEGER),
-                    tag="int"
-                )
+                types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+                types.LiteralType(simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")),
             ]
         )
     ),
@@ -264,7 +258,10 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
                         )
                     )
                 ),
-                tag="int"
+                stored_type=types.LiteralType(
+                    simple=types.SimpleType.INTEGER,
+                    structure=types.TypeStructure(tag="int")
+                )
             )
         ),
         10
@@ -279,7 +276,10 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
                         )
                     )
                 ),
-                tag="str"
+                stored_type=types.LiteralType(
+                    simple=types.SimpleType.STRING,
+                    structure=types.TypeStructure(tag="str")
+                )
             )
         ),
         "test"

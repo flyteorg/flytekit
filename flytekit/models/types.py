@@ -99,44 +99,16 @@ class SchemaType(_common.FlyteIdlEntity):
         return cls(columns=[SchemaType.SchemaColumn.from_flyte_idl(c) for c in proto.columns])
 
 
-class UnionVariant(_common.FlyteIdlEntity):
-    """
-    Models _types_pb2.UnionVariant
-    """
-
-    def __init__(self, type: "LiteralType", tag: str):
-        self._type = type
-        self._tag = tag
-
-    @property
-    def type(self) -> "LiteralType":
-        return self._type
-
-    @property
-    def tag(self) -> str:
-        return self._tag
-
-    def to_flyte_idl(self) -> _types_pb2.UnionVariant:
-        return _types_pb2.UnionVariant(
-            type=self.type.to_flyte_idl(),
-            tag=self.tag
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, proto: _types_pb2.UnionVariant):
-        return cls(type=LiteralType.from_flyte_idl(proto.type), tag=proto.tag)
-
-
 class UnionType(_common.FlyteIdlEntity):
     """
     Models _types_pb2.UnionType
     """
 
-    def __init__(self, variants: typing.List["UnionVariant"]):
+    def __init__(self, variants: typing.List["LiteralType"]):
         self._variants = variants
 
     @property
-    def variants(self) -> typing.List["UnionVariant"]:
+    def variants(self) -> typing.List["LiteralType"]:
         return self._variants
 
     def to_flyte_idl(self) -> _types_pb2.UnionType:
@@ -146,7 +118,29 @@ class UnionType(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, proto: _types_pb2.UnionType):
-        return cls(variants=[UnionVariant.from_flyte_idl(v) for v in proto.variants])
+        return cls(variants=[LiteralType.from_flyte_idl(v) for v in proto.variants])
+
+
+class TypeStructure(_common.FlyteIdlEntity):
+    """
+    Models _types_pb2.TypeStructure
+    """
+
+    def __init__(self, tag: str):
+        self._tag = tag
+
+    @property
+    def tag(self) -> str:
+        return self._tag
+
+    def to_flyte_idl(self) -> _types_pb2.TypeStructure:
+        return _types_pb2.TypeStructure(
+            tag=self._tag,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: _types_pb2.TypeStructure):
+        return cls(tag=proto.tag)
 
 
 class LiteralType(_common.FlyteIdlEntity):
@@ -159,6 +153,7 @@ class LiteralType(_common.FlyteIdlEntity):
         blob=None,
         enum_type=None,
         union_type=None,
+        structure=None,
         metadata=None,
     ):
         """
@@ -172,6 +167,7 @@ class LiteralType(_common.FlyteIdlEntity):
         :param flytekit.models.core.types.BlobType blob: For blob objects, this describes the type.
         :param flytekit.models.core.types.EnumType enum_type: For enum objects, describes an enum
         :param flytekit.models.core.types.UnionType union_type: For union objects, describes an python union type.
+        :param flytekit.models.core.types.TypeStructure structure: Type matching hints
         :param dict[Text, T] metadata: Additional data describing the type
         """
         self._simple = simple
@@ -181,6 +177,7 @@ class LiteralType(_common.FlyteIdlEntity):
         self._blob = blob
         self._enum_type = enum_type
         self._union_type = union_type
+        self._structure = structure
         self._metadata = metadata
 
     @property
@@ -218,6 +215,10 @@ class LiteralType(_common.FlyteIdlEntity):
         return self._union_type
 
     @property
+    def structure(self) -> TypeStructure:
+        return self._structure
+
+    @property
     def metadata(self):
         """
         :rtype: dict[Text, T]
@@ -244,6 +245,7 @@ class LiteralType(_common.FlyteIdlEntity):
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
             union_type=self.union_type.to_flyte_idl() if self.union_type else None,
+            structure=self.structure.to_flyte_idl() if self.structure else None,
             metadata=metadata,
         )
         return t
@@ -268,6 +270,7 @@ class LiteralType(_common.FlyteIdlEntity):
             blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
             enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
             union_type=UnionType.from_flyte_idl(proto.union_type) if proto.HasField("union_type") else None,
+            structure=TypeStructure.from_flyte_idl(proto.structure) if proto.HasField("structure") else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
         )
 
