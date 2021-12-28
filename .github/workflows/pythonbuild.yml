@@ -56,6 +56,7 @@ jobs:
   build-plugins:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
         plugin-names:
@@ -76,6 +77,8 @@ jobs:
           - flytekit-snowflake
           - flytekit-modin
         exclude:
+        # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
+        # Issue tracked in https://github.com/ray-project/ray/issues/19116.
         - python-version: 3.10
           plugin-names: "flytekit-modin"
     steps:
