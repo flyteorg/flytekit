@@ -133,8 +133,8 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
         return table.to_pandas().to_numpy()
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "local", "parquet"))
-FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "local", "parquet"))
+FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "/", "parquet"))
+FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "/", "parquet"))
 
 
 @task

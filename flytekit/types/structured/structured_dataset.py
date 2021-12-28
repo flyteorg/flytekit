@@ -117,7 +117,7 @@ class StructuredDataset(object):
         self._uri = uri
 
     @classmethod
-    def file_format(self) -> str:
+    def file_format(cls) -> str:
         return ""
 
     @property
@@ -130,6 +130,7 @@ class StructuredDataset(object):
 
     def open(self, dataframe_type: Type[DF]):
         self._dataframe_type = dataframe_type
+        return self
 
     def all(self) -> DF:
         if self._dataframe_type is None:
@@ -336,7 +337,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # StructuredDataset instance.
         if issubclass(python_type, StructuredDataset):
             assert isinstance(python_val, StructuredDataset)
-            format = python_val.file_format()
+            format = python_val._file_format
             # If task output return a StructuredDataset without dataframe, we can
             # directly convert it to literal without invoking encoder.
             # For example,
@@ -358,7 +359,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 protocol = self.DEFAULT_PROTOCOLS[df_type]
             else:
                 protocol = protocol_prefix(python_val.uri)
-            format = python_val.file_format()
+            format = python_val._file_format
             return self.encode(
                 ctx,
                 python_val,
@@ -411,7 +412,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             raise ValueError(f"Decoder {decoder} returned iterator {result} but whole value requested from {sd}")
         return result
 
-    def iter_as(self, ctx: FlyteContext, sd: literals.StructuredDataset, df_type: Type[DF]) -> Generator[DF, None, None]:
+    def iter_as(
+        self, ctx: FlyteContext, sd: literals.StructuredDataset, df_type: Type[DF]
+    ) -> Generator[DF, None, None]:
         protocol = protocol_prefix(sd.uri)
         decoder = self.DECODERS[df_type][protocol][sd.metadata.format]
         result = decoder.decode(ctx, sd)

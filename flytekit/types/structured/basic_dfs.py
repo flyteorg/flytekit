@@ -9,6 +9,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 
 from flytekit import FlyteContext
+from flytekit.core.data_persistence import DataPersistencePlugins, split_protocol
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.types.structured.structured_dataset import (
@@ -21,7 +22,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
 )
 from flytekit.types.structured.utils import get_filesystem, get_storage_config
-from flytekit.core.data_persistence import split_protocol, DataPersistencePlugins
 
 T = TypeVar("T")
 

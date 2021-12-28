@@ -14,9 +14,7 @@ import pandas as pd
 import pyarrow as pa
 
 from flytekit import kwtypes
-from flytekit.types.structured.structured_dataset import (
-    StructuredDataset,
-)
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 
@@ -45,7 +43,9 @@ def test_types_annotated():
     lt = TypeEngine.to_literal_type(pt)
     assert len(lt.structured_dataset_type.columns) == 4
     assert lt.structured_dataset_type.columns[0].literal_type.map_value_type.map_value_type.simple == SimpleType.INTEGER
-    assert lt.structured_dataset_type.columns[1].literal_type.collection_type.collection_type.simple == SimpleType.INTEGER
+    assert (
+        lt.structured_dataset_type.columns[1].literal_type.collection_type.collection_type.simple == SimpleType.INTEGER
+    )
     assert lt.structured_dataset_type.columns[2].literal_type.simple == SimpleType.INTEGER
     assert lt.structured_dataset_type.columns[3].literal_type.simple == SimpleType.STRING
 
