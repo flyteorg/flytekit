@@ -349,7 +349,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             #       return dataset
             if python_val._literal_sd is not None:
                 if python_val.dataframe is not None:
-                    raise ValueError(f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}")
+                    raise ValueError(
+                        f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}"
+                    )
                 return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
 
             # 2. A task returns a python StructuredDataset with a uri.
@@ -361,6 +363,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             #       return StructuredDataset(uri=uri)
             format = python_val._file_format
             if python_val.dataframe is None:
+                if not python_val.uri:
+                    raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
                 sd_model = literals.StructuredDataset(
                     uri=python_val.uri,
                     metadata=StructuredDatasetMetadata(
