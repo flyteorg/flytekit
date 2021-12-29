@@ -207,7 +207,7 @@ class MapPythonTask(PythonTask):
 
 def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):
     """
-    Use a map task for parallelizable tasks that are run across a List of an input type. A map task can be composed of
+    Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.
 
     Invoke a map task with arguments using the :py:class:`list` version of the expected input.
@@ -230,6 +230,11 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_suc
         all inputs are processed.
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
+
+    ``with_overrides`` on a map task can be used to set individual map task resource assigment.
+
+    .. code-block:: python
+        map_task(my_mappable_task)(...).with_overrides(requests=ResourceRequests(cpu="1", memory="300Mi"), retries=1)
     """
     if not isinstance(task_function, PythonFunctionTask):
         raise ValueError(
