@@ -1,3 +1,4 @@
+import os
 import typing
 from typing import TypeVar
 
@@ -9,47 +10,67 @@ from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 
 from flytekit import FlyteContext
+from flytekit.core.data_persistence import DataPersistencePlugins
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
     LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
-from flytekit.types.structured.utils import get_filesystem, get_storage_config
+from flytekit.types.structured.utils import get_filesystem
 
 T = TypeVar("T")
 
 
-class PandasToParquetEncodingHandlers(StructuredDatasetEncoder):
+class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
+    def __init__(self, protocol: str):
+        super().__init__(pd.DataFrame, protocol, PARQUET)
+        self._persistence = DataPersistencePlugins.find_plugin(protocol)()  # want to use this somehow
+
     def encode(
         self,
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
     ) -> literals.StructuredDataset:
 
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
+        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        if structured_dataset.dataframe is None:
+            if ctx.file_access.is_remote(path):
+                return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
+            else:
+                ctx.file_access.upload_directory(path, ctx.file_access.get_random_remote_directory())
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
-        df.to_parquet(path, storage_options=get_storage_config(path))
-
+        local_dir = ctx.file_access.get_random_local_directory()
+        local_path = os.path.join(local_dir, f"{0:05}")
+        df.to_parquet(local_path, coerce_timestamps="us", allow_truncated_timestamps=False)
+        ctx.file_access.upload_directory(local_dir, path)
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
+    def __init__(self, protocol: str):
+        super().__init__(pd.DataFrame, protocol, PARQUET)
+
     def decode(
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
     ) -> pd.DataFrame:
         path = flyte_value.uri
-        return pandas.read_parquet(path, storage_options=get_storage_config(path))
+        local_dir = ctx.file_access.get_random_local_directory()
+        ctx.file_access.get_data(path, local_dir, is_multipart=True)
+        frames = [pandas.read_parquet(os.path.join(local_dir, f)) for f in os.listdir(local_dir)]
+        if len(frames) == 1:
+            return frames[0]
+        elif len(frames) > 1:
+            return pandas.concat(frames, copy=True)
 
 
-class ArrowToParquetEncodingHandlers(StructuredDatasetEncoder):
+class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
     def encode(
         self,
         ctx: FlyteContext,
@@ -71,7 +92,10 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(path, filesystem=get_filesystem(path))
 
 
-class SparkToParquetEncodingHandlers(StructuredDatasetEncoder):
+class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
+    def __init__(self, protocol: str):
+        super().__init__(DataFrame, protocol, PARQUET)
+
     def encode(
         self,
         ctx: FlyteContext,
@@ -84,6 +108,9 @@ class SparkToParquetEncodingHandlers(StructuredDatasetEncoder):
 
 
 class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
+    def __init__(self, protocol: str):
+        super().__init__(DataFrame, protocol, PARQUET)
+
     def decode(
         self,
         ctx: FlyteContext,
@@ -94,10 +121,10 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
         return spark.read.parquet(path)
 
 
-for protocol in [S3, LOCAL]:
-    FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandlers(pd.DataFrame, protocol, PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(pd.DataFrame, protocol, PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandlers(pa.Table, protocol, PARQUET))
+for protocol in [LOCAL]:  # Think how to add S3 and GCS
+    FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandler(protocol), default_for_type=True)
+    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
+    FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandler(pa.Table, protocol, PARQUET))
     FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(pa.Table, protocol, PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(SparkToParquetEncodingHandlers(DataFrame, protocol, PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToSparkDecodingHandler(DataFrame, protocol, PARQUET))
+    FLYTE_DATASET_TRANSFORMER.register_handler(SparkToParquetEncodingHandler(protocol), default_for_type=True)
+    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToSparkDecodingHandler(protocol), default_for_type=True)

@@ -10,6 +10,11 @@ import typing
 from abc import ABC, abstractmethod
 from typing import NamedTuple, Optional, Type, cast
 
+try:
+    from typing import Annotated, get_args, get_origin
+except ImportError:
+    from typing_extensions import Annotated, get_origin, get_args
+
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
@@ -479,8 +484,8 @@ class TypeEngine(typing.Generic[T]):
         cls.register(RestrictedTypeTransformer(name, type))
 
     @classmethod
-    def register_additional_type(cls, transformer: TypeTransformer, additional_type: Type):
-        if additional_type not in cls._REGISTRY:
+    def register_additional_type(cls, transformer: TypeTransformer, additional_type: Type, override=False):
+        if additional_type not in cls._REGISTRY or override:
             cls._REGISTRY[additional_type] = transformer
 
     @classmethod
@@ -508,6 +513,9 @@ class TypeEngine(typing.Generic[T]):
 
         """
         # Step 1
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
+
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 

@@ -1,3 +1,4 @@
+import os
 import typing
 from typing import Annotated
 
@@ -21,8 +22,8 @@ from flytekit.types.structured.structured_dataset import (
 )
 from flytekit.types.structured.utils import get_filesystem
 
-PANDAS_PATH = "/tmp/pandas.pq"
-NUMPY_PATH = "/tmp/numpy.pq"
+PANDAS_PATH = "/tmp/pandas"
+NUMPY_PATH = "/tmp/numpy"
 BQ_PATH = "bq://photo-313016:flyte.new_table3"
 
 # https://github.com/flyteorg/flyte/issues/523
@@ -42,7 +43,7 @@ def t1(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, my_cols]:
 @task
 def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, PARQUET]:
     # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
-    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH, file_format=PARQUET)
+    return StructuredDataset(dataframe=dataframe, file_format=PARQUET)
 
 
 @task
@@ -55,7 +56,7 @@ def t2(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, arrow_schema]:
 def t3(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
     # s3 (parquet) -> pandas -> s3 (parquet)
     print("Pandas dataframe")
-    print(dataset.open_as(pd.DataFrame))
+    print(dataset.open(pd.DataFrame).all())
     # In the example, we download dataset when we open it.
     # Here we won't upload anything, since we're returning just the input object.
     return dataset
@@ -70,7 +71,7 @@ def t3a(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
 @task
 def t4(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
     # s3 (parquet) -> pandas -> s3 (parquet)
-    return dataset.open_as(pd.DataFrame)
+    return dataset.open(pd.DataFrame).all()
 
 
 @task
@@ -82,7 +83,7 @@ def t5(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
 @task
 def t6(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
     # bq -> pandas -> s3 (parquet)
-    df = dataset.open_as(pd.DataFrame)
+    df = dataset.open(pd.DataFrame).all()
     return df
 
 
@@ -98,7 +99,7 @@ def t8(dataframe: pa.Table) -> StructuredDataset[my_cols]:
     # Arrow table -> s3 (parquet)
     print("Arrow table")
     print(dataframe.columns)
-    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH, file_format=PARQUET)
+    return StructuredDataset(dataframe=dataframe, file_format=PARQUET)
 
 
 @task
@@ -114,12 +115,20 @@ class NumpyEncodingHandlers(StructuredDatasetEncoder):
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
     ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
-        df = structured_dataset.dataframe
+        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        if structured_dataset.dataframe is None:
+            if ctx.file_access.is_remote(path):
+                return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
+            else:
+                ctx.file_access.upload_directory(path, ctx.file_access.get_random_remote_directory())
+        df = typing.cast(np.ndarray, structured_dataset.dataframe)
         name = ["col" + str(i) for i in range(len(df))]
         table = pa.Table.from_arrays(df, name)
-        pq.write_table(table, path, filesystem=get_filesystem(path))
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format="parquet"))
+        local_dir = ctx.file_access.get_random_local_directory()
+        local_path = os.path.join(local_dir, f"{0:05}")
+        pq.write_table(table, local_path, filesystem=get_filesystem(local_path))
+        ctx.file_access.upload_directory(local_dir, path)
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
 
 
 class NumpyDecodingHandlers(StructuredDatasetDecoder):
@@ -129,12 +138,14 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
         flyte_value: literals.StructuredDataset,
     ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
         path = flyte_value.uri
-        table = pq.read_table(path, filesystem=get_filesystem(path))
+        local_dir = ctx.file_access.get_random_local_directory()
+        ctx.file_access.get_data(path, local_dir, is_multipart=True)
+        table = pq.read_table(local_dir, filesystem=get_filesystem(local_dir))
         return table.to_pandas().to_numpy()
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "local", "parquet"))
-FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "local", "parquet"))
+FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "/", "parquet"))
+FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "/", "parquet"))
 
 
 @task
@@ -146,7 +157,7 @@ def t9(dataframe: np.ndarray) -> StructuredDataset[my_cols]:
 @task
 def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
     # s3 (parquet) -> Arrow table -> numpy
-    np_array = dataset.open_as(np.ndarray)
+    np_array = dataset.open(np.ndarray).all()
     return np_array
 
 
@@ -157,7 +168,7 @@ def t11(dataframe: pyspark.sql.dataframe.DataFrame) -> StructuredDataset[my_cols
 
 @task
 def t12(dataset: StructuredDataset[my_cols]) -> pyspark.sql.dataframe.DataFrame:
-    spark_df = dataset.open_as(pyspark.sql.dataframe.DataFrame)
+    spark_df = dataset.open(pyspark.sql.dataframe.DataFrame).all()
     return spark_df
 
 
