@@ -339,15 +339,27 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # StructuredDataset instance.
         if issubclass(python_type, StructuredDataset):
             assert isinstance(python_val, StructuredDataset)
+            # There are three cases that we need to take care of here.
+
+            # 1. A task returns a StructuredDataset that was just a passthrough input. If this happens
+            # then return the original literals.StructuredDataset without invoking any encoder
+            #
+            # Ex.
+            #   def t1(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
+            #       return dataset
+            if python_val._literal_sd is not None:
+                if python_val.dataframe is not None:
+                    raise ValueError(f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}")
+                return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
+
+            # 2. A task returns a python StructuredDataset with a uri.
+            # Note: this case is also what happens we start a local execution of a task with a python StructuredDataset.
+            #  It gets converted into a literal first, then back into a python StructuredDataset.
+            #
+            # Ex.
+            #   def t2(uri: str) -> StructuredDataset[my_cols]
+            #       return StructuredDataset(uri=uri)
             format = python_val._file_format
-            # If task output return a StructuredDataset without dataframe, we can
-            # directly convert it to literal without invoking encoder.
-            # For example,
-            # def t1(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
-            #     return dataset
-            # or
-            # def t2(uri: str) -> StructuredDataset[my_cols]
-            #     return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
                 sd_model = literals.StructuredDataset(
                     uri=python_val.uri,
@@ -356,6 +368,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                     ),
                 )
                 return Literal(scalar=Scalar(structured_dataset=sd_model))
+
+            # 3. This is the third and probably most common case. The python StructuredDataset object wraps a dataframe
+            # that we will need to invoke an encoder for. Figure out which encoder to call and invoke it.
             df_type = type(python_val.dataframe)
             if python_val.uri is None:
                 protocol = self.DEFAULT_PROTOCOLS[df_type]
