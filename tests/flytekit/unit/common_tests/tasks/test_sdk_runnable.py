@@ -29,6 +29,7 @@ def test_basic_unit_test():
         False,
         None,
         {},
+        False,
         None,
     )
     t.add_inputs({"value_in": interface.Variable(primitives.Integer.to_flyte_literal_type(), "")})

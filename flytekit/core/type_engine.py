@@ -283,12 +283,26 @@ class DataclassTransformer(TypeTransformer[object]):
 
         for f in dataclasses.fields(python_type):
             v = python_val.__getattribute__(f.name)
-            if inspect.isclass(f.type) and (
-                issubclass(f.type, FlyteSchema) or issubclass(f.type, FlyteFile) or issubclass(f.type, FlyteDirectory)
+            field_type = f.type
+            if inspect.isclass(field_type) and (
+                issubclass(field_type, FlyteSchema)
+                or issubclass(field_type, FlyteFile)
+                or issubclass(field_type, FlyteDirectory)
             ):
-                TypeEngine.to_literal(FlyteContext.current_context(), v, f.type, None)
-            elif dataclasses.is_dataclass(f.type):
-                self._serialize_flyte_type(v, f.type)
+                lv = TypeEngine.to_literal(FlyteContext.current_context(), v, field_type, None)
+                # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
+                # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
+                # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
+                # so that dataclass_json can always get a remote path.
+                # In other words, the file transformer has special code that handles the fact that if remote_source is
+                # set, then the real uri in the literal should be the remote source, not the path (which may be an
+                # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
+                # as determined by the transformer.
+                if issubclass(field_type, FlyteFile) or issubclass(field_type, FlyteDirectory):
+                    python_val.__setattr__(f.name, field_type(path=lv.scalar.blob.uri))
+
+            elif dataclasses.is_dataclass(field_type):
+                self._serialize_flyte_type(v, field_type)
 
     def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> T:
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer

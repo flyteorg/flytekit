@@ -72,6 +72,7 @@ class TaskMetadata(object):
 
     Args:
         cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`
+        cache_serialize (bool): Indicates if identical (ie. same inputs) instances of this task should be executed in serial when caching is enabled. See :std:ref:`Caching <cookbook:caching>`
         cache_version (str): Version to be used for the cached value
         interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with
             lower QoS guarantees that can include pre-emption. This can reduce the monetary cost executions incur at the
@@ -85,6 +86,7 @@ class TaskMetadata(object):
     """
 
     cache: bool = False
+    cache_serialize: bool = False
     cache_version: str = ""
     interruptible: Optional[bool] = None
     deprecated: str = ""
@@ -99,6 +101,8 @@ class TaskMetadata(object):
                 raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
         if self.cache and not self.cache_version:
             raise ValueError("Caching is enabled ``cache=True`` but ``cache_version`` is not set.")
+        if self.cache_serialize and not self.cache:
+            raise ValueError("Cache serialize is enabled ``cache_serialize=True`` but ``cache`` is not enabled.")
 
     @property
     def retry_strategy(self) -> _literal_models.RetryStrategy:
@@ -120,6 +124,7 @@ class TaskMetadata(object):
             interruptible=self.interruptible,
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
+            cache_serializable=self.cache_serialize,
         )
 
 

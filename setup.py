@@ -23,7 +23,7 @@ elif CURRENT_PYTHON < MIN_PYTHON_VERSION:
 spark = ["pyspark>=2.4.0,<3.0.0"]
 spark3 = ["pyspark>=3.0.0"]
 sidecar = ["k8s-proto>=0.0.3,<1.0.0"]
-schema = ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=6.0.0"]
+schema = ["numpy>=1.14.0,<2.0.0", "pandas>=0.22.0,<2.0.0", "pyarrow>=4.0.0"]
 hive_sensor = ["hmsclient>=0.0.1,<1.0.0"]
 notebook = ["papermill>=1.2.0", "nbconvert>=6.0.7", "ipykernel>=5.0.0,<6.0.0"]
 sagemaker = ["sagemaker-training>=3.6.2,<4.0.0"]
@@ -67,7 +67,7 @@ setup(
         "flyteidl>=0.21.4",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
-        "pyarrow>=6.0.0,<7.0.0",
+        "pyarrow>=4.0.0,<7.0.0",
         "click>=6.6,<8.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
@@ -76,7 +76,7 @@ setup(
         "protobuf>=3.6.1,<4",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
-        "pytz>=2017.2,<2018.5",
+        "pytz",
         "keyring>=18.0.1",
         "requests>=2.18.4,<3.0.0",
         "responses>=0.10.7",
@@ -112,6 +112,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
