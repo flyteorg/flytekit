@@ -321,7 +321,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             self.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
 
         # Register with the type engine as well
-        TypeEngine.register_additional_type(self, h.python_type, True)
+        # The semantics as of now are such that it doesn't matter which order these transformers are loaded in, as
+        # long as the older Pandas/FlyteSchema transformer do not also specify the override
+        TypeEngine.register_additional_type(self, h.python_type, override=True)
 
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
@@ -386,6 +388,19 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return Literal(scalar=Scalar(structured_dataset=sd_model))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        # The literal that we get in might be an old FlyteSchema
+        # If we can successfully port FlyteSchema over to using the new type, this conditional should be
+        # removed prior to merging the main PR
+        if lv.scalar.schema is not None:
+            if issubclass(expected_python_type, StructuredDataset):
+                raise ValueError("We do not support FlyteSchema -> StructuredDataset transformations")
+            else:
+                sd_literal = literals.StructuredDataset(
+                    uri=lv.scalar.schema.uri,
+                    metadata=literals.StructuredDatasetMetadata(format=self.DEFAULT_FORMATS[expected_python_type]),
+                )
+                return self.open_as(ctx, sd_literal, df_type=expected_python_type)
+
         # Either a StructuredDataset type or some dataframe type.
         if issubclass(expected_python_type, StructuredDataset):
             # Just save the literal for now. If in the future we find that we need the StructuredDataset type hint
