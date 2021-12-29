@@ -38,11 +38,6 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
 
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
-        if structured_dataset.dataframe is None:
-            if ctx.file_access.is_remote(path):
-                return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
-            else:
-                ctx.file_access.upload_directory(path, ctx.file_access.get_random_remote_directory())
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = os.path.join(local_dir, f"{0:05}")

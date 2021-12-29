@@ -116,11 +116,6 @@ class NumpyEncodingHandlers(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
-        if structured_dataset.dataframe is None:
-            if ctx.file_access.is_remote(path):
-                return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
-            else:
-                ctx.file_access.upload_directory(path, ctx.file_access.get_random_remote_directory())
         df = typing.cast(np.ndarray, structured_dataset.dataframe)
         name = ["col" + str(i) for i in range(len(df))]
         table = pa.Table.from_arrays(df, name)
