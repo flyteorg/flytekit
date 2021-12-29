@@ -2,8 +2,6 @@ import pandas
 
 from flytekit import kwtypes, task, workflow
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
-from flytekit.types.structured.structured_dataset import StructuredDatasetType
-
 
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema

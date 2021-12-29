@@ -1,16 +1,10 @@
 import typing
 
-from flytekit.core import context_manager
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 import pandas as pd
 import pyarrow as pa
 
 from flytekit import kwtypes
+from flytekit.core import context_manager
 from flytekit.types.structured import basic_dfs
 from flytekit.types.structured.structured_dataset import StructuredDataset
 

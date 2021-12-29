@@ -1,3 +1,4 @@
+import os
 import typing
 from typing import Annotated
 
@@ -21,8 +22,8 @@ from flytekit.types.structured.structured_dataset import (
 )
 from flytekit.types.structured.utils import get_filesystem
 
-PANDAS_PATH = "/tmp/pandas.pq"
-NUMPY_PATH = "/tmp/numpy.pq"
+PANDAS_PATH = "/tmp/pandas"
+NUMPY_PATH = "/tmp/numpy"
 BQ_PATH = "bq://photo-313016:flyte.new_table3"
 
 # https://github.com/flyteorg/flyte/issues/523
@@ -42,7 +43,7 @@ def t1(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, my_cols]:
 @task
 def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, PARQUET]:
     # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
-    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH, file_format=PARQUET)
+    return StructuredDataset(dataframe=dataframe, file_format=PARQUET)
 
 
 @task
@@ -98,7 +99,7 @@ def t8(dataframe: pa.Table) -> StructuredDataset[my_cols]:
     # Arrow table -> s3 (parquet)
     print("Arrow table")
     print(dataframe.columns)
-    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH, file_format=PARQUET)
+    return StructuredDataset(dataframe=dataframe, file_format=PARQUET)
 
 
 @task
@@ -114,12 +115,20 @@ class NumpyEncodingHandlers(StructuredDatasetEncoder):
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
     ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
-        df = structured_dataset.dataframe
+        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        if structured_dataset.dataframe is None:
+            if ctx.file_access.is_remote(path):
+                return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
+            else:
+                ctx.file_access.upload_directory(path, ctx.file_access.get_random_remote_directory())
+        df = typing.cast(np.ndarray, structured_dataset.dataframe)
         name = ["col" + str(i) for i in range(len(df))]
         table = pa.Table.from_arrays(df, name)
-        pq.write_table(table, path, filesystem=get_filesystem(path))
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format="parquet"))
+        local_dir = ctx.file_access.get_random_local_directory()
+        local_path = os.path.join(local_dir, f"{0:05}")
+        pq.write_table(table, local_path, filesystem=get_filesystem(local_path))
+        ctx.file_access.upload_directory(local_dir, path)
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
 
 
 class NumpyDecodingHandlers(StructuredDatasetDecoder):
@@ -129,7 +138,9 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
         flyte_value: literals.StructuredDataset,
     ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
         path = flyte_value.uri
-        table = pq.read_table(path, filesystem=get_filesystem(path))
+        local_dir = ctx.file_access.get_random_local_directory()
+        ctx.file_access.get_data(path, local_dir, is_multipart=True)
+        table = pq.read_table(local_dir, filesystem=get_filesystem(local_dir))
         return table.to_pandas().to_numpy()
 
 

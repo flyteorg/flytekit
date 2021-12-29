@@ -942,7 +942,6 @@ def test_wf_typed_schema():
 
 
 def test_wf_schema_to_df():
-    from flytekit.types.structured.structured_dataset import StructuredDatasetType
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
 
     @task

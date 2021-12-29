@@ -12,7 +12,6 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import task_mock
 from flytekit.core.workflow import workflow
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDatasetType
 
 # Global counter used to validate number of calls to cache
 n_cached_task_calls = 0
