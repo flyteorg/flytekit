@@ -1,5 +1,6 @@
 import datetime
 import os
+import tempfile
 import typing
 from dataclasses import asdict, dataclass
 from datetime import timedelta
@@ -23,6 +24,7 @@ from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
     ListTransformer,
+    LiteralsResolver,
     SimpleTransformer,
     TypeEngine,
     convert_json_schema_to_python_class,
@@ -33,9 +35,10 @@ from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
-from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
@@ -358,6 +361,14 @@ def test_guessing_basic():
     pt = TypeEngine.guess_python_type(lt)
     assert pt is None
 
+    lt = model_types.LiteralType(
+        blob=BlobType(
+            format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
+        )
+    )
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is FlytePickle
+
 
 def test_guessing_containers():
     b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
@@ -459,7 +470,6 @@ def test_dataclass_transformer():
             },
         },
     }
-
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
     assert t is not None
@@ -509,6 +519,74 @@ def test_dataclass_int_preserving():
     assert ot == o
 
 
+def test_flyte_file_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class TestInnerFileStruct(object):
+        a: JPEGImageFile
+        b: typing.List[FlyteFile]
+        c: typing.Dict[str, FlyteFile]
+
+    @dataclass_json
+    @dataclass
+    class TestFileStruct(object):
+        a: FlyteFile
+        b: TestInnerFileStruct
+
+    f = FlyteFile("s3://tmp/file")
+    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f], c={"hello": f}))
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct)
+    lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
+
+    assert o.a.path == ot.a.remote_source
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].remote_source
+    assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+
+
+def test_flyte_directory_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class TestInnerFileStruct(object):
+        a: TensorboardLogs
+        b: typing.List[FlyteDirectory]
+        c: typing.Dict[str, FlyteDirectory]
+
+    @dataclass_json
+    @dataclass
+    class TestFileStruct(object):
+        a: FlyteDirectory
+        b: TestInnerFileStruct
+
+    tempdir = tempfile.mkdtemp(prefix="flyte-")
+    f = FlyteDirectory(tempdir)
+    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f], c={"hello": f}))
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct)
+    lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
+
+    assert o.a.path == ot.a.path
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].path
+    assert o.b.c["hello"].path == ot.b.c["hello"].path
+
+
 # Enums should have string values
 class Color(Enum):
     RED = "red"
@@ -552,6 +630,25 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+def test_pickle_type():
+    class Foo(object):
+        def __init__(self, number: int):
+            self.number = number
+
+    lt = TypeEngine.to_literal_type(FlytePickle)
+    assert lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+    assert lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, Foo(1), FlytePickle, lt)
+    assert "/tmp/flyte/" in lv.scalar.blob.uri
+
+    transformer = FlytePickleTransformer()
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert Foo(1).number == pv.number
 
 
 def test_enum_in_dataclass():
@@ -753,3 +850,61 @@ def test_schema_in_dataclass():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
     assert o == ot
+
+
+@pytest.mark.parametrize(
+    "literal_value,python_type,expected_python_value",
+    [
+        (
+            Literal(
+                collection=LiteralCollection(
+                    literals=[
+                        Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                        Literal(scalar=Scalar(primitive=Primitive(integer=2))),
+                        Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                    ]
+                )
+            ),
+            typing.List[int],
+            [1, 2, 3],
+        ),
+        (
+            Literal(
+                map=LiteralMap(
+                    literals={
+                        "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
+                        "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
+                    },
+                )
+            ),
+            typing.Dict[str, str],
+            {"k1": "v1", "k2": "2"},
+        ),
+    ],
+)
+def test_literals_resolver(literal_value, python_type, expected_python_value):
+    lit_dict = {"a": literal_value}
+
+    lr = LiteralsResolver(lit_dict)
+    out = lr.get("a", python_type)
+    assert out == expected_python_value
+
+
+def test_guess_of_dataclass():
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        x: int
+        y: str
+        z: typing.Dict[str, int]
+
+        def hello(self):
+            ...
+
+    lt = TypeEngine.to_literal_type(Foo)
+    foo = Foo(1, "hello", {"world": 3})
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), foo, Foo, lt)
+    lit_dict = {"a": lv}
+    lr = LiteralsResolver(lit_dict)
+    assert lr.get("a", Foo) == foo
+    assert hasattr(lr.get("a", Foo), "hello") is True

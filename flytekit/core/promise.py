@@ -500,7 +500,7 @@ def create_task_output(
     if len(promises) == 1:
         if not entity_interface:
             return promises[0]
-        # See transform_signature_to_interface for more information, we're using the existence of a name as a proxy
+        # See transform_function_to_interface for more information, we're using the existence of a name as a proxy
         # for the user having specified a one-element typing.NamedTuple, which means we should _not_ extract it. We
         # should still return a tuple but it should be one of ours.
         if not entity_interface.output_tuple_name:
