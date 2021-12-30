@@ -48,7 +48,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings, get_image_config
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
@@ -235,9 +235,17 @@ class FlyteRemote(object):
         # Not exposing this as a property for now.
         self._entrypoint_settings = entrypoint_settings
 
+        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
+            sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
+        )
+        self._file_access = file_access or FileAccessProvider(
+            local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
+            raw_output_prefix=raw_output_data_prefix,
+        )
         # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
-        self._file_access = file_access
+        FlyteContextManager.with_context(
+            FlyteContextManager.current_context().with_file_access(self._file_access).build()
+        )
 
         # TODO: Reconsider whether we want this. Probably best to not cache.
         self._serialized_entity_cache = OrderedDict()
@@ -1109,6 +1117,14 @@ class FlyteRemote(object):
         """
         # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
         node_id = execution.metadata.spec_node_id
+        # This case supports single-task execution compiled workflows.
+        if node_id and node_id not in node_mapping and execution.id.node_id in node_mapping:
+            node_id = execution.id.node_id
+            remote_logger.debug(
+                f"Using node execution ID {node_id} instead of spec node id "
+                f"{execution.metadata.spec_node_id}, single-task execution likely."
+            )
+        # This case supports single-task execution compiled workflows with older versions of admin/propeller
         if not node_id:
             node_id = execution.id.node_id
             remote_logger.debug(f"No metadata spec_node_id found, using {node_id}")
@@ -1255,15 +1271,19 @@ class FlyteRemote(object):
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         with self.remote_context() as ctx:
+            input_literal_map = self._get_input_literal_map(execution_data)
+            execution._raw_inputs = LiteralsResolver(input_literal_map.literals)
             execution._inputs = TypeEngine.literal_map_to_kwargs(
                 ctx=ctx,
-                lm=self._get_input_literal_map(execution_data),
+                lm=input_literal_map,
                 python_types=TypeEngine.guess_python_types(interface.inputs),
             )
             if execution.is_complete and not execution.error:
+                output_literal_map = self._get_output_literal_map(execution_data)
+                execution._raw_outputs = LiteralsResolver(output_literal_map.literals)
                 execution._outputs = TypeEngine.literal_map_to_kwargs(
                     ctx=ctx,
-                    lm=self._get_output_literal_map(execution_data),
+                    lm=output_literal_map,
                     python_types=TypeEngine.guess_python_types(interface.outputs),
                 )
         return execution

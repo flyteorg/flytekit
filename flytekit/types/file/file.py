@@ -3,6 +3,10 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
+from dataclasses import dataclass, field
+
+from dataclasses_json import config, dataclass_json
+from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -10,6 +14,7 @@ from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
 def noop():
@@ -19,7 +24,10 @@ def noop():
 T = typing.TypeVar("T")
 
 
+@dataclass_json
+@dataclass
 class FlyteFile(os.PathLike, typing.Generic[T]):
+    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -137,7 +145,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     def extension(cls) -> str:
         return ""
 
-    def __class_getitem__(cls, item: typing.Type) -> typing.Type[FlyteFile]:
+    def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
         if item is None:
             return cls
         item_string = str(item)
@@ -155,14 +163,18 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
         return _SpecificFormatClass
 
-    def __init__(self, path: str, downloader: typing.Callable = noop, remote_path=None):
+    def __init__(
+        self, path: typing.Union[str, os.PathLike], downloader: typing.Callable = noop, remote_path: os.PathLike = None
+    ):
         """
         :param path: The source path that users are expected to call open() on
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
         """
-        self._path = path
+        # Make this field public, so that the dataclass transformer can set a value for it
+        # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
+        self.path = path
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
@@ -173,29 +185,25 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         if not self._downloaded:
             self._downloader()
             self._downloaded = True
-        return self._path
+        return self.path
 
     def __eq__(self, other):
         if isinstance(other, FlyteFile):
             return (
-                self._path == other._path
+                self.path == other.path
                 and self._remote_path == other._remote_path
                 and self.extension() == other.extension()
             )
         else:
-            return self._path == other
+            return self.path == other
 
     @property
     def downloaded(self) -> bool:
         return self._downloaded
 
     @property
-    def remote_path(self) -> typing.Optional[str]:
+    def remote_path(self) -> os.PathLike:
         return self._remote_path
-
-    @property
-    def path(self) -> str:
-        return self._path
 
     @property
     def remote_source(self) -> str:
@@ -209,10 +217,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return self.__fspath__()
 
     def __repr__(self):
-        return self._path
+        return self.path
 
     def __str__(self):
-        return self._path
+        return self.path
 
 
 class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
@@ -220,10 +228,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
     @staticmethod
-    def get_format(t: typing.Union[typing.Type[FlyteFile]]) -> str:
+    def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
         if t is os.PathLike:
             return ""
-        return t.extension()
+        return typing.cast(FlyteFile, t).extension()
 
     def _blob_type(self, format: str) -> BlobType:
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
@@ -316,11 +324,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile]]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
 
         uri = lv.scalar.blob.uri
-
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
         # Using is instead of issubclass because FlyteFile does actually subclass it
         if expected_python_type is os.PathLike:
@@ -342,14 +349,18 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        ff = FlyteFile[expected_format](local_path, _downloader)
+        ff = FlyteFile.__class_getitem__(expected_format)(local_path, _downloader)
         ff._remote_source = uri
 
         return ff
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
-        if literal_type.blob is not None and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
-            return FlyteFile[typing.TypeVar(literal_type.blob.format)]
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format != FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+        ):
+            return FlyteFile.__class_getitem__(literal_type.blob.format)
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 

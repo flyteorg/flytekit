@@ -156,6 +156,8 @@ def test_fetch_execute_task(flyteclient, flyte_workflows_register):
     execution = remote.execute(flyte_task, {"a": 10}, wait=True)
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
+    assert execution.raw_inputs.get("a", int) == 10
+    assert execution.raw_outputs.get("c", str) == "world"
 
 
 def test_execute_python_task(flyteclient, flyte_workflows_register, flyte_remote_env):
