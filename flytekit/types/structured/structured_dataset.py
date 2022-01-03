@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import collections
+import inspect
+import os
 import re
 import types
 import typing
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
+
+from dataclasses_json import config, dataclass_json
+from marshmallow import fields
 
 try:
     from typing import Annotated, get_args, get_origin
@@ -28,15 +34,19 @@ from flytekit.models.types import LiteralType, StructuredDatasetType
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
 
-BIGQUERY = "bq"
-S3 = "s3"
+BIGQUERY = "bq://"
+S3 = "s3://"
 LOCAL = "/"
 
 # Dataset File format
 PARQUET = "parquet"
 
 
+@dataclass_json
+@dataclass
 class StructuredDataset(object):
+    uri: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    file_format: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the user facing StructuredDataset class. Please don't confuse it with the literals.StructuredDataset
     class (that is just a model, a Python class representation of the protobuf).
@@ -95,8 +105,10 @@ class StructuredDataset(object):
         metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
     ):
         self._dataframe = dataframe
-        self._uri = uri
-        self._file_format = file_format
+        # Make these fields public, so that the dataclass transformer can set a value for it
+        # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
+        self.uri = uri
+        self.file_format = file_format
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._metadata = metadata
         # This is not for users to set, the transformer will set this.
@@ -107,18 +119,6 @@ class StructuredDataset(object):
     @property
     def dataframe(self) -> Type[typing.Any]:
         return self._dataframe
-
-    @property
-    def uri(self) -> Optional[str]:
-        return self._uri
-
-    @uri.setter
-    def uri(self, uri: str):
-        self._uri = uri
-
-    @classmethod
-    def file_format(cls) -> str:
-        return ""
 
     @property
     def metadata(self) -> Optional[StructuredDatasetMetadata]:
@@ -248,7 +248,7 @@ class StructuredDatasetDecoder(ABC):
 def protocol_prefix(uri: str) -> str:
     g = re.search(r"([\w]+)://.*", uri)
     if g and g.groups():
-        return g.groups()[0]
+        return g.groups()[0] + "://"
     return LOCAL
 
 
@@ -337,7 +337,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     ) -> Literal:
         # If the type signature has the StructuredDataset class, it will, or at least should, also be a
         # StructuredDataset instance.
-        if issubclass(python_type, StructuredDataset):
+        if inspect.isclass(python_type) and issubclass(python_type, StructuredDataset):
             assert isinstance(python_val, StructuredDataset)
             # There are three cases that we need to take care of here.
 
@@ -361,7 +361,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             # Ex.
             #   def t2(uri: str) -> StructuredDataset[my_cols]
             #       return StructuredDataset(uri=uri)
-            format = python_val._file_format
+            format = python_val.file_format
             if python_val.dataframe is None:
                 if not python_val.uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
@@ -380,7 +380,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 protocol = self.DEFAULT_PROTOCOLS[df_type]
             else:
                 protocol = protocol_prefix(python_val.uri)
-            format = python_val._file_format
+            format = python_val.file_format
             return self.encode(
                 ctx,
                 python_val,
@@ -390,6 +390,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             )
 
         # Otherwise assume it's a dataframe instance. Wrap it with some defaults
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
         fmt = self.DEFAULT_FORMATS[python_type]
         protocol = self.DEFAULT_PROTOCOLS[python_type]
         meta = StructuredDatasetMetadata(format=fmt, structured_dataset_type=expected.structured_dataset_type)
@@ -486,11 +488,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                     external_schema_bytes=typing.cast(pa.lib.Schema, hint_args[0]).to_string().encode(),
                 )
         # 2. Fill in columns by checking for StructuredDataset metadata. For example, StructuredDataset[my_cols, parquet]
-        elif issubclass(t, StructuredDataset):
+        elif inspect.isclass(t) and issubclass(t, StructuredDataset):
             for k, v in t.columns().items():
                 lt = self._get_dataset_column_literal_type(v)
                 converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
-            return StructuredDatasetType(columns=converted_cols, format=t.file_format())
+            return StructuredDatasetType(columns=converted_cols, format=str(t.file_format))
         # 3. pd.Dataframe
         else:
             return StructuredDatasetType(columns=converted_cols, format=PARQUET)

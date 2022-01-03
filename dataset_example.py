@@ -22,8 +22,8 @@ from flytekit.types.structured.structured_dataset import (
 )
 from flytekit.types.structured.utils import get_filesystem
 
-PANDAS_PATH = "/tmp/pandas"
-NUMPY_PATH = "/tmp/numpy"
+PANDAS_PATH = "s3://flyte-batch/my-s3-bucket/test-data/pandas"
+NUMPY_PATH = "s3://flyte-batch/my-s3-bucket/test-data/numpy"
 BQ_PATH = "bq://photo-313016:flyte.new_table3"
 
 # https://github.com/flyteorg/flyte/issues/523
@@ -43,7 +43,7 @@ def t1(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, my_cols]:
 @task
 def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, PARQUET]:
     # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
-    return StructuredDataset(dataframe=dataframe, file_format=PARQUET)
+    return StructuredDataset(dataframe=dataframe, file_format=PARQUET, uri=PANDAS_PATH)
 
 
 @task
@@ -55,7 +55,7 @@ def t2(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, arrow_schema]:
 @task
 def t3(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
     # s3 (parquet) -> pandas -> s3 (parquet)
-    print("Pandas dataframe")
+    print("Pandas dataframe:")
     print(dataset.open(pd.DataFrame).all())
     # In the example, we download dataset when we open it.
     # Here we won't upload anything, since we're returning just the input object.
@@ -91,7 +91,7 @@ def t6(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
 def t7(df1: pd.DataFrame, df2: pd.DataFrame) -> (StructuredDataset[my_cols], StructuredDataset[my_cols]):
     # df1: pandas -> bq
     # df2: pandas -> s3 (parquet)
-    return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df1, file_format=PARQUET)
+    return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df2, file_format=PARQUET)
 
 
 @task
@@ -141,6 +141,8 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
 
 FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "/", "parquet"))
 FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "/", "parquet"))
+FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "s3://", "parquet"))
+FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "s3://", "parquet"))
 
 
 @task

@@ -42,6 +42,7 @@ from flytekit.models.literals import (
     Primitive,
     Scalar,
     Schema,
+    StructuredDatasetMetadata,
 )
 from flytekit.models.types import LiteralType, SimpleType
 
@@ -280,6 +281,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.directory.types import FlyteDirectory
         from flytekit.types.file import FlyteFile
         from flytekit.types.schema.types import FlyteSchema
+        from flytekit.types.structured.structured_dataset import StructuredDataset
 
         for f in dataclasses.fields(python_type):
             v = python_val.__getattribute__(f.name)
@@ -288,6 +290,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 issubclass(field_type, FlyteSchema)
                 or issubclass(field_type, FlyteFile)
                 or issubclass(field_type, FlyteDirectory)
+                or issubclass(field_type, StructuredDataset)
             ):
                 lv = TypeEngine.to_literal(FlyteContext.current_context(), v, field_type, None)
                 # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
@@ -300,6 +303,14 @@ class DataclassTransformer(TypeTransformer[object]):
                 # as determined by the transformer.
                 if issubclass(field_type, FlyteFile) or issubclass(field_type, FlyteDirectory):
                     python_val.__setattr__(f.name, field_type(path=lv.scalar.blob.uri))
+                elif issubclass(field_type, StructuredDataset):
+                    python_val.__setattr__(
+                        f.name,
+                        field_type(
+                            uri=lv.scalar.structured_dataset.uri,
+                            file_format=lv.scalar.structured_dataset.metadata.format,
+                        ),
+                    )
 
             elif dataclasses.is_dataclass(field_type):
                 self._serialize_flyte_type(v, field_type)
@@ -308,6 +319,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
         from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+        from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         if not dataclasses.is_dataclass(expected_python_type):
             return python_val
@@ -348,6 +360,19 @@ class DataclassTransformer(TypeTransformer[object]):
                                 )
                             ),
                             uri=python_val.path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, StructuredDataset):
+            return StructuredDatasetTransformerEngine().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        structured_dataset=StructuredDataset(
+                            metadata=StructuredDatasetMetadata(format=python_val.file_format),
+                            uri=python_val.uri,
                         )
                     )
                 ),

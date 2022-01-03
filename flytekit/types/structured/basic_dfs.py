@@ -17,6 +17,7 @@ from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
     LOCAL,
     PARQUET,
+    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -116,7 +117,7 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
         return spark.read.parquet(path)
 
 
-for protocol in [LOCAL]:  # Think how to add S3 and GCS
+for protocol in [LOCAL, S3]:  # Think how to add S3 and GCS
     FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandler(protocol), default_for_type=True)
     FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
     FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandler(pa.Table, protocol, PARQUET))
