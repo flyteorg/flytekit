@@ -183,7 +183,7 @@ class RawSynchronousFlyteClient(object):
     be explicit as opposed to inferred from the environment or a configuration file.
     """
 
-    def __init__(self, url, insecure=False, credentials=None, options=None):
+    def __init__(self, url, insecure=False, credentials=None, options=None, root_cert_file=None):
         """
         Initializes a gRPC channel to the given Flyte Admin service.
 
@@ -192,8 +192,7 @@ class RawSynchronousFlyteClient(object):
         :param Text credentials: [Optional] If provided, a secure channel will be opened with the Flyte Admin Service.
         :param dict[Text, Text] options: [Optional] A dict of key-value string pairs for configuring the gRPC core
             runtime.
-        :param list[(Text,Text)] metadata: [Optional] metadata pairs to be transmitted to the
-            service-side of the RPC.
+        :param root_cert_file: Path to a local certificate file if you want.
         """
         self._channel = None
         self._url = url
@@ -201,9 +200,16 @@ class RawSynchronousFlyteClient(object):
         if insecure:
             self._channel = _insecure_channel(url, options=list((options or {}).items()))
         else:
+            if root_cert_file:
+                with open(root_cert_file, "rb") as fh:
+                    cert_bytes = fh.read()
+                channel_creds = _ssl_channel_credentials(root_certificates=cert_bytes)
+            else:
+                channel_creds = _ssl_channel_credentials()
+
             self._channel = _secure_channel(
                 url,
-                credentials or _ssl_channel_credentials(),
+                credentials or channel_creds,
                 options=list((options or {}).items()),
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)

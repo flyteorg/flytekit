@@ -18,6 +18,12 @@ def t1(a: int) -> str:
     return str(b)
 
 
+@task(cache=True, cache_version="1")
+def t2(a: int) -> str:
+    b = a + 2
+    return str(b)
+
+
 # This test is for documentation.
 def test_map_docs():
     # test_map_task_start
@@ -162,3 +168,11 @@ def test_inputs_outputs_length():
 
     with pytest.raises(ValueError):
         _ = map_task(many_inputs)
+
+
+def test_map_task_metadata():
+    map_meta = TaskMetadata(retries=1)
+    mapped_1 = map_task(t2, metadata=map_meta)
+    assert mapped_1.metadata is map_meta
+    mapped_2 = map_task(t2)
+    assert mapped_2.metadata is t2.metadata

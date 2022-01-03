@@ -60,6 +60,7 @@ def get_sample_task_metadata():
         True,
         "0.1.1b0",
         "This is deprecated!",
+        True,
     )
 
 
