@@ -254,9 +254,9 @@ def test_dict_wf_with_constants():
 
 """
 Update SD transformer so that it can to_python_value a Schema literal
-  - If a Schema literal is detected, copy the uri and use the new decoder to unwrap the uri  
+  - If a Schema literal is detected, copy the uri and use the new decoder to unwrap the uri
 Update FS transformer so that it can to_python_value a StructuredDataset literal
-  - If a StructuredDataset literal is detected, use the uri from that instead.  
+  - If a StructuredDataset literal is detected, use the uri from that instead.
 
 Update all plugins that can take in a FlyteSchema to also be able to take in a StructuredDataset.
 
