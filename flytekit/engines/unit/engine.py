@@ -7,7 +7,7 @@ from flyteidl.plugins import qubole_pb2 as _qubole_pb2
 from google.protobuf.json_format import ParseDict as _ParseDict
 from six import moves as _six_moves
 
-from flytekit.common import constants as _sdk_constants
+from flytekit.core import constants as _sdk_constants
 from flytekit.common import utils as _common_utils
 from flytekit.exceptions import system as _system_exception, user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers

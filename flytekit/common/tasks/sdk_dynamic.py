@@ -4,7 +4,7 @@ import os as _os
 
 import six as _six
 
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import launch_plan as _launch_plan
 from flytekit.common import sdk_bases as _sdk_bases

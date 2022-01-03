@@ -1,4 +1,4 @@
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers

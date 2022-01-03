@@ -7,9 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 from typing_extensions import Protocol
 
-from flytekit.common import constants as _common_constants
 from flytekit.exceptions import user as _user_exceptions
-from flytekit.core import context_manager as _flyte_context
+from flytekit.core import context_manager as _flyte_context, constants as _common_constants
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteContextManager

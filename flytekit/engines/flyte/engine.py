@@ -11,7 +11,7 @@ import flytekit
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.configuration import auth as _auth_config

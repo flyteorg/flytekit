@@ -1,4 +1,4 @@
-from flytekit.common import constants as _common_constants
+from flytekit.core import constants as _common_constants
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.contrib.sensors.base_sensor import Sensor as _Sensor

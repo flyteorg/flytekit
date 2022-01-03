@@ -12,7 +12,7 @@ from inspect import getfullargspec as _getargspec
 
 import six as _six
 
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils

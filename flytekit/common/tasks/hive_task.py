@@ -3,7 +3,7 @@ import uuid as _uuid
 import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.exceptions import scopes as _exception_scopes

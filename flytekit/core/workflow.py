@@ -5,7 +5,7 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from flytekit.common import constants as _common_constants
+from flytekit.core import constants as _common_constants
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions import FlyteValidationException, FlyteValueException
 from flytekit.core.base_task import PythonTask

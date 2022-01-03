@@ -2,7 +2,7 @@ import datetime as _datetime
 from typing import Dict, List
 
 import flytekit
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task

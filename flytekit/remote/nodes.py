@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging as _logging
 from typing import Dict, List, Optional, Union
 
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.exceptions import system as _system_exceptions, user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.core.promise import NodeOutput

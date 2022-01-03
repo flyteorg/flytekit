@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
-from flytekit.common.constants import SdkTaskType
+from flytekit.core.constants import SdkTaskType
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings

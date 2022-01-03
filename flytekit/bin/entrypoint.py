@@ -12,7 +12,7 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
 from flytekit.exceptions import scopes as _scoped_exceptions, scopes as _scopes

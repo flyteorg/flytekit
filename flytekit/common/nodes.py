@@ -8,7 +8,7 @@ from sortedcontainers import SortedDict as _SortedDict
 
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
 from flytekit.common import component_nodes as _component_nodes
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import promise as _promise
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils

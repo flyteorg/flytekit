@@ -1,7 +1,7 @@
 import datetime as _datetime
 from typing import List
 
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.common import sdk_bases as _sdk_bases

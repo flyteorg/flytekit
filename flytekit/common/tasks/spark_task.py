@@ -15,7 +15,7 @@ import six as _six
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 from flytekit.bin import entrypoint as _entrypoint
-from flytekit.common import constants as _constants
+from flytekit.core import constants as _constants
 from flytekit.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable

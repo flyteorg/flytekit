@@ -3,7 +3,7 @@ import os as _os
 import sys as _sys
 
 from flytekit.bin import entrypoint as _entrypoint
-from flytekit.common import constants as _common_constants
+from flytekit.core import constants as _common_constants
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import spark_task as _spark_task
 from flytekit.models import types as _type_models

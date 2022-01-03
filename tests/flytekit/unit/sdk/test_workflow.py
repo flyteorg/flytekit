@@ -1,6 +1,6 @@
 import pytest
 
-from flytekit.common import constants
+from flytekit.core import constants
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types, containers, primitives
 from flytekit.sdk.tasks import inputs, outputs, python_task

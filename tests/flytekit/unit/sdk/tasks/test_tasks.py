@@ -2,7 +2,7 @@ import datetime as _datetime
 import os as _os
 
 from flytekit import configuration as _configuration
-from flytekit.common import constants as _common_constants
+from flytekit.core import constants as _common_constants
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.models import task as _task_models
 from flytekit.models import types as _type_models

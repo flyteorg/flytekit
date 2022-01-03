@@ -25,7 +25,7 @@ from flytekit.configuration import internal
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.configuration import set_flyte_config_file
-from flytekit.core import context_manager
+from flytekit.core import context_manager, constants
 from flytekit.core.interface import Interface
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
@@ -39,7 +39,6 @@ except ImportError:
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.clis.flyte_cli.main import _detect_default_config_file
 from flytekit.clis.sdk_in_container import serialize
-from flytekit.common import constants
 from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
 from flytekit.configuration import auth as auth_config
 from flytekit.configuration.internal import DOMAIN, PROJECT
