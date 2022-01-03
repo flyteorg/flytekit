@@ -10,7 +10,7 @@ from typing import Dict, List
 from six import moves as _six_moves
 from six import text_type as _text_type
 
-from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
+from flytekit.exceptions import FlyteUserException as _FlyteUserException
 from flytekit.configuration import aws as _aws_config
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import common as _common_data

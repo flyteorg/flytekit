@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.exceptions import FlyteValidationException, FlyteValueException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional

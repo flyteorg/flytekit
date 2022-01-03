@@ -12,8 +12,7 @@ from flytekit.common import nodes as _nodes
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import workflow_execution as _workflow_execution
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import launchable as _launchable_mixin
 from flytekit.common.mixins import registerable as _registerable

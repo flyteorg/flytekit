@@ -1,4 +1,5 @@
-from flytekit.common.exceptions import base, user
+from flytekit.exceptions import user
+from flytekit.exceptions import base
 
 
 def test_flyte_user_exception():

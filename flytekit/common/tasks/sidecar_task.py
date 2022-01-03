@@ -3,7 +3,7 @@ from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 from flytekit.common import sdk_bases as _sdk_bases
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.models import task as _task_models

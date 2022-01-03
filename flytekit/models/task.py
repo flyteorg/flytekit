@@ -10,7 +10,7 @@ from flyteidl.plugins import spark_pb2 as _spark_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals

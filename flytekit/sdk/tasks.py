@@ -3,7 +3,7 @@ import datetime as _datetime
 import six as _six
 
 from flytekit.common import constants as _common_constants
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.tasks import generic_spark_task as _sdk_generic_spark_task
 from flytekit.common.tasks import hive_task as _sdk_hive_tasks
 from flytekit.common.tasks import sdk_dynamic as _sdk_dynamic

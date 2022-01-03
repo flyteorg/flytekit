@@ -2,7 +2,7 @@ import os
 import typing
 from shutil import which as shell_which
 
-from flytekit.common.exceptions.user import FlyteUserException
+from flytekit.exceptions import FlyteUserException
 from flytekit.configuration import gcp
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.tools import subprocess

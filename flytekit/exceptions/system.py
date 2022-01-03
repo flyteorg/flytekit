@@ -1,4 +1,4 @@
-from flytekit.common.exceptions import base as _base_exceptions
+from flytekit.exceptions import base as _base_exceptions
 
 
 class FlyteSystemException(_base_exceptions.FlyteRecoverableException):

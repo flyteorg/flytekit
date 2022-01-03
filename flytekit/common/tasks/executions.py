@@ -6,7 +6,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.mixins import artifact as _artifact_mixin
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.engines.flyte import engine as _flyte_engine

@@ -5,7 +5,7 @@ import pytest as _pytest
 from flytekit.common import component_nodes as _component_nodes
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
-from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.exceptions import system as _system_exceptions
 from flytekit.models import literals as _literals
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _core_workflow_models

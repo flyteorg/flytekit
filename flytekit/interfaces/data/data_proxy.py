@@ -1,6 +1,6 @@
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
-from flytekit.common.exceptions import user as _user_exception
+from flytekit.exceptions import user as _user_exception
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.interfaces.data.gcs import gcs_proxy as _gcs_proxy

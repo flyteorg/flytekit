@@ -2,7 +2,7 @@ import json as _json
 
 import six as _six
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.models import literals as _literals
 from flytekit.models import types as _idl_types

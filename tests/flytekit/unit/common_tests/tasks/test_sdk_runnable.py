@@ -1,7 +1,7 @@
 import pytest as _pytest
 
 from flytekit.common import constants as _common_constants
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.tasks import sdk_runnable
 from flytekit.common.types import primitives
 from flytekit.models import interface

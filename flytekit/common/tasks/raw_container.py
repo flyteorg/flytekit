@@ -4,7 +4,7 @@ from typing import Dict, List
 import flytekit
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
-from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types.base_sdk_types import FlyteSdkType
 from flytekit.configuration import resources as _resource_config

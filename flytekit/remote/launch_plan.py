@@ -1,7 +1,6 @@
 from typing import Optional
 
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine

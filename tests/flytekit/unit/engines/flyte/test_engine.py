@@ -5,7 +5,7 @@ from flyteidl.core import errors_pb2
 from mock import MagicMock, PropertyMock, patch
 
 from flytekit.common import constants, utils
-from flytekit.common.exceptions import scopes
+from flytekit.exceptions import scopes
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.engines.flyte import engine
 from flytekit.models import common as _common_models

@@ -1,7 +1,7 @@
 import six as _six
 
 from flytekit.common import sdk_bases as _sdk_bases
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models.core import identifier as _core_identifier
 
 

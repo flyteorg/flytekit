@@ -2,7 +2,7 @@ import pytest
 
 from flytekit import FlyteContextManager
 from flytekit.common import promise
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types, primitives
 from flytekit.core.interface import Interface
 from flytekit.core.promise import Promise, create_native_named_tuple, extract_obj_name

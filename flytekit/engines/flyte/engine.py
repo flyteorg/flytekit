@@ -13,8 +13,7 @@ from flytekit.clients.helpers import iterate_node_executions as _iterate_node_ex
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config

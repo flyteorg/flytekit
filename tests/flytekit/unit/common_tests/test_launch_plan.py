@@ -6,7 +6,7 @@ from flytekit import configuration as _configuration
 from flytekit.common import launch_plan as _launch_plan
 from flytekit.common import notifications as _notifications
 from flytekit.common import schedules as _schedules
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_models
 from flytekit.models import schedule as _schedule
 from flytekit.models import types as _type_models

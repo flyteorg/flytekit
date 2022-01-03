@@ -12,8 +12,8 @@ from flyteidl.core.errors_pb2 import ErrorDocument
 from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd, setup_execution
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
-from flytekit.common.exceptions import user as user_exceptions
-from flytekit.common.exceptions.scopes import system_entry_point
+from flytekit.exceptions import user as user_exceptions
+from flytekit.exceptions import system_entry_point
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.core import context_manager

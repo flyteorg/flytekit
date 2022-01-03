@@ -4,7 +4,7 @@ import responses as _responses
 from click.testing import CliRunner as _CliRunner
 
 from flytekit.clis.flyte_cli import main as _main
-from flytekit.common.exceptions.user import FlyteAssertion
+from flytekit.exceptions import FlyteAssertion
 from flytekit.common.types import primitives
 from flytekit.configuration import TemporaryConfiguration
 from flytekit.models import filters as _filters

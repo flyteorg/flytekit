@@ -4,7 +4,7 @@ from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flytekit.common import constants, interface
 from flytekit.common import local_workflow as _local_workflow
 from flytekit.common import nodes, promise, workflow
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.local_workflow import build_sdk_workflow_from_metaclass
 from flytekit.common.types import containers, primitives
 from flytekit.models import literals as _literals

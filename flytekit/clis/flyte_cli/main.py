@@ -28,7 +28,7 @@ from flytekit.common import launch_plan as _launch_plan_common
 from flytekit.common import utils as _utils
 from flytekit.common import workflow_execution as _workflow_execution_common
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.utils import load_proto_from_file as _load_proto_from_file

@@ -2,7 +2,7 @@ import abc as _abc
 import datetime as _datetime
 import time as _time
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_models
 
 

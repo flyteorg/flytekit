@@ -16,7 +16,7 @@ from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
 from flytekit import kwtypes
-from flytekit.common.exceptions import user as user_exceptions
+from flytekit.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
     DataclassTransformer,

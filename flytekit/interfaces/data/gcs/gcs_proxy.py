@@ -2,7 +2,7 @@ import os as _os
 import sys as _sys
 import uuid as _uuid
 
-from flytekit.common.exceptions.user import FlyteUserException as _FlyteUserException
+from flytekit.exceptions import FlyteUserException as _FlyteUserException
 from flytekit.configuration import gcp as _gcp_config
 from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import common as _common_data

@@ -1,6 +1,6 @@
 import requests as _requests
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.interfaces.data import common as _common_data
 
 

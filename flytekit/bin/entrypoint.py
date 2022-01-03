@@ -15,9 +15,8 @@ from flytekit import PythonFunctionTask
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
-from flytekit.common.exceptions import scopes as _scoped_exceptions
-from flytekit.common.exceptions import scopes as _scopes
-from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.exceptions import scopes as _scoped_exceptions, scopes as _scopes
+from flytekit.exceptions import system as _system_exceptions
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config

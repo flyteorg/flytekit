@@ -16,8 +16,8 @@ import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions.scopes import system_entry_point
-from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.exceptions import system_entry_point
+from flytekit.exceptions import FlyteValidationException
 from flytekit.common.tasks import task as _sdk_task
 from flytekit.common.translator import get_serializable
 from flytekit.common.utils import write_proto_to_file as _write_proto_to_file

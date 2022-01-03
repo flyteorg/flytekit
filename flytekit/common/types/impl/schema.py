@@ -6,8 +6,7 @@ import six as _six
 
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _utils
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types import helpers as _helpers
 from flytekit.common.types import primitives as _primitives

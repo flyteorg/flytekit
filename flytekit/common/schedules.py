@@ -4,7 +4,7 @@ import re as _re
 import croniter as _croniter
 
 from flytekit.common import sdk_bases as _sdk_bases
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import schedule as _schedule_models
 
 

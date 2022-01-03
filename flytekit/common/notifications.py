@@ -1,5 +1,5 @@
 from flytekit.common import sdk_bases as _sdk_bases
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_model
 from flytekit.models.core import execution as _execution_model
 

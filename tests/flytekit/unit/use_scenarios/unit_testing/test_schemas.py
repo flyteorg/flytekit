@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.test_utils import flyte_test
 from flytekit.sdk.types import Types

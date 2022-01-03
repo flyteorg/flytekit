@@ -3,7 +3,7 @@ import datetime
 import pytest
 from dateutil import tz
 
-from flytekit.common.exceptions import user as user_exceptions
+from flytekit.exceptions import user as user_exceptions
 from flytekit.common.types import base_sdk_types, primitives
 from flytekit.models import types as literal_types
 

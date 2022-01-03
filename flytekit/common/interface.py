@@ -2,7 +2,7 @@ import six as _six
 
 from flytekit.common import promise as _promise
 from flytekit.common import sdk_bases as _sdk_bases
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import containers as _containers
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.common.types import primitives as _primitives

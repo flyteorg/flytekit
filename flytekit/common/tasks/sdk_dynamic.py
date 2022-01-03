@@ -10,7 +10,7 @@ from flytekit.common import launch_plan as _launch_plan
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import workflow as _workflow
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.exceptions import scopes as _exception_scopes
 from flytekit.common.mixins import registerable as _registerable
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable

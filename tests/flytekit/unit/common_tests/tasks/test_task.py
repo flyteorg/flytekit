@@ -5,7 +5,7 @@ from flyteidl.admin import task_pb2 as _admin_task_pb2
 from mock import MagicMock as _MagicMock
 from mock import patch as _patch
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _task
 from flytekit.common.tasks.presto_task import SdkPrestoTask
 from flytekit.common.types import primitives

@@ -3,7 +3,7 @@ import pathlib
 
 import requests
 
-from flytekit.common.exceptions import user
+from flytekit.exceptions import user
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.loggers import logger
 

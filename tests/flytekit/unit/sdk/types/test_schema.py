@@ -1,6 +1,6 @@
 import pytest
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.sdk.tasks import inputs, outputs, python_task
 from flytekit.sdk.types import Types
 

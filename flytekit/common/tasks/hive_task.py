@@ -6,9 +6,9 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from flytekit.common import constants as _constants
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions.user import FlyteTypeException as _FlyteTypeException
-from flytekit.common.exceptions.user import FlyteValueException as _FlyteValueException
+from flytekit.exceptions import scopes as _exception_scopes
+from flytekit.exceptions import FlyteTypeException as _FlyteTypeException
+from flytekit.exceptions import FlyteValueException as _FlyteValueException
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import task as _base_task

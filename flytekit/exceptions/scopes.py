@@ -3,9 +3,8 @@ from traceback import format_tb as _format_tb
 
 from wrapt import decorator as _decorator
 
-from flytekit.common.exceptions import base as _base_exceptions
-from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import system as _system_exceptions, base as _base_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models.core import errors as _error_model
 
 

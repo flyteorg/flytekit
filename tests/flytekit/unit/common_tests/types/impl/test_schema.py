@@ -8,7 +8,7 @@ import pytest as _pytest
 import six.moves as _six_moves
 
 from flytekit.common import utils as _utils
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import blobs as _blobs
 from flytekit.common.types import primitives as _primitives
 from flytekit.common.types.impl import schema as _schema_impl

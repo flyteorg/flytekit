@@ -1,4 +1,4 @@
-from flytekit.common.exceptions import user as _user
+from flytekit.exceptions import user as _user
 
 
 class RecoverableException(_user.FlyteRecoverableException):

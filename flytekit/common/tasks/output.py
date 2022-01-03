@@ -1,4 +1,4 @@
-from flytekit.common.exceptions import scopes as _exception_scopes
+from flytekit.exceptions import scopes as _exception_scopes
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 
 

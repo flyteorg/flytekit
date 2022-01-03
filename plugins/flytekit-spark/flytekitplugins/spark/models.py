@@ -2,7 +2,7 @@ import typing
 
 from flyteidl.plugins import spark_pb2 as _spark_task
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.sdk.spark_types import SparkType as _spark_type
 

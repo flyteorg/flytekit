@@ -5,7 +5,7 @@ from collections import OrderedDict
 import pytest
 
 from flytekit import Resources, map_task
-from flytekit.common.exceptions.user import FlyteAssertion
+from flytekit.exceptions import FlyteAssertion
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig

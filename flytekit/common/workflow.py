@@ -6,9 +6,8 @@ from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
+from flytekit.exceptions import system as _system_exceptions
 from flytekit.common.launch_plan import SdkLaunchPlan
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.mixins import registerable as _registerable

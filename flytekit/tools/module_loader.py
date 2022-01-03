@@ -5,7 +5,7 @@ import pkgutil
 import sys
 from typing import Any, Iterator, List, Union
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.local_workflow import SdkRunnableWorkflow as _SdkRunnableWorkflow
 from flytekit.common.mixins import registerable as _registerable
 

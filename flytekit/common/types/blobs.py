@@ -1,4 +1,4 @@
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types.impl import blobs as _blob_impl
 from flytekit.models import literals as _literals

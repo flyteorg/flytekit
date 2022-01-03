@@ -17,8 +17,7 @@ from flytekit.common import interface as _interface
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types import helpers as _type_helpers

@@ -12,9 +12,8 @@ from flytekit.common import constants as _constants
 from flytekit.common import promise as _promise
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
+from flytekit.exceptions import system as _system_exceptions
 from flytekit.common.mixins import artifact as _artifact_mixin
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.tasks import executions as _task_executions

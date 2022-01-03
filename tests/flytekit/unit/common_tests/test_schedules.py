@@ -3,7 +3,7 @@ import datetime as _datetime
 import pytest as _pytest
 
 from flytekit.common import schedules as _schedules
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 
 
 def test_cron():

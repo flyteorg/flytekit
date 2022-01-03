@@ -9,7 +9,7 @@ from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.common.constants import SdkTaskType
-from flytekit.common.exceptions import scopes as exception_scopes
+from flytekit.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface

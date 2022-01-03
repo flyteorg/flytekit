@@ -9,7 +9,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.reflection import GeneratedProtocolMessageType
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.models import literals as _literals
 from flytekit.models import types as _idl_types

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Type
 
-from flytekit.common.exceptions.user import FlyteValidationException
+from flytekit.exceptions import FlyteValidationException
 from flytekit.core.launch_plan import ReferenceLaunchPlan
 from flytekit.core.task import ReferenceTask
 from flytekit.core.workflow import ReferenceWorkflow

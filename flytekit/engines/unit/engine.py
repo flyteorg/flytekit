@@ -9,8 +9,7 @@ from six import moves as _six_moves
 
 from flytekit.common import constants as _sdk_constants
 from flytekit.common import utils as _common_utils
-from flytekit.common.exceptions import system as _system_exception
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import system as _system_exception, user as _user_exceptions
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.engines import common as _common_engine

@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types.impl import blobs
 from flytekit.common.utils import AutoDeletingTempDir
 from flytekit.models.core import types as _core_types

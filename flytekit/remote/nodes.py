@@ -4,8 +4,7 @@ import logging as _logging
 from typing import Dict, List, Optional, Union
 
 from flytekit.common import constants as _constants
-from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import system as _system_exceptions, user as _user_exceptions
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.core.promise import NodeOutput
 from flytekit.models import launch_plan as _launch_plan_model

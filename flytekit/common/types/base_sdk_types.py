@@ -3,7 +3,7 @@ import abc as _abc
 from flyteidl.core.literals_pb2 import Literal
 
 from flytekit.common import sdk_bases as _sdk_bases
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common_models
 from flytekit.models import literals as _literal_models
 

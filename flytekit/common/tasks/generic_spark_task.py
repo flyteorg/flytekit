@@ -5,8 +5,7 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 
 from flytekit import __version__
 from flytekit.common import interface as _interface
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.common.tasks import task as _base_tasks
 from flytekit.common.types import helpers as _helpers
 from flytekit.common.types import primitives as _primitives

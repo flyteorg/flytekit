@@ -1,5 +1,5 @@
-from flytekit.common.exceptions.base import FlyteException as _FlyteException
-from flytekit.common.exceptions.base import FlyteRecoverableException as _Recoverable
+from flytekit.exceptions.base import FlyteException as _FlyteException
+from flytekit.exceptions.base import FlyteRecoverableException as _Recoverable
 
 
 class FlyteUserException(_FlyteException):

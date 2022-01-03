@@ -1,6 +1,7 @@
 import pytest
 
-from flytekit.common.exceptions import scopes, system, user
+from flytekit.exceptions import scopes, user
+from flytekit.exceptions import system
 from flytekit.models.core import errors as _error_models
 
 

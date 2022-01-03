@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from flytekit.common.exceptions.user import FlyteAssertion
+from flytekit.exceptions import FlyteAssertion
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager, Image, ImageConfig
 from flytekit.core.data_persistence import FileAccessProvider

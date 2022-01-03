@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 from typing import Type, Union
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.launch_plan import LaunchPlan

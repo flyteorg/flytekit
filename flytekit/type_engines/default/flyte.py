@@ -1,8 +1,7 @@
 import importlib as _importer
 from typing import Type
 
-from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import system as _system_exceptions, user as _user_exceptions
 from flytekit.common.types import base_sdk_types as _base_sdk_types
 from flytekit.common.types import blobs as _blobs
 from flytekit.common.types import containers as _container_types

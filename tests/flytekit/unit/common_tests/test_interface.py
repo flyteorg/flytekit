@@ -1,7 +1,7 @@
 import pytest
 
 from flytekit.common import interface
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import containers, primitives
 
 
