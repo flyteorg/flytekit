@@ -220,8 +220,8 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_suc
        :language: python
        :dedent: 4
 
-    At run time, the underlying map task will be run for every value in the input collection. Task-specific attributes
-    such as :py:class:`flytekit.TaskMetadata` and :py:class:`flytekit.Resources` are applied to individual instances
+    At run time, the underlying map task will be run for every value in the input collection. Attributes
+    such as :py:class:`flytekit.TaskMetadata` and ``with_overrides`` are applied to individual instances
     of the mapped task.
 
     :param task_function: This argument is implicitly passed and represents the repeatable function
@@ -231,10 +231,6 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_suc
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
 
-    ``with_overrides`` on a map task can be used to set individual map task resource assigment.
-
-    .. code-block:: python
-        map_task(my_mappable_task)(...).with_overrides(requests=ResourceRequests(cpu="1", memory="300Mi"), retries=1)
     """
     if not isinstance(task_function, PythonFunctionTask):
         raise ValueError(
