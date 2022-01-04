@@ -35,10 +35,9 @@ from flytekit.configuration import images, internal, secrets
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
-from flytekit.engines.unit import mock_stats as _mock_stats
-from flytekit.exceptions import user as _user_exceptions
+from flytekit.core import mock_stats
 from flytekit.interfaces.stats import taggable
-from flytekit.models.core import identifier as _identifier, identifier as _core_identifier
+from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
 
@@ -686,9 +685,9 @@ class FlyteContextManager(object):
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
         default_user_space_params = ExecutionParameters(
-            execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
+            execution_id=str(default_execution_id),
             execution_date=_datetime.datetime.utcnow(),
-            stats=_mock_stats.MockStats(),
+            stats=mock_stats.MockStats(),
             logging=_logging,
             tmp_dir=user_space_path,
         )
@@ -922,52 +921,3 @@ class SecretsManager(object):
             raise ValueError("secrets key is a mandatory field.")
 
 
-class WorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier):
-    @classmethod
-    def promote_from_model(cls, base_model):
-        """
-        :param flytekit.models.core.identifier.WorkflowExecutionIdentifier base_model:
-        :rtype: WorkflowExecutionIdentifier
-        """
-        return cls(
-            base_model.project,
-            base_model.domain,
-            base_model.name,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        base_model = super(WorkflowExecutionIdentifier, cls).from_flyte_idl(pb2_object)
-        return cls.promote_from_model(base_model)
-
-    @classmethod
-    def from_python_std(cls, string):
-        """
-        Parses a string in the correct format into an identifier
-        :param Text string:
-        :rtype: WorkflowExecutionIdentifier
-        """
-        segments = string.split(":")
-        if len(segments) != 4:
-            raise _user_exceptions.FlyteValueException(
-                string,
-                "The provided string was not in a parseable format. The string for an identifier must be in the format"
-                " ex:project:domain:name.",
-            )
-
-        resource_type, project, domain, name = segments
-
-        if resource_type != "ex":
-            raise _user_exceptions.FlyteValueException(
-                resource_type,
-                "The provided string could not be parsed. The first element of an execution identifier must be 'ex'.",
-            )
-
-        return cls(
-            project,
-            domain,
-            name,
-        )
-
-    def __str__(self):
-        return "ex:{}:{}:{}".format(self.project, self.domain, self.name)

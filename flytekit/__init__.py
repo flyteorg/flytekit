@@ -160,13 +160,11 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
-import flytekit.plugins  # This will be deprecated, these are the old plugins, the new plugins live in plugins/
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit import ExecutionParameters
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, ExecutionParameters
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan

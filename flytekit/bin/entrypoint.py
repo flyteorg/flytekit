@@ -39,6 +39,12 @@ from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
 
+import flytekit
+
+
+def get_version_message():
+    return f"Welcome to Flyte! Version: {flytekit.__version__}"
+
 
 def _compute_array_job_index():
     # type () -> int
@@ -392,7 +398,7 @@ def execute_task_cmd(
     resolver,
     resolver_args,
 ):
-    logger.info(_utils.get_version_message())
+    logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
     _click.echo("")
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
@@ -474,7 +480,7 @@ def map_execute_task_cmd(
     resolver,
     resolver_args,
 ):
-    logger.info(_utils.get_version_message())
+    logger.info(get_version_message())
 
     _execute_map_task(
         inputs,
