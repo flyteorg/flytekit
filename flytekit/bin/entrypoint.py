@@ -1,10 +1,8 @@
 import contextlib
 import datetime as _datetime
-import importlib as _importlib
 import logging as python_logging
 import os as _os
 import pathlib
-import random as _random
 import traceback as _traceback
 from typing import List
 
@@ -14,8 +12,6 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 import flytekit.core.utils
 from flytekit import PythonFunctionTask
 from flytekit.core import constants as _constants
-from flytekit.common import utils as _common_utils
-from flytekit.common import utils as _utils
 from flytekit.exceptions import scopes as _scoped_exceptions, scopes as _scopes
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
@@ -32,8 +28,6 @@ from flytekit.core.context_manager import (
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
-from flytekit.engines import loader as _engine_loader
-from flytekit.interfaces import random as _flyte_random
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import entrypoint_logger as logger
@@ -283,45 +277,6 @@ def _handle_annotated_task(
 
 
 @_scopes.system_entry_point
-def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
-    """
-    This function should be called for old flytekit api tasks (the only API that was available in 0.15.x and earlier)
-    """
-    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with flytekit.core.utils.AutoDeletingTempDir("input_dir") as input_dir:
-            # Load user code
-            task_module = _importlib.import_module(task_module)
-            task_def = getattr(task_module, task_name)
-
-            local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
-
-            # Handle inputs/outputs for array job.
-            if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-                job_index = _compute_array_job_index()
-
-                # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
-                # TODO: AWS batch array jobs.
-                _flyte_random.seed_flyte_random(
-                    "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
-                )
-
-                # If an ArrayTask is discoverable, the original job index may be different than the one specified in
-                # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
-                job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
-
-                inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
-                output_prefix = _os.path.join(output_prefix, str(job_index))
-
-            _data_proxy.Data.get_data(inputs, local_inputs_file)
-            input_proto = flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-
-            _engine_loader.get_engine().get_task(task_def).execute(
-                _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
-            )
-
-
-@_scopes.system_entry_point
 def _execute_task(
     inputs,
     output_prefix,
@@ -415,8 +370,6 @@ def _pass_through():
 
 
 @_pass_through.command("pyflyte-execute")
-@_click.option("--task-module", required=False)
-@_click.option("--task-name", required=False)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
@@ -430,8 +383,6 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-    task_module,
-    task_name,
     inputs,
     output_prefix,
     raw_output_data_prefix,
@@ -454,21 +405,17 @@ def execute_task_cmd(
     # Use the presence of the resolver to differentiate between old API tasks and new API tasks
     # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
     # pervasive this top level command already (plugins mostly).
-    if not resolver:
-        logger.info("No resolver found, assuming legacy API task...")
-        _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
-    else:
-        logger.debug(f"Running task execution with resolver {resolver}...")
-        _execute_task(
-            inputs,
-            output_prefix,
-            raw_output_data_prefix,
-            test,
-            resolver,
-            resolver_args,
-            dynamic_addl_distro,
-            dynamic_dest_dir,
-        )
+    logger.debug(f"Running task execution with resolver {resolver}...")
+    _execute_task(
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        test,
+        resolver,
+        resolver_args,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
+    )
 
 
 @_pass_through.command("pyflyte-fast-execute")

@@ -138,60 +138,6 @@ def load_module_object_for_type(pkgs, t, additional_path=None):
         return iterate()
 
 
-def iterate_registerable_entities_in_order(
-    pkgs,
-    local_source_root=None,
-    ignore_entities=None,
-    include_entities=None,
-    detect_unreferenced_entities=True,
-):
-    """
-    This function will iterate all discovered entities in the given package list.  It will then attempt to
-    topologically sort such that any entity with a dependency on another comes later in the list.  Note that workflows
-    can reference other workflows and launch plans.
-    :param list[Text] pkgs:
-    :param Text local_source_root:
-    :param set[type] ignore_entities: If specified, ignore these entities while doing a topological sort.  All other
-        entities will be taken.  Only one of ignore_entities or include_entities can be set.
-    :param set[type] include_entities: If specified, include these entities while doing a topological sort.  All
-        other entities will be ignored.  Only one of ignore_entities or include_entities can be set.
-    :param bool detect_unreferenced_entities: If true, we will raise exceptions on entities not included in the package
-        configuration.
-    :rtype: module, Text, flytekit.common.mixins.registerable.RegisterableEntity
-    """
-    if ignore_entities and include_entities:
-        raise _user_exceptions.FlyteAssertion("ignore_entities and include_entities cannot both be set")
-    elif not ignore_entities and not include_entities:
-        include_entities = (object,)
-        ignore_entities = tuple()
-    else:
-        ignore_entities = tuple(list(ignore_entities or set([object])))
-        include_entities = tuple(list(include_entities or set()))
-
-    if local_source_root is not None:
-        with add_sys_path(local_source_root):
-            entity_to_module_key = _get_entity_to_module(pkgs)
-    else:
-        entity_to_module_key = _get_entity_to_module(pkgs)
-
-    visited = set()
-    for o in entity_to_module_key.keys():
-        if o not in visited:
-            recursion_set = dict()
-            recursion_stack = []
-            for m, k, o2 in _topo_sort_helper(
-                o,
-                entity_to_module_key,
-                visited,
-                recursion_set,
-                recursion_stack,
-                include_entities,
-                ignore_entities,
-                detect_unreferenced_entities=detect_unreferenced_entities,
-            ):
-                yield m, k, o2
-
-
 def load_object_from_module(object_location: str) -> Any:
     """
     # TODO: Handle corner cases, like where the first part is [] maybe
