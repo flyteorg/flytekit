@@ -2,7 +2,6 @@ from collections import OrderedDict
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit.core import constants as _common_constants
-from flytekit.core.utils import _dnsify
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
 from flytekit.core.context_manager import SerializationSettings
@@ -11,6 +10,7 @@ from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
+from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models

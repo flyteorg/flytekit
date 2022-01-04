@@ -18,25 +18,23 @@ from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from google.protobuf.json_format import MessageToJson
 from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
-from flytekit.clis import cli_identifiers
 import flytekit.core.context_manager
 import flytekit.core.utils
 from flytekit import __version__
+from flytekit.interfaces import cli_identifiers
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map
 from flytekit.clis.helpers import hydrate_registration_parameters
 from flytekit.clis.helpers import parse_args_into_dict as _parse_args_into_dict
 from flytekit.common import launch_plan as _launch_plan_common
-from flytekit.common import workflow_execution as _workflow_execution_common
-from flytekit.common.core import identifier as _identifier
-from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.tasks import task as _tasks_common
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.core.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
+from flytekit.core.utils import load_proto_from_file as _load_proto_from_file
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.data_proxy import Data
 from flytekit.models import common as _common_models
@@ -256,7 +254,7 @@ def _secho_one_execution(ex, urns_only):
     if not urns_only:
         _click.echo(
             "{:100} {:40} {:40}".format(
-                _tt(flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(ex.id)),
+                _tt(cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(ex.id)),
                 _tt(ex.id.name),
                 _tt(ex.spec.launch_plan.name),
             ),
@@ -265,7 +263,7 @@ def _secho_one_execution(ex, urns_only):
         _secho_workflow_status(ex.closure.phase)
     else:
         _click.echo(
-            "{:100}".format(_tt(flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(ex.id))),
+            "{:100}".format(_tt(cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(ex.id))),
             nl=True,
         )
 
@@ -273,7 +271,7 @@ def _secho_one_execution(ex, urns_only):
 def _terminate_one_execution(client, urn, cause, shouldPrint=True):
     if shouldPrint:
         _click.echo("{:100} {:40}".format(_tt(urn), _tt(cause)))
-    client.terminate_execution(flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn), cause)
+    client.terminate_execution(cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn), cause)
 
 
 def _update_one_launch_plan(client: _friendly_client.SynchronousFlyteClient, urn, state):
@@ -281,7 +279,7 @@ def _update_one_launch_plan(client: _friendly_client.SynchronousFlyteClient, urn
         state = _launch_plan.LaunchPlanState.ACTIVE
     else:
         state = _launch_plan.LaunchPlanState.INACTIVE
-    client.update_launch_plan(_identifier.Identifier.from_python_std(urn), state)
+    client.update_launch_plan(cli_identifiers.Identifier.from_python_std(urn), state)
     _click.echo("Successfully updated {}".format(_tt(urn)))
 
 
@@ -736,7 +734,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
             _click.echo(
                 "{:50} {:40}".format(
                     _tt(t.id.version),
-                    _tt(_identifier.Identifier.promote_from_model(t.id)),
+                    _tt(cli_identifiers.Identifier.promote_from_model(t.id)),
                 )
             )
 
@@ -762,7 +760,7 @@ def get_task(urn, host, insecure):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    t = client.get_task(_identifier.Identifier.from_python_std(urn))
+    t = client.get_task(cli_identifiers.Identifier.from_python_std(urn))
     _click.echo(_tt(t))
     _click.echo("")
 
@@ -795,7 +793,7 @@ def launch_task(project, domain, name, assumable_iam_role, kubernetes_service_ac
     auth_role = _AuthRole(assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account)
 
     with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
-        task_id = _identifier.Identifier.from_python_std(urn)
+        task_id = cli_identifiers.Identifier.from_python_std(urn)
         task = _tasks_common.SdkTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
 
         text_args = _parse_args_into_dict(task_args)
@@ -894,7 +892,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
             _click.echo(
                 "{:50} {:40}".format(
                     _tt(w.id.version),
-                    _tt(_identifier.Identifier.promote_from_model(w.id)),
+                    _tt(cli_identifiers.Identifier.promote_from_model(w.id)),
                 )
             )
 
@@ -920,7 +918,7 @@ def get_workflow(urn, host, insecure):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    _click.echo(client.get_workflow(_identifier.Identifier.from_python_std(urn)))
+    _click.echo(client.get_workflow(cli_identifiers.Identifier.from_python_std(urn)))
     # TODO: Print workflow pretty
     _click.echo("")
 
@@ -1005,13 +1003,13 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
 
         for lp in active_lps:
             if urns_only:
-                _click.echo("{:80}".format(_tt(_identifier.Identifier.promote_from_model(lp.id))))
+                _click.echo("{:80}".format(_tt(cli_identifiers.Identifier.promote_from_model(lp.id))))
             else:
                 _click.echo(
                     "{:30} {:50} {:80}".format(
                         _render_schedule_expr(lp),
                         _tt(lp.id.version),
-                        _tt(_identifier.Identifier.promote_from_model(lp.id)),
+                        _tt(cli_identifiers.Identifier.promote_from_model(lp.id)),
                     ),
                 )
 
@@ -1074,12 +1072,12 @@ def list_launch_plan_versions(
         )
         for l in lp_list:
             if urns_only:
-                _click.echo(_tt(_identifier.Identifier.promote_from_model(l.id)))
+                _click.echo(_tt(cli_identifiers.Identifier.promote_from_model(l.id)))
             else:
                 _click.echo(
                     "{:50} {:80} ".format(
                         _tt(l.id.version),
-                        _tt(_identifier.Identifier.promote_from_model(l.id)),
+                        _tt(cli_identifiers.Identifier.promote_from_model(l.id)),
                     ),
                     nl=False,
                 )
@@ -1117,7 +1115,7 @@ def get_launch_plan(urn, host, insecure):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    _click.echo(_tt(client.get_launch_plan(_identifier.Identifier.from_python_std(urn))))
+    _click.echo(_tt(client.get_launch_plan(cli_identifiers.Identifier.from_python_std(urn))))
     # TODO: Print launch plan pretty
     _click.echo("")
 
@@ -1198,7 +1196,7 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
     _welcome_message()
 
     with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
-        lp_id = _identifier.Identifier.from_python_std(urn)
+        lp_id = cli_identifiers.Identifier.from_python_std(urn)
         lp = _launch_plan_common.SdkLaunchPlan.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
 
         inputs = _construct_literal_map_from_parameter_map(lp.default_inputs, _parse_args_into_dict(lp_args))
@@ -1218,30 +1216,6 @@ def execute_launch_plan(project, domain, name, host, insecure, urn, principal, v
 #  Execution Commands
 #
 ########################################################################################################################
-
-
-@_flyte_cli.command("watch-execution", cls=_FlyteSubCommand)
-@_host_option
-@_insecure_option
-@_urn_option
-def watch_execution(host, insecure, urn):
-    """
-    Wait for an execution to complete.
-
-    e.g.
-        $ flyte-cli -h localhost:30081 watch-execution -u ex:flyteexamples:development:abc123
-    """
-    _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    ex_id = flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn)
-
-    execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
-
-    _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
-
-    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
-        execution.wait_for_completion()
 
 
 @_flyte_cli.command("relaunch-execution", cls=_FlyteSubCommand)
@@ -1282,7 +1256,7 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
 
     _click.echo("Relaunching execution {}\n".format(_tt(urn)))
-    existing_workflow_execution_identifier = flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn)
+    existing_workflow_execution_identifier = cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn)
     e = client.get_execution(existing_workflow_execution_identifier)
 
     if project is None:
@@ -1322,7 +1296,7 @@ def relaunch_execution(project, domain, name, host, insecure, urn, principal, ve
     metadata = _ExecutionMetadata(mode=_ExecutionMetadata.ExecutionMode.MANUAL, principal=principal, nesting=0)
     ex_spec = _ExecutionSpec(launch_plan=lp_model.id, inputs=inputs, metadata=metadata)
     execution_identifier = client.create_execution(project=project, domain=domain, name=name, execution_spec=ex_spec)
-    execution_identifier = flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(execution_identifier)
+    execution_identifier = cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(execution_identifier)
     _click.secho("Launched execution: {}".format(execution_identifier), fg="blue")
     _click.echo("")
 
@@ -1358,10 +1332,10 @@ def recover_execution(urn, name, host, insecure):
 
     _click.echo("Recovering execution {}\n".format(_tt(urn)))
 
-    original_workflow_execution_identifier = flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn)
+    original_workflow_execution_identifier = cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn)
 
     execution_identifier_resp = client.recover_execution(id=original_workflow_execution_identifier, name=name)
-    execution_identifier = flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(execution_identifier_resp)
+    execution_identifier = cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(execution_identifier_resp)
     _click.secho("Launched execution: {}".format(execution_identifier), fg="blue")
     _click.echo("")
 
@@ -1502,7 +1476,7 @@ def _render_workflow_execution(wf_execution, uri_to_message_map, show_io, verbos
     _click.echo(
         "\t{:15} {}".format(
             "Launch Plan:",
-            _tt(_identifier.Identifier.promote_from_model(wf_execution.spec.launch_plan)),
+            _tt(cli_identifiers.Identifier.promote_from_model(wf_execution.spec.launch_plan)),
         )
     )
 
@@ -1677,7 +1651,7 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
                             "Subtasks:",
                             "flyte-cli get-child-executions -h {host}{insecure} -u {urn}".format(
                                 host=host,
-                                urn=_tt(_identifier.TaskExecutionIdentifier.promote_from_model(te.id)),
+                                urn=_tt(cli_identifiers.TaskExecutionIdentifier.promote_from_model(te.id)),
                                 insecure=" --insecure" if insecure else "",
                             ),
                         )
@@ -1701,7 +1675,7 @@ def get_execution(urn, host, insecure, show_io, verbose):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    e = client.get_execution(flytekit.clis.cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn))
+    e = client.get_execution(cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn))
     node_execs = _get_all_node_executions(client, workflow_execution_identifier=e.id)
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure, wf_execution=e)
 
@@ -1718,7 +1692,7 @@ def get_child_executions(urn, host, insecure, show_io, verbose):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     node_execs = _get_all_node_executions(
         client,
-        task_execution_identifier=_identifier.TaskExecutionIdentifier.from_python_std(urn),
+        task_execution_identifier=cli_identifiers.TaskExecutionIdentifier.from_python_std(urn),
     )
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure)
 

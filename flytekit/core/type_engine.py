@@ -20,9 +20,9 @@ from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
-from flytekit.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models

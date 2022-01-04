@@ -9,25 +9,28 @@ from typing import List
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit
 import flytekit.core.utils
 from flytekit import PythonFunctionTask
-from flytekit.core import constants as _constants
-from flytekit.exceptions import scopes as _scoped_exceptions, scopes as _scopes
-from flytekit.exceptions import system as _system_exceptions
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import sdk as _sdk_config
+from flytekit.core import constants as _constants
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import (
+    ExecutionParameters,
     ExecutionState,
     FlyteContext,
     FlyteContextManager,
     SerializationSettings,
-    get_image_config, ExecutionParameters,
+    get_image_config,
 )
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
+from flytekit.exceptions import scopes as _scoped_exceptions
+from flytekit.exceptions import scopes as _scopes
+from flytekit.exceptions import system as _system_exceptions
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import entrypoint_logger as logger
@@ -38,8 +41,6 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
-
-import flytekit
 
 
 def get_version_message():

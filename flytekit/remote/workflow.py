@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from flytekit.core import constants as _constants, hash as _hash_mixin
-from flytekit.exceptions import user as _user_exceptions
+from flytekit.core import constants as _constants
+from flytekit.core import hash as _hash_mixin
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import task as _task_models
 from flytekit.models.core import compiler as compiler_models

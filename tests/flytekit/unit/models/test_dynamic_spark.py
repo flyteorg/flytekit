@@ -1,5 +1,5 @@
-from flytekit.core import constants as _sdk_constants
 from flytekit.configuration import TemporaryConfiguration
+from flytekit.core import constants as _sdk_constants
 from flytekit.sdk import tasks as _tasks
 from flytekit.sdk.types import Types as _Types
 

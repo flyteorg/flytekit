@@ -1,9 +1,10 @@
 from typing import Optional
 
-from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.engines.flyte import engine as _flyte_engine
+from flytekit.exceptions import scopes as _exception_scopes
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.core import identifier as id_models

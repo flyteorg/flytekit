@@ -16,22 +16,21 @@ import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.common import utils as _utils
 from flytekit.common.core import identifier as _identifier
-from flytekit.exceptions import system_entry_point
-from flytekit.exceptions import FlyteValidationException
 from flytekit.common.tasks import task as _sdk_task
-from flytekit.translator import get_serializable
-from flytekit.core.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import internal as _internal_config
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.core.workflow import WorkflowBase
+from flytekit.exceptions import FlyteValidationException, system_entry_point
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
+from flytekit.translator import get_serializable
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures

@@ -15,7 +15,6 @@ from google.protobuf.struct_pb2 import Struct
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
-from flytekit.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
@@ -32,6 +31,7 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
 from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode

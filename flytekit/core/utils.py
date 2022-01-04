@@ -5,7 +5,7 @@ import tempfile as _tempfile
 import time as _time
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 from flytekit.configuration import resources as _resource_config
 from flytekit.models import task as _task_models

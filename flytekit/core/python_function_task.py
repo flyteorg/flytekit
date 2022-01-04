@@ -19,7 +19,6 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
-from flytekit.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -32,6 +31,7 @@ from flytekit.core.workflow import (
     WorkflowMetadata,
     WorkflowMetadataDefaults,
 )
+from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models

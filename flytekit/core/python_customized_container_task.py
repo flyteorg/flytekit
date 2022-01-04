@@ -5,12 +5,12 @@ from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from flyteidl.core import tasks_pb2 as _tasks_pb2
 
-from flytekit.core.utils import _get_container_definition, load_proto_from_file
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContext, Image, ImageConfig, SerializationSettings
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.tracker import TrackedInstance
+from flytekit.core.utils import _get_container_definition, load_proto_from_file
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as identifier_models

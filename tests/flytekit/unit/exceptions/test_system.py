@@ -1,4 +1,4 @@
-from flytekit.exceptions import system, base
+from flytekit.exceptions import base, system
 
 
 def test_flyte_system_exception():
