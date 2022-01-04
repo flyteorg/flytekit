@@ -6,6 +6,7 @@ import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
 from sortedcontainers import SortedDict as _SortedDict
 
+import flytekit.core.utils
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
 from flytekit.common import component_nodes as _component_nodes
 from flytekit.core import constants as _constants
@@ -18,7 +19,7 @@ from flytekit.common.mixins import artifact as _artifact_mixin
 from flytekit.common.mixins import hash as _hash_mixin
 from flytekit.common.tasks import executions as _task_executions
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.common.utils import _dnsify
+from flytekit.core.utils import _dnsify
 from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.models import common as _common_models
@@ -357,11 +358,11 @@ class SdkNodeExecution(
             if bool(execution_data.full_inputs.literals):
                 input_map = execution_data.full_inputs
             elif execution_data.inputs.bytes > 0:
-                with _common_utils.AutoDeletingTempDir() as t:
+                with flytekit.core.utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "inputs.pb")
                     _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                     input_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                        flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
             else:
                 input_map = _literal_models.LiteralMap({})
@@ -392,11 +393,11 @@ class SdkNodeExecution(
                 output_map = execution_data.full_outputs
 
             elif execution_data.outputs.bytes > 0:
-                with _common_utils.AutoDeletingTempDir() as t:
+                with flytekit.core.utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "outputs.pb")
                     _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                        flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
             else:
                 output_map = _literal_models.LiteralMap({})

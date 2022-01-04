@@ -4,6 +4,7 @@ import pytest
 from flyteidl.core import errors_pb2
 from mock import MagicMock, PropertyMock, patch
 
+import flytekit.core.utils
 from flytekit.common import utils
 from flytekit.core import constants
 from flytekit.exceptions import scopes
@@ -48,8 +49,8 @@ def execution_data_locations():
     with test_utils.LocalTestFileSystem() as fs:
         input_filename = fs.get_named_tempfile("inputs.pb")
         output_filename = fs.get_named_tempfile("outputs.pb")
-        utils.write_proto_to_file(_INPUT_MAP.to_flyte_idl(), input_filename)
-        utils.write_proto_to_file(_OUTPUT_MAP.to_flyte_idl(), output_filename)
+        flytekit.core.utils.write_proto_to_file(_INPUT_MAP.to_flyte_idl(), input_filename)
+        flytekit.core.utils.write_proto_to_file(_OUTPUT_MAP.to_flyte_idl(), output_filename)
         yield (
             _common_models.UrlBlob(input_filename, 100),
             _common_models.UrlBlob(output_filename, 100),
@@ -71,11 +72,11 @@ def test_task_system_failure():
     m = MagicMock()
     m.execute = _raise_system_exception
 
-    with utils.AutoDeletingTempDir("test") as tmp:
+    with flytekit.core.utils.AutoDeletingTempDir("test") as tmp:
         engine.FlyteTask(m).execute(None, {"output_prefix": tmp.name})
 
         doc = errors.ErrorDocument.from_flyte_idl(
-            utils.load_proto_from_file(
+            flytekit.core.utils.load_proto_from_file(
                 errors_pb2.ErrorDocument,
                 os.path.join(tmp.name, constants.ERROR_FILE_NAME),
             )
@@ -90,11 +91,11 @@ def test_task_user_failure():
     m = MagicMock()
     m.execute = _raise_user_exception
 
-    with utils.AutoDeletingTempDir("test") as tmp:
+    with flytekit.core.utils.AutoDeletingTempDir("test") as tmp:
         engine.FlyteTask(m).execute(None, {"output_prefix": tmp.name})
 
         doc = errors.ErrorDocument.from_flyte_idl(
-            utils.load_proto_from_file(
+            flytekit.core.utils.load_proto_from_file(
                 errors_pb2.ErrorDocument,
                 os.path.join(tmp.name, constants.ERROR_FILE_NAME),
             )

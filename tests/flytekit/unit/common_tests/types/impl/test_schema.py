@@ -7,6 +7,7 @@ import pandas as _pd
 import pytest as _pytest
 import six.moves as _six_moves
 
+import flytekit.core.utils
 from flytekit.common import utils as _utils
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.common.types import blobs as _blobs
@@ -71,7 +72,7 @@ def test_simple_read_and_write_with_different_types(value_type_pair):
     schema_type = _schema_impl.SchemaType(columns=[(column_name, flyte_type)])
 
     with _test_utils.LocalTestFileSystem() as sandbox:
-        with _utils.AutoDeletingTempDir("test") as t:
+        with flytekit.core.utils.AutoDeletingTempDir("test") as t:
             a = _schema_impl.Schema.create_at_known_location(t.name, mode="wb", schema_type=schema_type)
             assert a.local_path is None
             with a as writer:
@@ -105,7 +106,7 @@ def test_datetime_coercion_explicitly():
     df = _pd.DataFrame.from_records(values, columns=["testname"])
     assert df["testname"][0] == dt
 
-    with _utils.AutoDeletingTempDir("test") as tmpdir:
+    with flytekit.core.utils.AutoDeletingTempDir("test") as tmpdir:
         tmpfile = tmpdir.get_named_tempfile("repro.parquet")
         df.to_parquet(tmpfile, coerce_timestamps="ms", allow_truncated_timestamps=True)
         df2 = _pd.read_parquet(tmpfile)
@@ -127,7 +128,7 @@ def test_datetime_coercion():
     schema_type = _schema_impl.SchemaType(columns=[("testname", _primitives.Datetime)])
 
     with _test_utils.LocalTestFileSystem():
-        with _utils.AutoDeletingTempDir("test") as t:
+        with flytekit.core.utils.AutoDeletingTempDir("test") as t:
             a = _schema_impl.Schema.create_at_known_location(t.name, mode="wb", schema_type=schema_type)
             with a as writer:
                 for _ in _six_moves.range(5):
@@ -156,13 +157,13 @@ def test_fetch(value_type_pair):
     values = [tuple([value]) for value in values]
     schema_type = _schema_impl.SchemaType(columns=[(column_name, flyte_type)])
 
-    with _utils.AutoDeletingTempDir("test") as tmpdir:
+    with flytekit.core.utils.AutoDeletingTempDir("test") as tmpdir:
         for i in _six_moves.range(3):
             _pd.DataFrame.from_records(values, columns=[column_name]).to_parquet(
                 tmpdir.get_named_tempfile(str(i).zfill(6)), coerce_timestamps="us"
             )
 
-        with _utils.AutoDeletingTempDir("test2") as local_dir:
+        with flytekit.core.utils.AutoDeletingTempDir("test2") as local_dir:
             schema_obj = _schema_impl.Schema.fetch(
                 tmpdir.name,
                 local_path=local_dir.get_named_tempfile("schema_test"),
@@ -185,13 +186,13 @@ def test_download(value_type_pair):
     values = [tuple([value]) for value in values]
     schema_type = _schema_impl.SchemaType(columns=[(column_name, flyte_type)])
 
-    with _utils.AutoDeletingTempDir("test") as tmpdir:
+    with flytekit.core.utils.AutoDeletingTempDir("test") as tmpdir:
         for i in _six_moves.range(3):
             _pd.DataFrame.from_records(values, columns=[column_name]).to_parquet(
                 tmpdir.get_named_tempfile(str(i).zfill(6)), coerce_timestamps="us"
             )
 
-        with _utils.AutoDeletingTempDir("test2") as local_dir:
+        with flytekit.core.utils.AutoDeletingTempDir("test2") as local_dir:
             schema_obj = _schema_impl.Schema(tmpdir.name, schema_type=schema_type)
             schema_obj.download(local_dir.get_named_tempfile(_uuid.uuid4().hex))
             with schema_obj as reader:
@@ -442,7 +443,7 @@ def test_promote_from_model_schema():
 
 def test_create_at_known_location():
     with _test_utils.LocalTestFileSystem():
-        with _utils.AutoDeletingTempDir("test") as wd:
+        with flytekit.core.utils.AutoDeletingTempDir("test") as wd:
             b = _schema_impl.Schema.create_at_known_location(wd.name, schema_type=_schema_impl.SchemaType())
             assert b.local_path is None
             assert b.remote_location == wd.name + "/"

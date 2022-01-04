@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
+import flytekit.core.utils
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.common import utils as common_utils
 from flytekit.exceptions import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException, user as user_exceptions
@@ -1295,7 +1296,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
                 ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    flytekit.core.utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 
@@ -1308,6 +1309,6 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
                 ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    flytekit.core.utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})

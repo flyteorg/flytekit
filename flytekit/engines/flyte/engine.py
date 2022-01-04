@@ -8,6 +8,7 @@ from deprecated import deprecated as _deprecated
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 import flytekit
+import flytekit.core.utils
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
 from flytekit.clients.helpers import iterate_task_executions as _iterate_task_executions
@@ -327,8 +328,8 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
         :param dict[Text, Text] context:
         :rtype: dict[Text, flytekit.models.common.FlyteIdlEntity]
         """
-        with _common_utils.AutoDeletingTempDir("engine_dir") as temp_dir:
-            with _common_utils.AutoDeletingTempDir("task_dir") as task_dir:
+        with flytekit.core.utils.AutoDeletingTempDir("engine_dir") as temp_dir:
+            with flytekit.core.utils.AutoDeletingTempDir("task_dir") as task_dir:
                 with _data_proxy.LocalWorkingDirectoryContext(task_dir):
                     raw_output_data_prefix = context.get("raw_output_data_prefix", None)
                     with _data_proxy.RemoteDataContext(raw_output_data_prefix_override=raw_output_data_prefix):
@@ -393,7 +394,7 @@ class FlyteTask(_common_engine.BaseTaskExecutor):
                             _logging.error("!!! End Error Captured by Flyte !!!")
                         finally:
                             for k, v in _six.iteritems(output_file_dict):
-                                _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(temp_dir.name, k))
+                                flytekit.core.utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(temp_dir.name, k))
                             _data_proxy.Data.put_data(
                                 temp_dir.name,
                                 context["output_prefix"],
@@ -519,11 +520,11 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
             return execution_data.full_inputs
 
         if execution_data.inputs.bytes > 0:
-            with _common_utils.AutoDeletingTempDir() as t:
+            with flytekit.core.utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "inputs.pb")
                 _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
-                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
         return _literals.LiteralMap({})
 
@@ -543,11 +544,11 @@ class FlyteWorkflowExecution(_common_engine.BaseWorkflowExecution):
             return execution_data.full_outputs
 
         if execution_data.outputs.bytes > 0:
-            with _common_utils.AutoDeletingTempDir() as t:
+            with flytekit.core.utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "outputs.pb")
                 _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
-                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
         return _literals.LiteralMap({})
 
@@ -602,11 +603,11 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
             return execution_data.full_inputs
 
         if execution_data.inputs.bytes > 0:
-            with _common_utils.AutoDeletingTempDir() as t:
+            with flytekit.core.utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "inputs.pb")
                 _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
-                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
         return _literals.LiteralMap({})
 
@@ -626,11 +627,11 @@ class FlyteNodeExecution(_common_engine.BaseNodeExecution):
             return execution_data.full_outputs
 
         if execution_data.outputs.bytes > 0:
-            with _common_utils.AutoDeletingTempDir() as t:
+            with flytekit.core.utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "outputs.pb")
                 _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
-                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
         return _literals.LiteralMap({})
 
@@ -663,11 +664,11 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
             return execution_data.full_inputs
 
         if execution_data.inputs.bytes > 0:
-            with _common_utils.AutoDeletingTempDir() as t:
+            with flytekit.core.utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "inputs.pb")
                 _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
-                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
         return _literals.LiteralMap({})
 
@@ -687,11 +688,11 @@ class FlyteTaskExecution(_common_engine.BaseTaskExecution):
             return execution_data.full_outputs
 
         if execution_data.outputs.bytes > 0:
-            with _common_utils.AutoDeletingTempDir() as t:
+            with flytekit.core.utils.AutoDeletingTempDir() as t:
                 tmp_name = _os.path.join(t.name, "outputs.pb")
                 _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                 return _literals.LiteralMap.from_flyte_idl(
-                    _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                    flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                 )
         return _literals.LiteralMap({})
 

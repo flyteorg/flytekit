@@ -5,6 +5,7 @@ import uuid as _uuid
 
 import six as _six
 
+import flytekit.core.utils
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _utils
 from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
@@ -304,7 +305,7 @@ class MultiPartBlob(_literal_models.Blob, metaclass=_sdk_bases.ExtendedSdkType):
             if _os.path.isdir(t_value):
                 # TODO: Infer format
                 blob = cls.create_at_any_location(mode=mode, format=format)
-                blob._directory = _utils.Directory(t_value)
+                blob._directory = flytekit.core.utils.Directory(t_value)
                 blob.upload()
             else:
                 blob = cls.create_at_known_location(t_value, mode=mode, format=format)
@@ -347,7 +348,7 @@ class MultiPartBlob(_literal_models.Blob, metaclass=_sdk_bases.ExtendedSdkType):
                         "specify a path when calling this function.  Note: Cleanup is not automatic when a "
                         "path is specified."
                     )
-                self._directory = _utils.AutoDeletingTempDir(
+                self._directory = flytekit.core.utils.AutoDeletingTempDir(
                     _uuid.uuid4().hex,
                     tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
                 )
@@ -468,7 +469,7 @@ class MultiPartBlob(_literal_models.Blob, metaclass=_sdk_bases.ExtendedSdkType):
             if path_exists:
                 _shutil.rmtree(local_path)
             _os.makedirs(local_path)
-            self._directory = _utils.Directory(local_path)
+            self._directory = flytekit.core.utils.Directory(local_path)
             _data_proxy.Data.get_data(self.remote_location, self.local_path, is_multipart=True)
         else:
             raise _user_exceptions.FlyteAssertion(

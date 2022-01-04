@@ -1,6 +1,6 @@
 import os as _os
 
-from flytekit.common.utils import AutoDeletingTempDir as _AutoDeletingTempDir
+from flytekit.core.utils import AutoDeletingTempDir as _AutoDeletingTempDir
 from flytekit.configuration import common as _common
 
 

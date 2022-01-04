@@ -165,7 +165,8 @@ from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
-from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit import ExecutionParameters
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan

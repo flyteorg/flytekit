@@ -1,6 +1,6 @@
 import pytest
 
-from flytekit.common.utils import _dnsify
+from flytekit.core.utils import _dnsify
 
 
 @pytest.mark.parametrize(

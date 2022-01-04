@@ -4,6 +4,7 @@ import uuid as _uuid
 
 import six as _six
 
+import flytekit.core.utils
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _utils
 from flytekit.exceptions import scopes as _exception_scopes, user as _user_exceptions
@@ -379,7 +380,7 @@ class _SchemaBackingMpBlob(_blob_impl.MultiPartBlob):
                     "context of a task or surround with a 'with LocalTestFileSystem():' block.  Or "
                     "specify a path when calling this function."
                 )
-            self._directory = _utils.AutoDeletingTempDir(
+            self._directory = flytekit.core.utils.AutoDeletingTempDir(
                 _uuid.uuid4().hex,
                 tmp_dir=_data_proxy.LocalWorkingDirectoryContext.get().name,
             )
@@ -582,7 +583,7 @@ class Schema(_literal_models.Schema, metaclass=_sdk_bases.ExtendedSdkType):
         if isinstance(t_value, (str, _six.text_type)):
             if _os.path.isdir(t_value):
                 schema = cls.create_at_any_location(schema_type=schema_type)
-                schema.multipart_blob._directory = _utils.Directory(t_value)
+                schema.multipart_blob._directory = flytekit.core.utils.Directory(t_value)
                 schema.upload()
             else:
                 schema = cls.create_at_known_location(t_value, schema_type=schema_type)

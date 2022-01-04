@@ -9,6 +9,7 @@ from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
 
+import flytekit.core.utils
 from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd, setup_execution
 from flytekit.common import utils as _utils
 from flytekit.exceptions import user as user_exceptions
@@ -38,15 +39,15 @@ def test_single_step_entrypoint_in_proc():
         os.path.join(os.path.dirname(__file__), "fake.config"),
         internal_overrides={"project": "test", "domain": "development"},
     ):
-        with _utils.AutoDeletingTempDir("in") as input_dir:
+        with flytekit.core.utils.AutoDeletingTempDir("in") as input_dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
                 {"a": 9},
                 _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
             )
             input_file = os.path.join(input_dir.name, "inputs.pb")
-            _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
+            flytekit.core.utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
 
-            with _utils.AutoDeletingTempDir("out") as output_dir:
+            with flytekit.core.utils.AutoDeletingTempDir("out") as output_dir:
                 _legacy_execute_task(
                     _task_defs.add_one.task_module,
                     _task_defs.add_one.task_function_name,
@@ -56,7 +57,7 @@ def test_single_step_entrypoint_in_proc():
                     False,
                 )
 
-                p = _utils.load_proto_from_file(
+                p = flytekit.core.utils.load_proto_from_file(
                     _literals_pb2.LiteralMap,
                     os.path.join(output_dir.name, _constants.OUTPUT_FILE_NAME),
                 )
@@ -73,15 +74,15 @@ def test_single_step_entrypoint_out_of_proc():
         os.path.join(os.path.dirname(__file__), "fake.config"),
         internal_overrides={"project": "test", "domain": "development"},
     ):
-        with _utils.AutoDeletingTempDir("in") as input_dir:
+        with flytekit.core.utils.AutoDeletingTempDir("in") as input_dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
                 {"a": 9},
                 _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
             )
             input_file = os.path.join(input_dir.name, "inputs.pb")
-            _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
+            flytekit.core.utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
 
-            with _utils.AutoDeletingTempDir("out") as output_dir:
+            with flytekit.core.utils.AutoDeletingTempDir("out") as output_dir:
                 cmd = []
                 cmd.extend(["--task-module", _task_defs.add_one.task_module])
                 cmd.extend(["--task-name", _task_defs.add_one.task_function_name])
@@ -90,7 +91,7 @@ def test_single_step_entrypoint_out_of_proc():
                 result = CliRunner().invoke(execute_task_cmd, cmd)
 
                 assert result.exit_code == 0
-                p = _utils.load_proto_from_file(
+                p = flytekit.core.utils.load_proto_from_file(
                     _literals_pb2.LiteralMap,
                     os.path.join(output_dir.name, _constants.OUTPUT_FILE_NAME),
                 )
@@ -107,7 +108,7 @@ def test_arrayjob_entrypoint_in_proc():
         os.path.join(os.path.dirname(__file__), "fake.config"),
         internal_overrides={"project": "test", "domain": "development"},
     ):
-        with _utils.AutoDeletingTempDir("dir") as dir:
+        with flytekit.core.utils.AutoDeletingTempDir("dir") as dir:
             literal_map = _type_helpers.pack_python_std_map_to_literal_map(
                 {"a": 9},
                 _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
@@ -117,7 +118,7 @@ def test_arrayjob_entrypoint_in_proc():
             os.mkdir(input_dir)  # auto cleanup will take this subdir into account
 
             input_file = os.path.join(input_dir, "inputs.pb")
-            _utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
+            flytekit.core.utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
 
             # construct indexlookup.pb which has array: [1]
             mapped_index = _literal_models.Literal(
@@ -125,7 +126,7 @@ def test_arrayjob_entrypoint_in_proc():
             )
             index_lookup_collection = _literal_models.LiteralCollection([mapped_index])
             index_lookup_file = os.path.join(dir.name, "indexlookup.pb")
-            _utils.write_proto_to_file(index_lookup_collection.to_flyte_idl(), index_lookup_file)
+            flytekit.core.utils.write_proto_to_file(index_lookup_collection.to_flyte_idl(), index_lookup_file)
 
             # fake arrayjob task by setting environment variables
             orig_env_index_var_name = os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")
@@ -144,7 +145,7 @@ def test_arrayjob_entrypoint_in_proc():
 
             raw_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
                 _literal_models.LiteralMap.from_flyte_idl(
-                    _utils.load_proto_from_file(
+                    flytekit.core.utils.load_proto_from_file(
                         _literals_pb2.LiteralMap,
                         os.path.join(input_dir, _constants.OUTPUT_FILE_NAME),
                     )
@@ -172,8 +173,8 @@ def test_backwards_compatible_replacement(mock_legacy_execute_task):
         os.path.join(os.path.dirname(__file__), "fake.config"),
         internal_overrides={"project": "test", "domain": "development"},
     ):
-        with _utils.AutoDeletingTempDir("in"):
-            with _utils.AutoDeletingTempDir("out"):
+        with flytekit.core.utils.AutoDeletingTempDir("in"):
+            with flytekit.core.utils.AutoDeletingTempDir("out"):
                 cmd = []
                 cmd.extend(["--task-module", "fake"])
                 cmd.extend(["--task-name", "fake"])

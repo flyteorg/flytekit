@@ -7,6 +7,7 @@ from flyteidl.plugins import qubole_pb2 as _qubole_pb2
 from google.protobuf.json_format import ParseDict as _ParseDict
 from six import moves as _six_moves
 
+import flytekit.core.utils
 from flytekit.core import constants as _sdk_constants
 from flytekit.common import utils as _common_utils
 from flytekit.exceptions import system as _system_exception, user as _user_exceptions
@@ -89,7 +90,7 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
             _os.path.join(_os.path.dirname(__file__), "unit.config"),
             internal_overrides={"image": "unit_image"},
         ):
-            with _common_utils.AutoDeletingTempDir("unit_test_dir") as working_directory:
+            with flytekit.core.utils.AutoDeletingTempDir("unit_test_dir") as working_directory:
                 with _data_proxy.LocalWorkingDirectoryContext(working_directory):
                     return self._transform_for_user_output(self._execute_user_code(inputs))
 
@@ -98,7 +99,7 @@ class UnitTestEngineTask(_common_engine.BaseTaskExecutor):
         :param flytekit.models.literals.LiteralMap inputs:
         :rtype: dict[Text,flytekit.models.common.FlyteIdlEntity]
         """
-        with _common_utils.AutoDeletingTempDir("user_dir") as user_working_directory:
+        with flytekit.core.utils.AutoDeletingTempDir("user_dir") as user_working_directory:
             return self.sdk_task.execute(
                 _common_engine.EngineContext(
                     execution_id=WorkflowExecutionIdentifier(project="unit_test", domain="unit_test", name="unit_test"),

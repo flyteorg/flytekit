@@ -3,6 +3,7 @@ from datetime import datetime as _datetime
 
 import six as _six
 
+import flytekit.core.utils
 from flytekit.common import utils as _common_utils
 from flytekit.common.tasks import hive_task as _hive_task
 from flytekit.common.tasks import output as _task_output
@@ -94,7 +95,7 @@ def test_sdk_output_references_construction():
 
 
 def test_hive_task_query_generation():
-    with _common_utils.AutoDeletingTempDir("user_dir") as user_working_directory:
+    with flytekit.core.utils.AutoDeletingTempDir("user_dir") as user_working_directory:
         context = _common_engine.EngineContext(
             execution_id=WorkflowExecutionIdentifier(project="unit_test", domain="unit_test", name="unit_test"),
             execution_date=_datetime.utcnow(),
@@ -122,7 +123,7 @@ def test_hive_task_query_generation():
 
 
 def test_hive_task_dynamic_job_spec_generation():
-    with _common_utils.AutoDeletingTempDir("user_dir") as user_working_directory:
+    with flytekit.core.utils.AutoDeletingTempDir("user_dir") as user_working_directory:
         context = _common_engine.EngineContext(
             execution_id=WorkflowExecutionIdentifier(project="unit_test", domain="unit_test", name="unit_test"),
             execution_date=_datetime.utcnow(),

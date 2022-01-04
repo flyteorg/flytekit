@@ -14,7 +14,7 @@ from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask
 
 import flytekit
 from flytekit import task
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import Image, ImageConfig, SerializationSettings
 
 

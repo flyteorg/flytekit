@@ -1,5 +1,6 @@
 from wrapt import decorator as _decorator
 
+import flytekit.core.utils
 from flytekit.common import utils as _utils
 from flytekit.interfaces.data import data_proxy as _data_proxy
 
@@ -41,10 +42,10 @@ class LocalTestFileSystem(object):
 
     def __enter__(self):
         """
-        :rtype: flytekit.common.utils.AutoDeletingTempDir
+        :rtype: flytekit.core.utils.AutoDeletingTempDir
         """
         self._exit_stack.__enter__()
-        temp_dir = self._exit_stack.enter_context(_utils.AutoDeletingTempDir("local_test_filesystem"))
+        temp_dir = self._exit_stack.enter_context(flytekit.core.utils.AutoDeletingTempDir("local_test_filesystem"))
         self._exit_stack.enter_context(_data_proxy.LocalDataContext(temp_dir.name))
         self._exit_stack.enter_context(_data_proxy.LocalWorkingDirectoryContext(temp_dir))
         return temp_dir

@@ -11,13 +11,13 @@ from typing import List
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit.core.utils
 from flytekit import PythonFunctionTask
 from flytekit.core import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.common import utils as _utils
 from flytekit.exceptions import scopes as _scoped_exceptions, scopes as _scopes
 from flytekit.exceptions import system as _system_exceptions
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import sdk as _sdk_config
@@ -27,7 +27,7 @@ from flytekit.core.context_manager import (
     FlyteContext,
     FlyteContextManager,
     SerializationSettings,
-    get_image_config,
+    get_image_config, ExecutionParameters,
 )
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
@@ -69,7 +69,7 @@ def _map_job_index_to_child_index(local_input_dir, datadir, index):
         return index
 
     _data_proxy.Data.get_data(idx_lookup_file, local_lookup_file)
-    mapping_proto = _utils.load_proto_from_file(_literals_pb2.LiteralCollection, local_lookup_file)
+    mapping_proto = flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralCollection, local_lookup_file)
     if len(mapping_proto.literals) < index:
         raise _system_exceptions.FlyteSystemAssertion(
             "dynamic task index lookup array size: {} is smaller than lookup index {}".format(
@@ -100,7 +100,7 @@ def _dispatch_execute(
         # Step1
         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+        input_proto = flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
@@ -173,7 +173,7 @@ def _dispatch_execute(
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
-        _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
+        flytekit.core.utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
@@ -288,7 +288,7 @@ def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_outp
     This function should be called for old flytekit api tasks (the only API that was available in 0.15.x and earlier)
     """
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
+        with flytekit.core.utils.AutoDeletingTempDir("input_dir") as input_dir:
             # Load user code
             task_module = _importlib.import_module(task_module)
             task_def = getattr(task_module, task_name)
@@ -313,7 +313,7 @@ def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_outp
                 output_prefix = _os.path.join(output_prefix, str(job_index))
 
             _data_proxy.Data.get_data(inputs, local_inputs_file)
-            input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+            input_proto = flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
 
             _engine_loader.get_engine().get_task(task_def).execute(
                 _literal_models.LiteralMap.from_flyte_idl(input_proto),

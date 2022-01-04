@@ -1,5 +1,7 @@
 import typing
 
+import flytekit.core.context_manager
+
 try:
     from inspect import getfullargspec as _getargspec
 except ImportError:
@@ -156,7 +158,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
 
         with GlobalSparkContext():
             _exception_scopes.user_entry_point(self.task_function)(
-                _sdk_runnable.ExecutionParameters(
+                flytekit.core.context_manager.ExecutionParameters(
                     execution_date=context.execution_date,
                     tmp_dir=context.working_directory,
                     stats=context.stats,

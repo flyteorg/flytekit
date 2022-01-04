@@ -399,7 +399,7 @@ class EngineContext(object):
     @property
     def working_directory(self):
         """
-        :rtype: flytekit.common.utils.AutoDeletingTempDir
+        :rtype: flytekit.core.utils.AutoDeletingTempDir
         """
         return self._working_directory
 

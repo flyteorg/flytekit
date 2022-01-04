@@ -7,6 +7,7 @@ import six as _six
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
+import flytekit.core.context_manager
 from flytekit.common import interface as _interfaces
 from flytekit.common import nodes as _nodes
 from flytekit.common import sdk_bases as _sdk_bases
@@ -417,6 +418,6 @@ class SdkTask(
                 literal_inputs,
             )
         except _user_exceptions.FlyteEntityAlreadyExistsException:
-            exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
+            exec_id = flytekit.core.context_manager.WorkflowExecutionIdentifier(project, domain, name)
         execution = client.get_execution(exec_id)
         return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)

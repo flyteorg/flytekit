@@ -4,10 +4,10 @@ from typing import Dict, List
 import flytekit
 from flytekit.core import constants as _constants
 from flytekit.common import interface as _interface
+from flytekit.core.utils import _get_container_definition
 from flytekit.exceptions import scopes as _exception_scopes
 from flytekit.common.tasks import task as _base_task
 from flytekit.common.types.base_sdk_types import FlyteSdkType
-from flytekit.configuration import resources as _resource_config
 from flytekit.models import literals as _literals
 from flytekit.models import task as _task_models
 from flytekit.models.interface import Variable
@@ -19,84 +19,6 @@ def types_to_variable(t: Dict[str, FlyteSdkType]) -> Dict[str, Variable]:
         for k, v in t.items():
             var[k] = Variable(v.to_flyte_literal_type(), "")
     return var
-
-
-def _get_container_definition(
-    image: str,
-    command: List[str],
-    args: List[str],
-    data_loading_config: _task_models.DataLoadingConfig,
-    storage_request: str = None,
-    ephemeral_storage_request: str = None,
-    cpu_request: str = None,
-    gpu_request: str = None,
-    memory_request: str = None,
-    storage_limit: str = None,
-    ephemeral_storage_limit: str = None,
-    cpu_limit: str = None,
-    gpu_limit: str = None,
-    memory_limit: str = None,
-    environment: Dict[str, str] = None,
-) -> _task_models.Container:
-    storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
-    storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
-    ephemeral_storage_limit = ephemeral_storage_limit or _resource_config.DEFAULT_EPHEMERAL_STORAGE_LIMIT.get()
-    ephemeral_storage_request = ephemeral_storage_request or _resource_config.DEFAULT_EPHEMERAL_STORAGE_REQUEST.get()
-    cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
-    cpu_request = cpu_request or _resource_config.DEFAULT_CPU_REQUEST.get()
-    gpu_limit = gpu_limit or _resource_config.DEFAULT_GPU_LIMIT.get()
-    gpu_request = gpu_request or _resource_config.DEFAULT_GPU_REQUEST.get()
-    memory_limit = memory_limit or _resource_config.DEFAULT_MEMORY_LIMIT.get()
-    memory_request = memory_request or _resource_config.DEFAULT_MEMORY_REQUEST.get()
-
-    requests = []
-    if storage_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
-        )
-    if ephemeral_storage_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
-            )
-        )
-    if cpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
-    if gpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
-    if memory_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
-        )
-
-    limits = []
-    if storage_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit))
-    if ephemeral_storage_limit:
-        limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
-            )
-        )
-    if cpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
-    if gpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
-    if memory_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit))
-
-    if environment is None:
-        environment = {}
-
-    return _task_models.Container(
-        image=image,
-        command=command,
-        args=args,
-        resources=_task_models.Resources(limits=limits, requests=requests),
-        env=environment,
-        config={},
-        data_loading_config=data_loading_config,
-    )
 
 
 class SdkRawContainerTask(_base_task.SdkTask):

@@ -3,6 +3,7 @@ import os as _os
 import six as _six
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit.core.utils
 from flytekit.clients.helpers import iterate_node_executions as _iterate_node_executions
 from flytekit.common import sdk_bases as _sdk_bases
 from flytekit.common import utils as _common_utils
@@ -51,11 +52,11 @@ class SdkTaskExecution(
             if bool(execution_data.full_inputs.literals):
                 input_map = execution_data.full_inputs
             elif execution_data.inputs.bytes > 0:
-                with _common_utils.AutoDeletingTempDir() as t:
+                with flytekit.core.utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "inputs.pb")
                     _data_proxy.Data.get_data(execution_data.inputs.url, tmp_name)
                     input_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                        flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
             else:
                 input_map = _literal_models.LiteralMap({})
@@ -87,11 +88,11 @@ class SdkTaskExecution(
                 output_map = execution_data.full_outputs
 
             elif execution_data.outputs.bytes > 0:
-                with _common_utils.AutoDeletingTempDir() as t:
+                with flytekit.core.utils.AutoDeletingTempDir() as t:
                     tmp_name = _os.path.join(t.name, "outputs.pb")
                     _data_proxy.Data.get_data(execution_data.outputs.url, tmp_name)
                     output_map = _literal_models.LiteralMap.from_flyte_idl(
-                        _common_utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
+                        flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, tmp_name)
                     )
             else:
                 output_map = _literal_models.LiteralMap({})

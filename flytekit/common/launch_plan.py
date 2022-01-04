@@ -5,6 +5,7 @@ import uuid as _uuid
 import six as _six
 from deprecated import deprecated as _deprecated
 
+import flytekit.core.context_manager
 from flytekit.common import interface as _interface
 from flytekit.common import nodes as _nodes
 from flytekit.common import promise as _promises
@@ -344,7 +345,7 @@ class SdkLaunchPlan(
                 literal_inputs,
             )
         except _user_exceptions.FlyteEntityAlreadyExistsException:
-            exec_id = _identifier.WorkflowExecutionIdentifier(project, domain, name)
+            exec_id = flytekit.core.context_manager.WorkflowExecutionIdentifier(project, domain, name)
         execution = client.get_execution(exec_id)
         return _workflow_execution.SdkWorkflowExecution.promote_from_model(execution)
 

@@ -16,7 +16,7 @@ from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import sdk_runnable as _sdk_runnable
 from flytekit.common.tasks import task as _task
 from flytekit.common.types import helpers as _type_helpers
-from flytekit.common.utils import _dnsify
+from flytekit.core.utils import _dnsify
 from flytekit.configuration import internal as _internal_config
 from flytekit.models import array_job as _array_job
 from flytekit.models import dynamic_job as _dynamic_job

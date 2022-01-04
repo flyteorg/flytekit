@@ -23,8 +23,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings, \
+    ExecutionParameters
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (

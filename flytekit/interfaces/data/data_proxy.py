@@ -1,3 +1,4 @@
+import flytekit.core.utils
 from flytekit.core import constants as _constants
 from flytekit.common import utils as _common_utils
 from flytekit.exceptions import user as _user_exception
@@ -103,7 +104,7 @@ class Data(object):
         :param Text path:
         :rtype: bool: whether the file exists or not
         """
-        with _common_utils.PerformanceTimer("Check file exists {}".format(path)):
+        with flytekit.core.utils.PerformanceTimer("Check file exists {}".format(path)):
             proxy = cls._load_data_proxy_by_path(path)
             return proxy.exists(path)
 
@@ -115,7 +116,7 @@ class Data(object):
         :param bool is_multipart:
         """
         try:
-            with _common_utils.PerformanceTimer("Copying ({} -> {})".format(remote_path, local_path)):
+            with flytekit.core.utils.PerformanceTimer("Copying ({} -> {})".format(remote_path, local_path)):
                 proxy = cls._load_data_proxy_by_path(remote_path)
                 if is_multipart:
                     proxy.download_directory(remote_path, local_path)
@@ -140,7 +141,7 @@ class Data(object):
         :param bool is_multipart:
         """
         try:
-            with _common_utils.PerformanceTimer("Writing ({} -> {})".format(local_path, remote_path)):
+            with flytekit.core.utils.PerformanceTimer("Writing ({} -> {})".format(local_path, remote_path)):
                 proxy = cls._load_data_proxy_by_path(remote_path)
                 if is_multipart:
                     proxy.upload_directory(local_path, remote_path)

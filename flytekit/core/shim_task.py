@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Generic, Type, TypeVar, Union
 
-from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager, logger
+from flytekit import FlyteContext, FlyteContextManager, logger
+from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import dynamic_job as _dynamic_job

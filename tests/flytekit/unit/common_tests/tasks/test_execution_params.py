@@ -3,7 +3,7 @@ import os
 import py
 import pytest
 
-from flytekit.common.tasks.sdk_runnable import SecretsManager
+from flytekit.core.context_manager import SecretsManager
 from flytekit.configuration import secrets
 
 
