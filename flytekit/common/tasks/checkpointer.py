@@ -69,7 +69,7 @@ class SyncCheckpoint(Checkpoint):
     TODO: Implement an async checkpoint system
     """
 
-    SRC_LOCAL_PATH = "_src_cp"
+    SRC_LOCAL_FOLDER = "prev_cp"
     TMP_DST_PATH = "_dst_cp"
 
     def __init__(self, checkpoint_dest: str, checkpoint_src: typing.Optional[str] = None):
@@ -89,19 +89,26 @@ class SyncCheckpoint(Checkpoint):
     def prev_exists(self) -> bool:
         return self._checkpoint_src is not None
 
-    def restore(self, path: typing.Union[Path, str]) -> Path:
+    def restore(self, path: typing.Optional[typing.Union[Path, str]] = None) -> Path:
 
         # We have to lazy load, until we fix the imports
         from flytekit.core.context_manager import FlyteContextManager
 
         if self._checkpoint_src is None:
             return False
+
         if self._prev_download_path:
             return self._prev_download_path
-        if isinstance(path, str):
+
+        if path is None:
+            p = Path(self._td.name)
+            path = p.joinpath(self.SRC_LOCAL_FOLDER)
+        elif isinstance(path, str):
             path = Path(path)
+
         if not path.is_dir():
             raise ValueError("Checkpoints can be restored to a directory only.")
+
         FlyteContextManager.current_context().file_access.download_directory(self._checkpoint_src, str(path))
         self._prev_download_path = path
         return self._prev_download_path
@@ -134,8 +141,14 @@ class SyncCheckpoint(Checkpoint):
         fa.upload(str(dest_cp), rpath)
 
     def read(self) -> bytes:
-        pass
+        p = self.restore()
+        files = list(p.iterdir())
+        if len(files) == 0 or len(files) > 1:
+            raise ValueError(f"Expected exactly one checkpoint - found {len(files)}")
+        f = files[0]
+        return f.read_bytes()
 
     def write(self, b: bytes):
-        buf = io.RawIOBase.readinto(b)
-        self.save(buf)
+        f = io.BytesIO(b)
+        f = typing.cast(f, io.BufferedReader)
+        self.save(f)
