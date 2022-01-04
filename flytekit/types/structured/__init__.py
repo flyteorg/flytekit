@@ -5,8 +5,6 @@ from .basic_dfs import (
     PandasToParquetEncodingHandler,
     ParquetToArrowDecodingHandler,
     ParquetToPandasDecodingHandler,
-    ParquetToSparkDecodingHandler,
-    SparkToParquetEncodingHandler,
 )
 
 try:
