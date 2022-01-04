@@ -1,9 +1,7 @@
-import abc
 import collections
 import datetime
 import logging
 import os
-import re
 import string
 import subprocess
 import typing
@@ -33,22 +31,6 @@ class OutputLocation:
     location: typing.Union[os.PathLike, str]
 
 
-def _stringify(v: typing.Any) -> str:
-    """
-    Special cased return for the given value. Given the type returns the string version for the type.
-    Handles FlyteFile and FlyteDirectory specially. Downloads and returns the downloaded filepath
-    """
-    if isinstance(v, FlyteFile):
-        v.download()
-        return v.path
-    if isinstance(v, FlyteDirectory):
-        v.download()
-        return v.path
-    if isinstance(v, datetime.datetime):
-        return v.isoformat()
-    return str(v)
-
-
 def _dummy_task_func():
     """
     A Fake function to satisfy the inner PythonTask requirements
@@ -59,49 +41,16 @@ def _dummy_task_func():
 T = typing.TypeVar("T")
 
 
-class _Interpolaizer(abc.ABC):
-    @abc.abstractmethod
-    def interpolate(self, tmpl: str, inputs=None, outputs=None) -> str:
-        pass
+class _PythonFStringInterpolizer:
+    """A class for interpolating scripts that use python string.format syntax"""
 
-
-class _DoubleCurlyBraceInterpolizer(_Interpolaizer):
-
-    _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
-    _OUTPUT_REGEX = re.compile(r"({{\s*.outputs.(\w+)\s*}})", re.IGNORECASE)
-
-    def interpolate(
-        self, tmpl: str, inputs: typing.Dict[str, typing.Any] = None, outputs: typing.Dict[str, typing.Any] = None
-    ) -> str:
-        inputs = inputs or {}
-        outputs = outputs or {}
-        tmpl = self._interpolate(tmpl, self._INPUT_REGEX, **inputs)
-        tmpl = self._interpolate(tmpl, self._OUTPUT_REGEX, **outputs)
-        return tmpl
-
-    @staticmethod
-    def _interpolate(tmpl: str, regex: re.Pattern, **kwargs) -> str:
-        """
-        Substitutes all templates that match the supplied regex
-        with the given inputs and returns the substituted string. The result is non destructive towards the given string.
-        """
-        modified = tmpl
-        matched = set()
-        for match in regex.finditer(tmpl):
-            expr = match.groups()[0]
-            var = match.groups()[1]
-            if var not in kwargs:
-                raise ValueError(f"Variable {var} in Query (part of {expr}) not found in inputs {kwargs.keys()}")
-            matched.add(var)
-            val = kwargs[var]
-            # str conversion should be deliberate, with right conversion for each type
-            modified = modified.replace(expr, _stringify(val))
-        return modified
-
-
-class _PythonFStringInterpolizer(_Interpolaizer):
     class _Formatter(string.Formatter):
         def format_field(self, value, format_spec):
+            """
+            Special cased return for the given value. Given the type returns the string version for
+            the type. Handles FlyteFile and FlyteDirectory specially.
+            Downloads and returns the downloaded filepath.
+            """
             if isinstance(value, FlyteFile):
                 value.download()
                 return value.path
@@ -112,9 +61,21 @@ class _PythonFStringInterpolizer(_Interpolaizer):
                 return value.isoformat()
             return super().format_field(value, format_spec)
 
-    def interpolate(self, tmpl: str, inputs=None, outputs=None) -> str:
+    def interpolate(
+        self,
+        tmpl: str,
+        inputs: typing.Optional[typing.Dict[str, str]] = None,
+        outputs: typing.Optional[typing.Dict[str, str]] = None,
+    ) -> str:
+        """
+        Interpolate python formatted string templates with variables from the input and output
+        argument dicts. The result is non destructive towards the given template string.
+        """
         inputs = inputs or {}
         outputs = outputs or {}
+        reused_vars = inputs.keys() & outputs.keys()
+        if reused_vars:
+            raise ValueError(f"Variables {reused_vars} in Query cannot be shared between inputs and outputs.")
         consolidated_args = collections.ChainMap(inputs, outputs)
         try:
             return self._Formatter().format(tmpl, **consolidated_args)
@@ -125,15 +86,12 @@ class _PythonFStringInterpolizer(_Interpolaizer):
 class ShellTask(PythonInstanceTask[T]):
     """ """
 
-    _interpolizers = {"default": _DoubleCurlyBraceInterpolizer, "python_f_string": _PythonFStringInterpolizer}
-
     def __init__(
         self,
         name: str,
         debug: bool = False,
         script: typing.Optional[str] = None,
         script_file: typing.Optional[str] = None,
-        template_style: str = "default",
         task_config: T = None,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_locs: typing.Optional[typing.List[OutputLocation]] = None,
@@ -178,10 +136,7 @@ class ShellTask(PythonInstanceTask[T]):
         self._script_file = script_file
         self._debug = debug
         self._output_locs = output_locs if output_locs else []
-        try:
-            self._interpolizer = self._interpolizers[template_style]()
-        except KeyError:
-            raise ValueError(f"'{template_style}' is not recognized as a valid template style")
+        self._interpolizer = _PythonFStringInterpolizer()
         outputs = self._validate_output_locs()
         super().__init__(
             name,

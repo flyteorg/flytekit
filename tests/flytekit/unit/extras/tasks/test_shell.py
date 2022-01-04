@@ -41,32 +41,14 @@ def test_shell_task_fail():
         t()
 
 
-@pytest.mark.parametrize(
-    "template_style,script",
-    [
-        (
-            "default",
-            """
-            set -ex
-            cat {{ .inputs.f }}
-            echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }}"
-            """,
-        ),
-        (
-            "python_f_string",
-            """
+def test_input_substitution_primitive():
+    t = ShellTask(
+        name="test",
+        script="""
             set -ex
             cat {f}
             echo "Hello World {y} on  {j}"
             """,
-        ),
-    ],
-)
-def test_input_substitution_primitive(template_style, script):
-    t = ShellTask(
-        name="test",
-        script=script,
-        template_style=template_style,
         inputs=kwtypes(f=str, y=int, j=datetime.datetime),
     )
 
@@ -76,51 +58,28 @@ def test_input_substitution_primitive(template_style, script):
         t(f="non_exist.py", y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
-@pytest.mark.parametrize(
-    "template_style,script",
-    [
-        (
-            "default",
-            """
-            cat {{ .inputs.f }}
-            echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }}"
-            """,
-        ),
-        (
-            "python_f_string",
-            """
+def test_input_substitution_files():
+    t = ShellTask(
+        name="test",
+        script="""
             cat {f}
             echo "Hello World {y} on  {j}"
             """,
-        ),
-    ],
-)
-def test_input_substitution_files(template_style, script):
-    t = ShellTask(
-        name="test",
-        script=script,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
     )
 
     assert t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
 
 
-@pytest.mark.parametrize(
-    "template_style,script,output_location",
-    [
-        ("default", """cat {{ .inputs.f }} > {{ .outputs.y }}""", "{{ .inputs.f }}.mod"),
-        ("python_f_string", """cat {f} > {y}""", "{f}.mod"),
-    ],
-)
-def test_input_output_substitution_files(template_style, script, output_location):
+def test_input_output_substitution_files():
+    script = "cat {f} > {y}"
     t = ShellTask(
         name="test",
         debug=True,
         script=script,
-        template_style=template_style,
         inputs=kwtypes(f=CSVFile),
         output_locs=[
-            OutputLocation(var="y", var_type=FlyteFile, location=output_location),
+            OutputLocation(var="y", var_type=FlyteFile, location="{f}.mod"),
         ],
     )
 
@@ -140,35 +99,17 @@ def test_input_output_substitution_files(template_style, script, output_location
         assert s == contents
 
 
-@pytest.mark.parametrize(
-    "template_style,script,output_location",
-    [
-        (
-            "default",
-            """
-            cat {{ .inputs.f }} >> {{ .outputs.z }}
-            echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }}"
-            """,
-            "{{ .inputs.f }}.pyc",
-        ),
-        (
-            "python_f_string",
-            """
+def test_input_single_output_substitution_files():
+    script = """
             cat {f} >> {z}
             echo "Hello World {y} on  {j}"
-            """,
-            "{f}.pyc",
-        ),
-    ],
-)
-def test_input_single_output_substitution_files(template_style, script, output_location):
+            """
     t = ShellTask(
         name="test",
         debug=True,
         script=script,
-        template_style=template_style,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
-        output_locs=[OutputLocation(var="z", var_type=FlyteFile, location=output_location)],
+        output_locs=[OutputLocation(var="z", var_type=FlyteFile, location="{f}.pyc")],
     )
 
     assert t.script == script
@@ -177,38 +118,31 @@ def test_input_single_output_substitution_files(template_style, script, output_l
 
 
 @pytest.mark.parametrize(
-    "template_style,script,output_location_x,output_location_z",
+    "script",
     [
         (
-            "default",
             """
-            cat {{ .inputs.f }} {{ .inputs.missing }} >> {{ .outputs.z }}
-            echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
-            """,
-            "{{ .inputs.y }}",
-            "{{ .inputs.f }}.pyc",
+            cat {missing} >> {z}
+            echo "Hello World {y} on  {j} - output {x}"
+            """
         ),
         (
-            "python_f_string",
             """
             cat {f} {missing} >> {z}
             echo "Hello World {y} on  {j} - output {x}"
-            """,
-            "{y}",
-            "{f}.pyc",
+            """
         ),
     ],
 )
-def test_input_output_extra_var_in_template(template_style, script, output_location_x, output_location_z):
+def test_input_output_extra_and_missing_variables(script):
     t = ShellTask(
         name="test",
         debug=True,
         script=script,
-        template_style=template_style,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location=output_location_x),
-            OutputLocation(var="z", var_type=FlyteFile, location=output_location_z),
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{y}"),
+            OutputLocation(var="z", var_type=FlyteFile, location="{f}.pyc"),
         ],
     )
 
@@ -216,43 +150,21 @@ def test_input_output_extra_var_in_template(template_style, script, output_locat
         t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
-@pytest.mark.parametrize(
-    "template_style,script,output_location_x,output_location_z",
-    [
-        (
-            "default",
-            """
-            cat {{ .inputs.missing }} >> {{ .outputs.y }}
-            echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
-            """,
-            "{{ .inputs.y }}",
-            "{{ .inputs.f }}.pyc",
-        ),
-        (
-            "python_f_string",
-            """
-            cat {missing} >> {z}
-            echo "Hello World {y} on  {j} - output {x}"
-            """,
-            "{y}",
-            "{f}.pyc",
-        ),
-    ],
-)
-def test_input_output_extra_input(template_style, script, output_location_x, output_location_z):
+def test_cannot_reuse_variables_for_both_inputs_and_outputs():
     t = ShellTask(
         name="test",
         debug=True,
-        script=script,
-        template_style=template_style,
+        script="""
+        cat {f} >> {y}
+        echo "Hello World {y} on  {j}"
+        """,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location=output_location_x),
-            OutputLocation(var="z", var_type=FlyteFile, location=output_location_z),
+            OutputLocation(var="y", var_type=FlyteFile, location="{f}.pyc"),
         ],
     )
 
-    with pytest.raises(ValueError, match="missing"):
+    with pytest.raises(ValueError, match="Variables {'y'} in Query"):
         t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
@@ -266,7 +178,6 @@ def test_can_use_complex_types_for_inputs_to_f_string_template():
         name="test",
         debug=True,
         script="""cat {input_args.in_file} >> {input_args.in_file}.tmp""",
-        template_style="python_f_string",
         inputs=kwtypes(input_args=InputArgs),
         output_locs=[
             OutputLocation(var="x", var_type=FlyteFile, location="{input_args.in_file}.tmp"),
@@ -285,8 +196,8 @@ def test_shell_script():
         script_file=script_sh,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
-            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{y}"),
+            OutputLocation(var="z", var_type=FlyteFile, location="{f}.pyc"),
         ],
     )
 
