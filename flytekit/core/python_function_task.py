@@ -178,7 +178,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
         with FlyteContextManager.with_context(ctx.with_compilation_state(cs)):
             # TODO: Resolve circular import
-            from flytekit.translator import get_serializable
+            from flytekit.tools.translator import get_serializable
 
             workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
             defaults = WorkflowMetadataDefaults(

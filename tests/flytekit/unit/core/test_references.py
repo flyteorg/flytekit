@@ -15,7 +15,7 @@ from flytekit.core.task import reference_task, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.workflow import reference_workflow, workflow
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 
 
 # This is used for docs

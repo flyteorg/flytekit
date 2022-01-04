@@ -30,7 +30,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import iterate_registerable_entities_in_order
-from flytekit.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures

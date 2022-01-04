@@ -13,7 +13,7 @@ from flytekit.core.workflow import ImperativeWorkflow, get_promise, workflow
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.models import literals as literal_models
-from flytekit.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 

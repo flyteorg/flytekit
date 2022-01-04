@@ -7,7 +7,7 @@ from flytekit.core.task import task
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
-from flytekit.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 from flytekit.types.pickle.pickle import FlytePickle, FlytePickleTransformer
 
 default_img = Image(name="default", fqn="test", tag="tag")

@@ -9,7 +9,7 @@ from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
-from flytekit.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 
 
 @task

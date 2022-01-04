@@ -12,7 +12,7 @@ from flytekit.core.context_manager import Image, ImageConfig, SerializationSetti
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.models.types import SimpleType
-from flytekit.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(

@@ -10,7 +10,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.remote import FlyteWorkflow
-from flytekit.translator import gather_dependent_entities, get_serializable
+from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(

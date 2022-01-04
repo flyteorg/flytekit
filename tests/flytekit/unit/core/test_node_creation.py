@@ -14,7 +14,7 @@ from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import literals as _literal_models
 from flytekit.models.task import Resources as _resources_models
-from flytekit.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 
 
 def test_normal_task():
