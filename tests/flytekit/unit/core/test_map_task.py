@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit import LaunchPlan, Resources, map_task
+from flytekit import LaunchPlan, map_task
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
@@ -33,13 +33,9 @@ def test_map_docs():
 
     @workflow
     def my_wf(x: typing.List[int]) -> typing.List[str]:
-        return map_task(
-            my_mappable_task,
-            metadata=TaskMetadata(retries=1),
-            requests=Resources(cpu="10M"),
-            concurrency=10,
-            min_success_ratio=0.75,
-        )(a=x)
+        return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
+            a=x
+        ).with_overrides(cpu="10M")
 
     # test_map_task_end
 
