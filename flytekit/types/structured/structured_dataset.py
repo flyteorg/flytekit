@@ -423,7 +423,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 return self.open_as(ctx, sd_literal, df_type=expected_python_type)
 
         # Either a StructuredDataset type or some dataframe type.
-        if issubclass(expected_python_type, StructuredDataset):
+        if inspect.isclass(expected_python_type) and issubclass(expected_python_type, StructuredDataset):
             # Just save the literal for now. If in the future we find that we need the StructuredDataset type hint
             # type also, we can add it.
             sd = expected_python_type(
