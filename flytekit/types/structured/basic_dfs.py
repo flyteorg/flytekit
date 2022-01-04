@@ -88,7 +88,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(path, filesystem=get_filesystem(path))
 
 
-for protocol in [LOCAL, S3]:  # Think how to add S3 and GCS
+for protocol in [LOCAL]:  # Think how to add S3 and GCS
     FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandler(protocol), default_for_type=True)
     FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
     FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandler(pa.Table, protocol, PARQUET))
