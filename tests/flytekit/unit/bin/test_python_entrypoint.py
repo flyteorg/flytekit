@@ -1,188 +1,24 @@
-import os
 import typing
 from collections import OrderedDict
 
 import mock
 import pytest
-import six
-from click.testing import CliRunner
-from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
 
-import flytekit.core.utils
-from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd, setup_execution
-from flytekit.common import utils as _utils
-from flytekit.exceptions import user as user_exceptions
-from flytekit.exceptions import system_entry_point
-from flytekit.common.types import helpers as _type_helpers
-from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
-from flytekit.core import context_manager, constants as _constants
+from flytekit.bin.entrypoint import _dispatch_execute, setup_execution
+from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import system_entry_point
+from flytekit.exceptions import user as user_exceptions
 from flytekit.extras.persistence.gcs_gsutil import GCSPersistence
 from flytekit.extras.persistence.s3_awscli import S3Persistence
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
-from tests.flytekit.common import task_definitions as _task_defs
-
-
-def _type_map_from_variable_map(variable_map):
-    return {k: _type_helpers.get_sdk_type_from_literal_type(v.type) for k, v in six.iteritems(variable_map)}
-
-
-def test_single_step_entrypoint_in_proc():
-    with _TemporaryConfiguration(
-        os.path.join(os.path.dirname(__file__), "fake.config"),
-        internal_overrides={"project": "test", "domain": "development"},
-    ):
-        with flytekit.core.utils.AutoDeletingTempDir("in") as input_dir:
-            literal_map = _type_helpers.pack_python_std_map_to_literal_map(
-                {"a": 9},
-                _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
-            )
-            input_file = os.path.join(input_dir.name, "inputs.pb")
-            flytekit.core.utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
-
-            with flytekit.core.utils.AutoDeletingTempDir("out") as output_dir:
-                _legacy_execute_task(
-                    _task_defs.add_one.task_module,
-                    _task_defs.add_one.task_function_name,
-                    input_file,
-                    output_dir.name,
-                    output_dir.name,
-                    False,
-                )
-
-                p = flytekit.core.utils.load_proto_from_file(
-                    _literals_pb2.LiteralMap,
-                    os.path.join(output_dir.name, _constants.OUTPUT_FILE_NAME),
-                )
-                raw_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
-                    _literal_models.LiteralMap.from_flyte_idl(p),
-                    _type_map_from_variable_map(_task_defs.add_one.interface.outputs),
-                )
-                assert raw_map["b"] == 10
-                assert len(raw_map) == 1
-
-
-def test_single_step_entrypoint_out_of_proc():
-    with _TemporaryConfiguration(
-        os.path.join(os.path.dirname(__file__), "fake.config"),
-        internal_overrides={"project": "test", "domain": "development"},
-    ):
-        with flytekit.core.utils.AutoDeletingTempDir("in") as input_dir:
-            literal_map = _type_helpers.pack_python_std_map_to_literal_map(
-                {"a": 9},
-                _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
-            )
-            input_file = os.path.join(input_dir.name, "inputs.pb")
-            flytekit.core.utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
-
-            with flytekit.core.utils.AutoDeletingTempDir("out") as output_dir:
-                cmd = []
-                cmd.extend(["--task-module", _task_defs.add_one.task_module])
-                cmd.extend(["--task-name", _task_defs.add_one.task_function_name])
-                cmd.extend(["--inputs", input_file])
-                cmd.extend(["--output-prefix", output_dir.name])
-                result = CliRunner().invoke(execute_task_cmd, cmd)
-
-                assert result.exit_code == 0
-                p = flytekit.core.utils.load_proto_from_file(
-                    _literals_pb2.LiteralMap,
-                    os.path.join(output_dir.name, _constants.OUTPUT_FILE_NAME),
-                )
-                raw_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
-                    _literal_models.LiteralMap.from_flyte_idl(p),
-                    _type_map_from_variable_map(_task_defs.add_one.interface.outputs),
-                )
-                assert raw_map["b"] == 10
-                assert len(raw_map) == 1
-
-
-def test_arrayjob_entrypoint_in_proc():
-    with _TemporaryConfiguration(
-        os.path.join(os.path.dirname(__file__), "fake.config"),
-        internal_overrides={"project": "test", "domain": "development"},
-    ):
-        with flytekit.core.utils.AutoDeletingTempDir("dir") as dir:
-            literal_map = _type_helpers.pack_python_std_map_to_literal_map(
-                {"a": 9},
-                _type_map_from_variable_map(_task_defs.add_one.interface.inputs),
-            )
-
-            input_dir = os.path.join(dir.name, "1")
-            os.mkdir(input_dir)  # auto cleanup will take this subdir into account
-
-            input_file = os.path.join(input_dir, "inputs.pb")
-            flytekit.core.utils.write_proto_to_file(literal_map.to_flyte_idl(), input_file)
-
-            # construct indexlookup.pb which has array: [1]
-            mapped_index = _literal_models.Literal(
-                _literal_models.Scalar(primitive=_literal_models.Primitive(integer=1))
-            )
-            index_lookup_collection = _literal_models.LiteralCollection([mapped_index])
-            index_lookup_file = os.path.join(dir.name, "indexlookup.pb")
-            flytekit.core.utils.write_proto_to_file(index_lookup_collection.to_flyte_idl(), index_lookup_file)
-
-            # fake arrayjob task by setting environment variables
-            orig_env_index_var_name = os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")
-            orig_env_array_index = os.environ.get("AWS_BATCH_JOB_ARRAY_INDEX")
-            os.environ["BATCH_JOB_ARRAY_INDEX_VAR_NAME"] = "AWS_BATCH_JOB_ARRAY_INDEX"
-            os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = "0"
-
-            _legacy_execute_task(
-                _task_defs.add_one.task_module,
-                _task_defs.add_one.task_function_name,
-                dir.name,
-                dir.name,
-                dir.name,
-                False,
-            )
-
-            raw_map = _type_helpers.unpack_literal_map_to_sdk_python_std(
-                _literal_models.LiteralMap.from_flyte_idl(
-                    flytekit.core.utils.load_proto_from_file(
-                        _literals_pb2.LiteralMap,
-                        os.path.join(input_dir, _constants.OUTPUT_FILE_NAME),
-                    )
-                ),
-                _type_map_from_variable_map(_task_defs.add_one.interface.outputs),
-            )
-            assert raw_map["b"] == 10
-            assert len(raw_map) == 1
-
-            # reset the env vars
-            if orig_env_index_var_name:
-                os.environ["BATCH_JOB_ARRAY_INDEX_VAR_NAME"] = orig_env_index_var_name
-            if orig_env_array_index:
-                os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = orig_env_array_index
-
-
-@mock.patch("flytekit.bin.entrypoint._legacy_execute_task")
-def test_backwards_compatible_replacement(mock_legacy_execute_task):
-    def return_args(*args, **kwargs):
-        assert args[4] is None
-
-    mock_legacy_execute_task.side_effect = return_args
-
-    with _TemporaryConfiguration(
-        os.path.join(os.path.dirname(__file__), "fake.config"),
-        internal_overrides={"project": "test", "domain": "development"},
-    ):
-        with flytekit.core.utils.AutoDeletingTempDir("in"):
-            with flytekit.core.utils.AutoDeletingTempDir("out"):
-                cmd = []
-                cmd.extend(["--task-module", "fake"])
-                cmd.extend(["--task-name", "fake"])
-                cmd.extend(["--inputs", "fake"])
-                cmd.extend(["--output-prefix", "fake"])
-                cmd.extend(["--raw-output-data-prefix", "{{.rawOutputDataPrefix}}"])
-                result = CliRunner().invoke(execute_task_cmd, cmd)
-                assert result.exit_code == 0
 
 
 @mock.patch("flytekit.common.utils.load_proto_from_file")
