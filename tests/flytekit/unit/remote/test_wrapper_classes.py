@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit.common.translator import gather_dependent_entities, get_serializable
+from flytekit.translator import gather_dependent_entities, get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig

@@ -15,7 +15,7 @@ from google.protobuf.struct_pb2 import Struct
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
-from flytekit.common.translator import get_serializable
+from flytekit.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig

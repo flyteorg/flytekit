@@ -19,7 +19,7 @@ from flytekit.common.core import identifier as _identifier
 from flytekit.exceptions import system_entry_point
 from flytekit.exceptions import FlyteValidationException
 from flytekit.common.tasks import task as _sdk_task
-from flytekit.common.translator import get_serializable
+from flytekit.translator import get_serializable
 from flytekit.core.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import internal as _internal_config
 from flytekit.core import context_manager as flyte_context

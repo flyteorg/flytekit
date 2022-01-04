@@ -6,7 +6,7 @@ import pytest
 
 from flytekit import Resources, map_task
 from flytekit.exceptions import FlyteAssertion
-from flytekit.common.translator import get_serializable
+from flytekit.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic

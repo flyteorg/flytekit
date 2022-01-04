@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from flytekit.common.translator import get_serializable
+from flytekit.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 

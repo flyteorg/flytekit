@@ -4,7 +4,7 @@ from collections import OrderedDict
 import pytest
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
-from flytekit.common.translator import get_serializable
+from flytekit.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, notification
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.schedule import CronSchedule

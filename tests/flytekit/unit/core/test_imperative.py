@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from flytekit.exceptions import FlyteValidationException
-from flytekit.common.translator import get_serializable
+from flytekit.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import Image, ImageConfig

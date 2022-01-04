@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit.common.translator import get_serializable
+from flytekit.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver

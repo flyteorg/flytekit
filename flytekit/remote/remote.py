@@ -20,7 +20,6 @@ from flyteidl.core import literals_pb2 as literals_pb2
 
 import flytekit.core.utils
 from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.common import utils as common_utils
 from flytekit.exceptions import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException, user as user_exceptions
 from flytekit.configuration import internal
 from flytekit.configuration import platform as platform_config
@@ -40,7 +39,7 @@ except ImportError:
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.clis.flyte_cli.main import _detect_default_config_file
 from flytekit.clis.sdk_in_container import serialize
-from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
+from flytekit.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
 from flytekit.configuration import auth as auth_config
 from flytekit.configuration.internal import DOMAIN, PROJECT
 from flytekit.core.base_task import PythonTask
