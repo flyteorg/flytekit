@@ -438,6 +438,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means
         # we should do the opening/downloading and whatever else it might entail right now. No iteration option here.
+        if get_origin(expected_python_type) is Annotated:
+            expected_python_type = get_args(expected_python_type)[0]
         return self.open_as(ctx, lv.scalar.structured_dataset, df_type=expected_python_type)
 
     def open_as(self, ctx: FlyteContext, sd: literals.StructuredDataset, df_type: Type[DF]) -> DF:
