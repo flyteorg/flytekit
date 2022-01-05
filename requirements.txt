@@ -8,10 +8,6 @@
     # via -r requirements.in
 ansiwrap==0.8.4
     # via papermill
-appnope==0.1.2
-    # via
-    #   ipykernel
-    #   ipython
 arrow==1.2.1
     # via jinja2-time
 attrs==20.3.0
@@ -111,6 +107,10 @@ ipython-genutils==0.2.0
     #   nbformat
 jedi==0.18.1
     # via ipython
+jeepney==0.7.1
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.0.3
     # via
     #   cookiecutter
@@ -283,6 +283,8 @@ sagemaker-training==3.9.2
     # via flytekit
 scipy==1.7.3
     # via sagemaker-training
+secretstorage==3.3.1
+    # via keyring
 six==1.16.0
     # via
     #   bcrypt
