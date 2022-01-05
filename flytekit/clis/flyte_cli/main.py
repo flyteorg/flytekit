@@ -21,7 +21,6 @@ from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _G
 import flytekit.core.context_manager
 import flytekit.core.utils
 from flytekit import __version__
-from flytekit.interfaces import cli_identifiers
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
 from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map
@@ -35,6 +34,7 @@ from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.core.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.interfaces import cli_identifiers
 from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.data.data_proxy import Data
 from flytekit.models import common as _common_models

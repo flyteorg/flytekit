@@ -30,13 +30,13 @@ from typing import Any, Dict, Generator, List, Optional, Union
 from docker_image import reference
 
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.configuration import secrets
 from flytekit.core import mock_stats, utils
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
+from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
 from flytekit.models.core import identifier as _identifier
 

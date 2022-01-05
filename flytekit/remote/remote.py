@@ -26,7 +26,7 @@ from flytekit.configuration import sdk as sdk_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.core import constants, context_manager
 from flytekit.core.interface import Interface
-from flytekit.exceptions import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
+from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
