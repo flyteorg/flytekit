@@ -6,8 +6,6 @@ import pandas
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from pyspark.sql import SparkSession
-from pyspark.sql.dataframe import DataFrame
 
 from flytekit import FlyteContext
 from flytekit.core.data_persistence import DataPersistencePlugins
