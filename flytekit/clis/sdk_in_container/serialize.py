@@ -24,9 +24,10 @@ from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.core import identifier as identifier_models
+from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
+from flytekit.tools.module_loader import trigger_loading
 from flytekit.tools.translator import get_serializable
 
 # Identifier fields use placeholders for registration-time substitution.
@@ -69,7 +70,7 @@ def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Se
     """
     Given a list of `TaskSpec`, this function returns a set containing the duplicated `TaskSpec` if any exists.
     """
-    seen: typing.Set[identifier_models.Identifier] = set()
+    seen: typing.Set[_identifier.Identifier] = set()
     duplicate_tasks: typing.Set[task_models.TaskSpec] = set()
     for task in tasks:
         if task.template.id not in seen:
@@ -100,9 +101,9 @@ def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
     serializable_tasks: typing.List[task_models.TaskSpec] = [
         entity for entity in entities_to_be_serialized if isinstance(entity, task_models.TaskSpec)
     ]
-    # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same metadata
-    # identifiers (see :py:class:`flytekit.models.core.identifier.Identifier`). Duplicate tasks are
-    # considered invalid at registration
+    # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same
+    # metadata identifiers (see :py:class:`flytekit.common.core.identifier.Identifier`). Duplicate
+    # tasks are considered invalid at registration
     # time and usually indicate user error, so we catch this common mistake at serialization time.
     duplicate_tasks = _find_duplicate_tasks(serializable_tasks)
     if len(duplicate_tasks) > 0:
@@ -200,11 +201,9 @@ def serialize_all(
     )
     ctx = flyte_context.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
     with flyte_context.FlyteContextManager.with_context(ctx) as ctx:
+        trigger_loading(pkgs, local_source_root=local_source_root)
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
-
-        new_api_model_values = get_registrable_entities(ctx)
-
-        loaded_entities = new_api_model_values
+        loaded_entities = get_registrable_entities(ctx)
         if folder is None:
             folder = "."
         persist_registrable_entities(loaded_entities, folder)
@@ -351,6 +350,5 @@ def fast_workflows(ctx, folder=None):
 
 
 fast.add_command(fast_workflows)
-
 serialize.add_command(workflows)
 serialize.add_command(fast)

@@ -12,7 +12,7 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions import system_entry_point
+from flytekit.exceptions.scopes import system_entry_point
 from flytekit.exceptions import user as user_exceptions
 from flytekit.extras.persistence.gcs_gsutil import GCSPersistence
 from flytekit.extras.persistence.s3_awscli import S3Persistence
@@ -21,10 +21,10 @@ from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
 
 
-@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
-@mock.patch("flytekit.common.utils.write_proto_to_file")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
 def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True
@@ -50,10 +50,10 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
         assert mock_write_to_file.call_count == 1
 
 
-@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
-@mock.patch("flytekit.common.utils.write_proto_to_file")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
 def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True
@@ -79,10 +79,10 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
         assert mock_write_to_file.call_count == 0
 
 
-@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
-@mock.patch("flytekit.common.utils.write_proto_to_file")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
 def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True
@@ -109,7 +109,7 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
 
 
 # This function collects outputs instead of writing them to a file.
-# See flytekit.common.utils.write_proto_to_file for the original
+# See flytekit.core.utils.write_proto_to_file for the original
 def get_output_collector(results: OrderedDict):
     def output_collector(proto, path):
         results[path] = proto
@@ -117,10 +117,10 @@ def get_output_collector(results: OrderedDict):
     return output_collector
 
 
-@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
-@mock.patch("flytekit.common.utils.write_proto_to_file")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
 def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True
@@ -154,10 +154,10 @@ def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_d
         assert lm.literals["o0"].scalar.primitive.string_value == "string is: 5"
 
 
-@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
-@mock.patch("flytekit.common.utils.write_proto_to_file")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
 def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True
@@ -194,10 +194,10 @@ def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_d
         assert ed.error.origin == execution_models.ExecutionError.ErrorKind.USER
 
 
-@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
-@mock.patch("flytekit.common.utils.write_proto_to_file")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
 def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True
@@ -238,10 +238,10 @@ def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload
         assert ed.error.origin == execution_models.ExecutionError.ErrorKind.USER
 
 
-@mock.patch("flytekit.common.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
-@mock.patch("flytekit.common.utils.write_proto_to_file")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
 def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True

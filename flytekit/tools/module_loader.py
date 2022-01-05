@@ -78,3 +78,24 @@ def load_object_from_module(object_location: str) -> Any:
     class_obj_key = class_obj[-1]  # e.g. 'default_task_class_obj'
     class_obj_mod = importlib.import_module(".".join(class_obj_mod))
     return getattr(class_obj_mod, class_obj_key)
+
+
+def trigger_loading(
+    pkgs,
+    local_source_root=None,
+):
+    """
+    This function will iterate all discovered entities in the given package list.  It will then attempt to
+    topologically sort such that any entity with a dependency on another comes later in the list.  Note that workflows
+    can reference other workflows and launch plans.
+
+    :param list[Text] pkgs:
+    :param Text local_source_root:
+    """
+    if local_source_root is not None:
+        with add_sys_path(local_source_root):
+            for _ in iterate_modules(pkgs):
+                ...
+    else:
+        for _ in iterate_modules(pkgs):
+            ...

@@ -30,8 +30,6 @@ from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
-from flytekit.exceptions import system as _system_exceptions
-from flytekit.interfaces.data import data_proxy as _data_proxy
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import entrypoint_logger as logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -59,25 +57,6 @@ def _compute_array_job_index():
     if _os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
         offset = int(_os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
     return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
-
-
-def _map_job_index_to_child_index(local_input_dir, datadir, index):
-    local_lookup_file = local_input_dir.get_named_tempfile("indexlookup.pb")
-    idx_lookup_file = _os.path.join(datadir, "indexlookup.pb")
-
-    # if the indexlookup.pb does not exist, then just return the index
-    if not _data_proxy.Data.data_exists(idx_lookup_file):
-        return index
-
-    _data_proxy.Data.get_data(idx_lookup_file, local_lookup_file)
-    mapping_proto = flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralCollection, local_lookup_file)
-    if len(mapping_proto.literals) < index:
-        raise _system_exceptions.FlyteSystemAssertion(
-            "dynamic task index lookup array size: {} is smaller than lookup index {}".format(
-                len(mapping_proto.literals), index
-            )
-        )
-    return mapping_proto.literals[index].scalar.primitive.integer
 
 
 def _dispatch_execute(
