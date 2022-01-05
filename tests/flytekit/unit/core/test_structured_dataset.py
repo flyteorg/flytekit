@@ -63,3 +63,14 @@ def test_types_sd():
     pt = StructuredDataset[my_cols]
     lt = TypeEngine.to_literal_type(pt)
     assert len(lt.structured_dataset_type.columns) == 4
+
+    pt = StructuredDataset[my_cols, "csv"]
+    lt = TypeEngine.to_literal_type(pt)
+    assert len(lt.structured_dataset_type.columns) == 4
+    assert lt.structured_dataset_type.format == "csv"
+
+    pt = StructuredDataset[{}, "csv"]
+    assert pt.FILE_FORMAT == "csv"
+    lt = TypeEngine.to_literal_type(pt)
+    assert len(lt.structured_dataset_type.columns) == 0
+    assert lt.structured_dataset_type.format == "csv"
