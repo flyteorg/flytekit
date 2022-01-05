@@ -7,4 +7,3 @@ attrs<21
 # https://github.com/flyteorg/flyte/issues/1732.
 jsonschema<4
 pyyaml<6
-flyteidl @ git+https://github.com/kennyworkman/flyteidl.git

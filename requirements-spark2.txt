@@ -10,10 +10,6 @@
     #   -r requirements.in
 ansiwrap==0.8.4
     # via papermill
-appnope==0.1.2
-    # via
-    #   ipykernel
-    #   ipython
 arrow==1.2.1
     # via jinja2-time
 attrs==20.3.0
@@ -30,9 +26,9 @@ black==21.12b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.20.24
+boto3==1.20.26
     # via sagemaker-training
-botocore==1.23.24
+botocore==1.23.26
     # via
     #   boto3
     #   s3transfer
@@ -62,8 +58,10 @@ cookiecutter==1.7.3
     # via flytekit
 croniter==1.1.0
     # via flytekit
-cryptography==36.0.0
-    # via paramiko
+cryptography==36.0.1
+    # via
+    #   paramiko
+    #   secretstorage
 dataclasses-json==0.5.6
     # via flytekit
 decorator==5.1.0
@@ -86,18 +84,18 @@ entrypoints==0.3
     #   nbconvert
     #   papermill
 flyteidl @ git+https://github.com/kennyworkman/flyteidl.git
-    # via -r requirements.in
+    # via flytekit
 gevent==21.12.0
     # via sagemaker-training
 greenlet==1.1.2
     # via gevent
-grpcio==1.42.0
+grpcio==1.43.0
     # via flytekit
 hmsclient==0.1.1
     # via flytekit
 idna==3.3
     # via requests
-importlib-metadata==4.8.2
+importlib-metadata==4.10.0
     # via keyring
 inotify_simple==1.2.1
     # via sagemaker-training
@@ -111,6 +109,10 @@ ipython-genutils==0.2.0
     #   nbformat
 jedi==0.18.1
     # via ipython
+jeepney==0.7.1
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.0.3
     # via
     #   cookiecutter
@@ -160,7 +162,7 @@ mypy-extensions==0.4.3
     # via
     #   black
     #   typing-inspect
-natsort==8.0.1
+natsort==8.0.2
     # via flytekit
 nbclient==0.5.9
     # via
@@ -177,7 +179,7 @@ nest-asyncio==1.5.4
     # via
     #   jupyter-client
     #   nbclient
-numpy==1.21.4
+numpy==1.21.5
     # via
     #   flytekit
     #   pandas
@@ -253,7 +255,7 @@ python-slugify==5.0.2
     # via cookiecutter
 pytimeparse==1.1.8
     # via flytekit
-pytz==2018.4
+pytz==2021.3
     # via
     #   flytekit
     #   pandas
@@ -283,6 +285,8 @@ sagemaker-training==3.9.2
     # via flytekit
 scipy==1.7.3
     # via sagemaker-training
+secretstorage==3.3.1
+    # via keyring
 six==1.16.0
     # via
     #   bcrypt
@@ -347,7 +351,7 @@ webencodings==0.5.1
     # via bleach
 werkzeug==2.0.2
     # via sagemaker-training
-wheel==0.37.0
+wheel==0.37.1
     # via flytekit
 wrapt==1.13.3
     # via
