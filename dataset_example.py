@@ -12,6 +12,7 @@ from pyspark.sql import SparkSession
 from flytekit import FlyteContext, kwtypes, task, workflow
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
+from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     DF,
     FLYTE_DATASET_TRANSFORMER,
@@ -114,6 +115,7 @@ class NumpyEncodingHandlers(StructuredDatasetEncoder):
         self,
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         df = typing.cast(np.ndarray, structured_dataset.dataframe)
@@ -123,7 +125,8 @@ class NumpyEncodingHandlers(StructuredDatasetEncoder):
         local_path = os.path.join(local_dir, f"{0:05}")
         pq.write_table(table, local_path, filesystem=get_filesystem(local_path))
         ctx.file_access.upload_directory(local_dir, path)
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
+        structured_dataset_type.format = PARQUET
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class NumpyDecodingHandlers(StructuredDatasetDecoder):

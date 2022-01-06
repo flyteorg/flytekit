@@ -11,6 +11,7 @@ from flytekit import FlyteContext
 from flytekit.core.data_persistence import DataPersistencePlugins
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
+from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
     LOCAL,
@@ -33,6 +34,7 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         self,
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
 
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
@@ -41,7 +43,8 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         local_path = os.path.join(local_dir, f"{0:05}")
         df.to_parquet(local_path, coerce_timestamps="us", allow_truncated_timestamps=False)
         ctx.file_access.upload_directory(local_dir, path)
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata())
+        structured_dataset_type.format = PARQUET
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
@@ -68,11 +71,13 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         self,
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
         df = structured_dataset.dataframe
         pq.write_table(df, path, filesystem=get_filesystem(path))
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata())
+        structured_dataset_type.format = PARQUET
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):

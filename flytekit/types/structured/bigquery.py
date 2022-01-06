@@ -8,6 +8,7 @@ from google.cloud.bigquery_storage_v1 import types
 
 from flytekit import FlyteContext
 from flytekit.models import literals
+from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     BIGQUERY,
     DF,
@@ -15,6 +16,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetMetadata,
 )
 
 
@@ -53,9 +55,13 @@ class PandasToBQEncodingHandlers(StructuredDatasetEncoder):
         self,
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         _write_to_bq(structured_dataset)
-        return literals.StructuredDataset(uri=typing.cast(str, structured_dataset.uri))
+        structured_dataset_type.format = self.supported_format
+        return literals.StructuredDataset(
+            uri=typing.cast(str, structured_dataset.uri), metadata=StructuredDatasetMetadata(structured_dataset_type)
+        )
 
 
 class BQToPandasDecodingHandler(StructuredDatasetDecoder):
@@ -72,9 +78,13 @@ class ArrowToBQEncodingHandlers(StructuredDatasetEncoder):
         self,
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         _write_to_bq(structured_dataset)
-        return literals.StructuredDataset(uri=typing.cast(str, structured_dataset.uri))
+        structured_dataset_type.format = self.supported_format
+        return literals.StructuredDataset(
+            uri=typing.cast(str, structured_dataset.uri), metadata=StructuredDatasetMetadata(structured_dataset_type)
+        )
 
 
 class BQToArrowDecodingHandler(StructuredDatasetDecoder):
@@ -86,7 +96,7 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         return pa.Table.from_pandas(_read_from_bq(flyte_value))
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(PandasToBQEncodingHandlers(pd.DataFrame, BIGQUERY), False)
-FLYTE_DATASET_TRANSFORMER.register_handler(BQToPandasDecodingHandler(pd.DataFrame, BIGQUERY), False)
-FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToBQEncodingHandlers(pa.Table, BIGQUERY), False)
-FLYTE_DATASET_TRANSFORMER.register_handler(BQToArrowDecodingHandler(pa.Table, BIGQUERY), False)
+FLYTE_DATASET_TRANSFORMER.register_handler(PandasToBQEncodingHandlers(pd.DataFrame, protocol=BIGQUERY), False)
+FLYTE_DATASET_TRANSFORMER.register_handler(BQToPandasDecodingHandler(pd.DataFrame, protocol=BIGQUERY), False)
+FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToBQEncodingHandlers(pa.Table, protocol=BIGQUERY), False)
+FLYTE_DATASET_TRANSFORMER.register_handler(BQToArrowDecodingHandler(pa.Table, protocol=BIGQUERY), False)
