@@ -1,5 +1,6 @@
 import os
 import typing
+
 try:
     from typing import Annotated
 except ImportError:
@@ -10,6 +11,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pyspark.sql.dataframe
+from flytekitplugins.spark.schema import ParquetToSparkDecodingHandler
 from pyspark.sql import SparkSession
 
 from flytekit import FlyteContext, kwtypes, task, workflow
@@ -25,8 +27,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
 )
 from flytekit.types.structured.utils import get_filesystem
-from flytekitplugins.spark.schema import ParquetToSparkDecodingHandler
-
 
 PANDAS_PATH = "/tmp/pandas"
 NUMPY_PATH = "/tmp/numpy"

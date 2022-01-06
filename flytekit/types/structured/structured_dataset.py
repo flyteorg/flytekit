@@ -295,7 +295,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         except KeyError:
             try:
                 hh = handler_map[df_type][protocol][""]
-                logger.info(f"Didn't find format specific handler {type(handler_map)} for protocol {protocol} format {format}, using default instead.")
+                logger.info(
+                    f"Didn't find format specific handler {type(handler_map)} for protocol {protocol} format {format}, using default instead."
+                )
                 return hh
             except KeyError:
                 ...

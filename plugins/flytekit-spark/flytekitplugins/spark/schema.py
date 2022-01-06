@@ -8,7 +8,7 @@ from flytekit import FlyteContext
 from flytekit.extend import T, TypeEngine, TypeTransformer
 from flytekit.models import literals
 from flytekit.models.literals import Literal, Scalar, Schema, StructuredDatasetMetadata
-from flytekit.models.types import LiteralType, SchemaType
+from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
@@ -17,7 +17,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
-from flytekit.models.types import LiteralType, StructuredDatasetType
 
 
 class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
