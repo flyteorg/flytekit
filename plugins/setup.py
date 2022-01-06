@@ -23,6 +23,9 @@ SOURCES = {
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-modin": "flytekit-modin",
+    "flytekitplugins-onnx_scikitlearn": "flytekit-onnx-scikitlearn",
+    "flytekitplugins-onnx_tensorflow": "flytekit-onnx-tensorflow",
+    "flytekitplugins-onnx_pytorch": "flytekit-onnx-pytorch",
 }
 
 

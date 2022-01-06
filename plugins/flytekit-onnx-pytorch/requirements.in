@@ -1,0 +1,5 @@
+.
+-e file:.#egg=flytekitplugins-onnx_pytorch
+onnxruntime
+pillow
+torchvision
