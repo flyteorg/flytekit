@@ -1,6 +1,9 @@
 import os
 import typing
-from typing import Annotated
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 import numpy as np
 import pandas as pd
@@ -22,6 +25,8 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
 )
 from flytekit.types.structured.utils import get_filesystem
+from flytekitplugins.spark.schema import ParquetToSparkDecodingHandler
+
 
 PANDAS_PATH = "/tmp/pandas"
 NUMPY_PATH = "/tmp/numpy"
@@ -44,7 +49,7 @@ def t1(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, my_cols]:
 @task
 def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, PARQUET]:
     # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
-    return StructuredDataset(dataframe=dataframe, file_format=PARQUET)
+    return StructuredDataset(dataframe=dataframe)
 
 
 @task
@@ -92,7 +97,7 @@ def t6(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
 def t7(df1: pd.DataFrame, df2: pd.DataFrame) -> (StructuredDataset[my_cols], StructuredDataset[my_cols]):
     # df1: pandas -> bq
     # df2: pandas -> s3 (parquet)
-    return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df1, file_format=PARQUET)
+    return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df1)
 
 
 @task
@@ -100,7 +105,7 @@ def t8(dataframe: pa.Table) -> StructuredDataset[my_cols]:
     # Arrow table -> s3 (parquet)
     print("Arrow table")
     print(dataframe.columns)
-    return StructuredDataset(dataframe=dataframe, file_format=PARQUET)
+    return StructuredDataset(dataframe=dataframe)
 
 
 @task
@@ -149,7 +154,7 @@ FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "/"
 @task
 def t9(dataframe: np.ndarray) -> StructuredDataset[my_cols]:
     # numpy -> Arrow table -> s3 (parquet)
-    return StructuredDataset(dataframe=dataframe, uri=NUMPY_PATH, file_format=PARQUET)
+    return StructuredDataset(dataframe=dataframe, uri=NUMPY_PATH)
 
 
 @task
@@ -161,7 +166,7 @@ def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
 
 @task
 def t11(dataframe: pyspark.sql.dataframe.DataFrame) -> StructuredDataset[my_cols]:
-    return StructuredDataset(dataframe, file_format=PARQUET)
+    return StructuredDataset(dataframe)
 
 
 @task
@@ -206,16 +211,16 @@ def wf():
     t1(dataframe=df)
     t1a(dataframe=df)
     t2(dataframe=df)
-    t3(dataset=StructuredDataset(uri=PANDAS_PATH, file_format=PARQUET))
-    t3a(dataset=StructuredDataset(uri=PANDAS_PATH, file_format=PARQUET))
-    t4(dataset=StructuredDataset(uri=PANDAS_PATH, file_format=PARQUET))
+    t3(dataset=StructuredDataset(uri=PANDAS_PATH))
+    t3a(dataset=StructuredDataset(uri=PANDAS_PATH))
+    t4(dataset=StructuredDataset(uri=PANDAS_PATH))
     t5(dataframe=df)
     t6(dataset=StructuredDataset(uri=BQ_PATH))
     t7(df1=df, df2=df)
     t8(dataframe=arrow_df)
     t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
-    t10(dataset=StructuredDataset(uri=NUMPY_PATH, file_format=PARQUET))
+    t10(dataset=StructuredDataset(uri=NUMPY_PATH))
     dataset = t11(dataframe=spark_df)
     t12(dataset=dataset)
 

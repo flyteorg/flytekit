@@ -17,6 +17,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
+from flytekit.models.types import LiteralType, StructuredDatasetType
 
 
 class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
@@ -116,11 +117,12 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
         self,
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         df = typing.cast(DataFrame, structured_dataset.dataframe)
-        df.write.mode("overwrite").parquet(self.to_path)
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
+        df.write.mode("overwrite").parquet(path)
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):

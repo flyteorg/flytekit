@@ -67,6 +67,9 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
 
 
 class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
+    def __init__(self, protocol: str):
+        super().__init__(pa.Table, protocol, PARQUET)
+
     def encode(
         self,
         ctx: FlyteContext,
@@ -76,11 +79,13 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
         df = structured_dataset.dataframe
         pq.write_table(df, path, filesystem=get_filesystem(path))
-        structured_dataset_type.format = PARQUET
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
+    def __init__(self, protocol: str):
+        super().__init__(pa.Table, protocol, PARQUET)
+
     def decode(
         self,
         ctx: FlyteContext,
@@ -93,5 +98,5 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
 for protocol in [LOCAL]:  # Think how to add S3 and GCS
     FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandler(protocol), default_for_type=True)
     FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandler(pa.Table, protocol, PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(pa.Table, protocol, PARQUET))
+    FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandler(protocol), default_for_type=True)
+    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(protocol), default_for_type=True)
