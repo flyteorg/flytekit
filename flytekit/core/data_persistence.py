@@ -141,7 +141,7 @@ class DataPersistencePlugins(object):
         Returns a plugin for the given protocol, else raise a TypeError
         """
         for k, p in cls._PLUGINS.items():
-            if path.startswith(k):
+            if path.startswith(k) or path.startswith(k.replace("://", "")):
                 return p
         raise TypeError(f"No plugin found for matching protocol of path {path}")
 

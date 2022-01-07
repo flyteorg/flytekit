@@ -118,7 +118,7 @@ docstring-parser==0.13
     #   flytekit
 filelock==3.4.0
     # via virtualenv
-flyteidl==0.21.13
+flyteidl==0.21.17
     # via
     #   -c requirements.txt
     #   flytekit

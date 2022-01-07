@@ -8,7 +8,7 @@ from flytekit import FlyteContext
 from flytekit.extend import T, TypeEngine, TypeTransformer
 from flytekit.models import literals
 from flytekit.models.literals import Literal, Scalar, Schema, StructuredDatasetMetadata
-from flytekit.models.types import LiteralType, SchemaType
+from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
@@ -116,11 +116,12 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
         self,
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         df = typing.cast(DataFrame, structured_dataset.dataframe)
-        df.write.mode("overwrite").parquet(self.to_path)
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(format=PARQUET))
+        df.write.mode("overwrite").parquet(path)
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):

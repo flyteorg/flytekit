@@ -372,7 +372,7 @@ def test_structured_dataset():
     ds = literals.StructuredDataset(
         uri="s3://bucket",
         metadata=literals.StructuredDatasetMetadata(
-            format="parquet", structured_dataset_type=_types.StructuredDatasetType(columns=my_cols, format="parquet")
+            structured_dataset_type=_types.StructuredDatasetType(columns=my_cols, format="parquet")
         ),
     )
     obj = literals.Scalar(structured_dataset=ds)
@@ -383,7 +383,6 @@ def test_structured_dataset():
     assert obj.none_type is None
     assert obj.structured_dataset is not None
     assert obj.value.uri == "s3://bucket"
-    assert obj.value.metadata.format == "parquet"
     assert len(obj.value.metadata.structured_dataset_type.columns) == 4
     obj2 = literals.Scalar.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -393,7 +392,6 @@ def test_structured_dataset():
     assert obj2.none_type is None
     assert obj2.structured_dataset is not None
     assert obj2.value.uri == "s3://bucket"
-    assert obj2.value.metadata.format == "parquet"
     assert len(obj2.value.metadata.structured_dataset_type.columns) == 4
 
 

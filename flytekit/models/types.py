@@ -150,6 +150,10 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
     def format(self) -> str:
         return self._format
 
+    @format.setter
+    def format(self, format: str):
+        self._format = format
+
     @property
     def external_schema_type(self) -> str:
         return self._external_schema_type

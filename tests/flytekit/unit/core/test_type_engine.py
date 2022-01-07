@@ -639,14 +639,14 @@ def test_structured_dataset_type():
     from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
     tf = StructuredDatasetTransformerEngine()
-    lt = tf.get_literal_type(StructuredDataset[{name: str, age: int}])
+    lt = tf.get_literal_type(StructuredDataset[{name: str, age: int}, "parquet"])
     assert lt.structured_dataset_type is not None
 
     ctx = FlyteContextManager.current_context()
     lv = tf.to_literal(ctx, df, pd.DataFrame, lt)
     assert "/tmp/flyte" in lv.scalar.structured_dataset.uri
     metadata = lv.scalar.structured_dataset.metadata
-    assert metadata.format == "parquet"
+    assert metadata.structured_dataset_type.format == "parquet"
     v1 = tf.to_python_value(ctx, lv, pd.DataFrame)
     v2 = tf.to_python_value(ctx, lv, pa.Table)
     assert_frame_equal(df, v1)
