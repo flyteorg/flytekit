@@ -609,7 +609,7 @@ def test_structured_dataset_type():
     from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
     tf = StructuredDatasetTransformerEngine()
-    lt = tf.get_literal_type(StructuredDataset[{name: str, age: int}])
+    lt = tf.get_literal_type(StructuredDataset[{name: str, age: int}, "parquet"])
     assert lt.structured_dataset_type is not None
 
     ctx = FlyteContextManager.current_context()
