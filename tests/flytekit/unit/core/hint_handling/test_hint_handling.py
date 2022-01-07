@@ -11,7 +11,7 @@ from .b import t1 as b_t1, t2 as b_t2
 
 
 def printer(fn):
-    print(f"FN: {fn.__name__}")
+    print(f"In {fn.__module__} FN: {fn.__name__}")
     type_hints = get_type_hints(fn)
     print(f"Type hints {type_hints} return type hint {type_hints.get('return', None)}")
     signature = inspect.signature(fn)
