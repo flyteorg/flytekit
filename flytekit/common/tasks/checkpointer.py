@@ -16,7 +16,7 @@ class Checkpoint(object):
         raise NotImplementedError("Use one of the derived classes")
 
     @abstractmethod
-    def restore(self, path: typing.Union[Path, str]) -> Path:
+    def restore(self, path: typing.Union[Path, str]) -> typing.Optional[Path]:
         """
            Given a path, if a previous checkpoint exists, will be downloaded to this path.
            If download is successful the downloaded path is returned
@@ -89,13 +89,13 @@ class SyncCheckpoint(Checkpoint):
     def prev_exists(self) -> bool:
         return self._checkpoint_src is not None
 
-    def restore(self, path: typing.Optional[typing.Union[Path, str]] = None) -> Path:
+    def restore(self, path: typing.Optional[typing.Union[Path, str]] = None) -> typing.Optional[Path]:
 
         # We have to lazy load, until we fix the imports
         from flytekit.core.context_manager import FlyteContextManager
 
         if self._checkpoint_src is None:
-            return False
+            return None
 
         if self._prev_download_path:
             return self._prev_download_path
@@ -118,7 +118,7 @@ class SyncCheckpoint(Checkpoint):
         from flytekit.core.context_manager import FlyteContextManager
 
         fa = FlyteContextManager.current_context().file_access
-        if isinstance(cp, Path) or isinstance(cp, str):
+        if isinstance(cp, (Path, str)):
             if isinstance(cp, str):
                 cp = Path(cp)
             if cp.is_dir():
@@ -129,8 +129,8 @@ class SyncCheckpoint(Checkpoint):
                 fa.upload(str(cp), rpath)
             return
 
-        if not isinstance(cp, io.BufferedReader):
-            raise ValueError(f"Only a valid path or BufferedReader should be provided, received {type(cp)}")
+        if not isinstance(cp, io.IOBase):
+            raise ValueError(f"Only a valid path or IOBase type (reader) should be provided, received {type(cp)}")
 
         p = Path(self._td.name)
         dest_cp = p.joinpath(self.TMP_DST_PATH)
@@ -142,6 +142,8 @@ class SyncCheckpoint(Checkpoint):
 
     def read(self) -> bytes:
         p = self.restore()
+        if p is None:
+            return None
         files = list(p.iterdir())
         if len(files) == 0 or len(files) > 1:
             raise ValueError(f"Expected exactly one checkpoint - found {len(files)}")
@@ -150,5 +152,5 @@ class SyncCheckpoint(Checkpoint):
 
     def write(self, b: bytes):
         f = io.BytesIO(b)
-        f = typing.cast(f, io.BufferedReader)
+        f = typing.cast(io.BufferedReader, f)
         self.save(f)
