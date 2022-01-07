@@ -364,7 +364,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         expected: LiteralType,
     ) -> Literal:
         # Make a copy in case we need to hand off to encoders, since we can't be sure of mutations.
-        sdt = StructuredDatasetType()
+        # Check first to see if it's even an SD type. For backwards compatibility, we may be getting a
+        sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, None))
         if expected.structured_dataset_type:
             sdt = StructuredDatasetType(
                 columns=expected.structured_dataset_type.columns,
