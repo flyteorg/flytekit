@@ -95,7 +95,7 @@ entrypoints==0.3
     #   jupyter-client
     #   nbconvert
     #   papermill
-flyteidl==0.21.13
+flyteidl==0.21.17
     # via flytekit
 furo @ git+git://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
