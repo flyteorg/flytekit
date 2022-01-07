@@ -99,10 +99,16 @@ def test_retrieving():
         # We don't have a default "" format encoder
         FLYTE_DATASET_TRANSFORMER.get_encoder(pd.DataFrame, "/", "")
 
-    e = FLYTE_DATASET_TRANSFORMER.get_encoder(pd.DataFrame, "s3", "parquet")
-    e2 = FLYTE_DATASET_TRANSFORMER.get_encoder(pd.DataFrame, "s3://", "parquet")
-    assert e is not None
-    assert e is e2
+    class TempEncoder(StructuredDatasetEncoder):
+        def __init__(self, protocol):
+            super().__init__(MyDF, protocol)
+
+        def encode(self):
+            ...
+
+    FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder("gs"), default_for_type=False)
+    with pytest.raises(ValueError):
+        FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder("gs://"), default_for_type=False)
 
 
 def test_to_literal():
@@ -121,7 +127,7 @@ MyDF: TypeAlias = pd.DataFrame
 def test_fill_in():
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self):
-            super().__init__(MyDF, "/")
+            super().__init__(MyDF, "tmp://")
 
         def encode(
             self,
@@ -133,4 +139,4 @@ def test_fill_in():
                 uri="", metadata=literals.StructuredDatasetMetadata(structured_dataset_type)
             )
 
-    FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder())
+    FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder(), default_for_type=False)

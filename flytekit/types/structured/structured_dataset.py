@@ -306,9 +306,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt {format}")
 
     def get_encoder(self, df_type: Type, protocol: str, format: str):
+        protocol.replace("://", "")
         return self._finder(self.ENCODERS, df_type, protocol, format)
 
     def get_decoder(self, df_type: Type, protocol: str, format: str):
+        protocol.replace("://", "")
         return self._finder(self.DECODERS, df_type, protocol, format)
 
     def _handler_finder(self, h: Handlers) -> Dict[str, Handlers]:
@@ -362,12 +364,14 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         expected: LiteralType,
     ) -> Literal:
         # Make a copy in case we need to hand off to encoders, since we can't be sure of mutations.
-        sdt = StructuredDatasetType(
-            columns=expected.structured_dataset_type.columns,
-            format=expected.structured_dataset_type.format,
-            external_schema_type=expected.structured_dataset_type.external_schema_type,
-            external_schema_bytes=expected.structured_dataset_type.external_schema_bytes,
-        )
+        sdt = StructuredDatasetType()
+        if expected.structured_dataset_type:
+            sdt = StructuredDatasetType(
+                columns=expected.structured_dataset_type.columns,
+                format=expected.structured_dataset_type.format,
+                external_schema_type=expected.structured_dataset_type.external_schema_type,
+                external_schema_bytes=expected.structured_dataset_type.external_schema_bytes,
+            )
 
         if get_origin(python_type) is Annotated:
             python_type = get_args(python_type)[0]

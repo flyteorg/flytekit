@@ -11,7 +11,6 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pyspark.sql.dataframe
-from flytekitplugins.spark.schema import ParquetToSparkDecodingHandler
 from pyspark.sql import SparkSession
 
 from flytekit import FlyteContext, kwtypes, task, workflow
