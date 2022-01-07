@@ -6,8 +6,6 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-import pyspark.sql.dataframe
-from pyspark.sql import SparkSession
 
 from flytekit import FlyteContext, kwtypes, task, workflow
 from flytekit.models import literals
@@ -159,17 +157,6 @@ def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
 
 
 @task
-def t11(dataframe: pyspark.sql.dataframe.DataFrame) -> StructuredDataset[my_cols]:
-    return StructuredDataset(dataframe, file_format=PARQUET)
-
-
-@task
-def t12(dataset: StructuredDataset[my_cols]) -> pyspark.sql.dataframe.DataFrame:
-    spark_df = dataset.open(pyspark.sql.dataframe.DataFrame).all()
-    return spark_df
-
-
-@task
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
@@ -184,24 +171,11 @@ def generate_arrow() -> pa.Table:
     return pa.Table.from_pandas(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]}))
 
 
-@task
-def generate_spark_dataframe() -> pyspark.sql.dataframe.DataFrame:
-    data = [
-        {"Category": "A", "ID": 1, "Value": 121.44, "Truth": True},
-        {"Category": "B", "ID": 2, "Value": 300.01, "Truth": False},
-        {"Category": "C", "ID": 3, "Value": 10.99, "Truth": None},
-        {"Category": "E", "ID": 4, "Value": 33.87, "Truth": True},
-    ]
-    spark = SparkSession.builder.getOrCreate()
-    return spark.createDataFrame(data)
-
-
 @workflow()
 def wf():
     df = generate_pandas()
     np_array = generate_numpy()
     arrow_df = generate_arrow()
-    spark_df = generate_spark_dataframe()
     t1(dataframe=df)
     t1a(dataframe=df)
     t2(dataframe=df)
@@ -215,8 +189,6 @@ def wf():
     t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
     t10(dataset=StructuredDataset(uri=NUMPY_PATH, file_format=PARQUET))
-    dataset = t11(dataframe=spark_df)
-    t12(dataset=dataset)
 
 
 if __name__ == "__main__":

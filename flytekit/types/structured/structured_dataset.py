@@ -494,7 +494,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             for k, v in t.columns().items():
                 lt = self._get_dataset_column_literal_type(v)
                 converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
-            return StructuredDatasetType(columns=converted_cols, format=str(t.file_format))
+            return StructuredDatasetType(columns=converted_cols, format=str(t.file_format()))
         # 3. pd.Dataframe
         else:
             return StructuredDatasetType(columns=converted_cols, format=PARQUET)
