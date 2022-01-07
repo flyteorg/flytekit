@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 
-project = "Flyte Cookbook [Python]"
+project = "Flytekit"
 copyright = "2021, Flyte"
 author = "Flyte"
 
@@ -90,7 +90,7 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 html_theme = "furo"
-html_title = "Flyte Docs"
+html_title = "Flyte"
 
 html_theme_options = {
     "light_css_variables": {
@@ -126,6 +126,7 @@ html_static_path = []
 # to template names.
 #
 html_logo = "flyte_circle_gradient_1_4x4.png"
+html_favicon = "flyte_circle_gradient_1_4x4.png"
 
 pygments_style = "tango"
 pygments_dark_style = "native"
