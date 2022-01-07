@@ -5,6 +5,7 @@ import pyarrow as pa
 
 from flytekit import kwtypes
 from flytekit.core import context_manager
+from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured import basic_dfs
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
@@ -23,7 +24,7 @@ def test_pandas():
     sd = StructuredDataset(
         dataframe=df,
     )
-    sd_lit = encoder.encode(ctx, sd)
+    sd_lit = encoder.encode(ctx, sd, StructuredDatasetType(format="parquet"))
 
     df2 = decoder.decode(ctx, sd_lit)
     assert df.equals(df2)
