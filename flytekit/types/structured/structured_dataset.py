@@ -154,13 +154,14 @@ class StructuredDatasetEncoder(ABC):
         the StructuredDatasetEncoder
 
         :param python_type: The dataframe class in question that you want to register this encoder with
-        :param protocol: A prefix representing the storage driver (e.g. 's3, 'gs', 'bq', etc.)
+        :param protocol: A prefix representing the storage driver (e.g. 's3, 'gs', 'bq', etc.). You can use either
+          "s3" or "s3://". They are the same since the "://" will just be stripped by the constructor.
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the encoder works with any format. If the format being asked
           for does not exist, the transformer enginer will look for the "" endcoder instead and write a warning.
         """
         self._python_type = python_type
-        self._protocol = protocol
+        self._protocol = protocol.replace("://", "")
         self._supported_format = supported_format or ""
 
     @property
@@ -207,13 +208,14 @@ class StructuredDatasetDecoder(ABC):
         and we have to get a Python value out of it. For the other way, see the StructuredDatasetEncoder
 
         :param python_type: The dataframe class in question that you want to register this decoder with
-        :param protocol: A prefix representing the storage driver (e.g. 's3, 'gs', 'bq', etc.)
+        :param protocol: A prefix representing the storage driver (e.g. 's3, 'gs', 'bq', etc.). You can use either
+          "s3" or "s3://". They are the same since the "://" will just be stripped by the constructor.
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the decoder works with any format. If the format being asked
           for does not exist, the transformer enginer will look for the "" decoder instead and write a warning.
         """
         self._python_type = python_type
-        self._protocol = protocol
+        self._protocol = protocol.replace("://", "")
         self._supported_format = supported_format or ""
 
     @property
@@ -301,7 +303,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 return hh
             except KeyError:
                 ...
-        raise Exception(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt {format}")
+        raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt {format}")
 
     def get_encoder(self, df_type: Type, protocol: str, format: str):
         return self._finder(self.ENCODERS, df_type, protocol, format)
@@ -330,6 +332,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def register_handler(self, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
         """
         Call this with any handler to register it with this dataframe meta-transformer
+
+        The string "://" should not be present in any handler's protocol so we don't check for it.
         """
         lowest_level = self._handler_finder(h)
         if h.supported_format in lowest_level and override is False:

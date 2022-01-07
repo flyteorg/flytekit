@@ -16,6 +16,7 @@ from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
     LOCAL,
     PARQUET,
+    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -28,7 +29,8 @@ T = TypeVar("T")
 class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
     def __init__(self, protocol: str):
         super().__init__(pd.DataFrame, protocol, PARQUET)
-        self._persistence = DataPersistencePlugins.find_plugin(protocol)()  # want to use this somehow
+        # todo: Use this somehow instead of relaying ont he ctx file_access
+        self._persistence = DataPersistencePlugins.find_plugin(protocol)()
 
     def encode(
         self,
@@ -95,7 +97,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(path, filesystem=get_filesystem(path))
 
 
-for protocol in [LOCAL]:  # Think how to add S3 and GCS
+for protocol in [LOCAL, S3]:  # Should we add GCS
     FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandler(protocol), default_for_type=True)
     FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
     FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandler(protocol), default_for_type=True)
