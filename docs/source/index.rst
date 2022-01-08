@@ -62,6 +62,8 @@ Expected output:
    |book| API Reference <https://docs.flyte.org/en/latest/reference/index.html>
    |hands-helping| Community <https://docs.flyte.org/en/latest/community/index.html>
 
+.. NOTE: the caption text is important for the sphinx theme to correctly render the nav header
+.. https://github.com/flyteorg/furo
 .. toctree::
    :maxdepth: -1
    :caption: Flytekit SDK
