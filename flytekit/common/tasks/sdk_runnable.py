@@ -5,6 +5,7 @@ import enum
 import logging as _logging
 import os
 import pathlib
+import tempfile
 import typing
 from dataclasses import dataclass
 from datetime import datetime
@@ -21,7 +22,7 @@ from flytekit.common.exceptions import scopes as _exception_scopes
 from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.common.tasks import output as _task_output
 from flytekit.common.tasks import task as _base_task
-from flytekit.common.tasks.checkpointer import Checkpoint
+from flytekit.common.tasks.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.common.types import helpers as _type_helpers
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import resources as _resource_config
@@ -115,7 +116,7 @@ class ExecutionParameters(object):
         execution_id: str
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, _common_utils.AutoDeletingTempDir]
-        checkpointer: typing.Optional[Checkpoint]
+        checkpoint: typing.Optional[Checkpoint]
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -123,7 +124,7 @@ class ExecutionParameters(object):
             self.working_dir = current.working_directory if current else None
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
-            self.checkpointer = current.checkpointer if current else None
+            self.checkpoint = current.checkpoint if current else None
             self.attrs = current._attrs if current else {}
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
@@ -139,7 +140,7 @@ class ExecutionParameters(object):
                 tmp_dir=self.working_dir,
                 execution_id=self.execution_id,
                 logging=self.logging,
-                checkpointer=self.checkpointer,
+                checkpoint=self.checkpoint,
                 **self.attrs,
             )
 
@@ -147,10 +148,24 @@ class ExecutionParameters(object):
     def new_builder(current: ExecutionParameters = None) -> Builder:
         return ExecutionParameters.Builder(current=current)
 
+    def with_task_sandbox(self) -> Builder:
+        prefix = self.working_directory
+        if isinstance(self.working_directory, _common_utils.AutoDeletingTempDir):
+            prefix = self.working_directory.name
+        task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)
+        p = pathlib.Path(task_sandbox_dir)
+        cp_dir = p.joinpath("__cp")
+        cp_dir.mkdir(exist_ok=True)
+        cp = SyncCheckpoint(checkpoint_dest=str(cp_dir))
+        b = self.new_builder(self)
+        b.checkpoint = cp
+        b.working_dir = task_sandbox_dir
+        return b
+
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, checkpointer=None, **kwargs):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, checkpoint=None, **kwargs):
         """
         Args:
             execution_date: Date when the execution is running
@@ -158,7 +173,7 @@ class ExecutionParameters(object):
             stats: handle to emit stats
             execution_id: Identifier for the xecution
             logging: handle to logging
-            checkpointer: Checkpoint Handle to the configured checkpoint system
+            checkpoint: Checkpoint Handle to the configured checkpoint system
         """
         self._stats = stats
         self._execution_date = execution_date
@@ -169,7 +184,7 @@ class ExecutionParameters(object):
         self._attrs = kwargs
         # It is safe to recreate the Secrets Manager
         self._secrets_manager = SecretsManager()
-        self._checkpointer = checkpointer
+        self._checkpoint = checkpoint
 
     @property
     def stats(self) -> taggable.TaggableStats:
@@ -228,8 +243,8 @@ class ExecutionParameters(object):
         return self._secrets_manager
 
     @property
-    def checkpointer(self) -> typing.Optional[Checkpoint]:
-        return self._checkpointer
+    def checkpoint(self) -> typing.Optional[Checkpoint]:
+        return self._checkpoint
 
     def __getattr__(self, attr_name: str) -> typing.Any:
         """

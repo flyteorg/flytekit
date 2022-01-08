@@ -40,31 +40,31 @@ def test_sync_checkpoint_save_filepath(tmpdir):
     assert dst_path.exists()
 
 
-# TODO To test this locally we have to hijack the call paths, as we will create new sandboxes and hence sandboxes are not repeated
+def test_sync_checkpoint_restore(tmpdir):
+    td_path = Path(tmpdir)
+    dest = td_path.joinpath("dest")
+    dest.mkdir()
+    src = td_path.joinpath("src")
+    src.mkdir()
+    prev = src.joinpath("prev")
+    p = b"prev-bytes"
+    with prev.open("wb") as f:
+        f.write(p)
+    cp = SyncCheckpoint(checkpoint_dest=str(dest), checkpoint_src=str(src))
+    assert cp.read() == p
+    assert cp._prev_download_path is not None
+    assert cp.restore() == cp._prev_download_path
+
+
 @flytekit.task
 def t1(n: int) -> int:
     ctx = flytekit.current_context()
-    cp = ctx.checkpointer
-    m = 0
+    cp = ctx.checkpoint
     if cp.prev_exists():
-        v = cp.read()
-        m = int(v)
-        if m == 3:
-            return n + 1
-    cp.write(bytes(m + 1))
-    raise AssertionError("Fail!")
+        return n
+    cp.write(bytes(n + 1))
+    return n + 1
 
 
 def test_checkpoint_task():
-    count = 0
-    while True:
-        try:
-            count += 1
-            assert t1(n=5) == 6
-            break
-        except AssertionError as e:
-            if count > 3:
-                break
-            pass
-
-    assert count == 3
+    assert t1(n=5) == 6

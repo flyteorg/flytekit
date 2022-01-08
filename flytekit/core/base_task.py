@@ -23,6 +23,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
+from flytekit.common.tasks.checkpointer import SyncCheckpoint
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
@@ -258,6 +259,9 @@ class Task(object):
             else:
                 logger.info("Cache hit")
         else:
+            es = ctx.execution_state
+            b = es.user_space_params.with_task_sandbox()
+            ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
             outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
 

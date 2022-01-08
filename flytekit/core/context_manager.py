@@ -681,7 +681,6 @@ class FlyteContextManager(object):
         # Ensure a local directory is available for users to work with.
         user_space_path = os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space")
         pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
-        checkpoint_path = os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "checkpoint")
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
@@ -691,7 +690,6 @@ class FlyteContextManager(object):
             stats=_mock_stats.MockStats(),
             logging=_logging,
             tmp_dir=user_space_path,
-            checkpointer=SyncCheckpoint(checkpoint_path),
         )
         default_context = FlyteContext(file_access=default_local_file_access_provider)
         default_context = default_context.with_execution_state(
