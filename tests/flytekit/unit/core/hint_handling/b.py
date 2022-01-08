@@ -15,9 +15,9 @@ from .a import AA
 my_aa = Annotated[AA, "some annotation"]
 
 
-def t1() -> AA:
+def t1(in1: int) -> AA:
     return AA()
 
 
-def t2() -> my_aa:
+def t2(in1: int) -> my_aa:
     return my_aa()
