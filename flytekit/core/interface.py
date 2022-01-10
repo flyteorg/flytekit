@@ -276,6 +276,7 @@ def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring]
 
     """
     try:
+        # include_extras can only be used in python >= 3.9
         type_hints = typing.get_type_hints(fn, include_extras=True)
     except TypeError:
         type_hints = typing.get_type_hints(fn)

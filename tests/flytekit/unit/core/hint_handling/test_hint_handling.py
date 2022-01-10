@@ -13,7 +13,10 @@ from .b import t2 as b_t2
 
 def printer(fn):
     print(f"In {fn.__module__} FN: {fn.__name__}")
-    type_hints = get_type_hints(fn, include_extras=True)
+    try:
+        type_hints = get_type_hints(fn, include_extras=True)
+    except TypeError:
+        type_hints = get_type_hints(fn)
     print(f"  Type hints {type_hints} return type hint")
     signature = inspect.signature(fn)
     print(f"  Inspect signature: {signature}")

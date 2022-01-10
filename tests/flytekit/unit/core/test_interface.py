@@ -196,8 +196,8 @@ def test_parameters_and_defaults():
     params = transform_inputs_to_parameters(ctx, our_interface)
     assert params.parameters["a"].required
     assert params.parameters["a"].default is None
-    assert our_interface.inputs == {"a": typing.Annotated[int, "some annotation"]}
-    assert our_interface.outputs == {"o0": typing.Annotated[int, "some annotation"]}
+    assert our_interface.inputs == {"a": Annotated[int, "some annotation"]}
+    assert our_interface.outputs == {"o0": Annotated[int, "some annotation"]}
 
 
 def test_parameters_with_docstring():
