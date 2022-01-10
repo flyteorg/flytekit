@@ -468,15 +468,18 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # The literal that we get in might be an old FlyteSchema.
         # We'll continue to support this for the time being.
         if lv.scalar.schema is not None:
+            sd = StructuredDataset()
+            sd_literal = literals.StructuredDataset(
+                uri=lv.scalar.schema.uri,
+                metadata=literals.StructuredDatasetMetadata(
+                    # Dataframe will always be serialized to parquet file by FlyteSchema transformer
+                    structured_dataset_type=StructuredDatasetType(format=PARQUET)
+                ),
+            )
+            sd._literal_sd = sd_literal
             if issubclass(expected_python_type, StructuredDataset):
-                raise ValueError("We do not support FlyteSchema -> StructuredDataset transformations")
+                return sd
             else:
-                sd_literal = literals.StructuredDataset(
-                    uri=lv.scalar.schema.uri,
-                    metadata=literals.StructuredDatasetMetadata(
-                        structured_dataset_type=StructuredDatasetType(format=self.DEFAULT_FORMATS[expected_python_type])
-                    ),
-                )
                 return self.open_as(ctx, sd_literal, df_type=expected_python_type)
 
         # Either a StructuredDataset type or some dataframe type.
