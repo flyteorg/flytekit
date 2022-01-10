@@ -61,11 +61,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(path, local_dir, is_multipart=True)
-        frames = [pandas.read_parquet(os.path.join(local_dir, f)) for f in os.listdir(local_dir)]
-        if len(frames) == 1:
-            return frames[0]
-        elif len(frames) > 1:
-            return pandas.concat(frames, copy=True)
+        return pd.read_parquet(local_dir)
 
 
 class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
