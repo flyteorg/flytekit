@@ -137,6 +137,6 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
         return user_ctx.spark_session.read.parquet(flyte_value.uri)
 
 
-for protocol in ["/", "s3://"]:
+for protocol in ["/", "s3"]:
     FLYTE_DATASET_TRANSFORMER.register_handler(SparkToParquetEncodingHandler(protocol), default_for_type=True)
     FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToSparkDecodingHandler(protocol), default_for_type=True)
