@@ -44,7 +44,7 @@ from flytekit.models.literals import (
     Schema,
     StructuredDatasetMetadata,
 )
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -308,7 +308,6 @@ class DataclassTransformer(TypeTransformer[object]):
                         f.name,
                         field_type(
                             uri=lv.scalar.structured_dataset.uri,
-                            file_format=lv.scalar.structured_dataset.metadata.format,
                         ),
                     )
 
@@ -371,7 +370,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 Literal(
                     scalar=Scalar(
                         structured_dataset=StructuredDataset(
-                            metadata=StructuredDatasetMetadata(format=python_val.file_format),
+                            metadata=StructuredDatasetMetadata(
+                                structured_dataset_type=StructuredDatasetType(format=python_val.file_format)
+                            ),
                             uri=python_val.uri,
                         )
                     )

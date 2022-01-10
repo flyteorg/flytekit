@@ -1,7 +1,7 @@
 try:
-    from typing import Annotated, get_args, get_origin
+    from typing import Annotated
 except ImportError:
-    from typing_extensions import Annotated, get_origin, get_args
+    from typing_extensions import Annotated
 
 
 class AA(object):

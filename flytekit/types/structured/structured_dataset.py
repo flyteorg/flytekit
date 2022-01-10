@@ -47,7 +47,7 @@ PARQUET = "parquet"
 @dataclass
 class StructuredDataset(object):
     uri: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
-    file_format: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
+    file_format: typing.Optional[str] = field(default=PARQUET, metadata=config(mm_field=fields.String()))
     """
     This is the user facing StructuredDataset class. Please don't confuse it with the literals.StructuredDataset
     class (that is just a model, a Python class representation of the protobuf).
@@ -103,6 +103,7 @@ class StructuredDataset(object):
         dataframe: typing.Optional[typing.Any] = None,
         uri: Optional[str] = None,
         metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
+        **kwargs,
     ):
         self._dataframe = dataframe
         # Make these fields public, so that the dataclass transformer can set a value for it
@@ -257,7 +258,7 @@ class StructuredDatasetDecoder(ABC):
 def protocol_prefix(uri: str) -> str:
     g = re.search(r"([\w]+)://.*", uri)
     if g and g.groups():
-        return g.groups()[0] + "://"
+        return g.groups()[0]
     return LOCAL
 
 
@@ -311,11 +312,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt {format}")
 
     def get_encoder(self, df_type: Type, protocol: str, format: str):
-        protocol.replace("://", "")
         return self._finder(self.ENCODERS, df_type, protocol, format)
 
     def get_decoder(self, df_type: Type, protocol: str, format: str):
-        protocol.replace("://", "")
         return self._finder(self.DECODERS, df_type, protocol, format)
 
     def _handler_finder(self, h: Handlers) -> Dict[str, Handlers]:
@@ -370,17 +369,17 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     ) -> Literal:
         # Make a copy in case we need to hand off to encoders, since we can't be sure of mutations.
         # Check first to see if it's even an SD type. For backwards compatibility, we may be getting a
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
         sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, None))
-        if expected.structured_dataset_type:
+
+        if expected and expected.structured_dataset_type:
             sdt = StructuredDatasetType(
                 columns=expected.structured_dataset_type.columns,
                 format=expected.structured_dataset_type.format,
                 external_schema_type=expected.structured_dataset_type.external_schema_type,
                 external_schema_bytes=expected.structured_dataset_type.external_schema_bytes,
             )
-
-        if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
 
         # If the type signature has the StructuredDataset class, it will, or at least should, also be a
         # StructuredDataset instance.
@@ -438,7 +437,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             python_type = get_args(python_type)[0]
         fmt = self.DEFAULT_FORMATS[python_type]
         protocol = self.DEFAULT_PROTOCOLS[python_type]
-        meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type)
+        meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
         sd = StructuredDataset(dataframe=python_val, metadata=meta)
         return self.encode(ctx, sd, python_type, protocol, fmt, sdt)
 

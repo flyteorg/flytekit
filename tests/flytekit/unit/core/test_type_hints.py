@@ -450,7 +450,7 @@ def test_structured_dataset_in_dataclass():
 
     @task
     def t1(path: str) -> DatasetStruct:
-        sd = StructuredDataset(dataframe=df, file_format="parquet", uri=path)
+        sd = StructuredDataset(dataframe=df, uri=path)
         return DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
 
     @workflow

@@ -15,6 +15,11 @@ from flytekit.models.core import types as _core_types
 from flytekit.types.file import FlyteFile
 from flytekit.types.pickle import FlytePickle
 
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
 
 def test_extract_only():
     def x() -> typing.NamedTuple("NT1", x_str=str, y_int=int):
@@ -183,6 +188,16 @@ def test_parameters_and_defaults():
     assert params.parameters["a"].default.scalar.primitive.integer == 7
     assert not params.parameters["b"].required
     assert params.parameters["b"].default.scalar.primitive.string_value == "eleven"
+
+    def z(a: Annotated[int, "some annotation"]) -> Annotated[int, "some annotation"]:
+        return a
+
+    our_interface = transform_function_to_interface(z)
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert params.parameters["a"].required
+    assert params.parameters["a"].default is None
+    assert our_interface.inputs == {"a": typing.Annotated[int, "some annotation"]}
+    assert our_interface.outputs == {"o0": typing.Annotated[int, "some annotation"]}
 
 
 def test_parameters_with_docstring():

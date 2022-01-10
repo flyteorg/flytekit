@@ -164,17 +164,6 @@ def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
 
 
 @task
-def t11(dataframe: pyspark.sql.dataframe.DataFrame) -> StructuredDataset[my_cols]:
-    return StructuredDataset(dataframe)
-
-
-@task
-def t12(dataset: StructuredDataset[my_cols]) -> pyspark.sql.dataframe.DataFrame:
-    spark_df = dataset.open(pyspark.sql.dataframe.DataFrame).all()
-    return spark_df
-
-
-@task
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
@@ -207,8 +196,6 @@ def wf():
     t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
     t10(dataset=StructuredDataset(uri=NUMPY_PATH))
-    dataset = t11(dataframe=spark_df)
-    t12(dataset=dataset)
 
 
 if __name__ == "__main__":
