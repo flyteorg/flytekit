@@ -433,8 +433,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             )
 
         # Otherwise assume it's a dataframe instance. Wrap it with some defaults
-        if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
         fmt = self.DEFAULT_FORMATS[python_type]
         protocol = self.DEFAULT_PROTOCOLS[python_type]
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
