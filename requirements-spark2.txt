@@ -177,8 +177,9 @@ nest-asyncio==1.5.4
     # via
     #   jupyter-client
     #   nbclient
-numpy==1.22.0
+numpy==1.21.5
     # via
+    #   -r requirements.in
     #   flytekit
     #   pandas
     #   pyarrow
@@ -220,7 +221,7 @@ ptyprocess==0.7.0
     # via pexpect
 py==1.11.0
     # via retry
-py4j==0.10.7
+py4j==0.10.9.2
     # via pyspark
 pyarrow==6.0.1
     # via flytekit
@@ -237,7 +238,7 @@ pyparsing==3.0.6
     # via packaging
 pyrsistent==0.18.0
     # via jsonschema
-pyspark==2.4.8
+pyspark==3.2.0
     # via flytekit
 python-dateutil==2.8.1
     # via

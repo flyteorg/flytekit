@@ -175,8 +175,9 @@ nest-asyncio==1.5.4
     # via
     #   jupyter-client
     #   nbclient
-numpy==1.22.0
+numpy==1.21.5
     # via
+    #   -r requirements.in
     #   flytekit
     #   pandas
     #   pyarrow
