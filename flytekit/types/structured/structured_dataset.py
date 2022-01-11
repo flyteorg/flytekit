@@ -383,7 +383,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # If the type signature has the StructuredDataset class, it will, or at least should, also be a
         # StructuredDataset instance.
-        if inspect.isclass(python_type) and issubclass(python_type, StructuredDataset):
+        if issubclass(python_type, StructuredDataset):
             assert isinstance(python_val, StructuredDataset)
             # There are three cases that we need to take care of here.
 
@@ -467,6 +467,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         # The literal that we get in might be an old FlyteSchema.
         # We'll continue to support this for the time being.
+        if get_origin(expected_python_type) is Annotated:
+            expected_python_type = get_args(expected_python_type)[0]
         if lv.scalar.schema is not None:
             sd = StructuredDataset()
             sd_literal = literals.StructuredDataset(
@@ -483,7 +485,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 return self.open_as(ctx, sd_literal, df_type=expected_python_type)
 
         # Either a StructuredDataset type or some dataframe type.
-        if inspect.isclass(expected_python_type) and issubclass(expected_python_type, StructuredDataset):
+        if issubclass(expected_python_type, StructuredDataset):
             # Just save the literal for now. If in the future we find that we need the StructuredDataset type hint
             # type also, we can add it.
             sd = expected_python_type(
@@ -497,8 +499,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means
         # we should do the opening/downloading and whatever else it might entail right now. No iteration option here.
-        if get_origin(expected_python_type) is Annotated:
-            expected_python_type = get_args(expected_python_type)[0]
         return self.open_as(ctx, lv.scalar.structured_dataset, df_type=expected_python_type)
 
     def open_as(self, ctx: FlyteContext, sd: literals.StructuredDataset, df_type: Type[DF]) -> DF:
@@ -551,7 +551,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             raise ValueError(f"Unrecognized Annotated type for StructuredDataset {t}")
 
         # 2. Fill in columns by checking for StructuredDataset metadata. For example, StructuredDataset[my_cols, parquet]
-        elif inspect.isclass(t) and issubclass(t, StructuredDataset):
+        elif issubclass(t, StructuredDataset):
             for k, v in t.columns().items():
                 lt = self._get_dataset_column_literal_type(v)
                 converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
