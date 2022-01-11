@@ -6,7 +6,6 @@ import pytest
 
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
-from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured import basic_dfs
 from flytekit.types.structured.structured_dataset import (
