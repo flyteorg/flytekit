@@ -162,6 +162,7 @@ class SdkSparkTask(_sdk_runnable.SdkRunnableTask):
                     stats=context.stats,
                     execution_id=context.execution_id,
                     logging=context.logging,
+                    raw_output_prefix=context.raw_output_data_prefix,
                 ),
                 GlobalSparkContext.get_spark_context(),
                 **inputs_dict

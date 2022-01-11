@@ -683,14 +683,16 @@ class FlyteContextManager(object):
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
+        default_context = FlyteContext(file_access=default_local_file_access_provider)
         default_user_space_params = ExecutionParameters(
             execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
             execution_date=_datetime.datetime.utcnow(),
             stats=_mock_stats.MockStats(),
             logging=_logging,
             tmp_dir=user_space_path,
+            raw_output_prefix=default_context.file_access._raw_output_prefix,
         )
-        default_context = FlyteContext(file_access=default_local_file_access_provider)
+
         default_context = default_context.with_execution_state(
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()

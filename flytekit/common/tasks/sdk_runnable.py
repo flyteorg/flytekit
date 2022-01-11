@@ -114,6 +114,7 @@ class ExecutionParameters(object):
         execution_id: str
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, _common_utils.AutoDeletingTempDir]
+        raw_output_prefix: str
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -122,6 +123,7 @@ class ExecutionParameters(object):
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
             self.attrs = current._attrs if current else {}
+            self.raw_output_prefix = current.raw_output_prefix if current else None
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
@@ -136,6 +138,7 @@ class ExecutionParameters(object):
                 tmp_dir=self.working_dir,
                 execution_id=self.execution_id,
                 logging=self.logging,
+                raw_output_prefix=self.raw_output_prefix,
                 **self.attrs,
             )
 
@@ -146,7 +149,7 @@ class ExecutionParameters(object):
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, **kwargs):
         """
         Args:
             execution_date: Date when the execution is running
@@ -160,6 +163,7 @@ class ExecutionParameters(object):
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        self._raw_output_prefix = raw_output_prefix
         # AutoDeletingTempDir's should be used with a with block, which creates upon entry
         self._attrs = kwargs
         # It is safe to recreate the Secrets Manager
@@ -180,6 +184,10 @@ class ExecutionParameters(object):
         TODO: Usage examples
         """
         return self._logging
+
+    @property
+    def raw_output_prefix(self) -> str:
+        return self._raw_output_prefix
 
     @property
     def working_directory(self) -> _common_utils.AutoDeletingTempDir:
@@ -560,6 +568,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                     stats=context.stats,
                     logging=context.logging,
                     tmp_dir=context.working_directory,
+                    raw_output_prefix=context.raw_output_data_prefix,
                 ),
                 **inputs,
             )
