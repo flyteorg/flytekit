@@ -10,8 +10,6 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-import pyspark.sql.dataframe
-from pyspark.sql import SparkSession
 
 from flytekit import FlyteContext, kwtypes, task, workflow
 from flytekit.models import literals
@@ -27,8 +25,8 @@ from flytekit.types.structured.structured_dataset import (
 )
 from flytekit.types.structured.utils import get_filesystem
 
-PANDAS_PATH = "/tmp/pandas"
-NUMPY_PATH = "/tmp/numpy"
+PANDAS_PATH = "s3://flyte-batch/my-s3-bucket/test-data/pandas"
+NUMPY_PATH = "s3://flyte-batch/my-s3-bucket/test-data/numpy"
 BQ_PATH = "bq://photo-313016:flyte.new_table3"
 
 # https://github.com/flyteorg/flyte/issues/523
@@ -60,7 +58,7 @@ def t2(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, arrow_schema]:
 @task
 def t3(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
     # s3 (parquet) -> pandas -> s3 (parquet)
-    print("Pandas dataframe")
+    print("Pandas dataframe:")
     print(dataset.open(pd.DataFrame).all())
     # In the example, we download dataset when we open it.
     # Here we won't upload anything, since we're returning just the input object.
@@ -148,6 +146,8 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
 
 FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "/", "parquet"))
 FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "/", "parquet"))
+FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "s3://", "parquet"))
+FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "s3://", "parquet"))
 
 
 @task
@@ -161,17 +161,6 @@ def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
     # s3 (parquet) -> Arrow table -> numpy
     np_array = dataset.open(np.ndarray).all()
     return np_array
-
-
-@task
-def t11(dataframe: pyspark.sql.dataframe.DataFrame) -> StructuredDataset[my_cols]:
-    return StructuredDataset(dataframe)
-
-
-@task
-def t12(dataset: StructuredDataset[my_cols]) -> pyspark.sql.dataframe.DataFrame:
-    spark_df = dataset.open(pyspark.sql.dataframe.DataFrame).all()
-    return spark_df
 
 
 @task
@@ -189,24 +178,11 @@ def generate_arrow() -> pa.Table:
     return pa.Table.from_pandas(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]}))
 
 
-@task
-def generate_spark_dataframe() -> pyspark.sql.dataframe.DataFrame:
-    data = [
-        {"Category": "A", "ID": 1, "Value": 121.44, "Truth": True},
-        {"Category": "B", "ID": 2, "Value": 300.01, "Truth": False},
-        {"Category": "C", "ID": 3, "Value": 10.99, "Truth": None},
-        {"Category": "E", "ID": 4, "Value": 33.87, "Truth": True},
-    ]
-    spark = SparkSession.builder.getOrCreate()
-    return spark.createDataFrame(data)
-
-
 @workflow()
 def wf():
     df = generate_pandas()
     np_array = generate_numpy()
     arrow_df = generate_arrow()
-    spark_df = generate_spark_dataframe()
     t1(dataframe=df)
     t1a(dataframe=df)
     t2(dataframe=df)
@@ -220,8 +196,6 @@ def wf():
     t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
     t10(dataset=StructuredDataset(uri=NUMPY_PATH))
-    dataset = t11(dataframe=spark_df)
-    t12(dataset=dataset)
 
 
 if __name__ == "__main__":

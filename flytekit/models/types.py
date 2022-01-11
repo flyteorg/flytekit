@@ -165,7 +165,7 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
     def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType:
         return _types_pb2.StructuredDatasetType(
             columns=[c.to_flyte_idl() for c in self.columns] if self.columns else None,
-            format=self._format,
+            format=self.format,
             external_schema_type=self.external_schema_type if self.external_schema_type else None,
             external_schema_bytes=self.external_schema_bytes if self.external_schema_bytes else None,
         )

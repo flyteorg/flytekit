@@ -41,6 +41,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
 def test_type_engine():
@@ -584,6 +585,35 @@ def test_flyte_directory_in_dataclass():
     assert o.b.a.path == ot.b.a.remote_source
     assert o.b.b[0].path == ot.b.b[0].path
     assert o.b.c["hello"].path == ot.b.c["hello"].path
+
+
+def test_structured_dataset_in_dataclass():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    @dataclass_json
+    @dataclass
+    class InnerDatasetStruct(object):
+        a: StructuredDataset
+
+    @dataclass_json
+    @dataclass
+    class DatasetStruct(object):
+        a: StructuredDataset
+        b: InnerDatasetStruct
+
+    sd = StructuredDataset(dataframe=df, file_format="parquet")
+    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(DatasetStruct)
+    lv = tf.to_literal(ctx, o, DatasetStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=DatasetStruct)
+
+    assert_frame_equal(df, ot.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.a.open(pd.DataFrame).all())
+    assert "parquet" == ot.a.file_format
+    assert "parquet" == ot.b.a.file_format
 
 
 # Enums should have string values
