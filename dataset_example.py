@@ -23,7 +23,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
-from flytekit.types.structured.utils import get_filesystem
 
 PANDAS_PATH = "s3://flyte-batch/my-s3-bucket/test-data/pandas"
 NUMPY_PATH = "s3://flyte-batch/my-s3-bucket/test-data/numpy"
@@ -125,7 +124,7 @@ class NumpyEncodingHandlers(StructuredDatasetEncoder):
         table = pa.Table.from_arrays(df, name)
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = os.path.join(local_dir, f"{0:05}")
-        pq.write_table(table, local_path, filesystem=get_filesystem(local_path))
+        pq.write_table(table, local_path)
         ctx.file_access.upload_directory(local_dir, path)
         structured_dataset_type.format = PARQUET
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
@@ -140,7 +139,7 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(path, local_dir, is_multipart=True)
-        table = pq.read_table(local_dir, filesystem=get_filesystem(local_dir))
+        table = pq.read_table(local_dir)
         return table.to_pandas().to_numpy()
 
 
