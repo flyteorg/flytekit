@@ -86,7 +86,7 @@ entrypoints==0.3
     #   papermill
 flyteidl==0.21.6
     # via flytekit
-furo @ git+git://github.com/flyteorg/furo@main
+furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
 gevent==21.8.0
     # via sagemaker-training
