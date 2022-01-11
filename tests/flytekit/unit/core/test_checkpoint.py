@@ -11,7 +11,7 @@ def test_sync_checkpoint_write(tmpdir):
     assert cp.restore() is None
     dst_path = td_path.joinpath(SyncCheckpoint.TMP_DST_PATH)
     assert not dst_path.exists()
-    cp.write(b'bytes')
+    cp.write(b"bytes")
     assert dst_path.exists()
 
 

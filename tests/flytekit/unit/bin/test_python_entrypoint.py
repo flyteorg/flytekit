@@ -448,8 +448,8 @@ def test_setup_bad_prefix():
 
 
 def test_setup_cloud_prefix():
-    with setup_execution("s3://") as ctx:
+    with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
         assert isinstance(ctx.file_access._default_remote, S3Persistence)
 
-    with setup_execution("gs://") as ctx:
+    with setup_execution("gs://", checkpoint_path=None, prev_checkpoint=None) as ctx:
         assert isinstance(ctx.file_access._default_remote, GCSPersistence)

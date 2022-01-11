@@ -6,7 +6,7 @@ import os as _os
 import pathlib
 import random as _random
 import traceback as _traceback
-from typing import List
+from typing import List, Optional
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -185,10 +185,10 @@ def _dispatch_execute(
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
-    checkpoint_path: str,
-    prev_checkpoint: str,
-    dynamic_addl_distro: str = None,
-    dynamic_dest_dir: str = None,
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     ctx = FlyteContextManager.current_context()
 
@@ -336,12 +336,12 @@ def _execute_task(
     output_prefix: str,
     test: bool,
     raw_output_data_prefix: str,
-    checkpoint_path: str,
-    prev_checkpoint: str,
     resolver: str,
     resolver_args: List[str],
-    dynamic_addl_distro: str = None,
-    dynamic_dest_dir: str = None,
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -370,7 +370,13 @@ def _execute_task(
         raise Exception("cannot be <1")
 
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+        with setup_execution(
+            raw_output_data_prefix,
+            checkpoint_path=checkpoint_path,
+            prev_checkpoint=prev_checkpoint,
+            dynamic_addl_distro=dynamic_addl_distro,
+            dynamic_dest_dir=dynamic_dest_dir,
+        ) as ctx:
             resolver_obj = load_object_from_module(resolver)
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
@@ -389,16 +395,20 @@ def _execute_map_task(
     raw_output_data_prefix,
     max_concurrency,
     test,
-    dynamic_addl_distro: str,
-    dynamic_dest_dir: str,
     resolver: str,
     resolver_args: List[str],
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+        with setup_execution(
+            raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+        ) as ctx:
             resolver_obj = load_object_from_module(resolver)
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
@@ -532,6 +542,8 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--dynamic-addl-distro", required=False)
 @_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=True)
+@_click.option("--checkpoint-path", required=False)
+@_click.option("--prev-checkpoint", required=False)
 @_click.argument(
     "resolver-args",
     type=_click.UNPROCESSED,
@@ -547,19 +559,23 @@ def map_execute_task_cmd(
     dynamic_dest_dir,
     resolver,
     resolver_args,
+    prev_checkpoint,
+    checkpoint_path,
 ):
     logger.info(_utils.get_version_message())
 
     _execute_map_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        dynamic_addl_distro,
-        dynamic_dest_dir,
-        resolver,
-        resolver_args,
+        inputs=inputs,
+        output_prefix=output_prefix,
+        raw_output_data_prefix=raw_output_data_prefix,
+        max_concurrency=max_concurrency,
+        test=test,
+        dynamic_addl_distro=dynamic_addl_distro,
+        dynamic_dest_dir=dynamic_dest_dir,
+        resolver=resolver,
+        resolver_args=resolver_args,
+        checkpoint_path=checkpoint_path,
+        prev_checkpoint=prev_checkpoint,
     )
 
 

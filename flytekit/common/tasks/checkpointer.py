@@ -18,15 +18,15 @@ class Checkpoint(object):
     @abstractmethod
     def restore(self, path: typing.Union[Path, str]) -> typing.Optional[Path]:
         """
-           Given a path, if a previous checkpoint exists, will be downloaded to this path.
-           If download is successful the downloaded path is returned
+        Given a path, if a previous checkpoint exists, will be downloaded to this path.
+        If download is successful the downloaded path is returned
 
-           .. note:
+        .. note:
 
-               Download will not be performed, if the checkpoint was previously restored. The method will return the
-               previously downloaded path.
+            Download will not be performed, if the checkpoint was previously restored. The method will return the
+            previously downloaded path.
 
-         """
+        """
         raise NotImplementedError("Use one of the derived classes")
 
     @abstractmethod
