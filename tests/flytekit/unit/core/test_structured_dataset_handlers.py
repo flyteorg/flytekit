@@ -2,12 +2,18 @@ import typing
 
 import pandas as pd
 import pyarrow as pa
+import pytest
 
-from flytekit import kwtypes
 from flytekit.core import context_manager
+from flytekit.core.base_task import kwtypes
+from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured import basic_dfs
-from flytekit.types.structured.structured_dataset import StructuredDataset
+from flytekit.types.structured.structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetDecoder,
+    StructuredDatasetEncoder,
+)
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 
@@ -28,3 +34,11 @@ def test_pandas():
 
     df2 = decoder.decode(ctx, sd_lit)
     assert df.equals(df2)
+
+
+def test_base_isnt_instantiable():
+    with pytest.raises(TypeError):
+        StructuredDatasetEncoder(pd.DataFrame, "", "")
+
+    with pytest.raises(TypeError):
+        StructuredDatasetDecoder(pd.DataFrame, "", "")
