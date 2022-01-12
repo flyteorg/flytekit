@@ -21,7 +21,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
-from flytekit.types.structured.utils import get_filesystem
 
 T = TypeVar("T")
 
@@ -76,7 +75,10 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
         df = structured_dataset.dataframe
-        pq.write_table(df, path, filesystem=get_filesystem(path))
+        local_dir = ctx.file_access.get_random_local_directory()
+        local_path = os.path.join(local_dir, f"{0:05}")
+        pq.write_table(df, local_path)
+        ctx.file_access.upload_directory(local_dir, path)
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
@@ -90,7 +92,9 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         flyte_value: literals.StructuredDataset,
     ) -> pa.Table:
         path = flyte_value.uri
-        return pq.read_table(path, filesystem=get_filesystem(path))
+        local_dir = ctx.file_access.get_random_local_directory()
+        ctx.file_access.get_data(path, local_dir, is_multipart=True)
+        return pq.read_table(local_dir)
 
 
 for protocol in [LOCAL, S3]:  # Should we add GCS
