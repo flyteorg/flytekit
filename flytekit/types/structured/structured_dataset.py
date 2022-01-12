@@ -557,9 +557,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return StructuredDatasetType(columns=converted_cols, format=t.FILE_FORMAT)
 
         # 3. pd.Dataframe
-        # todo: fix format, should not be parquet
         else:
-            return StructuredDatasetType(columns=converted_cols, format=PARQUET)
+            fmt = self.DEFAULT_FORMATS.get(t, PARQUET)
+            return StructuredDatasetType(columns=converted_cols, format=fmt)
 
     def get_literal_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> LiteralType:
         """

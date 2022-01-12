@@ -120,14 +120,32 @@ def test_to_literal():
     assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == "parquet"
     assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == "parquet"
 
+    sd_with_literal_and_df = StructuredDataset(df)
+    sd_with_literal_and_df._literal_sd = lit
 
-MyDF: TypeAlias = pd.DataFrame
+    with pytest.raises(ValueError, match="Shouldn't have specified both literal"):
+        FLYTE_DATASET_TRANSFORMER.to_literal(ctx, sd_with_literal_and_df, python_type=StructuredDataset, expected=lt)
+
+    sd_with_nothing = StructuredDataset()
+    with pytest.raises(ValueError, match="If dataframe is not specified"):
+        FLYTE_DATASET_TRANSFORMER.to_literal(ctx, sd_with_nothing, python_type=StructuredDataset, expected=lt)
+
+    sd_with_uri = StructuredDataset(uri="s3://some/extant/df.parquet")
+
+    lt = TypeEngine.to_literal_type(StructuredDataset[{}, "new-df-format"])
+    lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, sd_with_uri, python_type=StructuredDataset, expected=lt)
+    assert lit.scalar.structured_dataset.uri == "s3://some/extant/df.parquet"
+    assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == "new-df-format"
 
 
-def test_fill_in():
+class MyDF(pd.DataFrame):
+    ...
+
+
+def test_fill_in_literal_type():
     class TempEncoder(StructuredDatasetEncoder):
-        def __init__(self):
-            super().__init__(MyDF, "tmp://")
+        def __init__(self, fmt: str):
+            super().__init__(MyDF, "tmp://", supported_format=fmt)
 
         def encode(
             self,
@@ -135,8 +153,33 @@ def test_fill_in():
             structured_dataset: StructuredDataset,
             structured_dataset_type: StructuredDatasetType,
         ) -> literals.StructuredDataset:
-            return literals.StructuredDataset(
-                uri="", metadata=literals.StructuredDatasetMetadata(structured_dataset_type)
-            )
+            return literals.StructuredDataset(uri="")
 
-    FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder(), default_for_type=False)
+    FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder("myavro"), default_for_type=True)
+    lt = TypeEngine.to_literal_type(MyDF)
+    assert lt.structured_dataset_type.format == "myavro"
+
+    ctx = FlyteContextManager.current_context()
+    sd = StructuredDataset(dataframe=42)
+    l = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, sd, MyDF, lt)
+    # Test that the literal type is filled in even though the encode function above doesn't do it.
+    assert l.scalar.structured_dataset.metadata.structured_dataset_type.format == "myavro"
+
+    # Test that looking up encoders/decoders falls back to the "" encoder/decoder
+    empty_format_temp_encoder = TempEncoder("")
+    FLYTE_DATASET_TRANSFORMER.register_handler(empty_format_temp_encoder, default_for_type=False)
+
+    res = FLYTE_DATASET_TRANSFORMER.get_encoder(MyDF, "tmp", "rando")
+    assert res is empty_format_temp_encoder
+
+
+def test_sd():
+    sd = StructuredDataset(dataframe="hi")
+    sd.uri = "my uri"
+    assert sd.file_format == "parquet"
+
+    with pytest.raises(ValueError):
+        sd.all()
+
+    with pytest.raises(ValueError):
+        sd.iter()
