@@ -47,6 +47,7 @@ extensions = [
     "sphinx-prompt",
     "sphinx_copybutton",
     "sphinx_fontawesome",
+    "sphinx_panels",
     "sphinxcontrib.yt",
 ]
 
