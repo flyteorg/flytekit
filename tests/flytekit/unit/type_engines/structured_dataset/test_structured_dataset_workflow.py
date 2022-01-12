@@ -55,7 +55,6 @@ class MockBQDecodingHandlers(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
     ) -> pd.DataFrame:
-        print("kevin123")
         return pd_df
 
 
