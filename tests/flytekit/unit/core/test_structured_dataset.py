@@ -6,6 +6,7 @@ from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Image, ImageConfig
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
+from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import SimpleType, StructuredDatasetType
 
 try:
@@ -21,6 +22,7 @@ from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
     PARQUET,
     StructuredDataset,
+    StructuredDatasetDecoder,
     StructuredDatasetEncoder,
     protocol_prefix,
 )
@@ -160,7 +162,7 @@ class MyDF(pd.DataFrame):
 def test_fill_in_literal_type():
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self, fmt: str):
-            super().__init__(MyDF, "tmp://", supported_format=fmt)
+            super().__init__(MyDF, "tmpfs://", supported_format=fmt)
 
         def encode(
             self,
@@ -193,11 +195,50 @@ def test_sd():
     sd.uri = "my uri"
     assert sd.file_format == PARQUET
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="No dataframe type set"):
         sd.all()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="No dataframe type set."):
         sd.iter()
+
+    class MockPandasDecodingHandlers(StructuredDatasetDecoder):
+        def decode(
+            self,
+            ctx: FlyteContext,
+            flyte_value: literals.StructuredDataset,
+        ) -> typing.Union[typing.Generator[pd.DataFrame, None, None]]:
+            yield pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    FLYTE_DATASET_TRANSFORMER.register_handler(
+        MockPandasDecodingHandlers(pd.DataFrame, "tmpfs"), default_for_type=False
+    )
+    sd = StructuredDataset()
+    sd._literal_sd = literals.StructuredDataset(
+        uri="tmpfs://somewhere", metadata=StructuredDatasetMetadata(StructuredDatasetType(format=""))
+    )
+    assert isinstance(sd.open(pd.DataFrame).iter(), typing.Generator)
+
+    with pytest.raises(ValueError):
+        sd.open(pd.DataFrame).all()
+
+    class MockPandasDecodingHandlers(StructuredDatasetDecoder):
+        def decode(
+            self,
+            ctx: FlyteContext,
+            flyte_value: literals.StructuredDataset,
+        ) -> pd.DataFrame:
+            pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    FLYTE_DATASET_TRANSFORMER.register_handler(
+        MockPandasDecodingHandlers(pd.DataFrame, "tmpfs"), default_for_type=False, override=True
+    )
+    sd = StructuredDataset()
+    sd._literal_sd = literals.StructuredDataset(
+        uri="tmpfs://somewhere", metadata=StructuredDatasetMetadata(StructuredDatasetType(format=""))
+    )
+
+    with pytest.raises(ValueError):
+        sd.open(pd.DataFrame).iter()
 
 
 def test_class_getitem():
