@@ -121,7 +121,6 @@ def t2(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, arrow_schema]:
 def t3(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
     # s3 (parquet) -> pandas -> s3 (parquet)
     print(dataset.open(pd.DataFrame).all())
-    dataset.open(pd.DataFrame).iter()
     # In the example, we download dataset when we open it.
     # Here we won't upload anything, since we're returning just the input object.
     return dataset
