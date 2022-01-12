@@ -30,7 +30,6 @@ from docker_image import reference
 
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
-from flytekit.common.tasks.checkpointer import SyncCheckpoint
 from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
