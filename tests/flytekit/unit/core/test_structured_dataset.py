@@ -9,9 +9,9 @@ from flytekit.models import literals
 from flytekit.models.types import SimpleType, StructuredDatasetType
 
 try:
-    from typing import Annotated, TypeAlias
+    from typing import Annotated
 except ImportError:
-    from typing_extensions import Annotated, TypeAlias
+    from typing_extensions import Annotated
 
 import pandas as pd
 import pyarrow as pa
