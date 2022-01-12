@@ -19,6 +19,7 @@ import pyarrow as pa
 from flytekit import kwtypes
 from flytekit.types.structured.structured_dataset import (
     FLYTE_DATASET_TRANSFORMER,
+    PARQUET,
     StructuredDataset,
     StructuredDatasetEncoder,
     protocol_prefix,
@@ -51,7 +52,7 @@ def test_types_pandas():
     pt = pd.DataFrame
     lt = TypeEngine.to_literal_type(pt)
     assert lt.structured_dataset_type is not None
-    assert lt.structured_dataset_type.format == "parquet"
+    assert lt.structured_dataset_type.format == PARQUET
     assert lt.structured_dataset_type.columns == []
 
 
@@ -70,6 +71,14 @@ def test_types_annotated():
     lt = TypeEngine.to_literal_type(pt)
     assert lt.structured_dataset_type.external_schema_type == "arrow"
     assert "some_string" in str(lt.structured_dataset_type.external_schema_bytes)
+
+    pt = Annotated[pd.DataFrame, kwtypes(a=None)]
+    with pytest.raises(AssertionError, match="type None is currently not supported by StructuredDataset"):
+        TypeEngine.to_literal_type(pt)
+
+    pt = Annotated[pd.DataFrame, None]
+    with pytest.raises(ValueError, match="Unrecognized Annotated type for StructuredDataset"):
+        TypeEngine.to_literal_type(pt)
 
 
 def test_types_sd():
@@ -94,7 +103,7 @@ def test_types_sd():
 
 
 def test_retrieving():
-    assert FLYTE_DATASET_TRANSFORMER.get_encoder(pd.DataFrame, "/", "parquet") is not None
+    assert FLYTE_DATASET_TRANSFORMER.get_encoder(pd.DataFrame, "/", PARQUET) is not None
     with pytest.raises(ValueError):
         # We don't have a default "" format encoder
         FLYTE_DATASET_TRANSFORMER.get_encoder(pd.DataFrame, "/", "")
@@ -110,6 +119,12 @@ def test_retrieving():
     with pytest.raises(ValueError):
         FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder("gs://"), default_for_type=False)
 
+    class TempEncoder:
+        pass
+
+    with pytest.raises(TypeError, match="We don't support this type of handler"):
+        FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder, default_for_type=False)
+
 
 def test_to_literal():
     ctx = FlyteContextManager.current_context()
@@ -117,8 +132,8 @@ def test_to_literal():
     df = generate_pandas()
 
     lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, df, python_type=pd.DataFrame, expected=lt)
-    assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == "parquet"
-    assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == "parquet"
+    assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == PARQUET
+    assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == PARQUET
 
     sd_with_literal_and_df = StructuredDataset(df)
     sd_with_literal_and_df._literal_sd = lit
@@ -176,10 +191,22 @@ def test_fill_in_literal_type():
 def test_sd():
     sd = StructuredDataset(dataframe="hi")
     sd.uri = "my uri"
-    assert sd.file_format == "parquet"
+    assert sd.file_format == PARQUET
 
     with pytest.raises(ValueError):
         sd.all()
 
     with pytest.raises(ValueError):
         sd.iter()
+
+
+def test_class_getitem():
+    assert StructuredDataset[None] == StructuredDataset
+    assert StructuredDataset[{}] == StructuredDataset
+    assert StructuredDataset[{"a": int}].FILE_FORMAT == StructuredDataset[{"a": int}, PARQUET].FILE_FORMAT
+
+    with pytest.raises(AssertionError, match="Columns should be specified as an ordered dict"):
+        StructuredDataset[int]
+
+    with pytest.raises(AssertionError, match="format should be specified as an string"):
+        StructuredDataset[{"a": int}, 123]

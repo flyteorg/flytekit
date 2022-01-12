@@ -67,11 +67,11 @@ class StructuredDataset(object):
             return cls
 
         format = PARQUET
-        if isinstance(args, dict):
-            columns = args
-        else:
+        if isinstance(args, tuple):
             columns = args[0]
             format = args[1]
+        else:
+            columns = args
 
         if not isinstance(columns, dict):
             raise AssertionError(

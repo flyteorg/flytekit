@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from flytekit import kwtypes
+from flytekit import StructuredDataset, kwtypes
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
@@ -291,6 +291,11 @@ def t4() -> FlyteSchema[my_cols]:
     return pd_df
 
 
+@task
+def t5(sd: StructuredDataset[my_cols]) -> Annotated[pd.DataFrame, my_cols]:
+    return sd.open(pd.DataFrame).all()
+
+
 @workflow
 def sd_wf() -> Annotated[pd.DataFrame, my_cols]:
     df = t1()
@@ -306,7 +311,8 @@ def sd_to_schema_wf() -> pd.DataFrame:
 @workflow
 def schema_to_sd_wf() -> pd.DataFrame:
     df = t4()
-    return t2(df=df)
+    t2(df=df)
+    return t5(sd=df)
 
 
 def test_structured_dataset_wf():
