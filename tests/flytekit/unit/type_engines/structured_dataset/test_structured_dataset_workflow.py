@@ -11,29 +11,93 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from flytekit import FlyteContext, kwtypes, task, workflow
+from flytekit import FlyteContext, FlyteContextManager, kwtypes, task, workflow
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
+    BIGQUERY,
     DF,
     FLYTE_DATASET_TRANSFORMER,
+    LOCAL,
     PARQUET,
+    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
 
-PANDAS_PATH = "s3://flyte-batch/my-s3-bucket/test-data/pandas"
-NUMPY_PATH = "s3://flyte-batch/my-s3-bucket/test-data/numpy"
-BQ_PATH = "bq://photo-313016:flyte.new_table3"
+PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
+NUMPY_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
+BQ_PATH = "bq://flyte-dataset:flyte.table"
 
-# https://github.com/flyteorg/flyte/issues/523
-# We should also support map and list in schema column
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
-
 fields = [("some_int", pa.int32()), ("some_string", pa.string())]
 arrow_schema = pa.schema(fields)
+pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+
+class MockBQEncodingHandlers(StructuredDatasetEncoder):
+    def encode(
+        self,
+        ctx: FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
+    ) -> literals.StructuredDataset:
+        return literals.StructuredDataset(
+            uri="s3://bucket/key", metadata=StructuredDatasetMetadata(structured_dataset_type)
+        )
+
+
+class MockBQDecodingHandlers(StructuredDatasetDecoder):
+    def decode(
+        self,
+        ctx: FlyteContext,
+        flyte_value: literals.StructuredDataset,
+    ) -> pd.DataFrame:
+        print("kevin123")
+        return pd_df
+
+
+FLYTE_DATASET_TRANSFORMER.register_handler(MockBQEncodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+FLYTE_DATASET_TRANSFORMER.register_handler(MockBQDecodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+
+
+class NumpyEncodingHandlers(StructuredDatasetEncoder):
+    def encode(
+        self,
+        ctx: FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
+    ) -> literals.StructuredDataset:
+        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        df = typing.cast(np.ndarray, structured_dataset.dataframe)
+        name = ["col" + str(i) for i in range(len(df))]
+        table = pa.Table.from_arrays(df, name)
+        local_dir = ctx.file_access.get_random_local_directory()
+        local_path = os.path.join(local_dir, f"{0:05}")
+        pq.write_table(table, local_path)
+        ctx.file_access.upload_directory(local_dir, path)
+        structured_dataset_type.format = PARQUET
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+
+
+class NumpyDecodingHandlers(StructuredDatasetDecoder):
+    def decode(
+        self,
+        ctx: FlyteContext,
+        flyte_value: literals.StructuredDataset,
+    ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
+        path = flyte_value.uri
+        local_dir = ctx.file_access.get_random_local_directory()
+        ctx.file_access.get_data(path, local_dir, is_multipart=True)
+        table = pq.read_table(local_dir)
+        return table.to_pandas().to_numpy()
+
+
+for protocol in [LOCAL, S3]:
+    FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
+    FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
 
 
 @task
@@ -44,8 +108,8 @@ def t1(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, my_cols]:
 
 @task
 def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, PARQUET]:
-    # S3 (parquet) -> Pandas -> S3 (parquet) default behaviour
-    return StructuredDataset(dataframe=dataframe)
+    # S3 (parquet) -> Pandas -> S3 (parquet)
+    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH)
 
 
 @task
@@ -57,7 +121,6 @@ def t2(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, arrow_schema]:
 @task
 def t3(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
     # s3 (parquet) -> pandas -> s3 (parquet)
-    print("Pandas dataframe:")
     print(dataset.open(pd.DataFrame).all())
     # In the example, we download dataset when we open it.
     # Here we won't upload anything, since we're returning just the input object.
@@ -93,13 +156,12 @@ def t6(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
 def t7(df1: pd.DataFrame, df2: pd.DataFrame) -> (StructuredDataset[my_cols], StructuredDataset[my_cols]):
     # df1: pandas -> bq
     # df2: pandas -> s3 (parquet)
-    return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df1)
+    return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df2)
 
 
 @task
 def t8(dataframe: pa.Table) -> StructuredDataset[my_cols]:
     # Arrow table -> s3 (parquet)
-    print("Arrow table")
     print(dataframe.columns)
     return StructuredDataset(dataframe=dataframe)
 
@@ -109,44 +171,6 @@ def t8a(dataframe: pa.Table) -> pa.Table:
     # Arrow table -> s3 (parquet)
     print(dataframe.columns)
     return dataframe
-
-
-class NumpyEncodingHandlers(StructuredDatasetEncoder):
-    def encode(
-        self,
-        ctx: FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
-    ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
-        df = typing.cast(np.ndarray, structured_dataset.dataframe)
-        name = ["col" + str(i) for i in range(len(df))]
-        table = pa.Table.from_arrays(df, name)
-        local_dir = ctx.file_access.get_random_local_directory()
-        local_path = os.path.join(local_dir, f"{0:05}")
-        pq.write_table(table, local_path)
-        ctx.file_access.upload_directory(local_dir, path)
-        structured_dataset_type.format = PARQUET
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
-
-
-class NumpyDecodingHandlers(StructuredDatasetDecoder):
-    def decode(
-        self,
-        ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
-    ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
-        path = flyte_value.uri
-        local_dir = ctx.file_access.get_random_local_directory()
-        ctx.file_access.get_data(path, local_dir, is_multipart=True)
-        table = pq.read_table(local_dir)
-        return table.to_pandas().to_numpy()
-
-
-FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "/", "parquet"))
-FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "/", "parquet"))
-FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, "s3://", "parquet"))
-FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, "s3://", "parquet"))
 
 
 @task
@@ -164,7 +188,7 @@ def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
 
 @task
 def generate_pandas() -> pd.DataFrame:
-    return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    return pd_df
 
 
 @task
@@ -197,5 +221,5 @@ def wf():
     t10(dataset=StructuredDataset(uri=NUMPY_PATH))
 
 
-if __name__ == "__main__":
+def test_structured_dataset_wf():
     wf()

@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import pandas as pd
 import pytest
-from pandas._testing import assert_frame_equal
+from pandas.testing import assert_frame_equal
 
 from flytekit import kwtypes
 from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
