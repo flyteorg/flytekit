@@ -186,7 +186,7 @@ def test_fill_in_literal_type():
     empty_format_temp_encoder = TempEncoder("")
     FLYTE_DATASET_TRANSFORMER.register_handler(empty_format_temp_encoder, default_for_type=False)
 
-    res = FLYTE_DATASET_TRANSFORMER.get_encoder(MyDF, "tmp", "rando")
+    res = FLYTE_DATASET_TRANSFORMER.get_encoder(MyDF, "tmpfs", "rando")
     assert res is empty_format_temp_encoder
 
 
