@@ -2,7 +2,6 @@ import subprocess
 import time
 from typing import List
 
-import six as _six
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 from grpc import RpcError as _RpcError
@@ -92,7 +91,7 @@ def _refresh_credentials_from_command(flyte_client):
     except subprocess.CalledProcessError as e:
         cli_logger.error("Failed to generate token from command {}".format(command))
         raise _user_exceptions.FlyteAuthenticationException(
-            "Problems refreshing token with command: " + _six.text_type(e)
+            "Problems refreshing token with command: " + str(e)
         )
     flyte_client.set_access_token(output.stdout.strip())
 
@@ -134,7 +133,7 @@ def _handle_rpc_error(retry=False):
                         # Always retry auth errors.
                         if i == (max_retries - 1):
                             # Exit the loop and wrap the authentication error.
-                            raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+                            raise _user_exceptions.FlyteAuthenticationException(str(e))
                         cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
                         refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
                         refresh_handler_fn(args[0])

@@ -1,4 +1,3 @@
-import six as _six
 from flyteidl.core import compiler_pb2 as _compiler_pb2
 
 from flytekit.models import common as _common
@@ -61,8 +60,8 @@ class ConnectionSet(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.compiler_pb2.ConnectionSet
         """
         return _compiler_pb2.ConnectionSet(
-            upstream={k: v.to_flyte_idl() for k, v in _six.iteritems(self.upstream)},
-            downstream={k: v.to_flyte_idl() for k, v in _six.iteritems(self.upstream)},
+            upstream={k: v.to_flyte_idl() for k, v in self.upstream.items()},
+            downstream={k: v.to_flyte_idl() for k, v in self.upstream.items()},
         )
 
     @classmethod
@@ -72,8 +71,8 @@ class ConnectionSet(_common.FlyteIdlEntity):
         :rtype: ConnectionSet
         """
         return cls(
-            upstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in _six.iteritems(p.upstream)},
-            downstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in _six.iteritems(p.downstream)},
+            upstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in p.upstream.items()},
+            downstream={k: ConnectionSet.IdList.from_flyte_idl(v) for k, v in p.downstream.items()},
         )
 
 
