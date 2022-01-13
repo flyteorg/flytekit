@@ -45,7 +45,7 @@ class Checkpoint(object):
         raise NotImplementedError("Use one of the derived classes")
 
     @abstractmethod
-    def read(self) -> bytes:
+    def read(self) -> typing.Optional[bytes]:
         """
         This should only be used if there is a singular checkpoint file written. If more than one checkpoint file is
         found, this will raise a ValueError
@@ -142,7 +142,7 @@ class SyncCheckpoint(Checkpoint):
         rpath = fa._default_remote.construct_path(False, False, self._checkpoint_dest, self.TMP_DST_PATH)
         fa.upload(str(dest_cp), rpath)
 
-    def read(self) -> bytes:
+    def read(self) -> typing.Optional[bytes]:
         p = self.restore()
         if p is None:
             return None

@@ -477,7 +477,7 @@ def execute_task_cmd(
         raw_output_data_prefix = None
     if checkpoint_path == "{{.checkpointOutputPrefix}}":
         checkpoint_path = None
-    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "":
+    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "" or prev_checkpoint == '""':
         prev_checkpoint = None
 
     # For new API tasks (as of 0.16.x), we need to call a different function.
@@ -564,6 +564,13 @@ def map_execute_task_cmd(
     checkpoint_path,
 ):
     logger.info(_utils.get_version_message())
+
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+    if checkpoint_path == "{{.checkpointOutputPrefix}}":
+        checkpoint_path = None
+    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "" or prev_checkpoint == '""':
+        prev_checkpoint = None
 
     _execute_map_task(
         inputs=inputs,
