@@ -201,6 +201,7 @@ def setup_execution(
     checkpointer = None
     if checkpoint_path is not None:
         checkpointer = SyncCheckpoint(checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint)
+        logger.debug(f"Checkpointer created with source {prev_checkpoint} and dest {checkpoint_path}")
 
     execution_parameters = ExecutionParameters(
         execution_id=_identifier.WorkflowExecutionIdentifier(
@@ -228,7 +229,7 @@ def setup_execution(
         ),
         logging=python_logging,
         tmp_dir=user_workspace_dir,
-        checkpointer=checkpointer,
+        checkpoint=checkpointer,
     )
 
     # TODO: Remove this check for flytekit 1.0
@@ -476,7 +477,7 @@ def execute_task_cmd(
         raw_output_data_prefix = None
     if checkpoint_path == "{{.checkpointOutputPrefix}}":
         checkpoint_path = None
-    if prev_checkpoint == "{{.prevCheckpointPrefix}}":
+    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "":
         prev_checkpoint = None
 
     # For new API tasks (as of 0.16.x), we need to call a different function.
