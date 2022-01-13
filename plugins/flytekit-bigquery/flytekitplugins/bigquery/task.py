@@ -5,9 +5,9 @@ from google.cloud import bigquery
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
+from flytekit import StructuredDataset
 from flytekit.extend import SerializationSettings, SQLTask
 from flytekit.models import task as _task_model
-from flytekit.types.schema import FlyteSchema
 
 
 @dataclass
@@ -35,7 +35,7 @@ class BigQueryTask(SQLTask[BigQueryConfig]):
         query_template: str,
         task_config: Optional[BigQueryConfig],
         inputs: Optional[Dict[str, Type]] = None,
-        output_schema_type: Optional[Type[FlyteSchema]] = None,
+        output_structured_dataset_type: Optional[Type[StructuredDataset]] = None,
         **kwargs,
     ):
         """
@@ -46,13 +46,13 @@ class BigQueryTask(SQLTask[BigQueryConfig]):
           Refer to the templating documentation
         :param task_config: BigQueryConfig object
         :param inputs: Name and type of inputs specified as an ordered dictionary
-        :param output_schema_type: If some data is produced by this query, then you can specify the output schema type
+        :param output_structured_dataset_type: If some data is produced by this query, then you can specify the output StructuredDataset type
         :param kwargs: All other args required by Parent type - SQLTask
         """
         outputs = None
-        if output_schema_type is not None:
+        if output_structured_dataset_type is not None:
             outputs = {
-                "results": output_schema_type,
+                "results": output_structured_dataset_type,
             }
         super().__init__(
             name=name,
@@ -63,7 +63,7 @@ class BigQueryTask(SQLTask[BigQueryConfig]):
             task_type=self._TASK_TYPE,
             **kwargs,
         )
-        self._output_schema_type = output_schema_type
+        self._output_structured_dataset_type = output_structured_dataset_type
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         config = {
