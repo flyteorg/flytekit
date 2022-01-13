@@ -4,6 +4,8 @@ import typing
 from abc import abstractmethod
 from pathlib import Path
 
+from flytekit import logger
+
 
 class Checkpoint(object):
     """
@@ -94,7 +96,8 @@ class SyncCheckpoint(Checkpoint):
         # We have to lazy load, until we fix the imports
         from flytekit.core.context_manager import FlyteContextManager
 
-        if self._checkpoint_src is None:
+        if self._checkpoint_src is None or self._checkpoint_src == "":
+            logger.debug(f"Previous checkpoint not available.")
             return None
 
         if self._prev_download_path:
