@@ -275,7 +275,11 @@ def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring]
     For now the fancy object, maybe in the future a dumb object.
 
     """
-    type_hints = typing.get_type_hints(fn)
+    try:
+        # include_extras can only be used in python >= 3.9
+        type_hints = typing.get_type_hints(fn, include_extras=True)
+    except TypeError:
+        type_hints = typing.get_type_hints(fn)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 

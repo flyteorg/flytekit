@@ -11,6 +11,11 @@ from abc import ABC, abstractmethod
 from re import L
 from typing import NamedTuple, Optional, Type, cast
 
+try:
+    from typing import Annotated, get_args, get_origin
+except ImportError:
+    from typing_extensions import Annotated, get_origin, get_args
+
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
@@ -38,10 +43,11 @@ from flytekit.models.literals import (
     Primitive,
     Scalar,
     Schema,
+    StructuredDatasetMetadata,
     Union,
     Void,
 )
-from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
+from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
 
 try:
     from typing import get_args as _get_args
@@ -308,6 +314,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.directory.types import FlyteDirectory
         from flytekit.types.file import FlyteFile
         from flytekit.types.schema.types import FlyteSchema
+        from flytekit.types.structured.structured_dataset import StructuredDataset
 
         for f in dataclasses.fields(python_type):
             v = python_val.__getattribute__(f.name)
@@ -316,6 +323,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 issubclass(field_type, FlyteSchema)
                 or issubclass(field_type, FlyteFile)
                 or issubclass(field_type, FlyteDirectory)
+                or issubclass(field_type, StructuredDataset)
             ):
                 lv = TypeEngine.to_literal(FlyteContext.current_context(), v, field_type, None)
                 # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
@@ -328,6 +336,13 @@ class DataclassTransformer(TypeTransformer[object]):
                 # as determined by the transformer.
                 if issubclass(field_type, FlyteFile) or issubclass(field_type, FlyteDirectory):
                     python_val.__setattr__(f.name, field_type(path=lv.scalar.blob.uri))
+                elif issubclass(field_type, StructuredDataset):
+                    python_val.__setattr__(
+                        f.name,
+                        field_type(
+                            uri=lv.scalar.structured_dataset.uri,
+                        ),
+                    )
 
             elif dataclasses.is_dataclass(field_type):
                 self._serialize_flyte_type(v, field_type)
@@ -336,6 +351,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
         from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+        from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         if not dataclasses.is_dataclass(expected_python_type):
             return python_val
@@ -376,6 +392,21 @@ class DataclassTransformer(TypeTransformer[object]):
                                 )
                             ),
                             uri=python_val.path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, StructuredDataset):
+            return StructuredDatasetTransformerEngine().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        structured_dataset=StructuredDataset(
+                            metadata=StructuredDatasetMetadata(
+                                structured_dataset_type=StructuredDatasetType(format=python_val.file_format)
+                            ),
+                            uri=python_val.uri,
                         )
                     )
                 ),
@@ -529,6 +560,11 @@ class TypeEngine(typing.Generic[T]):
         cls.register(RestrictedTypeTransformer(name, type))
 
     @classmethod
+    def register_additional_type(cls, transformer: TypeTransformer, additional_type: Type, override=False):
+        if additional_type not in cls._REGISTRY or override:
+            cls._REGISTRY[additional_type] = transformer
+
+    @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
@@ -553,6 +589,9 @@ class TypeEngine(typing.Generic[T]):
 
         """
         # Step 1
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
+
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 

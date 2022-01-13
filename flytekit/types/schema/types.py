@@ -379,11 +379,18 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
-        if not (lv and lv.scalar and lv.scalar.schema):
-            raise TypeTransformerFailedError("Can only convert a literal schema to a FlyteSchema")
-
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)
+
+        if lv and lv.scalar and lv.scalar.structured_dataset:
+            return expected_python_type(
+                local_path=ctx.file_access.get_random_local_directory(),
+                remote_path=lv.scalar.structured_dataset.uri,
+                downloader=downloader,
+                supported_mode=SchemaOpenMode.READ,
+            )
+        if not (lv and lv.scalar and lv.scalar.schema):
+            raise AssertionError("Can only convert a literal schema to a FlyteSchema")
 
         return expected_python_type(
             local_path=ctx.file_access.get_random_local_directory(),

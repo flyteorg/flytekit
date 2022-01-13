@@ -143,6 +143,87 @@ class TypeStructure(_common.FlyteIdlEntity):
         return cls(tag=proto.tag)
 
 
+class StructuredDatasetType(_common.FlyteIdlEntity):
+    class DatasetColumn(_common.FlyteIdlEntity):
+        def __init__(self, name: str, literal_type: "LiteralType"):
+            self._name = name
+            self._literal_type = literal_type
+
+        @property
+        def name(self) -> str:
+            """
+            Name for the column
+            """
+            return self._name
+
+        @property
+        def literal_type(self) -> "LiteralType":
+            """
+            A LiteralType that defines the type of this column
+            """
+            return self._literal_type
+
+        def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType.DatasetColumn:
+            return _types_pb2.StructuredDatasetType.DatasetColumn(
+                name=self.name, literal_type=self.literal_type.to_flyte_idl()
+            )
+
+        @classmethod
+        def from_flyte_idl(
+            cls, proto: _types_pb2.StructuredDatasetType.DatasetColumn
+        ) -> _types_pb2.StructuredDatasetType.DatasetColumn:
+            return cls(name=proto.name, literal_type=LiteralType.from_flyte_idl(proto.literal_type))
+
+    def __init__(
+        self,
+        columns: typing.List[DatasetColumn] = None,
+        format: str = "",
+        external_schema_type: str = None,
+        external_schema_bytes: bytes = None,
+    ):
+        self._columns = columns
+        self._format = format
+        self._external_schema_type = external_schema_type
+        self._external_schema_bytes = external_schema_bytes
+
+    @property
+    def columns(self) -> typing.List[DatasetColumn]:
+        return self._columns
+
+    @property
+    def format(self) -> str:
+        return self._format
+
+    @format.setter
+    def format(self, format: str):
+        self._format = format
+
+    @property
+    def external_schema_type(self) -> str:
+        return self._external_schema_type
+
+    @property
+    def external_schema_bytes(self) -> bytes:
+        return self._external_schema_bytes
+
+    def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType:
+        return _types_pb2.StructuredDatasetType(
+            columns=[c.to_flyte_idl() for c in self.columns] if self.columns else None,
+            format=self.format,
+            external_schema_type=self.external_schema_type if self.external_schema_type else None,
+            external_schema_bytes=self.external_schema_bytes if self.external_schema_bytes else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: _types_pb2.StructuredDatasetType) -> _types_pb2.StructuredDatasetType:
+        return cls(
+            columns=[StructuredDatasetType.DatasetColumn.from_flyte_idl(c) for c in proto.columns],
+            format=proto.format,
+            external_schema_type=proto.external_schema_type,
+            external_schema_bytes=proto.external_schema_bytes,
+        )
+
+
 class LiteralType(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -154,6 +235,7 @@ class LiteralType(_common.FlyteIdlEntity):
         enum_type=None,
         union_type=None,
         structure=None,
+        structured_dataset_type=None,
         metadata=None,
     ):
         """
@@ -168,6 +250,7 @@ class LiteralType(_common.FlyteIdlEntity):
         :param flytekit.models.core.types.EnumType enum_type: For enum objects, describes an enum
         :param flytekit.models.core.types.UnionType union_type: For union objects, describes an python union type.
         :param flytekit.models.core.types.TypeStructure structure: Type matching hints
+        :param flytekit.models.core.types.StructuredDatasetType structured_dataset_type: structured dataset
         :param dict[Text, T] metadata: Additional data describing the type
         """
         self._simple = simple
@@ -178,6 +261,7 @@ class LiteralType(_common.FlyteIdlEntity):
         self._enum_type = enum_type
         self._union_type = union_type
         self._structure = structure
+        self._structured_dataset_type = structured_dataset_type
         self._metadata = metadata
 
     @property
@@ -218,6 +302,9 @@ class LiteralType(_common.FlyteIdlEntity):
     def structure(self) -> TypeStructure:
         return self._structure
 
+    def structured_dataset_type(self) -> StructuredDatasetType:
+        return self._structured_dataset_type
+
     @property
     def metadata(self):
         """
@@ -246,6 +333,9 @@ class LiteralType(_common.FlyteIdlEntity):
             enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
             union_type=self.union_type.to_flyte_idl() if self.union_type else None,
             structure=self.structure.to_flyte_idl() if self.structure else None,
+            structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
+            if self.structured_dataset_type
+            else None,
             metadata=metadata,
         )
         return t
@@ -271,6 +361,9 @@ class LiteralType(_common.FlyteIdlEntity):
             enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
             union_type=UnionType.from_flyte_idl(proto.union_type) if proto.HasField("union_type") else None,
             structure=TypeStructure.from_flyte_idl(proto.structure) if proto.HasField("structure") else None,
+            structured_dataset_type=StructuredDatasetType.from_flyte_idl(proto.structured_dataset_type)
+            if proto.HasField("structured_dataset_type")
+            else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
         )
 
