@@ -79,7 +79,7 @@ class SyncCheckpoint(Checkpoint):
             checkpoint_dest: Location where the new checkpoint should be copied to
         """
         self._checkpoint_dest = checkpoint_dest
-        self._checkpoint_src = checkpoint_src if checkpoint_src else None
+        self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
         self._td = tempfile.TemporaryDirectory()
         self._prev_download_path = None
 
