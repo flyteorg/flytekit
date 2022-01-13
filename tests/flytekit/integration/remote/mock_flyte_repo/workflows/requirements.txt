@@ -47,7 +47,7 @@ docstring-parser==0.13
 flyteidl==0.21.13
     # via flytekit
 flytekit==0.25.0
-    # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
+    # via -r requirements.in
 fonttools==4.28.5
     # via matplotlib
 grpcio==1.43.0
@@ -67,7 +67,7 @@ jinja2==3.0.3
 jinja2-time==0.2.0
     # via cookiecutter
 joblib==1.1.0
-    # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
+    # via -r requirements.in
 keyring==23.4.0
     # via flytekit
 kiwisolver==1.3.2
@@ -84,7 +84,7 @@ marshmallow-enum==1.5.1
 marshmallow-jsonschema==0.13.0
     # via flytekit
 matplotlib==3.5.1
-    # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
+    # via -r requirements.in
 mypy-extensions==0.4.3
     # via typing-inspect
 natsort==8.0.2
@@ -96,12 +96,12 @@ numpy==1.21.5
     #   pandas
     #   pyarrow
 opencv-python==4.5.4.60
-    # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
+    # via -r requirements.in
 packaging==21.3
     # via matplotlib
 pandas==1.3.5
     # via flytekit
-pillow==8.4.0
+pillow==9.0.0
     # via matplotlib
 poyo==0.5.0
     # via cookiecutter
@@ -173,7 +173,7 @@ urllib3==1.26.7
     #   responses
 wheel==0.37.1
     # via
-    #   -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
+    #   -r requirements.in
     #   flytekit
 wrapt==1.13.3
     # via
