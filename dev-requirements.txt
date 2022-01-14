@@ -24,6 +24,7 @@ bcrypt==3.2.0
     # via
     #   -c requirements.txt
     #   paramiko
+    #   secretstorage
 binaryornot==0.4.4
     # via
     #   -c requirements.txt
@@ -77,7 +78,6 @@ cryptography==36.0.1
     # via
     #   -c requirements.txt
     #   paramiko
-    #   secretstorage
 dataclasses-json==0.5.6
     # via
     #   -c requirements.txt
@@ -118,7 +118,7 @@ docstring-parser==0.13
     #   flytekit
 filelock==3.4.0
     # via virtualenv
-flyteidl==0.21.13
+flyteidl==0.21.17
     # via
     #   -c requirements.txt
     #   flytekit
@@ -181,6 +181,10 @@ marshmallow-jsonschema==0.13.0
     # via
     #   -c requirements.txt
     #   flytekit
+secretstorage==3.3.1
+    # via
+    #   -c requirements.txt
+    #   keyring
 mock==4.0.3
     # via -r dev-requirements.in
 mypy==0.930
@@ -262,7 +266,7 @@ pytest==6.2.5
     #   pytest-flyte
 pytest-docker==0.10.3
     # via pytest-flyte
-pytest-flyte @ git+git://github.com/flyteorg/pytest-flyte@main
+pytest-flyte @ git+https://github.com/flyteorg/pytest-flyte@main
     # via -r dev-requirements.in
 python-dateutil==2.8.1
     # via
@@ -315,10 +319,6 @@ retry==0.9.2
     # via
     #   -c requirements.txt
     #   flytekit
-secretstorage==3.3.1
-    # via
-    #   -c requirements.txt
-    #   keyring
 six==1.16.0
     # via
     #   -c requirements.txt
