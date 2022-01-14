@@ -1,10 +1,17 @@
+import enum
 import typing
 
 from flyteidl.plugins import spark_pb2 as _spark_task
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
-from flytekit.sdk.spark_types import SparkType as _spark_type
+
+
+class SparkType(enum.Enum):
+    PYTHON = 1
+    SCALA = 2
+    JAVA = 3
+    R = 4
 
 
 class SparkJob(_common.FlyteIdlEntity):
@@ -129,13 +136,13 @@ class SparkJob(_common.FlyteIdlEntity):
         :rtype: SparkJob
         """
 
-        application_type = _spark_type.PYTHON
+        application_type = SparkType.PYTHON
         if pb2_object.type == _spark_task.SparkApplication.JAVA:
-            application_type = _spark_type.JAVA
+            application_type = SparkType.JAVA
         elif pb2_object.type == _spark_task.SparkApplication.SCALA:
-            application_type = _spark_type.SCALA
+            application_type = SparkType.SCALA
         elif pb2_object.type == _spark_task.SparkApplication.R:
-            application_type = _spark_type.R
+            application_type = SparkType.R
 
         return cls(
             type=application_type,
