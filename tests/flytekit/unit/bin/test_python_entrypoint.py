@@ -9,7 +9,13 @@ from click.testing import CliRunner
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core.errors_pb2 import ErrorDocument
 
-from flytekit.bin.entrypoint import _dispatch_execute, _legacy_execute_task, execute_task_cmd, setup_execution
+from flytekit.bin.entrypoint import (
+    _dispatch_execute,
+    _legacy_execute_task,
+    execute_task_cmd,
+    normalize_inputs,
+    setup_execution,
+)
 from flytekit.common import constants as _constants
 from flytekit.common import utils as _utils
 from flytekit.common.exceptions import user as user_exceptions
@@ -453,3 +459,14 @@ def test_setup_cloud_prefix():
 
     with setup_execution("gs://", checkpoint_path=None, prev_checkpoint=None) as ctx:
         assert isinstance(ctx.file_access._default_remote, GCSPersistence)
+
+
+def test_normalize_inputs():
+    assert normalize_inputs("{{.rawOutputDataPrefix}}", "{{.checkpointOutputPrefix}}", "{{.prevCheckpointPrefix}}") == (
+        None,
+        None,
+        None,
+    )
+    assert normalize_inputs("/raw", "/cp1", '""') == ("/raw", "/cp1", None)
+    assert normalize_inputs("/raw", "/cp1", "") == ("/raw", "/cp1", None)
+    assert normalize_inputs("/raw", "/cp1", "/prev") == ("/raw", "/cp1", "/prev")

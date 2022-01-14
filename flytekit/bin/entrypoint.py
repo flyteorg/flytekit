@@ -431,6 +431,22 @@ def _execute_map_task(
             _handle_annotated_task(ctx, map_task, inputs, output_prefix)
 
 
+def normalize_inputs(
+    raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
+):
+    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
+    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
+    # to the original shard formatter/prefix config.
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+    if checkpoint_path == "{{.checkpointOutputPrefix}}":
+        checkpoint_path = None
+    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "" or prev_checkpoint == '""':
+        prev_checkpoint = None
+
+    return raw_output_data_prefix, checkpoint_path, prev_checkpoint
+
+
 @_click.group()
 def _pass_through():
     pass
@@ -470,15 +486,9 @@ def execute_task_cmd(
     logger.info(_utils.get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
     _click.echo("")
-    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
-    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
-    # to the original shard formatter/prefix config.
-    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
-        raw_output_data_prefix = None
-    if checkpoint_path == "{{.checkpointOutputPrefix}}":
-        checkpoint_path = None
-    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "" or prev_checkpoint == '""':
-        prev_checkpoint = None
+    raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
+        raw_output_data_prefix, checkpoint_path, prev_checkpoint
+    )
 
     # For new API tasks (as of 0.16.x), we need to call a different function.
     # Use the presence of the resolver to differentiate between old API tasks and new API tasks
@@ -565,12 +575,9 @@ def map_execute_task_cmd(
 ):
     logger.info(_utils.get_version_message())
 
-    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
-        raw_output_data_prefix = None
-    if checkpoint_path == "{{.checkpointOutputPrefix}}":
-        checkpoint_path = None
-    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "" or prev_checkpoint == '""':
-        prev_checkpoint = None
+    raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
+        raw_output_data_prefix, checkpoint_path, prev_checkpoint
+    )
 
     _execute_map_task(
         inputs=inputs,
