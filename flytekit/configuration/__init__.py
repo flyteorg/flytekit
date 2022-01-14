@@ -47,7 +47,7 @@ class TemporaryConfiguration(object):
         set_flyte_config_file(self._new_config_path)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for k, v in _six.iteritems(self._old_internals):
+        for k, v in self._old_internals.items():
             if v is not None:
                 _os.environ[k] = v
             else:
