@@ -25,6 +25,7 @@ from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask
 
 from flytekit import FlyteContext
 from flytekit.models.types import LiteralType, SimpleType
+
 from .test_training import _get_reg_settings
 
 
