@@ -93,7 +93,7 @@ def test_hpo_for_builtin():
 
 def test_hpoconfig_transformer():
     t = HPOTuningJobConfigTransformer()
-    assert t.get_literal_type(HyperparameterTuningJobConfig) == Generic.to_flyte_literal_type()
+    assert t.get_literal_type(HyperparameterTuningJobConfig) == LiteralType(simple=SimpleType.STRUCT)
     o = HyperparameterTuningJobConfig(
         tuning_strategy=1,
         tuning_objective=HyperparameterTuningObjective(
