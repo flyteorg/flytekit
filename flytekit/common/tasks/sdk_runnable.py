@@ -243,7 +243,9 @@ class ExecutionParameters(object):
         return self._secrets_manager
 
     @property
-    def checkpoint(self) -> typing.Optional[Checkpoint]:
+    def checkpoint(self) -> Checkpoint:
+        if self._checkpoint is None:
+            raise NotImplementedError("Checkpointing is not available, please check the version of the platform.")
         return self._checkpoint
 
     def __getattr__(self, attr_name: str) -> typing.Any:
