@@ -124,3 +124,38 @@ def test_container():
     )
     task_spec = get_serializable(OrderedDict(), ssettings, t2)
     assert "pyflyte" not in task_spec.template.container.args
+
+
+def test_launch_plan_with_fixed_input():
+    @task
+    def greet(day_of_week: str, number: int, am: bool) -> str:
+        greeting = "Have a great " + day_of_week + " "
+        greeting += "morning" if am else "evening"
+        return greeting + "!" * number
+
+    @workflow
+    def go_greet(day_of_week: str, number: int, am: bool = False) -> str:
+        return greet(day_of_week=day_of_week, number=number, am=am)
+
+    morning_greeting = LaunchPlan.create(
+        "morning_greeting",
+        go_greet,
+        fixed_inputs={"am": True},
+        default_inputs={"number": 1},
+    )
+
+    @workflow
+    def morning_greeter_caller(day_of_week: str) -> str:
+        greeting = morning_greeting(day_of_week=day_of_week)
+        return greeting
+
+    settings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+        .build()
+    )
+    task_spec = get_serializable(OrderedDict(), settings, morning_greeter_caller)
+    assert len(task_spec.template.interface.inputs) == 1
+    assert len(task_spec.template.interface.outputs) == 1
+    assert len(task_spec.template.nodes) == 1
+    assert len(task_spec.template.nodes[0].inputs) == 2
