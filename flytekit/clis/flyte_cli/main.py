@@ -18,14 +18,14 @@ from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from google.protobuf.json_format import MessageToJson
 from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
-from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core import utils
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import hydrate_registration_parameters
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
+from flytekit.core import utils
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.interfaces import cli_identifiers
 from flytekit.models import common as _common_models
@@ -1098,12 +1098,12 @@ def update_launch_plan(state, host, insecure, urn=None):
         _update_one_launch_plan(client, urn=urn, state=state)
 
 
-
 ########################################################################################################################
 #
 #  Execution Commands
 #
 ########################################################################################################################
+
 
 @_flyte_cli.command("recover-execution", cls=_FlyteSubCommand)
 @_urn_option

@@ -106,9 +106,7 @@ class TypedInterface(_common.FlyteIdlEntity):
     def to_flyte_idl(self) -> _interface_pb2.TypedInterface:
         return _interface_pb2.TypedInterface(
             inputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.inputs.items()}),
-            outputs=_interface_pb2.VariableMap(
-                variables={k: v.to_flyte_idl() for k, v in self.outputs.items()}
-            ),
+            outputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.outputs.items()}),
         )
 
     @classmethod

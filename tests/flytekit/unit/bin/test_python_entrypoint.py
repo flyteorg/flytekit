@@ -12,8 +12,8 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions.scopes import system_entry_point
 from flytekit.exceptions import user as user_exceptions
+from flytekit.exceptions.scopes import system_entry_point
 from flytekit.extras.persistence.gcs_gsutil import GCSPersistence
 from flytekit.extras.persistence.s3_awscli import S3Persistence
 from flytekit.models import literals as _literal_models

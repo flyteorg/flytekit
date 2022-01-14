@@ -9,13 +9,12 @@ from typing import List
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-import flytekit
-import flytekit.core.utils
 from flytekit import PythonFunctionTask
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.core import constants as _constants
+from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import (
     ExecutionParameters,
@@ -42,6 +41,8 @@ from flytekit.tools.module_loader import load_object_from_module
 
 
 def get_version_message():
+    import flytekit
+
     return f"Welcome to Flyte! Version: {flytekit.__version__}"
 
 
@@ -80,7 +81,7 @@ def _dispatch_execute(
         # Step1
         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = flytekit.core.utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
@@ -153,7 +154,7 @@ def _dispatch_execute(
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
-        flytekit.core.utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
+        utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
