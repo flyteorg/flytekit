@@ -16,7 +16,7 @@ setup(
     author_email="admin@flyte.org",
     description="AWS Plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.models"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.7",
