@@ -307,10 +307,16 @@ def get_serializable_node(
     elif isinstance(entity.flyte_entity, LaunchPlan):
         lp_spec = get_serializable(entity_mapping, settings, entity.flyte_entity)
 
+        # Node's inputs should not contain the data which is fixed input
+        node_input = []
+        for b in entity.bindings:
+            if b.var not in entity.flyte_entity.fixed_inputs.literals:
+                node_input.append(b)
+
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
-            inputs=entity.bindings,
+            inputs=node_input,
             upstream_node_ids=[n.id for n in upstream_sdk_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
