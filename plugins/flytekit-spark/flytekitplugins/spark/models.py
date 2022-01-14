@@ -109,13 +109,13 @@ class SparkJob(_common.FlyteIdlEntity):
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
         """
 
-        if self.spark_type == _spark_type.PYTHON:
+        if self.spark_type == SparkType.PYTHON:
             application_type = _spark_task.SparkApplication.PYTHON
-        elif self.spark_type == _spark_type.JAVA:
+        elif self.spark_type == SparkType.JAVA:
             application_type = _spark_task.SparkApplication.JAVA
-        elif self.spark_type == _spark_type.SCALA:
+        elif self.spark_type == SparkType.SCALA:
             application_type = _spark_task.SparkApplication.SCALA
-        elif self.spark_type == _spark_type.R:
+        elif self.spark_type == SparkType.R:
             application_type = _spark_task.SparkApplication.R
         else:
             raise _user_exceptions.FlyteValidationException("Invalid Spark Application Type Specified")
