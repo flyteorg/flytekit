@@ -16,6 +16,7 @@ from flytekit.models import literals as literal_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured.structured_dataset import StructuredDatasetType
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
@@ -348,4 +349,7 @@ def test_nonfunction_task_and_df_input():
     assert wf_spec.template.interface.inputs["sqlite_archive"].type.blob is not None
 
     assert len(wf_spec.template.interface.outputs) == 1
-    assert wf_spec.template.interface.outputs["output_from_t3"].type.schema is not None
+    assert wf_spec.template.interface.outputs["output_from_t3"].type.structured_dataset_type is not None
+    assert wf_spec.template.interface.outputs["output_from_t3"].type.structured_dataset_type == StructuredDatasetType(
+        format="parquet"
+    )

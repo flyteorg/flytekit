@@ -9,9 +9,11 @@ from dataclasses import dataclass
 from enum import Enum
 
 import pandas
+import pandas as pd
 import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
+from pandas._testing import assert_frame_equal
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
@@ -35,6 +37,7 @@ from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
 from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 serialization_settings = context_manager.SerializationSettings(
     project="proj",
@@ -429,6 +432,36 @@ def test_flyte_directory_in_dataclass():
         return t2(fs=n1)
 
     assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+
+
+def test_structured_dataset_in_dataclass():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    @dataclass_json
+    @dataclass
+    class InnerDatasetStruct(object):
+        a: StructuredDataset
+
+    @dataclass_json
+    @dataclass
+    class DatasetStruct(object):
+        a: StructuredDataset
+        b: InnerDatasetStruct
+
+    @task
+    def t1(path: str) -> DatasetStruct:
+        sd = StructuredDataset(dataframe=df, uri=path)
+        return DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+
+    @workflow
+    def wf(path: str) -> DatasetStruct:
+        return t1(path=path)
+
+    res = wf(path="/tmp/somewhere")
+    assert "parquet" == res.a.file_format
+    assert "parquet" == res.b.a.file_format
+    assert_frame_equal(df, res.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, res.b.a.open(pd.DataFrame).all())
 
 
 def test_wf1_with_map():

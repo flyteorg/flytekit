@@ -1,15 +1,26 @@
 import typing
 from collections import OrderedDict
 
+import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal
 
+from flytekit import StructuredDataset, kwtypes
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
+
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.tools.translator import get_serializable
+
+from flytekit.types.schema import FlyteSchema
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
@@ -256,3 +267,57 @@ def test_wf_docstring():
     assert model_wf.template.interface.outputs["o1"].description == "outputs"
     assert len(model_wf.template.interface.inputs) == 1
     assert model_wf.template.interface.inputs["a"].description == "input a"
+
+
+my_cols = kwtypes(y=int, z=int)
+pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+
+@task
+def t1() -> Annotated[pd.DataFrame, my_cols]:
+    return pd_df
+
+
+@task
+def t2(df: Annotated[pd.DataFrame, my_cols]) -> Annotated[pd.DataFrame, my_cols]:
+    return df
+
+
+@task
+def t3(df: FlyteSchema[my_cols]) -> FlyteSchema[my_cols]:
+    return df
+
+
+@task
+def t4() -> FlyteSchema[my_cols]:
+    return pd_df
+
+
+@task
+def t5(sd: StructuredDataset[my_cols]) -> Annotated[pd.DataFrame, my_cols]:
+    return sd.open(pd.DataFrame).all()
+
+
+@workflow
+def sd_wf() -> Annotated[pd.DataFrame, my_cols]:
+    df = t1()
+    return t2(df=df)
+
+
+@workflow
+def sd_to_schema_wf() -> pd.DataFrame:
+    df = t1()
+    return t3(df=df)
+
+
+@workflow
+def schema_to_sd_wf() -> pd.DataFrame:
+    df = t4()
+    t2(df=df)
+    return t5(sd=df)
+
+
+def test_structured_dataset_wf():
+    assert_frame_equal(sd_wf(), pd_df)
+    assert_frame_equal(sd_to_schema_wf(), pd_df)
+    assert_frame_equal(schema_to_sd_wf(), pd_df)

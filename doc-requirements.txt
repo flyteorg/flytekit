@@ -41,9 +41,9 @@ black==21.12b0
     #   papermill
 bleach==4.1.0
     # via nbconvert
-boto3==1.20.33
+boto3==1.20.34
     # via sagemaker-training
-botocore==1.23.33
+botocore==1.23.34
     # via
     #   boto3
     #   s3transfer
@@ -96,7 +96,9 @@ docker-image-py==0.1.12
 docstring-parser==0.13
     # via flytekit
 docutils==0.17.1
-    # via sphinx
+    # via
+    #   sphinx
+    #   sphinx-panels
 entrypoints==0.3
     # via
     #   jupyter-client
@@ -106,7 +108,7 @@ executing==0.8.2
     # via stack-data
 flyteidl==0.21.22
     # via flytekit
-furo @ git+git://github.com/flyteorg/furo@main
+furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
 gevent==21.12.0
     # via sagemaker-training
@@ -276,7 +278,7 @@ pyrsistent==0.18.0
     # via jsonschema
 pyspark==3.2.0
     # via flytekit
-python-dateutil==2.8.2
+python-dateutil==2.8.1
     # via
     #   arrow
     #   botocore
@@ -354,6 +356,7 @@ sphinx==4.3.2
     #   sphinx-fontawesome
     #   sphinx-gallery
     #   sphinx-material
+    #   sphinx-panels
     #   sphinx-prompt
     #   sphinxcontrib-yt
 sphinx-autoapi==1.8.4
@@ -367,6 +370,8 @@ sphinx-fontawesome==0.0.6
 sphinx-gallery==0.10.1
     # via -r doc-requirements.in
 sphinx-material==0.0.35
+    # via -r doc-requirements.in
+sphinx-panels==0.6.0
     # via -r doc-requirements.in
 sphinx-prompt==1.5.0
     # via -r doc-requirements.in
