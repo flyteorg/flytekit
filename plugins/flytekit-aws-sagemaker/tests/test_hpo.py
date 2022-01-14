@@ -24,8 +24,7 @@ from flytekitplugins.awssagemaker.models.training_job import (
 from flytekitplugins.awssagemaker.training import SagemakerBuiltinAlgorithmsTask, SagemakerTrainingJobConfig
 
 from flytekit import FlyteContext
-from flytekit.common.types.primitives import Generic
-
+from flytekit.models.types import LiteralType, SimpleType
 from .test_training import _get_reg_settings
 
 
@@ -113,7 +112,7 @@ def test_hpoconfig_transformer():
 
 def test_parameter_ranges_transformer():
     t = ParameterRangesTransformer()
-    assert t.get_literal_type(ParameterRangeOneOf) == Generic.to_flyte_literal_type()
+    assert t.get_literal_type(ParameterRangeOneOf) == LiteralType(simple=SimpleType.STRUCT)
     o = ParameterRangeOneOf(param=IntegerParameterRange(10, 0, 1))
     ctx = FlyteContext.current_context()
     lit = t.to_literal(ctx, python_val=o, python_type=ParameterRangeOneOf, expected=None)
