@@ -6,16 +6,10 @@ from google.cloud.bigquery import QueryJobConfig
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit import kwtypes, workflow
+from flytekit import StructuredDataset, kwtypes, workflow
 from flytekit.extend import Image, ImageConfig, SerializationSettings, get_serializable
-from flytekit.types.schema import FlyteSchema
 
-query_template = """
-            insert overwrite directory '{{ .rawOutputDataPrefix }}' stored as parquet
-            select *
-            from my_table
-            where ds = '{{ .Inputs.ds }}'
-        """
+query_template = "SELECT * FROM `bigquery-public-data.crypto_dogecoin.transactions` WHERE @version = 1 LIMIT 10"
 
 
 def test_serialization():
@@ -26,11 +20,11 @@ def test_serialization():
             ProjectID="Flyte", Location="Asia", QueryJobConfig=QueryJobConfig(allow_large_results=True)
         ),
         query_template=query_template,
-        output_schema_type=FlyteSchema,
+        output_structured_dataset_type=StructuredDataset,
     )
 
     @workflow
-    def my_wf(ds: str) -> FlyteSchema:
+    def my_wf(ds: str) -> StructuredDataset:
         return bigquery_task(ds=ds)
 
     default_img = Image(name="default", fqn="test", tag="tag")
@@ -44,8 +38,8 @@ def test_serialization():
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, bigquery_task)
 
-    assert "{{ .rawOutputDataPrefix" in task_spec.template.sql.statement
-    assert "insert overwrite directory" in task_spec.template.sql.statement
+    assert "SELECT * FROM `bigquery-public-data.crypto_dogecoin.transactions`" in task_spec.template.sql.statement
+    assert "@version" in task_spec.template.sql.statement
     assert task_spec.template.sql.dialect == task_spec.template.sql.Dialect.ANSI
     s = Struct()
     s.update({"ProjectID": "Flyte", "Location": "Asia", "allowLargeResults": True})
@@ -54,7 +48,7 @@ def test_serialization():
     assert len(task_spec.template.interface.outputs) == 1
 
     admin_workflow_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
-    assert admin_workflow_spec.template.interface.outputs["o0"].type.schema is not None
+    assert admin_workflow_spec.template.interface.outputs["o0"].type.structured_dataset_type is not None
     assert admin_workflow_spec.template.outputs[0].var == "o0"
     assert admin_workflow_spec.template.outputs[0].binding.promise.node_id == "n0"
     assert admin_workflow_spec.template.outputs[0].binding.promise.var == "results"
@@ -66,7 +60,7 @@ def test_local_exec():
         inputs=kwtypes(ds=str),
         query_template=query_template,
         task_config=BigQueryConfig(ProjectID="Flyte", Location="Asia"),
-        output_schema_type=FlyteSchema,
+        output_structured_dataset_type=StructuredDataset,
     )
 
     assert len(bigquery_task.interface.inputs) == 1
