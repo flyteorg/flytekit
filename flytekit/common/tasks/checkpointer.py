@@ -95,7 +95,6 @@ class SyncCheckpoint(Checkpoint):
         from flytekit.core.context_manager import FlyteContextManager
 
         if self._checkpoint_src is None or self._checkpoint_src == "":
-            print(f"Previous checkpoint not available.")
             return None
 
         if self._prev_download_path:
