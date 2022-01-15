@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Type
 
 import numpy as _np
+import pandas
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
@@ -17,7 +18,6 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import T, TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.plugins import pandas
 
 T = typing.TypeVar("T")
 

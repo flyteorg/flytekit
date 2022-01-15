@@ -20,23 +20,14 @@ from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _G
 
 from flytekit import __version__
 from flytekit.clients import friendly as _friendly_client
-from flytekit.clis.helpers import construct_literal_map_from_parameter_map as _construct_literal_map_from_parameter_map
-from flytekit.clis.helpers import construct_literal_map_from_variable_map as _construct_literal_map_from_variable_map
 from flytekit.clis.helpers import hydrate_registration_parameters
-from flytekit.clis.helpers import parse_args_into_dict as _parse_args_into_dict
-from flytekit.common import launch_plan as _launch_plan_common
-from flytekit.common import utils as _utils
-from flytekit.common import workflow_execution as _workflow_execution_common
-from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.tasks import task as _tasks_common
-from flytekit.common.types import helpers as _type_helpers
-from flytekit.common.utils import load_proto_from_file as _load_proto_from_file
 from flytekit.configuration import auth as _auth_config
 from flytekit.configuration import platform as _platform_config
 from flytekit.configuration import set_flyte_config_file
-from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.interfaces.data.data_proxy import Data
+from flytekit.core import utils
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.exceptions import user as _user_exceptions
+from flytekit.interfaces import cli_identifiers
 from flytekit.models import common as _common_models
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
@@ -47,8 +38,6 @@ from flytekit.models.common import AuthRole as _AuthRole
 from flytekit.models.common import RawOutputDataConfig as _RawOutputDataConfig
 from flytekit.models.core import execution as _core_execution_models
 from flytekit.models.core import identifier as _core_identifier
-from flytekit.models.execution import ExecutionMetadata as _ExecutionMetadata
-from flytekit.models.execution import ExecutionSpec as _ExecutionSpec
 from flytekit.models.matchable_resource import ClusterResourceAttributes as _ClusterResourceAttributes
 from flytekit.models.matchable_resource import ExecutionClusterLabel as _ExecutionClusterLabel
 from flytekit.models.matchable_resource import ExecutionQueueAttributes as _ExecutionQueueAttributes
@@ -118,20 +107,7 @@ def _get_io_string(literal_map, verbose=False):
     :param bool verbose:
     :rtype: Text
     """
-    value_dict = _type_helpers.unpack_literal_map_to_sdk_object(literal_map)
-    if value_dict:
-        return "\n" + "\n".join(
-            "{:30}: {}".format(
-                k,
-                _prefix_lines(
-                    "{:30}  ".format(""),
-                    v.verbose_string() if verbose else v.short_string(),
-                ),
-            )
-            for k, v in value_dict.items()
-        )
-    else:
-        return "(None)"
+    return str(literal_map)
 
 
 def _fetch_and_stringify_literal_map(path, verbose=False):
@@ -140,12 +116,13 @@ def _fetch_and_stringify_literal_map(path, verbose=False):
     :param bool verbose:
     :rtype: Text
     """
-    with _utils.AutoDeletingTempDir("flytecli") as tmp:
+    ctx = FlyteContextManager.current_context()
+    with utils.AutoDeletingTempDir("flytecli") as tmp:
         try:
             fname = tmp.get_named_tempfile("literalmap.pb")
-            _data_proxy.Data.get_data(path, fname)
+            ctx.file_access.get_data(path, fname)
             literal_map = _literals.LiteralMap.from_flyte_idl(
-                _utils.load_proto_from_file(_literals_pb2.LiteralMap, fname)
+                utils.load_proto_from_file(_literals_pb2.LiteralMap, fname)
             )
             return _get_io_string(literal_map, verbose=verbose)
         except Exception:
@@ -254,7 +231,7 @@ def _secho_one_execution(ex, urns_only):
     if not urns_only:
         _click.echo(
             "{:100} {:40} {:40}".format(
-                _tt(_identifier.WorkflowExecutionIdentifier.promote_from_model(ex.id)),
+                _tt(cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(ex.id)),
                 _tt(ex.id.name),
                 _tt(ex.spec.launch_plan.name),
             ),
@@ -263,7 +240,7 @@ def _secho_one_execution(ex, urns_only):
         _secho_workflow_status(ex.closure.phase)
     else:
         _click.echo(
-            "{:100}".format(_tt(_identifier.WorkflowExecutionIdentifier.promote_from_model(ex.id))),
+            "{:100}".format(_tt(cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(ex.id))),
             nl=True,
         )
 
@@ -271,7 +248,7 @@ def _secho_one_execution(ex, urns_only):
 def _terminate_one_execution(client, urn, cause, shouldPrint=True):
     if shouldPrint:
         _click.echo("{:100} {:40}".format(_tt(urn), _tt(cause)))
-    client.terminate_execution(_identifier.WorkflowExecutionIdentifier.from_python_std(urn), cause)
+    client.terminate_execution(cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn), cause)
 
 
 def _update_one_launch_plan(client: _friendly_client.SynchronousFlyteClient, urn, state):
@@ -279,7 +256,7 @@ def _update_one_launch_plan(client: _friendly_client.SynchronousFlyteClient, urn
         state = _launch_plan.LaunchPlanState.ACTIVE
     else:
         state = _launch_plan.LaunchPlanState.INACTIVE
-    client.update_launch_plan(_identifier.Identifier.from_python_std(urn), state)
+    client.update_launch_plan(cli_identifiers.Identifier.from_python_std(urn), state)
     _click.echo("Successfully updated {}".format(_tt(urn)))
 
 
@@ -644,7 +621,7 @@ def parse_proto(filename, proto_class):
     idl_obj = split[-1]
     mod = _importlib.import_module(idl_module)
     idl = getattr(mod, idl_obj)
-    obj = _load_proto_from_file(idl, filename)
+    obj = utils.load_proto_from_file(idl, filename)
 
     jsonObj = MessageToJson(obj)
 
@@ -734,7 +711,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
             _click.echo(
                 "{:50} {:40}".format(
                     _tt(t.id.version),
-                    _tt(_identifier.Identifier.promote_from_model(t.id)),
+                    _tt(cli_identifiers.Identifier.promote_from_model(t.id)),
                 )
             )
 
@@ -760,55 +737,9 @@ def get_task(urn, host, insecure):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    t = client.get_task(_identifier.Identifier.from_python_std(urn))
+    t = client.get_task(cli_identifiers.Identifier.from_python_std(urn))
     _click.echo(_tt(t))
     _click.echo("")
-
-
-@_flyte_cli.command("launch-task", cls=_FlyteSubCommand)
-@_project_option
-@_domain_option
-@_optional_name_option
-@_assumable_iam_role_option
-@_kubernetes_service_acct_option
-@_host_option
-@_insecure_option
-@_urn_option
-@_click.argument("task_args", nargs=-1, type=_click.UNPROCESSED)
-def launch_task(project, domain, name, assumable_iam_role, kubernetes_service_account, host, insecure, urn, task_args):
-    """
-    Kick off a single task execution. Note that the {project, domain, name} specified in the command line
-    will be for the execution.  The project/domain for the task are specified in the urn.
-
-    Use a -- to separate arguments to this cli, and arguments to the task.
-    e.g.
-        $ flyte-cli -h localhost:30081 -p flyteexamples -d development launch-task \
-            -u tsk:flyteexamples:development:some-task:abc123 -- input=hi \
-            other-input=123 moreinput=qwerty
-
-    These arguments are then collected, and passed into the `task_args` variable as a Tuple[Text].
-    Users should use the get-task command to ascertain the names of inputs to use.
-    """
-    _welcome_message()
-    auth_role = _AuthRole(assumable_iam_role=assumable_iam_role, kubernetes_service_account=kubernetes_service_account)
-
-    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
-        task_id = _identifier.Identifier.from_python_std(urn)
-        task = _tasks_common.SdkTask.fetch(task_id.project, task_id.domain, task_id.name, task_id.version)
-
-        text_args = _parse_args_into_dict(task_args)
-        inputs = {}
-        for var_name, variable in task.interface.inputs.items():
-            sdk_type = _type_helpers.get_sdk_type_from_literal_type(variable.type)
-            if var_name in text_args and text_args[var_name] is not None:
-                inputs[var_name] = sdk_type.from_string(text_args[var_name]).to_python_std()
-
-        # TODO: Implement notification overrides
-        # TODO: Implement label overrides
-        # TODO: Implement annotation overrides
-        execution = task.launch(project, domain, inputs=inputs, name=name, auth_role=auth_role)
-        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg="blue")
-        _click.echo("")
 
 
 ########################################################################################################################
@@ -892,7 +823,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
             _click.echo(
                 "{:50} {:40}".format(
                     _tt(w.id.version),
-                    _tt(_identifier.Identifier.promote_from_model(w.id)),
+                    _tt(cli_identifiers.Identifier.promote_from_model(w.id)),
                 )
             )
 
@@ -918,7 +849,7 @@ def get_workflow(urn, host, insecure):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    _click.echo(client.get_workflow(_identifier.Identifier.from_python_std(urn)))
+    _click.echo(client.get_workflow(cli_identifiers.Identifier.from_python_std(urn)))
     # TODO: Print workflow pretty
     _click.echo("")
 
@@ -1003,13 +934,13 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
 
         for lp in active_lps:
             if urns_only:
-                _click.echo("{:80}".format(_tt(_identifier.Identifier.promote_from_model(lp.id))))
+                _click.echo("{:80}".format(_tt(cli_identifiers.Identifier.promote_from_model(lp.id))))
             else:
                 _click.echo(
                     "{:30} {:50} {:80}".format(
                         _render_schedule_expr(lp),
                         _tt(lp.id.version),
-                        _tt(_identifier.Identifier.promote_from_model(lp.id)),
+                        _tt(cli_identifiers.Identifier.promote_from_model(lp.id)),
                     ),
                 )
 
@@ -1072,12 +1003,12 @@ def list_launch_plan_versions(
         )
         for l in lp_list:
             if urns_only:
-                _click.echo(_tt(_identifier.Identifier.promote_from_model(l.id)))
+                _click.echo(_tt(cli_identifiers.Identifier.promote_from_model(l.id)))
             else:
                 _click.echo(
                     "{:50} {:80} ".format(
                         _tt(l.id.version),
-                        _tt(_identifier.Identifier.promote_from_model(l.id)),
+                        _tt(cli_identifiers.Identifier.promote_from_model(l.id)),
                     ),
                     nl=False,
                 )
@@ -1115,7 +1046,7 @@ def get_launch_plan(urn, host, insecure):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    _click.echo(_tt(client.get_launch_plan(_identifier.Identifier.from_python_std(urn))))
+    _click.echo(_tt(client.get_launch_plan(cli_identifiers.Identifier.from_python_std(urn))))
     # TODO: Print launch plan pretty
     _click.echo("")
 
@@ -1167,162 +1098,11 @@ def update_launch_plan(state, host, insecure, urn=None):
         _update_one_launch_plan(client, urn=urn, state=state)
 
 
-@_flyte_cli.command("execute-launch-plan", cls=_FlyteSubCommand)
-@_project_option
-@_domain_option
-@_optional_name_option
-@_host_option
-@_insecure_option
-@_urn_option
-@_principal_option
-@_verbose_option
-@_watch_option
-@_click.argument("lp_args", nargs=-1, type=_click.UNPROCESSED)
-def execute_launch_plan(project, domain, name, host, insecure, urn, principal, verbose, watch, lp_args):
-    """
-    Kick off a launch plan. Note that the {project, domain, name} specified in the command line
-    will be for the execution.  The project/domain for the launch plan are specified in the urn.
-
-    Use a -- to separate arguments to this cli, and arguments to the launch plan.
-    e.g.
-        $ flyte-cli -h localhost:30081 -p flyteexamples -d development execute-launch-plan \
-            --verbose --principal=sdk-demo
-            -u lp:flyteexamples:development:some-workflow:abc123 -- input=hi \
-            other-input=123 moreinput=qwerty
-
-    These arguments are then collected, and passed into the `lp_args` variable as a Tuple[Text].
-    Users should use the get-launch-plan command to ascertain the names of inputs to use.
-    """
-    _welcome_message()
-
-    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
-        lp_id = _identifier.Identifier.from_python_std(urn)
-        lp = _launch_plan_common.SdkLaunchPlan.fetch(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
-
-        inputs = _construct_literal_map_from_parameter_map(lp.default_inputs, _parse_args_into_dict(lp_args))
-        # TODO: Implement notification overrides
-        # TODO: Implement label overrides
-        # TODO: Implement annotation overrides
-        execution = lp.launch_with_literals(project, domain, inputs, name=name)
-        _click.secho("Launched execution: {}".format(_tt(execution.id)), fg="blue")
-        _click.echo("")
-
-        if watch is True:
-            execution.wait_for_completion()
-
-
 ########################################################################################################################
 #
 #  Execution Commands
 #
 ########################################################################################################################
-
-
-@_flyte_cli.command("watch-execution", cls=_FlyteSubCommand)
-@_host_option
-@_insecure_option
-@_urn_option
-def watch_execution(host, insecure, urn):
-    """
-    Wait for an execution to complete.
-
-    e.g.
-        $ flyte-cli -h localhost:30081 watch-execution -u ex:flyteexamples:development:abc123
-    """
-    _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    ex_id = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
-
-    execution = _workflow_execution_common.SdkWorkflowExecution.promote_from_model(client.get_execution(ex_id))
-
-    _click.echo("Waiting for the execution {} to complete ...".format(_tt(execution.id)))
-
-    with _platform_config.URL.get_patcher(host), _platform_config.INSECURE.get_patcher(_tt(insecure)):
-        execution.wait_for_completion()
-
-
-@_flyte_cli.command("relaunch-execution", cls=_FlyteSubCommand)
-@_optional_project_option
-@_optional_domain_option
-@_optional_name_option
-@_host_option
-@_insecure_option
-@_urn_option
-@_optional_principal_option
-@_verbose_option
-@_click.argument("lp_args", nargs=-1, type=_click.UNPROCESSED)
-def relaunch_execution(project, domain, name, host, insecure, urn, principal, verbose, lp_args):
-    """
-    Relaunch a launch plan.
-    As with kicking off a launch plan (see execute-launch-plan), the project and domain will correspond to the new
-    execution to be run, and the project/domain used to find the existing execution will come from the URN.
-    This means you can re-run a development execution, in production, off of a staging launch-plan (in another project),
-    but beware that execution environment configurations can result in slower executions or permissions failures.
-    Therefore, it is recommended to re-run in the same environment as the original execution.  By default, if the
-    project and domain are not specified, the existing project/domain will be used.
-
-    When relaunching an execution, this will display the fixed inputs that it ran with (from the launch plan spec),
-    and handle the other inputs similar to how we handle initial launch plan execution, except that
-    all inputs now will have a default (the input of the execution being rerun).
-
-    Use a -- to separate arguments to this cli, and arguments to the launch plan.
-    e.g.
-        $ flyte-cli -h localhost:30081 -p flyteexamples -d development execute-launch-plan \
-            -u lp:flyteexamples:development:some-workflow:abc123 -- input=hi \
-            other-input=123 moreinput=qwerty
-
-    These arguments are then collected, and passed into the `lp_args` variable as a Tuple[Text].
-    Users should use the get-execution and get-launch-plan commands to ascertain the names of inputs to use.
-    """
-    _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-
-    _click.echo("Relaunching execution {}\n".format(_tt(urn)))
-    existing_workflow_execution_identifier = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
-    e = client.get_execution(existing_workflow_execution_identifier)
-
-    if project is None:
-        project = existing_workflow_execution_identifier.project
-    if domain is None:
-        domain = existing_workflow_execution_identifier.domain
-    if principal is None:
-        principal = e.spec.metadata.principal
-
-    lp_model = client.get_launch_plan(e.spec.launch_plan)
-    expected_inputs = lp_model.closure.expected_inputs
-
-    # Parse text inputs using the LP closure's parameter map to determine types.  However, since all inputs are now
-    # optional (because we can default to the original execution's), we reduce first to bare Variables.
-    variable_map = {k: v.var for k, v in expected_inputs.parameters.items()}
-    parsed_text_args = _parse_args_into_dict(lp_args)
-    new_inputs = _construct_literal_map_from_variable_map(variable_map, parsed_text_args)
-    if len(new_inputs.literals) > 0:
-        _click.secho("\tNew Inputs: {}\n".format(_prefix_lines("\t\t", _get_io_string(new_inputs, verbose=verbose))))
-
-    # Construct new inputs from existing execution inputs and new inputs
-    inputs_dict = {}
-    for k in e.spec.inputs.literals.keys():
-        if k in new_inputs.literals:
-            inputs_dict[k] = new_inputs.literals[k]
-        else:
-            inputs_dict[k] = e.spec.inputs.literals[k]
-    inputs = _literals.LiteralMap(literals=inputs_dict)
-
-    if len(inputs_dict) > 0:
-        _click.secho(
-            "\tFinal Inputs for New Execution: {}\n".format(
-                _prefix_lines("\t\t", _get_io_string(inputs, verbose=verbose))
-            )
-        )
-
-    metadata = _ExecutionMetadata(mode=_ExecutionMetadata.ExecutionMode.MANUAL, principal=principal, nesting=0)
-    ex_spec = _ExecutionSpec(launch_plan=lp_model.id, inputs=inputs, metadata=metadata)
-    execution_identifier = client.create_execution(project=project, domain=domain, name=name, execution_spec=ex_spec)
-    execution_identifier = _identifier.WorkflowExecutionIdentifier.promote_from_model(execution_identifier)
-    _click.secho("Launched execution: {}".format(execution_identifier), fg="blue")
-    _click.echo("")
 
 
 @_flyte_cli.command("recover-execution", cls=_FlyteSubCommand)
@@ -1356,10 +1136,10 @@ def recover_execution(urn, name, host, insecure):
 
     _click.echo("Recovering execution {}\n".format(_tt(urn)))
 
-    original_workflow_execution_identifier = _identifier.WorkflowExecutionIdentifier.from_python_std(urn)
+    original_workflow_execution_identifier = cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn)
 
     execution_identifier_resp = client.recover_execution(id=original_workflow_execution_identifier, name=name)
-    execution_identifier = _identifier.WorkflowExecutionIdentifier.promote_from_model(execution_identifier_resp)
+    execution_identifier = cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(execution_identifier_resp)
     _click.secho("Launched execution: {}".format(execution_identifier), fg="blue")
     _click.echo("")
 
@@ -1500,7 +1280,7 @@ def _render_workflow_execution(wf_execution, uri_to_message_map, show_io, verbos
     _click.echo(
         "\t{:15} {}".format(
             "Launch Plan:",
-            _tt(_identifier.Identifier.promote_from_model(wf_execution.spec.launch_plan)),
+            _tt(cli_identifiers.Identifier.promote_from_model(wf_execution.spec.launch_plan)),
         )
     )
 
@@ -1675,7 +1455,7 @@ def _render_node_executions(client, node_execs, show_io, verbose, host, insecure
                             "Subtasks:",
                             "flyte-cli get-child-executions -h {host}{insecure} -u {urn}".format(
                                 host=host,
-                                urn=_tt(_identifier.TaskExecutionIdentifier.promote_from_model(te.id)),
+                                urn=_tt(cli_identifiers.TaskExecutionIdentifier.promote_from_model(te.id)),
                                 insecure=" --insecure" if insecure else "",
                             ),
                         )
@@ -1699,7 +1479,7 @@ def get_execution(urn, host, insecure, show_io, verbose):
     _welcome_message()
     parent_ctx = _click.get_current_context(silent=True)
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-    e = client.get_execution(_identifier.WorkflowExecutionIdentifier.from_python_std(urn))
+    e = client.get_execution(cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn))
     node_execs = _get_all_node_executions(client, workflow_execution_identifier=e.id)
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure, wf_execution=e)
 
@@ -1716,7 +1496,7 @@ def get_child_executions(urn, host, insecure, show_io, verbose):
     client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
     node_execs = _get_all_node_executions(
         client,
-        task_execution_identifier=_identifier.TaskExecutionIdentifier.from_python_std(urn),
+        task_execution_identifier=cli_identifiers.TaskExecutionIdentifier.from_python_std(urn),
     )
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure)
 
@@ -1838,7 +1618,7 @@ def _extract_pair(
             f"Resource type found in proto file name [{resource_type}] invalid, "
             "must be 1 (task), 2 (workflow) or 3 (launch plan)"
         )
-    entity = _load_proto_from_file(_resource_map[resource_type], object_file)
+    entity = utils.load_proto_from_file(_resource_map[resource_type], object_file)
     registerable_identifier, registerable_entity = hydrate_registration_parameters(
         resource_type, project, domain, version, entity
     )
@@ -2079,7 +1859,8 @@ def fast_register_files(
 
     version = version if version else digest
     full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, version)
-    Data.put_data(compressed_source, full_remote_path)
+    ctx = FlyteContextManager.current_context()
+    ctx.file_access.put_data(compressed_source, full_remote_path)
     _click.secho(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}", fg="green")
 
     def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:

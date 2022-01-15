@@ -8,12 +8,12 @@ from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
-from flytekit.common.constants import SdkTaskType
-from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import PythonTask
+from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql

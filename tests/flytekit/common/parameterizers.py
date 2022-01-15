@@ -1,10 +1,6 @@
 from datetime import timedelta
 from itertools import product
 
-from six.moves import range
-
-from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.common.types.impl import schema as _schema_impl
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
@@ -253,39 +249,23 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
     (
         literals.Scalar(
             union=literals.Union(
-                value=literals.Literal(
-                    scalar=literals.Scalar(
-                        primitive=literals.Primitive(
-                            integer=10
-                        )
-                    )
-                ),
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=10))),
                 stored_type=types.LiteralType(
-                    simple=types.SimpleType.INTEGER,
-                    structure=types.TypeStructure(tag="int")
-                )
+                    simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")
+                ),
             )
         ),
-        10
+        10,
     ),
     (
         literals.Scalar(
             union=literals.Union(
-                value=literals.Literal(
-                    scalar=literals.Scalar(
-                        primitive=literals.Primitive(
-                            string_value="test"
-                        )
-                    )
-                ),
-                stored_type=types.LiteralType(
-                    simple=types.SimpleType.STRING,
-                    structure=types.TypeStructure(tag="str")
-                )
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="test"))),
+                stored_type=types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
             )
         ),
-        "test"
-    )
+        "test",
+    ),
 ]
 
 LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE = [

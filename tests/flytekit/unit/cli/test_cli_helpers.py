@@ -2,15 +2,12 @@ import flyteidl.admin.launch_plan_pb2 as _launch_plan_pb2
 import flyteidl.admin.task_pb2 as _task_pb2
 import flyteidl.admin.workflow_pb2 as _workflow_pb2
 import flyteidl.core.tasks_pb2 as _core_task_pb2
-import pytest
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from flyteidl.core.identifier_pb2 import LAUNCH_PLAN
 
 from flytekit.clis import helpers
 from flytekit.clis.helpers import _hydrate_identifier, _hydrate_workflow_template_nodes, hydrate_registration_parameters
-from flytekit.models import literals, types
-from flytekit.models.interface import Parameter, ParameterMap, Variable
 
 
 def test_parse_args_into_dict():
@@ -26,36 +23,6 @@ def test_parse_args_into_dict():
 
     output = helpers.parse_args_into_dict(sample_args3)
     assert output == {}
-
-
-def test_construct_literal_map_from_variable_map():
-    v = Variable(type=types.LiteralType(simple=types.SimpleType.INTEGER), description="some description")
-    variable_map = {
-        "inputa": v,
-    }
-
-    input_txt_dictionary = {"inputa": "15"}
-
-    literal_map = helpers.construct_literal_map_from_variable_map(variable_map, input_txt_dictionary)
-    parsed_literal = literal_map.literals["inputa"].value
-    ll = literals.Scalar(primitive=literals.Primitive(integer=15))
-    assert parsed_literal == ll
-
-
-def test_construct_literal_map_from_parameter_map():
-    v = Variable(type=types.LiteralType(simple=types.SimpleType.INTEGER), description="some description")
-    p = Parameter(var=v, required=True)
-    pm = ParameterMap(parameters={"inputa": p})
-
-    input_txt_dictionary = {"inputa": "15"}
-
-    literal_map = helpers.construct_literal_map_from_parameter_map(pm, input_txt_dictionary)
-    parsed_literal = literal_map.literals["inputa"].value
-    ll = literals.Scalar(primitive=literals.Primitive(integer=15))
-    assert parsed_literal == ll
-
-    with pytest.raises(Exception):
-        helpers.construct_literal_map_from_parameter_map(pm, {})
 
 
 def test_strtobool():

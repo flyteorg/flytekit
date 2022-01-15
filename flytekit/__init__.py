@@ -160,7 +160,6 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
-import flytekit.plugins  # This will be deprecated, these are the old plugins, the new plugins live in plugins/
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.condition import conditional
