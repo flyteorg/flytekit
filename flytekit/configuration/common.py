@@ -2,7 +2,7 @@ import abc as _abc
 import configparser as _configparser
 import os as _os
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 
 
 def format_section_key(section, key):

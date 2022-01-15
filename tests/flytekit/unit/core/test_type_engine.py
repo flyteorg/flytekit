@@ -18,7 +18,6 @@ from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
 
 from flytekit import kwtypes
-from flytekit.common.exceptions import user as user_exceptions
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
     DataclassTransformer,
@@ -30,6 +29,7 @@ from flytekit.core.type_engine import (
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
+from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar

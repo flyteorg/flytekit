@@ -25,10 +25,9 @@ from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
-from flytekit.common.exceptions import user as user_exceptions
-from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -257,7 +256,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"evaluation doesn't work with json dataclasses"
             )
 
-        return _primitives.Generic.to_flyte_literal_type(metadata=schema)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if not dataclasses.is_dataclass(python_val):
@@ -788,7 +787,7 @@ class DictTransformer(TypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _primitives.Generic.to_flyte_literal_type()
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -1001,7 +1000,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "int",
             int,
-            _primitives.Integer.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
             lambda x: x.scalar.primitive.integer,
         )
@@ -1011,7 +1010,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "float",
             float,
-            _primitives.Float.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
             _check_and_covert_float,
         )
@@ -1021,7 +1020,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "bool",
             bool,
-            _primitives.Boolean.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
             lambda x: x.scalar.primitive.boolean,
         )
@@ -1031,7 +1030,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "str",
             str,
-            _primitives.String.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
             lambda x: x.scalar.primitive.string_value,
         )
@@ -1041,7 +1040,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "datetime",
             _datetime.datetime,
-            _primitives.Datetime.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
             lambda x: x.scalar.primitive.datetime,
         )
@@ -1051,7 +1050,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "timedelta",
             _datetime.timedelta,
-            _primitives.Timedelta.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
             lambda x: x.scalar.primitive.duration,
         )

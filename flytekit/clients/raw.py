@@ -2,7 +2,6 @@ import subprocess
 import time
 from typing import List
 
-import six as _six
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 from grpc import RpcError as _RpcError
@@ -13,13 +12,13 @@ from grpc import ssl_channel_credentials as _ssl_channel_credentials
 
 from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.configuration import creds as _creds_config
 from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import COMMAND as _COMMAND
 from flytekit.configuration.creds import DEPRECATED_OAUTH_SCOPES, SCOPES
 from flytekit.configuration.platform import AUTH as _AUTH
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import cli_logger
 
 
@@ -91,9 +90,7 @@ def _refresh_credentials_from_command(flyte_client):
         output = subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as e:
         cli_logger.error("Failed to generate token from command {}".format(command))
-        raise _user_exceptions.FlyteAuthenticationException(
-            "Problems refreshing token with command: " + _six.text_type(e)
-        )
+        raise _user_exceptions.FlyteAuthenticationException("Problems refreshing token with command: " + str(e))
     flyte_client.set_access_token(output.stdout.strip())
 
 
@@ -134,7 +131,7 @@ def _handle_rpc_error(retry=False):
                         # Always retry auth errors.
                         if i == (max_retries - 1):
                             # Exit the loop and wrap the authentication error.
-                            raise _user_exceptions.FlyteAuthenticationException(_six.text_type(e))
+                            raise _user_exceptions.FlyteAuthenticationException(str(e))
                         cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
                         refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
                         refresh_handler_fn(args[0])

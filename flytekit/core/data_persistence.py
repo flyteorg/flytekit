@@ -32,8 +32,8 @@ from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
 
-from flytekit.common.exceptions.user import FlyteAssertion
-from flytekit.common.utils import PerformanceTimer
+from flytekit.core.utils import PerformanceTimer
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
