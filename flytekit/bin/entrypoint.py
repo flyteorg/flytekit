@@ -1,10 +1,8 @@
 import contextlib
 import datetime as _datetime
-import importlib as _importlib
 import logging as python_logging
 import os as _os
 import pathlib
-import random as _random
 import traceback as _traceback
 from typing import List
 
@@ -12,18 +10,14 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
-from flytekit.common import constants as _constants
-from flytekit.common import utils as _common_utils
-from flytekit.common import utils as _utils
-from flytekit.common.exceptions import scopes as _scoped_exceptions
-from flytekit.common.exceptions import scopes as _scopes
-from flytekit.common.exceptions import system as _system_exceptions
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import sdk as _sdk_config
+from flytekit.core import constants as _constants
+from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.context_manager import (
+    ExecutionParameters,
     ExecutionState,
     FlyteContext,
     FlyteContextManager,
@@ -33,9 +27,8 @@ from flytekit.core.context_manager import (
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise
-from flytekit.engines import loader as _engine_loader
-from flytekit.interfaces import random as _flyte_random
-from flytekit.interfaces.data import data_proxy as _data_proxy
+from flytekit.exceptions import scopes as _scoped_exceptions
+from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import entrypoint_logger as logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -45,6 +38,12 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
+
+
+def get_version_message():
+    import flytekit
+
+    return f"Welcome to Flyte! Version: {flytekit.__version__}"
 
 
 def _compute_array_job_index():
@@ -59,25 +58,6 @@ def _compute_array_job_index():
     if _os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
         offset = int(_os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
     return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
-
-
-def _map_job_index_to_child_index(local_input_dir, datadir, index):
-    local_lookup_file = local_input_dir.get_named_tempfile("indexlookup.pb")
-    idx_lookup_file = _os.path.join(datadir, "indexlookup.pb")
-
-    # if the indexlookup.pb does not exist, then just return the index
-    if not _data_proxy.Data.data_exists(idx_lookup_file):
-        return index
-
-    _data_proxy.Data.get_data(idx_lookup_file, local_lookup_file)
-    mapping_proto = _utils.load_proto_from_file(_literals_pb2.LiteralCollection, local_lookup_file)
-    if len(mapping_proto.literals) < index:
-        raise _system_exceptions.FlyteSystemAssertion(
-            "dynamic task index lookup array size: {} is smaller than lookup index {}".format(
-                len(mapping_proto.literals), index
-            )
-        )
-    return mapping_proto.literals[index].scalar.primitive.integer
 
 
 def _dispatch_execute(
@@ -101,7 +81,7 @@ def _dispatch_execute(
         # Step1
         local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
@@ -174,7 +154,7 @@ def _dispatch_execute(
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
-        _common_utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
+        utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
@@ -285,45 +265,6 @@ def _handle_annotated_task(
 
 
 @_scopes.system_entry_point
-def _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test):
-    """
-    This function should be called for old flytekit api tasks (the only API that was available in 0.15.x and earlier)
-    """
-    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with _utils.AutoDeletingTempDir("input_dir") as input_dir:
-            # Load user code
-            task_module = _importlib.import_module(task_module)
-            task_def = getattr(task_module, task_name)
-
-            local_inputs_file = input_dir.get_named_tempfile("inputs.pb")
-
-            # Handle inputs/outputs for array job.
-            if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-                job_index = _compute_array_job_index()
-
-                # TODO: Perhaps remove.  This is a workaround to an issue we perceived with limited entropy in
-                # TODO: AWS batch array jobs.
-                _flyte_random.seed_flyte_random(
-                    "{} {} {}".format(_random.random(), _datetime.datetime.utcnow(), job_index)
-                )
-
-                # If an ArrayTask is discoverable, the original job index may be different than the one specified in
-                # the environment variable. Look up the correct input/outputs in the index lookup mapping file.
-                job_index = _map_job_index_to_child_index(input_dir, inputs, job_index)
-
-                inputs = _os.path.join(inputs, str(job_index), "inputs.pb")
-                output_prefix = _os.path.join(output_prefix, str(job_index))
-
-            _data_proxy.Data.get_data(inputs, local_inputs_file)
-            input_proto = _utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-
-            _engine_loader.get_engine().get_task(task_def).execute(
-                _literal_models.LiteralMap.from_flyte_idl(input_proto),
-                context={"output_prefix": output_prefix, "raw_output_data_prefix": raw_output_data_prefix},
-            )
-
-
-@_scopes.system_entry_point
 def _execute_task(
     inputs,
     output_prefix,
@@ -417,8 +358,6 @@ def _pass_through():
 
 
 @_pass_through.command("pyflyte-execute")
-@_click.option("--task-module", required=False)
-@_click.option("--task-name", required=False)
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
@@ -432,8 +371,6 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-    task_module,
-    task_name,
     inputs,
     output_prefix,
     raw_output_data_prefix,
@@ -443,7 +380,7 @@ def execute_task_cmd(
     resolver,
     resolver_args,
 ):
-    logger.info(_utils.get_version_message())
+    logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
     _click.echo("")
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
@@ -456,21 +393,17 @@ def execute_task_cmd(
     # Use the presence of the resolver to differentiate between old API tasks and new API tasks
     # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
     # pervasive this top level command already (plugins mostly).
-    if not resolver:
-        logger.info("No resolver found, assuming legacy API task...")
-        _legacy_execute_task(task_module, task_name, inputs, output_prefix, raw_output_data_prefix, test)
-    else:
-        logger.debug(f"Running task execution with resolver {resolver}...")
-        _execute_task(
-            inputs,
-            output_prefix,
-            raw_output_data_prefix,
-            test,
-            resolver,
-            resolver_args,
-            dynamic_addl_distro,
-            dynamic_dest_dir,
-        )
+    logger.debug(f"Running task execution with resolver {resolver}...")
+    _execute_task(
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        test,
+        resolver,
+        resolver_args,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
+    )
 
 
 @_pass_through.command("pyflyte-fast-execute")
@@ -529,7 +462,7 @@ def map_execute_task_cmd(
     resolver,
     resolver_args,
 ):
-    logger.info(_utils.get_version_message())
+    logger.info(get_version_message())
 
     _execute_map_task(
         inputs,

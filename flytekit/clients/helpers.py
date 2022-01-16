@@ -9,8 +9,8 @@ def iterate_node_executions(
     """
     This returns a generator for node executions.
     :param flytekit.clients.friendly.SynchronousFlyteClient client:
-    :param flytekit.common.core.identifier.WorkflowExecutionIdentifier workflow_execution_identifier:
-    :param flytekit.common.core.identifier.TaskExecutionIdentifier task_execution_identifier:
+    :param flytekit.models.core.identifier.WorkflowExecutionIdentifier workflow_execution_identifier:
+    :param flytekit.models.core.identifier.TaskExecutionIdentifier task_execution_identifier:
     :param int limit: The maximum number of elements to retrieve
     :param list[flytekit.models.filters.Filter] filters:
     :rtype: Iterator[flytekit.models.node_execution.NodeExecution]
