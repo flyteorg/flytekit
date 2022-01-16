@@ -4,7 +4,7 @@ import logging as python_logging
 import os as _os
 import pathlib
 import traceback as _traceback
-from typing import List
+from typing import List, Optional
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -16,6 +16,7 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
+from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
