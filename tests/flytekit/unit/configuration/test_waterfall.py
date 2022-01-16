@@ -1,7 +1,7 @@
 import os as _os
 
-from flytekit.common.utils import AutoDeletingTempDir as _AutoDeletingTempDir
 from flytekit.configuration import common as _common
+from flytekit.core.utils import AutoDeletingTempDir as _AutoDeletingTempDir
 
 
 def test_lookup_waterfall_raw_env_var():

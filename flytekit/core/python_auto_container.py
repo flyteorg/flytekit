@@ -5,12 +5,12 @@ import re
 from abc import ABC
 from typing import Callable, Dict, List, Optional, TypeVar
 
-from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance
+from flytekit.core.utils import _get_container_definition
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext

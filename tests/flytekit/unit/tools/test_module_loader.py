@@ -1,12 +1,12 @@
 import os
 import sys
 
-from flytekit.common import utils as _utils
+from flytekit.core import utils
 from flytekit.tools import module_loader
 
 
 def test_module_loading():
-    with _utils.AutoDeletingTempDir("mypackage") as pkg:
+    with utils.AutoDeletingTempDir("mypackage") as pkg:
         path = pkg.name
         # Create directories
         top_level = os.path.join(path, "top")
