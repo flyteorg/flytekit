@@ -169,7 +169,7 @@ class ExecutionParameters(object):
             self.working_dir = current.working_directory if current else None
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
-            self.checkpoint = current.checkpoint if current else None
+            self.checkpoint = current._checkpoint if current else None
             self.attrs = current._attrs if current else {}
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:

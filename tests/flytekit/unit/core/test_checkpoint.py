@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import flytekit
-from flytekit.common.tasks.checkpointer import SyncCheckpoint
+from flytekit.core.checkpointer import SyncCheckpoint
 
 
 def test_sync_checkpoint_write(tmpdir):
