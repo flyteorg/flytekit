@@ -19,6 +19,7 @@ import logging as _logging
 import os
 import pathlib
 import re
+import tempfile
 import traceback
 import typing
 from contextlib import contextmanager
@@ -34,6 +35,7 @@ from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.configuration import secrets
 from flytekit.core import mock_stats, utils
+from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
@@ -158,7 +160,7 @@ class ExecutionParameters(object):
         logging: _logging
         execution_id: str
         attrs: typing.Dict[str, typing.Any]
-        working_dir: typing.Union[os.PathLike, _common_utils.AutoDeletingTempDir]
+        working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
         checkpoint: typing.Optional[Checkpoint]
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
@@ -175,7 +177,7 @@ class ExecutionParameters(object):
             return self
 
         def build(self) -> ExecutionParameters:
-            if not isinstance(self.working_dir, _common_utils.AutoDeletingTempDir):
+            if not isinstance(self.working_dir, utils.AutoDeletingTempDir):
                 pathlib.Path(self.working_dir).mkdir(parents=True, exist_ok=True)
             return ExecutionParameters(
                 execution_date=self.execution_date,
@@ -193,7 +195,7 @@ class ExecutionParameters(object):
 
     def with_task_sandbox(self) -> Builder:
         prefix = self.working_directory
-        if isinstance(self.working_directory, _common_utils.AutoDeletingTempDir):
+        if isinstance(self.working_directory, utils.AutoDeletingTempDir):
             prefix = self.working_directory.name
         task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)
         p = pathlib.Path(task_sandbox_dir)
@@ -246,7 +248,7 @@ class ExecutionParameters(object):
         return self._logging
 
     @property
-    def working_directory(self) -> _common_utils.AutoDeletingTempDir:
+    def working_directory(self) -> utils.AutoDeletingTempDir:
         """
         A handle to a special working directory for easily producing temporary files.
 
