@@ -103,8 +103,8 @@ jobs:
           make setup
           cd plugins/${{ matrix.plugin-names }}
           pip install -e .
+          if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
-          git clone https://github.com/flyteorg/flyteidl.git && cd flyteidl && git checkout union_type && pip install . && cd ..
           pip freeze
       - name: Test with coverage
         run: |
