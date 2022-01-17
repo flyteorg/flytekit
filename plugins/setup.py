@@ -6,9 +6,12 @@ from setuptools.command.develop import develop
 from setuptools.command.install import install
 
 PACKAGE_NAME = "flytekitplugins-parent"
+
+# Please maintain an alphabetical order in the following list
 SOURCES = {
     "flytekitplugins-athena": "flytekit-aws-athena",
     "flytekitplugins-awssagemaker": "flytekit-aws-sagemaker",
+    "flytekitplugins-bigquery": "flytekit-bigquery",
     "flytekitplugins-fsspec": "flytekit-data-fsspec",
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
@@ -17,12 +20,12 @@ SOURCES = {
     "flytekitplugins-kfmpi": "flytekit-kf-mpi",
     "flytekitplugins-kfpytorch": "flytekit-kf-pytorch",
     "flytekitplugins-kftensorflow": "flytekit-kf-tensorflow",
+    "flytekitplugins-modin": "flytekit-modin",
     "flytekitplugins-pandera": "flytekit-pandera",
     "flytekitplugins-papermill": "flytekit-papermill",
     "flytekitplugins-snowflake": "flytekit-snowflake",
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
-    "flytekitplugins-modin": "flytekit-modin",
 }
 
 
