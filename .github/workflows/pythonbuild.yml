@@ -60,8 +60,10 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
         plugin-names:
+          # Please maintain an alphabetical order in the following list
           - flytekit-aws-athena
           - flytekit-aws-sagemaker
+          - flytekit-bigquery
           - flytekit-data-fsspec
           - flytekit-dolt
           - flytekit-greatexpectations
@@ -70,13 +72,12 @@ jobs:
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
+          - flytekit-modin
+          - flytekit-pandera
           - flytekit-papermill
+          - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
-          - flytekit-pandera
-          - flytekit-snowflake
-          - flytekit-bigquery
-          - flytekit-modin
         exclude:
         # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
         # Issue tracked in https://github.com/ray-project/ray/issues/19116.
