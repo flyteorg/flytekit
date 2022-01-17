@@ -70,11 +70,11 @@ entrypoints==0.3
 flyteidl==0.21.8
     # via flytekit
 flytekit==0.24.0
-    # via
-    #   flytekitplugins-papermill
-    #   flytekitplugins-spark
-flytekitplugins-spark==0.24.0
     # via flytekitplugins-papermill
+flytekitplugins-spark @ git+https://github.com/flyteorg/flytekit@master#subdirectory=plugins/flytekit-spark
+    # via
+    #   -r requirements.in
+    #   flytekitplugins-papermill
 grpcio==1.41.1
     # via flytekit
 idna==3.3
@@ -183,8 +183,6 @@ ptyprocess==0.7.0
     # via pexpect
 py==1.11.0
     # via retry
-py4j==0.10.9.2
-    # via pyspark
 pyarrow==6.0.0
     # via flytekit
 pygments==2.10.0
@@ -196,8 +194,6 @@ pyparsing==2.4.7
     # via packaging
 pyrsistent==0.18.0
     # via jsonschema
-pyspark==3.2.0
-    # via flytekitplugins-spark
 python-dateutil==2.8.1
     # via
     #   arrow

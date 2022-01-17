@@ -1,3 +1,3 @@
 .
 -e file:.#egg=flytekitplugins-papermill
-git+https://github.com/flyteorg/flytekit@master#subdirectory=plugins/flytekit-papermill
+git+https://github.com/flyteorg/flytekit@master#subdirectory=plugins/flytekit-spark
