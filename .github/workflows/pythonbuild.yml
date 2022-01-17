@@ -102,6 +102,7 @@ jobs:
         make setup
         cd plugins/${{ matrix.plugin-names }}
         pip install -e .
+        if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
         pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
         pip freeze
     - name: Test with coverage
