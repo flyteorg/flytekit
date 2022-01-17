@@ -7,7 +7,11 @@ from google.protobuf.json_format import MessageToDict
 from pyspark.sql import SparkSession
 
 from flytekit import FlyteContextManager, PythonFunctionTask
-from flytekit.core.context_manager import ExecutionParameters
+
+try:
+    from flytekit.core.context_manager import ExecutionParameters
+except ImportError:
+    from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.extend import ExecutionState, SerializationSettings, TaskPlugins
 
 from .models import SparkJob, SparkType
