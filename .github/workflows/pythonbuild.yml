@@ -75,6 +75,7 @@ jobs:
           - flytekit-sqlalchemy
           - flytekit-pandera
           - flytekit-snowflake
+          - flytekit-bigquery
           - flytekit-modin
         exclude:
         # flytekit-modin depends on ray which does not have a 3.10 wheel yet.

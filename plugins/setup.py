@@ -20,6 +20,7 @@ SOURCES = {
     "flytekitplugins-pandera": "flytekit-pandera",
     "flytekitplugins-papermill": "flytekit-papermill",
     "flytekitplugins-snowflake": "flytekit-snowflake",
+    "flytekitplugins-bigquery": "flytekit-bigquery",
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-modin": "flytekit-modin",
