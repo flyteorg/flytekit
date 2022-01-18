@@ -16,4 +16,5 @@ testing workflows that contain tasks that cannot run locally (a Hive task for in
 
 """
 
+from flytekit.core.context_manager import SecretsManager
 from flytekit.core.testing import patch, task_mock
