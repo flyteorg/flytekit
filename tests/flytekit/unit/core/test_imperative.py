@@ -212,6 +212,29 @@ def test_imperative_list_bound_output():
     assert wb() == [3, 6]
 
 
+def test_imperative_tuples():
+    @task
+    def t1() -> (int, str):
+        return 3, "three"
+
+    @task
+    def t3(a: int, b: str) -> typing.Tuple[int, str]:
+        return a + 2, "world" + b
+
+    wb = ImperativeWorkflow(name="my.workflow.a")
+    t1_node = wb.add_entity(t1)
+    t3_node = wb.add_entity(t3, a=t1_node.outputs["o0"], b=t1_node.outputs["o1"])
+    wb.add_workflow_output("wf0", t3_node.outputs["o0"], python_type=int)
+    wb.add_workflow_output("wf1", t3_node.outputs["o1"], python_type=str)
+    res = wb()
+    assert res == (5, "worldthree")
+
+    with pytest.raises(KeyError):
+        wb = ImperativeWorkflow(name="my.workflow.b")
+        t1_node = wb.add_entity(t1)
+        wb.add_entity(t3, a=t1_node.outputs["bad"], b=t1_node.outputs["o2"])
+
+
 def test_call_normal():
     @task
     def t1(a: int) -> (int, str):
