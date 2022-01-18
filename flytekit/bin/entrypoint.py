@@ -201,6 +201,7 @@ def setup_execution(
         ),
         logging=python_logging,
         tmp_dir=user_workspace_dir,
+        raw_output_prefix=ctx.file_access._raw_output_prefix,
     )
 
     # TODO: Remove this check for flytekit 1.0

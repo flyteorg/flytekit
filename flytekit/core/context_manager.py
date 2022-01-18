@@ -159,6 +159,7 @@ class ExecutionParameters(object):
         execution_id: str
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
+        raw_output_prefix: str
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -167,6 +168,7 @@ class ExecutionParameters(object):
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
             self.attrs = current._attrs if current else {}
+            self.raw_output_prefix = current.raw_output_prefix if current else None
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
@@ -181,6 +183,7 @@ class ExecutionParameters(object):
                 tmp_dir=self.working_dir,
                 execution_id=self.execution_id,
                 logging=self.logging,
+                raw_output_prefix=self.raw_output_prefix,
                 **self.attrs,
             )
 
@@ -191,7 +194,7 @@ class ExecutionParameters(object):
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, **kwargs):
+    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, **kwargs):
         """
         Args:
             execution_date: Date when the execution is running
@@ -205,6 +208,7 @@ class ExecutionParameters(object):
         self._working_directory = tmp_dir
         self._execution_id = execution_id
         self._logging = logging
+        self._raw_output_prefix = raw_output_prefix
         # AutoDeletingTempDir's should be used with a with block, which creates upon entry
         self._attrs = kwargs
         # It is safe to recreate the Secrets Manager
@@ -225,6 +229,10 @@ class ExecutionParameters(object):
         TODO: Usage examples
         """
         return self._logging
+
+    @property
+    def raw_output_prefix(self) -> str:
+        return self._raw_output_prefix
 
     @property
     def working_directory(self) -> utils.AutoDeletingTempDir:
@@ -895,14 +903,16 @@ class FlyteContextManager(object):
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
+        default_context = FlyteContext(file_access=default_local_file_access_provider)
         default_user_space_params = ExecutionParameters(
             execution_id=str(WorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
             execution_date=_datetime.datetime.utcnow(),
             stats=mock_stats.MockStats(),
             logging=_logging,
             tmp_dir=user_space_path,
+            raw_output_prefix=default_context.file_access._raw_output_prefix,
         )
-        default_context = FlyteContext(file_access=default_local_file_access_provider)
+
         default_context = default_context.with_execution_state(
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()
