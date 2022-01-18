@@ -57,6 +57,7 @@ def test_default_wf_params_works():
     def my_task(a: int):
         wf_params = flytekit.current_context()
         assert wf_params.execution_id == "ex:local:local:local"
+        assert "/tmp/flyte/" in wf_params.raw_output_prefix
 
     my_task(a=3)
     assert context_manager.FlyteContextManager.size() == 1
