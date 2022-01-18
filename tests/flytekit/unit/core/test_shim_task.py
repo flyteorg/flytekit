@@ -39,9 +39,7 @@ def test_resolver_load_task():
     resolver = TaskTemplateResolver()
     ts = get_serializable(OrderedDict(), serialization_settings, square)
     with tempfile.NamedTemporaryFile() as f:
-        print(f.name)
         write_proto_to_file(ts.template.to_flyte_idl(), f.name)
-        print(Placeholder.__module__)
         # load_task should create an instance of the path to the object given, doesn't need to be a real executor
         shim_task = resolver.load_task([f.name, f"{Placeholder.__module__}.Placeholder"])
         assert isinstance(shim_task.executor, Placeholder)
