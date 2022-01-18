@@ -9,8 +9,8 @@ import joblib
 import pytest
 
 from flytekit import kwtypes
-from flytekit.common.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.core.launch_plan import LaunchPlan
+from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
 from flytekit.types.schema import FlyteSchema

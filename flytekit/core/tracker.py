@@ -4,7 +4,7 @@ import inspect as _inspect
 import logging as _logging
 from typing import Callable
 
-from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.exceptions import system as _system_exceptions
 
 
 class InstanceTrackingMeta(type):

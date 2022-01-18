@@ -1,8 +1,8 @@
 from collections import OrderedDict
 
-from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.tools.translator import get_serializable
 from tests.flytekit.unit.extras.sqlite3.test_task import tk as not_tk
 
 

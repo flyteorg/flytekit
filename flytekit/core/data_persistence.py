@@ -32,8 +32,8 @@ from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
 
-from flytekit.common.exceptions.user import FlyteAssertion
-from flytekit.common.utils import PerformanceTimer
+from flytekit.core.utils import PerformanceTimer
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -141,7 +141,7 @@ class DataPersistencePlugins(object):
         Returns a plugin for the given protocol, else raise a TypeError
         """
         for k, p in cls._PLUGINS.items():
-            if path.startswith(k):
+            if path.startswith(k) or path.startswith(k.replace("://", "")):
                 return p
         raise TypeError(f"No plugin found for matching protocol of path {path}")
 

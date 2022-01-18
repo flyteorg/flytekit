@@ -85,7 +85,7 @@ def test_file_handling_local_file_gets_copied():
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
         top_level_files = os.listdir(random_dir)
-        assert len(top_level_files) == 1  # the local_flytekit folder
+        assert len(top_level_files) == 1  # the flytekit_local folder
 
         x = my_wf()
 
@@ -188,7 +188,6 @@ def test_file_handling_remote_file_handling_flyte_file():
 
     # This creates a random directory that we know is empty.
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
-    print(f"Random {random_dir}")
     # Creating a new FileAccessProvider will add two folderst to the random dir
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
     ctx = context_manager.FlyteContext.current_context()

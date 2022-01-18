@@ -250,3 +250,15 @@ def test_dict_wf_with_constants():
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
     assert n_cached_task_calls == 2
+
+
+"""
+Update SD transformer so that it can to_python_value a Schema literal
+  - If a Schema literal is detected, copy the uri and use the new decoder to unwrap the uri
+Update FS transformer so that it can to_python_value a StructuredDataset literal
+  - If a StructuredDataset literal is detected, use the uri from that instead.
+
+Update all plugins that can take in a FlyteSchema to also be able to take in a StructuredDataset.
+
+All tests should work with the presence of SD imports.
+"""
