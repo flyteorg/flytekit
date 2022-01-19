@@ -1,15 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "papermill"
+PLUGIN_NAME = "bigquery"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = [
-    "flytekit>=0.16.0b0,<1.0.0",
-    "papermill>=1.2.0",
-    "nbconvert>=6.0.7",
-    "ipykernel>=5.0.0",
-]
+plugin_requires = ["flytekit>=v0.30.0b3,<1.0.0", "google-cloud-bigquery"]
 
 __version__ = "0.0.0+develop"
 
@@ -18,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This is the flytekit papermill plugin",
+    description="This package holds the Bigquery plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
