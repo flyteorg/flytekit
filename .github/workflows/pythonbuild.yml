@@ -58,6 +58,7 @@ jobs:
         python-version: [3.8, 3.9]
         plugin-names:
           - flytekit-aws-athena
+          - flytekit-aws-batch
           - flytekit-aws-sagemaker
           - flytekit-data-fsspec
           - flytekit-dolt

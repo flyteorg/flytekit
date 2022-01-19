@@ -1,2 +1,2 @@
 .
--e file:.#egg=flytekitplugins-aws-batch
+-e file:.#egg=flytekitplugins-awsbatch

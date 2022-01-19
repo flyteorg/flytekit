@@ -1,1 +1,1 @@
-from .task import AWSBatch
+from .task import AWSBatchConfig

@@ -1,15 +1,15 @@
-from flytekitplugins.awsbatch import AWSBatch
+from flytekitplugins.awsbatch import AWSBatchConfig
 
 from flytekit import PythonFunctionTask, task
 from flytekit.extend import Image, ImageConfig, SerializationSettings
 
-config = AWSBatch(
+config = AWSBatchConfig(
     parameters={"codec": "mp4"},
-    PlatformCapabilities=["EC2"],
-    PropagateTags=True,
-    RetryStrategy={"attempts": 10},
-    Tags={"hello": "world"},
-    Timeout={"attemptDurationSeconds": 60},
+    platformCapabilities=["EC2"],
+    propagateTags=True,
+    retryStrategy={"attempts": 10},
+    tags={"hello": "world"},
+    timeout={"attemptDurationSeconds": 60},
 )
 
 
