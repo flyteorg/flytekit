@@ -20,10 +20,10 @@ class FlytePickle(typing.Generic[T]):
     """
 
     @classmethod
-    def python_type(cls) -> None:
-        return None
+    def python_type(cls) -> typing.Type:
+        return type(None)
 
-    def __class_getitem__(cls, python_type: typing.Type) -> typing.Type[T]:
+    def __class_getitem__(cls, python_type: typing.Type) -> typing.Type:
         if python_type is None:
             return cls
 
@@ -77,6 +77,16 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         remote_path = ctx.file_access.get_random_remote_path(uri)
         ctx.file_access.put_data(uri, remote_path, is_multipart=False)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
+
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlytePickle[typing.Any]]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+        ):
+            return FlytePickle
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(

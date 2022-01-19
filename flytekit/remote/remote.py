@@ -19,14 +19,14 @@ import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.common import utils as common_utils
-from flytekit.common.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 from flytekit.configuration import internal
 from flytekit.configuration import platform as platform_config
 from flytekit.configuration import sdk as sdk_config
 from flytekit.configuration import set_flyte_config_file
-from flytekit.core import context_manager
+from flytekit.core import constants, context_manager, utils
 from flytekit.core.interface import Interface
+from flytekit.exceptions import user as user_exceptions
+from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
 from flytekit.models.admin import common as admin_common_models
@@ -39,9 +39,6 @@ except ImportError:
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.clis.flyte_cli.main import _detect_default_config_file
 from flytekit.clis.sdk_in_container import serialize
-from flytekit.common import constants
-from flytekit.common.exceptions import user as user_exceptions
-from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
 from flytekit.configuration import auth as auth_config
 from flytekit.configuration.internal import DOMAIN, PROJECT
 from flytekit.core.base_task import PythonTask
@@ -68,6 +65,7 @@ from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
+from flytekit.tools.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -235,9 +233,17 @@ class FlyteRemote(object):
         # Not exposing this as a property for now.
         self._entrypoint_settings = entrypoint_settings
 
+        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
+            sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
+        )
+        self._file_access = file_access or FileAccessProvider(
+            local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
+            raw_output_prefix=raw_output_data_prefix,
+        )
         # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access).build())
-        self._file_access = file_access
+        FlyteContextManager.with_context(
+            FlyteContextManager.current_context().with_file_access(self._file_access).build()
+        )
 
         # TODO: Reconsider whether we want this. Probably best to not cache.
         self._serialized_entity_cache = OrderedDict()
@@ -1109,6 +1115,14 @@ class FlyteRemote(object):
         """
         # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
         node_id = execution.metadata.spec_node_id
+        # This case supports single-task execution compiled workflows.
+        if node_id and node_id not in node_mapping and execution.id.node_id in node_mapping:
+            node_id = execution.id.node_id
+            remote_logger.debug(
+                f"Using node execution ID {node_id} instead of spec node id "
+                f"{execution.metadata.spec_node_id}, single-task execution likely."
+            )
+        # This case supports single-task execution compiled workflows with older versions of admin/propeller
         if not node_id:
             node_id = execution.id.node_id
             remote_logger.debug(f"No metadata spec_node_id found, using {node_id}")
@@ -1281,7 +1295,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
                 ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 
@@ -1294,6 +1308,6 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
                 ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})

@@ -35,6 +35,7 @@ def test_workflow_closure():
         True,
         "0.1.1b0",
         "This is deprecated!",
+        True,
     )
 
     cpu_resource = _task.Resources.ResourceEntry(_task.Resources.ResourceName.CPU, "1")

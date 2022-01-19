@@ -10,6 +10,11 @@ import typing
 from abc import ABC, abstractmethod
 from typing import Callable, NamedTuple, Optional, Type, cast
 
+try:
+    from typing import Annotated, get_args, get_origin
+except ImportError:
+    from typing_extensions import Annotated, get_origin, get_args
+
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
@@ -19,18 +24,26 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
-from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit.common.exceptions import user as user_exceptions
-from flytekit.common.types import primitives as _primitives
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Schema
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.literals import (
+    Blob,
+    BlobMetadata,
+    Literal,
+    LiteralCollection,
+    LiteralMap,
+    Primitive,
+    Scalar,
+    Schema,
+    StructuredDatasetMetadata,
+)
+from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -252,9 +265,14 @@ class DataclassTransformer(TypeTransformer[object]):
                     v.load_by = LoadDumpOptions.name
             schema = JSONSchema().dump(s)
         except Exception as e:
-            logger.warn("failed to extract schema for object %s, (will run schemaless) error: %s", str(t), e)
+            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
+            logger.warning(
+                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
+                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
+                f"evaluation doesn't work with json dataclasses"
+            )
 
-        return _primitives.Generic.to_flyte_literal_type(metadata=schema)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if not dataclasses.is_dataclass(python_val):
@@ -275,29 +293,118 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
         """
-        from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+        from flytekit.types.directory.types import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+        from flytekit.types.schema.types import FlyteSchema
+        from flytekit.types.structured.structured_dataset import StructuredDataset
 
         for f in dataclasses.fields(python_type):
             v = python_val.__getattribute__(f.name)
-            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
-                FlyteSchemaTransformer().to_literal(FlyteContext.current_context(), v, f.type, None)
-            elif dataclasses.is_dataclass(f.type):
-                self._serialize_flyte_type(v, f.type)
+            field_type = f.type
+            if inspect.isclass(field_type) and (
+                issubclass(field_type, FlyteSchema)
+                or issubclass(field_type, FlyteFile)
+                or issubclass(field_type, FlyteDirectory)
+                or issubclass(field_type, StructuredDataset)
+            ):
+                lv = TypeEngine.to_literal(FlyteContext.current_context(), v, field_type, None)
+                # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
+                # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
+                # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
+                # so that dataclass_json can always get a remote path.
+                # In other words, the file transformer has special code that handles the fact that if remote_source is
+                # set, then the real uri in the literal should be the remote source, not the path (which may be an
+                # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
+                # as determined by the transformer.
+                if issubclass(field_type, FlyteFile) or issubclass(field_type, FlyteDirectory):
+                    python_val.__setattr__(f.name, field_type(path=lv.scalar.blob.uri))
+                elif issubclass(field_type, StructuredDataset):
+                    python_val.__setattr__(
+                        f.name,
+                        field_type(
+                            uri=lv.scalar.structured_dataset.uri,
+                        ),
+                    )
 
-    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type["FlyteSchema"]):
+            elif dataclasses.is_dataclass(field_type):
+                self._serialize_flyte_type(v, field_type)
+
+    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> T:
+        from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
+        from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+        from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
-        for f in dataclasses.fields(expected_python_type):
-            v = python_val.__getattribute__(f.name)
-            if inspect.isclass(f.type) and issubclass(f.type, FlyteSchema):
-                t = FlyteSchemaTransformer()
-                t.to_python_value(
-                    FlyteContext.current_context(),
-                    Literal(scalar=Scalar(schema=Schema(v.remote_path, t._get_schema_type(f.type)))),
-                    f.type,
-                )
-            elif dataclasses.is_dataclass(f.type):
-                self._deserialize_flyte_type(v, f.type)
+        if not dataclasses.is_dataclass(expected_python_type):
+            return python_val
+
+        if issubclass(expected_python_type, FlyteSchema):
+            t = FlyteSchemaTransformer()
+            return t.to_python_value(
+                FlyteContext.current_context(),
+                Literal(scalar=Scalar(schema=Schema(python_val.remote_path, t._get_schema_type(expected_python_type)))),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, FlyteFile):
+            return FlyteFilePathTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                )
+                            ),
+                            uri=python_val.path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, FlyteDirectory):
+            return FlyteDirToMultipartBlobTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                                )
+                            ),
+                            uri=python_val.path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, StructuredDataset):
+            return StructuredDatasetTransformerEngine().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        structured_dataset=StructuredDataset(
+                            metadata=StructuredDatasetMetadata(
+                                structured_dataset_type=StructuredDatasetType(format=python_val.file_format)
+                            ),
+                            uri=python_val.uri,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        else:
+            for f in dataclasses.fields(expected_python_type):
+                value = python_val.__getattribute__(f.name)
+                if hasattr(f.type, "__origin__") and f.type.__origin__ is list:
+                    value = [self._deserialize_flyte_type(v, f.type.__args__[0]) for v in value]
+                elif hasattr(f.type, "__origin__") and f.type.__origin__ is dict:
+                    value = {k: self._deserialize_flyte_type(v, f.type.__args__[1]) for k, v in value.items()}
+                else:
+                    value = self._deserialize_flyte_type(value, f.type)
+                python_val.__setattr__(f.name, value)
+            return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if t == int:
@@ -343,8 +450,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
 
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
-        self._deserialize_flyte_type(dc, expected_python_type)
-        return self._fix_dataclass_int(expected_python_type, dc)
+        return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.simple == SimpleType.STRUCT:
@@ -433,6 +539,11 @@ class TypeEngine(typing.Generic[T]):
         cls.register(RestrictedTypeTransformer(name, type))
 
     @classmethod
+    def register_additional_type(cls, transformer: TypeTransformer, additional_type: Type, override=False):
+        if additional_type not in cls._REGISTRY or override:
+            cls._REGISTRY[additional_type] = transformer
+
+    @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
@@ -457,6 +568,9 @@ class TypeEngine(typing.Generic[T]):
 
         """
         # Step 1
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
+
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
@@ -707,7 +821,7 @@ class DictTransformer(TypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _primitives.Generic.to_flyte_literal_type()
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -852,18 +966,21 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
     """
     attribute_list = []
     for property_key, property_val in schema[schema_name]["properties"].items():
+        property_type = property_val["type"]
         # Handle list
         if property_val["type"] == "array":
             attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))
         # Handle dataclass and dict
-        elif property_val["type"] == "object":
-            if "$ref" in property_val:
+        elif property_type == "object":
+            if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
                 attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
-            else:
+            elif property_val.get("additionalProperties"):
                 attribute_list.append(
                     (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])
                 )
+            else:
+                attribute_list.append((property_key, typing.Dict[str, _get_element_type(property_val)]))
         # Handle int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])
@@ -917,7 +1034,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "int",
             int,
-            _primitives.Integer.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
             lambda x: x.scalar.primitive.integer,
         )
@@ -927,7 +1044,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "float",
             float,
-            _primitives.Float.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
             _check_and_covert_float,
         )
@@ -937,7 +1054,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "bool",
             bool,
-            _primitives.Boolean.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
             lambda x: x.scalar.primitive.boolean,
         )
@@ -947,7 +1064,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "str",
             str,
-            _primitives.String.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
             lambda x: x.scalar.primitive.string_value,
         )
@@ -957,7 +1074,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "datetime",
             _datetime.datetime,
-            _primitives.Datetime.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
             lambda x: x.scalar.primitive.datetime,
         )
@@ -967,7 +1084,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "timedelta",
             _datetime.timedelta,
-            _primitives.Timedelta.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
             lambda x: x.scalar.primitive.duration,
         )

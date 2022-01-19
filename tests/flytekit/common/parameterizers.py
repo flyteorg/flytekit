@@ -1,10 +1,6 @@
 from datetime import timedelta
 from itertools import product
 
-from six.moves import range
-
-from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.common.types.impl import schema as _schema_impl
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
@@ -116,8 +112,9 @@ LIST_OF_TASK_METADATA = [
         interruptible,
         discovery_version,
         deprecated,
+        cache_serializable,
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
@@ -125,6 +122,7 @@ LIST_OF_TASK_METADATA = [
         LIST_OF_INTERRUPTIBLE,
         ["1.0"],
         ["deprecated"],
+        [True, False],
     )
 ]
 
@@ -172,74 +170,6 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
         timedelta(seconds=5),
     ),
     (literals.Scalar(none_type=literals.Void()), None),
-    (
-        literals.Scalar(
-            blob=literals.Blob(
-                literals.BlobMetadata(_core_types.BlobType("csv", _core_types.BlobType.BlobDimensionality.SINGLE)),
-                "s3://some/where",
-            )
-        ),
-        _blob_impl.Blob("s3://some/where", format="csv"),
-    ),
-    (
-        literals.Scalar(
-            blob=literals.Blob(
-                literals.BlobMetadata(_core_types.BlobType("", _core_types.BlobType.BlobDimensionality.SINGLE)),
-                "s3://some/where",
-            )
-        ),
-        _blob_impl.Blob("s3://some/where"),
-    ),
-    (
-        literals.Scalar(
-            blob=literals.Blob(
-                literals.BlobMetadata(_core_types.BlobType("csv", _core_types.BlobType.BlobDimensionality.MULTIPART)),
-                "s3://some/where/",
-            )
-        ),
-        _blob_impl.MultiPartBlob("s3://some/where/", format="csv"),
-    ),
-    (
-        literals.Scalar(
-            blob=literals.Blob(
-                literals.BlobMetadata(_core_types.BlobType("", _core_types.BlobType.BlobDimensionality.MULTIPART)),
-                "s3://some/where/",
-            )
-        ),
-        _blob_impl.MultiPartBlob("s3://some/where/"),
-    ),
-    (
-        literals.Scalar(
-            schema=literals.Schema(
-                "s3://some/where/",
-                types.SchemaType(
-                    [
-                        types.SchemaType.SchemaColumn("a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-                        types.SchemaType.SchemaColumn("b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
-                        types.SchemaType.SchemaColumn("c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-                        types.SchemaType.SchemaColumn("d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-                        types.SchemaType.SchemaColumn("e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-                        types.SchemaType.SchemaColumn("f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-                    ]
-                ),
-            )
-        ),
-        _schema_impl.Schema(
-            "s3://some/where/",
-            _schema_impl.SchemaType.promote_from_model(
-                types.SchemaType(
-                    [
-                        types.SchemaType.SchemaColumn("a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-                        types.SchemaType.SchemaColumn("b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
-                        types.SchemaType.SchemaColumn("c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-                        types.SchemaType.SchemaColumn("d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-                        types.SchemaType.SchemaColumn("e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-                        types.SchemaType.SchemaColumn("f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-                    ]
-                )
-            ),
-        ),
-    ),
 ]
 
 LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE = [

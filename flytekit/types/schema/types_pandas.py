@@ -15,7 +15,7 @@ from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, Sche
 class ParquetIO(object):
     PARQUET_ENGINE = "pyarrow"
 
-    def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs) -> pandas.DataFrame:
+    def _read(self, chunk: os.PathLike, columns: typing.Optional[typing.List[str]], **kwargs) -> pandas.DataFrame:
         return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
 
     def read(self, *files: os.PathLike, columns: typing.List[str] = None, **kwargs) -> pandas.DataFrame:
@@ -59,7 +59,7 @@ class ParquetIO(object):
 class FastParquetIO(ParquetIO):
     PARQUET_ENGINE = "fastparquet"
 
-    def _read(self, chunk: os.PathLike, columns: typing.List[str], **kwargs) -> pandas.DataFrame:
+    def _read(self, chunk: os.PathLike, columns: typing.Optional[typing.List[str]], **kwargs) -> pandas.DataFrame:
         from fastparquet import ParquetFile as _ParquetFile
         from fastparquet import thrift_structures as _ts
 

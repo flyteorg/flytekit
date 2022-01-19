@@ -1,11 +1,13 @@
 import datetime
 import os
+import tempfile
 import typing
 from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 
 import pandas as pd
+import pyarrow as pa
 import pytest
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
@@ -13,11 +15,10 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
+from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated
 
 from flytekit import kwtypes
-from flytekit.common.exceptions import user as user_exceptions
-from flytekit.common.types.primitives import Integer
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.task import task
@@ -32,17 +33,20 @@ from flytekit.core.type_engine import (
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
+from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
-from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
 def test_type_engine():
@@ -362,6 +366,14 @@ def test_guessing_basic():
     pt = TypeEngine.guess_python_type(lt)
     assert pt is None
 
+    lt = model_types.LiteralType(
+        blob=BlobType(
+            format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
+        )
+    )
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is FlytePickle
+
 
 def test_guessing_containers():
     b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
@@ -463,7 +475,6 @@ def test_dataclass_transformer():
             },
         },
     }
-
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
     assert t is not None
@@ -513,6 +524,103 @@ def test_dataclass_int_preserving():
     assert ot == o
 
 
+def test_flyte_file_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class TestInnerFileStruct(object):
+        a: JPEGImageFile
+        b: typing.List[FlyteFile]
+        c: typing.Dict[str, FlyteFile]
+
+    @dataclass_json
+    @dataclass
+    class TestFileStruct(object):
+        a: FlyteFile
+        b: TestInnerFileStruct
+
+    f = FlyteFile("s3://tmp/file")
+    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f], c={"hello": f}))
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct)
+    lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
+
+    assert o.a.path == ot.a.remote_source
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].remote_source
+    assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+
+
+def test_flyte_directory_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class TestInnerFileStruct(object):
+        a: TensorboardLogs
+        b: typing.List[FlyteDirectory]
+        c: typing.Dict[str, FlyteDirectory]
+
+    @dataclass_json
+    @dataclass
+    class TestFileStruct(object):
+        a: FlyteDirectory
+        b: TestInnerFileStruct
+
+    tempdir = tempfile.mkdtemp(prefix="flyte-")
+    f = FlyteDirectory(tempdir)
+    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f], c={"hello": f}))
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct)
+    lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
+
+    assert o.a.path == ot.a.path
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].path
+    assert o.b.c["hello"].path == ot.b.c["hello"].path
+
+
+def test_structured_dataset_in_dataclass():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    @dataclass_json
+    @dataclass
+    class InnerDatasetStruct(object):
+        a: StructuredDataset
+
+    @dataclass_json
+    @dataclass
+    class DatasetStruct(object):
+        a: StructuredDataset
+        b: InnerDatasetStruct
+
+    sd = StructuredDataset(dataframe=df, file_format="parquet")
+    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(DatasetStruct)
+    lv = tf.to_literal(ctx, o, DatasetStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=DatasetStruct)
+
+    assert_frame_equal(df, ot.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.a.open(pd.DataFrame).all())
+    assert "parquet" == ot.a.file_format
+    assert "parquet" == ot.b.a.file_format
+
+
 # Enums should have string values
 class Color(Enum):
     RED = "red"
@@ -525,6 +633,29 @@ class UnsupportedEnumValues(Enum):
     RED = 1
     GREEN = 2
     BLUE = 3
+
+
+def test_structured_dataset_type():
+    name = "Name"
+    age = "Age"
+    data = {name: ["Tom", "Joseph"], age: [20, 22]}
+    df = pd.DataFrame(data)
+
+    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+
+    tf = StructuredDatasetTransformerEngine()
+    lt = tf.get_literal_type(StructuredDataset[{name: str, age: int}, "parquet"])
+    assert lt.structured_dataset_type is not None
+
+    ctx = FlyteContextManager.current_context()
+    lv = tf.to_literal(ctx, df, pd.DataFrame, lt)
+    assert "/tmp/flyte" in lv.scalar.structured_dataset.uri
+    metadata = lv.scalar.structured_dataset.metadata
+    assert metadata.structured_dataset_type.format == "parquet"
+    v1 = tf.to_python_value(ctx, lv, pd.DataFrame)
+    v2 = tf.to_python_value(ctx, lv, pa.Table)
+    assert_frame_equal(df, v1)
+    assert_frame_equal(df, v2.to_pandas())
 
 
 def test_enum_type():
@@ -556,6 +687,25 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+def test_pickle_type():
+    class Foo(object):
+        def __init__(self, number: int):
+            self.number = number
+
+    lt = TypeEngine.to_literal_type(FlytePickle)
+    assert lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+    assert lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, Foo(1), FlytePickle, lt)
+    assert "/tmp/flyte/" in lv.scalar.blob.uri
+
+    transformer = FlytePickleTransformer()
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert Foo(1).number == pv.number
 
 
 def test_enum_in_dataclass():
