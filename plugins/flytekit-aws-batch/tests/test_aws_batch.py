@@ -13,7 +13,7 @@ config = AWSBatchConfig(
 )
 
 
-def test_spark_task():
+def test_aws_batch_task():
     @task(task_config=config)
     def t1(a: int) -> str:
         inc = a + 2
