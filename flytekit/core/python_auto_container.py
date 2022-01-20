@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import importlib
 import re
-from abc import abstractmethod
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from abc import ABC
+from typing import Callable, Dict, List, Optional, TypeVar
 
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
@@ -18,7 +18,7 @@ from flytekit.models.security import Secret, SecurityContext
 T = TypeVar("T")
 
 
-class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
+class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
     """
     A Python AutoContainer task should be used as the base for all extensions that want the user's code to be in the
     container and the container information to be automatically captured.
@@ -173,13 +173,6 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
         )
-
-    @abstractmethod
-    def execute(self, **kwargs) -> Any:
-        """
-        This method will be invoked to execute the task.
-        """
-        pass
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
