@@ -43,6 +43,11 @@ from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
 
 def test_type_engine():
     t = int
@@ -639,7 +644,7 @@ def test_structured_dataset_type():
     from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
     tf = StructuredDatasetTransformerEngine()
-    lt = tf.get_literal_type(StructuredDataset[{name: str, age: int}, "parquet"])
+    lt = tf.get_literal_type(Annotated[StructuredDataset, {name: str, age: int}, "parquet"])
     assert lt.structured_dataset_type is not None
 
     ctx = FlyteContextManager.current_context()
@@ -651,6 +656,17 @@ def test_structured_dataset_type():
     v2 = tf.to_python_value(ctx, lv, pa.Table)
     assert_frame_equal(df, v1)
     assert_frame_equal(df, v2.to_pandas())
+
+    subset_lt = tf.get_literal_type(Annotated[StructuredDataset, {name: str}, "parquet"])
+    assert subset_lt.structured_dataset_type is not None
+
+    subset_lv = tf.to_literal(ctx, df, pd.DataFrame, subset_lt)
+    assert "/tmp/flyte" in subset_lv.scalar.structured_dataset.uri
+    v1 = tf.to_python_value(ctx, subset_lv, pd.DataFrame)
+    v2 = tf.to_python_value(ctx, subset_lv, pa.Table)
+    subset_data = pd.DataFrame({name: ["Tom", "Joseph"]})
+    assert_frame_equal(subset_data, v1)
+    assert_frame_equal(subset_data, v2.to_pandas())
 
 
 def test_enum_type():

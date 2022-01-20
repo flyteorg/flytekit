@@ -267,55 +267,60 @@ def test_wf_docstring():
     assert model_wf.template.interface.inputs["a"].description == "input a"
 
 
-my_cols = kwtypes(y=int, z=int)
-pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+superset_cols = kwtypes(Name=str, Age=int, Height=int)
+subset_cols = kwtypes(Name=str)
+superset_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22], "Height": [160, 178]})
+subset_df = pd.DataFrame({"Name": ["Tom", "Joseph"]})
 
 
 @task
-def t1() -> Annotated[pd.DataFrame, my_cols]:
-    return pd_df
+def t1() -> Annotated[pd.DataFrame, superset_cols]:
+    return superset_df
 
 
 @task
-def t2(df: Annotated[pd.DataFrame, my_cols]) -> Annotated[pd.DataFrame, my_cols]:
+def t2(df: Annotated[pd.DataFrame, subset_cols]) -> Annotated[pd.DataFrame, subset_cols]:
     return df
 
 
 @task
-def t3(df: FlyteSchema[my_cols]) -> FlyteSchema[my_cols]:
+def t3(df: FlyteSchema[superset_cols]) -> FlyteSchema[superset_cols]:
     return df
 
 
 @task
-def t4() -> FlyteSchema[my_cols]:
-    return pd_df
+def t4() -> FlyteSchema[superset_cols]:
+    return superset_df
 
 
 @task
-def t5(sd: StructuredDataset[my_cols]) -> Annotated[pd.DataFrame, my_cols]:
+def t5(sd: Annotated[StructuredDataset, subset_cols]) -> Annotated[pd.DataFrame, subset_cols]:
     return sd.open(pd.DataFrame).all()
 
 
 @workflow
-def sd_wf() -> Annotated[pd.DataFrame, my_cols]:
+def sd_wf() -> Annotated[pd.DataFrame, subset_cols]:
+    # StructuredDataset -> StructuredDataset
     df = t1()
     return t2(df=df)
 
 
 @workflow
 def sd_to_schema_wf() -> pd.DataFrame:
+    # StructuredDataset -> schema
     df = t1()
     return t3(df=df)
 
 
 @workflow
-def schema_to_sd_wf() -> pd.DataFrame:
+def schema_to_sd_wf() -> (pd.DataFrame, pd.DataFrame):
+    # schema -> StructuredDataset
     df = t4()
-    t2(df=df)
-    return t5(sd=df)
+    return t2(df=df), t5(sd=df)
 
 
 def test_structured_dataset_wf():
-    assert_frame_equal(sd_wf(), pd_df)
-    assert_frame_equal(sd_to_schema_wf(), pd_df)
-    assert_frame_equal(schema_to_sd_wf(), pd_df)
+    assert_frame_equal(sd_wf(), subset_df)
+    assert_frame_equal(sd_to_schema_wf(), superset_df)
+    assert_frame_equal(schema_to_sd_wf()[0], subset_df)
+    assert_frame_equal(schema_to_sd_wf()[1], subset_df)

@@ -88,17 +88,16 @@ def test_types_sd():
     lt = TypeEngine.to_literal_type(pt)
     assert lt.structured_dataset_type is not None
 
-    pt = StructuredDataset[my_cols]
+    pt = Annotated[StructuredDataset, my_cols]
     lt = TypeEngine.to_literal_type(pt)
     assert len(lt.structured_dataset_type.columns) == 4
 
-    pt = StructuredDataset[my_cols, "csv"]
+    pt = Annotated[StructuredDataset, my_cols, "csv"]
     lt = TypeEngine.to_literal_type(pt)
     assert len(lt.structured_dataset_type.columns) == 4
     assert lt.structured_dataset_type.format == "csv"
 
-    pt = StructuredDataset[{}, "csv"]
-    assert pt.FILE_FORMAT == "csv"
+    pt = Annotated[StructuredDataset, {}, "csv"]
     lt = TypeEngine.to_literal_type(pt)
     assert len(lt.structured_dataset_type.columns) == 0
     assert lt.structured_dataset_type.format == "csv"
@@ -149,7 +148,7 @@ def test_to_literal():
 
     sd_with_uri = StructuredDataset(uri="s3://some/extant/df.parquet")
 
-    lt = TypeEngine.to_literal_type(StructuredDataset[{}, "new-df-format"])
+    lt = TypeEngine.to_literal_type(Annotated[StructuredDataset, {}, "new-df-format"])
     lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, sd_with_uri, python_type=StructuredDataset, expected=lt)
     assert lit.scalar.structured_dataset.uri == "s3://some/extant/df.parquet"
     assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == "new-df-format"
@@ -239,15 +238,3 @@ def test_sd():
 
     with pytest.raises(ValueError):
         sd.open(pd.DataFrame).iter()
-
-
-def test_class_getitem():
-    assert StructuredDataset[None] == StructuredDataset
-    assert StructuredDataset[{}] == StructuredDataset
-    assert StructuredDataset[{"a": int}].FILE_FORMAT == StructuredDataset[{"a": int}, PARQUET].FILE_FORMAT
-
-    with pytest.raises(AssertionError, match="Columns should be specified as an ordered dict"):
-        StructuredDataset[int]
-
-    with pytest.raises(AssertionError, match="format should be specified as an string"):
-        StructuredDataset[{"a": int}, 123]

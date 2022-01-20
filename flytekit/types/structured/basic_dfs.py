@@ -2,7 +2,6 @@ import os
 import typing
 from typing import TypeVar
 
-import pandas
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -60,6 +59,11 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(path, local_dir, is_multipart=True)
+        if flyte_value.metadata.structured_dataset_type.columns:
+            columns = []
+            for c in flyte_value.metadata.structured_dataset_type.columns:
+                columns.append(c.name)
+            return pd.read_parquet(local_dir, columns=columns)
         return pd.read_parquet(local_dir)
 
 
@@ -94,6 +98,11 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(path, local_dir, is_multipart=True)
+        if flyte_value.metadata.structured_dataset_type.columns:
+            columns = []
+            for c in flyte_value.metadata.structured_dataset_type.columns:
+                columns.append(c.name)
+            return pq.read_table(local_dir, columns=columns)
         return pq.read_table(local_dir)
 
 

@@ -31,8 +31,8 @@ PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local
 NUMPY_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
 BQ_PATH = "bq://flyte-dataset:flyte.table"
 
-my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
-fields = [("some_int", pa.int32()), ("some_string", pa.string())]
+my_cols = kwtypes(Name=str, Age=int)
+fields = [("Name", pa.int32()), ("Age", pa.string())]
 arrow_schema = pa.schema(fields)
 pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
@@ -106,7 +106,7 @@ def t1(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, my_cols]:
 
 
 @task
-def t1a(dataframe: pd.DataFrame) -> StructuredDataset[my_cols, PARQUET]:
+def t1a(dataframe: pd.DataFrame) -> Annotated[StructuredDataset, my_cols, PARQUET]:
     # S3 (parquet) -> Pandas -> S3 (parquet)
     return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH)
 
@@ -118,7 +118,7 @@ def t2(dataframe: pd.DataFrame) -> Annotated[pd.DataFrame, arrow_schema]:
 
 
 @task
-def t3(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
+def t3(dataset: Annotated[StructuredDataset, my_cols]) -> Annotated[StructuredDataset, my_cols]:
     # s3 (parquet) -> pandas -> s3 (parquet)
     print(dataset.open(pd.DataFrame).all())
     # In the example, we download dataset when we open it.
@@ -127,39 +127,41 @@ def t3(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
 
 
 @task
-def t3a(dataset: StructuredDataset[my_cols]) -> StructuredDataset[my_cols]:
+def t3a(dataset: Annotated[StructuredDataset, my_cols]) -> Annotated[StructuredDataset, my_cols]:
     # This task will not do anything - no uploading, no downloading
     return dataset
 
 
 @task
-def t4(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
+def t4(dataset: Annotated[StructuredDataset, my_cols]) -> pd.DataFrame:
     # s3 (parquet) -> pandas -> s3 (parquet)
     return dataset.open(pd.DataFrame).all()
 
 
 @task
-def t5(dataframe: pd.DataFrame) -> StructuredDataset[my_cols]:
+def t5(dataframe: pd.DataFrame) -> Annotated[StructuredDataset, my_cols]:
     # s3 (parquet) -> pandas -> bq
     return StructuredDataset(dataframe=dataframe, uri=BQ_PATH)
 
 
 @task
-def t6(dataset: StructuredDataset[my_cols]) -> pd.DataFrame:
+def t6(dataset: Annotated[StructuredDataset, my_cols]) -> pd.DataFrame:
     # bq -> pandas -> s3 (parquet)
     df = dataset.open(pd.DataFrame).all()
     return df
 
 
 @task
-def t7(df1: pd.DataFrame, df2: pd.DataFrame) -> (StructuredDataset[my_cols], StructuredDataset[my_cols]):
+def t7(
+    df1: pd.DataFrame, df2: pd.DataFrame
+) -> (Annotated[StructuredDataset, my_cols], Annotated[StructuredDataset, my_cols]):
     # df1: pandas -> bq
     # df2: pandas -> s3 (parquet)
     return StructuredDataset(dataframe=df1, uri=BQ_PATH), StructuredDataset(dataframe=df2)
 
 
 @task
-def t8(dataframe: pa.Table) -> StructuredDataset[my_cols]:
+def t8(dataframe: pa.Table) -> Annotated[StructuredDataset, my_cols]:
     # Arrow table -> s3 (parquet)
     print(dataframe.columns)
     return StructuredDataset(dataframe=dataframe)
@@ -173,13 +175,13 @@ def t8a(dataframe: pa.Table) -> pa.Table:
 
 
 @task
-def t9(dataframe: np.ndarray) -> StructuredDataset[my_cols]:
+def t9(dataframe: np.ndarray) -> Annotated[StructuredDataset, my_cols]:
     # numpy -> Arrow table -> s3 (parquet)
     return StructuredDataset(dataframe=dataframe, uri=NUMPY_PATH)
 
 
 @task
-def t10(dataset: StructuredDataset[my_cols]) -> np.ndarray:
+def t10(dataset: Annotated[StructuredDataset, my_cols]) -> np.ndarray:
     # s3 (parquet) -> Arrow table -> numpy
     np_array = dataset.open(np.ndarray).all()
     return np_array
