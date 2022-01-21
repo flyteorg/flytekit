@@ -4,7 +4,7 @@ import logging as python_logging
 import os as _os
 import pathlib
 import traceback as _traceback
-from typing import List
+from typing import List, Optional
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -16,6 +16,7 @@ from flytekit.configuration import sdk as _sdk_config
 from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
+from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -164,8 +165,10 @@ def _dispatch_execute(
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
-    dynamic_addl_distro: str = None,
-    dynamic_dest_dir: str = None,
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     ctx = FlyteContextManager.current_context()
 
@@ -174,6 +177,11 @@ def setup_execution(
     logger.info(f"Using user directory {user_workspace_dir}")
     pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
     from flytekit import __version__ as _api_version
+
+    checkpointer = None
+    if checkpoint_path is not None:
+        checkpointer = SyncCheckpoint(checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint)
+        logger.debug(f"Checkpointer created with source {prev_checkpoint} and dest {checkpoint_path}")
 
     execution_parameters = ExecutionParameters(
         execution_id=_identifier.WorkflowExecutionIdentifier(
@@ -202,6 +210,7 @@ def setup_execution(
         logging=python_logging,
         tmp_dir=user_workspace_dir,
         raw_output_prefix=ctx.file_access._raw_output_prefix,
+        checkpoint=checkpointer,
     )
 
     # TODO: Remove this check for flytekit 1.0
@@ -266,14 +275,16 @@ def _handle_annotated_task(
 
 @_scopes.system_entry_point
 def _execute_task(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    test,
+    inputs: str,
+    output_prefix: str,
+    test: bool,
+    raw_output_data_prefix: str,
     resolver: str,
     resolver_args: List[str],
-    dynamic_addl_distro: str = None,
-    dynamic_dest_dir: str = None,
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -302,7 +313,13 @@ def _execute_task(
         raise Exception("cannot be <1")
 
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+        with setup_execution(
+            raw_output_data_prefix,
+            checkpoint_path=checkpoint_path,
+            prev_checkpoint=prev_checkpoint,
+            dynamic_addl_distro=dynamic_addl_distro,
+            dynamic_dest_dir=dynamic_dest_dir,
+        ) as ctx:
             resolver_obj = load_object_from_module(resolver)
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
@@ -321,16 +338,20 @@ def _execute_map_task(
     raw_output_data_prefix,
     max_concurrency,
     test,
-    dynamic_addl_distro: str,
-    dynamic_dest_dir: str,
     resolver: str,
     resolver_args: List[str],
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
     with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with setup_execution(raw_output_data_prefix, dynamic_addl_distro, dynamic_dest_dir) as ctx:
+        with setup_execution(
+            raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+        ) as ctx:
             resolver_obj = load_object_from_module(resolver)
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
@@ -352,6 +373,22 @@ def _execute_map_task(
             _handle_annotated_task(ctx, map_task, inputs, output_prefix)
 
 
+def normalize_inputs(
+    raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
+):
+    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
+    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
+    # to the original shard formatter/prefix config.
+    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
+        raw_output_data_prefix = None
+    if checkpoint_path == "{{.checkpointOutputPrefix}}":
+        checkpoint_path = None
+    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "" or prev_checkpoint == '""':
+        prev_checkpoint = None
+
+    return raw_output_data_prefix, checkpoint_path, prev_checkpoint
+
+
 @_click.group()
 def _pass_through():
     pass
@@ -361,6 +398,8 @@ def _pass_through():
 @_click.option("--inputs", required=True)
 @_click.option("--output-prefix", required=True)
 @_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--checkpoint-path", required=False)
+@_click.option("--prev-checkpoint", required=False)
 @_click.option("--test", is_flag=True)
 @_click.option("--dynamic-addl-distro", required=False)
 @_click.option("--dynamic-dest-dir", required=False)
@@ -375,6 +414,8 @@ def execute_task_cmd(
     output_prefix,
     raw_output_data_prefix,
     test,
+    prev_checkpoint,
+    checkpoint_path,
     dynamic_addl_distro,
     dynamic_dest_dir,
     resolver,
@@ -383,26 +424,27 @@ def execute_task_cmd(
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
     _click.echo("")
-    # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
-    # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
-    # to the original shard formatter/prefix config.
-    if raw_output_data_prefix == "{{.rawOutputDataPrefix}}":
-        raw_output_data_prefix = None
+    raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
+        raw_output_data_prefix, checkpoint_path, prev_checkpoint
+    )
 
     # For new API tasks (as of 0.16.x), we need to call a different function.
     # Use the presence of the resolver to differentiate between old API tasks and new API tasks
     # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
     # pervasive this top level command already (plugins mostly).
+
     logger.debug(f"Running task execution with resolver {resolver}...")
     _execute_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        test,
-        resolver,
-        resolver_args,
-        dynamic_addl_distro,
-        dynamic_dest_dir,
+        inputs=inputs,
+        output_prefix=output_prefix,
+        raw_output_data_prefix=raw_output_data_prefix,
+        test=test,
+        resolver=resolver,
+        resolver_args=resolver_args,
+        dynamic_addl_distro=dynamic_addl_distro,
+        dynamic_dest_dir=dynamic_dest_dir,
+        checkpoint_path=checkpoint_path,
+        prev_checkpoint=prev_checkpoint,
     )
 
 
@@ -446,6 +488,8 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--dynamic-addl-distro", required=False)
 @_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=True)
+@_click.option("--checkpoint-path", required=False)
+@_click.option("--prev-checkpoint", required=False)
 @_click.argument(
     "resolver-args",
     type=_click.UNPROCESSED,
@@ -461,19 +505,27 @@ def map_execute_task_cmd(
     dynamic_dest_dir,
     resolver,
     resolver_args,
+    prev_checkpoint,
+    checkpoint_path,
 ):
     logger.info(get_version_message())
 
+    raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
+        raw_output_data_prefix, checkpoint_path, prev_checkpoint
+    )
+
     _execute_map_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        dynamic_addl_distro,
-        dynamic_dest_dir,
-        resolver,
-        resolver_args,
+        inputs=inputs,
+        output_prefix=output_prefix,
+        raw_output_data_prefix=raw_output_data_prefix,
+        max_concurrency=max_concurrency,
+        test=test,
+        dynamic_addl_distro=dynamic_addl_distro,
+        dynamic_dest_dir=dynamic_dest_dir,
+        resolver=resolver,
+        resolver_args=resolver_args,
+        checkpoint_path=checkpoint_path,
+        prev_checkpoint=prev_checkpoint,
     )
 
 

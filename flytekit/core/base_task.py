@@ -263,6 +263,9 @@ class Task(object):
             else:
                 logger.info("Cache hit")
         else:
+            es = ctx.execution_state
+            b = es.user_space_params.with_task_sandbox()
+            ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
             outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
 
