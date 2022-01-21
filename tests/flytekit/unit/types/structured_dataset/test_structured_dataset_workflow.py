@@ -45,7 +45,7 @@ class MockBQEncodingHandlers(StructuredDatasetEncoder):
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         return literals.StructuredDataset(
-            uri="s3://bucket/key", metadata=StructuredDatasetMetadata(structured_dataset_type)
+            uri="bq://bucket/key", metadata=StructuredDatasetMetadata(structured_dataset_type)
         )
 
 

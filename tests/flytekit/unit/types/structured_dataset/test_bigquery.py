@@ -1,12 +1,21 @@
 import mock
 import pandas as pd
 
-from flytekit import StructuredDataset, task, workflow
+from flytekit import StructuredDataset, kwtypes, task, workflow
 
 try:
-    from typing import Annotated, Any
+    from typing import Annotated
 except ImportError:
     from typing_extensions import Annotated
+
+
+pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+my_cols = kwtypes(Name=str, Age=int)
+
+
+@task
+def gen_df() -> Annotated[pd.DataFrame, my_cols, "parquet"]:
+    return pd_df
 
 
 @task
@@ -20,7 +29,8 @@ def t2(sd: StructuredDataset) -> pd.DataFrame:
 
 
 @workflow
-def wf(df: pd.DataFrame) -> pd.DataFrame:
+def wf() -> pd.DataFrame:
+    df = gen_df()
     sd = t1(df=df)
     return t2(sd=sd)
 
@@ -41,5 +51,4 @@ def test_bq_wf(mock_read_rows_stream, mock_bigquery_read_client, mock_client):
     mock_bigquery_read_client.read_rows.return_value = mock_read_rows_stream
     mock_bigquery_read_client.return_value = mock_bigquery_read_client
 
-    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
-    assert wf(df=df).equals(df)
+    assert wf().equals(pd_df)
