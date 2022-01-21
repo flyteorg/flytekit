@@ -5,7 +5,7 @@ import mock
 import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
 
-from flytekit.bin.entrypoint import _dispatch_execute, setup_execution
+from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
 from flytekit.core.dynamic_workflow_task import dynamic
@@ -284,8 +284,19 @@ def test_setup_bad_prefix():
 
 
 def test_setup_cloud_prefix():
-    with setup_execution("s3://") as ctx:
+    with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
         assert isinstance(ctx.file_access._default_remote, S3Persistence)
 
-    with setup_execution("gs://") as ctx:
+    with setup_execution("gs://", checkpoint_path=None, prev_checkpoint=None) as ctx:
         assert isinstance(ctx.file_access._default_remote, GCSPersistence)
+
+
+def test_normalize_inputs():
+    assert normalize_inputs("{{.rawOutputDataPrefix}}", "{{.checkpointOutputPrefix}}", "{{.prevCheckpointPrefix}}") == (
+        None,
+        None,
+        None,
+    )
+    assert normalize_inputs("/raw", "/cp1", '""') == ("/raw", "/cp1", None)
+    assert normalize_inputs("/raw", "/cp1", "") == ("/raw", "/cp1", None)
+    assert normalize_inputs("/raw", "/cp1", "/prev") == ("/raw", "/cp1", "/prev")

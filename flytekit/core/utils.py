@@ -5,7 +5,7 @@ import tempfile as _tempfile
 import time as _time
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from flytekit.configuration import resources as _resource_config
 from flytekit.models import task as _task_models
@@ -53,18 +53,18 @@ def _get_container_definition(
     image: str,
     command: List[str],
     args: List[str],
-    data_loading_config: _task_models.DataLoadingConfig,
-    storage_request: str = None,
-    ephemeral_storage_request: str = None,
-    cpu_request: str = None,
-    gpu_request: str = None,
-    memory_request: str = None,
-    storage_limit: str = None,
-    ephemeral_storage_limit: str = None,
-    cpu_limit: str = None,
-    gpu_limit: str = None,
-    memory_limit: str = None,
-    environment: Dict[str, str] = None,
+    data_loading_config: Optional[_task_models.DataLoadingConfig] = None,
+    storage_request: Optional[str] = None,
+    ephemeral_storage_request: Optional[str] = None,
+    cpu_request: Optional[str] = None,
+    gpu_request: Optional[str] = None,
+    memory_request: Optional[str] = None,
+    storage_limit: Optional[str] = None,
+    ephemeral_storage_limit: Optional[str] = None,
+    cpu_limit: Optional[str] = None,
+    gpu_limit: Optional[str] = None,
+    memory_limit: Optional[str] = None,
+    environment: Optional[Dict[str, str]] = None,
 ) -> _task_models.Container:
     storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
     storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
