@@ -22,7 +22,7 @@ import numpy as _np
 import pyarrow as pa
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeTransformer
+from flytekit.core.type_engine import HashMethod, TypeTransformer
 from flytekit.extend import TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import literals
@@ -335,6 +335,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
         self._type_assertions_enabled = False
 
+        # Instances of StructuredDataset can have their hashes overriden to facilitate the case of caching them.
+        self._hash_overridable = True
+
     def register_handler(self, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
         """
         Call this with any handler to register it with this dataframe meta-transformer
@@ -534,8 +537,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # my_cols = kwtypes(x=int, y=str)
         # 1. Fill in format correctly by checking for typing.annotated. For example, Annotated[pd.Dataframe, my_cols]
         if get_origin(t) is Annotated:
-            _, *hint_args = get_args(t)
-            if type(hint_args[0]) is collections.OrderedDict:
+            annotated_type, *hint_args = get_args(t)
+
+            # TODO: Strenghten this method of detecting valid annotations. We need a way to handle multiple annotations as opposed
+            # to assuming that only a single annotation exists.
+            if type(hint_args[0]) is HashMethod:
+                return self._get_dataset_type(annotated_type)
+            elif type(hint_args[0]) is collections.OrderedDict:
                 for k, v in hint_args[0].items():
                     lt = self._get_dataset_column_literal_type(v)
                     converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))

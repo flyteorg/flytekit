@@ -859,7 +859,9 @@ def test_literal_hash_int_not_set():
     hash set.
     """
     ctx = FlyteContext.current_context()
-    lv = TypeEngine.to_literal(ctx, 42, Annotated[int, HashMethod(str)], Integer.to_flyte_literal_type())
+    lv = TypeEngine.to_literal(
+        ctx, 42, Annotated[int, HashMethod(str)], LiteralType(simple=model_types.SimpleType.INTEGER)
+    )
     assert lv.scalar.primitive.integer == 42
     assert lv.hash is None
 
