@@ -7,7 +7,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Ima
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
-from flytekit.models.types import SimpleType, StructuredDatasetType
+from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
 
 try:
     from typing import Annotated
@@ -24,6 +24,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    convert_schema_type_to_structured_dataset_type,
     protocol_prefix,
 )
 
@@ -238,3 +239,15 @@ def test_sd():
 
     with pytest.raises(ValueError):
         sd.open(pd.DataFrame).iter()
+
+
+def test_convert_schema_type_to_structured_dataset_type():
+    schema_ct = SchemaType.SchemaColumn.SchemaColumnType
+    assert convert_schema_type_to_structured_dataset_type(schema_ct.INTEGER) == SimpleType.INTEGER
+    assert convert_schema_type_to_structured_dataset_type(schema_ct.FLOAT) == SimpleType.FLOAT
+    assert convert_schema_type_to_structured_dataset_type(schema_ct.STRING) == SimpleType.STRING
+    assert convert_schema_type_to_structured_dataset_type(schema_ct.DATETIME) == SimpleType.DATETIME
+    assert convert_schema_type_to_structured_dataset_type(schema_ct.DURATION) == SimpleType.DURATION
+    assert convert_schema_type_to_structured_dataset_type(schema_ct.BOOLEAN) == SimpleType.BOOLEAN
+    with pytest.raises(AssertionError, match="Unrecognized SchemaColumnType"):
+        convert_schema_type_to_structured_dataset_type(int)

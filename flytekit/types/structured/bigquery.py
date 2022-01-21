@@ -43,11 +43,8 @@ def _read_from_bq(flyte_value: literals.StructuredDataset) -> pd.DataFrame:
             columns.append(c.name)
         read_options = types.ReadSession.TableReadOptions(selected_fields=columns)
 
-    requested_session = types.ReadSession(
-        table=table,
-        data_format=types.DataFormat.ARROW,
-    )
-    read_session = client.create_read_session(parent=parent, read_session=requested_session, read_options=read_options)
+    requested_session = types.ReadSession(table=table, data_format=types.DataFormat.ARROW, read_options=read_options)
+    read_session = client.create_read_session(parent=parent, read_session=requested_session)
 
     stream = read_session.streams[0]
     reader = client.read_rows(stream.name)
