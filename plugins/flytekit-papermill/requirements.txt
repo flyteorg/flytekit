@@ -79,7 +79,7 @@ importlib-metadata==4.8.2
     # via keyring
 ipykernel==6.5.0
     # via flytekitplugins-papermill
-ipython==7.29.0
+ipython==7.31.1
     # via ipykernel
 ipython-genutils==0.2.0
     # via nbformat
