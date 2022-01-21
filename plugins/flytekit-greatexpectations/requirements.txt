@@ -88,7 +88,7 @@ ipykernel==6.5.0
     # via
     #   ipywidgets
     #   notebook
-ipython==7.29.0
+ipython==7.31.1
     # via
     #   ipykernel
     #   ipywidgets
