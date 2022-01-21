@@ -32,7 +32,7 @@ NUMPY_PATH = FlyteContextManager.current_context().file_access.get_random_local_
 BQ_PATH = "bq://flyte-dataset:flyte.table"
 
 my_cols = kwtypes(Name=str, Age=int)
-fields = [("Name", pa.int32()), ("Age", pa.string())]
+fields = [("Name", pa.string()), ("Age", pa.int32())]
 arrow_schema = pa.schema(fields)
 pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
