@@ -13,15 +13,13 @@ from flytekit.extend import SerializationSettings, TaskPlugins
 @dataclass
 class AWSBatchConfig(object):
     """
-    Use this to configure a job definition for a AWS batch job. Task's marked with this will automatically execute
+    Use this to configure SubmitJobInput for a AWS batch job. Task's marked with this will automatically execute
     natively onto AWS batch service.
-    Refer to AWS job definition template for more detail: https://docs.aws.amazon.com/batch/latest/userguide/job-definition-template.html,
-    and https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html#Batch.Client.register_job_definition
+    Refer to AWS SubmitJobInput for more detail: https://docs.aws.amazon.com/sdk-for-go/api/service/batch/#SubmitJobInput
     """
-
     parameters: Optional[Dict[str, str]] = None
     schedulingPriority: Optional[int] = None
-    platformCapabilities: Optional[List[str]] = None
+    platformCapabilities: str = "EC2"
     propagateTags: Optional[bool] = None
     retryStrategy: Optional[Dict[str, Union[str, int, dict]]] = None
     tags: Optional[Dict[str, str]] = None
@@ -51,6 +49,9 @@ class AWSBatchFunctionTask(PythonFunctionTask):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return self._task_config.to_dict()
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return {"platformCapabilities": self._task_config.platformCapabilities}
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
         container_args = [
