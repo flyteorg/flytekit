@@ -25,6 +25,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
     convert_schema_type_to_structured_dataset_type,
+    extract_cols_and_format,
     protocol_prefix,
 )
 
@@ -57,6 +58,21 @@ def test_types_pandas():
     assert lt.structured_dataset_type is not None
     assert lt.structured_dataset_type.format == PARQUET
     assert lt.structured_dataset_type.columns == []
+
+
+def test_annotate_extraction():
+    xyz = Annotated[pd.DataFrame, "myformat"]
+    a, b, c, d = extract_cols_and_format(xyz)
+    assert a is pd.DataFrame
+    assert b is None
+    assert c == "myformat"
+    assert d is None
+
+    a, b, c, d = extract_cols_and_format(pd.DataFrame)
+    assert a is pd.DataFrame
+    assert b is None
+    assert c is None
+    assert d is None
 
 
 def test_types_annotated():
@@ -251,3 +267,7 @@ def test_convert_schema_type_to_structured_dataset_type():
     assert convert_schema_type_to_structured_dataset_type(schema_ct.BOOLEAN) == SimpleType.BOOLEAN
     with pytest.raises(AssertionError, match="Unrecognized SchemaColumnType"):
         convert_schema_type_to_structured_dataset_type(int)
+
+
+def test_to_python_value():
+    ...
