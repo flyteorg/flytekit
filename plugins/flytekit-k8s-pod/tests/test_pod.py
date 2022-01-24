@@ -8,10 +8,10 @@ from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements, V1VolumeMount
 
 from flytekit import Resources, TaskMetadata, dynamic, map_task, task
-from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import FastSerializationSettings
 from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
+from flytekit.tools.translator import get_serializable
 
 
 def get_pod_spec():
@@ -69,6 +69,10 @@ def test_pod_task_deserialization():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -134,6 +138,10 @@ def test_pod_task():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -321,6 +329,10 @@ def test_map_pod_task_serialization():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -367,6 +379,10 @@ def test_fast_pod_task_serialization():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",

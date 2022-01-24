@@ -9,13 +9,14 @@ from dataclasses import dataclass
 from enum import Enum
 
 import pandas
+import pandas as pd
 import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
+from pandas._testing import assert_frame_equal
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
-from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
@@ -32,7 +33,11 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.tools.translator import get_serializable
+from flytekit.types.directory import FlyteDirectory, TensorboardLogs
+from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 serialization_settings = context_manager.SerializationSettings(
     project="proj",
@@ -48,6 +53,7 @@ def test_default_wf_params_works():
     def my_task(a: int):
         wf_params = flytekit.current_context()
         assert wf_params.execution_id == "ex:local:local:local"
+        assert "/tmp/flyte/" in wf_params.raw_output_prefix
 
     my_task(a=3)
     assert context_manager.FlyteContextManager.size() == 1
@@ -346,6 +352,117 @@ def test_wf1_with_sql_with_patch():
     # Have to call because tests inside tests don't run
     test_user_demo_test()
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_flyte_file_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class InnerFileStruct(object):
+        a: FlyteFile
+        b: PNGImageFile
+
+    @dataclass_json
+    @dataclass
+    class FileStruct(object):
+        a: FlyteFile
+        b: InnerFileStruct
+
+    @task
+    def t1(path: str) -> FileStruct:
+        file = FlyteFile(path)
+        fs = FileStruct(a=file, b=InnerFileStruct(a=file, b=PNGImageFile(path)))
+        return fs
+
+    @dynamic
+    def dyn(fs: FileStruct):
+        t2(fs=fs)
+        t3(fs=fs)
+
+    @task
+    def t2(fs: FileStruct) -> os.PathLike:
+        assert fs.a.remote_source == "s3://somewhere"
+        assert fs.b.a.remote_source == "s3://somewhere"
+        assert fs.b.b.remote_source == "s3://somewhere"
+        assert "/tmp/flyte/" in fs.a.path
+        assert "/tmp/flyte/" in fs.b.a.path
+        assert "/tmp/flyte/" in fs.b.b.path
+
+        return fs.a.path
+
+    @task
+    def t3(fs: FileStruct) -> FlyteFile:
+        return fs.a
+
+    @workflow
+    def wf(path: str) -> (os.PathLike, FlyteFile):
+        n1 = t1(path=path)
+        dyn(fs=n1)
+        return t2(fs=n1), t3(fs=n1)
+
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[0].path
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[1].path
+    assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
+
+
+def test_flyte_directory_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class InnerFileStruct(object):
+        a: FlyteDirectory
+        b: TensorboardLogs
+
+    @dataclass_json
+    @dataclass
+    class FileStruct(object):
+        a: FlyteDirectory
+        b: InnerFileStruct
+
+    @task
+    def t1(path: str) -> FileStruct:
+        dir = FlyteDirectory(path)
+        fs = FileStruct(a=dir, b=InnerFileStruct(a=dir, b=TensorboardLogs(path)))
+        return fs
+
+    @task
+    def t2(fs: FileStruct) -> os.PathLike:
+        return fs.a.path
+
+    @workflow
+    def wf(path: str) -> os.PathLike:
+        n1 = t1(path=path)
+        return t2(fs=n1)
+
+    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+
+
+def test_structured_dataset_in_dataclass():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    @dataclass_json
+    @dataclass
+    class InnerDatasetStruct(object):
+        a: StructuredDataset
+
+    @dataclass_json
+    @dataclass
+    class DatasetStruct(object):
+        a: StructuredDataset
+        b: InnerDatasetStruct
+
+    @task
+    def t1(path: str) -> DatasetStruct:
+        sd = StructuredDataset(dataframe=df, uri=path)
+        return DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+
+    @workflow
+    def wf(path: str) -> DatasetStruct:
+        return t1(path=path)
+
+    res = wf(path="/tmp/somewhere")
+    assert "parquet" == res.a.file_format
+    assert "parquet" == res.b.a.file_format
+    assert_frame_equal(df, res.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, res.b.a.open(pd.DataFrame).all())
 
 
 def test_wf1_with_map():
@@ -1429,7 +1546,7 @@ def test_guess_dict4():
     @dataclass
     class Bar(object):
         x: int
-        y: str
+        y: dict
         z: Foo
 
     @task
@@ -1448,14 +1565,14 @@ def test_guess_dict4():
 
     @task
     def t2() -> Bar:
-        return Bar(x=1, y="bar", z=Foo(x=1, y="foo", z={"hello": "world"}))
+        return Bar(x=1, y={"hello": "world"}, z=Foo(x=1, y="foo", z={"hello": "world"}))
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": "bar", "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
+    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 

@@ -1,5 +1,5 @@
-from flytekit.common import constants as _constants
 from flytekit.configuration import common as _config_common
+from flytekit.core import constants as _constants
 
 URL = _config_common.FlyteStringConfigurationEntry("platform", "url")
 

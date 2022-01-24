@@ -7,8 +7,8 @@ from flyteidl.admin.workflow_pb2 import WorkflowSpec
 
 import flytekit
 from flytekit.clis.sdk_in_container import package, pyflyte, serialize
-from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core import context_manager
+from flytekit.exceptions.user import FlyteValidationException
 
 
 def test_validate_image():

@@ -3,17 +3,23 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit import LaunchPlan, Resources, map_task
-from flytekit.common.translator import get_serializable
+from flytekit import LaunchPlan, map_task
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
+from flytekit.tools.translator import get_serializable
 
 
 @task
 def t1(a: int) -> str:
+    b = a + 2
+    return str(b)
+
+
+@task(cache=True, cache_version="1")
+def t2(a: int) -> str:
     b = a + 2
     return str(b)
 
@@ -27,13 +33,9 @@ def test_map_docs():
 
     @workflow
     def my_wf(x: typing.List[int]) -> typing.List[str]:
-        return map_task(
-            my_mappable_task,
-            metadata=TaskMetadata(retries=1),
-            requests=Resources(cpu="10M"),
-            concurrency=10,
-            min_success_ratio=0.75,
-        )(a=x)
+        return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
+            a=x
+        ).with_overrides(cpu="10M")
 
     # test_map_task_end
 
@@ -74,6 +76,10 @@ def test_serialization():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -162,3 +168,11 @@ def test_inputs_outputs_length():
 
     with pytest.raises(ValueError):
         _ = map_task(many_inputs)
+
+
+def test_map_task_metadata():
+    map_meta = TaskMetadata(retries=1)
+    mapped_1 = map_task(t2, metadata=map_meta)
+    assert mapped_1.metadata is map_meta
+    mapped_2 = map_task(t2)
+    assert mapped_2.metadata is t2.metadata
