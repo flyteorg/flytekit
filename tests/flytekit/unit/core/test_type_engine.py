@@ -670,6 +670,14 @@ def test_structured_dataset_type():
     assert_frame_equal(subset_data, v1)
     assert_frame_equal(subset_data, v2.to_pandas())
 
+    empty_lt = tf.get_literal_type(Annotated[StructuredDataset, "parquet"])
+    assert empty_lt.structured_dataset_type is not None
+    empty_lv = tf.to_literal(ctx, df, pd.DataFrame, empty_lt)
+    v1 = tf.to_python_value(ctx, empty_lv, pd.DataFrame)
+    v2 = tf.to_python_value(ctx, empty_lv, pa.Table)
+    assert_frame_equal(df, v1)
+    assert_frame_equal(df, v2.to_pandas())
+
 
 def test_enum_type():
     t = TypeEngine.to_literal_type(Color)
