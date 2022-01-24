@@ -86,17 +86,13 @@ def test_types_annotated():
     assert lt.structured_dataset_type.columns[2].literal_type.simple == SimpleType.INTEGER
     assert lt.structured_dataset_type.columns[3].literal_type.simple == SimpleType.STRING
 
-    pt = Annotated[pd.DataFrame, arrow_schema]
+    pt = Annotated[pd.DataFrame, PARQUET, arrow_schema]
     lt = TypeEngine.to_literal_type(pt)
     assert lt.structured_dataset_type.external_schema_type == "arrow"
     assert "some_string" in str(lt.structured_dataset_type.external_schema_bytes)
 
     pt = Annotated[pd.DataFrame, kwtypes(a=None)]
     with pytest.raises(AssertionError, match="type None is currently not supported by StructuredDataset"):
-        TypeEngine.to_literal_type(pt)
-
-    pt = Annotated[pd.DataFrame, None]
-    with pytest.raises(ValueError, match="Unrecognized Annotated type for StructuredDataset"):
         TypeEngine.to_literal_type(pt)
 
 

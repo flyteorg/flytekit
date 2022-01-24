@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
+import pyarrow
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
@@ -145,10 +146,14 @@ def extract_cols_and_format(
                 if fmt is not None:
                     raise ValueError(f"A format was already specified {fmt}, cannot use {aa}")
                 fmt = aa
-            if isinstance(aa, collections.OrderedDict):
+            elif isinstance(aa, collections.OrderedDict):
                 if ordered_dict_cols is not None:
                     raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {aa}")
                 ordered_dict_cols = aa
+            elif isinstance(aa, pyarrow.Schema):
+                if pa_schema is not None:
+                    raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {aa}")
+                pa_schema = aa
         return base_type, ordered_dict_cols, fmt, pa_schema
 
     # We return None as the format instead of parquet or something because the transformer engine may find
@@ -527,7 +532,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         |                             | the running task's signature.           |                                      |
         +-----------------------------+-----------------------------------------+--------------------------------------+
         """
-        # Detect annotations and extract out all the relevant informationt that the user might supply
+        # Detect annotations and extract out all the relevant information that the user might supply
         expected_python_type, column_dict, storage_fmt, pa_schema = extract_cols_and_format(expected_python_type)
 
         # The literal that we get in might be an old FlyteSchema.
@@ -636,6 +641,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         self, column_map: typing.OrderedDict[str, Type]
     ) -> typing.List[StructuredDatasetType.DatasetColumn]:
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
+        if column_map is None or len(column_map) == 0:
+            return converted_cols
         for k, v in column_map.items():
             lt = self._get_dataset_column_literal_type(v)
             converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
@@ -649,7 +656,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # Get the format
         default_format = (
-            t.DEFAULT_FILE_FORMAT if issubclass(t, StructuredDataset) else self.DEFAULT_FORMATS.get(t, PARQUET)
+            original_python_type.DEFAULT_FILE_FORMAT
+            if issubclass(original_python_type, StructuredDataset)
+            else self.DEFAULT_FORMATS.get(original_python_type, PARQUET)
         )
         fmt = storage_format or default_format
 
