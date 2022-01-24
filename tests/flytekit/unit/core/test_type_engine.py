@@ -639,12 +639,14 @@ def test_structured_dataset_type():
     name = "Name"
     age = "Age"
     data = {name: ["Tom", "Joseph"], age: [20, 22]}
+    superset_cols = kwtypes(Name=str, Age=int)
+    subset_cols = kwtypes(Name=str)
     df = pd.DataFrame(data)
 
     from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
     tf = StructuredDatasetTransformerEngine()
-    lt = tf.get_literal_type(Annotated[StructuredDataset, {name: str, age: int}, "parquet"])
+    lt = tf.get_literal_type(Annotated[StructuredDataset, superset_cols, "parquet"])
     assert lt.structured_dataset_type is not None
 
     ctx = FlyteContextManager.current_context()
@@ -657,7 +659,7 @@ def test_structured_dataset_type():
     assert_frame_equal(df, v1)
     assert_frame_equal(df, v2.to_pandas())
 
-    subset_lt = tf.get_literal_type(Annotated[StructuredDataset, {name: str}, "parquet"])
+    subset_lt = tf.get_literal_type(Annotated[StructuredDataset, subset_cols, "parquet"])
     assert subset_lt.structured_dataset_type is not None
 
     subset_lv = tf.to_literal(ctx, df, pd.DataFrame, subset_lt)
@@ -667,6 +669,14 @@ def test_structured_dataset_type():
     subset_data = pd.DataFrame({name: ["Tom", "Joseph"]})
     assert_frame_equal(subset_data, v1)
     assert_frame_equal(subset_data, v2.to_pandas())
+
+    empty_lt = tf.get_literal_type(Annotated[StructuredDataset, "parquet"])
+    assert empty_lt.structured_dataset_type is not None
+    empty_lv = tf.to_literal(ctx, df, pd.DataFrame, empty_lt)
+    v1 = tf.to_python_value(ctx, empty_lv, pd.DataFrame)
+    v2 = tf.to_python_value(ctx, empty_lv, pa.Table)
+    assert_frame_equal(df, v1)
+    assert_frame_equal(df, v2.to_pandas())
 
 
 def test_enum_type():

@@ -25,6 +25,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
     convert_schema_type_to_structured_dataset_type,
+    extract_cols_and_format,
     protocol_prefix,
 )
 
@@ -59,6 +60,21 @@ def test_types_pandas():
     assert lt.structured_dataset_type.columns == []
 
 
+def test_annotate_extraction():
+    xyz = Annotated[pd.DataFrame, "myformat"]
+    a, b, c, d = extract_cols_and_format(xyz)
+    assert a is pd.DataFrame
+    assert b is None
+    assert c == "myformat"
+    assert d is None
+
+    a, b, c, d = extract_cols_and_format(pd.DataFrame)
+    assert a is pd.DataFrame
+    assert b is None
+    assert c is None
+    assert d is None
+
+
 def test_types_annotated():
     pt = Annotated[pd.DataFrame, my_cols]
     lt = TypeEngine.to_literal_type(pt)
@@ -70,17 +86,13 @@ def test_types_annotated():
     assert lt.structured_dataset_type.columns[2].literal_type.simple == SimpleType.INTEGER
     assert lt.structured_dataset_type.columns[3].literal_type.simple == SimpleType.STRING
 
-    pt = Annotated[pd.DataFrame, arrow_schema]
+    pt = Annotated[pd.DataFrame, PARQUET, arrow_schema]
     lt = TypeEngine.to_literal_type(pt)
     assert lt.structured_dataset_type.external_schema_type == "arrow"
     assert "some_string" in str(lt.structured_dataset_type.external_schema_bytes)
 
     pt = Annotated[pd.DataFrame, kwtypes(a=None)]
     with pytest.raises(AssertionError, match="type None is currently not supported by StructuredDataset"):
-        TypeEngine.to_literal_type(pt)
-
-    pt = Annotated[pd.DataFrame, None]
-    with pytest.raises(ValueError, match="Unrecognized Annotated type for StructuredDataset"):
         TypeEngine.to_literal_type(pt)
 
 
@@ -251,3 +263,7 @@ def test_convert_schema_type_to_structured_dataset_type():
     assert convert_schema_type_to_structured_dataset_type(schema_ct.BOOLEAN) == SimpleType.BOOLEAN
     with pytest.raises(AssertionError, match="Unrecognized SchemaColumnType"):
         convert_schema_type_to_structured_dataset_type(int)
+
+
+def test_to_python_value():
+    ...
