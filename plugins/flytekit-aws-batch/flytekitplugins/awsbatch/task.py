@@ -49,9 +49,12 @@ class AWSBatchFunctionTask(PythonFunctionTask):
         self._task_config = task_config
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        # task_config will be used to create SubmitJobInput in propeller except platformCapabilities.
         return self._task_config.to_dict()
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        # Parameters in taskTemplate config will be used to create aws job definition.
+        # More detail about job definition: https://docs.aws.amazon.com/batch/latest/userguide/job_definition_parameters.html
         return {"platformCapabilities": self._task_config.platformCapabilities}
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
