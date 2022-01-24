@@ -17,6 +17,7 @@ class AWSBatchConfig(object):
     natively onto AWS batch service.
     Refer to AWS SubmitJobInput for more detail: https://docs.aws.amazon.com/sdk-for-go/api/service/batch/#SubmitJobInput
     """
+
     parameters: Optional[Dict[str, str]] = None
     schedulingPriority: Optional[int] = None
     platformCapabilities: str = "EC2"
