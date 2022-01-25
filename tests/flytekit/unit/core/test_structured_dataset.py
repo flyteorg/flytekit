@@ -314,6 +314,8 @@ def test_to_python_value_without_incoming_columns():
     lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, df, python_type=pd.DataFrame, expected=lt)
     sd = FLYTE_DATASET_TRANSFORMER.to_python_value(ctx, lit, StructuredDataset)
     assert sd.metadata.structured_dataset_type.columns == []
+    sub_df = sd.open(pd.DataFrame).all()
+    assert sub_df.shape[1] == 2
 
     # should also work if subset type is just an annotated pd.DataFrame
     lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, df, python_type=pd.DataFrame, expected=lt)
