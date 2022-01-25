@@ -36,10 +36,14 @@ def _read_from_bq(flyte_value: literals.StructuredDataset) -> pd.DataFrame:
     table = f"projects/{project_id}/datasets/{dataset_id}/tables/{table_id}"
     parent = "projects/{}".format(project_id)
 
-    requested_session = types.ReadSession(
-        table=table,
-        data_format=types.DataFormat.ARROW,
-    )
+    read_options = None
+    if flyte_value.metadata.structured_dataset_type.columns:
+        columns = []
+        for c in flyte_value.metadata.structured_dataset_type.columns:
+            columns.append(c.name)
+        read_options = types.ReadSession.TableReadOptions(selected_fields=columns)
+
+    requested_session = types.ReadSession(table=table, data_format=types.DataFormat.ARROW, read_options=read_options)
     read_session = client.create_read_session(parent=parent, read_session=requested_session)
 
     stream = read_session.streams[0]

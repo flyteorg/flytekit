@@ -190,6 +190,10 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
     def columns(self) -> typing.List[DatasetColumn]:
         return self._columns
 
+    @columns.setter
+    def columns(self, value):
+        self._columns = value
+
     @property
     def format(self) -> str:
         return self._format
