@@ -49,7 +49,7 @@ def test_protocol():
 
 
 def generate_pandas() -> pd.DataFrame:
-    return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
 
 def test_types_pandas():
@@ -265,5 +265,60 @@ def test_convert_schema_type_to_structured_dataset_type():
         convert_schema_type_to_structured_dataset_type(int)
 
 
-def test_to_python_value():
-    ...
+def test_to_python_value_with_incoming_columns():
+    # make a literal with a type that has two columns
+    original_type = Annotated[pd.DataFrame, kwtypes(name=str, age=int)]
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(original_type)
+    df = generate_pandas()
+    lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, df, python_type=original_type, expected=lt)
+    assert len(lit.scalar.structured_dataset.metadata.structured_dataset_type.columns) == 2
+
+    # declare a new type that only has one column
+    # get the dataframe, make sure it has the column that was asked for.
+    subset_sd_type = Annotated[StructuredDataset, kwtypes(age=int)]
+    sd = FLYTE_DATASET_TRANSFORMER.to_python_value(ctx, lit, subset_sd_type)
+    assert sd.metadata.structured_dataset_type.columns[0].name == "age"
+    sub_df = sd.open(pd.DataFrame).all()
+    assert sub_df.shape[1] == 1
+
+    # check when columns are not specified, should pull both and add column information.
+    sd = FLYTE_DATASET_TRANSFORMER.to_python_value(ctx, lit, StructuredDataset)
+    assert sd.metadata.structured_dataset_type.columns[0].name == "age"
+
+    # should also work if subset type is just an annotated pd.DataFrame
+    subset_pd_type = Annotated[pd.DataFrame, kwtypes(age=int)]
+    sub_df = FLYTE_DATASET_TRANSFORMER.to_python_value(ctx, lit, subset_pd_type)
+    assert sub_df.shape[1] == 1
+
+
+def test_to_python_value_without_incoming_columns():
+    # make a literal with a type with no columns
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(pd.DataFrame)
+    df = generate_pandas()
+    lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, df, python_type=pd.DataFrame, expected=lt)
+    assert len(lit.scalar.structured_dataset.metadata.structured_dataset_type.columns) == 0
+
+    # declare a new type that only has one column
+    # get the dataframe, make sure it has the column that was asked for.
+    subset_sd_type = Annotated[StructuredDataset, kwtypes(age=int)]
+    sd = FLYTE_DATASET_TRANSFORMER.to_python_value(ctx, lit, subset_sd_type)
+    assert sd.metadata.structured_dataset_type.columns[0].name == "age"
+    sub_df = sd.open(pd.DataFrame).all()
+    assert sub_df.shape[1] == 1
+
+    # check when columns are not specified, should pull both and add column information.
+    # todo: see the todos in the open_as, and iter_as functions in StructuredDatasetTransformerEngine
+    #  we have to recreate the literal because the test case above filled in the metadata
+    lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, df, python_type=pd.DataFrame, expected=lt)
+    sd = FLYTE_DATASET_TRANSFORMER.to_python_value(ctx, lit, StructuredDataset)
+    assert sd.metadata.structured_dataset_type.columns == []
+    sub_df = sd.open(pd.DataFrame).all()
+    assert sub_df.shape[1] == 2
+
+    # should also work if subset type is just an annotated pd.DataFrame
+    lit = FLYTE_DATASET_TRANSFORMER.to_literal(ctx, df, python_type=pd.DataFrame, expected=lt)
+    subset_pd_type = Annotated[pd.DataFrame, kwtypes(age=int)]
+    sub_df = FLYTE_DATASET_TRANSFORMER.to_python_value(ctx, lit, subset_pd_type)
+    assert sub_df.shape[1] == 1
