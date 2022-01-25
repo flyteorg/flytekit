@@ -7,6 +7,7 @@ from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import flytekit
 from flytekit.configuration import resources as _resource_config
 from flytekit.models import task as _task_models
 
@@ -128,6 +129,9 @@ def _get_container_definition(
 
 
 def load_proto_from_file(pb2_type, path):
+    global open
+    if flytekit.is_fsspec_io():
+        from fsspec import open
     with open(path, "rb") as reader:
         out = pb2_type()
         out.ParseFromString(reader.read())
@@ -135,7 +139,11 @@ def load_proto_from_file(pb2_type, path):
 
 
 def write_proto_to_file(proto, path):
-    Path(_os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
+    global open
+    if flytekit.is_fsspec_io():
+        from fsspec import open
+    else:
+        Path(_os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as writer:
         writer.write(proto.SerializeToString())
 

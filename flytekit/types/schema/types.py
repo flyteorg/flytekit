@@ -14,7 +14,9 @@ import pandas
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
+import flytekit
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.fsspec_io import get_protocol
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
@@ -41,6 +43,11 @@ class SchemaOpenMode(Enum):
 
 
 def generate_ordered_files(directory: os.PathLike, n: int) -> typing.Generator[str, None, None]:
+    if flytekit.is_fsspec_io():
+        import fsspec
+
+        fs = fsspec.filesystem(get_protocol(directory))
+        fs.mkdir(directory)
     for i in range(n):
         yield os.path.join(directory, f"{i:05}")
 
@@ -279,7 +286,7 @@ class FlyteSchema(object):
 
         mode = override_mode if override_mode else self._supported_mode
         h = SchemaEngine.get_handler(dataframe_fmt)
-        if not h.handles_remote_io:
+        if not h.handles_remote_io and not flytekit.is_fsspec_io():
             # The Schema Handler does not manage its own IO, and this it will expect the files are on local file-system
             if self._supported_mode == SchemaOpenMode.READ and not self._downloaded:
                 if self._downloader is None:
@@ -371,7 +378,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         writer = schema.open(type(python_val))
         writer.write(python_val)
         h = SchemaEngine.get_handler(type(python_val))
-        if not h.handles_remote_io:
+        if not h.handles_remote_io and not flytekit.is_fsspec_io():
             ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 

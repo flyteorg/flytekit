@@ -42,7 +42,7 @@ class FSSpecPersistence(DataPersistence):
         if path:
             protocol, _ = split_protocol(path)
             if protocol is None and path.startswith("/"):
-                print("Setting protocol to file")
+                logger.info("Setting protocol to file")
                 protocol = "file"
         else:
             protocol = "file"
@@ -69,6 +69,10 @@ class FSSpecPersistence(DataPersistence):
     def exists(self, path: str) -> bool:
         fs = self._get_filesystem(path)
         return fs.exists(path)
+
+    def mkdir(self, path: str, parents: bool):
+        fs = self._get_filesystem(path)
+        fs.mkdir(path, create_parents=parents)
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         fs = self._get_filesystem(from_path)

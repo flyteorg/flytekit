@@ -9,6 +9,7 @@ from typing import List, Optional
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit
 from flytekit import PythonFunctionTask
 from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
 from flytekit.configuration import internal as _internal_config
@@ -80,9 +81,12 @@ def _dispatch_execute(
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
         # Step1
-        local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
-        ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+        if flytekit.is_fsspec_io():
+            input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, inputs_path)
+        else:
+            local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+            ctx.file_access.get_data(inputs_path, local_inputs_file)
+            input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
@@ -155,9 +159,13 @@ def _dispatch_execute(
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
-        utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
+        if flytekit.is_fsspec_io():
+            utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(output_prefix, k))
+        else:
+            utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
 
-    ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
+    if not flytekit.is_fsspec_io():
+        ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
     logger.debug("Finished _dispatch_execute")
 

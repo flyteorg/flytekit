@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from flyteidl.core import tasks_pb2 as _tasks_pb2
 
+import flytekit
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContext, Image, ImageConfig, SerializationSettings
 from flytekit.core.resources import Resources, ResourceSpec
@@ -228,10 +229,13 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
     # sense for ExecutableTemplateShimTask to inherit from Task.
     def load_task(self, loader_args: List[str]) -> ExecutableTemplateShimTask:
         logger.info(f"Task template loader args: {loader_args}")
-        ctx = FlyteContext.current_context()
-        task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")  # type: ignore
-        ctx.file_access.get_data(loader_args[0], task_template_local_path)
-        task_template_proto = load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
+        if flytekit.is_fsspec_io():
+            task_template_proto = load_proto_from_file(_tasks_pb2.TaskTemplate, loader_args[0])
+        else:
+            ctx = FlyteContext.current_context()
+            task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")  # type: ignore
+            ctx.file_access.get_data(loader_args[0], task_template_local_path)
+            task_template_proto = load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
 
         executor_class = load_object_from_module(loader_args[1])

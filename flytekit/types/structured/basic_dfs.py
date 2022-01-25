@@ -7,6 +7,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+import flytekit
 from flytekit import FlyteContext
 from flytekit.core.data_persistence import DataPersistencePlugins
 from flytekit.models import literals
@@ -40,10 +41,13 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
 
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
-        local_dir = ctx.file_access.get_random_local_directory()
-        local_path = os.path.join(local_dir, f"{0:05}")
-        df.to_parquet(local_path, coerce_timestamps="us", allow_truncated_timestamps=False)
-        ctx.file_access.upload_directory(local_dir, path)
+        if flytekit.is_fsspec_io():
+            df.to_parquet(path, coerce_timestamps="us", allow_truncated_timestamps=False)
+        else:
+            local_dir = ctx.file_access.get_random_local_directory()
+            local_path = os.path.join(local_dir, f"{0:05}")
+            df.to_parquet(local_path, coerce_timestamps="us", allow_truncated_timestamps=False)
+            ctx.file_access.upload_directory(local_dir, path)
         structured_dataset_type.format = PARQUET
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
@@ -75,10 +79,13 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
         df = structured_dataset.dataframe
-        local_dir = ctx.file_access.get_random_local_directory()
-        local_path = os.path.join(local_dir, f"{0:05}")
-        pq.write_table(df, local_path)
-        ctx.file_access.upload_directory(local_dir, path)
+        if flytekit.is_fsspec_io():
+            pq.write_table(df, path)
+        else:
+            local_dir = ctx.file_access.get_random_local_directory()
+            local_path = os.path.join(local_dir, f"{0:05}")
+            pq.write_table(df, local_path)
+            ctx.file_access.upload_directory(local_dir, path)
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 

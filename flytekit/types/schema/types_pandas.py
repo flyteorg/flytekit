@@ -6,6 +6,7 @@ import pandas
 
 from flytekit import FlyteContext
 from flytekit.configuration import sdk
+from flytekit.core.fsspec_io import get_client_kwargs
 from flytekit.core.type_engine import T, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
@@ -52,6 +53,7 @@ class ParquetIO(object):
             to_file,
             coerce_timestamps=coerce_timestamps,
             allow_truncated_timestamps=allow_truncated_timestamps,
+            storage_options={"client_kwargs": get_client_kwargs()},
             **kwargs,
         )
 
