@@ -48,7 +48,7 @@ flyteidl==0.21.24
     # via flytekit
 flytekit==0.26.0
     # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
-fonttools==4.28.5
+fonttools==4.29.0
     # via matplotlib
 grpcio==1.43.0
     # via flytekit
@@ -99,7 +99,7 @@ opencv-python==4.5.5.62
     # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
 packaging==21.3
     # via matplotlib
-pandas==1.3.5
+pandas==1.4.0
     # via flytekit
 pillow==9.0.0
     # via matplotlib
@@ -115,7 +115,7 @@ pyarrow==6.0.1
     # via flytekit
 pycparser==2.21
     # via cffi
-pyparsing==3.0.6
+pyparsing==3.0.7
     # via
     #   matplotlib
     #   packaging

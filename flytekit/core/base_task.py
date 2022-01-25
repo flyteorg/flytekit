@@ -21,7 +21,7 @@ import collections
 import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
 from flytekit.core.context_manager import (
     ExecutionParameters,
@@ -53,7 +53,7 @@ from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
 
-def kwtypes(**kwargs) -> Dict[str, Type]:
+def kwtypes(**kwargs) -> OrderedDict[str, Type]:
     """
     This is a small helper function to convert the keyword arguments to an OrderedDict of types.
 
@@ -263,6 +263,9 @@ class Task(object):
             else:
                 logger.info("Cache hit")
         else:
+            es = ctx.execution_state
+            b = es.user_space_params.with_task_sandbox()
+            ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
             outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
 

@@ -116,7 +116,7 @@ numpy==1.22.1
     #   pyarrow
 packaging==21.3
     # via sphinx
-pandas==1.3.5
+pandas==1.4.0
     # via flytekit
 poyo==0.5.0
     # via cookiecutter
@@ -132,7 +132,7 @@ pygments==2.11.2
     # via
     #   sphinx
     #   sphinx-prompt
-pyparsing==3.0.6
+pyparsing==3.0.7
     # via packaging
 python-dateutil==2.8.2
     # via
@@ -232,6 +232,7 @@ text-unidecode==1.3
 typing-extensions==4.0.1
     # via
     #   astroid
+    #   flytekit
     #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json

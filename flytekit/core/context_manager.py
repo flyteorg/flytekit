@@ -19,6 +19,7 @@ import logging as _logging
 import os
 import pathlib
 import re
+import tempfile
 import traceback
 import typing
 from contextlib import contextmanager
@@ -34,6 +35,7 @@ from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
 from flytekit.configuration import secrets
 from flytekit.core import mock_stats, utils
+from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
@@ -159,6 +161,7 @@ class ExecutionParameters(object):
         execution_id: str
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
+        checkpoint: typing.Optional[Checkpoint]
         raw_output_prefix: str
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
@@ -167,6 +170,7 @@ class ExecutionParameters(object):
             self.working_dir = current.working_directory if current else None
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
+            self.checkpoint = current._checkpoint if current else None
             self.attrs = current._attrs if current else {}
             self.raw_output_prefix = current.raw_output_prefix if current else None
 
@@ -183,6 +187,7 @@ class ExecutionParameters(object):
                 tmp_dir=self.working_dir,
                 execution_id=self.execution_id,
                 logging=self.logging,
+                checkpoint=self.checkpoint,
                 raw_output_prefix=self.raw_output_prefix,
                 **self.attrs,
             )
@@ -191,10 +196,26 @@ class ExecutionParameters(object):
     def new_builder(current: ExecutionParameters = None) -> Builder:
         return ExecutionParameters.Builder(current=current)
 
+    def with_task_sandbox(self) -> Builder:
+        prefix = self.working_directory
+        if isinstance(self.working_directory, utils.AutoDeletingTempDir):
+            prefix = self.working_directory.name
+        task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)
+        p = pathlib.Path(task_sandbox_dir)
+        cp_dir = p.joinpath("__cp")
+        cp_dir.mkdir(exist_ok=True)
+        cp = SyncCheckpoint(checkpoint_dest=str(cp_dir))
+        b = self.new_builder(self)
+        b.checkpoint = cp
+        b.working_dir = task_sandbox_dir
+        return b
+
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
 
-    def __init__(self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, **kwargs):
+    def __init__(
+        self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, checkpoint=None, **kwargs
+    ):
         """
         Args:
             execution_date: Date when the execution is running
@@ -202,6 +223,7 @@ class ExecutionParameters(object):
             stats: handle to emit stats
             execution_id: Identifier for the xecution
             logging: handle to logging
+            checkpoint: Checkpoint Handle to the configured checkpoint system
         """
         self._stats = stats
         self._execution_date = execution_date
@@ -213,6 +235,7 @@ class ExecutionParameters(object):
         self._attrs = kwargs
         # It is safe to recreate the Secrets Manager
         self._secrets_manager = SecretsManager()
+        self._checkpoint = checkpoint
 
     @property
     def stats(self) -> taggable.TaggableStats:
@@ -273,6 +296,12 @@ class ExecutionParameters(object):
     @property
     def secrets(self) -> SecretsManager:
         return self._secrets_manager
+
+    @property
+    def checkpoint(self) -> Checkpoint:
+        if self._checkpoint is None:
+            raise NotImplementedError("Checkpointing is not available, please check the version of the platform.")
+        return self._checkpoint
 
     def __getattr__(self, attr_name: str) -> typing.Any:
         """
