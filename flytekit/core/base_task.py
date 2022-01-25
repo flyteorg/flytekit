@@ -21,7 +21,7 @@ import collections
 import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
 from flytekit.core.context_manager import (
     ExecutionParameters,
@@ -53,7 +53,7 @@ from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
 
-def kwtypes(**kwargs) -> Dict[str, Type]:
+def kwtypes(**kwargs) -> OrderedDict[str, Type]:
     """
     This is a small helper function to convert the keyword arguments to an OrderedDict of types.
 
