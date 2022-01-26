@@ -22,9 +22,7 @@ class AWSBatchConfig(object):
     schedulingPriority: Optional[int] = None
     platformCapabilities: str = "EC2"
     propagateTags: Optional[bool] = None
-    retryStrategy: Optional[Dict[str, Union[str, int, dict]]] = None
     tags: Optional[Dict[str, str]] = None
-    timeout: Optional[Dict[str, int]] = None
 
     def to_dict(self):
         s = Struct()
