@@ -29,3 +29,10 @@ PARQUET_ENGINE = _config_common.FlyteStringConfigurationEntry("sdk", "parquet_en
 """
 This is the parquet engine to use when reading data from parquet files.
 """
+
+# Feature Gate
+USE_STRUCTURED_DATASET = _config_common.FlyteBoolConfigurationEntry("sdk", "use_structured_dataset", default=False)
+"""
+Note: This gate will be switched to True at some point in the future. Definitely by 1.0, if not v0.31.0.
+
+"""

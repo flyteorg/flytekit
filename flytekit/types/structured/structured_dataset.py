@@ -30,6 +30,7 @@ from flytekit.models import literals
 from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
+from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
@@ -381,6 +382,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         The string "://" should not be present in any handler's protocol so we don't check for it.
         """
+        if not USE_STRUCTURED_DATASET.get():
+            logger.info(f"Structured datasets not enabled, not registering handler {h}")
+            return
+
         lowest_level = self._handler_finder(h)
         if h.supported_format in lowest_level and override is False:
             raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
@@ -719,3 +724,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
 FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
 TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
+
+
+if USE_STRUCTURED_DATASET.get():
+    logger.debug("Structured dataset module load... not using structured datasets")
+else:
+    logger.debug("Structured dataset module load... using structured datasets!")
