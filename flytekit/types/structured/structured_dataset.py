@@ -22,6 +22,7 @@ import _datetime
 import numpy as _np
 import pyarrow as pa
 
+from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeTransformer
 from flytekit.extend import TypeEngine
@@ -30,7 +31,6 @@ from flytekit.models import literals
 from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
-from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type

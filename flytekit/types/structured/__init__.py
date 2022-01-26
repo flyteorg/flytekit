@@ -1,6 +1,5 @@
-from flytekit.loggers import logger
 from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
-
+from flytekit.loggers import logger
 
 if USE_STRUCTURED_DATASET.get():
     from .basic_dfs import (
