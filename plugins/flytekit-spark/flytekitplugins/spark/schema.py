@@ -5,18 +5,12 @@ import pyspark
 from pyspark.sql.dataframe import DataFrame
 
 from flytekit import FlyteContext
+from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
 from flytekit.extend import T, TypeEngine, TypeTransformer
 from flytekit.models import literals
 from flytekit.models.literals import Literal, Scalar, Schema, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
-from flytekit.types.structured.structured_dataset import (
-    FLYTE_DATASET_TRANSFORMER,
-    PARQUET,
-    StructuredDataset,
-    StructuredDatasetDecoder,
-    StructuredDatasetEncoder,
-)
 
 
 class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
@@ -137,6 +131,15 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
         return user_ctx.spark_session.read.parquet(flyte_value.uri)
 
 
-for protocol in ["/", "s3"]:
-    FLYTE_DATASET_TRANSFORMER.register_handler(SparkToParquetEncodingHandler(protocol), default_for_type=True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToSparkDecodingHandler(protocol), default_for_type=True)
+if USE_STRUCTURED_DATASET.get():
+    from flytekit.types.structured.structured_dataset import (
+        FLYTE_DATASET_TRANSFORMER,
+        PARQUET,
+        StructuredDataset,
+        StructuredDatasetDecoder,
+        StructuredDatasetEncoder,
+    )
+
+    for protocol in ["/", "s3"]:
+        FLYTE_DATASET_TRANSFORMER.register_handler(SparkToParquetEncodingHandler(protocol), default_for_type=True)
+        FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToSparkDecodingHandler(protocol), default_for_type=True)

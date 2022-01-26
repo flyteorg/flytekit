@@ -41,6 +41,7 @@ jobs:
         pip freeze
     - name: Test with coverage
       run: |
+        coverage run -m pytest tests/flytekit_compatibility
         coverage run -m pytest tests/flytekit/unit
     - name: Integration Tests with coverage
       # https://github.com/actions/runner/issues/241#issuecomment-577360161
