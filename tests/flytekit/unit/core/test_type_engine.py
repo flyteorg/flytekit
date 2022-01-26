@@ -21,11 +21,11 @@ from typing_extensions import Annotated
 from flytekit import kwtypes
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.hash import HashMethod
 from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
-    HashMethod,
     ListTransformer,
     LiteralsResolver,
     SimpleTransformer,

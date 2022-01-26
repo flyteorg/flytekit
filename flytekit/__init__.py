@@ -167,6 +167,7 @@ from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack

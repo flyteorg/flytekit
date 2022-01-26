@@ -22,12 +22,13 @@ from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.hash import HashMethod
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
-from flytekit.core.type_engine import HashMethod, RestrictedTypeError, TypeEngine
+from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types

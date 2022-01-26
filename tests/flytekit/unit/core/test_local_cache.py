@@ -8,10 +8,10 @@ from pytest import fixture
 from typing_extensions import Annotated
 
 from flytekit import SQLTask, dynamic, kwtypes
+from flytekit.core.hash import HashMethod
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import task_mock
-from flytekit.core.type_engine import HashMethod
 from flytekit.core.workflow import workflow
 from flytekit.types.schema import FlyteSchema
 

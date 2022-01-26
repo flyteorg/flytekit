@@ -8,12 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from typing import Callable, NamedTuple, Optional, Type, cast
-
-try:
-    from typing import Annotated, get_args, get_origin
-except ImportError:
-    from typing_extensions import Annotated, get_origin, get_args
+from typing import NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -24,8 +19,10 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
+from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
@@ -47,15 +44,6 @@ from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
-
-
-# TODO: expose this in flytekit.__init__
-class HashMethod(typing.Generic[T]):
-    def __init__(self, function: Callable[[T], str]):
-        self._function = function
-
-    def calculate(self, obj: T) -> str:
-        return self._function(obj)
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -634,7 +622,7 @@ class TypeEngine(typing.Generic[T]):
                 break
 
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
-        # TODO: should we worry about empty string?
+
         if hash is not None:
             lv.hash = hash
         return lv
