@@ -625,7 +625,9 @@ def test_wf1_with_fast_dynamic():
                 )
             )
         ) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+
+            dynamic_job_spec = my_subwf.dispatch_execute(ctx, input_literal_map)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
             args = " ".join(dynamic_job_spec.tasks[0].container.args)
