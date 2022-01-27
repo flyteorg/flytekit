@@ -151,7 +151,11 @@ class FastSerializationSettings(object):
     """
 
     enabled: bool = False
+    # This is the location that the code should be copied into.
     destination_dir: Optional[str] = None
+
+    # This is the zip file where the new code was uploaded to.
+    distribution_location: Optional[str] = None
 
 
 @dataclass(frozen=True)
