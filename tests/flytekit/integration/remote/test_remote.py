@@ -145,6 +145,8 @@ def test_fetch_execute_workflow(flyteclient, flyte_workflows_register):
     flyte_workflow = remote.fetch_workflow(name="workflows.basic.hello_world.my_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_workflow, {}, wait=True)
     assert execution.outputs["o0"] == "hello world"
+    assert isinstance(execution.closure.duration, datetime.timedelta)
+    assert execution.closure.duration > datetime.timedelta(seconds=1)
 
     execution_to_terminate = remote.execute(flyte_workflow, {})
     remote.terminate(execution_to_terminate, cause="just because")
