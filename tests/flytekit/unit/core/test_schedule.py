@@ -22,6 +22,10 @@ def test_cron_karg():
     assert obj.cron_expression == "* * ? * * *"
     assert obj == CronSchedule.from_flyte_idl(obj.to_flyte_idl())
 
+def test_cron_karg_validation():
+    with _pytest.raises(ValueError):
+        CronSchedule(schedule="*/1 * * * *", kickoff_time_input_arg="")
+
 
 def test_cron_validation():
     with _pytest.raises(ValueError):

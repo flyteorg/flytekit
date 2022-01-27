@@ -77,6 +77,9 @@ class CronSchedule(_schedule_models.Schedule):
         if cron_expression is not None and offset is not None:
             raise AssertionError("Only `schedule` is supported when specifying `offset`.")
 
+        if kickoff_time_input_arg is None:
+            raise AssertionError("`kickoff_time_input_arg` should be specified.")
+
         if cron_expression is not None:
             CronSchedule._validate_expression(cron_expression)
 
