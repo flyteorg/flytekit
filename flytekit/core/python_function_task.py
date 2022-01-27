@@ -238,18 +238,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                         "Compilation for a dynamic workflow called in fast execution mode but no additional code "
                         "distribution could be retrieved"
                     )
-                logger.warn(f"ctx.execution_state.additional_context {ctx.execution_state.additional_context}")
-                for task_template in tts:
-                    sanitized_args = []
-                    for arg in task_template.container.args:
-                        if arg == "{{ .remote_package_path }}":
-                            sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_addl_distro"))
-                        elif arg == "{{ .dest_dir }}":
-                            sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_dest_dir", "."))
-                        else:
-                            sanitized_args.append(arg)
-                    del task_template.container.args[:]
-                    task_template.container.args.extend(sanitized_args)
 
             dj_spec = _dynamic_job.DynamicJobSpec(
                 min_successes=len(workflow_spec.template.nodes),
@@ -290,7 +278,13 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             if is_fast_execution:
                 ctx = ctx.with_serialization_settings(
                     ctx.serialization_settings.new_builder()
-                    .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+                    .with_fast_serialization_settings(
+                        FastSerializationSettings(
+                            enabled=True,
+                            destination_dir=ctx.execution_state.additional_context.get("dynamic_dest_dir", "."),
+                            distribution_location=ctx.execution_state.additional_context.get("dynamic_addl_distro"),
+                        )
+                    )
                     .build()
                 )
 
