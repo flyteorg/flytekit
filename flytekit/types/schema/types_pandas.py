@@ -53,7 +53,7 @@ class ParquetIO(object):
             to_file,
             coerce_timestamps=coerce_timestamps,
             allow_truncated_timestamps=allow_truncated_timestamps,
-            storage_options={"client_kwargs": get_client_kwargs()},
+            storage_options={"client_kwargs": get_client_kwargs()} if get_client_kwargs() else None,
             **kwargs,
         )
 
