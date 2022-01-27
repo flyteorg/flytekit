@@ -24,7 +24,7 @@ def test_cron_karg():
 
 def test_cron_karg_validation():
     with _pytest.raises(ValueError):
-        CronSchedule(schedule="*/1 * * * *", kickoff_time_input_arg="")
+        CronSchedule(schedule="*/1 * * * *")
 
 
 def test_cron_validation():
