@@ -3,7 +3,6 @@ from collections import OrderedDict
 from typing import List
 from unittest.mock import MagicMock
 
-from flytekitplugins.pod import Pod
 from flytekitplugins.pod.task import Pod, PodFunctionTask
 from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements, V1VolumeMount
