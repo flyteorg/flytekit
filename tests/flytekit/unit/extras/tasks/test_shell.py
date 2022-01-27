@@ -71,6 +71,20 @@ def test_input_substitution_files():
     assert t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
 
 
+def test_input_substitution_files_ctx():
+    t = ShellTask(
+        name="test",
+        script="""
+            export X={ctx.execution_id}
+            cat {f}
+            echo "Hello World {y} on  {j}"
+            """,
+        inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
+    )
+
+    assert t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
+
+
 def test_input_output_substitution_files():
     script = "cat {f} > {y}"
     t = ShellTask(

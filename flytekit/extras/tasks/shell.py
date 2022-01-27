@@ -7,6 +7,7 @@ import subprocess
 import typing
 from dataclasses import dataclass
 
+import flytekit
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
@@ -76,7 +77,7 @@ class _PythonFStringInterpolizer:
         reused_vars = inputs.keys() & outputs.keys()
         if reused_vars:
             raise ValueError(f"Variables {reused_vars} in Query cannot be shared between inputs and outputs.")
-        consolidated_args = collections.ChainMap(inputs, outputs)
+        consolidated_args = collections.ChainMap(inputs, outputs, {"ctx": flytekit.current_context()})
         try:
             return self._Formatter().format(tmpl, **consolidated_args)
         except KeyError as e:
