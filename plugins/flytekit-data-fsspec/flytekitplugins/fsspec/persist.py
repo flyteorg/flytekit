@@ -35,22 +35,22 @@ class FSSpecPersistence(DataPersistence):
 
     def __init__(self, default_prefix=None):
         super(FSSpecPersistence, self).__init__(name="fsspec-persistence", default_prefix=default_prefix)
-        self.default_protocol = self._get_protocol(default_prefix)
+        self.default_protocol = self.get_protocol(default_prefix)
 
     @staticmethod
-    def _get_protocol(path: typing.Optional[str] = None):
+    def get_protocol(path: typing.Optional[str] = None):
         if path:
             protocol, _ = split_protocol(path)
             if protocol is None and path.startswith("/"):
-                print("Setting protocol to file")
+                logger.info("Setting protocol to file")
                 protocol = "file"
         else:
             protocol = "file"
         return protocol
 
     @staticmethod
-    def _get_filesystem(path: str) -> fsspec.AbstractFileSystem:
-        protocol = FSSpecPersistence._get_protocol(path)
+    def get_filesystem(path: str) -> fsspec.AbstractFileSystem:
+        protocol = FSSpecPersistence.get_protocol(path)
         kwargs = {}
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
@@ -67,17 +67,17 @@ class FSSpecPersistence(DataPersistence):
         return f, t
 
     def exists(self, path: str) -> bool:
-        fs = self._get_filesystem(path)
+        fs = self.get_filesystem(path)
         return fs.exists(path)
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
-        fs = self._get_filesystem(from_path)
+        fs = self.get_filesystem(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return fs.get(from_path, to_path, recursive=recursive)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
-        fs = self._get_filesystem(to_path)
+        fs = self.get_filesystem(to_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
             # BEGIN HACK!
