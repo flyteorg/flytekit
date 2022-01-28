@@ -75,7 +75,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
         final_containers = []
         for container in containers:
             # In the case of the primary container, we overwrite specific container attributes with the default values
-            # used in an SDK runnable task.
+            # used in the regular Python task.
             if container.name == self.task_config.primary_container_name:
                 sdk_default_container = super().get_container(settings)
 
