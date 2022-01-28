@@ -325,23 +325,6 @@ class ExecutionParameters(object):
         return self.__getattr__(attr_name=key)
 
 
-class _GroupSecrets(object):
-    """
-    This is a dummy class whose sole purpose is to support "attribute" style lookup for secrets
-    """
-
-    def __init__(self, group: str, sm: typing.Any):
-        self._group = group
-        self._sm = sm
-
-    def __getattr__(self, item: str) -> str:
-        """
-        Returns the secret that matches "group"."key"
-        the key, here is the item
-        """
-        return self._sm.get(self._group, item)
-
-
 class SecretsManager(object):
     """
     This provides a secrets resolution logic at runtime.
@@ -354,6 +337,22 @@ class SecretsManager(object):
     All configuration values can always be overridden by injecting an environment variable
     """
 
+    class _GroupSecrets(object):
+        """
+        This is a dummy class whose sole purpose is to support "attribute" style lookup for secrets
+        """
+
+        def __init__(self, group: str, sm: typing.Any):
+            self._group = group
+            self._sm = sm
+
+        def __getattr__(self, item: str) -> str:
+            """
+            Returns the secret that matches "group"."key"
+            the key, here is the item
+            """
+            return self._sm.get(self._group, item)
+
     def __init__(self):
         self._base_dir = str(secrets.SECRETS_DEFAULT_DIR.get()).strip()
         self._file_prefix = str(secrets.SECRETS_FILE_PREFIX.get()).strip()
@@ -363,7 +362,7 @@ class SecretsManager(object):
         """
         returns a new _GroupSecrets objects, that allows all keys within this group to be looked up like attributes
         """
-        return _GroupSecrets(item, self)
+        return self._GroupSecrets(item, self)
 
     def get(self, group: str, key: str) -> str:
         """
