@@ -1,4 +1,3 @@
-import collections
 import datetime
 import logging
 import os
@@ -39,7 +38,15 @@ def _dummy_task_func():
     return None
 
 
-T = typing.TypeVar("T")
+class AttrDict(dict):
+    """
+    Convert a dictionary to an attribute style lookup. Do not use this in regular places, this is used for
+    namespacing inputs and outputs
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
 
 
 class _PythonFStringInterpolizer:
@@ -74,14 +81,20 @@ class _PythonFStringInterpolizer:
         """
         inputs = inputs or {}
         outputs = outputs or {}
-        reused_vars = inputs.keys() & outputs.keys()
-        if reused_vars:
-            raise ValueError(f"Variables {reused_vars} in Query cannot be shared between inputs and outputs.")
-        consolidated_args = collections.ChainMap(inputs, outputs, {"ctx": flytekit.current_context()})
+        inputs = AttrDict(inputs)
+        outputs = AttrDict(outputs)
+        consolidated_args = {
+            "inputs": inputs,
+            "outputs": outputs,
+            "ctx": flytekit.current_context(),
+        }
         try:
             return self._Formatter().format(tmpl, **consolidated_args)
         except KeyError as e:
             raise ValueError(f"Variable {e} in Query not found in inputs {consolidated_args.keys()}")
+
+
+T = typing.TypeVar("T")
 
 
 class ShellTask(PythonInstanceTask[T]):
