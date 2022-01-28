@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import typing_extensions
 
-from flytekit.common.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import Image, ImageConfig

@@ -4,6 +4,8 @@
 #
 #    make requirements.txt
 #
+-e git+https://github.com/flyteorg/flyteidl.git@update-type-annotation#egg=flyteidl
+    # via -r requirements.in
 -e file:.#egg=flytekit
     # via -r requirements.in
 arrow==1.2.2
@@ -92,7 +94,9 @@ pandas==1.4.0
 poyo==0.5.0
     # via cookiecutter
 protobuf==3.19.3
-    # via flytekit
+    # via
+    #   flyteidl
+    #   flytekit
 py==1.11.0
     # via retry
 pyarrow==6.0.1
