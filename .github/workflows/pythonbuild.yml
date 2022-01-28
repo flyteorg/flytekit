@@ -12,12 +12,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
         spark-version-suffix: ["", "-spark2"]
         exclude:
         - python-version: 3.8
           spark-version-suffix: "-spark2"
         - python-version: 3.9
+          spark-version-suffix: "-spark2"
+        - python-version: 3.10
           spark-version-suffix: "-spark2"
     steps:
     - uses: actions/checkout@v2
@@ -54,11 +56,14 @@ jobs:
   build-plugins:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: ["3.8", "3.9", "3.10"]
         plugin-names:
+          # Please maintain an alphabetical order in the following list
           - flytekit-aws-athena
           - flytekit-aws-sagemaker
+          - flytekit-bigquery
           - flytekit-data-fsspec
           - flytekit-dolt
           - flytekit-greatexpectations
@@ -67,12 +72,17 @@ jobs:
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
+          - flytekit-modin
+          - flytekit-pandera
           - flytekit-papermill
+          - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
-          - flytekit-pandera
-          - flytekit-snowflake
-          - flytekit-modin
+        exclude:
+        # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
+        # Issue tracked in https://github.com/ray-project/ray/issues/19116.
+        - python-version: 3.10
+          plugin-names: "flytekit-modin"
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -92,6 +102,7 @@ jobs:
         make setup
         cd plugins/${{ matrix.plugin-names }}
         pip install -e .
+        if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
         pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
         pip freeze
     - name: Test with coverage

@@ -8,10 +8,11 @@ from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements, V1VolumeMount
 
 from flytekit import Resources, TaskMetadata, dynamic, map_task, task
-from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import FastSerializationSettings
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
+from flytekit.tools.translator import get_serializable
 
 
 def get_pod_spec():
@@ -69,6 +70,10 @@ def test_pod_task_deserialization():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -134,6 +139,10 @@ def test_pod_task():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -321,6 +330,10 @@ def test_map_pod_task_serialization():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -367,6 +380,10 @@ def test_fast_pod_task_serialization():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -375,3 +392,65 @@ def test_fast_pod_task_serialization():
         "task-name",
         "simple_pod_task",
     ]
+
+
+def test_fast():
+    REQUESTS_GPU = Resources(cpu="123m", mem="234Mi", ephemeral_storage="123M", gpu="1")
+    LIMITS_GPU = Resources(cpu="124M", mem="235Mi", ephemeral_storage="124M", gpu="1")
+
+    def get_minimal_pod_task_config() -> Pod:
+        primary_container = V1Container(name="flytetask")
+        pod_spec = V1PodSpec(containers=[primary_container])
+        return Pod(pod_spec=pod_spec, primary_container_name="flytetask")
+
+    @task(
+        task_config=get_minimal_pod_task_config(),
+        requests=REQUESTS_GPU,
+        limits=LIMITS_GPU,
+    )
+    def pod_task_with_resources(dummy_input: str) -> str:
+        return dummy_input
+
+    @dynamic(requests=REQUESTS_GPU, limits=LIMITS_GPU)
+    def dynamic_task_with_pod_subtask(dummy_input: str) -> str:
+        pod_task_with_resources(dummy_input=dummy_input)
+        return dummy_input
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        fast_serialization_settings=FastSerializationSettings(enabled=True),
+    )
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
+    ) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                    additional_context={
+                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
+                        "dynamic_dest_dir": "/User/flyte/workflows",
+                    },
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"dummy_input": "hi"})
+            dynamic_job_spec = dynamic_task_with_pod_subtask.dispatch_execute(ctx, input_literal_map)
+            # print(dynamic_job_spec)
+            assert len(dynamic_job_spec._nodes) == 1
+            assert len(dynamic_job_spec.tasks) == 1
+            args = " ".join(dynamic_job_spec.tasks[0].k8s_pod.pod_spec["containers"][0]["args"])
+            assert args.startswith(
+                "pyflyte-fast-execute --additional-distribution s3://my-s3-bucket/fast/123 "
+                "--dest-dir /User/flyte/workflows"
+            )
+            assert dynamic_job_spec.tasks[0].k8s_pod.pod_spec["containers"][0]["resources"]["limits"]["cpu"] == "124M"
+            assert dynamic_job_spec.tasks[0].k8s_pod.pod_spec["containers"][0]["resources"]["requests"]["gpu"] == "1"
+
+    assert context_manager.FlyteContextManager.size() == 1

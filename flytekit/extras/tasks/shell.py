@@ -1,7 +1,8 @@
+import collections
 import datetime
 import logging
 import os
-import re
+import string
 import subprocess
 import typing
 from dataclasses import dataclass
@@ -30,46 +31,6 @@ class OutputLocation:
     location: typing.Union[os.PathLike, str]
 
 
-def _stringify(v: typing.Any) -> str:
-    """
-    Special cased return for the given value. Given the type returns the string version for the type.
-    Handles FlyteFile and FlyteDirectory specially. Downloads and returns the downloaded filepath
-    """
-    if isinstance(v, FlyteFile):
-        v.download()
-        return v.path
-    if isinstance(v, FlyteDirectory):
-        v.download()
-        return v.path
-    if isinstance(v, datetime.datetime):
-        return v.isoformat()
-    return str(v)
-
-
-def _interpolate(tmpl: str, regex: re.Pattern, validate_all_match: bool = True, **kwargs) -> str:
-    """
-    Substitutes all templates that match the supplied regex
-    with the given inputs and returns the substituted string. The result is non destructive towards the given string.
-    """
-    modified = tmpl
-    matched = set()
-    for match in regex.finditer(tmpl):
-        expr = match.groups()[0]
-        var = match.groups()[1]
-        if var not in kwargs:
-            raise ValueError(f"Variable {var} in Query (part of {expr}) not found in inputs {kwargs.keys()}")
-        matched.add(var)
-        val = kwargs[var]
-        # str conversion should be deliberate, with right conversion for each type
-        modified = modified.replace(expr, _stringify(val))
-
-    if validate_all_match:
-        if len(matched) < len(kwargs.keys()):
-            diff = set(kwargs.keys()).difference(matched)
-            raise ValueError(f"Extra Inputs have no matches in script template - missing {diff}")
-    return modified
-
-
 def _dummy_task_func():
     """
     A Fake function to satisfy the inner PythonTask requirements
@@ -80,11 +41,50 @@ def _dummy_task_func():
 T = typing.TypeVar("T")
 
 
+class _PythonFStringInterpolizer:
+    """A class for interpolating scripts that use python string.format syntax"""
+
+    class _Formatter(string.Formatter):
+        def format_field(self, value, format_spec):
+            """
+            Special cased return for the given value. Given the type returns the string version for
+            the type. Handles FlyteFile and FlyteDirectory specially.
+            Downloads and returns the downloaded filepath.
+            """
+            if isinstance(value, FlyteFile):
+                value.download()
+                return value.path
+            if isinstance(value, FlyteDirectory):
+                value.download()
+                return value.path
+            if isinstance(value, datetime.datetime):
+                return value.isoformat()
+            return super().format_field(value, format_spec)
+
+    def interpolate(
+        self,
+        tmpl: str,
+        inputs: typing.Optional[typing.Dict[str, str]] = None,
+        outputs: typing.Optional[typing.Dict[str, str]] = None,
+    ) -> str:
+        """
+        Interpolate python formatted string templates with variables from the input and output
+        argument dicts. The result is non destructive towards the given template string.
+        """
+        inputs = inputs or {}
+        outputs = outputs or {}
+        reused_vars = inputs.keys() & outputs.keys()
+        if reused_vars:
+            raise ValueError(f"Variables {reused_vars} in Query cannot be shared between inputs and outputs.")
+        consolidated_args = collections.ChainMap(inputs, outputs)
+        try:
+            return self._Formatter().format(tmpl, **consolidated_args)
+        except KeyError as e:
+            raise ValueError(f"Variable {e} in Query not found in inputs {consolidated_args.keys()}")
+
+
 class ShellTask(PythonInstanceTask[T]):
     """ """
-
-    _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
-    _OUTPUT_REGEX = re.compile(r"({{\s*.outputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
         self,
@@ -136,6 +136,7 @@ class ShellTask(PythonInstanceTask[T]):
         self._script_file = script_file
         self._debug = debug
         self._output_locs = output_locs if output_locs else []
+        self._interpolizer = _PythonFStringInterpolizer()
         outputs = self._validate_output_locs()
         super().__init__(
             name,
@@ -184,12 +185,9 @@ class ShellTask(PythonInstanceTask[T]):
         outputs: typing.Dict[str, str] = {}
         if self._output_locs:
             for v in self._output_locs:
-                outputs[v.var] = _interpolate(v.location, self._INPUT_REGEX, validate_all_match=False, **kwargs)
+                outputs[v.var] = self._interpolizer.interpolate(v.location, inputs=kwargs)
 
-        gen_script = _interpolate(self._script, self._INPUT_REGEX, **kwargs)
-        # For outputs it is not necessary that all outputs are used in the script, some are implicit outputs
-        # for example gcc main.c will generate a.out automatically
-        gen_script = _interpolate(gen_script, self._OUTPUT_REGEX, validate_all_match=False, **outputs)
+        gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
         if self._debug:
             print("\n==============================================\n")
             print(gen_script)

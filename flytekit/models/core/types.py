@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from flyteidl.core import types_pb2 as _types_pb2

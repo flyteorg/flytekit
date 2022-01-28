@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Type
 
 import numpy as _np
+import pandas
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
@@ -17,7 +18,6 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.plugins import pandas
 
 T = typing.TypeVar("T")
 
@@ -376,11 +376,18 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
-        if not (lv and lv.scalar and lv.scalar.schema):
-            raise AssertionError("Can only convert a literal schema to a FlyteSchema")
-
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)
+
+        if lv and lv.scalar and lv.scalar.structured_dataset:
+            return expected_python_type(
+                local_path=ctx.file_access.get_random_local_directory(),
+                remote_path=lv.scalar.structured_dataset.uri,
+                downloader=downloader,
+                supported_mode=SchemaOpenMode.READ,
+            )
+        if not (lv and lv.scalar and lv.scalar.schema):
+            raise AssertionError("Can only convert a literal schema to a FlyteSchema")
 
         return expected_python_type(
             local_path=ctx.file_access.get_random_local_directory(),
