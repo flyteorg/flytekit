@@ -722,11 +722,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         raise ValueError(f"StructuredDatasetTransformerEngine cannot reverse {literal_type}")
 
 
-FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
-TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
-
-
 if USE_STRUCTURED_DATASET.get():
     logger.debug("Structured dataset module load... not using structured datasets")
+    FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
+    TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
 else:
     logger.debug("Structured dataset module load... using structured datasets!")

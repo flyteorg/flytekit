@@ -12,6 +12,15 @@ from flytekit.models.literals import Literal, Scalar, Schema, StructuredDatasetM
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
 
+if USE_STRUCTURED_DATASET.get():
+    from flytekit.types.structured.structured_dataset import (
+        FLYTE_DATASET_TRANSFORMER,
+        PARQUET,
+        StructuredDataset,
+        StructuredDatasetDecoder,
+        StructuredDatasetEncoder,
+    )
+
 
 class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
     """
@@ -102,43 +111,34 @@ SchemaEngine.register_handler(
 TypeEngine.register(SparkDataFrameTransformer())
 
 
-class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, protocol: str):
-        super().__init__(DataFrame, protocol, PARQUET)
-
-    def encode(
-        self,
-        ctx: FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
-    ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
-        df = typing.cast(DataFrame, structured_dataset.dataframe)
-        df.write.mode("overwrite").parquet(path)
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
-
-
-class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self, protocol: str):
-        super().__init__(DataFrame, protocol, PARQUET)
-
-    def decode(
-        self,
-        ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
-    ) -> DataFrame:
-        user_ctx = FlyteContext.current_context().user_space_params
-        return user_ctx.spark_session.read.parquet(flyte_value.uri)
-
-
 if USE_STRUCTURED_DATASET.get():
-    from flytekit.types.structured.structured_dataset import (
-        FLYTE_DATASET_TRANSFORMER,
-        PARQUET,
-        StructuredDataset,
-        StructuredDatasetDecoder,
-        StructuredDatasetEncoder,
-    )
+
+    class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
+        def __init__(self, protocol: str):
+            super().__init__(DataFrame, protocol, PARQUET)
+
+        def encode(
+            self,
+            ctx: FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
+        ) -> literals.StructuredDataset:
+            path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+            df = typing.cast(DataFrame, structured_dataset.dataframe)
+            df.write.mode("overwrite").parquet(path)
+            return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+
+    class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
+        def __init__(self, protocol: str):
+            super().__init__(DataFrame, protocol, PARQUET)
+
+        def decode(
+            self,
+            ctx: FlyteContext,
+            flyte_value: literals.StructuredDataset,
+        ) -> DataFrame:
+            user_ctx = FlyteContext.current_context().user_space_params
+            return user_ctx.spark_session.read.parquet(flyte_value.uri)
 
     for protocol in ["/", "s3"]:
         FLYTE_DATASET_TRANSFORMER.register_handler(SparkToParquetEncodingHandler(protocol), default_for_type=True)

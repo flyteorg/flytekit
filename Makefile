@@ -46,8 +46,7 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
 
 .PHONY: test
-test: lint ## Run tests
-	pytest tests/flytekit/unit tests/flytekit_compatibility
+test: lint unit_test
 
 .PHONY: unit_test
 unit_test:
