@@ -186,11 +186,13 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, schema
-from flytekit.types.structured.structured_dataset import (
-    StructuredDataset,
-    StructuredDatasetFormat,
-    StructuredDatasetType,
-)
+from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
+if USE_STRUCTURED_DATASET.get():
+    from flytekit.types.structured.structured_dataset import (
+        StructuredDataset,
+        StructuredDatasetFormat,
+        StructuredDatasetType,
+    )
 
 __version__ = "0.0.0+develop"
 
