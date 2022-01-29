@@ -160,6 +160,7 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
+from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.condition import conditional
@@ -186,7 +187,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, schema
-from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
+
 if USE_STRUCTURED_DATASET.get():
     from flytekit.types.structured.structured_dataset import (
         StructuredDataset,
