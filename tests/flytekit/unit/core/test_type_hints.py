@@ -31,6 +31,7 @@ from flytekit.core.workflow import workflow
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
+from flytekit.models.literals import Error
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
@@ -1599,3 +1600,22 @@ def test_error_messages():
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
         foo3(a=[{"hello": 2}])
+
+
+def test_failure_node():
+    @task
+    def run(a: int, b: str) -> typing.Tuple[int, str]:
+        return a+1, b
+
+    @task
+    def fail(a: int, b: str) -> typing.Tuple[int, str]:
+        raise ValueError("Fail!")
+
+    @task
+    def failure_handler(a: int, b: str, err: Error) -> typing.Tuple[int, str]:
+        return a+1, b + err
+
+    @workflow(on_failure=failure_handler)
+    def wf(a: int, b: str) -> typing.Tuple[int, str]:
+        x, y = run(a=a, b=b)
+        return fail(a=x, b=y)
