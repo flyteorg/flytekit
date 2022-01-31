@@ -2,42 +2,14 @@ import datetime
 from dataclasses import dataclass
 
 import pandas as pd
-import pyspark
 from dataclasses_json import dataclass_json
-from flytekitplugins.spark.task import Spark
 
-import flytekit
 from flytekit import SQLTask, kwtypes
 from flytekit.core import context_manager
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.workflow import workflow
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
-
-
-def test_spark_dataframe_input():
-    my_schema = FlyteSchema[kwtypes(name=str, age=int)]
-
-    @task
-    def my_dataset() -> my_schema:
-        return pd.DataFrame(data={"name": ["Alice"], "age": [5]})
-
-    @task(task_config=Spark())
-    def my_spark(df: pyspark.sql.DataFrame) -> my_schema:
-        session = flytekit.current_context().spark_session
-        new_df = session.createDataFrame([("Bob", 10)], my_schema.column_names())
-        return df.union(new_df)
-
-    @workflow
-    def my_wf() -> my_schema:
-        df = my_dataset()
-        return my_spark(df=df)
-
-    x = my_wf()
-    assert x
-    reader = x.open()
-    df2 = reader.all()
-    assert df2 is not None
 
 
 def test_wf1_with_sql():
