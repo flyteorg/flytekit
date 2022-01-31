@@ -85,9 +85,7 @@ def test_wf_typed_schema():
     w = t1()
     assert w is not None
     df = w.open(override_mode=SchemaOpenMode.READ).all()
-    result_df = df.reset_index(drop=True) == pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}).reset_index(
-        drop=True
-    )
+    result_df = df.reset_index(drop=True) == pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}).reset_index(drop=True)
     assert result_df.all().all()
 
     df = t2(s=w.as_readonly())

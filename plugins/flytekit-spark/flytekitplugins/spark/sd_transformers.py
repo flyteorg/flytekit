@@ -30,6 +30,7 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
         df.write.mode("overwrite").parquet(path)
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
+
 class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
     def __init__(self, protocol: str):
         super().__init__(DataFrame, protocol, PARQUET)
@@ -41,6 +42,7 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
     ) -> DataFrame:
         user_ctx = FlyteContext.current_context().user_space_params
         return user_ctx.spark_session.read.parquet(flyte_value.uri)
+
 
 for protocol in ["/", "s3"]:
     FLYTE_DATASET_TRANSFORMER.register_handler(SparkToParquetEncodingHandler(protocol), default_for_type=True)
