@@ -27,7 +27,7 @@ cffi==1.15.0
     # via cryptography
 chardet==4.0.0
     # via binaryornot
-charset-normalizer==2.0.10
+charset-normalizer==2.0.11
     # via requests
 checksumdir==1.2.0
     # via flytekit
@@ -63,7 +63,7 @@ docutils==0.17.1
     # via
     #   sphinx
     #   sphinx-panels
-flyteidl==0.21.24
+flyteidl==0.21.25
     # via flytekit
 furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
@@ -110,7 +110,7 @@ marshmallow-jsonschema==0.13.0
     # via flytekit
 mypy-extensions==0.4.3
     # via typing-inspect
-natsort==8.0.2
+natsort==8.1.0
     # via flytekit
 numpy==1.22.1
     # via
