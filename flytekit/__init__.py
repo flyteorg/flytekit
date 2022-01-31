@@ -162,6 +162,7 @@ else:
 
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
+from flytekit.core.checkpointer import Checkpoint
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
