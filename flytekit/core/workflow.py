@@ -6,7 +6,7 @@ from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from flytekit.core import constants as _common_constants
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, Task
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
@@ -167,6 +167,7 @@ class WorkflowBase(object):
         workflow_metadata: WorkflowMetadata,
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
+        on_failure: Optional[Union[WorkflowBase, Task]] = None,
         **kwargs,
     ):
         self._name = name
@@ -178,6 +179,7 @@ class WorkflowBase(object):
         self._unbound_inputs = set()
         self._nodes = []
         self._output_bindings: Optional[List[_literal_models.Binding]] = []
+        self._on_failure = on_failure
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)
 
@@ -212,6 +214,14 @@ class WorkflowBase(object):
     @property
     def nodes(self) -> List[Node]:
         return self._nodes
+
+    @property
+    def on_failure(self) -> Optional[Union[WorkflowBase, Task]]:
+        return self._on_failure
+
+    @property
+    def on_failure_node(self) -> Optional[Node]:
+        raise NotImplementedError("Not yet implemented")
 
     def __repr__(self):
         return (
@@ -571,6 +581,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         metadata: Optional[WorkflowMetadata],
         default_metadata: Optional[WorkflowMetadataDefaults],
         docstring: Docstring = None,
+        on_failure: Optional[Union[WorkflowBase, Task]] = None,
     ):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
@@ -585,6 +596,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata=metadata,
             workflow_metadata_defaults=default_metadata,
             python_interface=native_interface,
+            on_failure=on_failure,
         )
 
     @property
@@ -593,6 +605,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def task_name(self, t: PythonAutoContainerTask) -> str:
         return f"{self.name}.{t.__module__}.{t.name}"
+
+    def _validate_on_failure_handler(self):
+        # Compare
+       pass
 
     def compile(self, **kwargs):
         """
@@ -667,7 +683,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
                 bindings.append(b)
 
-        # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain
+        # Save all the things necessary to create an WorkflowTemplate, except for the missing project and domain
         self._nodes = all_nodes
         self._output_bindings = bindings
         if not output_names:
@@ -689,6 +705,7 @@ def workflow(
     _workflow_function=None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
+    on_failure: Optional[Union[WorkflowBase, Task]] = None,
 ):
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -717,6 +734,8 @@ def workflow(
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
+    :param on_failure: Invoke this workflow or task on failure. The Workflow / task has to match the signature of
+         the current workflow, with an additional parameter called `error` Error
     """
 
     def wrapper(fn):
