@@ -8,20 +8,6 @@ This is a comma-delimited list of packages that SDK tools will use to discover e
 and execution of entities.
 """
 
-EXECUTION_ENGINE = _config_common.FlyteStringConfigurationEntry("sdk", "execution_engine", default="flyte")
-"""
-This is a comma-delimited list of package strings, in order, for resolving execution behavior.
-
-TODO: Explain how this would be used to extend the SDK
-"""
-
-TYPE_ENGINES = _config_common.FlyteStringListConfigurationEntry("sdk", "type_engines", default=[])
-"""
-This is a comma-delimited list of package strings, in order, for resolving type behavior.
-
-TODO: Explain how this would be used to extend the SDK
-"""
-
 LOCAL_SANDBOX = _config_common.FlyteStringConfigurationEntry(
     "sdk",
     "local_sandbox",
@@ -30,47 +16,6 @@ LOCAL_SANDBOX = _config_common.FlyteStringConfigurationEntry(
 """
 This is the path where SDK will place files during local executions and testing.  The SDK will not automatically
 clean up data in these directories.
-"""
-
-SDK_PYTHON_VENV = _config_common.FlyteStringListConfigurationEntry("sdk", "python_venv", default=[])
-"""
-This is a list of commands/args which will be prefixed to the entrypoint command by SDK.
-"""
-
-ROLE = _config_common.FlyteStringConfigurationEntry("sdk", "role")
-"""
-This is the role the SDK will use by default to execute workflows.  For example, in AWS this should be an IAM role
-string.
-"""
-
-NAME_FORMAT = _config_common.FlyteStringConfigurationEntry("sdk", "name_format", default="{module}.{name}")
-"""
-This is a Python format string which the SDK will use to generate names for discovered entities.  The default is
-'{module}.{name}' which will result in strings like 'package.module.name'.  Any template portion of the string can only
-include 'module' or 'name'.  So '{name}' is valid, but '{key}' is not.
-"""
-
-TASK_NAME_FORMAT = _config_common.FlyteStringConfigurationEntry("sdk", "task_name_format", fallback=NAME_FORMAT)
-"""
-This is a Python format string which the SDK will use to generate names for tasks. Any template portion of the
-string can only include 'module' or 'name'.  So '{name}' is valid, but '{key}' is not. If not specified,
-we fall back to the configuration for :py:attr:`flytekit.configuration.sdk.NAME_FORMAT`
-"""
-
-WORKFLOW_NAME_FORMAT = _config_common.FlyteStringConfigurationEntry("sdk", "workflow_name_format", fallback=NAME_FORMAT)
-"""
-This is a Python format string which the SDK will use to generate names for workflows. Any template portion of the
-string can only include 'module' or 'name'.  So '{name}' is valid, but '{key}' is not. If not specified,
-we fall back to the configuration for :py:attr:`flytekit.configuration.sdk.NAME_FORMAT`
-"""
-
-LAUNCH_PLAN_NAME_FORMAT = _config_common.FlyteStringConfigurationEntry(
-    "sdk", "launch_plan_name_format", fallback=NAME_FORMAT
-)
-"""
-This is a Python format string which the SDK will use to generate names for launch plans. Any template portion of the
-string can only include 'module' or 'name'.  So '{name}' is valid, but '{key}' is not. If not specified,
-we fall back to the configuration for :py:attr:`flytekit.configuration.sdk.NAME_FORMAT`
 """
 
 LOGGING_LEVEL = _config_common.FlyteIntegerConfigurationEntry("sdk", "logging_level", default=20)
@@ -85,9 +30,9 @@ PARQUET_ENGINE = _config_common.FlyteStringConfigurationEntry("sdk", "parquet_en
 This is the parquet engine to use when reading data from parquet files.
 """
 
-FAST_REGISTRATION_DIR = _config_common.FlyteStringConfigurationEntry("sdk", "fast_registration_dir")
+# Feature Gate
+USE_STRUCTURED_DATASET = _config_common.FlyteBoolConfigurationEntry("sdk", "use_structured_dataset", default=False)
 """
-This is the remote directory where fast-registered code will be uploaded to.
-Users calling fast-execute need write permission to this directory.
-Furthermore, it is important that whichever role executes your workflow has read access to this directory.
+Note: This gate will be switched to True at some point in the future. Definitely by 1.0, if not v0.31.0.
+
 """
