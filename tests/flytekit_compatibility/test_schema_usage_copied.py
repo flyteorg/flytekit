@@ -91,6 +91,7 @@ def test_wf1_with_sql_with_patch():
     test_user_demo_test()
     assert context_manager.FlyteContextManager.size() == 1
 
+
 def test_wf_typed_schema():
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
 
