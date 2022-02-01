@@ -657,8 +657,8 @@ class LiteralMap(_common.FlyteIdlEntity):
         return cls({k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()})
 
 
-@dataclasses.dataclass
 @dataclasses_json.dataclass_json
+@dataclasses.dataclass
 class Error(_common.FlyteIdlEntity):
     failure_node_id: str
     message: str

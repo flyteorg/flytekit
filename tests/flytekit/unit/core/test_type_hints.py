@@ -1620,6 +1620,9 @@ def test_failure_node():
         x, y = run(a=a, b=b)
         return fail(a=x, b=y)
 
+    assert wf.on_failure_node is not None
+    assert wf.on_failure_node.flyte_entity == failure_handler
+
     v, s = wf(a=10, b="hello")
     assert v == 11
     assert "hello" in s

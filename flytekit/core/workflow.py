@@ -38,6 +38,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.literals import Error
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -101,7 +102,7 @@ class WorkflowMetadataDefaults(object):
         return _workflow_model.WorkflowMetadataDefaults(interruptible=self.interruptible)
 
 
-def construct_input_promises(inputs: List[str]):
+def construct_input_promises(inputs: List[str]) -> Dict[str, Promise]:
     return {
         input_name: Promise(var=input_name, val=NodeOutput(node=GLOBAL_START_NODE, var=input_name))
         for input_name in inputs
@@ -180,6 +181,7 @@ class WorkflowBase(object):
         self._nodes = []
         self._output_bindings: Optional[List[_literal_models.Binding]] = []
         self._on_failure = on_failure
+        self._on_failure_node = None
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)
 
@@ -221,7 +223,7 @@ class WorkflowBase(object):
 
     @property
     def on_failure_node(self) -> Optional[Node]:
-        raise NotImplementedError("Not yet implemented")
+        return self._on_failure_node
 
     def __repr__(self):
         return (
@@ -606,9 +608,25 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def task_name(self, t: PythonAutoContainerTask) -> str:
         return f"{self.name}.{t.__module__}.{t.name}"
 
-    def _validate_on_failure_handler(self):
+    def _validate_add_on_failure_handler(self, ctx: FlyteContext, prefix: str, wf_args: Dict[str, Promise]):
         # Compare
-       pass
+        with FlyteContextManager.with_context(
+            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
+        ) as inner_comp_ctx:
+            # Now lets compile the failure-node if it exists
+            if self.on_failure:
+                # TODO validate inputs match the workflow interface, with an extra param `err`
+                # TODO we can derive the name of the attribute from the type Error
+                c = wf_args.copy()
+                # c["err"] = Promise(var="err", val=_literal_models.Literal(
+                #     scalar=_literal_models.Scalar(error=Error(failure_node_id="n", message="x"))))
+                c["err"] = Error(failure_node_id="n", message="x") # This works, but promise does not
+                handler_outputs = exception_scopes.user_entry_point(self.on_failure)(**c)
+                inner_nodes = inner_comp_ctx.compilation_state.nodes
+                if not inner_nodes or len(inner_nodes) > 1:
+                    raise AssertionError("Unable to compiler failure node, only either a task or a workflow can be used")
+                self._on_failure_node = inner_nodes[0]
+                # TODO Assert that the outputs match the workflow output interface
 
     def compile(self, **kwargs):
         """
@@ -638,6 +656,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if isinstance(n.flyte_entity, PythonAutoContainerTask) and n.flyte_entity.task_resolver == self:
                     logger.debug(f"WF {self.name} saving task {n.flyte_entity.name}")
                     self.add(n.flyte_entity)
+
+        self._validate_add_on_failure_handler(ctx, prefix, input_kwargs)
 
         # Iterate through the workflow outputs
         bindings = []
@@ -686,6 +706,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         # Save all the things necessary to create an WorkflowTemplate, except for the missing project and domain
         self._nodes = all_nodes
         self._output_bindings = bindings
+
         if not output_names:
             return None
         if len(output_names) == 1:
@@ -698,7 +719,12 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
-        return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+        try:
+            return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+        except Exception as e:
+            if self.on_failure:
+                kwargs["err"] = Error(failure_node_id="unknown", message=str(e))
+                return self.on_failure(**kwargs)
 
 
 def workflow(
@@ -748,6 +774,7 @@ def workflow(
             metadata=workflow_metadata,
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
+            on_failure=on_failure,
         )
         workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
