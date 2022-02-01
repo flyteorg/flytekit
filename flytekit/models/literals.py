@@ -2,6 +2,7 @@ import dataclasses
 import typing
 from datetime import datetime as _datetime
 
+import dataclasses_json
 import pytz as _pytz
 from flyteidl.core import literals_pb2 as _literals_pb2, types_pb2 as _types_pb2
 from google.protobuf.struct_pb2 import Struct
@@ -657,6 +658,7 @@ class LiteralMap(_common.FlyteIdlEntity):
 
 
 @dataclasses.dataclass
+@dataclasses_json.dataclass_json
 class Error(_common.FlyteIdlEntity):
     failure_node_id: str
     message: str

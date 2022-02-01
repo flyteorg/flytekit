@@ -1613,9 +1613,13 @@ def test_failure_node():
 
     @task
     def failure_handler(a: int, b: str, err: Error) -> typing.Tuple[int, str]:
-        return a+1, b + err
+        return a+1, b + err.message
 
     @workflow(on_failure=failure_handler)
     def wf(a: int, b: str) -> typing.Tuple[int, str]:
         x, y = run(a=a, b=b)
         return fail(a=x, b=y)
+
+    v, s = wf(a=10, b="hello")
+    assert v == 11
+    assert "hello" in s
