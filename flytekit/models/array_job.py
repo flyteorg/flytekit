@@ -85,18 +85,3 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
             )
 
         return _json_format.MessageToDict(array_job)
-
-    @classmethod
-    def from_dict(cls, idl_dict):
-        """
-        :param dict[T, Text] idl_dict:
-        :rtype: ArrayJob
-        """
-        pb2_object = _json_format.Parse(_json.dumps(idl_dict), _array_job.ArrayJob())
-
-        return cls(
-            parallelism=pb2_object.parallelism,
-            size=pb2_object.size,
-            min_successes=pb2_object.min_successes,
-            min_success_ratio=pb2_object.min_success_ratio,
-        )
