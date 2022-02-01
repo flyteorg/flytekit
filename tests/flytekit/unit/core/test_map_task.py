@@ -12,6 +12,18 @@ from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
 
 
+@pytest.fixture
+def serialization_settings():
+    default_img = Image(name="default", fqn="test", tag="tag")
+    return context_manager.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+
 @task
 def t1(a: int) -> str:
     b = a + 2
@@ -54,18 +66,13 @@ def test_map_task_types():
         _ = map_task(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
 
 
-def test_serialization():
+def test_serialization(serialization_settings):
     maptask = map_task(t1, metadata=TaskMetadata(retries=1))
-    default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
-        project="project",
-        domain="domain",
-        version="version",
-        env=None,
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
     task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
 
+    # By default all map_task tasks will have their custom fields set.
+    assert task_spec.template.custom["parallelism"] == "1"
+    assert task_spec.template.custom["minSuccessRatio"] == 1.0
     assert task_spec.template.type == "container_array"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [
@@ -90,7 +97,23 @@ def test_serialization():
     ]
 
 
-def test_serialization_workflow_def():
+@pytest.mark.parametrize(
+    "custom_fields_dict, expected_custom_fields",
+    [
+        ({}, {"parallelism": "1", "minSuccessRatio": 1.0}),
+        ({"concurrency": 99}, {"parallelism": "99", "minSuccessRatio": 1.0}),
+        ({"min_success_ratio": 0.271828}, {"parallelism": "1", "minSuccessRatio": 0.271828}),
+        ({"concurrency": 42, "min_success_ratio": 0.31415}, {"parallelism": "42", "minSuccessRatio": 0.31415}),
+    ],
+)
+def test_serialization_of_custom_fields(custom_fields_dict, expected_custom_fields, serialization_settings):
+    maptask = map_task(t1, **custom_fields_dict)
+    task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
+
+    assert task_spec.template.custom == expected_custom_fields
+
+
+def test_serialization_workflow_def(serialization_settings):
     @task
     def complex_task(a: int) -> str:
         b = a + 2
@@ -106,14 +129,6 @@ def test_serialization_workflow_def():
     def w2(a: typing.List[int]) -> typing.List[str]:
         return map_task(complex_task, metadata=TaskMetadata(retries=2))(a=a)
 
-    default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
-        project="project",
-        domain="domain",
-        version="version",
-        env=None,
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
     serialized_control_plane_entities = OrderedDict()
     wf1_spec = get_serializable(serialized_control_plane_entities, serialization_settings, w1)
     assert wf1_spec.template is not None
