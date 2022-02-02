@@ -84,7 +84,10 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
                 min_success_ratio=self.min_success_ratio,
             )
 
-        return _json_format.MessageToDict(array_job)
+        array_job_dict = _json_format.MessageToDict(array_job)
+        if self.parallelism is not None and self.parallelism == 0:
+            array_job_dict['parallelism'] = '0'
+        return array_job_dict
 
     @classmethod
     def from_dict(cls, idl_dict):
