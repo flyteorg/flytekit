@@ -190,6 +190,10 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
 
+    flyte_workflow_execution = remote.fetch_workflow_execution(name=execution.id.name)
+    assert execution.inputs == flyte_workflow_execution.inputs
+    assert execution.outputs == flyte_workflow_execution.outputs
+
 
 def test_fetch_execute_launch_plan_list_of_floats(flyteclient, flyte_workflows_register):
     remote = FlyteRemote.from_config(PROJECT, "development")
