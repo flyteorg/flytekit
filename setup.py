@@ -67,6 +67,10 @@ setup(
         "checksumdir>=1.2.0",
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
+        # numpy and pandas dropped support for python 3.7.
+        # More details in https://github.com/flyteorg/flyte/issues/2115.
+        "numpy<1.22.0; python_version < '3.7.0'",
+        "pandas<1.4.0; python_version < '3.7.0'",
     ],
     extras_require=extras_require,
     scripts=[
