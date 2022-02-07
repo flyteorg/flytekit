@@ -33,63 +33,45 @@ hdf5 = typing.TypeVar("hdf5")
 #: accept an hdf5 format. This is usually useful for serializing Tensorflow models
 HDF5EncodedFile = FlyteFile[hdf5]
 
-
 html = typing.TypeVar("html")
+#: Can be used to receive or return an PNGImage. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
 HTMLPage = FlyteFile[html]
-"""
-    Can be used to receive or return an PNGImage. The underlying type is a FlyteFile type. This is just a
-    decoration and useful for attaching content type information with the file and automatically documenting code.
-"""
 
 joblib = typing.TypeVar("joblib")
+#: This File represents a file that was serialized using `joblib.dump` method can be loaded back using `joblib.load`.
 JoblibSerializedFile = FlyteFile[joblib]
-"""
-    This File represents a file that was serialized using `joblib.dump` method can be loaded back using `joblib.load`.
-"""
 
 jpeg = typing.TypeVar("jpeg")
+#: Can be used to receive or return an JPEGImage. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
 JPEGImageFile = FlyteFile[jpeg]
-"""
-    Can be used to receive or return an JPEGImage. The underlying type is a FlyteFile type. This is just a
-    decoration and useful for attaching content type information with the file and automatically documenting code.
-"""
 
 pdf = typing.TypeVar("pdf")
+#: Can be used to receive or return an PDFFile. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
 PDFFile = FlyteFile[pdf]
-"""
-    Can be used to receive or return an PDFFile. The underlying type is a FlyteFile type. This is just a
-    decoration and useful for attaching content type information with the file and automatically documenting code.
-"""
 
 png = typing.TypeVar("png")
+#: Can be used to receive or return an PNGImage. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
 PNGImageFile = FlyteFile[png]
-"""
-    Can be used to receive or return an PNGImage. The underlying type is a FlyteFile type. This is just a
-    decoration and useful for attaching content type information with the file and automatically documenting code.
-"""
 
 python_pickle = typing.TypeVar("python_pickle")
+#: This type can be used when a serialized Python pickled object is returned and shared between tasks. This only
+#: adds metadata to the file in Flyte, but does not really carry any object information.
 PythonPickledFile = FlyteFile[python_pickle]
-"""
-    This type can be used when a serialized Python pickled object is returned and shared between tasks. This only
-    adds metadata to the file in Flyte, but does not really carry any object information.
-"""
 
 ipynb = typing.TypeVar("ipynb")
+#: This type is used to identify a Python notebook file.
 PythonNotebook = FlyteFile[ipynb]
 
-'''This type is used to identify a Python notebook file.'''
-
 svg = typing.TypeVar("svg")
+#: Can be used to receive or return an SVGImage. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
 SVGImageFile = FlyteFile[svg]
-"""
-    Can be used to receive or return an SVGImage. The underlying type is a FlyteFile type. This is just a
-    decoration and useful for attaching content type information with the file and automatically documenting code.
-"""
 
 csv = typing.TypeVar("csv")
+#: Can be used to receive or return a CSVFile. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
 CSVFile = FlyteFile[csv]
-"""
-    Can be used to receive or return a CSVFile. The underlying type is a FlyteFile type. This is just a
-    decoration and useful for attaching content type information with the file and automatically documenting code.
-"""
