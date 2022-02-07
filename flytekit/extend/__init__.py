@@ -46,3 +46,7 @@ from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.task import TaskPlugins
 from flytekit.core.type_engine import DictTransformer, T, TypeEngine, TypeTransformer
 from flytekit.tools.translator import get_serializable
+
+from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
+if USE_STRUCTURED_DATASET.get():
+    from flytekit.types.structured.structured_dataset import FLYTE_DATASET_TRANSFORMER
