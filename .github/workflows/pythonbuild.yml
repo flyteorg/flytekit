@@ -39,9 +39,11 @@ jobs:
         python -m pip install --upgrade pip==21.2.4 setuptools wheel
         make setup${{ matrix.spark-version-suffix }}
         pip freeze
+    - name: Test FlyteSchema compatibility
+      run: |
+        FLYTE_SDK_USE_STRUCTURED_DATASET=FALSE python -m pytest tests/flytekit_compatibility
     - name: Test with coverage
       run: |
-        coverage run -m pytest tests/flytekit_compatibility
         FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit
     - name: Integration Tests with coverage
       # https://github.com/actions/runner/issues/241#issuecomment-577360161
