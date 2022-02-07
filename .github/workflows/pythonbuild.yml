@@ -136,7 +136,7 @@ jobs:
       - name: ShellCheck
         uses: ludeeus/action-shellcheck@master
         with:
-          ignore:
+          ignore_paths:
             boilerplate
 
   docs:
