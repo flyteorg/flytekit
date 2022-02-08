@@ -8,7 +8,7 @@ from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.models.annotation import TypeAnnotation
-from flytekit.common.translator import get_serializable
+from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(
