@@ -105,6 +105,8 @@ py==1.11.0
     # via retry
 pyarrow==6.0.1
     # via flytekit
+pycparser==2.21
+    # via cffi
 pyparsing==3.0.7
     # via
     #   matplotlib

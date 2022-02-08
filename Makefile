@@ -12,7 +12,7 @@ help:
 
 .PHONY: install-piptools
 install-piptools:
-	pip install -U pip-tools pip==21.2.4
+	pip install -U pip-tools setuptools wheel pip==22.0.3
 
 .PHONY: update_boilerplate
 update_boilerplate:
