@@ -2,5 +2,5 @@
 
 set -ex
 
-cat "{f}" >> "{z}"
-echo "Hello World {y} on  {j} - output {x}"
+cat "{inputs.f}" >> "{outputs.z}"
+echo "Hello World {inputs.y} on  {inputs.j} - output {outputs.x}"
