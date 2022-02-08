@@ -32,7 +32,6 @@ certifi==2021.10.8
     #   requests
 cffi==1.15.0
     # via
-    #   -c requirements.txt
     #   bcrypt
     #   cryptography
     #   pynacl

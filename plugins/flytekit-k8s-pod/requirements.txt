@@ -16,8 +16,6 @@ certifi==2021.10.8
     # via
     #   kubernetes
     #   requests
-cffi==1.15.0
-    # via cryptography
 chardet==4.0.0
     # via binaryornot
 charset-normalizer==2.0.11
@@ -60,10 +58,6 @@ idna==3.3
     # via requests
 importlib-metadata==4.10.1
     # via keyring
-jeepney==0.7.1
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.0.3
     # via
     #   cookiecutter
@@ -151,8 +145,6 @@ retry==0.9.2
     # via flytekit
 rsa==4.8
     # via google-auth
-secretstorage==3.3.1
-    # via keyring
 six==1.16.0
     # via
     #   cookiecutter

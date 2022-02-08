@@ -73,10 +73,6 @@ importlib-metadata==4.10.1
     # via keyring
 inotify-simple==1.2.1
     # via sagemaker-training
-jeepney==0.7.1
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.0.3
     # via
     #   cookiecutter
@@ -167,8 +163,6 @@ sagemaker-training==3.9.2
     # via flytekitplugins-awssagemaker
 scipy==1.8.0
     # via sagemaker-training
-secretstorage==3.3.1
-    # via keyring
 six==1.16.0
     # via
     #   bcrypt
