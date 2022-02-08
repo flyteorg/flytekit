@@ -333,10 +333,12 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     DECODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetDecoder]]] = {}
     DEFAULT_PROTOCOLS: Dict[Type, str] = {}
     DEFAULT_FORMATS: Dict[Type, str] = {}
+    SINGLETON: Optional[StructuredDatasetTransformerEngine] = None
 
     Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
 
-    def _finder(self, handler_map, df_type: Type, protocol: str, format: str):
+    @staticmethod
+    def _finder(handler_map, df_type: Type, protocol: str, format: str):
         try:
             return handler_map[df_type][protocol][format]
         except KeyError:
@@ -351,18 +353,21 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 ...
         raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt {format}")
 
-    def get_encoder(self, df_type: Type, protocol: str, format: str):
-        return self._finder(self.ENCODERS, df_type, protocol, format)
+    @classmethod
+    def get_encoder(cls, df_type: Type, protocol: str, format: str):
+        return cls._finder(StructuredDatasetTransformerEngine.ENCODERS, df_type, protocol, format)
 
-    def get_decoder(self, df_type: Type, protocol: str, format: str):
-        return self._finder(self.DECODERS, df_type, protocol, format)
+    @classmethod
+    def get_decoder(cls, df_type: Type, protocol: str, format: str):
+        return cls._finder(StructuredDatasetTransformerEngine.DECODERS, df_type, protocol, format)
 
-    def _handler_finder(self, h: Handlers) -> Dict[str, Handlers]:
+    @classmethod
+    def _handler_finder(cls, h: Handlers) -> Dict[str, Handlers]:
         # Maybe think about default dict in the future, but is typing as nice?
         if isinstance(h, StructuredDatasetEncoder):
-            top_level = self.ENCODERS
+            top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
-            top_level = self.DECODERS
+            top_level = cls.DECODERS
         else:
             raise TypeError(f"We don't support this type of handler {h}")
         if h.python_type not in top_level:
@@ -375,7 +380,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
         self._type_assertions_enabled = False
 
-    def register_handler(self, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
+    @classmethod
+    def register_handler(cls, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
         """
         Call this with any handler to register it with this dataframe meta-transformer
 
@@ -385,7 +391,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             logger.info(f"Structured datasets not enabled, not registering handler {h}")
             return
 
-        lowest_level = self._handler_finder(h)
+        lowest_level = cls._handler_finder(h)
         if h.supported_format in lowest_level and override is False:
             raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
         lowest_level[h.supported_format] = h
@@ -393,13 +399,15 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         if default_for_type:
             # TODO: Add logging, think about better ux, maybe default False and warn if doesn't exist.
-            self.DEFAULT_FORMATS[h.python_type] = h.supported_format
-            self.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
+            cls.DEFAULT_FORMATS[h.python_type] = h.supported_format
+            cls.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
 
         # Register with the type engine as well
         # The semantics as of now are such that it doesn't matter which order these transformers are loaded in, as
         # long as the older Pandas/FlyteSchema transformer do not also specify the override
-        TypeEngine.register_additional_type(self, h.python_type, override=True)
+        if cls.SINGLETON is None:
+            raise ValueError(f"Attempting to register handler {h} before singleton was assigned")
+        TypeEngine.register_additional_type(cls.SINGLETON, h.python_type, override=True)
 
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
@@ -724,6 +732,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 if USE_STRUCTURED_DATASET.get():
     logger.warning("Structured dataset module load... using structured datasets!")
     FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
+    StructuredDatasetTransformerEngine.SINGLETON = FLYTE_DATASET_TRANSFORMER
     TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
 else:
     logger.warning("Structured dataset module load... not using structured datasets")

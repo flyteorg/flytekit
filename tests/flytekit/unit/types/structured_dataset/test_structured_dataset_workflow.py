@@ -19,6 +19,7 @@ from flytekit.types.structured.structured_dataset import (
     BIGQUERY,
     DF,
     FLYTE_DATASET_TRANSFORMER,
+    StructuredDatasetTransformerEngine,
     LOCAL,
     PARQUET,
     S3,
@@ -58,8 +59,8 @@ class MockBQDecodingHandlers(StructuredDatasetDecoder):
         return pd_df
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(MockBQEncodingHandlers(pd.DataFrame, BIGQUERY), False, True)
-FLYTE_DATASET_TRANSFORMER.register_handler(MockBQDecodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+StructuredDatasetTransformerEngine.register_handler(MockBQEncodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+StructuredDatasetTransformerEngine.register_handler(MockBQDecodingHandlers(pd.DataFrame, BIGQUERY), False, True)
 
 
 class NumpyEncodingHandlers(StructuredDatasetEncoder):
@@ -95,8 +96,8 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
 
 
 for protocol in [LOCAL, S3]:
-    FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register_handler(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register_handler(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
 
 
 @task

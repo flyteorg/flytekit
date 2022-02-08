@@ -17,6 +17,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
     StructuredDatasetMetadata,
+    StructuredDatasetTransformerEngine,
 )
 
 
@@ -110,7 +111,7 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         return pa.Table.from_pandas(_read_from_bq(flyte_value))
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(PandasToBQEncodingHandlers(), default_for_type=False)
-FLYTE_DATASET_TRANSFORMER.register_handler(BQToPandasDecodingHandler(), default_for_type=False)
-FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToBQEncodingHandlers(), default_for_type=False)
-FLYTE_DATASET_TRANSFORMER.register_handler(BQToArrowDecodingHandler(), default_for_type=False)
+StructuredDatasetTransformerEngine.register_handler(PandasToBQEncodingHandlers(), default_for_type=False)
+StructuredDatasetTransformerEngine.register_handler(BQToPandasDecodingHandler(), default_for_type=False)
+StructuredDatasetTransformerEngine.register_handler(ArrowToBQEncodingHandlers(), default_for_type=False)
+StructuredDatasetTransformerEngine.register_handler(BQToArrowDecodingHandler(), default_for_type=False)

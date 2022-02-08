@@ -24,6 +24,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
     convert_schema_type_to_structured_dataset_type,
     extract_cols_and_format,
     protocol_prefix,
@@ -117,10 +118,10 @@ def test_types_sd():
 
 
 def test_retrieving():
-    assert FLYTE_DATASET_TRANSFORMER.get_encoder(pd.DataFrame, "/", PARQUET) is not None
+    assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "/", PARQUET) is not None
     with pytest.raises(ValueError):
         # We don't have a default "" format encoder
-        FLYTE_DATASET_TRANSFORMER.get_encoder(pd.DataFrame, "/", "")
+        StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "/", "")
 
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self, protocol):
@@ -129,15 +130,15 @@ def test_retrieving():
         def encode(self):
             ...
 
-    FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder("gs"), default_for_type=False)
+    StructuredDatasetTransformerEngine.register_handler(TempEncoder("gs"), default_for_type=False)
     with pytest.raises(ValueError):
-        FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder("gs://"), default_for_type=False)
+        StructuredDatasetTransformerEngine.register_handler(TempEncoder("gs://"), default_for_type=False)
 
     class TempEncoder:
         pass
 
     with pytest.raises(TypeError, match="We don't support this type of handler"):
-        FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder, default_for_type=False)
+        StructuredDatasetTransformerEngine.register_handler(TempEncoder, default_for_type=False)
 
 
 def test_to_literal():
@@ -184,7 +185,7 @@ def test_fill_in_literal_type():
         ) -> literals.StructuredDataset:
             return literals.StructuredDataset(uri="")
 
-    FLYTE_DATASET_TRANSFORMER.register_handler(TempEncoder("myavro"), default_for_type=True)
+    StructuredDatasetTransformerEngine.register_handler(TempEncoder("myavro"), default_for_type=True)
     lt = TypeEngine.to_literal_type(MyDF)
     assert lt.structured_dataset_type.format == "myavro"
 
@@ -196,9 +197,9 @@ def test_fill_in_literal_type():
 
     # Test that looking up encoders/decoders falls back to the "" encoder/decoder
     empty_format_temp_encoder = TempEncoder("")
-    FLYTE_DATASET_TRANSFORMER.register_handler(empty_format_temp_encoder, default_for_type=False)
+    StructuredDatasetTransformerEngine.register_handler(empty_format_temp_encoder, default_for_type=False)
 
-    res = FLYTE_DATASET_TRANSFORMER.get_encoder(MyDF, "tmpfs", "rando")
+    res = StructuredDatasetTransformerEngine.get_encoder(MyDF, "tmpfs", "rando")
     assert res is empty_format_temp_encoder
 
 
@@ -221,7 +222,7 @@ def test_sd():
         ) -> typing.Union[typing.Generator[pd.DataFrame, None, None]]:
             yield pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-    FLYTE_DATASET_TRANSFORMER.register_handler(
+    StructuredDatasetTransformerEngine.register_handler(
         MockPandasDecodingHandlers(pd.DataFrame, "tmpfs"), default_for_type=False
     )
     sd = StructuredDataset()
@@ -241,7 +242,7 @@ def test_sd():
         ) -> pd.DataFrame:
             pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-    FLYTE_DATASET_TRANSFORMER.register_handler(
+    StructuredDatasetTransformerEngine.register_handler(
         MockPandasDecodingHandlers(pd.DataFrame, "tmpfs"), default_for_type=False, override=True
     )
     sd = StructuredDataset()

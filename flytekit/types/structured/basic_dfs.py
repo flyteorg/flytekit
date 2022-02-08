@@ -19,6 +19,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
 )
 
 T = TypeVar("T")
@@ -107,7 +108,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
 
 
 for protocol in [LOCAL, S3]:  # Should we add GCS
-    FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandler(protocol), default_for_type=True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandler(protocol), default_for_type=True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register_handler(PandasToParquetEncodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register_handler(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register_handler(ArrowToParquetEncodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register_handler(ParquetToArrowDecodingHandler(protocol), default_for_type=True)
