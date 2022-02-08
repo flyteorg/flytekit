@@ -105,7 +105,7 @@ class StructuredDataset(object):
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
-        return FLYTE_DATASET_TRANSFORMER.open_as(
+        return flyte_dataset_transformer.open_as(
             ctx, self.literal, self._dataframe_type, updated_metadata=self.metadata
         )
 
@@ -113,7 +113,7 @@ class StructuredDataset(object):
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
-        return FLYTE_DATASET_TRANSFORMER.iter_as(
+        return flyte_dataset_transformer.iter_as(
             ctx, self.literal, self._dataframe_type, updated_metadata=self.metadata
         )
 
@@ -169,7 +169,7 @@ class StructuredDatasetEncoder(ABC):
     def __init__(self, python_type: Type[T], protocol: str, supported_format: Optional[str] = None):
         """
         Extend this abstract class, implement the encode function, and register your concrete class with the
-        FLYTE_DATASET_TRANSFORMER defined at this module level in order for the core flytekit type engine to handle
+        StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
         dataframe libraries. This is the encoding interface, meaning it is used when there is a Python value that the
         flytekit type engine is trying to convert into a Flyte Literal. For the other way, see
         the StructuredDatasetEncoder
@@ -229,7 +229,7 @@ class StructuredDatasetDecoder(ABC):
     def __init__(self, python_type: Type[DF], protocol: str, supported_format: Optional[str] = None):
         """
         Extend this abstract class, implement the decode function, and register your concrete class with the
-        FLYTE_DATASET_TRANSFORMER defined at this module level in order for the core flytekit type engine to handle
+        StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
         dataframe libraries. This is the decoder interface, meaning it is used when there is a Flyte Literal value,
         and we have to get a Python value out of it. For the other way, see the StructuredDatasetEncoder
 
@@ -333,7 +333,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     DECODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetDecoder]]] = {}
     DEFAULT_PROTOCOLS: Dict[Type, str] = {}
     DEFAULT_FORMATS: Dict[Type, str] = {}
-    SINGLETON: Optional[StructuredDatasetTransformerEngine] = None
 
     Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
 
@@ -405,9 +404,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # Register with the type engine as well
         # The semantics as of now are such that it doesn't matter which order these transformers are loaded in, as
         # long as the older Pandas/FlyteSchema transformer do not also specify the override
-        if cls.SINGLETON is None:
-            raise ValueError(f"Attempting to register handler {h} before singleton was assigned")
-        TypeEngine.register_additional_type(cls.SINGLETON, h.python_type, override=True)
+        engine = StructuredDatasetTransformerEngine()
+        TypeEngine.register_additional_type(engine, h.python_type, override=True)
 
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
@@ -731,8 +729,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
 if USE_STRUCTURED_DATASET.get():
     logger.warning("Structured dataset module load... using structured datasets!")
-    FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
-    StructuredDatasetTransformerEngine.SINGLETON = FLYTE_DATASET_TRANSFORMER
-    TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
+    flyte_dataset_transformer = StructuredDatasetTransformerEngine()
+    TypeEngine.register(flyte_dataset_transformer)
 else:
     logger.warning("Structured dataset module load... not using structured datasets")

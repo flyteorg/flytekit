@@ -18,7 +18,6 @@ from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     BIGQUERY,
     DF,
-    FLYTE_DATASET_TRANSFORMER,
     StructuredDatasetTransformerEngine,
     LOCAL,
     PARQUET,

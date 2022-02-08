@@ -12,7 +12,6 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    FLYTE_DATASET_TRANSFORMER,
     LOCAL,
     PARQUET,
     S3,

@@ -194,6 +194,7 @@ if USE_STRUCTURED_DATASET.get():
         StructuredDataset,
         StructuredDatasetFormat,
         StructuredDatasetType,
+        StructuredDatasetTransformerEngine,
     )
 
 __version__ = "0.0.0+develop"
