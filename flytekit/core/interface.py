@@ -8,10 +8,10 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.types.pickle import FlytePickle
@@ -275,7 +275,11 @@ def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring]
     For now the fancy object, maybe in the future a dumb object.
 
     """
-    type_hints = typing.get_type_hints(fn)
+    try:
+        # include_extras can only be used in python >= 3.9
+        type_hints = typing.get_type_hints(fn, include_extras=True)
+    except TypeError:
+        type_hints = typing.get_type_hints(fn)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 

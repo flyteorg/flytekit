@@ -1,6 +1,6 @@
 from typing import Optional
 
-from flytekit.common.mixins import hash as _hash_mixin
+from flytekit.core import hash as _hash_mixin
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger

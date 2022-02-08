@@ -5,9 +5,7 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from flytekit.common import constants as _common_constants
-from flytekit.common.exceptions import scopes as exception_scopes
-from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
@@ -34,6 +32,8 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import scopes as exception_scopes
+from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models

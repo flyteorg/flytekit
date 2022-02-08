@@ -1,10 +1,13 @@
 import datetime
 import os
 import tempfile
+from dataclasses import dataclass
 from subprocess import CalledProcessError
 
 import pytest
+from dataclasses_json import dataclass_json
 
+import flytekit
 from flytekit import kwtypes
 from flytekit.extras.tasks.shell import OutputLocation, ShellTask
 from flytekit.types.directory import FlyteDirectory
@@ -43,10 +46,10 @@ def test_input_substitution_primitive():
     t = ShellTask(
         name="test",
         script="""
-        set -ex
-        cat {{ .inputs.f }}
-        echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }}"
-        """,
+            set -ex
+            cat {inputs.f}
+            echo "Hello World {inputs.y} on  {inputs.j}"
+            """,
         inputs=kwtypes(f=str, y=int, j=datetime.datetime),
     )
 
@@ -60,30 +63,50 @@ def test_input_substitution_files():
     t = ShellTask(
         name="test",
         script="""
-        cat {{ .inputs.f }}
-        echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }}"
-        """,
+            cat {inputs.f}
+            echo "Hello World {inputs.y} on  {inputs.j}"
+            """,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
     )
 
     assert t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
 
 
+def test_input_substitution_files_ctx():
+    sec = flytekit.current_context().secrets
+    envvar = sec.get_secrets_env_var("group", "key")
+    os.environ[envvar] = "value"
+    assert sec.get("group", "key") == "value"
+
+    t = ShellTask(
+        name="test",
+        script="""
+            export EXEC={ctx.execution_id}
+            export SECRET={ctx.secrets.group.key}
+            cat {inputs.f}
+            echo "Hello World {inputs.y} on  {inputs.j}"
+            """,
+        inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
+        debug=True,
+    )
+
+    assert t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
+    del os.environ[envvar]
+
+
 def test_input_output_substitution_files():
-    s = """
-        cat {{ .inputs.f }} > {{ .outputs.y }}
-        """
+    script = "cat {inputs.f} > {outputs.y}"
     t = ShellTask(
         name="test",
         debug=True,
-        script=s,
+        script=script,
         inputs=kwtypes(f=CSVFile),
         output_locs=[
-            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.mod"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{inputs.f}.mod"),
         ],
     )
 
-    assert t.script == s
+    assert t.script == script
 
     contents = "1,2,3,4\n"
     with tempfile.TemporaryDirectory() as tmp:
@@ -100,59 +123,92 @@ def test_input_output_substitution_files():
 
 
 def test_input_single_output_substitution_files():
-    s = """
-        cat {{ .inputs.f }} >> {{ .outputs.y }}
-        echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }}"
-        """
+    script = """
+            cat {inputs.f} >> {outputs.z}
+            echo "Hello World {inputs.y} on  {inputs.j}"
+            """
     t = ShellTask(
         name="test",
         debug=True,
-        script=s,
+        script=script,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
-        output_locs=[OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc")],
+        output_locs=[OutputLocation(var="z", var_type=FlyteFile, location="{inputs.f}.pyc")],
     )
 
-    assert t.script == s
+    assert t.script == script
     y = t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
     assert y.path[-4:] == ".pyc"
 
 
-def test_input_output_extra_var_in_template():
+@pytest.mark.parametrize(
+    "script",
+    [
+        (
+            """
+            cat {missing} >> {outputs.z}
+            echo "Hello World {inputs.y} on  {inputs.j} - output {outputs.x}"
+            """
+        ),
+        (
+            """
+            cat {inputs.f} {missing} >> {outputs.z}
+            echo "Hello World {inputs.y} on  {inputs.j} - output {outputs.x}"
+            """
+        ),
+    ],
+)
+def test_input_output_extra_and_missing_variables(script):
+    t = ShellTask(
+        name="test",
+        debug=True,
+        script=script,
+        inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
+        output_locs=[
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{inputs.y}"),
+            OutputLocation(var="z", var_type=FlyteFile, location="{inputs.f}.pyc"),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="missing"):
+        t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+
+
+def test_reuse_variables_for_both_inputs_and_outputs():
     t = ShellTask(
         name="test",
         debug=True,
         script="""
-        cat {{ .inputs.f }} {{ .inputs.missing }} >> {{ .outputs.y }}
-        echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
+        cat {inputs.f} >> {outputs.y}
+        echo "Hello World {inputs.y} on  {inputs.j}"
         """,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
-            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{inputs.f}.pyc"),
         ],
     )
 
-    with pytest.raises(ValueError):
-        t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
-def test_input_output_extra_input():
+def test_can_use_complex_types_for_inputs_to_f_string_template():
+    @dataclass_json
+    @dataclass
+    class InputArgs:
+        in_file: CSVFile
+
     t = ShellTask(
         name="test",
         debug=True,
-        script="""
-        cat {{ .inputs.missing }} >> {{ .outputs.y }}
-        echo "Hello World {{ .inputs.y }} on  {{ .inputs.j }} - output {{.outputs.x}}"
-        """,
-        inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
+        script="""cat {inputs.input_args.in_file} >> {inputs.input_args.in_file}.tmp""",
+        inputs=kwtypes(input_args=InputArgs),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
-            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+            OutputLocation(var="x", var_type=FlyteFile, location="{inputs.input_args.in_file}.tmp"),
         ],
     )
 
-    with pytest.raises(ValueError):
-        t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    input_args = InputArgs(FlyteFile(path=test_csv))
+    x = t(input_args=input_args)
+    assert x.path[-4:] == ".tmp"
 
 
 def test_shell_script():
@@ -162,8 +218,8 @@ def test_shell_script():
         script_file=script_sh,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location="{{ .inputs.y }}"),
-            OutputLocation(var="y", var_type=FlyteFile, location="{{ .inputs.f }}.pyc"),
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{inputs.y}"),
+            OutputLocation(var="z", var_type=FlyteFile, location="{inputs.f}.pyc"),
         ],
     )
 

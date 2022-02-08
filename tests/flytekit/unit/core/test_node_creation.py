@@ -5,16 +5,16 @@ from collections import OrderedDict
 import pytest
 
 from flytekit import Resources, map_task
-from flytekit.common.exceptions.user import FlyteAssertion
-from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import literals as _literal_models
 from flytekit.models.task import Resources as _resources_models
+from flytekit.tools.translator import get_serializable
 
 
 def test_normal_task():

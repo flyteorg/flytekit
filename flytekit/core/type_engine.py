@@ -10,7 +10,11 @@ import typing
 from abc import ABC, abstractmethod
 from typing import NamedTuple, Optional, Type, cast
 
-import typing_extensions
+try:
+    from typing import Annotated, get_args, get_origin
+except ImportError:
+    from typing_extensions import Annotated, get_origin, get_args
+
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
@@ -21,11 +25,10 @@ from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 
-from flytekit.common.exceptions import user as user_exceptions
-from flytekit.common.types import primitives as _primitives
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -40,8 +43,9 @@ from flytekit.models.literals import (
     Primitive,
     Scalar,
     Schema,
+    StructuredDatasetMetadata,
 )
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -233,7 +237,7 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
-        if get_origin(t) is typing_extensions.Annotated:
+        if get_origin(t) is Annotated:
             raise ValueError(
                 "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
                 f"Type {t} cannot be parsed."
@@ -260,7 +264,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"evaluation doesn't work with json dataclasses"
             )
 
-        return _primitives.Generic.to_flyte_literal_type(metadata=schema)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if not dataclasses.is_dataclass(python_val):
@@ -284,6 +288,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.directory.types import FlyteDirectory
         from flytekit.types.file import FlyteFile
         from flytekit.types.schema.types import FlyteSchema
+        from flytekit.types.structured.structured_dataset import StructuredDataset
 
         for f in dataclasses.fields(python_type):
             v = python_val.__getattribute__(f.name)
@@ -292,6 +297,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 issubclass(field_type, FlyteSchema)
                 or issubclass(field_type, FlyteFile)
                 or issubclass(field_type, FlyteDirectory)
+                or issubclass(field_type, StructuredDataset)
             ):
                 lv = TypeEngine.to_literal(FlyteContext.current_context(), v, field_type, None)
                 # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
@@ -304,6 +310,13 @@ class DataclassTransformer(TypeTransformer[object]):
                 # as determined by the transformer.
                 if issubclass(field_type, FlyteFile) or issubclass(field_type, FlyteDirectory):
                     python_val.__setattr__(f.name, field_type(path=lv.scalar.blob.uri))
+                elif issubclass(field_type, StructuredDataset):
+                    python_val.__setattr__(
+                        f.name,
+                        field_type(
+                            uri=lv.scalar.structured_dataset.uri,
+                        ),
+                    )
 
             elif dataclasses.is_dataclass(field_type):
                 self._serialize_flyte_type(v, field_type)
@@ -312,6 +325,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
         from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+        from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         if not dataclasses.is_dataclass(expected_python_type):
             return python_val
@@ -352,6 +366,21 @@ class DataclassTransformer(TypeTransformer[object]):
                                 )
                             ),
                             uri=python_val.path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, StructuredDataset):
+            return StructuredDatasetTransformerEngine().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        structured_dataset=StructuredDataset(
+                            metadata=StructuredDatasetMetadata(
+                                structured_dataset_type=StructuredDatasetType(format=python_val.file_format)
+                            ),
+                            uri=python_val.uri,
                         )
                     )
                 ),
@@ -502,6 +531,11 @@ class TypeEngine(typing.Generic[T]):
         cls.register(RestrictedTypeTransformer(name, type))
 
     @classmethod
+    def register_additional_type(cls, transformer: TypeTransformer, additional_type: Type, override=False):
+        if additional_type not in cls._REGISTRY or override:
+            cls._REGISTRY[additional_type] = transformer
+
+    @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
@@ -527,15 +561,18 @@ class TypeEngine(typing.Generic[T]):
         """
 
         # Step 1
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
+
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
         # Step 2
         if hasattr(python_type, "__origin__"):
             # Handling of annotated generics, eg:
-            # typing_extensions.Annotated[typing.List[int], 'foo']
-            if get_origin(python_type) is typing_extensions.Annotated:
-                return cls.get_transformer(typing_extensions.get_args(python_type)[0])
+            # Annotated[typing.List[int], 'foo']
+            if get_origin(python_type) is Annotated:
+                return cls.get_transformer(get_args(python_type)[0])
 
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
@@ -570,8 +607,8 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(python_type)
         res = transformer.get_literal_type(python_type)
         data = None
-        if get_origin(python_type) is typing_extensions.Annotated:
-            for x in typing_extensions.get_args(python_type)[1:]:
+        if get_origin(python_type) is Annotated:
+            for x in get_args(python_type)[1:]:
                 if not isinstance(x, FlyteAnnotation):
                     continue
                 if data is not None:
@@ -722,9 +759,9 @@ class ListTransformer(TypeTransformer[T]):
 
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
-            # typing_extensions.Annotated[typing.List[int], 'foo']
-            if get_origin(t) is typing_extensions.Annotated:
-                return ListTransformer.get_sub_type(typing_extensions.get_args(t)[0])
+            # Annotated[typing.List[int], 'foo']
+            if get_origin(t) is Annotated:
+                return ListTransformer.get_sub_type(get_args(t)[0])
 
             if t.__origin__ is list and hasattr(t, "__args__"):
                 return t.__args__[0]
@@ -774,7 +811,7 @@ class DictTransformer(TypeTransformer[dict]):
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
-            if _origin is typing_extensions.Annotated:
+            if _origin is Annotated:
                 raise ValueError(
                     f"Flytekit does not currently have support \
                         for FlyteAnnotations applied to dicts. {t} cannot be \
@@ -803,7 +840,7 @@ class DictTransformer(TypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _primitives.Generic.to_flyte_literal_type()
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -929,7 +966,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        if get_origin(t) is typing_extensions.Annotated:
+        if get_origin(t) is Annotated:
             raise ValueError(
                 f"Flytekit does not currently have support \
                     for FlyteAnnotations applied to enums. {t} cannot be \
@@ -1023,7 +1060,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "int",
             int,
-            _primitives.Integer.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
             lambda x: x.scalar.primitive.integer,
         )
@@ -1033,7 +1070,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "float",
             float,
-            _primitives.Float.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
             _check_and_covert_float,
         )
@@ -1043,7 +1080,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "bool",
             bool,
-            _primitives.Boolean.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
             lambda x: x.scalar.primitive.boolean,
         )
@@ -1053,7 +1090,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "str",
             str,
-            _primitives.String.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
             lambda x: x.scalar.primitive.string_value,
         )
@@ -1063,7 +1100,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "datetime",
             _datetime.datetime,
-            _primitives.Datetime.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
             lambda x: x.scalar.primitive.datetime,
         )
@@ -1073,7 +1110,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "timedelta",
             _datetime.timedelta,
-            _primitives.Timedelta.to_flyte_literal_type(),
+            _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
             lambda x: x.scalar.primitive.duration,
         )

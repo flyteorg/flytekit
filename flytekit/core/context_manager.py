@@ -19,23 +19,27 @@ import logging as _logging
 import os
 import pathlib
 import re
+import tempfile
 import traceback
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional, Union
 
 from docker_image import reference
 
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
 from flytekit.configuration import images, internal
 from flytekit.configuration import sdk as _sdk_config
+from flytekit.configuration import secrets
+from flytekit.core import mock_stats, utils
+from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
-from flytekit.engines.unit import mock_stats as _mock_stats
+from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
+from flytekit.interfaces.stats import taggable
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -132,6 +136,273 @@ def get_image_config(img_name: Optional[str] = None) -> ImageConfig:
     return ImageConfig(default_image=default_img, images=other_images)
 
 
+class ExecutionParameters(object):
+    """
+    This is a run-time user-centric context object that is accessible to every @task method. It can be accessed using
+
+    .. code-block:: python
+
+        flytekit.current_context()
+
+    This object provides the following
+    * a statsd handler
+    * a logging handler
+    * the execution ID as an :py:class:`flytekit.models.core.identifier.WorkflowExecutionIdentifier` object
+    * a working directory for the user to write arbitrary files to
+
+    Please do not confuse this object with the :py:class:`flytekit.FlyteContext` object.
+    """
+
+    @dataclass(init=False)
+    class Builder(object):
+        stats: taggable.TaggableStats
+        execution_date: datetime
+        logging: _logging
+        execution_id: str
+        attrs: typing.Dict[str, typing.Any]
+        working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
+        checkpoint: typing.Optional[Checkpoint]
+        raw_output_prefix: str
+
+        def __init__(self, current: typing.Optional[ExecutionParameters] = None):
+            self.stats = current.stats if current else None
+            self.execution_date = current.execution_date if current else None
+            self.working_dir = current.working_directory if current else None
+            self.execution_id = current.execution_id if current else None
+            self.logging = current.logging if current else None
+            self.checkpoint = current._checkpoint if current else None
+            self.attrs = current._attrs if current else {}
+            self.raw_output_prefix = current.raw_output_prefix if current else None
+
+        def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
+            self.attrs[key] = v
+            return self
+
+        def build(self) -> ExecutionParameters:
+            if not isinstance(self.working_dir, utils.AutoDeletingTempDir):
+                pathlib.Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+            return ExecutionParameters(
+                execution_date=self.execution_date,
+                stats=self.stats,
+                tmp_dir=self.working_dir,
+                execution_id=self.execution_id,
+                logging=self.logging,
+                checkpoint=self.checkpoint,
+                raw_output_prefix=self.raw_output_prefix,
+                **self.attrs,
+            )
+
+    @staticmethod
+    def new_builder(current: ExecutionParameters = None) -> Builder:
+        return ExecutionParameters.Builder(current=current)
+
+    def with_task_sandbox(self) -> Builder:
+        prefix = self.working_directory
+        if isinstance(self.working_directory, utils.AutoDeletingTempDir):
+            prefix = self.working_directory.name
+        task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)
+        p = pathlib.Path(task_sandbox_dir)
+        cp_dir = p.joinpath("__cp")
+        cp_dir.mkdir(exist_ok=True)
+        cp = SyncCheckpoint(checkpoint_dest=str(cp_dir))
+        b = self.new_builder(self)
+        b.checkpoint = cp
+        b.working_dir = task_sandbox_dir
+        return b
+
+    def builder(self) -> Builder:
+        return ExecutionParameters.Builder(current=self)
+
+    def __init__(
+        self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, checkpoint=None, **kwargs
+    ):
+        """
+        Args:
+            execution_date: Date when the execution is running
+            tmp_dir: temporary directory for the execution
+            stats: handle to emit stats
+            execution_id: Identifier for the xecution
+            logging: handle to logging
+            checkpoint: Checkpoint Handle to the configured checkpoint system
+        """
+        self._stats = stats
+        self._execution_date = execution_date
+        self._working_directory = tmp_dir
+        self._execution_id = execution_id
+        self._logging = logging
+        self._raw_output_prefix = raw_output_prefix
+        # AutoDeletingTempDir's should be used with a with block, which creates upon entry
+        self._attrs = kwargs
+        # It is safe to recreate the Secrets Manager
+        self._secrets_manager = SecretsManager()
+        self._checkpoint = checkpoint
+
+    @property
+    def stats(self) -> taggable.TaggableStats:
+        """
+        A handle to a special statsd object that provides usefully tagged stats.
+        TODO: Usage examples and better comments
+        """
+        return self._stats
+
+    @property
+    def logging(self) -> _logging:
+        """
+        A handle to a useful logging object.
+        TODO: Usage examples
+        """
+        return self._logging
+
+    @property
+    def raw_output_prefix(self) -> str:
+        return self._raw_output_prefix
+
+    @property
+    def working_directory(self) -> utils.AutoDeletingTempDir:
+        """
+        A handle to a special working directory for easily producing temporary files.
+
+        TODO: Usage examples
+        TODO: This does not always return a AutoDeletingTempDir
+        """
+        return self._working_directory
+
+    @property
+    def execution_date(self) -> datetime:
+        """
+        This is a datetime representing the time at which a workflow was started.  This is consistent across all tasks
+        executed in a workflow or sub-workflow.
+
+        .. note::
+
+            Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
+            in debugging.
+        """
+        return self._execution_date
+
+    @property
+    def execution_id(self) -> str:
+        """
+        This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
+        task executions in a workflow or sub-workflow execution.
+
+        .. note::
+
+            Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
+            on output data to link back to the workflow run that created it.
+        """
+        return self._execution_id
+
+    @property
+    def secrets(self) -> SecretsManager:
+        return self._secrets_manager
+
+    @property
+    def checkpoint(self) -> Checkpoint:
+        if self._checkpoint is None:
+            raise NotImplementedError("Checkpointing is not available, please check the version of the platform.")
+        return self._checkpoint
+
+    def __getattr__(self, attr_name: str) -> typing.Any:
+        """
+        This houses certain task specific context. For example in Spark, it houses the SparkSession, etc
+        """
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return self._attrs[attr_name]
+        raise AssertionError(f"{attr_name} not available as a parameter in Flyte context - are you in right task-type?")
+
+    def has_attr(self, attr_name: str) -> bool:
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return True
+        return False
+
+    def get(self, key: str) -> typing.Any:
+        """
+        Returns task specific context if present else raise an error. The returned context will match the key
+        """
+        return self.__getattr__(attr_name=key)
+
+
+class SecretsManager(object):
+    """
+    This provides a secrets resolution logic at runtime.
+    The resolution order is
+      - Try env var first. The env var should have the configuration.SECRETS_ENV_PREFIX. The env var will be all upper
+         cased
+      - If not then try the file where the name matches lower case
+        ``configuration.SECRETS_DEFAULT_DIR/<group>/configuration.SECRETS_FILE_PREFIX<key>``
+
+    All configuration values can always be overridden by injecting an environment variable
+    """
+
+    class _GroupSecrets(object):
+        """
+        This is a dummy class whose sole purpose is to support "attribute" style lookup for secrets
+        """
+
+        def __init__(self, group: str, sm: typing.Any):
+            self._group = group
+            self._sm = sm
+
+        def __getattr__(self, item: str) -> str:
+            """
+            Returns the secret that matches "group"."key"
+            the key, here is the item
+            """
+            return self._sm.get(self._group, item)
+
+    def __init__(self):
+        self._base_dir = str(secrets.SECRETS_DEFAULT_DIR.get()).strip()
+        self._file_prefix = str(secrets.SECRETS_FILE_PREFIX.get()).strip()
+        self._env_prefix = str(secrets.SECRETS_ENV_PREFIX.get()).strip()
+
+    def __getattr__(self, item: str) -> _GroupSecrets:
+        """
+        returns a new _GroupSecrets objects, that allows all keys within this group to be looked up like attributes
+        """
+        return self._GroupSecrets(item, self)
+
+    def get(self, group: str, key: str) -> str:
+        """
+        Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
+        """
+        self.check_group_key(group, key)
+        env_var = self.get_secrets_env_var(group, key)
+        fpath = self.get_secrets_file(group, key)
+        v = os.environ.get(env_var)
+        if v is not None:
+            return v
+        if os.path.exists(fpath):
+            with open(fpath, "r") as f:
+                return f.read().strip()
+        raise ValueError(
+            f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
+        )
+
+    def get_secrets_env_var(self, group: str, key: str) -> str:
+        """
+        Returns a string that matches the ENV Variable to look for the secrets
+        """
+        self.check_group_key(group, key)
+        return f"{self._env_prefix}{group.upper()}_{key.upper()}"
+
+    def get_secrets_file(self, group: str, key: str) -> str:
+        """
+        Returns a path that matches the file to look for the secrets
+        """
+        self.check_group_key(group, key)
+        return os.path.join(self._base_dir, group.lower(), f"{self._file_prefix}{key.lower()}")
+
+    @staticmethod
+    def check_group_key(group: str, key: str):
+        if group is None or group == "":
+            raise ValueError("secrets group is a mandatory field.")
+        if key is None or key == "":
+            raise ValueError("secrets key is a mandatory field.")
+
+
 @dataclass
 class EntrypointSettings(object):
     """
@@ -151,7 +422,11 @@ class FastSerializationSettings(object):
     """
 
     enabled: bool = False
+    # This is the location that the code should be copied into.
     destination_dir: Optional[str] = None
+
+    # This is the zip file where the new code was uploaded to.
+    distribution_location: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -683,14 +958,16 @@ class FlyteContextManager(object):
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
+        default_context = FlyteContext(file_access=default_local_file_access_provider)
         default_user_space_params = ExecutionParameters(
-            execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
+            execution_id=str(WorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
             execution_date=_datetime.datetime.utcnow(),
-            stats=_mock_stats.MockStats(),
+            stats=mock_stats.MockStats(),
             logging=_logging,
             tmp_dir=user_space_path,
+            raw_output_prefix=default_context.file_access._raw_output_prefix,
         )
-        default_context = FlyteContext(file_access=default_local_file_access_provider)
+
         default_context = default_context.with_execution_state(
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()

@@ -1,7 +1,7 @@
 .[all]
 -e file:.#egg=flytekit
 
-git+git://github.com/flyteorg/furo@main
+git+https://github.com/flyteorg/furo@main
 sphinx
 sphinx-gallery
 sphinx-prompt
@@ -10,6 +10,7 @@ sphinx-code-include
 sphinx-autoapi
 sphinx-copybutton
 sphinx_fontawesome
+sphinx-panels
 sphinxcontrib-yt
 grpcio
 cryptography
