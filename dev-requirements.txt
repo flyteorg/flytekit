@@ -387,7 +387,7 @@ typing-inspect==0.7.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
-urllib3==1.26.7
+urllib3==1.26.8
     # via
     #   -c requirements.txt
     #   flytekit
