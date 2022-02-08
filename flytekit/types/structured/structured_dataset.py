@@ -728,8 +728,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
 
 if USE_STRUCTURED_DATASET.get():
-    logger.warning("Structured dataset module load... using structured datasets!")
+    logger.debug("Structured dataset module load... using structured datasets!")
     flyte_dataset_transformer = StructuredDatasetTransformerEngine()
     TypeEngine.register(flyte_dataset_transformer)
 else:
-    logger.warning("Structured dataset module load... not using structured datasets")
+    logger.debug("Structured dataset module load... not using structured datasets")
