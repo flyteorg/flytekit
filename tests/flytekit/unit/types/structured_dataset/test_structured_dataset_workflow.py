@@ -18,13 +18,13 @@ from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     BIGQUERY,
     DF,
-    StructuredDatasetTransformerEngine,
     LOCAL,
     PARQUET,
     S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
 )
 
 PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()

@@ -24,7 +24,7 @@ import pyarrow as pa
 
 from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeTransformer, TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
 from flytekit.models import literals
 from flytekit.models import types as type_models

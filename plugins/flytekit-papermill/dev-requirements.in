@@ -1,1 +1,1 @@
-flytekitplugins-spark>=0.30.0b4
+git+https://github.com/flyteorg/flytekit@add-sd-make-class-methods
