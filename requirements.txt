@@ -24,7 +24,7 @@ charset-normalizer==2.0.11
     # via requests
 checksumdir==1.2.0
     # via flytekit
-click==7.1.2
+click==8.0.3
     # via
     #   cookiecutter
     #   flytekit
@@ -48,7 +48,7 @@ docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.13
     # via flytekit
-flyteidl==0.21.25
+flyteidl==0.22.0
     # via flytekit
 grpcio==1.43.0
     # via flytekit
@@ -133,7 +133,7 @@ requests==2.27.1
     #   cookiecutter
     #   flytekit
     #   responses
-responses==0.17.0
+responses==0.18.0
     # via flytekit
 retry==0.9.2
     # via flytekit
@@ -145,7 +145,6 @@ six==1.16.0
     #   grpcio
     #   jsonschema
     #   python-dateutil
-    #   responses
 sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0
