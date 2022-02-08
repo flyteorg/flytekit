@@ -243,7 +243,7 @@ proto-plus==1.19.8
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
-protobuf==3.19.1
+protobuf==3.19.4
     # via
     #   -c requirements.txt
     #   flyteidl
