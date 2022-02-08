@@ -40,7 +40,9 @@ docstring-parser==0.13
     # via flytekit
 flyteidl==0.21.23
     # via flytekit
-flytekit @ git+https://github.com/flyteorg/flytekit@add-sd-make-class-methods
+flytekit==0.30.0
+    # via flytekitplugins-spark
+flytekitplugins-spark @ git+https://github.com/flyteorg/flytekit@add-sd-make-class-methods#subdirectory=plugins/flytekit-spark
     # via -r dev-requirements.in
 grpcio==1.43.0
     # via flytekit
@@ -85,8 +87,12 @@ protobuf==3.19.3
     #   flytekit
 py==1.11.0
     # via retry
+py4j==0.10.9.3
+    # via pyspark
 pyarrow==6.0.1
     # via flytekit
+pyspark==3.2.1
+    # via flytekitplugins-spark
 python-dateutil==2.8.1
     # via
     #   arrow
