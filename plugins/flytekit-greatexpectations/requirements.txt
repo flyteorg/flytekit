@@ -110,10 +110,6 @@ ipywidgets==7.6.5
     # via great-expectations
 jedi==0.18.1
     # via ipython
-jeepney==0.7.1
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.0.3
     # via
     #   altair
@@ -295,8 +291,6 @@ ruamel.yaml.clib==0.2.6
     # via ruamel.yaml
 scipy==1.7.3
     # via great-expectations
-secretstorage==3.3.1
-    # via keyring
 send2trash==1.8.0
     # via notebook
 six==1.16.0
