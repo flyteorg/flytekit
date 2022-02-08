@@ -110,7 +110,7 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         return pa.Table.from_pandas(_read_from_bq(flyte_value))
 
 
-StructuredDatasetTransformerEngine.register_handler(PandasToBQEncodingHandlers(), default_for_type=False)
-StructuredDatasetTransformerEngine.register_handler(BQToPandasDecodingHandler(), default_for_type=False)
-StructuredDatasetTransformerEngine.register_handler(ArrowToBQEncodingHandlers(), default_for_type=False)
-StructuredDatasetTransformerEngine.register_handler(BQToArrowDecodingHandler(), default_for_type=False)
+StructuredDatasetTransformerEngine.register(PandasToBQEncodingHandlers(), default_for_type=False)
+StructuredDatasetTransformerEngine.register(BQToPandasDecodingHandler(), default_for_type=False)
+StructuredDatasetTransformerEngine.register(ArrowToBQEncodingHandlers(), default_for_type=False)
+StructuredDatasetTransformerEngine.register(BQToArrowDecodingHandler(), default_for_type=False)

@@ -58,8 +58,8 @@ class MockBQDecodingHandlers(StructuredDatasetDecoder):
         return pd_df
 
 
-StructuredDatasetTransformerEngine.register_handler(MockBQEncodingHandlers(pd.DataFrame, BIGQUERY), False, True)
-StructuredDatasetTransformerEngine.register_handler(MockBQDecodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+StructuredDatasetTransformerEngine.register(MockBQEncodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+StructuredDatasetTransformerEngine.register(MockBQDecodingHandlers(pd.DataFrame, BIGQUERY), False, True)
 
 
 class NumpyEncodingHandlers(StructuredDatasetEncoder):
@@ -95,8 +95,8 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
 
 
 for protocol in [LOCAL, S3]:
-    StructuredDatasetTransformerEngine.register_handler(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
-    StructuredDatasetTransformerEngine.register_handler(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
 
 
 @task

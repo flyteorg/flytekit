@@ -380,7 +380,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         self._type_assertions_enabled = False
 
     @classmethod
-    def register_handler(cls, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
+    def register(cls, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
         """
         Call this with any handler to register it with this dataframe meta-transformer
 

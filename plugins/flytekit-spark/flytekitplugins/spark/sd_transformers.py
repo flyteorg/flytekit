@@ -45,5 +45,5 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
 
 
 for protocol in ["/", "s3"]:
-    StructuredDatasetTransformerEngine.register_handler(SparkToParquetEncodingHandler(protocol), default_for_type=True)
-    StructuredDatasetTransformerEngine.register_handler(ParquetToSparkDecodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register(ParquetToSparkDecodingHandler(protocol), default_for_type=True)

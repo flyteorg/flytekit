@@ -107,7 +107,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
 
 
 for protocol in [LOCAL, S3]:  # Should we add GCS
-    StructuredDatasetTransformerEngine.register_handler(PandasToParquetEncodingHandler(protocol), default_for_type=True)
-    StructuredDatasetTransformerEngine.register_handler(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
-    StructuredDatasetTransformerEngine.register_handler(ArrowToParquetEncodingHandler(protocol), default_for_type=True)
-    StructuredDatasetTransformerEngine.register_handler(ParquetToArrowDecodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol), default_for_type=True)
