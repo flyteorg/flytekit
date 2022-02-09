@@ -8,7 +8,6 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from flytekitplugins.fsspec.persist import FSSpecPersistence, s3_setup_args
 from fsspec.core import split_protocol, strip_protocol
-from pyarrow import fs
 
 from flytekit import FlyteContext
 from flytekit.configuration import aws as _aws_config
@@ -16,20 +15,20 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    FLYTE_DATASET_TRANSFORMER,
     LOCAL,
     PARQUET,
     S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
 )
 
 T = TypeVar("T")
 
 
 def get_storage_options(uri: str) -> typing.Optional[typing.Dict]:
-    protocol = FSSpecPersistence.get_protocol(uri)
+    protocol = FSSpecPersistence._get_protocol(uri)
     if protocol == S3:
         s3_setup_args()
         if _aws_config.S3_ENDPOINT.get() is not None:
@@ -92,7 +91,7 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
-        filesystem = FSSpecPersistence.get_filesystem(path)
+        filesystem = FSSpecPersistence._get_filesystem(path)
         pq.write_table(structured_dataset.dataframe, strip_protocol(path), filesystem=filesystem)
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
@@ -110,7 +109,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         if not ctx.file_access.is_remote(uri):
             Path(uri).parent.mkdir(parents=True, exist_ok=True)
         _, path = split_protocol(uri)
-        filesystem = FSSpecPersistence.get_filesystem(uri)
+        filesystem = FSSpecPersistence._get_filesystem(uri)
         if flyte_value.metadata.structured_dataset_type.columns:
             columns = []
             for c in flyte_value.metadata.structured_dataset_type.columns:
@@ -120,7 +119,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
 
 
 for protocol in [LOCAL, S3]:
-    FLYTE_DATASET_TRANSFORMER.register_handler(PandasToParquetEncodingHandler(protocol), True, True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToPandasDecodingHandler(protocol), True, True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ArrowToParquetEncodingHandler(protocol), True, True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToArrowDecodingHandler(protocol), True, True)
+    StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol), True, True)
+    StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol), True, True)
+    StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), True, True)
+    StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol), True, True)

@@ -38,7 +38,7 @@ class FSSpecPersistence(DataPersistence):
         self.default_protocol = self.get_protocol(default_prefix)
 
     @staticmethod
-    def get_protocol(path: typing.Optional[str] = None):
+    def _get_protocol(path: typing.Optional[str] = None):
         if path:
             protocol, _ = split_protocol(path)
             if protocol is None and path.startswith("/"):
@@ -49,8 +49,8 @@ class FSSpecPersistence(DataPersistence):
         return protocol
 
     @staticmethod
-    def get_filesystem(path: str) -> fsspec.AbstractFileSystem:
-        protocol = FSSpecPersistence.get_protocol(path)
+    def _get_filesystem(path: str) -> fsspec.AbstractFileSystem:
+        protocol = FSSpecPersistence._get_protocol(path)
         kwargs = {}
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
