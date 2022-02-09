@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import inspect
 from dataclasses import dataclass
 from enum import Enum
+from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from flytekit.common import constants as _common_constants
-from flytekit.common.exceptions import scopes as exception_scopes
-from flytekit.common.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
@@ -15,9 +13,9 @@ from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteC
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
+    transform_function_to_interface,
     transform_inputs_to_parameters,
     transform_interface_to_typed_interface,
-    transform_signature_to_interface,
 )
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
@@ -34,6 +32,8 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import scopes as exception_scopes
+from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -574,7 +574,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     ):
         name = f"{workflow_function.__module__}.{workflow_function.__name__}"
         self._workflow_function = workflow_function
-        native_interface = transform_signature_to_interface(inspect.signature(workflow_function), docstring=docstring)
+        native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
@@ -731,6 +731,7 @@ def workflow(
             docstring=Docstring(callable_=fn),
         )
         workflow_instance.compile()
+        update_wrapper(workflow_instance, fn)
         return workflow_instance
 
     if _workflow_function:
@@ -770,7 +771,7 @@ def reference_workflow(
     """
 
     def wrapper(fn) -> ReferenceWorkflow:
-        interface = transform_signature_to_interface(inspect.signature(fn))
+        interface = transform_function_to_interface(fn)
         return ReferenceWorkflow(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper

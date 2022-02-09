@@ -1,10 +1,17 @@
+import enum
 import typing
 
 from flyteidl.plugins import spark_pb2 as _spark_task
 
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
-from flytekit.sdk.spark_types import SparkType as _spark_type
+
+
+class SparkType(enum.Enum):
+    PYTHON = 1
+    SCALA = 2
+    JAVA = 3
+    R = 4
 
 
 class SparkJob(_common.FlyteIdlEntity):
@@ -102,13 +109,13 @@ class SparkJob(_common.FlyteIdlEntity):
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
         """
 
-        if self.spark_type == _spark_type.PYTHON:
+        if self.spark_type == SparkType.PYTHON:
             application_type = _spark_task.SparkApplication.PYTHON
-        elif self.spark_type == _spark_type.JAVA:
+        elif self.spark_type == SparkType.JAVA:
             application_type = _spark_task.SparkApplication.JAVA
-        elif self.spark_type == _spark_type.SCALA:
+        elif self.spark_type == SparkType.SCALA:
             application_type = _spark_task.SparkApplication.SCALA
-        elif self.spark_type == _spark_type.R:
+        elif self.spark_type == SparkType.R:
             application_type = _spark_task.SparkApplication.R
         else:
             raise _user_exceptions.FlyteValidationException("Invalid Spark Application Type Specified")
@@ -129,13 +136,13 @@ class SparkJob(_common.FlyteIdlEntity):
         :rtype: SparkJob
         """
 
-        application_type = _spark_type.PYTHON
+        application_type = SparkType.PYTHON
         if pb2_object.type == _spark_task.SparkApplication.JAVA:
-            application_type = _spark_type.JAVA
+            application_type = SparkType.JAVA
         elif pb2_object.type == _spark_task.SparkApplication.SCALA:
-            application_type = _spark_type.SCALA
+            application_type = SparkType.SCALA
         elif pb2_object.type == _spark_task.SparkApplication.R:
-            application_type = _spark_type.R
+            application_type = SparkType.R
 
         return cls(
             type=application_type,

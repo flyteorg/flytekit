@@ -1,23 +1,18 @@
 import json as _json
 import typing
 
-import six as _six
 from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
-from flyteidl.plugins import spark_pb2 as _spark_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
-from flytekit.plugins import flyteidl as _lazy_flyteidl
-from flytekit.sdk.spark_types import SparkType as _spark_type
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -180,6 +175,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         interruptible,
         discovery_version,
         deprecated_error_message,
+        cache_serializable,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -197,6 +193,8 @@ class TaskMetadata(_common.FlyteIdlEntity):
             task are the same and the discovery_version is also the same.
         :param Text deprecated: This string can be used to mark the task as deprecated.  Consumers of the task will
             receive deprecation warnings.
+        :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
+            single instance over identical inputs is executed, other concurrent executions wait for the cached results.
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -205,6 +203,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._retries = retries
         self._discovery_version = discovery_version
         self._deprecated_error_message = deprecated_error_message
+        self._cache_serializable = cache_serializable
 
     @property
     def discoverable(self):
@@ -265,6 +264,15 @@ class TaskMetadata(_common.FlyteIdlEntity):
         """
         return self._deprecated_error_message
 
+    @property
+    def cache_serializable(self):
+        """
+        Whether or not caching operations are executed in serial. This means only a single instance over identical
+        inputs is executed, other concurrent executions wait for the cached results.
+        :rtype: bool
+        """
+        return self._cache_serializable
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskMetadata
@@ -276,6 +284,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             interruptible=self.interruptible,
             discovery_version=self.discovery_version,
             deprecated_error_message=self.deprecated_error_message,
+            cache_serializable=self.cache_serializable,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -295,6 +304,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             retries=_literals.RetryStrategy.from_flyte_idl(pb2_object.retries),
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message,
+            cache_serializable=pb2_object.cache_serializable,
         )
 
 
@@ -602,151 +612,6 @@ class CompiledTask(_common.FlyteIdlEntity):
         return cls(template=TaskTemplate.from_flyte_idl(pb2_object.template))
 
 
-class SparkJob(_common.FlyteIdlEntity):
-    """
-    This model is deprecated and will be removed in 1.0.0. Please use the definition in the
-    flytekit spark plugin instead.
-    """
-
-    def __init__(
-        self,
-        spark_type,
-        application_file,
-        main_class,
-        spark_conf,
-        hadoop_conf,
-        executor_path,
-    ):
-        """
-        This defines a SparkJob target.  It will execute the appropriate SparkJob.
-
-        :param application_file: The main application file to execute.
-        :param dict[Text, Text] spark_conf: A definition of key-value pairs for spark config for the job.
-        :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
-        """
-        self._application_file = application_file
-        self._spark_type = spark_type
-        self._main_class = main_class
-        self._executor_path = executor_path
-        self._spark_conf = spark_conf
-        self._hadoop_conf = hadoop_conf
-
-    def with_overrides(
-        self, new_spark_conf: typing.Dict[str, str] = None, new_hadoop_conf: typing.Dict[str, str] = None
-    ) -> "SparkJob":
-        if not new_spark_conf:
-            new_spark_conf = self.spark_conf
-
-        if not new_hadoop_conf:
-            new_hadoop_conf = self.hadoop_conf
-
-        return SparkJob(
-            spark_type=self.spark_type,
-            application_file=self.application_file,
-            main_class=self.main_class,
-            spark_conf=new_spark_conf,
-            hadoop_conf=new_hadoop_conf,
-            executor_path=self.executor_path,
-        )
-
-    @property
-    def main_class(self):
-        """
-        The main class to execute
-        :rtype: Text
-        """
-        return self._main_class
-
-    @property
-    def spark_type(self):
-        """
-        Spark Job Type
-        :rtype: Text
-        """
-        return self._spark_type
-
-    @property
-    def application_file(self):
-        """
-        The main application file to execute
-        :rtype: Text
-        """
-        return self._application_file
-
-    @property
-    def executor_path(self):
-        """
-        The python executable to use
-        :rtype: Text
-        """
-        return self._executor_path
-
-    @property
-    def spark_conf(self):
-        """
-        A definition of key-value pairs for spark config for the job.
-         :rtype: dict[Text, Text]
-        """
-        return self._spark_conf
-
-    @property
-    def hadoop_conf(self):
-        """
-         A definition of key-value pairs for hadoop config for the job.
-        :rtype: dict[Text, Text]
-        """
-        return self._hadoop_conf
-
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.plugins.spark_pb2.SparkJob
-        """
-
-        if self.spark_type == _spark_type.PYTHON:
-            application_type = _spark_task.SparkApplication.PYTHON
-        elif self.spark_type == _spark_type.JAVA:
-            application_type = _spark_task.SparkApplication.JAVA
-        elif self.spark_type == _spark_type.SCALA:
-            application_type = _spark_task.SparkApplication.SCALA
-        elif self.spark_type == _spark_type.R:
-            application_type = _spark_task.SparkApplication.R
-        else:
-            raise _user_exceptions.FlyteValidationException("Invalid Spark Application Type Specified")
-
-        return _spark_task.SparkJob(
-            applicationType=application_type,
-            mainApplicationFile=self.application_file,
-            mainClass=self.main_class,
-            executorPath=self.executor_path,
-            sparkConf=self.spark_conf,
-            hadoopConf=self.hadoop_conf,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        """
-        :param flyteidl.plugins.spark_pb2.SparkJob pb2_object:
-        :rtype: SparkJob
-        """
-
-        application_type = _spark_type.PYTHON
-        if pb2_object.type == _spark_task.SparkApplication.JAVA:
-            application_type = _spark_type.JAVA
-        elif pb2_object.type == _spark_task.SparkApplication.SCALA:
-            application_type = _spark_type.SCALA
-        elif pb2_object.type == _spark_task.SparkApplication.R:
-            application_type = _spark_type.R
-
-        return cls(
-            type=application_type,
-            spark_conf=pb2_object.sparkConf,
-            application_file=pb2_object.mainApplicationFile,
-            main_class=pb2_object.mainClass,
-            hadoop_conf=pb2_object.hadoopConf,
-            executor_path=pb2_object.executorPath,
-        )
-
-
 class IOStrategy(_common.FlyteIdlEntity):
     """
     Provides methods to manage data in and out of the Raw container using Download Modes. This can only be used if DataLoadingConfig is enabled.
@@ -915,8 +780,8 @@ class Container(_common.FlyteIdlEntity):
             command=self.command,
             args=self.args,
             resources=self.resources.to_flyte_idl(),
-            env=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.env)],
-            config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.config)],
+            env=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in self.env.items()],
+            config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in self.config.items()],
             data_config=self._data_loading_config.to_flyte_idl() if self._data_loading_config else None,
         )
 
@@ -1029,73 +894,4 @@ class Sql(_common.FlyteIdlEntity):
         return cls(
             statement=pb2_object.statement,
             dialect=pb2_object.dialect,
-        )
-
-
-class SidecarJob(_common.FlyteIdlEntity):
-    def __init__(self, pod_spec, primary_container_name, annotations=None, labels=None):
-        """
-        A sidecar job represents the full kubernetes pod spec and related metadata required for executing a sidecar
-        task.
-
-        :param pod_spec: k8s.io.api.core.v1.PodSpec
-        :param primary_container_name: Text
-        :param dict[Text, Text] annotations:
-        :param dict[Text, Text] labels:
-        """
-        self._pod_spec = pod_spec
-        self._primary_container_name = primary_container_name
-        self._annotations = annotations
-        self._labels = labels
-
-    @property
-    def pod_spec(self):
-        """
-        :rtype: k8s.io.api.core.v1.PodSpec
-        """
-        return self._pod_spec
-
-    @property
-    def primary_container_name(self):
-        """
-        :rtype: Text
-        """
-        return self._primary_container_name
-
-    @property
-    def annotations(self):
-        """
-        :rtype: dict[Text,Text]
-        """
-        return self._annotations
-
-    @property
-    def labels(self):
-        """
-        :rtype: dict[Text,Text]
-        """
-        return self._labels
-
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.core.tasks_pb2.SidecarJob
-        """
-        return _lazy_flyteidl.plugins.sidecar_pb2.SidecarJob(
-            pod_spec=self.pod_spec,
-            primary_container_name=self.primary_container_name,
-            annotations=self.annotations,
-            labels=self.labels,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        """
-        :param flyteidl.admin.task_pb2.Task pb2_object:
-        :rtype: Container
-        """
-        return cls(
-            pod_spec=pb2_object.pod_spec,
-            primary_container_name=pb2_object.primary_container_name,
-            annotations=pb2_object.annotations,
-            labels=pb2_object.labels,
         )

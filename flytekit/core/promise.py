@@ -7,8 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 from typing_extensions import Protocol
 
-from flytekit.common import constants as _common_constants
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
@@ -16,6 +15,7 @@ from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteC
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
@@ -500,7 +500,7 @@ def create_task_output(
     if len(promises) == 1:
         if not entity_interface:
             return promises[0]
-        # See transform_signature_to_interface for more information, we're using the existence of a name as a proxy
+        # See transform_function_to_interface for more information, we're using the existence of a name as a proxy
         # for the user having specified a one-element typing.NamedTuple, which means we should _not_ extract it. We
         # should still return a tuple but it should be one of ours.
         if not entity_interface.output_tuple_name:

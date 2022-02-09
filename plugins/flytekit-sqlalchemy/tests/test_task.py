@@ -11,8 +11,8 @@ from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 from flytekitplugins.sqlalchemy.task import SQLAlchemyTaskExecutor
 
 from flytekit import kwtypes, task, workflow
+from flytekit.core.context_manager import SecretsManager
 from flytekit.models.security import Secret
-from flytekit.testing import SecretsManager
 from flytekit.types.schema import FlyteSchema
 
 tk = SQLAlchemyTask(

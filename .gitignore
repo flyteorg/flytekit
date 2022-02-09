@@ -3,7 +3,7 @@
 *.pyt
 *.pytc
 *.egg-info
-.*.swp
+.*.sw*
 .DS_Store
 venv/
 .venv/

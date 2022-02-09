@@ -1,12 +1,6 @@
 import logging as _logging
 import os as _os
-
-import six as _six
-
-try:
-    import pathlib as _pathlib
-except ImportError:
-    import pathlib2 as _pathlib  # python 2 backport
+import pathlib as _pathlib
 
 
 def set_flyte_config_file(config_file_path):
@@ -38,7 +32,7 @@ class TemporaryConfiguration(object):
         import flytekit.configuration.common as _common
 
         self._internal_overrides = {
-            _common.format_section_key("internal", k): v for k, v in _six.iteritems(internal_overrides or {})
+            _common.format_section_key("internal", k): v for k, v in (internal_overrides or {}).items()
         }
         self._new_config_path = new_config_path
         self._old_config_path = None
@@ -47,13 +41,13 @@ class TemporaryConfiguration(object):
     def __enter__(self):
         import flytekit.configuration.internal as _internal
 
-        self._old_internals = {k: _os.environ.get(k) for k in _six.iterkeys(self._internal_overrides)}
+        self._old_internals = {k: _os.environ.get(k) for k in self._internal_overrides.keys()}
         self._old_config_path = _os.environ.get(_internal.CONFIGURATION_PATH.env_var)
         _os.environ.update(self._internal_overrides)
         set_flyte_config_file(self._new_config_path)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for k, v in _six.iteritems(self._old_internals):
+        for k, v in self._old_internals.items():
             if v is not None:
                 _os.environ[k] = v
             else:

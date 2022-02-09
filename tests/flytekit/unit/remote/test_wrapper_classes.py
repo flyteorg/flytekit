@@ -3,7 +3,6 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit.common.translator import gather_dependent_entities, get_serializable
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import Image, ImageConfig
@@ -11,6 +10,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.remote import FlyteWorkflow
+from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = context_manager.SerializationSettings(

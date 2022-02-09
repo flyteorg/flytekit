@@ -293,15 +293,17 @@ class Execution(_common_models.FlyteIdlEntity):
 
 
 class ExecutionClosure(_common_models.FlyteIdlEntity):
-    def __init__(self, phase, started_at, error=None, outputs=None):
+    def __init__(self, phase, started_at, duration, error=None, outputs=None):
         """
         :param int phase: From the flytekit.models.core.execution.WorkflowExecutionPhase enum
         :param datetime.datetime started_at:
+        :param datetime.timedelta duration: Duration for which the execution has been running.
         :param flytekit.models.core.execution.ExecutionError error:
         :param LiteralMapBlob outputs:
         """
         self._phase = phase
         self._started_at = started_at
+        self._duration = duration
         self._error = error
         self._outputs = outputs
 
@@ -328,6 +330,13 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         return self._started_at
 
     @property
+    def duration(self):
+        """
+        :rtype: datetime.timedelta
+        """
+        return self._duration
+
+    @property
     def outputs(self):
         """
         :rtype: LiteralMapBlob
@@ -344,6 +353,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None,
         )
         obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        obj.duration.FromTimedelta(self.duration)
         return obj
 
     @classmethod
@@ -363,6 +373,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             outputs=outputs,
             phase=pb2_object.phase,
             started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
+            duration=pb2_object.duration.ToTimedelta(),
         )
 
 

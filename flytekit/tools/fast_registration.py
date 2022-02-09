@@ -6,10 +6,11 @@ from pathlib import Path as _Path
 
 import checksumdir
 
-from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.interfaces.data.data_proxy import Data as _Data
+from flytekit.core.context_manager import FlyteContextManager
 
 _tmp_versions_dir = "tmp/versions"
+
+file_access = FlyteContextManager.current_context().file_access
 
 
 def compute_digest(source_dir: _os.PathLike) -> str:
@@ -70,7 +71,7 @@ def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: s
         print("Local marker for identifier {} already exists, skipping upload".format(identifier))
         return full_remote_path
 
-    if _Data.data_exists(full_remote_path):
+    if file_access.exists(full_remote_path):
         print("Remote file {} already exists, skipping upload".format(full_remote_path))
         _write_marker(marker)
         return full_remote_path
@@ -82,7 +83,7 @@ def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: s
         if dry_run:
             print("Would upload {} to {}".format(fp.name, full_remote_path))
         else:
-            _Data.put_data(fp.name, full_remote_path)
+            file_access.put_data(fp.name, full_remote_path)
             print("Uploaded {} to {}".format(fp.name, full_remote_path))
 
     # Finally, touch the marker file so we have a flag in the future to avoid re-uploading the package dir as an
@@ -97,7 +98,7 @@ def download_distribution(additional_distribution: str, destination: str):
     :param Text additional_distribution:
     :param _os.PathLike destination:
     """
-    _data_proxy.Data.get_data(additional_distribution, destination)
+    file_access.get_data(additional_distribution, destination)
     tarfile_name = _os.path.basename(additional_distribution)
     file_suffix = _Path(tarfile_name).suffixes
     if len(file_suffix) != 2 or file_suffix[0] != ".tar" or file_suffix[1] != ".gz":

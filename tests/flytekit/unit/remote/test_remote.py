@@ -3,8 +3,8 @@ import os
 import pytest
 from mock import MagicMock, patch
 
-from flytekit.common.exceptions import user as user_exceptions
 from flytekit.configuration import internal
+from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
@@ -179,7 +179,7 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     _ = FlyteRemote.from_config("project", "domain", grpc_credentials=credentials)
     assert mock_secure_channel.called
     assert mock_secure_channel.call_args[0][1] == credentials
-    assert not mock_ssl_channel_credentials.called
+    assert mock_ssl_channel_credentials.call_count == 1
 
 
 def test_vjkl():

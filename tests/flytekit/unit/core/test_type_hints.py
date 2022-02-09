@@ -9,13 +9,14 @@ from dataclasses import dataclass
 from enum import Enum
 
 import pandas
+import pandas as pd
 import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
+from pandas._testing import assert_frame_equal
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
-from flytekit.common.translator import get_serializable
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
@@ -32,9 +33,11 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
 from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 serialization_settings = context_manager.SerializationSettings(
     project="proj",
@@ -50,6 +53,7 @@ def test_default_wf_params_works():
     def my_task(a: int):
         wf_params = flytekit.current_context()
         assert wf_params.execution_id == "ex:local:local:local"
+        assert "/tmp/flyte/" in wf_params.raw_output_prefix
 
     my_task(a=3)
     assert context_manager.FlyteContextManager.size() == 1
@@ -369,16 +373,35 @@ def test_flyte_file_in_dataclass():
         fs = FileStruct(a=file, b=InnerFileStruct(a=file, b=PNGImageFile(path)))
         return fs
 
+    @dynamic
+    def dyn(fs: FileStruct):
+        t2(fs=fs)
+        t3(fs=fs)
+
     @task
     def t2(fs: FileStruct) -> os.PathLike:
+        assert fs.a.remote_source == "s3://somewhere"
+        assert fs.b.a.remote_source == "s3://somewhere"
+        assert fs.b.b.remote_source == "s3://somewhere"
+        assert "/tmp/flyte/" in fs.a.path
+        assert "/tmp/flyte/" in fs.b.a.path
+        assert "/tmp/flyte/" in fs.b.b.path
+
         return fs.a.path
 
-    @workflow
-    def wf(path: str) -> os.PathLike:
-        n1 = t1(path=path)
-        return t2(fs=n1)
+    @task
+    def t3(fs: FileStruct) -> FlyteFile:
+        return fs.a
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+    @workflow
+    def wf(path: str) -> (os.PathLike, FlyteFile):
+        n1 = t1(path=path)
+        dyn(fs=n1)
+        return t2(fs=n1), t3(fs=n1)
+
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[0].path
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[1].path
+    assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
 
 
 def test_flyte_directory_in_dataclass():
@@ -410,6 +433,36 @@ def test_flyte_directory_in_dataclass():
         return t2(fs=n1)
 
     assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+
+
+def test_structured_dataset_in_dataclass():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    @dataclass_json
+    @dataclass
+    class InnerDatasetStruct(object):
+        a: StructuredDataset
+
+    @dataclass_json
+    @dataclass
+    class DatasetStruct(object):
+        a: StructuredDataset
+        b: InnerDatasetStruct
+
+    @task
+    def t1(path: str) -> DatasetStruct:
+        sd = StructuredDataset(dataframe=df, uri=path)
+        return DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+
+    @workflow
+    def wf(path: str) -> DatasetStruct:
+        return t1(path=path)
+
+    res = wf(path="/tmp/somewhere")
+    assert "parquet" == res.a.file_format
+    assert "parquet" == res.b.a.file_format
+    assert_frame_equal(df, res.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, res.b.a.open(pd.DataFrame).all())
 
 
 def test_wf1_with_map():
@@ -568,7 +621,9 @@ def test_wf1_with_fast_dynamic():
                 )
             )
         ) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+
+            dynamic_job_spec = my_subwf.dispatch_execute(ctx, input_literal_map)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
             args = " ".join(dynamic_job_spec.tasks[0].container.args)

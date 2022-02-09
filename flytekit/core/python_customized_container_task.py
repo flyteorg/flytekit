@@ -5,13 +5,12 @@ from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from flyteidl.core import tasks_pb2 as _tasks_pb2
 
-from flytekit.common import utils as common_utils
-from flytekit.common.tasks.raw_container import _get_container_definition
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContext, Image, ImageConfig, SerializationSettings
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.tracker import TrackedInstance
+from flytekit.core.utils import _get_container_definition, load_proto_from_file
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as identifier_models
@@ -232,7 +231,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         ctx = FlyteContext.current_context()
         task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")  # type: ignore
         ctx.file_access.get_data(loader_args[0], task_template_local_path)
-        task_template_proto = common_utils.load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
+        task_template_proto = load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
 
         executor_class = load_object_from_module(loader_args[1])

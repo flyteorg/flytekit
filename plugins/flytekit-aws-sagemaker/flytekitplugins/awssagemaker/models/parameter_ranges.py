@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Union
 
 from flyteidl.plugins.sagemaker import parameter_ranges_pb2 as _idl_parameter_ranges
 
-from flytekit.common.exceptions import user
+from flytekit.exceptions import user
 from flytekit.models import common as _common
 
 

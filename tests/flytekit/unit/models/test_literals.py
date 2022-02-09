@@ -358,6 +358,43 @@ def test_scalar_schema():
     assert len(obj2.value.type.columns) == 6
 
 
+def test_structured_dataset():
+    my_cols = [
+        _types.StructuredDatasetType.DatasetColumn("a", _types.LiteralType(simple=_types.SimpleType.INTEGER)),
+        _types.StructuredDatasetType.DatasetColumn("b", _types.LiteralType(simple=_types.SimpleType.STRING)),
+        _types.StructuredDatasetType.DatasetColumn(
+            "c", _types.LiteralType(collection_type=_types.LiteralType(simple=_types.SimpleType.INTEGER))
+        ),
+        _types.StructuredDatasetType.DatasetColumn(
+            "d", _types.LiteralType(map_value_type=_types.LiteralType(simple=_types.SimpleType.INTEGER))
+        ),
+    ]
+    ds = literals.StructuredDataset(
+        uri="s3://bucket",
+        metadata=literals.StructuredDatasetMetadata(
+            structured_dataset_type=_types.StructuredDatasetType(columns=my_cols, format="parquet")
+        ),
+    )
+    obj = literals.Scalar(structured_dataset=ds)
+    assert obj.error is None
+    assert obj.blob is None
+    assert obj.binary is None
+    assert obj.schema is None
+    assert obj.none_type is None
+    assert obj.structured_dataset is not None
+    assert obj.value.uri == "s3://bucket"
+    assert len(obj.value.metadata.structured_dataset_type.columns) == 4
+    obj2 = literals.Scalar.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj2.blob is None
+    assert obj2.binary is None
+    assert obj2.schema is None
+    assert obj2.none_type is None
+    assert obj2.structured_dataset is not None
+    assert obj2.value.uri == "s3://bucket"
+    assert len(obj2.value.metadata.structured_dataset_type.columns) == 4
+
+
 def test_binding_data_scalar():
     obj = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=5)))
     assert obj.value.value.value == 5

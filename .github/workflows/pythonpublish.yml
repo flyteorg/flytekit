@@ -52,45 +52,24 @@ jobs:
         uses: jakejarvis/wait-action@master
         with:
           time: '180s'
-      - name: Build & Push Flytekit Python3.7 Docker Image to Github Registry
+
+  build-and-push-docker-images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+    steps:
+      - name: Build & Push Flytekit Python${{ matrix.python-version }} Docker Image to Github Registry
         uses: whoan/docker-build-with-cache-action@v5
         with:
           # https://docs.github.com/en/packages/learn-github-packages/publishing-a-package
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: py37-latest,py37-${{ github.sha }},py37-${{ steps.bump.outputs.version }}
+          image_tag: py${{ matrix.python-version }}-latest,py${{ matrix.python-version }}-${{ github.sha }},py${{ matrix.python-version }}-${{ steps.bump.outputs.version }}
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py37-${{ steps.bump.outputs.version }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ steps.bump.outputs.version }}"
           context: .
-          dockerfile: Dockerfile.py37
-      - name: Build & Push Flytekit Python3.8 Docker Image to Github Registry
-        uses: whoan/docker-build-with-cache-action@v5
-        with:
-          # https://docs.github.com/en/packages/learn-github-packages/publishing-a-package
-          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
-          password: "${{ secrets.FLYTE_BOT_PAT }}"
-          image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: py38-latest,py38-${{ github.sha }},py38-${{ steps.bump.outputs.version }}
-          push_git_tag: true
-          push_image_and_stages: true
-          registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py38-${{ steps.bump.outputs.version }}"
-          context: .
-          dockerfile: Dockerfile.py38
-      - name: Build & Push Flytekit Python3.9 Docker Image to Github Registry
-        uses: whoan/docker-build-with-cache-action@v5
-        with:
-          # https://docs.github.com/en/packages/learn-github-packages/publishing-a-package
-          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
-          password: "${{ secrets.FLYTE_BOT_PAT }}"
-          image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: py39-latest,py39-${{ github.sha }},py39-${{ steps.bump.outputs.version }}
-          push_git_tag: true
-          push_image_and_stages: true
-          registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py39-${{ steps.bump.outputs.version }}"
-          context: .
-          dockerfile: Dockerfile.py39
+          dockerfile: Dockerfile.py${{ matrix.python-version }}

@@ -1,4 +1,5 @@
 """Test local execution of files that use functools to decorate tasks and workflows."""
+from __future__ import annotations
 
 import os
 import subprocess

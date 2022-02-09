@@ -11,7 +11,7 @@ from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
 from flytekit import FlyteContext, PythonInstanceTask
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file import HTMLPage, PythonNotebook

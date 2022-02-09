@@ -5,7 +5,7 @@ from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements
 
 from flytekit import FlyteContext, PythonFunctionTask
-from flytekit.common.exceptions import user as _user_exceptions
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.extend import Promise, SerializationSettings, TaskPlugins
 from flytekit.models import task as _task_models
 
@@ -75,7 +75,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
         final_containers = []
         for container in containers:
             # In the case of the primary container, we overwrite specific container attributes with the default values
-            # used in an SDK runnable task.
+            # used in the regular Python task.
             if container.name == self.task_config.primary_container_name:
                 sdk_default_container = super().get_container(settings)
 

@@ -2,6 +2,7 @@ import pytest
 from flyteidl.core import types_pb2
 
 from flytekit.models import types as _types
+from flytekit.models.annotation import TypeAnnotation
 from tests.flytekit.common import parameterizers
 
 
@@ -78,6 +79,16 @@ def test_literal_types():
     assert obj.schema == schema_type
     assert obj.collection_type is None
     assert obj.map_value_type is None
+    assert obj == _types.LiteralType.from_flyte_idl(obj.to_flyte_idl())
+
+
+def test_annotated_literal_types():
+    obj = _types.LiteralType(simple=_types.SimpleType.INTEGER, annotation=TypeAnnotation(annotations={"foo": "bar"}))
+    assert obj.simple == _types.SimpleType.INTEGER
+    assert obj.schema is None
+    assert obj.collection_type is None
+    assert obj.map_value_type is None
+    assert obj.annotation.annotations == {"foo": "bar"}
     assert obj == _types.LiteralType.from_flyte_idl(obj.to_flyte_idl())
 
 

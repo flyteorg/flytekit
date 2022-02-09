@@ -149,7 +149,6 @@ def test_ge_with_task():
         task_object(dataset=dataset)
         return my_task(csv_file=dataset)
 
-    @pytest.mark.xfail(strict=True)
     @workflow
     def invalid_wf(dataset: str = "yellow_tripdata_sample_2019-02.csv") -> int:
         task_object(dataset=dataset)
@@ -158,7 +157,8 @@ def test_ge_with_task():
     valid_result = valid_wf()
     assert valid_result == 10000
 
-    invalid_wf()
+    with pytest.raises(ValidationError, match=r".*passenger_count -> expect_column_min_to_be_between.*"):
+        invalid_wf()
 
 
 def test_ge_workflow():

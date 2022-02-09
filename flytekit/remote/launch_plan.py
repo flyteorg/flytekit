@@ -1,10 +1,7 @@
 from typing import Optional
 
-from flytekit.common.exceptions import scopes as _exception_scopes
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
-from flytekit.engines.flyte import engine as _flyte_engine
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.core import identifier as id_models
@@ -93,15 +90,6 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         if self._python_interface is not None:
             return
         self._python_interface = value
-
-    @_exception_scopes.system_entry_point
-    def update(self, state: _launch_plan_models.LaunchPlanState):
-        if not self.id:
-            raise _user_exceptions.FlyteAssertion(
-                "Failed to update launch plan because the launch plan's ID is not set. Please call register to fetch "
-                "or register the identifier first"
-            )
-        return _flyte_engine.get_client().update_launch_plan(self.id, state)
 
     def __repr__(self) -> str:
         return f"FlyteLaunchPlan(ID: {self.id} Interface: {self.interface} WF ID: {self.workflow_id})"

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import inspect
 from typing import Any, Callable, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
-from flytekit.core.interface import Interface, transform_inputs_to_parameters, transform_signature_to_interface
+from flytekit.core.interface import Interface, transform_function_to_interface, transform_inputs_to_parameters
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
 from flytekit.models import common as _common_models
@@ -399,7 +398,7 @@ def reference_launch_plan(
     """
 
     def wrapper(fn) -> ReferenceLaunchPlan:
-        interface = transform_signature_to_interface(inspect.signature(fn))
+        interface = transform_function_to_interface(fn)
         return ReferenceLaunchPlan(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper

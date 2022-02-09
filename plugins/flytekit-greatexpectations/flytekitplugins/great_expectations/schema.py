@@ -126,7 +126,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             raise TypeError(f"{datatype} is not a supported type")
 
     def _flyte_schema(
-        self, is_runtime: bool, ctx: FlyteContext, ge_conf: GreatExpectationsFlyteConfig, lv: Literal
+        self, is_runtime: bool, ctx: FlyteContext, ge_conf: GreatExpectationsFlyteConfig, uri: str
     ) -> (FlyteSchema, str):
         temp_dataset = ""
 
@@ -136,7 +136,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 raise ValueError("local_file_path is missing!")
 
             # copy parquet file to user-given directory
-            ctx.file_access.get_data(lv.scalar.schema.uri, ge_conf.local_file_path, is_multipart=True)
+            ctx.file_access.get_data(uri, ge_conf.local_file_path, is_multipart=True)
 
             temp_dataset = os.path.basename(ge_conf.local_file_path)
 
@@ -146,7 +146,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         return (
             FlyteSchema(
                 local_path=ctx.file_access.get_random_local_directory(),
-                remote_path=lv.scalar.schema.uri,
+                remote_path=uri,
                 downloader=downloader,
                 supported_mode=SchemaOpenMode.READ,
             )
@@ -187,7 +187,12 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         if not (
             lv
             and lv.scalar
-            and ((lv.scalar.primitive and lv.scalar.primitive.string_value) or lv.scalar.schema or lv.scalar.blob)
+            and (
+                (lv.scalar.primitive and lv.scalar.primitive.string_value)
+                or lv.scalar.schema
+                or lv.scalar.blob
+                or lv.scalar.structured_dataset
+            )
         ):
             raise AssertionError("Can only validate a literal string/FlyteFile/FlyteSchema value")
 
@@ -226,7 +231,14 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
         # FlyteSchema
         if lv.scalar.schema:
-            return_dataset, temp_dataset = self._flyte_schema(is_runtime=is_runtime, ctx=ctx, ge_conf=ge_conf, lv=lv)
+            return_dataset, temp_dataset = self._flyte_schema(
+                is_runtime=is_runtime, ctx=ctx, ge_conf=ge_conf, uri=lv.scalar.schema.uri
+            )
+
+        if lv.scalar.structured_dataset:
+            return_dataset, temp_dataset = self._flyte_schema(
+                is_runtime=is_runtime, ctx=ctx, ge_conf=ge_conf, uri=lv.scalar.structured_dataset.uri
+            )
 
         # FlyteFile
         if lv.scalar.blob:
@@ -260,7 +272,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
             if is_runtime and lv.scalar.primitive:
                 final_batch_request["runtime_parameters"]["query"] = dataset
-            elif is_runtime and lv.scalar.schema:
+            elif is_runtime and (lv.scalar.schema or lv.scalar.structured_dataset):
                 final_batch_request["runtime_parameters"]["batch_data"] = return_dataset
             else:
                 raise AssertionError("Can only use runtime_parameters for query(str)/schema data")

@@ -9,8 +9,8 @@ import joblib
 import pytest
 
 from flytekit import kwtypes
-from flytekit.common.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.core.launch_plan import LaunchPlan
+from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
 from flytekit.types.schema import FlyteSchema
@@ -145,6 +145,8 @@ def test_fetch_execute_workflow(flyteclient, flyte_workflows_register):
     flyte_workflow = remote.fetch_workflow(name="workflows.basic.hello_world.my_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_workflow, {}, wait=True)
     assert execution.outputs["o0"] == "hello world"
+    assert isinstance(execution.closure.duration, datetime.timedelta)
+    assert execution.closure.duration > datetime.timedelta(seconds=1)
 
     execution_to_terminate = remote.execute(flyte_workflow, {})
     remote.terminate(execution_to_terminate, cause="just because")
@@ -189,6 +191,10 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     execution = remote.execute(launch_plan, inputs={"a": 14, "b": "foobar"}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
+
+    flyte_workflow_execution = remote.fetch_workflow_execution(name=execution.id.name)
+    assert execution.inputs == flyte_workflow_execution.inputs
+    assert execution.outputs == flyte_workflow_execution.outputs
 
 
 def test_fetch_execute_launch_plan_list_of_floats(flyteclient, flyte_workflows_register):

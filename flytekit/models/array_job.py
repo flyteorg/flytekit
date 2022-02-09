@@ -70,13 +70,21 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         """
         :rtype: dict[T, Text]
         """
-        return _json_format.MessageToDict(
-            _array_job.ArrayJob(
+        array_job = None
+        if self.min_successes is not None:
+            array_job = _array_job.ArrayJob(
                 parallelism=self.parallelism,
                 size=self.size,
                 min_successes=self.min_successes,
             )
-        )
+        elif self.min_success_ratio is not None:
+            array_job = _array_job.ArrayJob(
+                parallelism=self.parallelism,
+                size=self.size,
+                min_success_ratio=self.min_success_ratio,
+            )
+
+        return _json_format.MessageToDict(array_job)
 
     @classmethod
     def from_dict(cls, idl_dict):
@@ -86,8 +94,15 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         """
         pb2_object = _json_format.Parse(_json.dumps(idl_dict), _array_job.ArrayJob())
 
-        return cls(
-            parallelism=pb2_object.parallelism,
-            size=pb2_object.size,
-            min_successes=pb2_object.min_successes,
-        )
+        if pb2_object.HasField("min_successes"):
+            return cls(
+                parallelism=pb2_object.parallelism,
+                size=pb2_object.size,
+                min_successes=pb2_object.min_successes,
+            )
+        else:
+            return cls(
+                parallelism=pb2_object.parallelism,
+                size=pb2_object.size,
+                min_success_ratio=pb2_object.min_success_ratio,
+            )

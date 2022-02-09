@@ -8,10 +8,10 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.types.pickle import FlytePickle
@@ -267,19 +267,28 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
     return t
 
 
-def transform_signature_to_interface(signature: inspect.Signature, docstring: Optional[Docstring] = None) -> Interface:
+def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
 
     For now the fancy object, maybe in the future a dumb object.
+
     """
-    outputs = extract_return_annotation(signature.return_annotation)
+    try:
+        # include_extras can only be used in python >= 3.9
+        type_hints = typing.get_type_hints(fn, include_extras=True)
+    except TypeError:
+        type_hints = typing.get_type_hints(fn)
+    signature = inspect.signature(fn)
+    return_annotation = type_hints.get("return", None)
+
+    outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
         outputs[k] = _change_unrecognized_type_to_pickle(v)
     inputs = OrderedDict()
     for k, v in signature.parameters.items():
-        annotation = v.annotation
+        annotation = type_hints.get(k, None)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (_change_unrecognized_type_to_pickle(annotation), default)
@@ -287,7 +296,6 @@ def transform_signature_to_interface(signature: inspect.Signature, docstring: Op
     # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
     # would like to preserve that name in our custom collections.namedtuple.
     custom_name = None
-    return_annotation = signature.return_annotation
     if hasattr(return_annotation, "__bases__"):
         bases = return_annotation.__bases__
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
@@ -334,7 +342,7 @@ def output_name_generator(length: int) -> Generator[str, None, None]:
         yield default_output_name(x)
 
 
-def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str, Type]:
+def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Dict[str, Type]:
     """
     The purpose of this function is to sort out whether a function is returning one thing, or multiple things, and to
     name the outputs accordingly, either by using our default name function, or from a typing.NamedTuple.
@@ -368,7 +376,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple]) -> Dict[str
 
     # Handle Option 6
     # We can think about whether we should add a default output name with type None in the future.
-    if return_annotation is None or return_annotation is inspect.Signature.empty:
+    if return_annotation in (None, type(None), inspect.Signature.empty):
         return {}
 
     # This statement results in true for typing.Namedtuple, single and void return types, so this

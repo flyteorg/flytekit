@@ -14,24 +14,21 @@ from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
 
 import flytekit as _flytekit
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
-from flytekit.common import utils as _utils
-from flytekit.common.core import identifier as _identifier
-from flytekit.common.exceptions.scopes import system_entry_point
-from flytekit.common.exceptions.user import FlyteValidationException
-from flytekit.common.tasks import task as _sdk_task
-from flytekit.common.translator import get_serializable
-from flytekit.common.utils import write_proto_to_file as _write_proto_to_file
 from flytekit.configuration import internal as _internal_config
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import WorkflowBase
+from flytekit.exceptions.scopes import system_entry_point
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import iterate_registerable_entities_in_order
+from flytekit.tools.module_loader import trigger_loading
+from flytekit.tools.translator import get_serializable
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
@@ -57,42 +54,6 @@ CTX_PYTHON_INTERPRETER = "python_interpreter"
 class SerializationMode(_Enum):
     DEFAULT = 0
     FAST = 1
-
-
-@system_entry_point
-def serialize_tasks_only(pkgs, folder=None):
-    """
-    :param list[Text] pkgs:
-    :param Text folder:
-
-    :return:
-    """
-    # m = module (i.e. python file)
-    # k = value of dir(m), type str
-    # o = object (e.g. SdkWorkflow)
-    loaded_entities = []
-    for m, k, o in iterate_registerable_entities_in_order(pkgs, include_entities={_sdk_task.SdkTask}):
-        name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-        _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-        o._id = _identifier.Identifier(
-            o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
-        )
-        loaded_entities.append(o)
-
-    zero_padded_length = _determine_text_chars(len(loaded_entities))
-    for i, entity in enumerate(loaded_entities):
-        serialized = entity.serialize()
-        fname_index = str(i).zfill(zero_padded_length)
-        fname = "{}_{}.pb".format(fname_index, entity._id.name)
-        click.echo("  Writing {} to\n    {}".format(entity._id, fname))
-        if folder:
-            fname = _os.path.join(folder, fname)
-        _write_proto_to_file(serialized, fname)
-
-        identifier_fname = "{}_{}.identifier.pb".format(fname_index, entity._id.name)
-        if folder:
-            identifier_fname = _os.path.join(folder, identifier_fname)
-        _write_proto_to_file(entity._id.to_flyte_idl(), identifier_fname)
 
 
 def _should_register_with_admin(entity) -> bool:
@@ -140,8 +101,9 @@ def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
     serializable_tasks: typing.List[task_models.TaskSpec] = [
         entity for entity in entities_to_be_serialized if isinstance(entity, task_models.TaskSpec)
     ]
-    # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same metadata identifiers
-    # (see :py:class:`flytekit.common.core.identifier.Identifier`). Duplicate tasks are considered invalid at registration
+    # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same
+    # metadata identifiers (see :py:class:`flytekit.common.core.identifier.Identifier`). Duplicate
+    # tasks are considered invalid at registration
     # time and usually indicate user error, so we catch this common mistake at serialization time.
     duplicate_tasks = _find_duplicate_tasks(serializable_tasks)
     if len(duplicate_tasks) > 0:
@@ -211,9 +173,6 @@ def serialize_all(
     :param flytekit_virtualenv_root: The full path of the virtual env in the container.
     """
 
-    # m = module (i.e. python file)
-    # k = value of dir(m), type str
-    # o = object (e.g. SdkWorkflow)
     env = {
         _internal_config.CONFIGURATION_PATH.env_var: config_path
         if config_path
@@ -242,29 +201,9 @@ def serialize_all(
     )
     ctx = flyte_context.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
     with flyte_context.FlyteContextManager.with_context(ctx) as ctx:
-        old_style_entities = []
-        # This first for loop is for legacy API entities - SdkTask, SdkWorkflow, etc. The _get_entity_to_module
-        # function that this iterate calls only works on legacy objects
-        for m, k, o in iterate_registerable_entities_in_order(pkgs, local_source_root=local_source_root):
-            name = _utils.fqdn(m.__name__, k, entity_type=o.resource_type)
-            _logging.debug("Found module {}\n   K: {} Instantiated in {}".format(m, k, o._instantiated_in))
-            o._id = _identifier.Identifier(
-                o.resource_type, _PROJECT_PLACEHOLDER, _DOMAIN_PLACEHOLDER, name, _VERSION_PLACEHOLDER
-            )
-            old_style_entities.append(o)
-
-        serialized_old_style_entities = []
-        for entity in old_style_entities:
-            if entity.has_registered:
-                _logging.info(f"Skipping entity {entity.id} because already registered")
-                continue
-            serialized_old_style_entities.append(entity.serialize())
-
+        trigger_loading(pkgs, local_source_root=local_source_root)
         click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
-
-        new_api_model_values = get_registrable_entities(ctx)
-
-        loaded_entities = serialized_old_style_entities + new_api_model_values
+        loaded_entities = get_registrable_entities(ctx)
         if folder is None:
             folder = "."
         persist_registrable_entities(loaded_entities, folder)
@@ -349,18 +288,6 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
 
-@click.command("tasks")
-@click.option("-f", "--folder", type=click.Path(exists=True))
-@click.pass_context
-def tasks(ctx, folder=None):
-    pkgs = ctx.obj[CTX_PACKAGES]
-
-    if folder:
-        click.echo(f"Writing output to {folder}")
-
-    serialize_tasks_only(pkgs, folder)
-
-
 @click.command("workflows")
 # For now let's just assume that the directory needs to exist. If you're docker run -v'ing, docker will create the
 # directory for you so it shouldn't be a problem.
@@ -423,7 +350,5 @@ def fast_workflows(ctx, folder=None):
 
 
 fast.add_command(fast_workflows)
-
-serialize.add_command(tasks)
 serialize.add_command(workflows)
 serialize.add_command(fast)

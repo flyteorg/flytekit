@@ -9,10 +9,9 @@ from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import FlyteContext
-from flytekit.common.types import primitives
 from flytekit.extend import DictTransformer, PythonTask, SerializationSettings, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
-from flytekit.models.types import LiteralType
+from flytekit.models.types import LiteralType, SimpleType
 
 from .models import hpo_job as _hpo_job_model
 from .models import parameter_ranges as _params
@@ -107,7 +106,7 @@ class HPOTuningJobConfigTransformer(TypeTransformer[_hpo_job_model.Hyperparamete
         super().__init__("sagemaker-hpojobconfig-transformer", _hpo_job_model.HyperparameterTuningJobConfig)
 
     def get_literal_type(self, t: Type[_hpo_job_model.HyperparameterTuningJobConfig]) -> LiteralType:
-        return primitives.Generic.to_flyte_literal_type()
+        return LiteralType(simple=SimpleType.STRUCT, metadata=None)
 
     def to_literal(
         self,
@@ -139,7 +138,7 @@ class ParameterRangesTransformer(TypeTransformer[_params.ParameterRangeOneOf]):
         super().__init__("sagemaker-paramrange-transformer", _params.ParameterRangeOneOf)
 
     def get_literal_type(self, t: Type[_params.ParameterRangeOneOf]) -> LiteralType:
-        return primitives.Generic.to_flyte_literal_type()
+        return LiteralType(simple=SimpleType.STRUCT, metadata=None)
 
     def to_literal(
         self,

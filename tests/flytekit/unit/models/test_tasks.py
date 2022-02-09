@@ -4,7 +4,6 @@ from itertools import product
 import pytest
 from flyteidl.core.tasks_pb2 import TaskMetadata
 from google.protobuf import text_format
-from k8s.io.api.core.v1 import generated_pb2
 
 import flytekit.models.interface as interface_models
 import flytekit.models.literals as literal_models
@@ -70,6 +69,7 @@ def test_task_metadata():
         True,
         "0.1.1b0",
         "This is deprecated!",
+        True,
     )
 
     assert obj.discoverable is True
@@ -136,6 +136,7 @@ def test_task_template__k8s_pod_target():
             False,
             "1.0",
             "deprecated",
+            False,
         ),
         interface_models.TypedInterface(
             # inputs
@@ -223,36 +224,6 @@ def test_container(resources):
     obj.env == {"a": "b"}
     obj.config == {"d": "e"}
     assert obj == task.Container.from_flyte_idl(obj.to_flyte_idl())
-
-
-def test_sidecar_task():
-    pod_spec = generated_pb2.PodSpec()
-    container = generated_pb2.Container(name="containery")
-    pod_spec.containers.extend([container])
-    obj = task.SidecarJob(
-        pod_spec=pod_spec,
-        primary_container_name="primary",
-        annotations={"a1": "a1"},
-        labels={"b1": "b1"},
-    )
-    assert obj.primary_container_name == "primary"
-    assert len(obj.pod_spec.containers) == 1
-    assert obj.pod_spec.containers[0].name == "containery"
-    assert obj.annotations["a1"] == "a1"
-    assert obj.labels["b1"] == "b1"
-
-    obj2 = task.SidecarJob.from_flyte_idl(obj.to_flyte_idl())
-    assert obj2 == obj
-
-
-def test_sidecar_task_label_annotation_not_provided():
-    pod_spec = generated_pb2.PodSpec()
-    obj = task.SidecarJob(pod_spec=pod_spec, primary_container_name="primary")
-
-    assert obj.primary_container_name == "primary"
-
-    obj2 = task.SidecarJob.from_flyte_idl(obj.to_flyte_idl())
-    assert obj2 == obj
 
 
 def test_dataloadingconfig():

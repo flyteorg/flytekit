@@ -560,7 +560,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     def recover_execution(self, id, name: str = None):
         """
         Recreates a previously-run workflow execution that will only start executing from the last known failure point.
-        :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
+        :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
         :param name str: Optional name to assign to the newly created execution.
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
@@ -572,7 +572,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def get_execution(self, id):
         """
-        :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
+        :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
         :rtype: flytekit.models.execution.Execution
         """
         return _execution.Execution.from_flyte_idl(
@@ -638,7 +638,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def terminate_execution(self, id, cause):
         """
-        :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
+        :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
         :param Text cause:
         """
         super(SynchronousFlyteClient, self).terminate_execution(
@@ -647,7 +647,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def relaunch_execution(self, id, name=None):
         """
-        :param flytekit.common.core.identifier.WorkflowExecutionIdentifier id:
+        :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
         :param Text name: [Optional] name for the new execution. If not specified, a randomly generated name will be
             used
         :returns: The unique identifier for the new execution.

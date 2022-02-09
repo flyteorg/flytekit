@@ -7,16 +7,19 @@ from datetime import timedelta
 from enum import Enum
 
 import pandas as pd
+import pyarrow as pa
 import pytest
+import typing_extensions
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
+from pandas._testing import assert_frame_equal
 
 from flytekit import kwtypes
-from flytekit.common.exceptions import user as user_exceptions
+from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
     DataclassTransformer,
@@ -28,7 +31,9 @@ from flytekit.core.type_engine import (
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
+from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
+from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
@@ -39,6 +44,12 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured.structured_dataset import StructuredDataset
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 
 def test_type_engine():
@@ -584,6 +595,35 @@ def test_flyte_directory_in_dataclass():
     assert o.b.c["hello"].path == ot.b.c["hello"].path
 
 
+def test_structured_dataset_in_dataclass():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    @dataclass_json
+    @dataclass
+    class InnerDatasetStruct(object):
+        a: StructuredDataset
+
+    @dataclass_json
+    @dataclass
+    class DatasetStruct(object):
+        a: StructuredDataset
+        b: InnerDatasetStruct
+
+    sd = StructuredDataset(dataframe=df, file_format="parquet")
+    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(DatasetStruct)
+    lv = tf.to_literal(ctx, o, DatasetStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=DatasetStruct)
+
+    assert_frame_equal(df, ot.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.a.open(pd.DataFrame).all())
+    assert "parquet" == ot.a.file_format
+    assert "parquet" == ot.b.a.file_format
+
+
 # Enums should have string values
 class Color(Enum):
     RED = "red"
@@ -596,6 +636,50 @@ class UnsupportedEnumValues(Enum):
     RED = 1
     GREEN = 2
     BLUE = 3
+
+
+def test_structured_dataset_type():
+    name = "Name"
+    age = "Age"
+    data = {name: ["Tom", "Joseph"], age: [20, 22]}
+    superset_cols = kwtypes(Name=str, Age=int)
+    subset_cols = kwtypes(Name=str)
+    df = pd.DataFrame(data)
+
+    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+
+    tf = StructuredDatasetTransformerEngine()
+    lt = tf.get_literal_type(Annotated[StructuredDataset, superset_cols, "parquet"])
+    assert lt.structured_dataset_type is not None
+
+    ctx = FlyteContextManager.current_context()
+    lv = tf.to_literal(ctx, df, pd.DataFrame, lt)
+    assert "/tmp/flyte" in lv.scalar.structured_dataset.uri
+    metadata = lv.scalar.structured_dataset.metadata
+    assert metadata.structured_dataset_type.format == "parquet"
+    v1 = tf.to_python_value(ctx, lv, pd.DataFrame)
+    v2 = tf.to_python_value(ctx, lv, pa.Table)
+    assert_frame_equal(df, v1)
+    assert_frame_equal(df, v2.to_pandas())
+
+    subset_lt = tf.get_literal_type(Annotated[StructuredDataset, subset_cols, "parquet"])
+    assert subset_lt.structured_dataset_type is not None
+
+    subset_lv = tf.to_literal(ctx, df, pd.DataFrame, subset_lt)
+    assert "/tmp/flyte" in subset_lv.scalar.structured_dataset.uri
+    v1 = tf.to_python_value(ctx, subset_lv, pd.DataFrame)
+    v2 = tf.to_python_value(ctx, subset_lv, pa.Table)
+    subset_data = pd.DataFrame({name: ["Tom", "Joseph"]})
+    assert_frame_equal(subset_data, v1)
+    assert_frame_equal(subset_data, v2.to_pandas())
+
+    empty_lt = tf.get_literal_type(Annotated[StructuredDataset, "parquet"])
+    assert empty_lt.structured_dataset_type is not None
+    empty_lv = tf.to_literal(ctx, df, pd.DataFrame, empty_lt)
+    v1 = tf.to_python_value(ctx, empty_lv, pd.DataFrame)
+    v2 = tf.to_python_value(ctx, empty_lv, pa.Table)
+    assert_frame_equal(df, v1)
+    assert_frame_equal(df, v2.to_pandas())
 
 
 def test_enum_type():
@@ -757,6 +841,65 @@ def test_dict_to_literal_map_with_wrong_input_type():
     guessed_python_types = {"a": str}
     with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
+
+
+def test_annotated_simple_types():
+    def _check_annotation(t, annotation):
+        lt = TypeEngine.to_literal_type(t)
+        assert isinstance(lt.annotation, TypeAnnotation)
+        assert lt.annotation.annotations == annotation
+
+    _check_annotation(typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"})], {"foo": "bar"})
+    _check_annotation(typing_extensions.Annotated[int, FlyteAnnotation(["foo", "bar"])], ["foo", "bar"])
+    _check_annotation(
+        typing_extensions.Annotated[int, FlyteAnnotation({"d": {"test": "data"}, "l": ["nested", ["list"]]})],
+        {"d": {"test": "data"}, "l": ["nested", ["list"]]},
+    )
+    _check_annotation(
+        typing_extensions.Annotated[int, FlyteAnnotation(InnerStruct(a=1, b="fizz", c=[1]))],
+        InnerStruct(a=1, b="fizz", c=[1]),
+    )
+
+
+def test_annotated_list():
+    t = typing_extensions.Annotated[typing.List[int], FlyteAnnotation({"foo": "bar"})]
+    lt = TypeEngine.to_literal_type(t)
+    assert isinstance(lt.annotation, TypeAnnotation)
+    assert lt.annotation.annotations == {"foo": "bar"}
+
+    t = typing.List[typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"})]]
+    lt = TypeEngine.to_literal_type(t)
+    assert isinstance(lt.collection_type.annotation, TypeAnnotation)
+    assert lt.collection_type.annotation.annotations == {"foo": "bar"}
+
+
+def test_type_alias():
+    inner_t = typing_extensions.Annotated[int, FlyteAnnotation("foo")]
+    t = typing_extensions.Annotated[inner_t, FlyteAnnotation("bar")]
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+
+def test_unsupported_complex_literals():
+    t = typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})]
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+    # Enum.
+    t = typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})]
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+    # Dataclass.
+    t = typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})]
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+
+def test_multiple_annotations():
+    t = typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"}), FlyteAnnotation({"anotha": "one"})]
+    with pytest.raises(Exception):
+        TypeEngine.to_literal_type(t)
 
 
 TestSchema = FlyteSchema[kwtypes(some_str=str)]
