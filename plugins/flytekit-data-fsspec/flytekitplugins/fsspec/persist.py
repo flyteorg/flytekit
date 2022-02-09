@@ -35,7 +35,7 @@ class FSSpecPersistence(DataPersistence):
 
     def __init__(self, default_prefix=None):
         super(FSSpecPersistence, self).__init__(name="fsspec-persistence", default_prefix=default_prefix)
-        self.default_protocol = self.get_protocol(default_prefix)
+        self.default_protocol = self._get_protocol(default_prefix)
 
     @staticmethod
     def _get_protocol(path: typing.Optional[str] = None):
