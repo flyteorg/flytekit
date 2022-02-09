@@ -5,11 +5,9 @@ from flytekit.extend import Image, ImageConfig, SerializationSettings
 
 config = AWSBatchConfig(
     parameters={"codec": "mp4"},
-    platformCapabilities=["EC2"],
+    platformCapabilities="EC2",
     propagateTags=True,
-    retryStrategy={"attempts": 10},
     tags={"hello": "world"},
-    timeout={"attemptDurationSeconds": 60},
 )
 
 
