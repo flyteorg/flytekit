@@ -5,6 +5,7 @@ ENV VENV /opt/venv
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 ENV PYTHONPATH /app
+ENV FLYTE_SDK_USE_STRUCTURED_DATASET TRUE
 
 RUN pip install awscli
 RUN pip install gsutil

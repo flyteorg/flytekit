@@ -7,6 +7,7 @@ from subprocess import CalledProcessError
 import pytest
 from dataclasses_json import dataclass_json
 
+import flytekit
 from flytekit import kwtypes
 from flytekit.extras.tasks.shell import OutputLocation, ShellTask
 from flytekit.types.directory import FlyteDirectory
@@ -46,8 +47,8 @@ def test_input_substitution_primitive():
         name="test",
         script="""
             set -ex
-            cat {f}
-            echo "Hello World {y} on  {j}"
+            cat {inputs.f}
+            echo "Hello World {inputs.y} on  {inputs.j}"
             """,
         inputs=kwtypes(f=str, y=int, j=datetime.datetime),
     )
@@ -62,8 +63,8 @@ def test_input_substitution_files():
     t = ShellTask(
         name="test",
         script="""
-            cat {f}
-            echo "Hello World {y} on  {j}"
+            cat {inputs.f}
+            echo "Hello World {inputs.y} on  {inputs.j}"
             """,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
     )
@@ -71,15 +72,37 @@ def test_input_substitution_files():
     assert t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
 
 
+def test_input_substitution_files_ctx():
+    sec = flytekit.current_context().secrets
+    envvar = sec.get_secrets_env_var("group", "key")
+    os.environ[envvar] = "value"
+    assert sec.get("group", "key") == "value"
+
+    t = ShellTask(
+        name="test",
+        script="""
+            export EXEC={ctx.execution_id}
+            export SECRET={ctx.secrets.group.key}
+            cat {inputs.f}
+            echo "Hello World {inputs.y} on  {inputs.j}"
+            """,
+        inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
+        debug=True,
+    )
+
+    assert t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0)) is None
+    del os.environ[envvar]
+
+
 def test_input_output_substitution_files():
-    script = "cat {f} > {y}"
+    script = "cat {inputs.f} > {outputs.y}"
     t = ShellTask(
         name="test",
         debug=True,
         script=script,
         inputs=kwtypes(f=CSVFile),
         output_locs=[
-            OutputLocation(var="y", var_type=FlyteFile, location="{f}.mod"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{inputs.f}.mod"),
         ],
     )
 
@@ -101,15 +124,15 @@ def test_input_output_substitution_files():
 
 def test_input_single_output_substitution_files():
     script = """
-            cat {f} >> {z}
-            echo "Hello World {y} on  {j}"
+            cat {inputs.f} >> {outputs.z}
+            echo "Hello World {inputs.y} on  {inputs.j}"
             """
     t = ShellTask(
         name="test",
         debug=True,
         script=script,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
-        output_locs=[OutputLocation(var="z", var_type=FlyteFile, location="{f}.pyc")],
+        output_locs=[OutputLocation(var="z", var_type=FlyteFile, location="{inputs.f}.pyc")],
     )
 
     assert t.script == script
@@ -122,14 +145,14 @@ def test_input_single_output_substitution_files():
     [
         (
             """
-            cat {missing} >> {z}
-            echo "Hello World {y} on  {j} - output {x}"
+            cat {missing} >> {outputs.z}
+            echo "Hello World {inputs.y} on  {inputs.j} - output {outputs.x}"
             """
         ),
         (
             """
-            cat {f} {missing} >> {z}
-            echo "Hello World {y} on  {j} - output {x}"
+            cat {inputs.f} {missing} >> {outputs.z}
+            echo "Hello World {inputs.y} on  {inputs.j} - output {outputs.x}"
             """
         ),
     ],
@@ -141,8 +164,8 @@ def test_input_output_extra_and_missing_variables(script):
         script=script,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location="{y}"),
-            OutputLocation(var="z", var_type=FlyteFile, location="{f}.pyc"),
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{inputs.y}"),
+            OutputLocation(var="z", var_type=FlyteFile, location="{inputs.f}.pyc"),
         ],
     )
 
@@ -150,22 +173,21 @@ def test_input_output_extra_and_missing_variables(script):
         t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
-def test_cannot_reuse_variables_for_both_inputs_and_outputs():
+def test_reuse_variables_for_both_inputs_and_outputs():
     t = ShellTask(
         name="test",
         debug=True,
         script="""
-        cat {f} >> {y}
-        echo "Hello World {y} on  {j}"
+        cat {inputs.f} >> {outputs.y}
+        echo "Hello World {inputs.y} on  {inputs.j}"
         """,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
-            OutputLocation(var="y", var_type=FlyteFile, location="{f}.pyc"),
+            OutputLocation(var="y", var_type=FlyteFile, location="{inputs.f}.pyc"),
         ],
     )
 
-    with pytest.raises(ValueError, match="Variables {'y'} in Query"):
-        t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
 def test_can_use_complex_types_for_inputs_to_f_string_template():
@@ -177,10 +199,10 @@ def test_can_use_complex_types_for_inputs_to_f_string_template():
     t = ShellTask(
         name="test",
         debug=True,
-        script="""cat {input_args.in_file} >> {input_args.in_file}.tmp""",
+        script="""cat {inputs.input_args.in_file} >> {inputs.input_args.in_file}.tmp""",
         inputs=kwtypes(input_args=InputArgs),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteFile, location="{input_args.in_file}.tmp"),
+            OutputLocation(var="x", var_type=FlyteFile, location="{inputs.input_args.in_file}.tmp"),
         ],
     )
 
@@ -196,8 +218,8 @@ def test_shell_script():
         script_file=script_sh,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
-            OutputLocation(var="x", var_type=FlyteDirectory, location="{y}"),
-            OutputLocation(var="z", var_type=FlyteFile, location="{f}.pyc"),
+            OutputLocation(var="x", var_type=FlyteDirectory, location="{inputs.y}"),
+            OutputLocation(var="z", var_type=FlyteFile, location="{inputs.f}.pyc"),
         ],
     )
 

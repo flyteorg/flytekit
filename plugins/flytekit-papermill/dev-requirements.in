@@ -1,1 +1,2 @@
-flytekitplugins-spark>=0.30.0b4
+git+https://github.com/flyteorg/flytekit@add-sd-make-class-methods#egg=flytekitplugins-spark&subdirectory=plugins/flytekit-spark
+# vcs+protocol://repo_url/#egg=pkg&subdirectory=flyte

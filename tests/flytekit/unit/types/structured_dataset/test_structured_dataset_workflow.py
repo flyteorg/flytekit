@@ -18,13 +18,13 @@ from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     BIGQUERY,
     DF,
-    FLYTE_DATASET_TRANSFORMER,
     LOCAL,
     PARQUET,
     S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
 )
 
 PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
@@ -58,8 +58,8 @@ class MockBQDecodingHandlers(StructuredDatasetDecoder):
         return pd_df
 
 
-FLYTE_DATASET_TRANSFORMER.register_handler(MockBQEncodingHandlers(pd.DataFrame, BIGQUERY), False, True)
-FLYTE_DATASET_TRANSFORMER.register_handler(MockBQDecodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+StructuredDatasetTransformerEngine.register(MockBQEncodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+StructuredDatasetTransformerEngine.register(MockBQDecodingHandlers(pd.DataFrame, BIGQUERY), False, True)
 
 
 class NumpyEncodingHandlers(StructuredDatasetEncoder):
@@ -95,8 +95,8 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
 
 
 for protocol in [LOCAL, S3]:
-    FLYTE_DATASET_TRANSFORMER.register_handler(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
-    FLYTE_DATASET_TRANSFORMER.register_handler(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
 
 
 @task
