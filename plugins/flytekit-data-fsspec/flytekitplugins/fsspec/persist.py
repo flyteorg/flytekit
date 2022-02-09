@@ -67,17 +67,17 @@ class FSSpecPersistence(DataPersistence):
         return f, t
 
     def exists(self, path: str) -> bool:
-        fs = self.get_filesystem(path)
+        fs = self._get_filesystem(path)
         return fs.exists(path)
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
-        fs = self.get_filesystem(from_path)
+        fs = self._get_filesystem(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return fs.get(from_path, to_path, recursive=recursive)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
-        fs = self.get_filesystem(to_path)
+        fs = self._get_filesystem(to_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
             # BEGIN HACK!
