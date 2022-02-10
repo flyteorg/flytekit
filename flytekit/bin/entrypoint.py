@@ -551,6 +551,7 @@ def map_execute_task_cmd(
         raw_output_data_prefix=raw_output_data_prefix,
         max_concurrency=max_concurrency,
         test=test,
+        is_aws_batch_single_job=is_aws_batch_single_job,
         dynamic_addl_distro=dynamic_addl_distro,
         dynamic_dest_dir=dynamic_dest_dir,
         resolver=resolver,
