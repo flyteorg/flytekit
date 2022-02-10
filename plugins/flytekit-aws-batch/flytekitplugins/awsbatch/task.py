@@ -43,7 +43,6 @@ class AWSBatchFunctionTask(PythonFunctionTask):
         super(AWSBatchFunctionTask, self).__init__(
             task_config=task_config, task_type=self._AWS_BATCH_TASK_TYPE, task_function=task_function, **kwargs
         )
-        self._run_task = PythonFunctionTask(task_config=None, task_function=task_function)
         self._task_config = task_config
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -66,9 +65,9 @@ class AWSBatchFunctionTask(PythonFunctionTask):
             "{{.rawOutputDataPrefix}}",
             "--is-aws-batch-single-job",
             "--resolver",
-            self._run_task.task_resolver.location,
+            self.task_resolver.location,
             "--",
-            *self._run_task.task_resolver.loader_args(settings, self._run_task),
+            *self.task_resolver.loader_args(settings, self),
         ]
 
         return container_args
