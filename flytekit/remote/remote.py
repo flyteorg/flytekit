@@ -1201,13 +1201,9 @@ class FlyteRemote(object):
                     for t in iterate_task_executions(self.client, execution.id)
                 ]
                 execution._interface = dynamic_flyte_wf.interface
-            else:
-                # If it does not, then it should be a static subworkflow
-                if not isinstance(execution._node.flyte_entity, FlyteWorkflow):
-                    remote_logger.error(
-                        f"NE {execution} entity should be a workflow, {type(execution._node)}, {execution._node}"
-                    )
-                    raise Exception(f"Node entity has type {type(execution._node)}")
+
+            # Handle the case where it's a static subworkflow
+            elif isinstance(execution._node.flyte_entity, FlyteWorkflow):
                 sub_flyte_workflow = execution._node.flyte_entity
                 sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
                 execution._underlying_node_executions = [
@@ -1215,6 +1211,16 @@ class FlyteRemote(object):
                     for cne in child_node_executions
                 ]
                 execution._interface = sub_flyte_workflow.interface
+
+            # Handle the case where it's a branch node
+            elif execution._node.branch_node is not None:
+                print("hi")
+            else:
+                remote_logger.error(
+                    f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}"
+                )
+                raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
+
 
         # This is the plain ol' task execution case
         else:

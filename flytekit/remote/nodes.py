@@ -37,7 +37,8 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 "An Flyte node must have one underlying entity specified at once.  Received the following "
                 "entities: {}".format(non_none_entities)
             )
-        # todo: wip - flyte_branch_node is a hack kinda, it should be a Condition
+        # todo: wip - flyte_branch_node is a hack, it should be a Condition, but backing out a Condition object from
+        #   the compiled IfElseBlock is cumbersome, shouldn't do it if we can get away with it.
         self._flyte_entity = flyte_task or flyte_workflow or flyte_launch_plan or flyte_branch_node
 
         workflow_node = None
