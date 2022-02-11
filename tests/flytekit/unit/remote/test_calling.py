@@ -9,7 +9,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.remote import FlyteTask, FlyteLaunchPlan
+from flytekit.remote import FlyteLaunchPlan, FlyteTask
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -42,8 +42,6 @@ def sub_wf(a: int, b: str) -> (int, str):
 serialized = OrderedDict()
 t1_spec = get_serializable(serialized, serialization_settings, t1)
 ft = FlyteTask.promote_from_model(t1_spec.template)
-
-
 
 
 def test_fetched_task():
