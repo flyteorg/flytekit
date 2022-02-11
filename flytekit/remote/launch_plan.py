@@ -23,10 +23,6 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         self._python_interface = None
         self._reference_entity = None
 
-    @property
-    def interface(self) -> Optional[_interface_models.TypedInterface]:
-        return self._interface
-
     def __call__(self, *args, **kwargs):
         if self.reference_entity is None:
             logger.warning(
@@ -98,7 +94,7 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         return self._workflow_id
 
     @property
-    def interface(self) -> _interface.TypedInterface:
+    def interface(self) -> Optional[_interface.TypedInterface]:
         """
         The interface is not technically part of the admin.LaunchPlanSpec in the IDL, however the workflow ID is, and
         from the workflow ID, fetch will fill in the interface. This is nice because then you can __call__ the=
