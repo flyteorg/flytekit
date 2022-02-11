@@ -10,6 +10,7 @@ from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.remote import FlyteLaunchPlan, FlyteTask
+from flytekit.remote.interface import TypedInterface
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -72,7 +73,7 @@ def test_calling_lp():
     remote_lp = FlyteLaunchPlan.promote_from_model(lp_model.id, lp_model.spec)
     # To pretend that we've fetched this launch plan from Admin, also fill in the Flyte interface, which isn't
     # part of the IDL object but is something FlyteRemote does
-    remote_lp._interface = spec.template.interface
+    remote_lp._interface = TypedInterface.promote_from_model(spec.template.interface)
     serialized = OrderedDict()
 
     @workflow
