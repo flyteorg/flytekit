@@ -57,7 +57,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         self._tasks = tasks
         self._launch_plans = launch_plans
         self._compiled_closure = compiled_closure
-
         self._node_map = None
 
     @property

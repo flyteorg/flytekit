@@ -8,6 +8,10 @@
     # via -r requirements.in
 altair==4.2.0
     # via great-expectations
+appnope==0.1.2
+    # via
+    #   ipykernel
+    #   ipython
 argon2-cffi==21.3.0
     # via notebook
 argon2-cffi-bindings==21.2.0
@@ -29,9 +33,7 @@ bleach==4.1.0
 certifi==2021.10.8
     # via requests
 cffi==1.15.0
-    # via
-    #   argon2-cffi-bindings
-    #   cryptography
+    # via argon2-cffi-bindings
 chardet==4.0.0
     # via binaryornot
 charset-normalizer==2.0.10
@@ -50,8 +52,6 @@ cookiecutter==1.7.3
     # via flytekit
 croniter==1.2.0
     # via flytekit
-cryptography==36.0.1
-    # via secretstorage
 dataclasses-json==0.5.6
     # via flytekit
 debugpy==1.5.1
@@ -285,10 +285,10 @@ responses==0.17.0
     # via flytekit
 retry==0.9.2
     # via flytekit
-ruamel.yaml==0.17.17
+ruamel-yaml==0.17.17
     # via great-expectations
-ruamel.yaml.clib==0.2.6
-    # via ruamel.yaml
+ruamel-yaml-clib==0.2.6
+    # via ruamel-yaml
 scipy==1.7.3
     # via great-expectations
 send2trash==1.8.0

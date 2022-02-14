@@ -1,7 +1,9 @@
 from typing import Optional
 
 from flytekit.core.interface import Interface
+from flytekit.core.launch_plan import ReferenceLaunchPlan
 from flytekit.core.type_engine import TypeEngine
+from flytekit.loggers import remote_logger as logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.core import identifier as id_models
@@ -18,8 +20,41 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
 
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
-
         self._python_interface = None
+        self._reference_entity = None
+
+    def __call__(self, *args, **kwargs):
+        if self.reference_entity is None:
+            logger.warning(
+                f"FlyteLaunchPlan {self} is not callable, most likely because flytekit could not "
+                f"guess the python interface. The workflow calling this launch plan may not behave correctly."
+            )
+            return
+        return self.reference_entity(*args, **kwargs)
+
+    # TODO: Refactor behind mixin
+    @property
+    def reference_entity(self) -> Optional[ReferenceLaunchPlan]:
+        if self._reference_entity is None:
+            if self.guessed_python_interface is None:
+                try:
+                    self.guessed_python_interface = Interface(
+                        TypeEngine.guess_python_types(self.interface.inputs),
+                        TypeEngine.guess_python_types(self.interface.outputs),
+                    )
+                except Exception as e:
+                    logger.warning(f"Error backing out interface {e}, Flyte interface {self.interface}")
+                    return None
+
+            self._reference_entity = ReferenceLaunchPlan(
+                self.id.project,
+                self.id.domain,
+                self.id.name,
+                self.id.version,
+                inputs=self.guessed_python_interface.inputs,
+                outputs=self.guessed_python_interface.outputs,
+            )
+        return self._reference_entity
 
         # If fetched when creating this object, can store it here.
         self._flyte_workflow = None
@@ -44,12 +79,6 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
             raw_output_data_config=model.raw_output_data_config,
         )
 
-        if lp.interface is not None:
-            lp.guessed_python_interface = Interface(
-                inputs=TypeEngine.guess_python_types(lp.interface.inputs),
-                outputs=TypeEngine.guess_python_types(lp.interface.outputs),
-            )
-
         return lp
 
     @property
@@ -72,7 +101,7 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
         return self._workflow_id
 
     @property
-    def interface(self) -> _interface.TypedInterface:
+    def interface(self) -> Optional[_interface.TypedInterface]:
         """
         The interface is not technically part of the admin.LaunchPlanSpec in the IDL, however the workflow ID is, and
         from the workflow ID, fetch will fill in the interface. This is nice because then you can __call__ the=
