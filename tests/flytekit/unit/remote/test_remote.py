@@ -182,17 +182,17 @@ def test_explicit_grpc_channel_credentials(mock_insecure, mock_url, mock_secure_
     assert mock_ssl_channel_credentials.call_count == 1
 
 
-def test_vjkl():
-    rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
-    wf = rr.fetch_workflow(name="core.control_flow.run_merge_sort.merge_sort", version="v0.3.39")
-
-
-def test_jasilv():
-    rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
-    # wf = rr.fetch_workflow(
-    #     name="core.control_flow.run_conditions.nested_conditions", version="v0.3.39"
-    # )
-    # print(wf)
-    we = rr.fetch_workflow_execution(name="suss7xonol")
-    rr.sync_workflow_execution(we, sync_nodes=True)
-    print(rr)
+# def test_vjkl():
+#     rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
+#     wf = rr.fetch_workflow(name="core.control_flow.run_merge_sort.merge_sort", version="v0.3.39")
+#
+#
+# def test_jasilv():
+#     rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
+#     # wf = rr.fetch_workflow(
+#     #     name="core.control_flow.run_conditions.nested_conditions", version="v0.3.39"
+#     # )
+#     # print(wf)
+#     we = rr.fetch_workflow_execution(name="suss7xonol")
+#     rr.sync_workflow_execution(we, sync_nodes=True)
+#     print(rr)

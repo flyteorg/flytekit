@@ -91,7 +91,6 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 node_launch_plans,
                 tasks,
             )
-        # TODO: Implement branch node https://github.com/flyteorg/flyte/issues/1116
         elif model.branch_node is not None:
             flyte_branch_node = _component_nodes.FlyteBranchNode.promote_from_model(
                 model.branch_node, sub_workflows, node_launch_plans, tasks
