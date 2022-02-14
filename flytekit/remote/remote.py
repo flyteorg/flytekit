@@ -440,6 +440,7 @@ class FlyteRemote(object):
         wf_id = flyte_launch_plan.workflow_id
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         flyte_launch_plan._interface = workflow.interface
+        flyte_launch_plan._flyte_workflow = workflow
         flyte_launch_plan.guessed_python_interface = Interface(
             inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
             outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
@@ -1053,6 +1054,7 @@ class FlyteRemote(object):
         if execution.spec.launch_plan.resource_type == ResourceType.TASK:
             # This condition is only true for single-task executions
             flyte_entity = self.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            node_interface = flyte_entity.interface
             if sync_nodes:
                 # Need to construct the mapping. There should've been returned exactly three nodes, a start,
                 # an end, and a task node.
@@ -1080,10 +1082,10 @@ class FlyteRemote(object):
                 )
         else:
             # This is the default case, an execution of a normal workflow through a launch plan
-            wf_id = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version).workflow_id
-            flyte_entity = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
-            execution._flyte_workflow = flyte_entity
-            node_mapping = flyte_entity._node_map
+            fetched_lp = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            node_interface = fetched_lp.flyte_workflow.interface
+            execution._flyte_workflow = fetched_lp.flyte_workflow
+            node_mapping = fetched_lp.flyte_workflow._node_map
 
         # update node executions (if requested), and inputs/outputs
         if sync_nodes:
@@ -1091,10 +1093,12 @@ class FlyteRemote(object):
             for n in underlying_node_executions:
                 node_execs[n.id.node_id] = self.sync_node_execution(n, node_mapping)
             execution._node_executions = node_execs
-        return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
+        return self._assign_inputs_and_outputs(execution, execution_data, node_interface)
 
     def sync_node_execution(
-        self, execution: FlyteNodeExecution, node_mapping: typing.Dict[str, FlyteNode]
+        self,
+        execution: FlyteNodeExecution,
+        node_mapping: typing.Dict[str, FlyteNode],
     ) -> FlyteNodeExecution:
         """
         Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
@@ -1190,7 +1194,9 @@ class FlyteRemote(object):
 
                 dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
                 execution._underlying_node_executions = [
-                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
+                    self.sync_node_execution(
+                        FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map
+                    )
                     for cne in child_node_executions
                 ]
                 # This is copied from below - dynamic tasks have both task executions (executions of the parent
@@ -1214,13 +1220,11 @@ class FlyteRemote(object):
 
             # Handle the case where it's a branch node
             elif execution._node.branch_node is not None:
-                print("hi")
+                remote_logger.debug(f"Skipping for now")
+                return execution
             else:
-                remote_logger.error(
-                    f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}"
-                )
+                remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
-
 
         # This is the plain ol' task execution case
         else:

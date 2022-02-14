@@ -21,6 +21,13 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
 
         self._python_interface = None
 
+        # If fetched when creating this object, can store it here.
+        self._flyte_workflow = None
+
+    @property
+    def flyte_workflow(self) -> Optional["FlyteWorkflow"]:
+        return self._flyte_workflow
+
     @classmethod
     def promote_from_model(
         cls, id: id_models.Identifier, model: _launch_plan_models.LaunchPlanSpec
