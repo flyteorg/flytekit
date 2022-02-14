@@ -1,3 +1,4 @@
+import importlib
 import os
 import typing
 from pathlib import Path
@@ -11,6 +12,7 @@ from fsspec.core import split_protocol, strip_protocol
 
 from flytekit import FlyteContext
 from flytekit.configuration import aws as _aws_config
+from flytekit.loggers import logger
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -118,9 +120,14 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(uri, filesystem=filesystem)
 
 
-for protocol in [S3]:
-    print("Registering fsspec known implementations and overriding default structured encoder/decoder ")
+def _register(protocol: str):
+    logger.info(f"Registering fsspec {protocol} implementations and overriding default structured encoder/decoder.")
     StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol), True, True)
     StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol), True, True)
     StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), True, True)
     StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol), True, True)
+
+
+_register(LOCAL)
+if importlib.util.find_spec("s3fs"):
+    _register(S3)

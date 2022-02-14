@@ -54,7 +54,7 @@ class FSSpecPersistence(DataPersistence):
         kwargs = {}
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
-        if protocol == "s3":
+        elif protocol == "s3":
             kwargs = s3_setup_args()
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
