@@ -118,7 +118,8 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(uri, filesystem=filesystem)
 
 
-for protocol in [LOCAL, S3]:
+for protocol in [S3]:
+    print("Registering fsspec known implementations and overriding default structured encoder/decoder ")
     StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol), True, True)
     StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol), True, True)
     StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), True, True)
