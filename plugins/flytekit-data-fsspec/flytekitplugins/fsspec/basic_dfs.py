@@ -58,7 +58,7 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
             path, coerce_timestamps="us", allow_truncated_timestamps=False, storage_options=get_storage_options(path)
         )
         structured_dataset_type.format = PARQUET
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+        return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
@@ -95,7 +95,7 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         path = os.path.join(uri, f"{0:05}")
         filesystem = FSSpecPersistence._get_filesystem(path)
         pq.write_table(structured_dataset.dataframe, strip_protocol(path), filesystem=filesystem)
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+        return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
@@ -128,6 +128,5 @@ def _register(protocol: str):
     StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol), True, True)
 
 
-_register(LOCAL)
 if importlib.util.find_spec("s3fs"):
     _register(S3)
