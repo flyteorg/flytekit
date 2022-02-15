@@ -10,7 +10,10 @@ from typing import Dict, List, Optional
 from flytekit.configuration import aws
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.exceptions.user import FlyteUserException
+from flytekit.loggers import logger
 from flytekit.tools import subprocess
+
+S3_ANONYMOUS_FLAG = "--no-sign-request"
 
 
 def _update_cmd_config_and_execute(cmd: List[str]):
@@ -32,7 +35,17 @@ def _update_cmd_config_and_execute(cmd: List[str]):
     retry = 0
     while True:
         try:
-            return subprocess.check_call(cmd, env=env)
+            try:
+                return subprocess.check_call(cmd, env=env)
+            except Exception:
+                if retry > 0:
+                    logger.info(f"AWS command failed with error {e}, command: {cmd}, retry {retry}")
+
+            logger.debug(f"Appending anonymous flag and retrying command {cmd}")
+            anonymous_cmd = cmd[:]  # strings only, so this is deep enough
+            anonymous_cmd.insert(1, S3_ANONYMOUS_FLAG)
+            return subprocess.check_call(anonymous_cmd, env=env)
+
         except Exception as e:
             logging.error(f"Exception when trying to execute {cmd}, reason: {str(e)}")
             retry += 1
