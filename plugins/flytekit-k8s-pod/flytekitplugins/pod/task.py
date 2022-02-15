@@ -124,7 +124,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
         logger.warning(
             "Running pod task locally. Local environment may not match pod environment which may cause issues."
         )
-        return super().local_execute(**kwargs)
+        return super().local_execute(ctx=ctx, **kwargs)
 
 
 TaskPlugins.register_pythontask_plugin(Pod, PodFunctionTask)
