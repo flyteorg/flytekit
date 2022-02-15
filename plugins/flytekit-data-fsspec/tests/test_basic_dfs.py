@@ -1,6 +1,6 @@
 import pandas as pd
 import pyarrow as pa
-from flytekitplugins.fsspec.basic_dfs import get_storage_options
+from flytekitplugins.fsspec.pandas import get_storage_options
 
 from flytekit import kwtypes, task
 from flytekit.configuration import aws
