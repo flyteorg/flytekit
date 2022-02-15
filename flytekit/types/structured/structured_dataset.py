@@ -22,9 +22,9 @@ import _datetime
 import numpy as _np
 import pyarrow as pa
 
+from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeTransformer
-from flytekit.extend import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
@@ -105,7 +105,7 @@ class StructuredDataset(object):
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
-        return FLYTE_DATASET_TRANSFORMER.open_as(
+        return flyte_dataset_transformer.open_as(
             ctx, self.literal, self._dataframe_type, updated_metadata=self.metadata
         )
 
@@ -113,7 +113,7 @@ class StructuredDataset(object):
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
-        return FLYTE_DATASET_TRANSFORMER.iter_as(
+        return flyte_dataset_transformer.iter_as(
             ctx, self.literal, self._dataframe_type, updated_metadata=self.metadata
         )
 
@@ -169,7 +169,7 @@ class StructuredDatasetEncoder(ABC):
     def __init__(self, python_type: Type[T], protocol: str, supported_format: Optional[str] = None):
         """
         Extend this abstract class, implement the encode function, and register your concrete class with the
-        FLYTE_DATASET_TRANSFORMER defined at this module level in order for the core flytekit type engine to handle
+        StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
         dataframe libraries. This is the encoding interface, meaning it is used when there is a Python value that the
         flytekit type engine is trying to convert into a Flyte Literal. For the other way, see
         the StructuredDatasetEncoder
@@ -229,7 +229,7 @@ class StructuredDatasetDecoder(ABC):
     def __init__(self, python_type: Type[DF], protocol: str, supported_format: Optional[str] = None):
         """
         Extend this abstract class, implement the decode function, and register your concrete class with the
-        FLYTE_DATASET_TRANSFORMER defined at this module level in order for the core flytekit type engine to handle
+        StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
         dataframe libraries. This is the decoder interface, meaning it is used when there is a Flyte Literal value,
         and we have to get a Python value out of it. For the other way, see the StructuredDatasetEncoder
 
@@ -336,7 +336,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
     Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
 
-    def _finder(self, handler_map, df_type: Type, protocol: str, format: str):
+    @staticmethod
+    def _finder(handler_map, df_type: Type, protocol: str, format: str):
         try:
             return handler_map[df_type][protocol][format]
         except KeyError:
@@ -351,18 +352,21 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 ...
         raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt {format}")
 
-    def get_encoder(self, df_type: Type, protocol: str, format: str):
-        return self._finder(self.ENCODERS, df_type, protocol, format)
+    @classmethod
+    def get_encoder(cls, df_type: Type, protocol: str, format: str):
+        return cls._finder(StructuredDatasetTransformerEngine.ENCODERS, df_type, protocol, format)
 
-    def get_decoder(self, df_type: Type, protocol: str, format: str):
-        return self._finder(self.DECODERS, df_type, protocol, format)
+    @classmethod
+    def get_decoder(cls, df_type: Type, protocol: str, format: str):
+        return cls._finder(StructuredDatasetTransformerEngine.DECODERS, df_type, protocol, format)
 
-    def _handler_finder(self, h: Handlers) -> Dict[str, Handlers]:
+    @classmethod
+    def _handler_finder(cls, h: Handlers) -> Dict[str, Handlers]:
         # Maybe think about default dict in the future, but is typing as nice?
         if isinstance(h, StructuredDatasetEncoder):
-            top_level = self.ENCODERS
+            top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
-            top_level = self.DECODERS
+            top_level = cls.DECODERS
         else:
             raise TypeError(f"We don't support this type of handler {h}")
         if h.python_type not in top_level:
@@ -375,13 +379,18 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
         self._type_assertions_enabled = False
 
-    def register_handler(self, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
+    @classmethod
+    def register(cls, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
         """
         Call this with any handler to register it with this dataframe meta-transformer
 
         The string "://" should not be present in any handler's protocol so we don't check for it.
         """
-        lowest_level = self._handler_finder(h)
+        if not USE_STRUCTURED_DATASET.get():
+            logger.info(f"Structured datasets not enabled, not registering handler {h}")
+            return
+
+        lowest_level = cls._handler_finder(h)
         if h.supported_format in lowest_level and override is False:
             raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
         lowest_level[h.supported_format] = h
@@ -389,13 +398,14 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         if default_for_type:
             # TODO: Add logging, think about better ux, maybe default False and warn if doesn't exist.
-            self.DEFAULT_FORMATS[h.python_type] = h.supported_format
-            self.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
+            cls.DEFAULT_FORMATS[h.python_type] = h.supported_format
+            cls.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
 
         # Register with the type engine as well
         # The semantics as of now are such that it doesn't matter which order these transformers are loaded in, as
         # long as the older Pandas/FlyteSchema transformer do not also specify the override
-        TypeEngine.register_additional_type(self, h.python_type, override=True)
+        engine = StructuredDatasetTransformerEngine()
+        TypeEngine.register_additional_type(engine, h.python_type, override=True)
 
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
@@ -717,5 +727,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         raise ValueError(f"StructuredDatasetTransformerEngine cannot reverse {literal_type}")
 
 
-FLYTE_DATASET_TRANSFORMER = StructuredDatasetTransformerEngine()
-TypeEngine.register(FLYTE_DATASET_TRANSFORMER)
+if USE_STRUCTURED_DATASET.get():
+    logger.debug("Structured dataset module load... using structured datasets!")
+    flyte_dataset_transformer = StructuredDatasetTransformerEngine()
+    TypeEngine.register(flyte_dataset_transformer)
+else:
+    logger.debug("Structured dataset module load... not using structured datasets")
