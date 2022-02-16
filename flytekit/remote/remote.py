@@ -1218,7 +1218,7 @@ class FlyteRemote(object):
 
             # Handle the case where it's a branch node
             elif execution._node.branch_node is not None:
-                remote_logger.debug(f"Skipping for now")
+                remote_logger.debug("Skipping remote node execution for now")
                 return execution
             else:
                 remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
