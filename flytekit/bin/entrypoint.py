@@ -379,7 +379,7 @@ def _execute_map_task(
             # Use the resolver to load the actual task object
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
             if not isinstance(_task_def, PythonFunctionTask):
-                raise Exception("Map tasks cannot be run with instance tasks.", _task_def)
+                raise Exception("Map tasks cannot be run with instance tasks.")
             map_task = MapPythonTask(_task_def, max_concurrency)
 
             task_index = _compute_array_job_index()
