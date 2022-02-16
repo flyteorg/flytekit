@@ -1,4 +1,3 @@
-import logging
 import os as _os
 import re as _re
 import string as _string
@@ -47,14 +46,14 @@ def _update_cmd_config_and_execute(cmd: List[str]):
             return subprocess.check_call(anonymous_cmd, env=env)
 
         except Exception as e:
-            logging.error(f"Exception when trying to execute {cmd}, reason: {str(e)}")
+            logger.error(f"Exception when trying to execute {cmd}, reason: {str(e)}")
             retry += 1
             if retry > aws.RETRIES.get():
                 raise
             secs = aws.BACKOFF_SECONDS.get()
-            logging.info(f"Sleeping before retrying again, after {secs} seconds")
+            logger.info(f"Sleeping before retrying again, after {secs} seconds")
             time.sleep(secs)
-            logging.info("Retrying again")
+            logger.info("Retrying again")
 
 
 def _extra_args(extra_args: Dict[str, str]) -> List[str]:
