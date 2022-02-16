@@ -67,8 +67,18 @@ class FSSpecPersistence(DataPersistence):
         return f, t
 
     def exists(self, path: str) -> bool:
-        fs = self._get_filesystem(path)
-        return fs.exists(path)
+        try:
+            fs = self._get_filesystem(path)
+            return fs.exists(path)
+        except OSError as oe:
+            logger.debug(f"Error in exists checking {path} {oe}")
+            protocol = FSSpecPersistence._get_protocol(path)
+            if protocol == "s3":
+                logger.debug(f"S3 source detected, attempting anonymous S3 exists check")
+                kwargs = s3_setup_args()
+                anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
+                return anonymous_fs.exists(path)
+            raise oe
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         fs = self._get_filesystem(from_path)
@@ -80,10 +90,11 @@ class FSSpecPersistence(DataPersistence):
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             protocol = FSSpecPersistence._get_protocol(from_path)
             if protocol == "s3":
-                logger.debug(f"S3 source Attempting anonymous S3 access")
+                logger.debug(f"S3 source detected, attempting anonymous S3 access")
                 kwargs = s3_setup_args()
                 anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
                 return anonymous_fs.get(from_path, to_path, recursive=recursive)
+            raise oe
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         fs = self._get_filesystem(to_path)
