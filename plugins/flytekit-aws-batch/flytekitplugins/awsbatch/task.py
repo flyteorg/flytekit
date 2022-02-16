@@ -56,14 +56,15 @@ class AWSBatchFunctionTask(PythonFunctionTask):
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
         container_args = [
-            "pyflyte-map-execute",
+            "pyflyte-execute",
             "--inputs",
             "{{.input}}",
             "--output-prefix",
-            "{{.outputPrefix}}",
+            # FlytePropeller will always read the output from this directory (outputPrefix/0)
+            # More detail, see https://github.com/flyteorg/flyteplugins/blob/0dd93c23ed2edeca65d58e89b0edb613f88120e0/go/tasks/plugins/array/catalog.go#L501.
+            "{{.outputPrefix}}/0",
             "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
-            "--is-aws-batch-single-job",
             "--resolver",
             self.task_resolver.location,
             "--",

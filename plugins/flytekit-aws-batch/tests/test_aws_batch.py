@@ -32,14 +32,13 @@ def test_aws_batch_task():
     )
     assert t1.get_custom(settings) == config.to_dict()
     assert t1.get_command(settings) == [
-        "pyflyte-map-execute",
+        "pyflyte-execute",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
-        "{{.outputPrefix}}",
+        "{{.outputPrefix}}/0",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
-        "--is-aws-batch-single-job",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",

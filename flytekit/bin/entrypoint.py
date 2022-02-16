@@ -340,7 +340,6 @@ def _execute_map_task(
     raw_output_data_prefix,
     max_concurrency,
     test,
-    is_aws_batch_single_job: bool,
     resolver: str,
     resolver_args: List[str],
     checkpoint_path: Optional[str] = None,
@@ -360,7 +359,6 @@ def _execute_map_task(
     :param output_prefix: Where to write primitive outputs
     :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
     :param test: Dry run
-    :param is_aws_batch_single_job: True if the aws batch job type is Single job
     :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
       nested).
     :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
@@ -382,11 +380,7 @@ def _execute_map_task(
             _task_def = resolver_obj.load_task(loader_args=resolver_args)
             if not isinstance(_task_def, PythonFunctionTask):
                 raise Exception("Map tasks cannot be run with instance tasks.", _task_def)
-
-            if is_aws_batch_single_job:
-                map_task = _task_def
-            else:
-                map_task = MapPythonTask(_task_def, max_concurrency)
+            map_task = MapPythonTask(_task_def, max_concurrency)
 
             task_index = _compute_array_job_index()
             output_prefix = _os.path.join(output_prefix, str(task_index))
@@ -514,7 +508,6 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--max-concurrency", type=int, required=False)
 @_click.option("--test", is_flag=True)
-@_click.option("--is-aws-batch-single-job", is_flag=True)
 @_click.option("--dynamic-addl-distro", required=False)
 @_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=True)
@@ -531,7 +524,6 @@ def map_execute_task_cmd(
     raw_output_data_prefix,
     max_concurrency,
     test,
-    is_aws_batch_single_job,
     dynamic_addl_distro,
     dynamic_dest_dir,
     resolver,
@@ -551,7 +543,6 @@ def map_execute_task_cmd(
         raw_output_data_prefix=raw_output_data_prefix,
         max_concurrency=max_concurrency,
         test=test,
-        is_aws_batch_single_job=is_aws_batch_single_job,
         dynamic_addl_distro=dynamic_addl_distro,
         dynamic_dest_dir=dynamic_dest_dir,
         resolver=resolver,
