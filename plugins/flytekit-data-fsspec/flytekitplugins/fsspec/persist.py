@@ -74,7 +74,7 @@ class FSSpecPersistence(DataPersistence):
             logger.debug(f"Error in exists checking {path} {oe}")
             protocol = FSSpecPersistence._get_protocol(path)
             if protocol == "s3":
-                logger.debug(f"S3 source detected, attempting anonymous S3 exists check")
+                logger.debug("S3 source detected, attempting anonymous S3 exists check")
                 kwargs = s3_setup_args()
                 anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
                 return anonymous_fs.exists(path)
@@ -90,7 +90,7 @@ class FSSpecPersistence(DataPersistence):
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             protocol = FSSpecPersistence._get_protocol(from_path)
             if protocol == "s3":
-                logger.debug(f"S3 source detected, attempting anonymous S3 access")
+                logger.debug("S3 source detected, attempting anonymous S3 access")
                 kwargs = s3_setup_args()
                 anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
                 return anonymous_fs.get(from_path, to_path, recursive=recursive)
