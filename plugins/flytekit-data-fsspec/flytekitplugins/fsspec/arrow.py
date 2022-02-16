@@ -5,7 +5,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 from flytekitplugins.fsspec.persist import FSSpecPersistence
-from fsspec.core import strip_protocol
+from fsspec.core import split_protocol, strip_protocol
 
 from flytekit import FlyteContext
 from flytekit.models import literals
@@ -50,10 +50,11 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         uri = flyte_value.uri
         if not ctx.file_access.is_remote(uri):
             Path(uri).parent.mkdir(parents=True, exist_ok=True)
+        _, path = split_protocol(uri)
         filesystem = FSSpecPersistence._get_filesystem(uri)
         if flyte_value.metadata.structured_dataset_type.columns:
             columns = []
             for c in flyte_value.metadata.structured_dataset_type.columns:
                 columns.append(c.name)
-            return pq.read_table(uri, filesystem=filesystem, columns=columns, read_dictionary=True)
-        return pq.read_table(uri, filesystem=filesystem, read_dictionary=True)
+            return pq.read_table(path, filesystem=filesystem, columns=columns)
+        return pq.read_table(path, filesystem=filesystem)
