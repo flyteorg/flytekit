@@ -193,6 +193,7 @@ if USE_STRUCTURED_DATASET.get():
     from flytekit.types.structured.structured_dataset import (
         StructuredDataset,
         StructuredDatasetFormat,
+        StructuredDatasetTransformerEngine,
         StructuredDatasetType,
     )
 

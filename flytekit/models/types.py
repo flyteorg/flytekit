@@ -6,6 +6,7 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
 from flytekit.models import common as _common
+from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 
 
@@ -195,6 +196,7 @@ class LiteralType(_common.FlyteIdlEntity):
         enum_type=None,
         structured_dataset_type=None,
         metadata=None,
+        annotation=None,
     ):
         """
         This is a oneof message, only one of the kwargs may be set, representing one of the Flyte types.
@@ -208,6 +210,8 @@ class LiteralType(_common.FlyteIdlEntity):
         :param flytekit.models.core.types.EnumType enum_type: For enum objects, describes an enum
         :param flytekit.models.core.types.StructuredDatasetType structured_dataset_type: structured dataset
         :param dict[Text, T] metadata: Additional data describing the type
+        :param flytekit.models.annotation.FlyteAnnotation annotation: Additional data
+            describing the type _intended to be saturated by the client_
         """
         self._simple = simple
         self._schema = schema
@@ -217,6 +221,7 @@ class LiteralType(_common.FlyteIdlEntity):
         self._enum_type = enum_type
         self._structured_dataset_type = structured_dataset_type
         self._metadata = metadata
+        self._annotation = annotation
 
     @property
     def simple(self) -> SimpleType:
@@ -259,18 +264,31 @@ class LiteralType(_common.FlyteIdlEntity):
         """
         return self._metadata
 
+    @property
+    def annotation(self) -> TypeAnnotationModel:
+        """
+        :rtype: flytekit.models.annotation.TypeAnnotation
+        """
+        return self._annotation
+
     @metadata.setter
     def metadata(self, value):
         self._metadata = value
+
+    @annotation.setter
+    def annotation(self, value):
+        self.annotation = value
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.types_pb2.LiteralType
         """
+
         if self.metadata is not None:
             metadata = _json_format.Parse(_json.dumps(self.metadata), _struct.Struct())
         else:
             metadata = None
+
         t = _types_pb2.LiteralType(
             simple=self.simple if self.simple is not None else None,
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
@@ -282,6 +300,7 @@ class LiteralType(_common.FlyteIdlEntity):
             if self.structured_dataset_type
             else None,
             metadata=metadata,
+            annotation=self.annotation.to_flyte_idl() if self.annotation else None,
         )
         return t
 
@@ -308,6 +327,7 @@ class LiteralType(_common.FlyteIdlEntity):
             if proto.HasField("structured_dataset_type")
             else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
+            annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.HasField("annotation") else None,
         )
 
 

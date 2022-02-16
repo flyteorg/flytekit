@@ -7,11 +7,11 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    FLYTE_DATASET_TRANSFORMER,
     PARQUET,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
 )
 
 
@@ -45,5 +45,5 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
 
 
 for protocol in ["/", "s3"]:
-    FLYTE_DATASET_TRANSFORMER.register_handler(SparkToParquetEncodingHandler(protocol), default_for_type=True)
-    FLYTE_DATASET_TRANSFORMER.register_handler(ParquetToSparkDecodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler(protocol), default_for_type=True)
+    StructuredDatasetTransformerEngine.register(ParquetToSparkDecodingHandler(protocol), default_for_type=True)

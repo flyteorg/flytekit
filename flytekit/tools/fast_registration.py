@@ -100,8 +100,7 @@ def download_distribution(additional_distribution: str, destination: str):
     """
     file_access.get_data(additional_distribution, destination)
     tarfile_name = _os.path.basename(additional_distribution)
-    file_suffix = _Path(tarfile_name).suffixes
-    if len(file_suffix) != 2 or file_suffix[0] != ".tar" or file_suffix[1] != ".gz":
+    if not tarfile_name.endswith(".tar.gz"):
         raise ValueError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.

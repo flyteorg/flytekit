@@ -31,7 +31,7 @@ charset-normalizer==2.0.11
     # via requests
 checksumdir==1.2.0
     # via flytekit
-click==7.1.2
+click==8.0.3
     # via
     #   cookiecutter
     #   flytekit
@@ -42,7 +42,9 @@ cookiecutter==1.7.3
 croniter==1.2.0
     # via flytekit
 cryptography==36.0.1
-    # via -r doc-requirements.in
+    # via
+    #   -r doc-requirements.in
+    #   secretstorage
 css-html-js-minify==2.5.5
     # via sphinx-material
 dataclasses-json==0.5.6
@@ -61,7 +63,7 @@ docutils==0.17.1
     # via
     #   sphinx
     #   sphinx-panels
-flyteidl==0.21.25
+flyteidl==0.22.0
     # via flytekit
 furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
@@ -77,6 +79,10 @@ importlib-metadata==4.10.1
     # via
     #   keyring
     #   sphinx
+jeepney==0.7.1
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.0.3
     # via
     #   cookiecutter
@@ -165,6 +171,8 @@ responses==0.18.0
     # via flytekit
 retry==0.9.2
     # via flytekit
+secretstorage==3.3.1
+    # via keyring
 six==1.16.0
     # via
     #   cookiecutter
@@ -194,7 +202,7 @@ sphinx-autoapi==1.8.4
     # via -r doc-requirements.in
 sphinx-code-include==1.1.1
     # via -r doc-requirements.in
-sphinx-copybutton==0.4.0
+sphinx-copybutton==0.5.0
     # via -r doc-requirements.in
 sphinx-fontawesome==0.0.6
     # via -r doc-requirements.in

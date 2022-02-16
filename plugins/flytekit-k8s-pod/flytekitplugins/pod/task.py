@@ -7,6 +7,7 @@ from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1Resourc
 from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.extend import Promise, SerializationSettings, TaskPlugins
+from flytekit.loggers import logger
 from flytekit.models import task as _task_models
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
@@ -120,7 +121,10 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
-        raise _user_exceptions.FlyteUserException("Local execute is not currently supported for pod tasks")
+        logger.warning(
+            "Running pod task locally. Local environment may not match pod environment which may cause issues."
+        )
+        return super().local_execute(ctx=ctx, **kwargs)
 
 
 TaskPlugins.register_pythontask_plugin(Pod, PodFunctionTask)
