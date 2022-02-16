@@ -588,12 +588,11 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
         :rtype: flytekit.models.execution.WorkflowExecutionGetDataResponse
         """
-        t = super(SynchronousFlyteClient, self).get_execution_data(
-            _execution_pb2.WorkflowExecutionGetDataRequest(id=id.to_flyte_idl())
+        return _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(
+            super(SynchronousFlyteClient, self).get_execution_data(
+                _execution_pb2.WorkflowExecutionGetDataRequest(id=id.to_flyte_idl())
+            )
         )
-        print("id = ", id)
-        print("t = ", t)
-        return _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(t)
 
     def list_executions_paginated(self, project, domain, limit=100, token=None, filters=None, sort_by=None):
         """

@@ -12,14 +12,13 @@ except ImportError:
 
 
 def test_get_storage_options():
-    uri = "s3://bucket/somewhere"
-    with aws.S3_ENDPOINT.get_patcher(uri):
-        options = get_storage_options(uri)
-        assert options == {"client_kwargs": {"endpoint_url": uri}}
+    endpoint = "https://s3.amazonaws.com"
+    with aws.S3_ENDPOINT.get_patcher(endpoint):
+        options = get_storage_options("s3://bucket/somewhere")
+        assert options == {"client_kwargs": {"endpoint_url": endpoint}}
 
-    uri = "/tmp/file"
-    with aws.S3_ENDPOINT.get_patcher(uri):
-        options = get_storage_options(uri)
+    with aws.S3_ENDPOINT.get_patcher(None):
+        options = get_storage_options("/tmp/file")
         assert options is None
 
 

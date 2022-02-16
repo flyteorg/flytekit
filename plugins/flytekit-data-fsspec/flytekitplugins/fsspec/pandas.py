@@ -6,7 +6,6 @@ import pandas as pd
 from flytekitplugins.fsspec.persist import FSSpecPersistence, s3_setup_args
 
 from flytekit import FlyteContext
-from flytekit.configuration import aws as _aws_config
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -22,10 +21,9 @@ from flytekit.types.structured.structured_dataset import (
 def get_storage_options(uri: str) -> typing.Optional[typing.Dict]:
     protocol = FSSpecPersistence._get_protocol(uri)
     if protocol == S3:
-        s3_setup_args()
-        if _aws_config.S3_ENDPOINT.get() is not None:
-            # https://s3fs.readthedocs.io/en/latest/#s3-compatible-storage
-            return {"client_kwargs": {"endpoint_url": _aws_config.S3_ENDPOINT.get()}}
+        kwargs = s3_setup_args()
+        if kwargs:
+            return kwargs
     return None
 
 
