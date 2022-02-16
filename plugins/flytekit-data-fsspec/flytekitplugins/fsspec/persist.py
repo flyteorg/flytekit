@@ -74,7 +74,16 @@ class FSSpecPersistence(DataPersistence):
         fs = self._get_filesystem(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
-        return fs.get(from_path, to_path, recursive=recursive)
+        try:
+            return fs.get(from_path, to_path, recursive=recursive)
+        except OSError as oe:
+            logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
+            protocol = FSSpecPersistence._get_protocol(from_path)
+            if protocol == "s3":
+                logger.debug(f"S3 source Attempting anonymous S3 access")
+                kwargs = s3_setup_args()
+                anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
+                return anonymous_fs.get(from_path, to_path, recursive=recursive)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         fs = self._get_filesystem(to_path)
