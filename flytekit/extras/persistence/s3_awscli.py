@@ -36,7 +36,7 @@ def _update_cmd_config_and_execute(cmd: List[str]):
         try:
             try:
                 return subprocess.check_call(cmd, env=env)
-            except Exception:
+            except Exception as e:
                 if retry > 0:
                     logger.info(f"AWS command failed with error {e}, command: {cmd}, retry {retry}")
 
