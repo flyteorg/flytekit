@@ -55,5 +55,5 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
             columns = []
             for c in flyte_value.metadata.structured_dataset_type.columns:
                 columns.append(c.name)
-            return pq.read_table(uri, filesystem=filesystem, columns=columns)
-        return pq.read_table(uri, filesystem=filesystem)
+            return pq.read_table(uri, filesystem=filesystem, columns=columns, read_dictionary=True)
+        return pq.read_table(uri, filesystem=filesystem, read_dictionary=True)

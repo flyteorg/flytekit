@@ -17,9 +17,8 @@ def test_get_storage_options():
         options = get_storage_options("s3://bucket/somewhere")
         assert options == {"client_kwargs": {"endpoint_url": endpoint}}
 
-    with aws.S3_ENDPOINT.get_patcher(None):
-        options = get_storage_options("/tmp/file")
-        assert options is None
+    options = get_storage_options("/tmp/file")
+    assert options is None
 
 
 cols = kwtypes(Name=str, Age=int)
