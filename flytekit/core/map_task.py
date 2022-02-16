@@ -71,7 +71,7 @@ class MapPythonTask(PythonTask):
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
         container_args = [
-            "pyflyte-execute",
+            "pyflyte-map-execute",
             "--inputs",
             "{{.input}}",
             "--output-prefix",
