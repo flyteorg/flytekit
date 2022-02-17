@@ -1,3 +1,4 @@
 .
+-e git+https://github.com/flyteorg/flyteidl.git@add-hash-to-literal#egg=flyteidl
 -e file:.#egg=flytekitplugins-great_expectations
 sqlalchemy
