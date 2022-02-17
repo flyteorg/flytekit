@@ -35,28 +35,37 @@ class FSSpecPersistence(DataPersistence):
 
     def __init__(self, default_prefix=None):
         super(FSSpecPersistence, self).__init__(name="fsspec-persistence", default_prefix=default_prefix)
-        self.default_protocol = self._get_protocol(default_prefix)
+        self.default_protocol = self.get_protocol(default_prefix)
 
     @staticmethod
-    def _get_protocol(path: typing.Optional[str] = None):
+    def get_protocol(path: typing.Optional[str] = None):
         if path:
             protocol, _ = split_protocol(path)
             if protocol is None and path.startswith("/"):
-                print("Setting protocol to file")
+                logger.info("Setting protocol to file")
                 protocol = "file"
         else:
             protocol = "file"
         return protocol
 
     @staticmethod
-    def _get_filesystem(path: str) -> fsspec.AbstractFileSystem:
-        protocol = FSSpecPersistence._get_protocol(path)
+    def get_filesystem(path: str) -> fsspec.AbstractFileSystem:
+        protocol = FSSpecPersistence.get_protocol(path)
         kwargs = {}
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
-        if protocol == "s3":
+        elif protocol == "s3":
             kwargs = s3_setup_args()
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+
+    @staticmethod
+    def get_anonymous_filesystem(path: str) -> typing.Optional[fsspec.AbstractFileSystem]:
+        protocol = FSSpecPersistence.get_protocol(path)
+        if protocol == "s3":
+            kwargs = s3_setup_args()
+            anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
+            return anonymous_fs
+        return None
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
@@ -68,36 +77,32 @@ class FSSpecPersistence(DataPersistence):
 
     def exists(self, path: str) -> bool:
         try:
-            fs = self._get_filesystem(path)
+            fs = self.get_filesystem(path)
             return fs.exists(path)
         except OSError as oe:
             logger.debug(f"Error in exists checking {path} {oe}")
-            protocol = FSSpecPersistence._get_protocol(path)
-            if protocol == "s3":
+            fs = self.get_anonymous_filesystem(path)
+            if fs is not None:
                 logger.debug("S3 source detected, attempting anonymous S3 exists check")
-                kwargs = s3_setup_args()
-                anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
-                return anonymous_fs.exists(path)
+                return fs.exists(path)
             raise oe
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
-        fs = self._get_filesystem(from_path)
+        fs = self.get_filesystem(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
             return fs.get(from_path, to_path, recursive=recursive)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
-            protocol = FSSpecPersistence._get_protocol(from_path)
-            if protocol == "s3":
+            fs = self.get_anonymous_filesystem(from_path)
+            if fs is not None:
                 logger.debug("S3 source detected, attempting anonymous S3 access")
-                kwargs = s3_setup_args()
-                anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
-                return anonymous_fs.get(from_path, to_path, recursive=recursive)
+                return fs.get(from_path, to_path, recursive=recursive)
             raise oe
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
-        fs = self._get_filesystem(to_path)
+        fs = self.get_filesystem(to_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
             # BEGIN HACK!

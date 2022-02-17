@@ -10,6 +10,8 @@ arrow==1.2.2
     # via jinja2-time
 binaryornot==0.4.4
     # via cookiecutter
+botocore==1.23.24
+    # via flytekitplugins-data-fsspec
 certifi==2021.10.8
     # via requests
 chardet==4.0.0
@@ -28,8 +30,6 @@ cookiecutter==1.7.3
     # via flytekit
 croniter==1.2.0
     # via flytekit
-cryptography==36.0.1
-    # via secretstorage
 dataclasses-json==0.5.6
     # via flytekit
 decorator==5.1.1
@@ -60,6 +60,8 @@ jinja2==3.0.3
     #   jinja2-time
 jinja2-time==0.2.0
     # via cookiecutter
+jmespath==0.10.0
+    # via botocore
 keyring==23.5.0
     # via flytekit
 markupsafe==2.0.1
@@ -93,11 +95,10 @@ py==1.11.0
     # via retry
 pyarrow==6.0.1
     # via flytekit
-pycparser==2.21
-    # via cffi
 python-dateutil==2.8.2
     # via
     #   arrow
+    #   botocore
     #   croniter
     #   flytekit
     #   pandas
@@ -141,6 +142,7 @@ typing-inspect==0.7.1
     # via dataclasses-json
 urllib3==1.26.8
     # via
+    #   botocore
     #   flytekit
     #   requests
     #   responses
