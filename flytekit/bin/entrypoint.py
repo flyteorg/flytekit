@@ -58,7 +58,9 @@ def _compute_array_job_index():
     offset = 0
     if _os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
         offset = int(_os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
-    return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+    if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
+        return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+    return offset
 
 
 def _dispatch_execute(
@@ -345,6 +347,27 @@ def _execute_map_task(
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
 ):
+    """
+    This function should be called by map task and aws-batch task
+    resolver should be something like:
+        flytekit.core.python_auto_container.default_task_resolver
+    resolver args should be something like
+        task_module app.workflows task_name task_1
+    have dashes seems to mess up click, like --task_module seems to interfere
+
+    :param inputs: Where to read inputs
+    :param output_prefix: Where to write primitive outputs
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param test: Dry run
+    :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
+      nested).
+    :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
+    :param dynamic_addl_distro: In the case of parent tasks executed using the 'fast' mode this captures where the
+        compressed code archive has been uploaded.
+    :param dynamic_dest_dir: In the case of parent tasks executed using the 'fast' mode this captures where compressed
+        code archives should be installed in the flyte task container.
+    :return:
+    """
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
