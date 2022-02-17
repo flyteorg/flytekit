@@ -233,7 +233,7 @@ class Task(object):
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
-
+        ctx.user_space_params._decks = []
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
@@ -282,6 +282,9 @@ class Task(object):
             return VoidPromise(self.name)
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
+        for deck in ctx.user_space_params.decks:
+            # TODO: change path to file_access.random_remote_path
+            deck.upload("./deck_outputs")
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):

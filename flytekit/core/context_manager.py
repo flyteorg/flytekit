@@ -45,6 +45,8 @@ from flytekit.models.core import identifier as _identifier
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
 
 # Enables static type checking https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING
+
+
 if typing.TYPE_CHECKING:
     from flytekit.core.base_task import TaskResolverMixin
 
@@ -162,6 +164,7 @@ class ExecutionParameters(object):
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
         checkpoint: typing.Optional[Checkpoint]
+        decks: List
         raw_output_prefix: str
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
@@ -171,6 +174,7 @@ class ExecutionParameters(object):
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
             self.checkpoint = current._checkpoint if current else None
+            self.decks = current._decks if current else None
             self.attrs = current._attrs if current else {}
             self.raw_output_prefix = current.raw_output_prefix if current else None
 
@@ -188,6 +192,7 @@ class ExecutionParameters(object):
                 execution_id=self.execution_id,
                 logging=self.logging,
                 checkpoint=self.checkpoint,
+                decks=self.decks,
                 raw_output_prefix=self.raw_output_prefix,
                 **self.attrs,
             )
@@ -214,17 +219,28 @@ class ExecutionParameters(object):
         return ExecutionParameters.Builder(current=self)
 
     def __init__(
-        self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, checkpoint=None, **kwargs
+        self,
+        execution_date,
+        tmp_dir,
+        stats,
+        execution_id,
+        logging,
+        raw_output_prefix,
+        checkpoint=None,
+        decks=None,
+        **kwargs,
     ):
         """
         Args:
             execution_date: Date when the execution is running
             tmp_dir: temporary directory for the execution
             stats: handle to emit stats
-            execution_id: Identifier for the xecution
+            execution_id: Identifier for the execution
             logging: handle to logging
             checkpoint: Checkpoint Handle to the configured checkpoint system
         """
+        if decks is None:
+            decks = []
         self._stats = stats
         self._execution_date = execution_date
         self._working_directory = tmp_dir
@@ -236,6 +252,7 @@ class ExecutionParameters(object):
         # It is safe to recreate the Secrets Manager
         self._secrets_manager = SecretsManager()
         self._checkpoint = checkpoint
+        self._decks = decks
 
     @property
     def stats(self) -> taggable.TaggableStats:
@@ -302,6 +319,10 @@ class ExecutionParameters(object):
         if self._checkpoint is None:
             raise NotImplementedError("Checkpointing is not available, please check the version of the platform.")
         return self._checkpoint
+
+    @property
+    def decks(self) -> typing.List:
+        return self._decks
 
     def __getattr__(self, attr_name: str) -> typing.Any:
         """
@@ -966,6 +987,7 @@ class FlyteContextManager(object):
             logging=_logging,
             tmp_dir=user_space_path,
             raw_output_prefix=default_context.file_access._raw_output_prefix,
+            decks={},
         )
 
         default_context = default_context.with_execution_state(
