@@ -809,7 +809,7 @@ class Literal(_common.FlyteIdlEntity):
         self._scalar = scalar
         self._collection = collection
         self._map = map
-        self.hash = hash
+        self._hash = hash
 
     @property
     def scalar(self):
@@ -842,6 +842,14 @@ class Literal(_common.FlyteIdlEntity):
         :rtype: T
         """
         return self.scalar or self.collection or self.map
+
+    @property
+    def hash(self):
+        """
+        If not None, this value holds a hash that represents the literal for caching purposes.
+        :rtype: str
+        """
+        return self._hash
 
     def to_flyte_idl(self):
         """
