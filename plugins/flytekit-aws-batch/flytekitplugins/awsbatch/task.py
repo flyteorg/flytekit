@@ -60,7 +60,9 @@ class AWSBatchFunctionTask(PythonFunctionTask):
             "--inputs",
             "{{.input}}",
             "--output-prefix",
-            # FlytePropeller will always read the output from this directory (outputPrefix/0)
+            # As of FlytePropeller v0.16.28, aws array batch plugin support to run single job.
+            # This task will call aws batch plugin to execute the task on aws batch service.
+            # For single job, FlytePropeller will always read the output from this directory (outputPrefix/0)
             # More detail, see https://github.com/flyteorg/flyteplugins/blob/0dd93c23ed2edeca65d58e89b0edb613f88120e0/go/tasks/plugins/array/catalog.go#L501.
             "{{.outputPrefix}}/0",
             "--raw-output-data-prefix",
