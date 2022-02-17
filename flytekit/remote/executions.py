@@ -9,6 +9,7 @@ from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
+from flytekit.remote import interface
 from flytekit.remote.workflow import FlyteWorkflow
 
 
@@ -169,7 +170,7 @@ class FlyteNodeExecution(node_execution_models.NodeExecution):
         self._underlying_node_executions = None
         self._inputs = None
         self._outputs = None
-        self._interface = None
+        self._interface: Optional[interface.TypedInterface] = None
 
     @property
     def task_executions(self) -> List[FlyteTaskExecution]:

@@ -402,7 +402,6 @@ class FlyteRemote(object):
         compiled_wf = admin_workflow.closure.compiled_workflow
 
         node_launch_plans = {}
-        # TODO: Inspect branch nodes for launch plans
         for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
             if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
                 node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
@@ -1219,7 +1218,13 @@ class FlyteRemote(object):
             # Handle the case where it's a branch node
             elif execution._node.branch_node is not None:
                 remote_logger.debug("Skipping remote node execution for now")
-                return execution
+                execution._underlying_node_executions = [
+                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), node_mapping)
+                    for cne in child_node_executions
+                ]
+                # Revisit this. This is a tricky bit. The interface of the branch node isn't necessarily the
+                # interface of the entity that the branch node ran. Because conditionals are weird and flexible.
+                execution._interface = execution._underlying_node_executions[0]._node.flyte_entity.interface
             else:
                 remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")

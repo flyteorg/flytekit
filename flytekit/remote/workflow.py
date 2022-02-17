@@ -87,7 +87,23 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
 
     @classmethod
     def get_non_system_nodes(cls, nodes: List[_workflow_models.Node]) -> List[_workflow_models.Node]:
-        return [n for n in nodes if n.id not in {_constants.START_NODE_ID, _constants.END_NODE_ID}]
+        # Pull out underlying nodes
+        all_nodes = []
+        for n in nodes:
+            if n.id in {_constants.START_NODE_ID, _constants.END_NODE_ID}:
+                continue
+            all_nodes.append(n)
+            if n.branch_node:
+                blk = n.branch_node.if_else
+                # May not have an else node so we should check
+                if blk.else_node:
+                    all_nodes.append(blk.else_node)
+                all_nodes.append(blk.case.then_node)
+                if blk.other:
+                    for other_case in blk.other:
+                        all_nodes.append(other_case.then_node)
+
+        return all_nodes
 
     @classmethod
     def promote_from_model(
