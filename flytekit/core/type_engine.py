@@ -31,6 +31,15 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 
+try:
+    from typing import get_args as _get_args
+except ImportError:
+    try:
+        from typing_extensions import get_args as _get_args
+    except ImportError:
+        def _get_args(t):
+            return t.__args__
+
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 
@@ -623,16 +632,15 @@ def _add_tag_to_type(x: LiteralType, tag: str) -> LiteralType:
 
 class UnionTransformer(TypeTransformer[T]):
     """
-    Transformer that handles a univariate typing.Union[T]
+    Transformer that handles a typing.Union[T1, T2, ...]
     """
 
     def __init__(self):
         super().__init__("Typed Union", typing.Union)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
-
         try:
-            trans = [(TypeEngine.get_transformer(x), x) for x in typing.get_args(t)]
+            trans = [(TypeEngine.get_transformer(x), x) for x in _get_args(t)]
             variants = [_add_tag_to_type(t.get_literal_type(x), t.name) for (t, x) in trans]
             return _type_models.LiteralType(union_type=UnionType(variants))
         except Exception as e:
@@ -642,7 +650,7 @@ class UnionTransformer(TypeTransformer[T]):
         found_res = False
         res = None
         res_type = None
-        for t in typing.get_args(python_type):
+        for t in _get_args(python_type):
             try:
                 trans = TypeEngine.get_transformer(t)
 
@@ -671,7 +679,7 @@ class UnionTransformer(TypeTransformer[T]):
         found_res = False
         res = None
         res_tag = None
-        for v in typing.get_args(expected_python_type):
+        for v in _get_args(expected_python_type):
             try:
                 trans = TypeEngine.get_transformer(v)
                 if union_tag is not None:
@@ -696,7 +704,7 @@ class UnionTransformer(TypeTransformer[T]):
                             f"Both {res_tag} and {trans.name} transformers match")
                     res_tag = trans.name
                     found_res = True
-            except TypeTransformerFailedError as e: # todo(maximsmol): separate programmer errors from type conversion failures
+            except TypeTransformerFailedError as e:
                 logger.debug(f"Failed to convert from {lv} to {v}", e)
 
         if found_res:
@@ -887,7 +895,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         if type(python_val).__class__ != enum.EnumMeta:
             raise TypeTransformerFailedError("Expected an enum")
         if type(python_val.value) != str:
-            raise TypeTransformerFailedError("Only string-valued enums are sujpportedd")
+            raise TypeTransformerFailedError("Only string-valued enums are supportedd")
 
         return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
 
