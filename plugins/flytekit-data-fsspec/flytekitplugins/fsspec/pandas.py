@@ -71,5 +71,4 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         except NoCredentialsError as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
             kwargs["anon"] = True
-            pd.read_parquet(uri, columns=columns, storage_options=kwargs)
-            raise e
+            return pd.read_parquet(uri, columns=columns, storage_options=kwargs)
