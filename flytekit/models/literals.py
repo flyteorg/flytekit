@@ -868,9 +868,5 @@ class Literal(_common.FlyteIdlEntity):
             scalar=Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
             collection=collection,
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
-            # TODO: explain that string always have a value set in protobufs, which means
-            # if we want to differentiate between the case of empty string and null we would have
-            # to wrap that in a separate value. Instead, we're deliberately setting `hash` to
-            # None in case of the default value (i.e. empty string).
             hash=pb2_object.hash if pb2_object.hash else None,
         )
