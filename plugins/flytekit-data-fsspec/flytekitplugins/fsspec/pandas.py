@@ -3,9 +3,10 @@ import typing
 from pathlib import Path
 
 import pandas as pd
+from botocore.exceptions import NoCredentialsError
 from flytekitplugins.fsspec.persist import FSSpecPersistence, s3_setup_args
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, logger
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -19,7 +20,7 @@ from flytekit.types.structured.structured_dataset import (
 
 
 def get_storage_options(uri: str) -> typing.Optional[typing.Dict]:
-    protocol = FSSpecPersistence._get_protocol(uri)
+    protocol = FSSpecPersistence.get_protocol(uri)
     if protocol == S3:
         kwargs = s3_setup_args()
         if kwargs:
@@ -59,9 +60,16 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         flyte_value: literals.StructuredDataset,
     ) -> pd.DataFrame:
         uri = flyte_value.uri
+        columns = None
+        kwargs = get_storage_options(uri)
         if flyte_value.metadata.structured_dataset_type.columns:
             columns = []
             for c in flyte_value.metadata.structured_dataset_type.columns:
                 columns.append(c.name)
-            return pd.read_parquet(uri, columns=columns, storage_options=get_storage_options(uri))
-        return pd.read_parquet(uri, storage_options=get_storage_options(uri))
+        try:
+            return pd.read_parquet(uri, columns=columns, storage_options=kwargs)
+        except NoCredentialsError as e:
+            logger.debug("S3 source detected, attempting anonymous S3 access")
+            kwargs["anon"] = True
+            pd.read_parquet(uri, columns=columns, storage_options=kwargs)
+            raise e
