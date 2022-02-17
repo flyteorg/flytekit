@@ -9,6 +9,7 @@ from enum import Enum
 import pandas as pd
 import pyarrow as pa
 import pytest
+import typing_extensions
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
@@ -19,6 +20,7 @@ from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated
 
 from flytekit import kwtypes
+from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
@@ -35,6 +37,7 @@ from flytekit.core.type_engine import (
 )
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
+from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
@@ -909,6 +912,65 @@ def test_literal_hash_to_python_value():
     python_df = TypeEngine.to_python_value(ctx, literal_with_hash_set, pd.DataFrame)
     expected_df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
     assert expected_df.equals(python_df)
+
+
+def test_annotated_simple_types():
+    def _check_annotation(t, annotation):
+        lt = TypeEngine.to_literal_type(t)
+        assert isinstance(lt.annotation, TypeAnnotation)
+        assert lt.annotation.annotations == annotation
+
+    _check_annotation(typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"})], {"foo": "bar"})
+    _check_annotation(typing_extensions.Annotated[int, FlyteAnnotation(["foo", "bar"])], ["foo", "bar"])
+    _check_annotation(
+        typing_extensions.Annotated[int, FlyteAnnotation({"d": {"test": "data"}, "l": ["nested", ["list"]]})],
+        {"d": {"test": "data"}, "l": ["nested", ["list"]]},
+    )
+    _check_annotation(
+        typing_extensions.Annotated[int, FlyteAnnotation(InnerStruct(a=1, b="fizz", c=[1]))],
+        InnerStruct(a=1, b="fizz", c=[1]),
+    )
+
+
+def test_annotated_list():
+    t = typing_extensions.Annotated[typing.List[int], FlyteAnnotation({"foo": "bar"})]
+    lt = TypeEngine.to_literal_type(t)
+    assert isinstance(lt.annotation, TypeAnnotation)
+    assert lt.annotation.annotations == {"foo": "bar"}
+
+    t = typing.List[typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"})]]
+    lt = TypeEngine.to_literal_type(t)
+    assert isinstance(lt.collection_type.annotation, TypeAnnotation)
+    assert lt.collection_type.annotation.annotations == {"foo": "bar"}
+
+
+def test_type_alias():
+    inner_t = typing_extensions.Annotated[int, FlyteAnnotation("foo")]
+    t = typing_extensions.Annotated[inner_t, FlyteAnnotation("bar")]
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+
+def test_unsupported_complex_literals():
+    t = typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})]
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+    # Enum.
+    t = typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})]
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+    # Dataclass.
+    t = typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})]
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+
+def test_multiple_annotations():
+    t = typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"}), FlyteAnnotation({"anotha": "one"})]
+    with pytest.raises(Exception):
+        TypeEngine.to_literal_type(t)
 
 
 TestSchema = FlyteSchema[kwtypes(some_str=str)]

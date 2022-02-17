@@ -8,7 +8,7 @@
     # via
     #   -c requirements.txt
     #   pytest-flyte
-arrow==1.2.1
+arrow==1.2.2
     # via
     #   -c requirements.txt
     #   jinja2-time
@@ -42,7 +42,7 @@ chardet==4.0.0
     # via
     #   -c requirements.txt
     #   binaryornot
-charset-normalizer==2.0.10
+charset-normalizer==2.0.12
     # via
     #   -c requirements.txt
     #   requests
@@ -50,7 +50,7 @@ checksumdir==1.2.0
     # via
     #   -c requirements.txt
     #   flytekit
-click==7.1.2
+click==8.0.3
     # via
     #   -c requirements.txt
     #   cookiecutter
@@ -65,9 +65,9 @@ cookiecutter==1.7.3
     # via
     #   -c requirements.txt
     #   flytekit
-coverage[toml]==6.3
+coverage[toml]==6.3.1
     # via -r dev-requirements.in
-croniter==1.2.0
+croniter==1.3.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -94,7 +94,7 @@ diskcache==5.4.0
     #   flytekit
 distlib==0.3.4
     # via virtualenv
-distro==1.6.0
+distro==1.7.0
     # via docker-compose
 docker[ssh]==5.0.3
     # via docker-compose
@@ -114,18 +114,18 @@ docstring-parser==0.13
     # via
     #   -c requirements.txt
     #   flytekit
-filelock==3.4.2
+filelock==3.6.0
     # via virtualenv
-google-api-core[grpc]==2.4.0
+google-api-core[grpc]==2.5.0
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
     #   google-cloud-core
-google-auth==2.4.1
+google-auth==2.6.0
     # via
     #   google-api-core
     #   google-cloud-core
-google-cloud-bigquery==2.32.0
+google-cloud-bigquery==2.33.0
     # via -r dev-requirements.in
 google-cloud-bigquery-storage==2.11.0
     # via -r dev-requirements.in
@@ -133,28 +133,28 @@ google-cloud-core==2.2.2
     # via google-cloud-bigquery
 google-crc32c==1.3.0
     # via google-resumable-media
-google-resumable-media==2.1.0
+google-resumable-media==2.2.1
     # via google-cloud-bigquery
 googleapis-common-protos==1.54.0
     # via
     #   google-api-core
     #   grpcio-status
-grpcio==1.43.0
+grpcio==1.44.0
     # via
     #   -c requirements.txt
     #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
     #   grpcio-status
-grpcio-status==1.43.0
+grpcio-status==1.44.0
     # via google-api-core
-identify==2.4.5
+identify==2.4.10
     # via pre-commit
 idna==3.3
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.10.1
+importlib-metadata==4.11.1
     # via
     #   -c requirements.txt
     #   keyring
@@ -185,7 +185,7 @@ keyring==23.5.0
     # via
     #   -c requirements.txt
     #   flytekit
-libcst==0.4.0
+libcst==0.4.1
     # via google-cloud-bigquery-storage
 markupsafe==2.0.1
     # via
@@ -214,13 +214,13 @@ mypy-extensions==0.4.3
     #   -c requirements.txt
     #   mypy
     #   typing-inspect
-natsort==8.0.2
+natsort==8.1.0
     # via
     #   -c requirements.txt
     #   flytekit
 nodeenv==1.6.0
     # via pre-commit
-numpy==1.22.1
+numpy==1.21.5
     # via
     #   -c requirements.txt
     #   pandas
@@ -229,13 +229,13 @@ packaging==21.3
     # via
     #   google-cloud-bigquery
     #   pytest
-pandas==1.4.0
+pandas==1.3.5
     # via
     #   -c requirements.txt
     #   flytekit
 paramiko==2.9.2
     # via docker
-platformdirs==2.4.1
+platformdirs==2.5.0
     # via virtualenv
 pluggy==1.0.0
     # via pytest
@@ -245,11 +245,11 @@ poyo==0.5.0
     #   cookiecutter
 pre-commit==2.17.0
     # via -r dev-requirements.in
-proto-plus==1.19.8
+proto-plus==1.20.2
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
-protobuf==3.19.3
+protobuf==3.19.4
     # via
     #   -c requirements.txt
     #   flytekit
@@ -308,7 +308,7 @@ python-json-logger==2.0.2
     # via
     #   -c requirements.txt
     #   flytekit
-python-slugify==5.0.2
+python-slugify==6.0.1
     # via
     #   -c requirements.txt
     #   cookiecutter
@@ -341,7 +341,7 @@ requests==2.27.1
     #   google-api-core
     #   google-cloud-bigquery
     #   responses
-responses==0.17.0
+responses==0.18.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -365,7 +365,6 @@ six==1.16.0
     #   grpcio
     #   jsonschema
     #   python-dateutil
-    #   responses
     #   virtualenv
     #   websocket-client
 sortedcontainers==2.4.0
@@ -386,11 +385,11 @@ toml==0.10.2
     # via
     #   pre-commit
     #   pytest
-tomli==2.0.0
+tomli==2.0.1
     # via
     #   coverage
     #   mypy
-typing-extensions==4.0.1
+typing-extensions==4.1.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -408,7 +407,7 @@ urllib3==1.26.8
     #   flytekit
     #   requests
     #   responses
-virtualenv==20.13.0
+virtualenv==20.13.1
     # via pre-commit
 websocket-client==0.59.0
     # via

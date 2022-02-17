@@ -12,7 +12,7 @@ help:
 
 .PHONY: install-piptools
 install-piptools:
-	pip install -U pip-tools pip==21.2.4
+	pip install -U pip-tools setuptools wheel pip==22.0.3
 
 .PHONY: update_boilerplate
 update_boilerplate:
@@ -46,12 +46,11 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
 
 .PHONY: test
-test: lint ## Run tests
-	pytest tests/flytekit/unit
+test: lint unit_test
 
 .PHONY: unit_test
 unit_test:
-	pytest tests/flytekit/unit
+	FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE pytest tests/flytekit/unit tests/flytekit_compatibility
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools
@@ -79,7 +78,7 @@ requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	coverage run -m pytest tests/flytekit/unit/core flytekit/types
+	FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit/core flytekit/types
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""

@@ -25,7 +25,7 @@ def test_retries(mock_subprocess, mock_delay, mock_check):
 
     proxy = S3Persistence()
     assert proxy.exists("s3://test/fdsa/fdsa") is False
-    assert mock_subprocess.check_call.call_count == 4
+    assert mock_subprocess.check_call.call_count == 8
 
 
 def test_extra_args():

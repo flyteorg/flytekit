@@ -21,6 +21,7 @@ from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from typing_extensions import Annotated, get_args, get_origin
 
+from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
@@ -28,6 +29,7 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
+from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import (
     Blob,
@@ -239,6 +241,12 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
+        if get_origin(t) is Annotated:
+            raise ValueError(
+                "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
+                f"Type {t} cannot be parsed."
+            )
+
         if not issubclass(t, DataClassJsonMixin):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
@@ -555,6 +563,7 @@ class TypeEngine(typing.Generic[T]):
             TODO lets make this deterministic by using an ordered dict
 
         """
+
         # Step 1
         if get_origin(python_type) is Annotated:
             python_type = get_args(python_type)[0]
@@ -564,8 +573,14 @@ class TypeEngine(typing.Generic[T]):
 
         # Step 2
         if hasattr(python_type, "__origin__"):
+            # Handling of annotated generics, eg:
+            # Annotated[typing.List[int], 'foo']
+            if get_origin(python_type) is Annotated:
+                return cls.get_transformer(get_args(python_type)[0])
+
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
+
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
         # Step 3
@@ -594,7 +609,30 @@ class TypeEngine(typing.Generic[T]):
         Converts a python type into a flyte specific ``LiteralType``
         """
         transformer = cls.get_transformer(python_type)
-        return transformer.get_literal_type(python_type)
+        res = transformer.get_literal_type(python_type)
+        data = None
+        if get_origin(python_type) is Annotated:
+            for x in get_args(python_type)[1:]:
+                if not isinstance(x, FlyteAnnotation):
+                    continue
+                if data is not None:
+                    raise ValueError(
+                        f"More than one FlyteAnnotation used within {python_type} typehint. Flytekit requires a max of one."
+                    )
+                data = x.data
+        if data is not None:
+            idl_type_annotation = TypeAnnotationModel(annotations=data)
+            return LiteralType(
+                simple=res.simple,
+                schema=res.schema,
+                collection_type=res.collection_type,
+                map_value_type=res.map_value_type,
+                blob=res.blob,
+                enum_type=res.enum_type,
+                metadata=res.metadata,
+                annotation=idl_type_annotation,
+            )
+        return res
 
     @classmethod
     def to_literal(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Literal:
@@ -740,9 +778,16 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
-        if hasattr(t, "__origin__") and t.__origin__ is list:  # type: ignore
-            if hasattr(t, "__args__"):
-                return t.__args__[0]  # type: ignore
+
+        if hasattr(t, "__origin__"):
+            # Handle annotation on list generic, eg:
+            # Annotated[typing.List[int], 'foo']
+            if get_origin(t) is Annotated:
+                return ListTransformer.get_sub_type(get_args(t)[0])
+
+            if t.__origin__ is list and hasattr(t, "__args__"):
+                return t.__args__[0]
+
         raise ValueError("Only generic univariate typing.List[T] type is supported.")
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
@@ -785,9 +830,17 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Return the generic Type T of the Dict
         """
-        if hasattr(t, "__origin__") and t.__origin__ is dict:  # type: ignore
-            if hasattr(t, "__args__"):
-                return t.__args__  # type: ignore
+        _origin = get_origin(t)
+        _args = get_args(t)
+        if _origin is not None:
+            if _origin is Annotated:
+                raise ValueError(
+                    f"Flytekit does not currently have support \
+                        for FlyteAnnotations applied to dicts. {t} cannot be \
+                        parsed."
+                )
+            if _origin is dict and _args is not None:
+                return _args
         return None, None
 
     @staticmethod
@@ -935,6 +988,13 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
+        if get_origin(t) is Annotated:
+            raise ValueError(
+                f"Flytekit does not currently have support \
+                    for FlyteAnnotations applied to enums. {t} cannot be \
+                    parsed."
+            )
+
         values = [v.value for v in t]  # type: ignore
         if not isinstance(values[0], str):
             raise AssertionError("Only EnumTypes with value of string are supported")

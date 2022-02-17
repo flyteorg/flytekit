@@ -40,7 +40,7 @@ setup(
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<7.0.0",
-        "click>=6.6,<8.0",
+        "click>=6.6,<9.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
         "python-dateutil>=2.1",
@@ -68,6 +68,7 @@ setup(
         "checksumdir>=1.2.0",
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
+        "numpy<=1.22.1; python_version < '3.8.0'",
     ],
     extras_require=extras_require,
     scripts=[

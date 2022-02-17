@@ -460,7 +460,7 @@ class FlyteRemote(object):
         """
         if name is None:
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
-        return FlyteWorkflowExecution.promote_from_model(
+        execution = FlyteWorkflowExecution.promote_from_model(
             self.client.get_execution(
                 WorkflowExecutionIdentifier(
                     project or self.default_project,
@@ -469,6 +469,7 @@ class FlyteRemote(object):
                 )
             )
         )
+        return self.sync_workflow_execution(execution)
 
     ######################
     #  Listing Entities  #
