@@ -914,6 +914,38 @@ def test_literal_hash_to_python_value():
     assert expected_df.equals(python_df)
 
 
+def test_literal_hash_of_list_of_dataframes():
+    """
+    Test to confirm that lists of annotated dataframes override the hash of the collection
+    """
+    ctx = FlyteContext.current_context()
+
+    def hash_function(df: pd.DataFrame) -> str:
+        return str(sum(df["col1"]))
+
+    list_transformer = ListTransformer()
+    type_list_of_annotated = typing.List[Annotated[pd.DataFrame, HashMethod(hash_function)]]
+
+    df1 = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    df2 = pd.DataFrame(data={"col1": [2, 3], "col2": [4, 5]})
+    literal_collection_with_hash_set = TypeEngine.to_literal(
+        ctx,
+        [df1, df2],
+        type_list_of_annotated,
+        list_transformer.get_literal_type(type_list_of_annotated),
+    )
+    assert literal_collection_with_hash_set.hash == "3|5"
+    # Confirm tha the loaded dataframes are not affected
+    python_dfs = TypeEngine.to_python_value(ctx, literal_collection_with_hash_set, typing.List[pd.DataFrame])
+    expected_dfs = [
+        pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]}),
+        pd.DataFrame(data={"col1": [2, 3], "col2": [4, 5]}),
+    ]
+    assert len(python_dfs) == len(expected_dfs)
+    for i in range(len(expected_dfs)):
+        assert expected_dfs[i].equals(python_dfs[i])
+
+
 def test_annotated_simple_types():
     def _check_annotation(t, annotation):
         lt = TypeEngine.to_literal_type(t)
