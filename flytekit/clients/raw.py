@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import subprocess
 import time
+import typing
+from dataclasses import dataclass
 from typing import List
 
+import grpc
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 from grpc import RpcError as _RpcError
@@ -13,11 +18,8 @@ from grpc import ssl_channel_credentials as _ssl_channel_credentials
 from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
 from flytekit.configuration import creds as _creds_config
-from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import COMMAND as _COMMAND
-from flytekit.configuration.creds import DEPRECATED_OAUTH_SCOPES, SCOPES
-from flytekit.configuration.platform import AUTH as _AUTH
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import cli_logger
 
@@ -180,39 +182,30 @@ class RawSynchronousFlyteClient(object):
     be explicit as opposed to inferred from the environment or a configuration file.
     """
 
-    def __init__(self, url, insecure=False, credentials=None, options=None, root_cert_file=None):
+    def __init__(self, url: str, insecure: bool = False, **kwargs):
         """
         Initializes a gRPC channel to the given Flyte Admin service.
 
-        :param Text url: The URL (including port if necessary) to connect to the appropriate Flyte Admin Service.
-        :param bool insecure: [Optional] Whether to use an insecure connection, default False
-        :param Text credentials: [Optional] If provided, a secure channel will be opened with the Flyte Admin Service.
-        :param dict[Text, Text] options: [Optional] A dict of key-value string pairs for configuring the gRPC core
-            runtime.
-        :param root_cert_file: Path to a local certificate file if you want.
+        Args:
+          url: The server address.
+          insecure: if insecure is desired
         """
         self._channel = None
         self._url = url
 
         if insecure:
-            self._channel = _insecure_channel(url, options=list((options or {}).items()))
+            self._channel = grpc.insecure_channel(url, **kwargs)
         else:
-            if root_cert_file:
-                with open(root_cert_file, "rb") as fh:
-                    cert_bytes = fh.read()
-                channel_creds = _ssl_channel_credentials(root_certificates=cert_bytes)
-            else:
-                channel_creds = _ssl_channel_credentials()
-
-            self._channel = _secure_channel(
-                url,
-                credentials or channel_creds,
-                options=list((options or {}).items()),
-            )
+            self._channel = grpc.secure_channel(target=url, **kwargs)
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._metadata = None
-        if _AUTH.get():
-            self.force_auth_flow()
+
+    @classmethod
+    def with_root_certificate(cls, url: str, root_cert_file: str) -> RawSynchronousFlyteClient:
+        b = None
+        with open(root_cert_file, "rb") as fp:
+            b = fp.read()
+        return RawSynchronousFlyteClient(url=url, credentials=grpc.ssl_channel_credentials(root_certificates=b))
 
     @property
     def url(self) -> str:

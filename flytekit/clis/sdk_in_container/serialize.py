@@ -17,6 +17,7 @@ from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import internal as _internal_config
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.scopes import system_entry_point
@@ -29,6 +30,7 @@ from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import trigger_loading
 from flytekit.tools.translator import get_serializable
+
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
@@ -173,10 +175,8 @@ def serialize_all(
     :param flytekit_virtualenv_root: The full path of the virtual env in the container.
     """
 
+    # TODO this should now come from serialized settings in the dynamics custom?
     env = {
-        _internal_config.CONFIGURATION_PATH.env_var: config_path
-        if config_path
-        else _internal_config.CONFIGURATION_PATH.get(),
         _internal_config.IMAGE.env_var: image,
     }
 
@@ -190,7 +190,7 @@ def serialize_all(
         project=_PROJECT_PLACEHOLDER,
         domain=_DOMAIN_PLACEHOLDER,
         version=_VERSION_PLACEHOLDER,
-        image_config=flyte_context.get_image_config(img_name=image),
+        image_config=ImageConfig.from_config(img_name=image),
         env=env,
         flytekit_virtualenv_root=flytekit_virtualenv_root,
         python_interpreter=python_interpreter,

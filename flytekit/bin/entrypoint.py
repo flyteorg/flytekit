@@ -23,7 +23,6 @@ from flytekit.core.context_manager import (
     FlyteContext,
     FlyteContextManager,
     SerializationSettings,
-    get_image_config,
 )
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
@@ -231,15 +230,15 @@ def setup_execution(
     with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
         env = {
-            _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
             _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
         }
 
+        # TODO These should come from env variable
         serialization_settings = SerializationSettings(
             project=_internal_config.TASK_PROJECT.get(),
             domain=_internal_config.TASK_DOMAIN.get(),
             version=_internal_config.TASK_VERSION.get(),
-            image_config=get_image_config(),
+            image_config=ImageConfig.from_config(),
             env=env,
         )
 

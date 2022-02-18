@@ -31,9 +31,8 @@ from typing import Any, Dict, Generator, List, Optional, Union
 from docker_image import reference
 
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.configuration import images, internal
-from flytekit.configuration import sdk as _sdk_config
-from flytekit.configuration import secrets
+from flytekit.configuration import images, internal, sdk, secrets, platform, statsd, set_flyte_config_file
+from flytekit.configuration.common import _FlyteConfigurationEntry
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
@@ -48,7 +47,31 @@ from flytekit.models.core import identifier as _identifier
 if typing.TYPE_CHECKING:
     from flytekit.core.base_task import TaskResolverMixin
 
+# Identifier fields use placeholders for registration-time substitution.
+# Additional fields, such as auth and the raw output data prefix have more complex structures
+# and can be optional so they are not serialized with placeholders.
+_PROJECT_PLACEHOLDER = "{{ registration.project }}"
+_DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
+_VERSION_PLACEHOLDER = "{{ registration.version }}"
+
 _DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
+_DEFAULT_IMAGE_NAME = "default"
+_IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
+
+
+def set_if_exists(d: dict, k: str, c: _FlyteConfigurationEntry) -> dict:
+    """
+    Given a dict `d` sets the key `k` with value of config `c`, if the config `c` is set
+    It also returns the updated dictionary.
+
+    .. note::
+
+        The input dictionary `d` will be mutated.
+
+    """
+    if c.is_set():
+        d[k] = c.get()
+    return d
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -77,6 +100,28 @@ class Image(object):
         """
         return f"{self.fqn}:{self.tag}"
 
+    @staticmethod
+    def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image:
+        """
+        Looks up the image tag from environment variable (should be set from the Dockerfile).
+            FLYTE_INTERNAL_IMAGE should be the environment variable.
+
+        This function is used when registering tasks/workflows with Admin.
+        When using the canonical Python-based development cycle, the version that is used to register workflows
+        and tasks with Admin should be the version of the image itself, which should ideally be something unique
+        like the sha of the latest commit.
+
+        :param optional_tag:
+        :param name:
+        :param Text tag: e.g. somedocker.com/myimage:someversion123
+        :rtype: Text
+        """
+        ref = reference.Reference.parse(tag)
+        if not optional_tag and ref["tag"] is None:
+            raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
+        else:
+            return Image(name=name, fqn=ref["name"], tag=ref["tag"])
+
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageConfig(object):
@@ -102,38 +147,141 @@ class ImageConfig(object):
                 return i
         return None
 
+    @staticmethod
+    def validate_image(ctx: typing.Any, param: str, values: tuple) -> ImageConfig:
+        """
+        Validates the image to match the standard format. Also validates that only one default image
+        is provided. a default image, is one that is specified as
+          default=img or just img. All other images should be provided with a name, in the format
+          name=img
+        """
+        default_image = None
+        images = []
+        for v in values:
+            if "=" in v:
+                splits = v.split("=", maxsplit=1)
+                img = Image.look_up_image_info(name=splits[0], tag=splits[1], optional_tag=False)
+            else:
+                img = Image.look_up_image_info(_DEFAULT_IMAGE_NAME, v, False)
 
-_IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
+            if default_image and img.name == _DEFAULT_IMAGE_NAME:
+                raise ValueError(
+                    f"Only one default image can be specified. Received multiple {default_image} & {img} for {param}"
+                )
+            if img.name == _DEFAULT_IMAGE_NAME:
+                default_image = img
+            else:
+                images.append(img)
+
+        return ImageConfig(default_image, images)
+
+    @classmethod
+    def from_config(cls, img_name: Optional[str] = None) -> ImageConfig:
+        image_name = img_name if img_name else internal.IMAGE.get()
+        default_img = Image.look_up_image_info("default",
+                                               image_name) if image_name is not None and image_name != "" else None
+        other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in
+                        images.get_specified_images().items()]
+        other_images.append(default_img)
+        return ImageConfig(default_image=default_img, images=other_images)
 
 
-def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image:
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class PlatformConfig(object):
+    endpoint: str
+    insecure: bool = False
+
+    @classmethod
+    def from_config(cls) -> PlatformConfig:
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "insecure", platform.INSECURE)
+        return PlatformConfig(endpoint=platform.URL.get(), **kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class StatsConfig(object):
+    host: str = "localhost"
+    port: int = 8125
+    disabled: bool = False
+    disabled_tags: bool = False
+
+    @classmethod
+    def from_config(cls) -> StatsConfig:
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "host", statsd.HOST)
+        kwargs = set_if_exists(kwargs, "port", statsd.PORT)
+        kwargs = set_if_exists(kwargs, "disabled", statsd.DISABLED)
+        kwargs = set_if_exists(kwargs, "disabled_tags", statsd.DISABLE_TAGS)
+        return StatsConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class SecretsConfig(object):
+    secrets_env_prefix: str = "_FSEC_"
+    secrets_default_dir: str = os.path.join(os.sep, "etc", "secrets")
+    secrets_file_prefix: str = ""
+
+    @classmethod
+    def from_config(cls) -> SecretsConfig:
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "secrets_env_prefix", secrets.SECRETS_ENV_PREFIX)
+        kwargs = set_if_exists(kwargs, "secrets_default_prefix", secrets.SECRETS_DEFAULT_DIR)
+        kwargs = set_if_exists(kwargs, "secrets_file_prefix", secrets.SECRETS_FILE_PREFIX)
+        return SecretsConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class Config(object):
     """
-    Looks up the image tag from environment variable (should be set from the Dockerfile).
-        FLYTE_INTERNAL_IMAGE should be the environment variable.
-
-    This function is used when registering tasks/workflows with Admin.
-    When using the canonical Python-based development cycle, the version that is used to register workflows
-    and tasks with Admin should be the version of the image itself, which should ideally be something unique
-    like the sha of the latest commit.
-
-    :param optional_tag:
-    :param name:
-    :param Text tag: e.g. somedocker.com/myimage:someversion123
-    :rtype: Text
+    This object represents the environment for Flytekit to perform either
+       1. Interactive session with Flyte backend
+       2. Some parts are required for Serialization, for example Platform Config is not required
+       3. Runtime of a task
+    Args:
+        entrypoint_settings: EntrypointSettings object for use with Spark tasks. If supplied, this will be
+          used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
+          inside the container.
     """
-    ref = reference.Reference.parse(tag)
-    if not optional_tag and ref["tag"] is None:
-        raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
-    else:
-        return Image(name=name, fqn=ref["name"], tag=ref["tag"])
+    platform: PlatformConfig
+    images: ImageConfig
+    secrets: SecretsConfig = SecretsConfig()
+    stats: StatsConfig = StatsConfig()
+    flytekit_virtualenv_root: Optional[str] = None
+    python_interpreter: Optional[str] = None
+    entrypoint_settings: Optional[EntrypointSettings] = None
+    fast_serialization_settings: Optional[FastSerializationSettings] = None
 
+    def get_serialization_settings(
+            self,
+            project: str = _PROJECT_PLACEHOLDER,
+            domain: str = _DOMAIN_PLACEHOLDER,
+            version: str = _VERSION_PLACEHOLDER) -> SerializationSettings:
+        return SerializationSettings(
+            project=project,
+            domain=domain,
+            version=version,
+            image_config=self.images,
+        )
 
-def get_image_config(img_name: Optional[str] = None) -> ImageConfig:
-    image_name = img_name if img_name else internal.IMAGE.get()
-    default_img = look_up_image_info("default", image_name) if image_name is not None and image_name != "" else None
-    other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()]
-    other_images.append(default_img)
-    return ImageConfig(default_image=default_img, images=other_images)
+    @classmethod
+    def from_file(cls,
+                  config_path: str,
+                  img: Optional[str] = None,
+                  flytekit_virtualenv_root: Optional[str] = None,
+                  python_interpreter: Optional[str] = None,
+                  entrypoint_settings: Optional[EntrypointSettings] = None,
+                  fast_serialization_settings: Optional[FastSerializationSettings] = None) -> Config:
+        set_flyte_config_file(config_file_path=config_path)
+        return Config(
+            platform=PlatformConfig.from_config(),
+            images=ImageConfig.from_config(img),
+            secrets=SecretsConfig.from_config(),
+            stats=StatsConfig.from_config(),
+            flytekit_virtualenv_root=flytekit_virtualenv_root,
+            python_interpreter=python_interpreter,
+            entrypoint_settings=entrypoint_settings,
+            fast_serialization_settings=fast_serialization_settings,
+        )
 
 
 class ExecutionParameters(object):
@@ -214,7 +362,7 @@ class ExecutionParameters(object):
         return ExecutionParameters.Builder(current=self)
 
     def __init__(
-        self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, checkpoint=None, **kwargs
+            self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, checkpoint=None, **kwargs
     ):
         """
         Args:
@@ -540,11 +688,11 @@ class CompilationState(object):
         self.nodes.append(n)
 
     def with_params(
-        self,
-        prefix: str,
-        mode: Optional[int] = None,
-        resolver: Optional[TaskResolverMixin] = None,
-        nodes: Optional[List] = None,
+            self,
+            prefix: str,
+            mode: Optional[int] = None,
+            resolver: Optional[TaskResolverMixin] = None,
+            nodes: Optional[List] = None,
     ) -> CompilationState:
         """
         Create a new CompilationState where the mode and task resolver are defaulted to the current object, but they
@@ -622,13 +770,13 @@ class ExecutionState(object):
     user_space_params: Optional[ExecutionParameters]
 
     def __init__(
-        self,
-        working_dir: os.PathLike,
-        mode: Optional[ExecutionState.Mode] = None,
-        engine_dir: Optional[Union[os.PathLike, str]] = None,
-        additional_context: Optional[Dict[Any, Any]] = None,
-        branch_eval_mode: Optional[BranchEvalMode] = None,
-        user_space_params: Optional[ExecutionParameters] = None,
+            self,
+            working_dir: os.PathLike,
+            mode: Optional[ExecutionState.Mode] = None,
+            engine_dir: Optional[Union[os.PathLike, str]] = None,
+            additional_context: Optional[Dict[Any, Any]] = None,
+            branch_eval_mode: Optional[BranchEvalMode] = None,
+            user_space_params: Optional[ExecutionParameters] = None,
     ):
         if not working_dir:
             raise ValueError("Working directory is needed")
@@ -655,13 +803,13 @@ class ExecutionState(object):
         object.__setattr__(self, "branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
 
     def with_params(
-        self,
-        working_dir: Optional[os.PathLike] = None,
-        mode: Optional[Mode] = None,
-        engine_dir: Optional[os.PathLike] = None,
-        additional_context: Optional[Dict[Any, Any]] = None,
-        branch_eval_mode: Optional[BranchEvalMode] = None,
-        user_space_params: Optional[ExecutionParameters] = None,
+            self,
+            working_dir: Optional[os.PathLike] = None,
+            mode: Optional[Mode] = None,
+            engine_dir: Optional[os.PathLike] = None,
+            additional_context: Optional[Dict[Any, Any]] = None,
+            branch_eval_mode: Optional[BranchEvalMode] = None,
+            user_space_params: Optional[ExecutionParameters] = None,
     ) -> ExecutionState:
         """
         Produces a copy of the current execution state and overrides the copy's parameters with passed parameter values.
@@ -953,7 +1101,7 @@ class FlyteContextManager(object):
         default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
 
         # Ensure a local directory is available for users to work with.
-        user_space_path = os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space")
+        user_space_path = os.path.join(sdk.LOCAL_SANDBOX.get(), "user_space")
         pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
