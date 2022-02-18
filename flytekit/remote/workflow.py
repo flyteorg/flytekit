@@ -32,15 +32,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         launch_plans: Optional[Dict[id_models.Identifier, launch_plan_models.LaunchPlanSpec]] = None,
         compiled_closure: Optional[compiler_models.CompiledWorkflowClosure] = None,
     ):
-        # TODO: Remove check
-        for node in nodes:
-            for upstream in node.upstream_nodes:
-                if upstream.id is None:
-                    raise _user_exceptions.FlyteAssertion(
-                        "Some nodes contained in the workflow were not found in the workflow description.  Please "
-                        "ensure all nodes are either assigned to attributes within the class or an element in a "
-                        "list, dict, or tuple which is stored as an attribute in the class."
-                    )
         super(FlyteWorkflow, self).__init__(
             id=id,
             metadata=metadata,
@@ -53,11 +44,22 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         self._python_interface = None
 
         # Optional things that we save for ease of access when promoting from a model or CompiledWorkflowClosure
+        # We can change the base type for this class or remove the inheritance altogether if this list gets to be
+        # a bit much.
         self._subworkflows = subworkflows
         self._tasks = tasks
         self._launch_plans = launch_plans
         self._compiled_closure = compiled_closure
         self._node_map = None
+
+    def __str__(self) -> str:
+        return f"id({id(self)}) FlyteWorkflow()"
+
+    def __repr__(self) -> str:
+        r = f"""{self.id.verbose_string()}
+        {self.interface.verbose_string()}
+        """
+        return r
 
     @property
     def interface(self) -> _interfaces.TypedInterface:

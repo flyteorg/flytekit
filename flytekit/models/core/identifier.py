@@ -25,6 +25,16 @@ class Identifier(_common_models.FlyteIdlEntity):
         self._name = name
         self._version = version
 
+    def verbose_string(self) -> str:
+        part = f"([{self.project}/{self.domain}] {self.name}:{self.version})"
+        if self.resource_type == ResourceType.TASK:
+            return "Task: " + part
+        if self.resource_type == ResourceType.WORKFLOW:
+            return "Workflow: " + part
+        if self.resource_type == ResourceType.LAUNCH_PLAN:
+            return "Launch Plan: " + part
+        return "Unspecified: " + part
+
     @property
     def resource_type(self):
         """

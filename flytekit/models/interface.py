@@ -95,6 +95,17 @@ class TypedInterface(_common.FlyteIdlEntity):
         self._inputs = inputs
         self._outputs = outputs
 
+    def verbose_string(self) -> str:
+        ins = []
+        for k, v in self.inputs.items():
+            ins.append(f"{k}: {v.type}")
+        instr = "\n".join(ins)
+        outs = []
+        for k, v in self.outputs.items():
+            outs.append(f"{k}: {v.type}")
+        outstr = "\n".join(outs)
+        return f"Inputs: {instr}\nOutputs: {outstr}"
+
     @property
     def inputs(self) -> typing.Dict[str, Variable]:
         return self._inputs

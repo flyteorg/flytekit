@@ -258,6 +258,10 @@ class LiteralType(_common.FlyteIdlEntity):
         return self._structured_dataset_type
 
     @property
+    def get_type(self):
+        return self.structured_dataset_type or self.blob or self.schema or self.simple or self.enum_type
+
+    @property
     def metadata(self):
         """
         :rtype: dict[Text, T]
@@ -329,6 +333,10 @@ class LiteralType(_common.FlyteIdlEntity):
             metadata=_json_format.MessageToDict(proto.metadata) or None,
             annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.HasField("annotation") else None,
         )
+
+    def verbose_string(self):
+        
+        return str(self.to_flyte_idl()).replace("\n", " ")
 
 
 class OutputReference(_common.FlyteIdlEntity):
