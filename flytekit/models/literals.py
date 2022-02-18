@@ -851,6 +851,10 @@ class Literal(_common.FlyteIdlEntity):
         """
         return self._hash
 
+    @hash.setter
+    def hash(self, value):
+        self._hash = value
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Literal
