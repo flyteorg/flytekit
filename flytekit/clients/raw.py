@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import subprocess
 import time
-from typing import List
+from typing import Optional
 
 from flyteidl.service import admin_pb2_grpc as _admin_service
+from flyteidl.service import auth_pb2
+from flyteidl.service import auth_pb2_grpc as auth_service
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 from grpc import RpcError as _RpcError
 from grpc import StatusCode as _GrpcStatusCode
@@ -13,11 +17,8 @@ from grpc import ssl_channel_credentials as _ssl_channel_credentials
 from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
 from flytekit.configuration import creds as _creds_config
-from flytekit.configuration.creds import _DEPRECATED_CLIENT_CREDENTIALS_SCOPE as _DEPRECATED_SCOPE
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import COMMAND as _COMMAND
-from flytekit.configuration.creds import DEPRECATED_OAUTH_SCOPES, SCOPES
-from flytekit.configuration.platform import AUTH as _AUTH
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import cli_logger
 
@@ -29,31 +30,26 @@ def _refresh_credentials_standard(flyte_client):
     :param flyte_client: RawSynchronousFlyteClient
     :return:
     """
-
-    client = _credentials_access.get_client(flyte_client.url)
+    if not flyte_client.oauth2_metadata or not flyte_client.public_client_config:
+        raise ValueError(
+            "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
+            "Check your Admin server's .well-known endpoints to make sure they're working as expected."
+        )
+    client = _credentials_access.get_client(
+        redirect_endpoint=flyte_client.public_client_config.redirect_uri,
+        client_id=flyte_client.public_client_config.client_id,
+        scopes=flyte_client.public_client_config.scopes,
+        auth_endpoint=flyte_client.oauth2_metadata.authorization_endpoint,
+        token_endpoint=flyte_client.oauth2_metadata.token_endpoint,
+    )
     if client.can_refresh_token:
         client.refresh_access_token()
 
-    flyte_client.set_access_token(client.credentials.access_token)
+    authorization_header_key = flyte_client.public_client_config.authorization_metadata_key or None
+    flyte_client.set_access_token(client.credentials.access_token, authorization_header_key)
 
 
-def _get_basic_flow_scopes() -> List[str]:
-    """
-    Merge the scope value between the old scope config option and the new list option.
-
-    :return: The scopes to use for basic auth flow.
-    """
-    deprecated_single_scope = _DEPRECATED_SCOPE.get()
-    if deprecated_single_scope:
-        return [deprecated_single_scope]
-    scopes = DEPRECATED_OAUTH_SCOPES.get() or SCOPES.get()
-    if "openid" in scopes:
-        cli_logger.warning("Basic flow authentication should never use openid.")
-
-    return scopes
-
-
-def _refresh_credentials_basic(flyte_client):
+def _refresh_credentials_basic(flyte_client: RawSynchronousFlyteClient):
     """
     This function is used by the _handle_rpc_error() decorator, depending on the AUTH_MODE config object. This handler
     is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
@@ -63,16 +59,28 @@ def _refresh_credentials_basic(flyte_client):
     :param flyte_client: RawSynchronousFlyteClient
     :return:
     """
-    auth_endpoints = _credentials_access.get_authorization_endpoints(flyte_client.url)
-    token_endpoint = auth_endpoints.token_endpoint
+    print('=====================================1')
+    if not flyte_client.oauth2_metadata or not flyte_client.public_client_config:
+        raise ValueError(
+            "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
+            "Check your Admin server's .well-known endpoints to make sure they're working as expected."
+        )
+
+    token_endpoint = flyte_client.oauth2_metadata.token_endpoint
+    scopes = flyte_client.public_client_config.scopes
+    scopes = ",".join(scopes)
+    # TODO: REMOVE BEFORE MERGING THIS IS A HACK.
+    scopes = "all"
+
+    # Note that unlike the Pkce flow, the client ID does not come from Admin.
     client_secret = _basic_auth.get_secret()
-    cli_logger.debug(
-        "Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), _get_basic_flow_scopes())
-    )
+    cli_logger.debug("Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), scopes))
     authorization_header = _basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
-    token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, _get_basic_flow_scopes())
+    token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, scopes)
     cli_logger.info("Retrieved new token, expires in {}".format(expires_in))
-    flyte_client.set_access_token(token)
+    authorization_header_key = flyte_client.public_client_config.authorization_metadata_key or None
+    print(f'=====================================2 {scopes}')
+    flyte_client.set_access_token(token, authorization_header_key)
 
 
 def _refresh_credentials_from_command(flyte_client):
@@ -101,7 +109,7 @@ def _refresh_credentials_noop(flyte_client):
 def _get_refresh_handler(auth_mode):
     if auth_mode == "standard":
         return _refresh_credentials_standard
-    elif auth_mode == "basic":
+    elif auth_mode == "basic" or auth_mode == "client_credentials":
         return _refresh_credentials_basic
     elif auth_mode == "external_process":
         return _refresh_credentials_from_command
@@ -210,22 +218,44 @@ class RawSynchronousFlyteClient(object):
                 options=list((options or {}).items()),
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
+        self._auth_stub = auth_service.AuthMetadataServiceStub(self._channel)
+        try:
+            resp = self._auth_stub.GetPublicClientConfig(auth_pb2.PublicClientAuthConfigRequest())
+            print(resp)
+            self._public_client_config = resp
+        except _RpcError:
+            cli_logger.debug("No public client auth config found, skipping.")
+            self._public_client_config = None
+        try:
+            resp = self._auth_stub.GetOAuth2Metadata(auth_pb2.OAuth2MetadataRequest())
+            print(resp)
+            self._oauth2_metadata = resp
+        except _RpcError:
+            cli_logger.debug("No OAuth2 Metadata found, skipping.")
+            self._oauth2_metadata = None
+
+        # metadata will hold the value of the token to send to the various endpoints.
         self._metadata = None
-        if _AUTH.get():
-            self.force_auth_flow()
+
+    @property
+    def public_client_config(self) -> Optional[auth_pb2.PublicClientAuthConfigResponse]:
+        return self._public_client_config
+
+    @property
+    def oauth2_metadata(self) -> Optional[auth_pb2.OAuth2MetadataResponse]:
+        return self._oauth2_metadata
 
     @property
     def url(self) -> str:
         return self._url
 
-    def set_access_token(self, access_token):
+    def set_access_token(self, access_token: str, authorization_header_key: Optional[str] = "authorization"):
         # Always set the header to lower-case regardless of what the config is. The grpc libraries that Admin uses
         # to parse the metadata don't change the metadata, but they do automatically lower the key you're looking for.
-        authorization_metadata_key = _creds_config.AUTHORIZATION_METADATA_KEY.get().lower()
-        cli_logger.debug(f"Adding authorization header. Header name: {authorization_metadata_key}.")
+        cli_logger.debug(f"Adding authorization header. Header name: {authorization_header_key}.")
         self._metadata = [
             (
-                authorization_metadata_key,
+                authorization_header_key,
                 f"Bearer {access_token}",
             )
         ]

@@ -145,7 +145,6 @@ class AuthorizationClient(object):
         scopes=None,
         client_id=None,
         redirect_uri=None,
-        client_secret=None,
     ):
         self._auth_endpoint = auth_endpoint
         self._token_endpoint = token_endpoint
@@ -161,7 +160,6 @@ class AuthorizationClient(object):
         self._refresh_token = None
         self._headers = {"content-type": "application/x-www-form-urlencoded"}
         self._expired = False
-        self._client_secret = client_secret
 
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
