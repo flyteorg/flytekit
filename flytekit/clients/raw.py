@@ -59,7 +59,6 @@ def _refresh_credentials_basic(flyte_client: RawSynchronousFlyteClient):
     :param flyte_client: RawSynchronousFlyteClient
     :return:
     """
-    print('=====================================1')
     if not flyte_client.oauth2_metadata or not flyte_client.public_client_config:
         raise ValueError(
             "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
@@ -67,10 +66,8 @@ def _refresh_credentials_basic(flyte_client: RawSynchronousFlyteClient):
         )
 
     token_endpoint = flyte_client.oauth2_metadata.token_endpoint
-    scopes = flyte_client.public_client_config.scopes
+    scopes = flyte_client.oauth2_metadata.scopes_supported
     scopes = ",".join(scopes)
-    # TODO: REMOVE BEFORE MERGING THIS IS A HACK.
-    scopes = "all"
 
     # Note that unlike the Pkce flow, the client ID does not come from Admin.
     client_secret = _basic_auth.get_secret()
@@ -79,7 +76,6 @@ def _refresh_credentials_basic(flyte_client: RawSynchronousFlyteClient):
     token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, scopes)
     cli_logger.info("Retrieved new token, expires in {}".format(expires_in))
     authorization_header_key = flyte_client.public_client_config.authorization_metadata_key or None
-    print(f'=====================================2 {scopes}')
     flyte_client.set_access_token(token, authorization_header_key)
 
 
@@ -221,14 +217,12 @@ class RawSynchronousFlyteClient(object):
         self._auth_stub = auth_service.AuthMetadataServiceStub(self._channel)
         try:
             resp = self._auth_stub.GetPublicClientConfig(auth_pb2.PublicClientAuthConfigRequest())
-            print(resp)
             self._public_client_config = resp
         except _RpcError:
             cli_logger.debug("No public client auth config found, skipping.")
             self._public_client_config = None
         try:
             resp = self._auth_stub.GetOAuth2Metadata(auth_pb2.OAuth2MetadataRequest())
-            print(resp)
             self._oauth2_metadata = resp
         except _RpcError:
             cli_logger.debug("No OAuth2 Metadata found, skipping.")
