@@ -716,7 +716,6 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.project_pb2.ProjectListRequest project_list_request:
         :rtype: flyteidl.admin.project_pb2.Projects
         """
-        print(f"!!!!!!!!!!!!!!!!!!!! Attempting {self._metadata}")
         return self._stub.ListProjects(project_list_request, metadata=self._metadata)
 
     @_handle_rpc_error()
