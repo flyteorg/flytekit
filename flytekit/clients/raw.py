@@ -26,6 +26,8 @@ from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
 
+_utf_8 = "utf-8"
+
 
 def _refresh_credentials_standard(flyte_client: RawSynchronousFlyteClient):
     """
@@ -274,10 +276,10 @@ class RawSynchronousFlyteClient(object):
     def check_access_token(self, access_token: str) -> bool:
         """
         This checks to see if the given access token is the same as the one already stored in the client. The reason
-        this is useful is so that we can prevent unnecessary refreshing of tokens. Only if
+        this is useful is so that we can prevent unnecessary refreshing of tokens.
 
         :param access_token: The access token to check
-        :return:
+        :return: If no access token is stored, or if the stored token doesn't match, return False.
         """
         if self._metadata is None:
             return False
@@ -850,6 +852,3 @@ def get_basic_authorization_header(client_id, client_secret):
     """
     concated = "{}:{}".format(client_id, client_secret)
     return "Basic {}".format(_base64.b64encode(concated.encode(_utf_8)).decode(_utf_8))
-
-
-_utf_8 = "utf-8"
