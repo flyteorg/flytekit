@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import base64 as _base64
+import logging as _logging
 import subprocess
 import time
 from typing import Optional
 
+import requests as _requests
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
@@ -15,11 +18,12 @@ from grpc import secure_channel as _secure_channel
 from grpc import ssl_channel_credentials as _ssl_channel_credentials
 
 from flytekit.clis.auth import credentials as _credentials_access
-from flytekit.clis.sdk_in_container import basic_auth as _basic_auth
 from flytekit.configuration import creds as _creds_config
+from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import COMMAND as _COMMAND
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
 
 
@@ -70,10 +74,10 @@ def _refresh_credentials_basic(flyte_client: RawSynchronousFlyteClient):
     scopes = ",".join(scopes)
 
     # Note that unlike the Pkce flow, the client ID does not come from Admin.
-    client_secret = _basic_auth.get_secret()
+    client_secret = get_secret()
     cli_logger.debug("Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), scopes))
-    authorization_header = _basic_auth.get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
-    token, expires_in = _basic_auth.get_token(token_endpoint, authorization_header, scopes)
+    authorization_header = get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
+    token, expires_in = get_token(token_endpoint, authorization_header, scopes)
     cli_logger.info("Retrieved new token, expires in {}".format(expires_in))
     authorization_header_key = flyte_client.public_client_config.authorization_metadata_key or None
     flyte_client.set_access_token(token, authorization_header_key)
@@ -773,3 +777,58 @@ class RawSynchronousFlyteClient(object):
 
     # TODO: (P2) Implement the event endpoints in case there becomes a use-case for third-parties to submit events
     # through the client in Python.
+
+
+def get_token(token_endpoint, authorization_header, scope):
+    """
+    :param Text token_endpoint:
+    :param Text authorization_header: This is the value for the "Authorization" key. (eg 'Bearer abc123')
+    :param Text scope:
+    :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
+            in seconds
+    """
+    headers = {
+        "Authorization": authorization_header,
+        "Cache-Control": "no-cache",
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    body = {
+        "grant_type": "client_credentials",
+    }
+    if scope is not None:
+        body["scope"] = scope
+    response = _requests.post(token_endpoint, data=body, headers=headers)
+    if response.status_code != 200:
+        _logging.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
+        raise FlyteAuthenticationException("Non-200 received from IDP")
+
+    response = response.json()
+    return response["access_token"], response["expires_in"]
+
+
+def get_secret():
+    """
+    This function will either read in the password from the file path given by the CLIENT_CREDENTIALS_SECRET_LOCATION
+    config object, or from the environment variable using the CLIENT_CREDENTIALS_SECRET config object.
+    :rtype: Text
+    """
+    secret = _CREDENTIALS_SECRET.get()
+    if secret:
+        return secret
+    raise FlyteAuthenticationException("No secret could be found")
+
+
+def get_basic_authorization_header(client_id, client_secret):
+    """
+    This function transforms the client id and the client secret into a header that conforms with http basic auth.
+    It joins the id and the secret with a : then base64 encodes it, then adds the appropriate text.
+    :param Text client_id:
+    :param Text client_secret:
+    :rtype: Text
+    """
+    concated = "{}:{}".format(client_id, client_secret)
+    return "Basic {}".format(_base64.b64encode(concated.encode(_utf_8)).decode(_utf_8))
+
+
+_utf_8 = "utf-8"

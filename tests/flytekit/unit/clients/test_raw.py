@@ -1,11 +1,23 @@
+import json
+import os
 from subprocess import CompletedProcess
 
 import mock
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.service import auth_pb2
+from mock import MagicMock, patch
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.clients.raw import _refresh_credentials_from_command
+from flytekit.clients.raw import (
+    _get_refresh_handler,
+    _refresh_credentials_basic,
+    _refresh_credentials_from_command,
+    _refresh_credentials_standard,
+    get_basic_authorization_header,
+    get_secret,
+    get_token,
+)
+from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 
 
 def get_admin_stub_mock() -> mock.MagicMock:
@@ -78,3 +90,33 @@ def test_list_projects_paginated(mock_channel, mock_admin):
     project_list_request = _project_pb2.ProjectListRequest(limit=100, token="", filters=None, sort_by=None)
     client.list_projects(project_list_request)
     mock_admin.AdminServiceStub().ListProjects.assert_called_with(project_list_request, metadata=None)
+
+
+def test_get_secret():
+    os.environ[_CREDENTIALS_SECRET.env_var] = "abc"
+    assert get_secret() == "abc"
+
+
+def test_get_basic_authorization_header():
+    header = get_basic_authorization_header("client_id", "abc")
+    assert header == "Basic Y2xpZW50X2lkOmFiYw=="
+
+
+@patch("flytekit.clients.raw._requests")
+def test_get_token(mock_requests):
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
+    mock_requests.post.return_value = response
+    access, expiration = get_token("https://corp.idp.net", "abc123", "my_scope")
+    assert access == "abc"
+    assert expiration == 60
+
+
+def test_get_refresh_handler():
+    cc = _get_refresh_handler("client_credentials")
+    basic = _get_refresh_handler("basic")
+    assert basic is cc
+    assert basic is _refresh_credentials_basic
+    standard = _get_refresh_handler("standard")
+    assert standard is _refresh_credentials_standard
