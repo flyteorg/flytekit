@@ -3,6 +3,7 @@ import os
 from subprocess import CompletedProcess
 
 import mock
+import pytest
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.service import auth_pb2
 from mock import MagicMock, patch
@@ -107,6 +108,21 @@ def test_refresh_client_credentials_aka_basic(
 
     # Scopes from configuration take precendence.
     mock_get_token.assert_called_once_with("https://your.domain.io/oauth2/token", "Basic 123", "a,b,c,d")
+
+    client.set_access_token("token")
+    assert client._metadata[0][0] == "authorization"
+
+
+def test_raises():
+    mm = MagicMock()
+    mm.public_client_config = None
+    with pytest.raises(ValueError):
+        _refresh_credentials_basic(mm)
+
+    mm = MagicMock()
+    mm.oauth2_metadata = None
+    with pytest.raises(ValueError):
+        _refresh_credentials_basic(mm)
 
 
 @mock.patch("flytekit.clients.raw._admin_service")
