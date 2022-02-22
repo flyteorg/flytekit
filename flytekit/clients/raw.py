@@ -279,6 +279,8 @@ class RawSynchronousFlyteClient(object):
         :param access_token: The access token to check
         :return:
         """
+        if self._metadata is None:
+            return False
         return access_token == self._metadata[0][1].replace("Bearer ", "")
 
     ####################################################################################################################

@@ -101,6 +101,8 @@ def test_refresh_client_credentials_aka_basic(
 
     mock_admin_auth.AuthMetadataServiceStub.return_value = get_admin_stub_mock()
     client = _RawSynchronousFlyteClient(url="a.b.com", insecure=True)
+    client._metadata = None
+    assert not client.check_access_token("fdsa")
     _refresh_credentials_basic(client)
 
     # Scopes from configuration take precendence.
