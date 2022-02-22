@@ -18,7 +18,7 @@ from grpc import secure_channel as _secure_channel
 from grpc import ssl_channel_credentials as _ssl_channel_credentials
 
 from flytekit.clis.auth import credentials as _credentials_access
-from flytekit.configuration import creds as _creds_config
+from flytekit.configuration import creds as creds_config
 from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
 from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import COMMAND as _COMMAND
@@ -70,7 +70,7 @@ def _refresh_credentials_basic(flyte_client: RawSynchronousFlyteClient):
         )
 
     token_endpoint = flyte_client.oauth2_metadata.token_endpoint
-    scopes = flyte_client.oauth2_metadata.scopes_supported
+    scopes = creds_config.SCOPES.get() or flyte_client.public_client_config.scopes
     scopes = ",".join(scopes)
 
     # Note that unlike the Pkce flow, the client ID does not come from Admin.
@@ -141,7 +141,7 @@ def _handle_rpc_error(retry=False):
                             # Exit the loop and wrap the authentication error.
                             raise _user_exceptions.FlyteAuthenticationException(str(e))
                         cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
-                        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+                        refresh_handler_fn = _get_refresh_handler(creds_config.AUTH_MODE.get())
                         refresh_handler_fn(args[0])
                     # There are two cases that we should throw error immediately
                     # 1. Entity already exists when we register entity
@@ -259,7 +259,7 @@ class RawSynchronousFlyteClient(object):
         ]
 
     def force_auth_flow(self):
-        refresh_handler_fn = _get_refresh_handler(_creds_config.AUTH_MODE.get())
+        refresh_handler_fn = _get_refresh_handler(creds_config.AUTH_MODE.get())
         refresh_handler_fn(self)
 
     ####################################################################################################################

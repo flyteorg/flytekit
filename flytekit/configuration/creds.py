@@ -18,6 +18,8 @@ password directly from the environment variable. Note that this is less secure! 
 secret as a file is impossible.
 """
 
+SCOPES = _config_common.FlyteStringListConfigurationEntry("credentials", "scopes", default=[])
+
 AUTH_MODE = _config_common.FlyteStringConfigurationEntry("credentials", "auth_mode", default="standard")
 """
 The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
