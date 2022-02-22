@@ -33,3 +33,12 @@ def test_oauth_http_server():
     server.handle_authorization_code(test_auth_code)
     auth_code = queue.get()
     assert test_auth_code == auth_code
+
+
+def test_clear():
+    ac = _auth.AuthorizationClient()
+    ac._credentials = "hello"
+    ac._refresh_token = "world"
+    ac.clear()
+    assert ac.credentials is None
+    assert not ac.can_refresh_token

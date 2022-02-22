@@ -42,13 +42,11 @@ def get_admin_stub_mock() -> mock.MagicMock:
     return auth_stub_mock
 
 
-@mock.patch("flytekit.clients.raw.RawSynchronousFlyteClient.force_auth_flow")
 @mock.patch("flytekit.clients.raw.auth_service")
 @mock.patch("flytekit.clients.raw._admin_service")
 @mock.patch("flytekit.clients.raw._insecure_channel")
 @mock.patch("flytekit.clients.raw._secure_channel")
-def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_force):
-    mock_force.return_value = True
+def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth):
     mock_secure_channel.return_value = True
     mock_channel.return_value = True
     mock_admin.AdminServiceStub.return_value = True
@@ -56,6 +54,7 @@ def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_ad
     client = _RawSynchronousFlyteClient(url="a.b.com", insecure=True)
     client.set_access_token("abc")
     assert client._metadata[0][1] == "Bearer abc"
+    assert client.check_access_token("abc")
 
 
 @mock.patch("flytekit.configuration.creds.COMMAND.get")
@@ -72,6 +71,40 @@ def test_refresh_credentials_from_command(mock_call_to_external_process, mock_co
 
     mock_call_to_external_process.assert_called_with(command, capture_output=True, text=True, check=True)
     mock_client.set_access_token.assert_called_with(token)
+
+
+@mock.patch("flytekit.configuration.creds.SCOPES.get")
+@mock.patch("flytekit.clients.raw.get_secret")
+@mock.patch("flytekit.clients.raw.get_basic_authorization_header")
+@mock.patch("flytekit.clients.raw.get_token")
+@mock.patch("flytekit.clients.raw.auth_service")
+@mock.patch("flytekit.clients.raw._admin_service")
+@mock.patch("flytekit.clients.raw._insecure_channel")
+@mock.patch("flytekit.clients.raw._secure_channel")
+def test_refresh_client_credentials_aka_basic(
+    mock_secure_channel,
+    mock_channel,
+    mock_admin,
+    mock_admin_auth,
+    mock_get_token,
+    mock_get_basic_header,
+    mock_secret,
+    mock_scopes,
+):
+    mock_secret.return_value = "sosecret"
+    mock_scopes.return_value = ["a", "b", "c", "d"]
+    mock_secure_channel.return_value = True
+    mock_channel.return_value = True
+    mock_admin.AdminServiceStub.return_value = True
+    mock_get_basic_header.return_value = "Basic 123"
+    mock_get_token.return_value = ("token1", 1234567)
+
+    mock_admin_auth.AuthMetadataServiceStub.return_value = get_admin_stub_mock()
+    client = _RawSynchronousFlyteClient(url="a.b.com", insecure=True)
+    _refresh_credentials_basic(client)
+
+    # Scopes from configuration take precendence.
+    mock_get_token.assert_called_once_with("https://your.domain.io/oauth2/token", "Basic 123", "a,b,c,d")
 
 
 @mock.patch("flytekit.clients.raw._admin_service")

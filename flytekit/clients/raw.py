@@ -27,13 +27,14 @@ from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
 
 
-def _refresh_credentials_standard(flyte_client):
+def _refresh_credentials_standard(flyte_client: RawSynchronousFlyteClient):
     """
     This function is used when the configuration value for AUTH_MODE is set to 'standard'.
     This either fetches the existing access token or initiates the flow to request a valid access token and store it.
     :param flyte_client: RawSynchronousFlyteClient
     :return:
     """
+    authorization_header_key = flyte_client.public_client_config.authorization_metadata_key or None
     if not flyte_client.oauth2_metadata or not flyte_client.public_client_config:
         raise ValueError(
             "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
@@ -46,10 +47,22 @@ def _refresh_credentials_standard(flyte_client):
         auth_endpoint=flyte_client.oauth2_metadata.authorization_endpoint,
         token_endpoint=flyte_client.oauth2_metadata.token_endpoint,
     )
-    if client.can_refresh_token:
+    if client.has_valid_credentials and not flyte_client.check_access_token(client.credentials.access_token):
+        # When Python starts up, if credentials have been stored in the keyring, then the AuthorizationClient
+        # will have read them into its _credentials field, but it won't be in the RawSynchronousFlyteClient's
+        # metadata field yet. Therefore, if there's a mismatch, copy it over.
+        flyte_client.set_access_token(client.credentials.access_token, authorization_header_key)
+        # However, after copying over credentials from the AuthorizationClient, we have to clear it to avoid the
+        # scenario where the stored credentials in the keyring are expired. If that's the case, then we only try
+        # them once (because client here is a singleton), and the next time, we'll do one of the two other conditions
+        # below.
+        client.clear()
+        return
+    elif client.can_refresh_token:
         client.refresh_access_token()
+    else:
+        client.start_authorization_flow()
 
-    authorization_header_key = flyte_client.public_client_config.authorization_metadata_key or None
     flyte_client.set_access_token(client.credentials.access_token, authorization_header_key)
 
 
@@ -258,9 +271,15 @@ class RawSynchronousFlyteClient(object):
             )
         ]
 
-    def force_auth_flow(self):
-        refresh_handler_fn = _get_refresh_handler(creds_config.AUTH_MODE.get())
-        refresh_handler_fn(self)
+    def check_access_token(self, access_token: str) -> bool:
+        """
+        This checks to see if the given access token is the same as the one already stored in the client. The reason
+        this is useful is so that we can prevent unnecessary refreshing of tokens. Only if
+
+        :param access_token: The access token to check
+        :return:
+        """
+        return access_token == self._metadata[0][1].replace("Bearer ", "")
 
     ####################################################################################################################
     #
@@ -697,6 +716,7 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.project_pb2.ProjectListRequest project_list_request:
         :rtype: flyteidl.admin.project_pb2.Projects
         """
+        print(f"!!!!!!!!!!!!!!!!!!!! Attempting {self._metadata}")
         return self._stub.ListProjects(project_list_request, metadata=self._metadata)
 
     @_handle_rpc_error()
