@@ -2,47 +2,13 @@ import os
 import sys
 import tarfile
 import tempfile
-import typing
 
 import click
 
-from flytekit.clis.sdk_in_container import constants, serialize
-from flytekit.configuration import internal
+from flytekit.clis.sdk_in_container import constants
 from flytekit.core import context_manager
-from flytekit.core.context_manager import ImageConfig, look_up_image_info
-from flytekit.tools import fast_registration, module_loader
-
-_DEFAULT_IMAGE_NAME = "default"
-_DEFAULT_RUNTIME_PYTHON_INTERPRETER = "/opt/venv/bin/python3"
-
-
-def validate_image(ctx: typing.Any, param: str, values: tuple) -> ImageConfig:
-    """
-    Validates the image to match the standard format. Also validates that only one default image
-    is provided. a default image, is one that is specified as
-      default=img or just img. All other images should be provided with a name, in the format
-      name=img
-    """
-    default_image = None
-    images = []
-    for v in values:
-        if "=" in v:
-            splits = v.split("=", maxsplit=1)
-            img = look_up_image_info(name=splits[0], tag=splits[1], optional_tag=False)
-        else:
-            img = look_up_image_info(_DEFAULT_IMAGE_NAME, v, False)
-
-        if default_image and img.name == _DEFAULT_IMAGE_NAME:
-            raise click.BadParameter(
-                f"Only one default image can be specified. Received multiple {default_image} & {img} for {param}"
-            )
-        if img.name == _DEFAULT_IMAGE_NAME:
-            default_image = img
-        else:
-            images.append(img)
-
-    return ImageConfig(default_image, images)
-
+from flytekit.core.context_manager import ImageConfig
+from flytekit.tools import fast_registration, module_loader, serialize_helpers
 
 @click.command("package")
 @click.option(
@@ -52,7 +18,7 @@ def validate_image(ctx: typing.Any, param: str, values: tuple) -> ImageConfig:
     required=False,
     multiple=True,
     type=click.UNPROCESSED,
-    callback=validate_image,
+    callback=ImageConfig.validate_image,
     help="A fully qualified tag for an docker image, e.g. somedocker.com/myimage:someversion123. This is a "
     "multi-option and can be of the form --image xyz.io/docker:latest"
     " --image my_image=xyz.io/docker2:latest. Note, the `name=image_uri`. The name is optional, if not"
@@ -95,7 +61,7 @@ def validate_image(ctx: typing.Any, param: str, values: tuple) -> ImageConfig:
 @click.option(
     "-p",
     "--python-interpreter",
-    default=_DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+    default=context_manager.DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     required=False,
     help="Use this to override the default location of the in-container python interpreter that will be used by "
     "Flyte to load your program. This is usually where you install flytekit within the container.",
@@ -120,23 +86,15 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
     if os.path.exists(output) and not force:
         raise click.BadParameter(click.style(f"Output file {output} already exists, specify -f to override.", fg="red"))
 
-    env_binary_path = os.path.dirname(python_interpreter)
-    venv_root = os.path.dirname(env_binary_path)
     serialization_settings = context_manager.SerializationSettings(
-        project=serialize._PROJECT_PLACEHOLDER,
-        domain=serialize._DOMAIN_PLACEHOLDER,
-        version=serialize._VERSION_PLACEHOLDER,
+        image_config=image_config,
         fast_serialization_settings=context_manager.FastSerializationSettings(
             enabled=fast,
             destination_dir=in_container_source_path,
         ),
-        image_config=image_config,
-        env={internal.IMAGE.env_var: image_config.default_image.full},  # TODO this env variable should be deprecated
-        flytekit_virtualenv_root=venv_root,
+        flytekit_virtualenv_root=context_manager.SerializationSettings.venv_root_from_interpreter(python_interpreter),
         python_interpreter=python_interpreter,
-        entrypoint_settings=context_manager.EntrypointSettings(
-            path=os.path.join(venv_root, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
-        ),
+        entrypoint_settings=context_manager.SerializationSettings.default_entrypoint_settings(python_interpreter),
     )
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
@@ -151,11 +109,11 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
             click.secho(f"Loading packages {pkgs} under source root {source}", fg="yellow")
             module_loader.just_load_modules(pkgs=pkgs)
 
-        registrable_entities = serialize.get_registrable_entities(ctx)
+        registrable_entities = serialize_helpers.get_registrable_entities(ctx)
 
         if registrable_entities:
             with tempfile.TemporaryDirectory() as output_tmpdir:
-                serialize.persist_registrable_entities(registrable_entities, output_tmpdir)
+                serialize_helpers.persist_registrable_entities(registrable_entities, output_tmpdir)
 
                 # If Fast serialization is enabled, then an archive is also created and packaged
                 if fast:

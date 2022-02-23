@@ -6,6 +6,7 @@ from flyteidl.admin.task_pb2 import TaskSpec
 from flyteidl.admin.workflow_pb2 import WorkflowSpec
 
 import flytekit
+import flytekit.tools.serialize_helpers
 from flytekit.clis.sdk_in_container import package, pyflyte, serialize
 from flytekit.core import context_manager
 from flytekit.exceptions.user import FlyteValidationException
@@ -73,7 +74,7 @@ def test_get_registrable_entities():
         )
     )
     context_manager.FlyteEntities.entities = [foo, wf, "str"]
-    entities = serialize.get_registrable_entities(ctx)
+    entities = flytekit.tools.serialize_helpers.get_registrable_entities(ctx)
     assert entities
     assert len(entities) == 3
 
@@ -130,7 +131,7 @@ def test_duplicate_registrable_entities():
         FlyteValidationException,
         match=r"Multiple definitions of the following tasks were found: \['pyflyte.test_package.t_1'\]",
     ):
-        serialize.get_registrable_entities(ctx)
+        flytekit.tools.serialize_helpers.get_registrable_entities(ctx)
 
 
 def test_package():

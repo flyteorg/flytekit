@@ -13,7 +13,10 @@
 
 from __future__ import annotations
 
+import base64
 import datetime as _datetime
+import gzip
+import json
 import logging
 import logging as _logging
 import os
@@ -28,10 +31,11 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional, Union
 
+from dataclasses_json import dataclass_json
 from docker_image import reference
 
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.configuration import images, internal, sdk, secrets, platform, statsd, set_flyte_config_file
+from flytekit.configuration import images, sdk, secrets, platform, statsd, set_flyte_config_file
 from flytekit.configuration.common import _FlyteConfigurationEntry
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
@@ -50,12 +54,17 @@ if typing.TYPE_CHECKING:
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures
 # and can be optional so they are not serialized with placeholders.
-_PROJECT_PLACEHOLDER = "{{ registration.project }}"
-_DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
-_VERSION_PLACEHOLDER = "{{ registration.version }}"
+PROJECT_PLACEHOLDER = "{{ registration.project }}"
+DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
+VERSION_PLACEHOLDER = "{{ registration.version }}"
 
-_DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
-_DEFAULT_IMAGE_NAME = "default"
+# During out of container serialize the absolute path of the flytekit virtualenv at serialization time won't match the
+# in-container value at execution time. The following default value is used to provide the in-container virtualenv path
+# but can be optionally overridden at serialization time based on the installation of your flytekit virtualenv.
+DEFAULT_RUNTIME_PYTHON_INTERPRETER = "/opt/venv/bin/python3"
+DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
+DEFAULT_IMAGE_NAME = "default"
+
 _IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
 
 
@@ -74,6 +83,7 @@ def set_if_exists(d: dict, k: str, c: _FlyteConfigurationEntry) -> dict:
     return d
 
 
+@dataclass_json
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Image(object):
     """
@@ -123,6 +133,7 @@ class Image(object):
             return Image(name=name, fqn=ref["name"], tag=ref["tag"])
 
 
+@dataclass_json
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageConfig(object):
     """
@@ -162,13 +173,13 @@ class ImageConfig(object):
                 splits = v.split("=", maxsplit=1)
                 img = Image.look_up_image_info(name=splits[0], tag=splits[1], optional_tag=False)
             else:
-                img = Image.look_up_image_info(_DEFAULT_IMAGE_NAME, v, False)
+                img = Image.look_up_image_info(DEFAULT_IMAGE_NAME, v, False)
 
-            if default_image and img.name == _DEFAULT_IMAGE_NAME:
+            if default_image and img.name == DEFAULT_IMAGE_NAME:
                 raise ValueError(
                     f"Only one default image can be specified. Received multiple {default_image} & {img} for {param}"
                 )
-            if img.name == _DEFAULT_IMAGE_NAME:
+            if img.name == DEFAULT_IMAGE_NAME:
                 default_image = img
             else:
                 images.append(img)
@@ -177,9 +188,8 @@ class ImageConfig(object):
 
     @classmethod
     def from_config(cls, img_name: Optional[str] = None) -> ImageConfig:
-        image_name = img_name if img_name else internal.IMAGE.get()
         default_img = Image.look_up_image_info("default",
-                                               image_name) if image_name is not None and image_name != "" else None
+                                               img_name) if img_name is not None and img_name != "" else None
         other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in
                         images.get_specified_images().items()]
         other_images.append(default_img)
@@ -253,14 +263,21 @@ class Config(object):
 
     def get_serialization_settings(
             self,
-            project: str = _PROJECT_PLACEHOLDER,
-            domain: str = _DOMAIN_PLACEHOLDER,
-            version: str = _VERSION_PLACEHOLDER) -> SerializationSettings:
+            project: str = PROJECT_PLACEHOLDER,
+            domain: str = DOMAIN_PLACEHOLDER,
+            version: str = VERSION_PLACEHOLDER,
+            env: Dict[str, str] = None,
+    ) -> SerializationSettings:
         return SerializationSettings(
             project=project,
             domain=domain,
             version=version,
             image_config=self.images,
+            env=env,
+            flytekit_virtualenv_root=self.flytekit_virtualenv_root,
+            python_interpreter=self.python_interpreter,
+            entrypoint_settings=self.entrypoint_settings,
+            fast_serialization_settings=self.fast_serialization_settings,
         )
 
     @classmethod
@@ -551,6 +568,7 @@ class SecretsManager(object):
             raise ValueError("secrets key is a mandatory field.")
 
 
+@dataclass_json
 @dataclass
 class EntrypointSettings(object):
     """
@@ -563,6 +581,7 @@ class EntrypointSettings(object):
     version: int = 0
 
 
+@dataclass_json
 @dataclass
 class FastSerializationSettings(object):
     """
@@ -577,6 +596,7 @@ class FastSerializationSettings(object):
     distribution_location: Optional[str] = None
 
 
+@dataclass_json
 @dataclass(frozen=True)
 class SerializationSettings(object):
     """
@@ -601,15 +621,65 @@ class SerializationSettings(object):
             for serialization.
     """
 
-    project: str
-    domain: str
-    version: str
     image_config: ImageConfig
+    project: str = PROJECT_PLACEHOLDER
+    domain: str = DOMAIN_PLACEHOLDER
+    version: str = VERSION_PLACEHOLDER
     env: Optional[Dict[str, str]] = None
     flytekit_virtualenv_root: Optional[str] = None
     python_interpreter: Optional[str] = None
     entrypoint_settings: Optional[EntrypointSettings] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
+
+    @staticmethod
+    def venv_root_from_interpreter(interpreter_path: str) -> str:
+        """
+            Computes the path of the virtual environment root, based on the passed in python interpreter path
+            for example /opt/venv/bin/python3 -> /opt/venv
+        """
+        return os.path.dirname(os.path.dirname(interpreter_path))
+
+    @staticmethod
+    def default_entrypoint_settings(interpreter_path: str) -> EntrypointSettings:
+        """
+        Assumes the entrypoint is installed in a virtual-environment where the interpreter is
+        """
+        return EntrypointSettings(path=os.path.join(SerializationSettings.venv_root_from_interpreter(
+            interpreter_path
+        ), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC))
+
+    def new_builder(self) -> Builder:
+        """
+        Creates a ``SerializationSettings.Builder`` that copies the existing serialization settings parameters and
+        allows for customization.
+        """
+        return SerializationSettings.Builder(
+            project=self.project,
+            domain=self.domain,
+            version=self.version,
+            image_config=self.image_config,
+            env=self.env,
+            flytekit_virtualenv_root=self.flytekit_virtualenv_root,
+            python_interpreter=self.python_interpreter,
+            entrypoint_settings=self.entrypoint_settings,
+            fast_serialization_settings=self.fast_serialization_settings,
+        )
+
+    def should_fast_serialize(self) -> bool:
+        """
+        Whether or not the serialization settings specify that entities should be serialized for fast registration.
+        """
+        return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
+
+    def prepare_for_transport(self) -> str:
+        json_str = json.dumps(self)
+        compressed_value = gzip.compress(bytes(json_str, 'utf-8'))
+        return str(base64.b64encode(compressed_value))
+
+    @classmethod
+    def from_transport(cls, s: str) -> SerializationSettings:
+        base64.decode(bytes(s))
+        return json.loads(s, SerializationSettings)
 
     @dataclass
     class Builder(object):
@@ -640,28 +710,7 @@ class SerializationSettings(object):
                 fast_serialization_settings=self.fast_serialization_settings,
             )
 
-    def new_builder(self) -> Builder:
-        """
-        Creates a ``SerializationSettings.Builder`` that copies the existing serialization settings parameters and
-        allows for customization.
-        """
-        return SerializationSettings.Builder(
-            project=self.project,
-            domain=self.domain,
-            version=self.version,
-            image_config=self.image_config,
-            env=self.env,
-            flytekit_virtualenv_root=self.flytekit_virtualenv_root,
-            python_interpreter=self.python_interpreter,
-            entrypoint_settings=self.entrypoint_settings,
-            fast_serialization_settings=self.fast_serialization_settings,
-        )
 
-    def should_fast_serialize(self) -> bool:
-        """
-        Whether or not the serialization settings specify that entities should be serialized for fast registration.
-        """
-        return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
 
 
 @dataclass(frozen=True)

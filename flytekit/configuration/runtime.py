@@ -14,9 +14,3 @@ EXECUTION_DOMAIN = _common_config.FlyteStringConfigurationEntry("internal", "exe
 EXECUTION_WORKFLOW = _common_config.FlyteStringConfigurationEntry("internal", "execution_workflow", default="")
 EXECUTION_LAUNCHPLAN = _common_config.FlyteStringConfigurationEntry("internal", "execution_launchplan", default="")
 EXECUTION_NAME = _common_config.FlyteStringConfigurationEntry("internal", "execution_id", default="")
-
-# This is another layer of logging level, which can be set by propeller, and can override the SDK configuration if
-# necessary.  (See the sdk.py version of this as well.)
-LOGGING_LEVEL = _common_config.FlyteIntegerConfigurationEntry("internal", "logging_level")
-
-IMAGE = _common_config.FlyteStringConfigurationEntry("internal", "image")

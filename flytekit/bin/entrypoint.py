@@ -1,6 +1,7 @@
 import contextlib
 import datetime as _datetime
 import logging as python_logging
+import os
 import os as _os
 import pathlib
 import traceback as _traceback
@@ -163,6 +164,13 @@ def _dispatch_execute(
     logger.debug("Finished _dispatch_execute")
 
 
+def get_one_of(*args):
+    for k in args:
+        if k in os.environ:
+            return os.environ[k]
+    return ""
+
+
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
@@ -172,6 +180,16 @@ def setup_execution(
     dynamic_dest_dir: Optional[str] = None,
 ):
     ctx = FlyteContextManager.current_context()
+
+    exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
+    exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
+    exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_NAME", "_F_NM")
+    exe_wf = get_one_of("FLYTE_INTERNAL_EXECUTION_WORKFLOW", "_F_WF")
+    exe_lp = get_one_of("FLYTE_INTERNAL_EXECUTION_LAUNCHPLAN", "_F_LP")
+
+    tk_project = get_one_of("FLYTE_INTERNAL_TASK_PROJECT", "_F_TK_PRJ")
+    tk_domain = get_one_of("FLYTE_INTERNAL_TASK_DOMAIN", "_F_TK_DM")
+    tk_name = get_one_of("FLYTE_INTERNAL_TASK_NAME", "_F_TK_NM")
 
     # Create directories
     user_workspace_dir = ctx.file_access.get_random_local_directory()
@@ -186,46 +204,38 @@ def setup_execution(
 
     execution_parameters = ExecutionParameters(
         execution_id=_identifier.WorkflowExecutionIdentifier(
-            project=_internal_config.EXECUTION_PROJECT.get(),
-            domain=_internal_config.EXECUTION_DOMAIN.get(),
-            name=_internal_config.EXECUTION_NAME.get(),
+            project=exe_project,
+            domain=exe_domain,
+            name=exe_name,
         ),
         execution_date=_datetime.datetime.utcnow(),
         stats=_get_stats(
             # Stats metric path will be:
             # registration_project.registration_domain.app.module.task_name.user_stats
             # and it will be tagged with execution-level values for project/domain/wf/lp
-            "{}.{}.{}.user_stats".format(
-                _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
-                _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                _internal_config.TASK_NAME.get() or _internal_config.NAME.get(),
-            ),
+            f"{tk_project}.{tk_domain}.{tk_name}.user_stats",
             tags={
-                "exec_project": _internal_config.EXECUTION_PROJECT.get(),
-                "exec_domain": _internal_config.EXECUTION_DOMAIN.get(),
-                "exec_workflow": _internal_config.EXECUTION_WORKFLOW.get(),
-                "exec_launchplan": _internal_config.EXECUTION_LAUNCHPLAN.get(),
+                "exec_project": exe_project,
+                "exec_domain": exe_domain,
+                "exec_workflow": exe_wf,
+                "exec_launchplan": exe_lp,
                 "api_version": _api_version,
             },
         ),
         logging=python_logging,
         tmp_dir=user_workspace_dir,
-        raw_output_prefix=ctx.file_access._raw_output_prefix,
+        raw_output_prefix=raw_output_data_prefix,
         checkpoint=checkpointer,
     )
 
-    # TODO: Remove this check for flytekit 1.0
-    if raw_output_data_prefix:
-        try:
-            file_access = FileAccessProvider(
-                local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-                raw_output_prefix=raw_output_data_prefix,
-            )
-        except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
-            logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
-            raise
-    else:
-        raise Exception("No raw output prefix detected. Please upgrade your version of Propeller to 0.4.0 or later.")
+    try:
+        file_access = FileAccessProvider(
+            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+            raw_output_prefix=raw_output_data_prefix,
+        )
+    except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
+        logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
+        raise
 
     with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
         # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
@@ -284,8 +294,6 @@ def _execute_task(
     resolver_args: List[str],
     checkpoint_path: Optional[str] = None,
     prev_checkpoint: Optional[str] = None,
-    dynamic_addl_distro: Optional[str] = None,
-    dynamic_dest_dir: Optional[str] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -343,8 +351,6 @@ def _execute_map_task(
     resolver_args: List[str],
     checkpoint_path: Optional[str] = None,
     prev_checkpoint: Optional[str] = None,
-    dynamic_addl_distro: Optional[str] = None,
-    dynamic_dest_dir: Optional[str] = None,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -423,8 +429,6 @@ def _pass_through():
 @_click.option("--checkpoint-path", required=False)
 @_click.option("--prev-checkpoint", required=False)
 @_click.option("--test", is_flag=True)
-@_click.option("--dynamic-addl-distro", required=False)
-@_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=False)
 @_click.argument(
     "resolver-args",
@@ -471,18 +475,15 @@ def execute_task_cmd(
 
 
 @_pass_through.command("pyflyte-fast-execute")
-@_click.option("--additional-distribution", required=False)
-@_click.option("--dest-dir", required=False)
 @_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
-def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
+def fast_execute_task_cmd(task_execute_cmd):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
-    :param Text additional_distribution:
-    :param Text dest_dir:
     :param task_execute_cmd:
     :return:
     """
+    # TODO load from state
     if additional_distribution is not None:
         if not dest_dir:
             dest_dir = _os.getcwd()
@@ -490,15 +491,7 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-
-    # Insert the call to fast before the unbounded resolver args
-    cmd = []
-    for arg in task_execute_cmd:
-        if arg == "--resolver":
-            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
-        cmd.append(arg)
-
-    _os.system(" ".join(cmd))
+    _os.system(" ".join(task_execute_cmd))
 
 
 @_pass_through.command("pyflyte-map-execute")
@@ -507,8 +500,6 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--raw-output-data-prefix", required=False)
 @_click.option("--max-concurrency", type=int, required=False)
 @_click.option("--test", is_flag=True)
-@_click.option("--dynamic-addl-distro", required=False)
-@_click.option("--dynamic-dest-dir", required=False)
 @_click.option("--resolver", required=True)
 @_click.option("--checkpoint-path", required=False)
 @_click.option("--prev-checkpoint", required=False)
@@ -523,8 +514,6 @@ def map_execute_task_cmd(
     raw_output_data_prefix,
     max_concurrency,
     test,
-    dynamic_addl_distro,
-    dynamic_dest_dir,
     resolver,
     resolver_args,
     prev_checkpoint,
@@ -542,8 +531,6 @@ def map_execute_task_cmd(
         raw_output_data_prefix=raw_output_data_prefix,
         max_concurrency=max_concurrency,
         test=test,
-        dynamic_addl_distro=dynamic_addl_distro,
-        dynamic_dest_dir=dynamic_dest_dir,
         resolver=resolver,
         resolver_args=resolver_args,
         checkpoint_path=checkpoint_path,

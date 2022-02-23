@@ -224,9 +224,6 @@ class FlyteRemote(object):
             FlyteContextManager.current_context().with_file_access(self._file_access).build()
         )
 
-        # TODO: Reconsider whether we want this. Probably best to not cache.
-        self._serialized_entity_cache = OrderedDict()
-
     @property
     def client(self) -> SynchronousFlyteClient:
         """Return a SynchronousFlyteClient for additional operations."""
@@ -494,20 +491,17 @@ class FlyteRemote(object):
             project: str = None,
             domain: str = None,
             version: str = None,
-            **kwargs,
+            env: typing.Dict[str, str] = None,
     ) -> FlyteControlPlaneEntity:
         """Serialize an entity for registration."""
-        # TODO: Revisit cache
+        serialized_entity_cache = OrderedDict()
         return get_serializable(
-            self._serialized_entity_cache,
-            SerializationSettings(
-                project or self.default_project,
-                domain or self.default_domain,
-                version or self.version,
-                self.image_config,
-                # https://github.com/flyteorg/flyte/issues/1359
-                env={internal.IMAGE.env_var: self.image_config.default_image.full},
-                entrypoint_settings=self._entrypoint_settings,
+            serialized_entity_cache,
+            self.config.get_serialization_settings(
+                project=project or self.default_project,
+                domain=domain or self.default_domain,
+                version=version or self.version,
+                env=env,
             ),
             entity=entity,
         )

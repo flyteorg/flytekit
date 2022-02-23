@@ -23,11 +23,8 @@ LOGGING_LEVEL = _config_common.FlyteIntegerConfigurationEntry("sdk", "logging_le
 This is the default logging level for the Python logging library and will be set before user code runs.
 Note that this configuration is special in that it is a runtime setting, not a compile time setting.  This is the only
 runtime option in this file.
-"""
 
-PARQUET_ENGINE = _config_common.FlyteStringConfigurationEntry("sdk", "parquet_engine", default="pyarrow")
-"""
-This is the parquet engine to use when reading data from parquet files.
+TODO delete the one from internal config
 """
 
 # Feature Gate
