@@ -9,7 +9,7 @@ from flytekit.core.context_manager import (
     FlyteContext,
     FlyteContextManager,
     SecretsManager,
-    look_up_image_info, SerializationSettings, ImageConfig, EntrypointSettings, Image, FastSerializationSettings,
+    SerializationSettings, ImageConfig, EntrypointSettings, Image, FastSerializationSettings,
 )
 
 
@@ -39,22 +39,22 @@ def test_default():
 
 
 def test_look_up_image_info():
-    img = look_up_image_info(name="x", tag="docker.io/xyz", optional_tag=True)
+    img = Image.look_up_image_info(name="x", tag="docker.io/xyz", optional_tag=True)
     assert img.name == "x"
     assert img.tag is None
     assert img.fqn == "docker.io/xyz"
 
-    img = look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=True)
+    img = Image.look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=True)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.fqn == "docker.io/xyz"
 
-    img = look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=False)
+    img = Image.look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=False)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.fqn == "docker.io/xyz"
 
-    img = look_up_image_info(name="x", tag="localhost:5000/xyz:latest", optional_tag=False)
+    img = Image.look_up_image_info(name="x", tag="localhost:5000/xyz:latest", optional_tag=False)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.fqn == "localhost:5000/xyz"
@@ -176,4 +176,6 @@ def test_serialization_settings_transport():
     tp = serialization_settings.prepare_for_transport()
     ss = SerializationSettings.from_transport(tp)
     assert ss is not None
+    assert ss == serialization_settings
+    assert len(tp) == 416
 

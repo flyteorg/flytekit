@@ -1,7 +1,8 @@
 from collections import OrderedDict
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit.core import constants as _common_constants
+from flytekit import PythonFunctionTask
+from flytekit.core import constants as _common_constants, SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
 from flytekit.core.context_manager import SerializationSettings
@@ -103,13 +104,17 @@ def get_serializable_task(
         # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
         # parent class
         entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
+    container = entity.get_container(settings)
+    if container and isinstance(entity, PythonFunctionTask):
+        if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+            container.add_env(key=SERIALIZED_CONTEXT_ENV_VAR, val=settings.prepare_for_transport())
     tt = task_models.TaskTemplate(
         id=task_id,
         type=entity.task_type,
         metadata=entity.metadata.to_taskmetadata_model(),
         interface=entity.interface,
         custom=entity.get_custom(settings),
-        container=entity.get_container(settings),
+        container=container,
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
         config=entity.get_config(settings),

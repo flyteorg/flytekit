@@ -648,6 +648,12 @@ class SerializationSettings(object):
             interpreter_path
         ), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC))
 
+    @classmethod
+    def from_transport(cls, s: str) -> SerializationSettings:
+        compressed_val = base64.b64decode(s.encode('utf-8'))
+        json_str = gzip.decompress(compressed_val).decode('utf-8')
+        return cls.from_json(json_str)
+
     def new_builder(self) -> Builder:
         """
         Creates a ``SerializationSettings.Builder`` that copies the existing serialization settings parameters and
@@ -672,15 +678,9 @@ class SerializationSettings(object):
         return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
 
     def prepare_for_transport(self) -> str:
-        json_str = json.dumps(self)
-        compressed_value = gzip.compress(bytes(json_str, 'utf-8'))
-        return str(base64.b64encode(compressed_value))
-
-    @classmethod
-    def from_transport(cls, s: str) -> SerializationSettings:
-        compressed_val = base64.b64decode(s)
-        json_str = gzip.decompress(compressed_val)
-        return cls.from_json(json_str)
+        json_str = self.to_json()
+        compressed_value = gzip.compress(json_str.encode('utf-8'))
+        return base64.b64encode(compressed_value).decode('utf-8')
 
     @dataclass
     class Builder(object):
