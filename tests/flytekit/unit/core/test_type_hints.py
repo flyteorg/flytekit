@@ -1647,32 +1647,6 @@ def test_task_hash_return_pandas_dataframe():
     assert df.equals(expected_df)
 
 
-def test_task_hash_return_list_of_pandas_dataframe():
-    def hash_function(df: pandas.DataFrame) -> str:
-        return str(sum(df["col1"]) + sum(df["col2"]))
-
-    @task
-    def t0() -> typing.List[Annotated[pandas.DataFrame, HashMethod(hash_function)]]:
-        return [
-            pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]}),
-            pandas.DataFrame(data={"col1": [10, 20], "col2": [30, 40]}),
-        ]
-
-    ctx = context_manager.FlyteContextManager.current_context()
-    output_lm = t0.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    assert output_lm.literals["o0"].hash == "10|100"
-
-    # Confirm that the literal containing a hash does not have any effect on the scalar.
-    dfs = TypeEngine.to_python_value(ctx, output_lm.literals["o0"], typing.List[pandas.DataFrame])
-    expected_dfs = [
-        pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]}),
-        pandas.DataFrame(data={"col1": [10, 20], "col2": [30, 40]}),
-    ]
-    assert len(dfs) == len(expected_dfs)
-    for i in range(len(dfs)):
-        assert dfs[i].equals(expected_dfs[i])
-
-
 def test_workflow_containing_multiple_annotated_tasks():
     def hash_function_t0(df: pandas.DataFrame) -> str:
         return "hash-0"

@@ -803,14 +803,9 @@ class ListTransformer(TypeTransformer[T]):
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         t = self.get_sub_type(python_type)
         lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
-        # In order to support caching of lists of offloaded objects we delegate the production of
-        # overridable hashes to each literal and concatenate them into a single string to represent
-        # the hash of the list.
         hash = "|".join([literal.hash for literal in lit_list if literal.hash])
-        return Literal(
-            collection=LiteralCollection(literals=lit_list),
-            hash=hash if hash != "|" else None,
-        )
+        print(f"hash={hash}")
+        return Literal(collection=LiteralCollection(literals=lit_list), hash=hash if hash != "|" else None)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[T]:
         st = self.get_sub_type(expected_python_type)
