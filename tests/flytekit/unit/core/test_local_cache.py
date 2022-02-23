@@ -1,6 +1,7 @@
 import datetime
 import typing
 from dataclasses import dataclass
+from typing import List
 
 import pandas
 from dataclasses_json import dataclass_json
@@ -336,6 +337,39 @@ def test_pandas_dataframe_hash():
         global n_cached_task_calls
         n_cached_task_calls += 1
         return data * 2
+
+    @workflow
+    def my_workflow():
+        raw_data = uncached_data_reading_task()
+        cached_data_processing_task(data=raw_data)
+
+    assert n_cached_task_calls == 0
+    my_workflow()
+    assert n_cached_task_calls == 1
+
+    # Confirm that we see a cache hit in the case of annotated dataframes.
+    my_workflow()
+    assert n_cached_task_calls == 1
+
+
+def test_list_of_pandas_dataframe_hash():
+    """
+    Test that cache is hit in the case of a list of pandas dataframes where we annotated dataframes to hash
+    the contents of the dataframes.
+    """
+
+    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
+        return str(pandas.util.hash_pandas_object(df))
+
+    @task
+    def uncached_data_reading_task() -> List[Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]]:
+        return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [10, 20, 30]})]
+
+    @task(cache=True, cache_version="0.1")
+    def cached_data_processing_task(data: List[pandas.DataFrame]) -> List[pandas.DataFrame]:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return [df * 2 for df in data]
 
     @workflow
     def my_workflow():
