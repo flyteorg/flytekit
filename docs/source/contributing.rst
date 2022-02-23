@@ -12,9 +12,9 @@ Please also take some time to read through the :std:ref:`design guides <design>`
 📜 Quick Background
 *******************
 
-The first version of the Flytekit library was written circa 2017, before mypy typing was mainstream, and
-its target was Python 2. That legacy code will be fully deprecated and removed in 2022 but there are users of Flytekit that rely on that legacy API, so you'll see 2 separate and distinct code paths within this repo.
+The first version of the Flytekit library was written circa 2017, before mypy typing was mainstream, and its target was Python 2. That legacy code will be fully deprecated and removed in 2022 but there are users of Flytekit that rely on that legacy API, so you'll see 2 separate and distinct code paths within this repo.
 Users and contributors should ignore the legacy sections. Below is a listing of the most important packages that comprise the new API:
+
 
 - ``flytekit/core``
   This holds all the core functionality of the new API.
@@ -37,7 +37,7 @@ Users and contributors should ignore the legacy sections. Below is a listing of 
 - ``flytekit/bin/entrypoint.py``
   The run time entrypoint for Flytekit. When a task kicks off, this is where the click command goes.
 - ``flytekit/clis``
-  This is the home for the clis.
+  This is the home for the CLIs.
 - ``flytekit/configuration``
   This holds all the configuration objects, but dependency on configuration should be carefully considered as it
   makes compiled Flyte tasks and workflows less portable (i.e. if you run ``pyflyte package`` can someone else use
@@ -75,8 +75,7 @@ We recommend using a virtual environment to develop Flytekit. Inside the top lev
 Install `shellcheck <https://github.com/koalaman/shellcheck>`__ for linting shell scripts.
 
 .. note::
-    It's important to maintain separate virtualenvs for Flytekit *development* and Flytekit *use*. The reason is that installing a Python
-    library in editable mode will link it to your source code. That is, the behavior will change as you work on the code,
+    It's important to maintain separate virtualenvs for Flytekit *development* and Flytekit *use*. The reason is that installing a Python library in editable mode will link it to your source code. That is, the behavior will change as you work on the code,
     check out different branches, etc.
 
 This will install Flytekit dependencies and also install Flytekit itself in editable mode. This basically links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``.
