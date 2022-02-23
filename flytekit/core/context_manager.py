@@ -678,8 +678,9 @@ class SerializationSettings(object):
 
     @classmethod
     def from_transport(cls, s: str) -> SerializationSettings:
-        base64.decode(bytes(s))
-        return json.loads(s, SerializationSettings)
+        compressed_val = base64.b64decode(s)
+        json_str = gzip.decompress(compressed_val)
+        return cls.from_json(json_str)
 
     @dataclass
     class Builder(object):

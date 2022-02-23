@@ -9,7 +9,7 @@ from flytekit.core.context_manager import (
     FlyteContext,
     FlyteContextManager,
     SecretsManager,
-    look_up_image_info,
+    look_up_image_info, SerializationSettings, ImageConfig, EntrypointSettings, Image, FastSerializationSettings,
 )
 
 
@@ -150,3 +150,30 @@ def test_secrets_manager_env():
 
     os.environ[sec.get_secrets_env_var(group="group", key="key")] = "value"
     assert sec.get(group="group", key="key") == "value"
+
+
+def test_serialization_settings_transport():
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"hello": "blah"},
+        image_config=ImageConfig(
+            default_image=default_img, images=[default_img],
+        ),
+        flytekit_virtualenv_root="/opt/venv/blah",
+        python_interpreter="/opt/venv/bin/python3",
+        entrypoint_settings=EntrypointSettings(
+            path="/opt/venv/bin/entrypoint.py", command="/opt/venv/bin/python", version=0,
+        ),
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=True, destination_dir="/opt/blah/blah/blah",
+            distribution_location="s3://my-special-bucket/blah/bha/asdasdasd/cbvsdsdf/asdddasdasdasdasdasdasd.tar.gz",
+        ),
+    )
+
+    tp = serialization_settings.prepare_for_transport()
+    ss = SerializationSettings.from_transport(tp)
+    assert ss is not None
+

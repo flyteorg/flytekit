@@ -6,16 +6,12 @@ import subprocess
 import time
 from typing import Optional
 
+import grpc
 import requests as _requests
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
 from google.protobuf.json_format import MessageToJson as _MessageToJson
-from grpc import RpcError as _RpcError
-from grpc import StatusCode as _GrpcStatusCode
-from grpc import insecure_channel as _insecure_channel
-from grpc import secure_channel as _secure_channel
-from grpc import ssl_channel_credentials as _ssl_channel_credentials
 
 from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.configuration import creds as creds_config
@@ -149,8 +145,8 @@ def _handle_rpc_error(retry=False):
             for i in range(max_retries):
                 try:
                     return fn(*args, **kwargs)
-                except _RpcError as e:
-                    if e.code() == _GrpcStatusCode.UNAUTHENTICATED:
+                except grpc.RpcError as e:
+                    if e.code() == grpc.GrpcStatusCode.UNAUTHENTICATED:
                         # Always retry auth errors.
                         if i == (max_retries - 1):
                             # Exit the loop and wrap the authentication error.
@@ -161,9 +157,9 @@ def _handle_rpc_error(retry=False):
                     # There are two cases that we should throw error immediately
                     # 1. Entity already exists when we register entity
                     # 2. Entity not found when we fetch entity
-                    elif e.code() == _GrpcStatusCode.ALREADY_EXISTS:
+                    elif e.code() == grpc.GrpcStatusCode.ALREADY_EXISTS:
                         raise _user_exceptions.FlyteEntityAlreadyExistsException(e)
-                    elif e.code() == _GrpcStatusCode.NOT_FOUND:
+                    elif e.code() == grpc.GrpcStatusCode.NOT_FOUND:
                         raise _user_exceptions.FlyteEntityNotExistException(e)
                     else:
                         # No more retries if retry=False or max_retries reached.
@@ -184,8 +180,8 @@ def _handle_invalid_create_request(fn):
     def handler(self, create_request):
         try:
             fn(self, create_request)
-        except _RpcError as e:
-            if e.code() == _GrpcStatusCode.INVALID_ARGUMENT:
+        except grpc.RpcError as e:
+            if e.code() == grpc.GrpcStatusCode.INVALID_ARGUMENT:
                 cli_logger.error("Error creating Flyte entity because of invalid arguments. Create request: ")
                 cli_logger.error(_MessageToJson(create_request))
 
@@ -203,7 +199,7 @@ class RawSynchronousFlyteClient(object):
     be explicit as opposed to inferred from the environment or a configuration file.
     """
 
-    def __init__(self, url, insecure=False, credentials=None, options=None, root_cert_file=None):
+    def __init__(self, url, insecure=False, **kwargs):
         """
         Initializes a gRPC channel to the given Flyte Admin service.
 
@@ -223,13 +219,13 @@ class RawSynchronousFlyteClient(object):
         try:
             resp = self._auth_stub.GetPublicClientConfig(auth_pb2.PublicClientAuthConfigRequest())
             self._public_client_config = resp
-        except _RpcError:
+        except grpc.RpcError:
             cli_logger.debug("No public client auth config found, skipping.")
             self._public_client_config = None
         try:
             resp = self._auth_stub.GetOAuth2Metadata(auth_pb2.OAuth2MetadataRequest())
             self._oauth2_metadata = resp
-        except _RpcError:
+        except grpc.RpcError:
             cli_logger.debug("No OAuth2 Metadata found, skipping.")
             self._oauth2_metadata = None
 
