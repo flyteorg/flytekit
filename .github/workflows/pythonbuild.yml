@@ -138,7 +138,12 @@ jobs:
       - name: ShellCheck
         uses: ludeeus/action-shellcheck@master
         with:
+<<<<<<< HEAD
           ignore: boilerplate
+=======
+          ignore_paths:
+            boilerplate
+>>>>>>> 0d034c15 (Fixed format alias in Flytekit docs (#844))
 
   docs:
     runs-on: ubuntu-latest

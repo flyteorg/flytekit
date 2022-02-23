@@ -4,26 +4,26 @@
 Authoring Structure
 ############################
 
-Enabling users to write tasks and workflows is the core feature of flytekit, it is why it exists. This document goes over how some of the internals work.
+Enabling users to write tasks and workflows is the core feature of Flytekit, it is why it exists. This document goes over how some of the internals work.
 
 *************
 Background
 *************
-Please see the `design doc <https://docs.google.com/document/d/17rNKg6Uvow8CrECaPff96Tarr87P2fn4ilf_Tv2lYd4/edit#>`__.
+Please refer `design doc <https://docs.google.com/document/d/17rNKg6Uvow8CrECaPff96Tarr87P2fn4ilf_Tv2lYd4/edit#>`__.
 
 *********************
 Types and Type Engine
 *********************
-Flyte has its own type system, which is codified `in the IDL <https://github.com/flyteorg/flyteidl>`__.  Python of course has its own typing system, even though it's a dynamic language, and is mostly explained in `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_. In order to work properly, flytekit needs to be able to convert between the two.
+Flyte has its own type system, which is codified `in the IDL <https://github.com/flyteorg/flyteidl>`__.  Python, of course, has its own typing system, even though it's a dynamic language, and is mostly explained in `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_. In order to work properly, Flytekit needs to be able to convert between the two.
 
 Type Engine
 =============
-The primary way this happens is through the :py:class:`flytekit.extend.TypeEngine`. This engine works by invoking a series of :py:class:`TypeTransformers <flytekit.extend.TypeTransformer>`. Each transformer is responsible for providing the functionality that the engine needs for a given native Python type.
+This happens primarily through the :py:class:`flytekit.extend.TypeEngine`. This engine works by invoking a series of :py:class:`TypeTransformers <flytekit.extend.TypeTransformer>`. Each transformer is responsible for providing the functionality that the engine needs for a given native Python type.
 
 *****************
 Callable Entities
 *****************
-Tasks, workflows, and launch plans form the core of the Flyte user experience. Each of these concepts are backed by one or more Python classes. These classes in turn, are instantiated by decorators (in the case of tasks and workflow) or a normal Python call (in the case of launch plans).
+:ref:`Tasks <divedeep-tasks>`, :ref:`workflows <divedeep-workflows>`, and `launch plans <divedeep-launchplans>` form the core of the Flyte user experience. Each of these concepts are backed by one or more Python classes. These classes in turn, are instantiated by decorators (in the case of tasks and workflow) or a normal Python call (in the case of launch plans).
 
 Tasks
 =====
@@ -49,7 +49,7 @@ Please see the documentation on each of the classes for details.
 
 Workflows
 =========
-There are two workflow classes, which both inherit from the :py:class:`WorkflowBase <flytekit.core.workflow.WorkflowBase>` class.
+There are two workflow classes, and both of them inherit from the :py:class:`WorkflowBase <flytekit.core.workflow.WorkflowBase>` class.
 
 .. autoclass:: flytekit.core.workflow.PythonFunctionWorkflow
    :noindex:
@@ -60,7 +60,7 @@ There are two workflow classes, which both inherit from the :py:class:`WorkflowB
 
 Launch Plan
 ===========
-There is also only one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPlan>` class.
+There is only one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPlan>` class.
 
 .. autoclass:: flytekit.core.launch_plan.LaunchPlan
    :noindex:
@@ -68,14 +68,14 @@ There is also only one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPl
 ******************
 Exception Handling
 ******************
-Exception handling is done along two dimensions
+Exception handling is done along two dimensions:
 
-* System vs User: We try to differentiate between user exceptions and flytekit/system level exceptions. For instance, if flytekit
+* System vs User: We try to differentiate between user exceptions and Flytekit/system level exceptions. For instance, if Flytekit
   fails to upload its outputs, that's a system exception. If you the user raise a ``ValueError`` because of unexpected input
   in the task code, that's a user exception.
-* Recoverable vs Non-recoverable: Recoverable errors will be retried and count against your task's retry count. Non-recoverable errors will just fail. System exceptions are by default recoverable (since there's a good chance it was just a blip).
+* Recoverable vs Non-recoverable: Recoverable errors are retried and counted against your task's retry count. Non-recoverable errors just fail. System exceptions, by default, are recoverable (since there's a good chance it was just a blip).
 
-This is the user exception tree. Feel free to raise any of these exception classes. Note that the ``FlyteRecoverableException`` is the only recoverable one. All others, along with all non-flytekit defined exceptions, are non-recoverable.
+This is the user exception tree. Feel free to raise any of these exception classes. Note that the ``FlyteRecoverableException`` is the only recoverable one. All others, along with all non-Flytekit defined exceptions, are non-recoverable.
 
 .. inheritance-diagram:: flytekit.common.exceptions.user.FlyteValidationException flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException flytekit.common.exceptions.user.FlyteValueException flytekit.common.exceptions.user.FlyteTimeout flytekit.common.exceptions.user.FlyteAuthenticationException flytekit.common.exceptions.user.FlyteRecoverableException
    :parts: 1
@@ -83,8 +83,8 @@ This is the user exception tree. Feel free to raise any of these exception class
 
 Implementation
 ==============
-For those that want to dig a bit deeper, take a look at the :py:class:`flytekit.common.exceptions.scopes.FlyteScopedException` classes.
-There are also two decorators which you'll find interspersed throughout the codebase.
+For those who want to dig a bit deeper, take a look at the :py:class:`flytekit.common.exceptions.scopes.FlyteScopedException` classes.
+There are two decorators which you'll find interspersed throughout the codebase.
 
 .. autofunction:: flytekit.common.exceptions.scopes.system_entry_point
 
@@ -93,8 +93,8 @@ There are also two decorators which you'll find interspersed throughout the code
 **************
 Call Patterns
 **************
-The three entities above are all callable. In Flyte terms that means they can be invoked to yield a unit (or units) of work.
-In Python terms that means you can add ``()`` to the end of one of it which invokes the ``__call__`` method on the object.
+The three entities above are all callable. In Flyte terms, this means they can be invoked to yield a unit (or units) of work.
+In Python terms, this means you can add ``()`` to the end of one of it which invokes the ``__call__`` method on the object.
 
 What happens when a callable entity is called depends on the current context, specifically the current :py:class:`flytekit.FlyteContext`
 
@@ -133,11 +133,11 @@ When the next task is called, logic is triggered to unwrap these promises.
 
 Compilation
 ===========
-When a workflow is compiled, instead of producing promise objects that wrap literal values, they wrap a :py:class:`flytekit.core.promise.NodeOutput` instead. This is how data dependency is tracked between tasks.
+When a workflow is compiled, instead of producing ``Promise`` objects that wrap literal values, they wrap a :py:class:`flytekit.core.promise.NodeOutput` instead. This is how data dependency is tracked between tasks.
 
 Branch Skip
 ===========
-If it's been determined that a conditional is not true, then flytekit will skip actually calling the task which means that any side-effects in the task logic will not be run.
+If it's been determined that a conditional is not true, then Flytekit will skip calling the task. This way, any side-effects in the task logic will not be run.
 
 
 .. note::
