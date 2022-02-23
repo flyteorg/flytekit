@@ -24,7 +24,7 @@ Command Line Interfaces
 
 Flyte CLI
 ===========
-``flyte-cli`` is the general CLI that can be used to talk to the Flyte control plane (Flyte Admin). It ships with Flytekit as part of the Pypi package. Think of this as the ``kubectl`` for Flyte. In fact, we're working on ``flytectl`` which is under active development the completion of which will deprecate this CLI.
+``flyte-cli`` is the general CLI that can be used to talk to the Flyte control plane (Flyte Admin). It ships with flytekit as part of the Pypi package. Think of this as the ``kubectl`` for Flyte. In fact, we're working on ``flytectl`` which is under active development the completion of which will deprecate this CLI.
 
 Think of this CLI as a network-aware (i.e. can talk to Admin) but not code-aware (doesn't need to have user code checked out) CLI. In the registration flow, this CLI is responsible for shipping the compiled Protobuf files off to Flyte Admin.
 

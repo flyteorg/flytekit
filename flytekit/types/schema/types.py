@@ -24,7 +24,7 @@ T = typing.TypeVar("T")
 
 class SchemaFormat(Enum):
     """
-    Represents the schema storage format (at rest).
+    Represents the the schema storage format (at rest).
     Currently only parquet is supported
     """
 
@@ -264,7 +264,7 @@ class FlyteSchema(object):
         self, dataframe_fmt: type = pandas.DataFrame, override_mode: SchemaOpenMode = None
     ) -> typing.Union[SchemaReader, SchemaWriter]:
         """
-        Returns a reader or writer depending on the mode of the object when created. This mode can be
+        Will return a reader or writer depending on the mode of the object when created. This mode can be
         overridden, but will depend on whether the override can be performed. For example, if the Object was
         created in a read-mode a "write mode" override is not allowed.
         if the object was created in write-mode, a read is allowed.

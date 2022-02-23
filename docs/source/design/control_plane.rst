@@ -19,8 +19,8 @@ The video below features a demo of FlyteRemote, followed by all relevant informa
 Create a FlyteRemote Object
 ***************************
 
-The :class:`~flytekit.remote.remote.FlyteRemote` class is the entrypoint for programmatically performing operations in a Python
-runtime. There are two ways of creating a remote object:
+The :class:`~flytekit.remote.remote.FlyteRemote` class is the entrypoint for programmatically performing operations in a python
+runtime. There are two ways of creating a remote object.
 
 **Initialize directly**
 
@@ -35,7 +35,7 @@ runtime. There are two ways of creating a remote object:
         insecure=True,
     )
 
-**Initialize from Flyte config**
+**Initialize from flyte config**
 
 .. TODO: link documentation to flyte config and environment variables
 
@@ -60,8 +60,8 @@ Fetching Flyte Admin Entities
 Executing Entities
 ******************
 
-You can execute all of these Flyte entities, which returns a :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution` object.
-For more information on Flyte entities, see the See the :ref:`remote flyte entities <remote-flyte-execution-objects>`
+You can execute all of these flyte entities, which returns a :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution` object.
+For more information on flyte entities, see the See the :ref:`remote flyte entities <remote-flyte-execution-objects>`
 reference.
 
 .. code-block:: python
@@ -89,7 +89,7 @@ You can also pass in ``wait=True`` to the :meth:`~flytekit.remote.remote.FlyteRe
 Syncing Remote State
 ********************
 
-Use the :meth:`~flytekit.remote.remote.FlyteRemote.sync` method to sync the entity object's state with the remote state:
+Use the :meth:`~flytekit.remote.remote.FlyteRemote.sync` method to sync the entity object's state with the remote state
 
 .. code-block:: python
 
@@ -100,6 +100,6 @@ Use the :meth:`~flytekit.remote.remote.FlyteRemote.sync` method to sync the enti
 Inspecting Execution Objects
 ****************************
 
-At any time, you can inspect the inputs, outputs, completion status, error status, and other aspects of a workflow
+At any time you can inspect the inputs, outputs, completion status, error status, and other aspects of a workflow
 execution object. See the :ref:`remote execution objects <remote-flyte-execution-objects>` reference for a list
 of all the available attributes.

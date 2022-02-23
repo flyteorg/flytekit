@@ -1,4 +1,4 @@
-ignore_paths:
+ignore:
   - "flytekit/bin"
   - "test_*.py"
   - "flytekit/__init__.py"

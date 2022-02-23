@@ -12,9 +12,9 @@ Please also take some time to read through the :std:ref:`design guides <design>`
 📜 Quick Background
 *******************
 
-The first version of the Flytekit library was written circa 2017, before mypy typing was mainstream, and
-targeted Python 2. That legacy code will be fully deprecated and removed in 2022. Since there are still
-users of Flytekit that rely on that legacy API, you'll see 2 separate and distinct code paths within this repo.
+The first version of the flytekit library was written circa 2017, before mypy typing was mainstream, and
+targeted Python 2. That legacy code will be fully deprecated and removed in 2022 but because there are still
+users of flytekit that rely on that legacy api, you'll see 2 separate and distinct code paths within this repo.
 Users and contributors should ignore the legacy sections. Below is a listing of the most important packages that
 comprise the new API:
 
@@ -25,7 +25,7 @@ comprise the new API:
 - ``flytekit/extend``
   This is the future home of extension points, and currently serves as the raw documentation for extensions.
 - ``flytekit/extras``
-  This contains code that we want bundled with Flytekit but not everyone may find useful (for example AWS and GCP
+  This contains code that we want bundled with flytekit but not everyone may find useful (for example AWS and GCP
   specific logic).
 - ``flytekit/remote``
   This implements the interface to interact with the Flyte service. Think of the code here as the Python-object version of Console.
@@ -39,7 +39,7 @@ comprise the new API:
 - ``flytekit/bin/entrypoint.py``
   The run time entrypoint for flytekit. When a task kicks off, this is where the click command goes.
 - ``flytekit/clis``
-  This is the home for the CLIs.
+  This is the home for the clis.
 - ``flytekit/configuration``
   This holds all the configuration objects, but dependency on configuration should be carefully considered as it
   makes compiled Flyte tasks and workflows less portable (i.e. if you run ``pyflyte package`` can someone else use
@@ -77,16 +77,16 @@ We recommend using a virtual environment to develop Flytekit. Inside the top lev
 Install `shellcheck <https://github.com/koalaman/shellcheck>`__ for linting shell scripts.
 
 .. note::
-    It's important to maintain separate virtualenvs for flytekit *development* and Flytekit *use*. The reason is that installing a Python
+    It's important to maintain separate virtualenvs for flytekit *development* and flytekit *use*. The reason is that installing a Python
     library in editable mode will link it to your source code. That is, the behavior will change as you work on the code,
     check out different branches, etc.
 
-This will install Flytekit dependencies and also install Flytekit itself in editable mode. This basically links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``.
+This will install flytekit dependencies and also install flytekit itself in editable mode. This basically links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``.
 
 Plugin Development
 ==================
 
-As discussed in the design component, Flytekit plugins currently live in this Flytekit repo, but under a different top level folder ``plugins``.
+As discussed in the design component, Flytekit plugins currently live in this flytekit repo, but under a different top level folder ``plugins``.
 In the future, this will be separated out into a different repo. These plugins follow a `microlib <https://medium.com/@jherreras/python-microlibs-5be9461ad979>`__ structure, which will persist even if we move repos. ::
 
     source ~/.virtualenvs/flytekit/bin/activate
