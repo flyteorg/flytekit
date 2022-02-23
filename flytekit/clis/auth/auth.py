@@ -145,12 +145,11 @@ class AuthorizationClient(object):
         scopes=None,
         client_id=None,
         redirect_uri=None,
-        client_secret=None,
     ):
         self._auth_endpoint = auth_endpoint
         self._token_endpoint = token_endpoint
         self._client_id = client_id
-        self._scopes = scopes
+        self._scopes = scopes or []
         self._redirect_uri = redirect_uri
         self._code_verifier = _generate_code_verifier()
         code_challenge = _create_code_challenge(self._code_verifier)
@@ -161,12 +160,11 @@ class AuthorizationClient(object):
         self._refresh_token = None
         self._headers = {"content-type": "application/x-www-form-urlencoded"}
         self._expired = False
-        self._client_secret = client_secret
 
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
             "response_type": "code",  # Indicates the authorization code grant
-            "scope": " ".join(s.strip("' ") for s in scopes).strip(
+            "scope": " ".join(s.strip("' ") for s in self._scopes).strip(
                 "[]'"
             ),  # ensures that the /token endpoint returns an ID and refresh token
             # callback location where the user-agent will be directed to.
@@ -239,12 +237,12 @@ class AuthorizationClient(object):
             raise ValueError('Expected "access_token" in response from oauth server')
         if "refresh_token" in response_body:
             self._refresh_token = response_body["refresh_token"]
+            _keyring.set_password(
+                _keyring_service_name, _keyring_refresh_token_storage_key, response_body["refresh_token"]
+            )
 
         access_token = response_body["access_token"]
-        refresh_token = response_body["refresh_token"]
-
         _keyring.set_password(_keyring_service_name, _keyring_access_token_storage_key, access_token)
-        _keyring.set_password(_keyring_service_name, _keyring_refresh_token_storage_key, refresh_token)
         self._credentials = Credentials(access_token=access_token)
 
     def request_access_token(self, auth_code):
@@ -298,6 +296,10 @@ class AuthorizationClient(object):
         :return flytekit.clis.auth.auth.Credentials:
         """
         return self._credentials
+
+    def clear(self):
+        self._credentials = None
+        self._refresh_token = None
 
     @property
     def expired(self):
