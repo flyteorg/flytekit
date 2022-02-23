@@ -35,7 +35,7 @@ from dataclasses_json import dataclass_json
 from docker_image import reference
 
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.configuration import images, sdk, secrets, platform, statsd, set_flyte_config_file
+from flytekit.configuration import images, platform, sdk, secrets, set_flyte_config_file, statsd
 from flytekit.configuration.common import _FlyteConfigurationEntry
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
@@ -188,10 +188,10 @@ class ImageConfig(object):
 
     @classmethod
     def from_config(cls, img_name: Optional[str] = None) -> ImageConfig:
-        default_img = Image.look_up_image_info("default",
-                                               img_name) if img_name is not None and img_name != "" else None
-        other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in
-                        images.get_specified_images().items()]
+        default_img = Image.look_up_image_info("default", img_name) if img_name is not None and img_name != "" else None
+        other_images = [
+            Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()
+        ]
         other_images.append(default_img)
         return ImageConfig(default_image=default_img, images=other_images)
 
@@ -252,6 +252,7 @@ class Config(object):
           used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
           inside the container.
     """
+
     platform: PlatformConfig
     images: ImageConfig
     secrets: SecretsConfig = SecretsConfig()
@@ -262,11 +263,11 @@ class Config(object):
     fast_serialization_settings: Optional[FastSerializationSettings] = None
 
     def get_serialization_settings(
-            self,
-            project: str = PROJECT_PLACEHOLDER,
-            domain: str = DOMAIN_PLACEHOLDER,
-            version: str = VERSION_PLACEHOLDER,
-            env: Dict[str, str] = None,
+        self,
+        project: str = PROJECT_PLACEHOLDER,
+        domain: str = DOMAIN_PLACEHOLDER,
+        version: str = VERSION_PLACEHOLDER,
+        env: Dict[str, str] = None,
     ) -> SerializationSettings:
         return SerializationSettings(
             project=project,
@@ -281,13 +282,15 @@ class Config(object):
         )
 
     @classmethod
-    def from_file(cls,
-                  config_path: str,
-                  img: Optional[str] = None,
-                  flytekit_virtualenv_root: Optional[str] = None,
-                  python_interpreter: Optional[str] = None,
-                  entrypoint_settings: Optional[EntrypointSettings] = None,
-                  fast_serialization_settings: Optional[FastSerializationSettings] = None) -> Config:
+    def from_file(
+        cls,
+        config_path: str,
+        img: Optional[str] = None,
+        flytekit_virtualenv_root: Optional[str] = None,
+        python_interpreter: Optional[str] = None,
+        entrypoint_settings: Optional[EntrypointSettings] = None,
+        fast_serialization_settings: Optional[FastSerializationSettings] = None,
+    ) -> Config:
         set_flyte_config_file(config_file_path=config_path)
         return Config(
             platform=PlatformConfig.from_config(),
@@ -379,7 +382,7 @@ class ExecutionParameters(object):
         return ExecutionParameters.Builder(current=self)
 
     def __init__(
-            self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, checkpoint=None, **kwargs
+        self, execution_date, tmp_dir, stats, execution_id, logging, raw_output_prefix, checkpoint=None, **kwargs
     ):
         """
         Args:
@@ -634,8 +637,8 @@ class SerializationSettings(object):
     @staticmethod
     def venv_root_from_interpreter(interpreter_path: str) -> str:
         """
-            Computes the path of the virtual environment root, based on the passed in python interpreter path
-            for example /opt/venv/bin/python3 -> /opt/venv
+        Computes the path of the virtual environment root, based on the passed in python interpreter path
+        for example /opt/venv/bin/python3 -> /opt/venv
         """
         return os.path.dirname(os.path.dirname(interpreter_path))
 
@@ -644,14 +647,16 @@ class SerializationSettings(object):
         """
         Assumes the entrypoint is installed in a virtual-environment where the interpreter is
         """
-        return EntrypointSettings(path=os.path.join(SerializationSettings.venv_root_from_interpreter(
-            interpreter_path
-        ), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC))
+        return EntrypointSettings(
+            path=os.path.join(
+                SerializationSettings.venv_root_from_interpreter(interpreter_path), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC
+            )
+        )
 
     @classmethod
     def from_transport(cls, s: str) -> SerializationSettings:
-        compressed_val = base64.b64decode(s.encode('utf-8'))
-        json_str = gzip.decompress(compressed_val).decode('utf-8')
+        compressed_val = base64.b64decode(s.encode("utf-8"))
+        json_str = gzip.decompress(compressed_val).decode("utf-8")
         return cls.from_json(json_str)
 
     def new_builder(self) -> Builder:
@@ -679,8 +684,8 @@ class SerializationSettings(object):
 
     def prepare_for_transport(self) -> str:
         json_str = self.to_json()
-        compressed_value = gzip.compress(json_str.encode('utf-8'))
-        return base64.b64encode(compressed_value).decode('utf-8')
+        compressed_value = gzip.compress(json_str.encode("utf-8"))
+        return base64.b64encode(compressed_value).decode("utf-8")
 
     @dataclass
     class Builder(object):
@@ -712,8 +717,6 @@ class SerializationSettings(object):
             )
 
 
-
-
 @dataclass(frozen=True)
 class CompilationState(object):
     """
@@ -738,11 +741,11 @@ class CompilationState(object):
         self.nodes.append(n)
 
     def with_params(
-            self,
-            prefix: str,
-            mode: Optional[int] = None,
-            resolver: Optional[TaskResolverMixin] = None,
-            nodes: Optional[List] = None,
+        self,
+        prefix: str,
+        mode: Optional[int] = None,
+        resolver: Optional[TaskResolverMixin] = None,
+        nodes: Optional[List] = None,
     ) -> CompilationState:
         """
         Create a new CompilationState where the mode and task resolver are defaulted to the current object, but they
@@ -820,13 +823,13 @@ class ExecutionState(object):
     user_space_params: Optional[ExecutionParameters]
 
     def __init__(
-            self,
-            working_dir: os.PathLike,
-            mode: Optional[ExecutionState.Mode] = None,
-            engine_dir: Optional[Union[os.PathLike, str]] = None,
-            additional_context: Optional[Dict[Any, Any]] = None,
-            branch_eval_mode: Optional[BranchEvalMode] = None,
-            user_space_params: Optional[ExecutionParameters] = None,
+        self,
+        working_dir: os.PathLike,
+        mode: Optional[ExecutionState.Mode] = None,
+        engine_dir: Optional[Union[os.PathLike, str]] = None,
+        additional_context: Optional[Dict[Any, Any]] = None,
+        branch_eval_mode: Optional[BranchEvalMode] = None,
+        user_space_params: Optional[ExecutionParameters] = None,
     ):
         if not working_dir:
             raise ValueError("Working directory is needed")
@@ -853,13 +856,13 @@ class ExecutionState(object):
         object.__setattr__(self, "branch_eval_mode", BranchEvalMode.BRANCH_SKIPPED)
 
     def with_params(
-            self,
-            working_dir: Optional[os.PathLike] = None,
-            mode: Optional[Mode] = None,
-            engine_dir: Optional[os.PathLike] = None,
-            additional_context: Optional[Dict[Any, Any]] = None,
-            branch_eval_mode: Optional[BranchEvalMode] = None,
-            user_space_params: Optional[ExecutionParameters] = None,
+        self,
+        working_dir: Optional[os.PathLike] = None,
+        mode: Optional[Mode] = None,
+        engine_dir: Optional[os.PathLike] = None,
+        additional_context: Optional[Dict[Any, Any]] = None,
+        branch_eval_mode: Optional[BranchEvalMode] = None,
+        user_space_params: Optional[ExecutionParameters] = None,
     ) -> ExecutionState:
         """
         Produces a copy of the current execution state and overrides the copy's parameters with passed parameter values.

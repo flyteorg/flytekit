@@ -5,11 +5,15 @@ import pytest
 
 from flytekit.configuration import secrets
 from flytekit.core.context_manager import (
+    EntrypointSettings,
     ExecutionState,
+    FastSerializationSettings,
     FlyteContext,
     FlyteContextManager,
+    Image,
+    ImageConfig,
     SecretsManager,
-    SerializationSettings, ImageConfig, EntrypointSettings, Image, FastSerializationSettings,
+    SerializationSettings,
 )
 
 
@@ -160,15 +164,19 @@ def test_serialization_settings_transport():
         version="version",
         env={"hello": "blah"},
         image_config=ImageConfig(
-            default_image=default_img, images=[default_img],
+            default_image=default_img,
+            images=[default_img],
         ),
         flytekit_virtualenv_root="/opt/venv/blah",
         python_interpreter="/opt/venv/bin/python3",
         entrypoint_settings=EntrypointSettings(
-            path="/opt/venv/bin/entrypoint.py", command="/opt/venv/bin/python", version=0,
+            path="/opt/venv/bin/entrypoint.py",
+            command="/opt/venv/bin/python",
+            version=0,
         ),
         fast_serialization_settings=FastSerializationSettings(
-            enabled=True, destination_dir="/opt/blah/blah/blah",
+            enabled=True,
+            destination_dir="/opt/blah/blah/blah",
             distribution_location="s3://my-special-bucket/blah/bha/asdasdasd/cbvsdsdf/asdddasdasdasdasdasdasd.tar.gz",
         ),
     )
@@ -178,4 +186,3 @@ def test_serialization_settings_transport():
     assert ss is not None
     assert ss == serialization_settings
     assert len(tp) == 416
-

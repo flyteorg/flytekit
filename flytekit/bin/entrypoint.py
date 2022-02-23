@@ -12,7 +12,8 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
 from flytekit.configuration import sdk as _sdk_config
-from flytekit.core import constants as _constants, SERIALIZED_CONTEXT_ENV_VAR
+from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
+from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
@@ -21,7 +22,8 @@ from flytekit.core.context_manager import (
     ExecutionState,
     FlyteContext,
     FlyteContextManager,
-    SerializationSettings, ImageConfig,
+    ImageConfig,
+    SerializationSettings,
 )
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
@@ -62,10 +64,10 @@ def _compute_array_job_index():
 
 
 def _dispatch_execute(
-        ctx: FlyteContext,
-        task_def: PythonTask,
-        inputs_path: str,
-        output_prefix: str,
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs_path: str,
+    output_prefix: str,
 ):
     """
     Dispatches execute to PythonTask
@@ -171,9 +173,9 @@ def get_one_of(*args):
 
 @contextlib.contextmanager
 def setup_execution(
-        raw_output_data_prefix: str,
-        checkpoint_path: Optional[str] = None,
-        prev_checkpoint: Optional[str] = None,
+    raw_output_data_prefix: str,
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
 ):
     exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
     exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
@@ -256,10 +258,10 @@ def setup_execution(
 
 
 def _handle_annotated_task(
-        ctx: FlyteContext,
-        task_def: PythonTask,
-        inputs: str,
-        output_prefix: str,
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs: str,
+    output_prefix: str,
 ):
     """
     Entrypoint for all PythonTask extensions
@@ -269,14 +271,14 @@ def _handle_annotated_task(
 
 @_scopes.system_entry_point
 def _execute_task(
-        inputs: str,
-        output_prefix: str,
-        test: bool,
-        raw_output_data_prefix: str,
-        resolver: str,
-        resolver_args: List[str],
-        checkpoint_path: Optional[str] = None,
-        prev_checkpoint: Optional[str] = None,
+    inputs: str,
+    output_prefix: str,
+    test: bool,
+    raw_output_data_prefix: str,
+    resolver: str,
+    resolver_args: List[str],
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -318,15 +320,15 @@ def _execute_task(
 
 @_scopes.system_entry_point
 def _execute_map_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        resolver: str,
-        resolver_args: List[str],
-        checkpoint_path: Optional[str] = None,
-        prev_checkpoint: Optional[str] = None,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    resolver: str,
+    resolver_args: List[str],
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -371,7 +373,7 @@ def _execute_map_task(
 
 
 def normalize_inputs(
-        raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
+    raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
 ):
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -405,14 +407,14 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        test,
-        prev_checkpoint,
-        checkpoint_path,
-        resolver,
-        resolver_args,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    test,
+    prev_checkpoint,
+    checkpoint_path,
+    resolver,
+    resolver_args,
 ):
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
@@ -473,15 +475,15 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     nargs=-1,
 )
 def map_execute_task_cmd(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        resolver,
-        resolver_args,
-        prev_checkpoint,
-        checkpoint_path,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    resolver,
+    resolver_args,
+    prev_checkpoint,
+    checkpoint_path,
 ):
     logger.info(get_version_message())
 

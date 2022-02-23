@@ -85,8 +85,12 @@ def serialize_all(
 
 
 @click.group("serialize")
-@click.option("--image", required=False, default=lambda: os.environ.get("FLYTE_INTERNAL_IMAGE", ""),
-              help="Text tag: e.g. somedocker.com/myimage:someversion123")
+@click.option(
+    "--image",
+    required=False,
+    default=lambda: os.environ.get("FLYTE_INTERNAL_IMAGE", ""),
+    help="Text tag: e.g. somedocker.com/myimage:someversion123",
+)
 @click.option(
     "--local-source-root",
     required=False,

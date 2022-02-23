@@ -15,7 +15,8 @@ from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.models import task as task_models, launch_plan as _launch_plan_models
+from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.translator import get_serializable

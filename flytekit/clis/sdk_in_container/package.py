@@ -10,6 +10,7 @@ from flytekit.core import context_manager
 from flytekit.core.context_manager import ImageConfig
 from flytekit.tools import fast_registration, module_loader, serialize_helpers
 
+
 @click.command("package")
 @click.option(
     "-i",
