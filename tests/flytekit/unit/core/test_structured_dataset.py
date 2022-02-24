@@ -290,7 +290,7 @@ def test_to_python_value_with_incoming_columns():
 
     # check when columns are not specified, should pull both and add column information.
     sd = fdt.to_python_value(ctx, lit, StructuredDataset)
-    assert sd.metadata.structured_dataset_type.columns[0].name == "age"
+    assert len(sd.metadata.structured_dataset_type.columns) == 2
 
     # should also work if subset type is just an annotated pd.DataFrame
     subset_pd_type = Annotated[pd.DataFrame, kwtypes(age=int)]
