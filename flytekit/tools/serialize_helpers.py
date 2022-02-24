@@ -10,7 +10,6 @@ from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
 from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
 
 from flytekit import LaunchPlan
-from flytekit.clis.sdk_in_container.serialize import _determine_text_chars
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import WorkflowBase

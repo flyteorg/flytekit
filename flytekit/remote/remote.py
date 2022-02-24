@@ -19,7 +19,6 @@ import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.configuration import internal
 from flytekit.configuration import sdk as sdk_config
 from flytekit.core import constants, context_manager, utils
 from flytekit.core.interface import Interface
@@ -37,7 +36,6 @@ except ImportError:
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.clis.flyte_cli.main import _get_config_file_path
 from flytekit.clis.sdk_in_container import serialize
-from flytekit.configuration import auth as auth_config
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import Config, FlyteContextManager, SerializationSettings
 from flytekit.core.data_persistence import FileAccessProvider
@@ -47,6 +45,7 @@ from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
+from flytekit.models import security
 from flytekit.models.admin.common import Sort
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
@@ -67,6 +66,28 @@ from flytekit.tools.translator import FlyteControlPlaneEntity, FlyteLocalEntity,
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
+
+
+@dataclass
+class Options(object):
+    """
+    Args:
+        raw_data_prefix: str -> remote prefix for storage location of the form ``s3://<bucket>/key...`` or
+            ``gcs://...`` or ``file://...``. If not specified will use the platform configured default.
+        auth_role: common_models.AuthRole -> Specifies the Kubernetes Service account, IAM role etc to be used. If not
+        specified defaults will be used
+
+    """
+
+    project: typing.Optional[str] = None
+    domain: typing.Optional[str] = None
+    raw_data_prefix: typing.Optional[str] = ""
+    auth_role: typing.Optional[common_models.AuthRole] = None
+    labels: typing.Optional[common_models.Labels] = None
+    annotations: typing.Optional[common_models.Annotations] = None
+    security_context: typing.Optional[security.SecurityContext] = None
+    max_parallelism: typing.Optional[int] = None
+    notifications: typing.Optional[common_models.Notification] = None
 
 
 @dataclass
@@ -119,107 +140,32 @@ class FlyteRemote(object):
 
     """
 
-    @classmethod
-    def from_config(
-        cls,
-        default_project: typing.Optional[str] = None,
-        default_domain: typing.Optional[str] = None,
-        config_file_path: typing.Optional[str] = None,
-        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
-        venv_root: typing.Optional[str] = None,
-        image: typing.Optional[str] = None,
-    ) -> FlyteRemote:
-        """Create a FlyteRemote object using flyte configuration variables and/or environment variable overrides.
-
-        :param default_project: default project to use when fetching or executing flyte entities.
-        :param default_domain: default domain to use when fetching or executing flyte entities.
-        :param config_file_path: config file to use when connecting to flyte admin. we will use '~/.flyte/config' by default.
-        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned by :func:`grpc.ssl_channel_credentials`
-        """
-
-        # TODO Niels + Yee + Eduardo, should we support both, or just collapse to one var?
-        if config_file_path is None:
-            raise ValueError("config_file_path should be specified. Both cannot be provided")
-
-        venv_root = venv_root or serialize._DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
-        entrypoint = context_manager.EntrypointSettings(
-            path=os.path.join(venv_root, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
-        )
-
-        if config_file_path is None:
-            config_file_path = _get_config_file_path()
-
-        config = Config.from_file(
-            config_file_path, img=image, flytekit_virtualenv_root=venv_root, entrypoint_settings=entrypoint
-        )
-
-        return cls(
-            config=config,
-            default_project=default_project,
-            default_domain=default_domain,
-            auth_role=common_models.AuthRole(
-                assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
-                kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
-            ),
-            grpc_credentials=grpc_credentials,
-        )
-
     def __init__(
         self,
         config: Config,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
-        auth_role: typing.Optional[common_models.AuthRole] = None,
-        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
-        labels: typing.Optional[common_models.Labels] = None,
-        annotations: typing.Optional[common_models.Annotations] = None,
-        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
     ):
         """Initialize a FlyteRemote object.
 
-        :param flyte_admin_url: url pointing to the remote backend.
-        :param insecure: whether or not the enable SSL.
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
         :param file_access: file access provider to use for offloading non-literal inputs/outputs.
-        :param auth_role: auth role config
-        :param notifications: notification config
-        :param labels: label config
-        :param annotations: annotation config
-        :param image_config: image config
-        :param raw_output_data_config: location for offloaded data, e.g. in S3
-        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned
-          by :func:`grpc.ssl_channel_credentials`
-
         """
         remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
-        self._client = SynchronousFlyteClient(
-            config.platform.endpoint, insecure=config.platform.insecure, credentials=grpc_credentials
-        )
+        self._client = SynchronousFlyteClient(config.platform.endpoint, insecure=config.platform.insecure)
         self._config = config
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
         self._default_domain = default_domain
-        self._auth_role = auth_role
-        self._notifications = notifications
-        self._labels = labels
-        self._annotations = annotations
 
-        # TODO Fix this
-        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
-            sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
-        )
         self._file_access = file_access or FileAccessProvider(
             local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
-            raw_output_prefix=raw_output_data_prefix,
-        )
-
-        self._raw_output_data_config = (
-            common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
+            raw_output_prefix="/tmp",
         )
 
         # Save the file access object locally, but also make it available for use from the context.
@@ -252,36 +198,6 @@ class FlyteRemote(object):
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
 
-    @property
-    def auth_role(self):
-        """Auth role config."""
-        return self._auth_role
-
-    @property
-    def notifications(self):
-        """Notification config."""
-        return self._notifications
-
-    @property
-    def labels(self):
-        """Label config."""
-        return self._labels
-
-    @property
-    def annotations(self):
-        """Annotation config."""
-        return self._annotations
-
-    @property
-    def raw_output_data_config(self):
-        """Location for offloaded data, e.g. in S3"""
-        return self._raw_output_data_config
-
-    @property
-    def version(self) -> str:
-        """Get a randomly generated version string."""
-        return uuid.uuid4().hex[:30] + str(int(time.time()))
-
     def remote_context(self):
         """Context manager with remote-specific configuration."""
         return FlyteContextManager.with_context(
@@ -294,10 +210,6 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         file_access: typing.Optional[FileAccessProvider] = None,
-        auth_role: typing.Optional[common_models.AuthRole] = None,
-        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
-        labels: typing.Optional[common_models.Labels] = None,
-        annotations: typing.Optional[common_models.Annotations] = None,
         grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
     ) -> FlyteRemote:
         """Create a copy of the remote object, overriding the specified attributes."""
@@ -313,14 +225,6 @@ class FlyteRemote(object):
             )
         if file_access:
             new_remote._file_access = file_access
-        if auth_role:
-            new_remote._auth_role = auth_role
-        if notifications:
-            new_remote._notifications = notifications
-        if labels:
-            new_remote._labels = labels
-        if annotations:
-            new_remote._annotations = annotations
         return new_remote
 
     def fetch_task(self, project: str = None, domain: str = None, name: str = None, version: str = None) -> FlyteTask:
@@ -533,15 +437,27 @@ class FlyteRemote(object):
         """
         raise NotImplementedError(f"entity type {type(entity)} not recognized for registration")
 
-    @register.register
-    def _(
-        self, entity: PythonTask, project: str = None, domain: str = None, name: str = None, version: str = None
+    def register_task(
+        self,
+        entity: PythonTask,
+        serialization_settings: SerializationSettings,
+        *,
+        name: str = None,
+        version: str = None,
+        options: typing.Optional[Options] = None,
     ) -> FlyteTask:
         """Register an @task-decorated function or TaskTemplate task to flyte admin."""
         resolved_identifiers = asdict(self._resolve_identifier_kwargs(entity, project, domain, name, version))
         self.client.create_task(
             Identifier(ResourceType.TASK, **resolved_identifiers),
             task_spec=self._serialize(entity, **resolved_identifiers),
+        )
+
+        register_task(
+            task,
+            serialization_settings=SerializationSettings.for_image(
+                image="image",
+            ),
         )
         return self.fetch_task(**resolved_identifiers)
 

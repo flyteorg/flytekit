@@ -14,120 +14,12 @@ from flyteidl.service import auth_pb2_grpc as auth_service
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 
 from flytekit.clis.auth import credentials as _credentials_access
-from flytekit.configuration import creds as creds_config
-from flytekit.configuration.creds import CLIENT_CREDENTIALS_SECRET as _CREDENTIALS_SECRET
-from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
-from flytekit.configuration.creds import COMMAND as _COMMAND
+from flytekit.core.context_manager import PlatformConfig
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
 
 _utf_8 = "utf-8"
-
-
-def _refresh_credentials_standard(flyte_client: RawSynchronousFlyteClient):
-    """
-    This function is used when the configuration value for AUTH_MODE is set to 'standard'.
-    This either fetches the existing access token or initiates the flow to request a valid access token and store it.
-    :param flyte_client: RawSynchronousFlyteClient
-    :return:
-    """
-    authorization_header_key = flyte_client.public_client_config.authorization_metadata_key or None
-    if not flyte_client.oauth2_metadata or not flyte_client.public_client_config:
-        raise ValueError(
-            "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
-            "Check your Admin server's .well-known endpoints to make sure they're working as expected."
-        )
-    client = _credentials_access.get_client(
-        redirect_endpoint=flyte_client.public_client_config.redirect_uri,
-        client_id=flyte_client.public_client_config.client_id,
-        scopes=flyte_client.public_client_config.scopes,
-        auth_endpoint=flyte_client.oauth2_metadata.authorization_endpoint,
-        token_endpoint=flyte_client.oauth2_metadata.token_endpoint,
-    )
-    if client.has_valid_credentials and not flyte_client.check_access_token(client.credentials.access_token):
-        # When Python starts up, if credentials have been stored in the keyring, then the AuthorizationClient
-        # will have read them into its _credentials field, but it won't be in the RawSynchronousFlyteClient's
-        # metadata field yet. Therefore, if there's a mismatch, copy it over.
-        flyte_client.set_access_token(client.credentials.access_token, authorization_header_key)
-        # However, after copying over credentials from the AuthorizationClient, we have to clear it to avoid the
-        # scenario where the stored credentials in the keyring are expired. If that's the case, then we only try
-        # them once (because client here is a singleton), and the next time, we'll do one of the two other conditions
-        # below.
-        client.clear()
-        return
-    elif client.can_refresh_token:
-        client.refresh_access_token()
-    else:
-        client.start_authorization_flow()
-
-    flyte_client.set_access_token(client.credentials.access_token, authorization_header_key)
-
-
-def _refresh_credentials_basic(flyte_client: RawSynchronousFlyteClient):
-    """
-    This function is used by the _handle_rpc_error() decorator, depending on the AUTH_MODE config object. This handler
-    is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
-    like when waiting for another workflow to complete from within a task). This function uses basic auth, which means
-    the credentials for basic auth must be present from wherever this code is running.
-
-    :param flyte_client: RawSynchronousFlyteClient
-    :return:
-    """
-    if not flyte_client.oauth2_metadata or not flyte_client.public_client_config:
-        raise ValueError(
-            "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
-            "Check your Admin server's .well-known endpoints to make sure they're working as expected."
-        )
-
-    token_endpoint = flyte_client.oauth2_metadata.token_endpoint
-    scopes = creds_config.SCOPES.get() or flyte_client.public_client_config.scopes
-    scopes = ",".join(scopes)
-
-    # Note that unlike the Pkce flow, the client ID does not come from Admin.
-    client_secret = get_secret()
-    cli_logger.debug("Basic authorization flow with client id {} scope {}".format(_CLIENT_ID.get(), scopes))
-    authorization_header = get_basic_authorization_header(_CLIENT_ID.get(), client_secret)
-    token, expires_in = get_token(token_endpoint, authorization_header, scopes)
-    cli_logger.info("Retrieved new token, expires in {}".format(expires_in))
-    authorization_header_key = flyte_client.public_client_config.authorization_metadata_key or None
-    flyte_client.set_access_token(token, authorization_header_key)
-
-
-def _refresh_credentials_from_command(flyte_client):
-    """
-    This function is used when the configuration value for AUTH_MODE is set to 'external_process'.
-    It reads an id token generated by an external process started by running the 'command'.
-
-    :param flyte_client: RawSynchronousFlyteClient
-    :return:
-    """
-
-    command = _COMMAND.get()
-    cli_logger.debug("Starting external process to generate id token. Command {}".format(command))
-    try:
-        output = subprocess.run(command, capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        cli_logger.error("Failed to generate token from command {}".format(command))
-        raise _user_exceptions.FlyteAuthenticationException("Problems refreshing token with command: " + str(e))
-    flyte_client.set_access_token(output.stdout.strip())
-
-
-def _refresh_credentials_noop(flyte_client):
-    pass
-
-
-def _get_refresh_handler(auth_mode):
-    if auth_mode == "standard":
-        return _refresh_credentials_standard
-    elif auth_mode == "basic" or auth_mode == "client_credentials":
-        return _refresh_credentials_basic
-    elif auth_mode == "external_process":
-        return _refresh_credentials_from_command
-    else:
-        raise ValueError(
-            "Invalid auth mode [{}] specified. Please update the creds config to use a valid value".format(auth_mode)
-        )
 
 
 def _handle_rpc_error(retry=False):
@@ -152,8 +44,7 @@ def _handle_rpc_error(retry=False):
                             # Exit the loop and wrap the authentication error.
                             raise _user_exceptions.FlyteAuthenticationException(str(e))
                         cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
-                        refresh_handler_fn = _get_refresh_handler(creds_config.AUTH_MODE.get())
-                        refresh_handler_fn(args[0])
+                        refresh_handler_fn = args[0].refresh_credentials()
                     # There are two cases that we should throw error immediately
                     # 1. Entity already exists when we register entity
                     # 2. Entity not found when we fetch entity
@@ -199,7 +90,7 @@ class RawSynchronousFlyteClient(object):
     be explicit as opposed to inferred from the environment or a configuration file.
     """
 
-    def __init__(self, url, insecure=False, **kwargs):
+    def __init__(self, cfg: PlatformConfig, **kwargs):
         """
         Initializes a gRPC channel to the given Flyte Admin service.
 
@@ -207,13 +98,11 @@ class RawSynchronousFlyteClient(object):
           url: The server address.
           insecure: if insecure is desired
         """
-        self._channel = None
-        self._url = url
-
-        if insecure:
-            self._channel = grpc.insecure_channel(url, **kwargs)
+        self._cfg = cfg
+        if cfg.insecure:
+            self._channel = grpc.insecure_channel(cfg.endpoint, **kwargs)
         else:
-            self._channel = grpc.secure_channel(target=url, **kwargs)
+            self._channel = grpc.secure_channel(target=cfg.endpoint, **kwargs)
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._auth_stub = auth_service.AuthMetadataServiceStub(self._channel)
         try:
@@ -232,6 +121,13 @@ class RawSynchronousFlyteClient(object):
         # metadata will hold the value of the token to send to the various endpoints.
         self._metadata = None
 
+    @classmethod
+    def with_root_certificate(cls, cfg: PlatformConfig, root_cert_file: str) -> RawSynchronousFlyteClient:
+        b = None
+        with open(root_cert_file, "rb") as fp:
+            b = fp.read()
+        return RawSynchronousFlyteClient(cfg, credentials=grpc.ssl_channel_credentials(root_certificates=b))
+
     @property
     def public_client_config(self) -> Optional[auth_pb2.PublicClientAuthConfigResponse]:
         return self._public_client_config
@@ -240,16 +136,114 @@ class RawSynchronousFlyteClient(object):
     def oauth2_metadata(self) -> Optional[auth_pb2.OAuth2MetadataResponse]:
         return self._oauth2_metadata
 
-    @classmethod
-    def with_root_certificate(cls, url: str, root_cert_file: str) -> RawSynchronousFlyteClient:
-        b = None
-        with open(root_cert_file, "rb") as fp:
-            b = fp.read()
-        return RawSynchronousFlyteClient(url=url, credentials=grpc.ssl_channel_credentials(root_certificates=b))
-
     @property
     def url(self) -> str:
-        return self._url
+        return self._cfg.endpoint
+
+    def _refresh_credentials_standard(self):
+        """
+        This function is used when the configuration value for AUTH_MODE is set to 'standard'.
+        This either fetches the existing access token or initiates the flow to request a valid access token and store it.
+        :param self: RawSynchronousFlyteClient
+        :return:
+        """
+        authorization_header_key = self.public_client_config.authorization_metadata_key or None
+        if not self.oauth2_metadata or not self.public_client_config:
+            raise ValueError(
+                "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
+                "Check your Admin server's .well-known endpoints to make sure they're working as expected."
+            )
+        client = _credentials_access.get_client(
+            redirect_endpoint=self.public_client_config.redirect_uri,
+            client_id=self.public_client_config.client_id,
+            scopes=self.public_client_config.scopes,
+            auth_endpoint=self.oauth2_metadata.authorization_endpoint,
+            token_endpoint=self.oauth2_metadata.token_endpoint,
+        )
+        if client.has_valid_credentials and not self.check_access_token(client.credentials.access_token):
+            # When Python starts up, if credentials have been stored in the keyring, then the AuthorizationClient
+            # will have read them into its _credentials field, but it won't be in the RawSynchronousFlyteClient's
+            # metadata field yet. Therefore, if there's a mismatch, copy it over.
+            self.set_access_token(client.credentials.access_token, authorization_header_key)
+            # However, after copying over credentials from the AuthorizationClient, we have to clear it to avoid the
+            # scenario where the stored credentials in the keyring are expired. If that's the case, then we only try
+            # them once (because client here is a singleton), and the next time, we'll do one of the two other conditions
+            # below.
+            client.clear()
+            return
+        elif client.can_refresh_token:
+            client.refresh_access_token()
+        else:
+            client.start_authorization_flow()
+
+        self.set_access_token(client.credentials.access_token, authorization_header_key)
+
+    def _refresh_credentials_basic(self):
+        """
+        This function is used by the _handle_rpc_error() decorator, depending on the AUTH_MODE config object. This handler
+        is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
+        like when waiting for another workflow to complete from within a task). This function uses basic auth, which means
+        the credentials for basic auth must be present from wherever this code is running.
+
+        :param self: RawSynchronousFlyteClient
+        :return:
+        """
+        if not self.oauth2_metadata or not self.public_client_config:
+            raise ValueError(
+                "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
+                "Check your Admin server's .well-known endpoints to make sure they're working as expected."
+            )
+
+        token_endpoint = self.oauth2_metadata.token_endpoint
+        scopes = self._cfg.scopes or self.public_client_config.scopes
+        scopes = ",".join(scopes)
+
+        # Note that unlike the Pkce flow, the client ID does not come from Admin.
+        client_secret = self._cfg.client_credentials_secret
+        if not client_secret:
+            raise FlyteAuthenticationException("No client credentials secret provided in the config")
+        cli_logger.debug(f"Basic authorization flow with client id {self._cfg.client_id} scope {scopes}")
+        authorization_header = get_basic_authorization_header(self._cfg.client_id, client_secret)
+        token, expires_in = get_token(token_endpoint, authorization_header, scopes)
+        cli_logger.info("Retrieved new token, expires in {}".format(expires_in))
+        authorization_header_key = self.public_client_config.authorization_metadata_key or None
+        self.set_access_token(token, authorization_header_key)
+
+    def _refresh_credentials_from_command(self):
+        """
+        This function is used when the configuration value for AUTH_MODE is set to 'external_process'.
+        It reads an id token generated by an external process started by running the 'command'.
+
+        :param self: RawSynchronousFlyteClient
+        :return:
+        """
+
+        command = self._cfg.command
+        if not command:
+            raise FlyteAuthenticationException("No command specified in configuration for command authentication")
+        cli_logger.debug("Starting external process to generate id token. Command {}".format(command))
+        try:
+            output = subprocess.run(command, capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            cli_logger.error("Failed to generate token from command {}".format(command))
+            raise _user_exceptions.FlyteAuthenticationException("Problems refreshing token with command: " + str(e))
+        self.set_access_token(output.stdout.strip())
+
+    def _refresh_credentials_noop(self):
+        pass
+
+    def refresh_credentials(self):
+        if self._cfg.auth_mode == "standard":
+            return self._refresh_credentials_standard()
+        elif self._cfg.auth_mode == "basic" or self._cfg.auth_mode == "client_credentials":
+            return self._refresh_credentials_basic()
+        elif self._cfg.auth_mode == "external_process":
+            return self._refresh_credentials_from_command()
+        else:
+            raise ValueError(
+                f"Invalid auth mode [{self._cfg.auth_mode}] specified."
+                f"Please update the creds config to use a valid value"
+            )
 
     def set_access_token(self, access_token: str, authorization_header_key: Optional[str] = "authorization"):
         # Always set the header to lower-case regardless of what the config is. The grpc libraries that Admin uses
@@ -817,18 +811,6 @@ def get_token(token_endpoint, authorization_header, scope):
 
     response = response.json()
     return response["access_token"], response["expires_in"]
-
-
-def get_secret():
-    """
-    This function will either read in the password from the file path given by the CLIENT_CREDENTIALS_SECRET_LOCATION
-    config object, or from the environment variable using the CLIENT_CREDENTIALS_SECRET config object.
-    :rtype: Text
-    """
-    secret = _CREDENTIALS_SECRET.get()
-    if secret:
-        return secret
-    raise FlyteAuthenticationException("No secret could be found")
 
 
 def get_basic_authorization_header(client_id, client_secret):

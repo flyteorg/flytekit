@@ -20,7 +20,7 @@ from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from flytekit.core.base_task import Task, TaskResolverMixin
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver

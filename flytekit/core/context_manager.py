@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import base64
 import datetime as _datetime
+import enum
 import gzip
-import json
 import logging
 import logging as _logging
 import os
@@ -35,7 +35,7 @@ from dataclasses_json import dataclass_json
 from docker_image import reference
 
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.configuration import images, platform, sdk, secrets, set_flyte_config_file, statsd
+from flytekit.configuration import creds, images, platform, sdk, secrets, statsd
 from flytekit.configuration.common import _FlyteConfigurationEntry
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
@@ -64,6 +64,7 @@ VERSION_PLACEHOLDER = "{{ registration.version }}"
 DEFAULT_RUNTIME_PYTHON_INTERPRETER = "/opt/venv/bin/python3"
 DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 DEFAULT_IMAGE_NAME = "default"
+DEFAULT_IN_CONTAINER_SRC_PATH = "/root"
 
 _IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
 
@@ -198,14 +199,46 @@ class ImageConfig(object):
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class PlatformConfig(object):
+    class AuthType(enum.Enum):
+        STANDARD = "standard"
+        BASIC = "basic"
+        CLIENT_CREDENTIALS = "client_credentials"
+        EXTERNAL_PROCESS = "external_process"
+
     endpoint: str
     insecure: bool = False
+    command: typing.Optional[str] = None
+    """
+    This command is executed to return a token using an external process.
+    """
+    client_id: typing.Optional[str] = None
+    """
+    This is the public identifier for the app which handles authorization for a Flyte deployment.
+    More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
+    """
+    client_credentials_secret: typing.Optional[str] = None
+    """
+    Used for service auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+    password directly from the environment variable. Note that this is less secure! Please only use this if mounting the
+    secret as a file is impossible.
+    """
+    scopes: List[str] = field(default_factory=list)
+    auth_mode: AuthType = AuthType.STANDARD
 
     @classmethod
     def from_config(cls) -> PlatformConfig:
         kwargs = {}
         kwargs = set_if_exists(kwargs, "insecure", platform.INSECURE)
+        kwargs = set_if_exists(kwargs, "command", creds.COMMAND)
+        kwargs = set_if_exists(kwargs, "client_id", creds.CLIENT_ID)
+        kwargs = set_if_exists(kwargs, "client_credentials_secret", creds.CLIENT_CREDENTIALS_SECRET)
+        kwargs = set_if_exists(kwargs, "scopes", creds.SCOPES)
+        kwargs = set_if_exists(kwargs, "auth_mode", creds.AUTH_MODE)
         return PlatformConfig(endpoint=platform.URL.get(), **kwargs)
+
+    @classmethod
+    def for_endpoint(cls, endpoint: str, insecure: bool = False) -> PlatformConfig:
+        return PlatformConfig(endpoint=endpoint, insecure=insecure)
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -254,42 +287,14 @@ class Config(object):
     """
 
     platform: PlatformConfig
-    images: ImageConfig
     secrets: SecretsConfig = SecretsConfig()
     stats: StatsConfig = StatsConfig()
-    flytekit_virtualenv_root: Optional[str] = None
-    python_interpreter: Optional[str] = None
-    entrypoint_settings: Optional[EntrypointSettings] = None
-    fast_serialization_settings: Optional[FastSerializationSettings] = None
-
-    def get_serialization_settings(
-        self,
-        project: str = PROJECT_PLACEHOLDER,
-        domain: str = DOMAIN_PLACEHOLDER,
-        version: str = VERSION_PLACEHOLDER,
-        env: Dict[str, str] = None,
-    ) -> SerializationSettings:
-        return SerializationSettings(
-            project=project,
-            domain=domain,
-            version=version,
-            image_config=self.images,
-            env=env,
-            flytekit_virtualenv_root=self.flytekit_virtualenv_root,
-            python_interpreter=self.python_interpreter,
-            entrypoint_settings=self.entrypoint_settings,
-            fast_serialization_settings=self.fast_serialization_settings,
-        )
 
     @classmethod
     def from_file(
         cls,
         config_path: str,
         img: Optional[str] = None,
-        flytekit_virtualenv_root: Optional[str] = None,
-        python_interpreter: Optional[str] = None,
-        entrypoint_settings: Optional[EntrypointSettings] = None,
-        fast_serialization_settings: Optional[FastSerializationSettings] = None,
     ) -> Config:
         set_flyte_config_file(config_file_path=config_path)
         return Config(
@@ -297,10 +302,6 @@ class Config(object):
             images=ImageConfig.from_config(img),
             secrets=SecretsConfig.from_config(),
             stats=StatsConfig.from_config(),
-            flytekit_virtualenv_root=flytekit_virtualenv_root,
-            python_interpreter=python_interpreter,
-            entrypoint_settings=entrypoint_settings,
-            fast_serialization_settings=fast_serialization_settings,
         )
 
 
@@ -634,30 +635,61 @@ class SerializationSettings(object):
     entrypoint_settings: Optional[EntrypointSettings] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
 
-    @staticmethod
-    def venv_root_from_interpreter(interpreter_path: str) -> str:
-        """
-        Computes the path of the virtual environment root, based on the passed in python interpreter path
-        for example /opt/venv/bin/python3 -> /opt/venv
-        """
-        return os.path.dirname(os.path.dirname(interpreter_path))
+    @dataclass
+    class Builder(object):
+        project: str
+        domain: str
+        version: str
+        image_config: ImageConfig
+        env: Optional[Dict[str, str]] = None
+        flytekit_virtualenv_root: Optional[str] = None
+        python_interpreter: Optional[str] = None
+        entrypoint_settings: Optional[EntrypointSettings] = None
+        fast_serialization_settings: Optional[FastSerializationSettings] = None
 
-    @staticmethod
-    def default_entrypoint_settings(interpreter_path: str) -> EntrypointSettings:
-        """
-        Assumes the entrypoint is installed in a virtual-environment where the interpreter is
-        """
-        return EntrypointSettings(
-            path=os.path.join(
-                SerializationSettings.venv_root_from_interpreter(interpreter_path), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC
+        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
+            self.fast_serialization_settings = fss
+            return self
+
+        def build(self) -> SerializationSettings:
+            return SerializationSettings(
+                project=self.project,
+                domain=self.domain,
+                version=self.version,
+                image_config=self.image_config,
+                env=self.env,
+                flytekit_virtualenv_root=self.flytekit_virtualenv_root,
+                python_interpreter=self.python_interpreter,
+                entrypoint_settings=self.entrypoint_settings,
+                fast_serialization_settings=self.fast_serialization_settings,
             )
-        )
 
     @classmethod
     def from_transport(cls, s: str) -> SerializationSettings:
         compressed_val = base64.b64decode(s.encode("utf-8"))
         json_str = gzip.decompress(compressed_val).decode("utf-8")
         return cls.from_json(json_str)
+
+    @classmethod
+    def for_image(
+        cls,
+        image: str,
+        version: str,
+        project: str = "",
+        domain: str = "",
+        python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+    ) -> SerializationSettings:
+        img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
+        entrypoint_settings = cls.default_entrypoint_settings(python_interpreter_path)
+        return SerializationSettings(
+            image_config=img,
+            project=project,
+            domain=domain,
+            version=version,
+            entrypoint_settings=entrypoint_settings,
+            python_interpreter=python_interpreter_path,
+            flytekit_virtualenv_root=cls.venv_root_from_interpreter(python_interpreter_path),
+        )
 
     def new_builder(self) -> Builder:
         """
@@ -687,34 +719,24 @@ class SerializationSettings(object):
         compressed_value = gzip.compress(json_str.encode("utf-8"))
         return base64.b64encode(compressed_value).decode("utf-8")
 
-    @dataclass
-    class Builder(object):
-        project: str
-        domain: str
-        version: str
-        image_config: ImageConfig
-        env: Optional[Dict[str, str]] = None
-        flytekit_virtualenv_root: Optional[str] = None
-        python_interpreter: Optional[str] = None
-        entrypoint_settings: Optional[EntrypointSettings] = None
-        fast_serialization_settings: Optional[FastSerializationSettings] = None
+    @staticmethod
+    def venv_root_from_interpreter(interpreter_path: str) -> str:
+        """
+        Computes the path of the virtual environment root, based on the passed in python interpreter path
+        for example /opt/venv/bin/python3 -> /opt/venv
+        """
+        return os.path.dirname(os.path.dirname(interpreter_path))
 
-        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
-            self.fast_serialization_settings = fss
-            return self
-
-        def build(self) -> SerializationSettings:
-            return SerializationSettings(
-                project=self.project,
-                domain=self.domain,
-                version=self.version,
-                image_config=self.image_config,
-                env=self.env,
-                flytekit_virtualenv_root=self.flytekit_virtualenv_root,
-                python_interpreter=self.python_interpreter,
-                entrypoint_settings=self.entrypoint_settings,
-                fast_serialization_settings=self.fast_serialization_settings,
+    @staticmethod
+    def default_entrypoint_settings(interpreter_path: str) -> EntrypointSettings:
+        """
+        Assumes the entrypoint is installed in a virtual-environment where the interpreter is
+        """
+        return EntrypointSettings(
+            path=os.path.join(
+                SerializationSettings.venv_root_from_interpreter(interpreter_path), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC
             )
+        )
 
 
 @dataclass(frozen=True)

@@ -7,49 +7,9 @@ from flyteidl.admin.workflow_pb2 import WorkflowSpec
 
 import flytekit
 import flytekit.tools.serialize_helpers
-from flytekit.clis.sdk_in_container import package, pyflyte, serialize
+from flytekit.clis.sdk_in_container import package, pyflyte
 from flytekit.core import context_manager
 from flytekit.exceptions.user import FlyteValidationException
-
-
-def test_validate_image():
-    ic = package.validate_image(None, "image", ())
-    assert ic
-    assert ic.default_image is None
-
-    img1 = "xyz:latest"
-    img2 = "docker.io/xyz:latest"
-    img3 = "docker.io/xyz:latest"
-    img3_cli = f"default={img3}"
-    img4 = "docker.io/my:azb"
-    img4_cli = f"my_img={img4}"
-
-    ic = package.validate_image(None, "image", (img1,))
-    assert ic
-    assert ic.default_image.full == img1
-
-    ic = package.validate_image(None, "image", (img2,))
-    assert ic
-    assert ic.default_image.full == img2
-
-    ic = package.validate_image(None, "image", (img3_cli,))
-    assert ic
-    assert ic.default_image.full == img3
-
-    with pytest.raises(click.BadParameter):
-        package.validate_image(None, "image", (img1, img3_cli))
-
-    with pytest.raises(click.BadParameter):
-        package.validate_image(None, "image", (img1, img2))
-
-    with pytest.raises(click.BadParameter):
-        package.validate_image(None, "image", (img1, img1))
-
-    ic = package.validate_image(None, "image", (img3_cli, img4_cli))
-    assert ic
-    assert ic.default_image.full == img3
-    assert len(ic.images) == 1
-    assert ic.images[0].full == img4
 
 
 @flytekit.task
