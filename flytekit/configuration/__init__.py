@@ -25,6 +25,11 @@ class ConfigEntry(object):
     type_: typing.Type
     default_val: typing.Any = configparser._UNSET
 
+    def get_default(self) -> typing.Any:
+        if self.default_val == configparser._UNSET:
+            return None
+        return self.default_val
+
 
 class ConfigFile(object):
     def __init__(self, location: str):
@@ -176,19 +181,19 @@ class LocalSDK(object):
 class Secrets(object):
     SECTION = "secrets"
     # Secrets management
-    SECRETS_ENV_PREFIX = ConfigEntry(SECTION, "env_prefix", str)
+    ENV_PREFIX = ConfigEntry(SECTION, "env_prefix", str)
     """
     This is the prefix that will be used to lookup for injected secrets at runtime. This can be overridden to using
     FLYTE_SECRETS_ENV_PREFIX variable
     """
 
-    SECRETS_DEFAULT_DIR = ConfigEntry(SECTION, "default_dir", str)
+    DEFAULT_DIR = ConfigEntry(SECTION, "default_dir", str)
     """
     This is the default directory that will be used to find secrets as individual files under. This can be overridden using
     FLYTE_SECRETS_DEFAULT_DIR.
     """
 
-    SECRETS_FILE_PREFIX = ConfigEntry(SECTION, "file_prefix", str)
+    FILE_PREFIX = ConfigEntry(SECTION, "file_prefix", str)
     """
     This is the prefix for the file in the default dir.
     """

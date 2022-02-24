@@ -9,6 +9,7 @@ from enum import Enum as _Enum
 import click
 
 import flytekit as _flytekit
+from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.context_manager import ImageConfig, SerializationSettings
@@ -32,12 +33,13 @@ class SerializationMode(_Enum):
 @system_entry_point
 def serialize_all(
     pkgs: typing.List[str] = None,
-    local_source_root: str = None,
-    folder: str = None,
-    mode: SerializationMode = None,
-    image: str = None,
-    flytekit_virtualenv_root: str = None,
-    python_interpreter: str = None,
+    local_source_root: typing.Optional[str] = None,
+    folder: typing.Optional[str] = None,
+    mode: typing.Optional[SerializationMode] = None,
+    image: typing.Optional[str] = None,
+    flytekit_virtualenv_root: typing.Optional[str] = None,
+    python_interpreter: typing.Optional[str] = None,
+    config_file: typing.Optional[str] = None,
 ):
     """
     This function will write to the folder specified the following protobuf types ::
@@ -62,7 +64,7 @@ def serialize_all(
         raise AssertionError(f"Unrecognized serialization mode: {mode}")
 
     serialization_settings = SerializationSettings(
-        image_config=ImageConfig.from_config(img_name=image),
+        image_config=ImageConfig.from_config(config_file, img_name=image),
         fast_serialization_settings=flyte_context.FastSerializationSettings(
             enabled=mode == SerializationMode.FAST,
             # TODO: if we want to move the destination dir as a serialization argument, we should initialize it here
@@ -160,6 +162,7 @@ def workflows(ctx, folder=None):
         image=ctx.obj[CTX_IMAGE],
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
         python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
+        config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
     )
 
 
@@ -197,6 +200,7 @@ def fast_workflows(ctx, folder=None):
         image=ctx.obj[CTX_IMAGE],
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
         python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
+        config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
     )
 
 

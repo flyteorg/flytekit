@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import base64
+import configparser
 import datetime as _datetime
 import enum
 import gzip
@@ -34,9 +35,8 @@ from typing import Any, Dict, Generator, List, Optional, Union
 from dataclasses_json import dataclass_json
 from docker_image import reference
 
+from flytekit import configuration
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.configuration import creds, images, platform, sdk, secrets, statsd
-from flytekit.configuration.common import _FlyteConfigurationEntry
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
@@ -69,7 +69,18 @@ DEFAULT_IN_CONTAINER_SRC_PATH = "/root"
 _IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
 
 
-def set_if_exists(d: dict, k: str, c: _FlyteConfigurationEntry) -> dict:
+def get_config_file(c: typing.Union[str, configuration.ConfigFile]) -> configuration.ConfigFile:
+    """
+    Checks if the given argument is a file or a configFile and returns a loaded configFile
+    """
+    if c is None:
+        raise ValueError("Config file path or an actual configuration.ConfigFile object should be inserted")
+    if isinstance(c, str):
+        return configuration.ConfigFile(c)
+    return c
+
+
+def set_if_exists(d: dict, k: str, c: configuration.ConfigFile, v: configuration.ConfigEntry) -> dict:
     """
     Given a dict `d` sets the key `k` with value of config `c`, if the config `c` is set
     It also returns the updated dictionary.
@@ -79,8 +90,10 @@ def set_if_exists(d: dict, k: str, c: _FlyteConfigurationEntry) -> dict:
         The input dictionary `d` will be mutated.
 
     """
-    if c.is_set():
-        d[k] = c.get()
+    try:
+        d[k] = c.get(v)
+    except configparser.Error:
+        pass
     return d
 
 
@@ -188,13 +201,24 @@ class ImageConfig(object):
         return ImageConfig(default_image, images)
 
     @classmethod
-    def from_config(cls, img_name: Optional[str] = None) -> ImageConfig:
+    def from_config(
+        cls, config_file: typing.Union[str, configuration.ConfigFile], img_name: Optional[str] = None
+    ) -> ImageConfig:
+        if config_file is None and img_name is None:
+            raise ValueError("Either an image or a config with a default image should be provided")
+
         default_img = Image.look_up_image_info("default", img_name) if img_name is not None and img_name != "" else None
-        other_images = [
-            Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()
-        ]
-        other_images.append(default_img)
-        return ImageConfig(default_image=default_img, images=other_images)
+        all_images = [default_img]
+
+        other_images = []
+        if config_file:
+            config_file = get_config_file(config_file)
+            other_images = [
+                Image.look_up_image_info(k, tag=v, optional_tag=True)
+                for k, v in configuration.Images.get_specified_images(config_file).items()
+            ]
+        all_images.extend(other_images)
+        return ImageConfig(default_image=default_img, images=all_images)
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -226,15 +250,19 @@ class PlatformConfig(object):
     auth_mode: AuthType = AuthType.STANDARD
 
     @classmethod
-    def from_config(cls) -> PlatformConfig:
+    def from_config(cls, config_file: typing.Union[str, configuration.ConfigFile]) -> PlatformConfig:
+        config_file = get_config_file(config_file)
         kwargs = {}
-        kwargs = set_if_exists(kwargs, "insecure", platform.INSECURE)
-        kwargs = set_if_exists(kwargs, "command", creds.COMMAND)
-        kwargs = set_if_exists(kwargs, "client_id", creds.CLIENT_ID)
-        kwargs = set_if_exists(kwargs, "client_credentials_secret", creds.CLIENT_CREDENTIALS_SECRET)
-        kwargs = set_if_exists(kwargs, "scopes", creds.SCOPES)
-        kwargs = set_if_exists(kwargs, "auth_mode", creds.AUTH_MODE)
-        return PlatformConfig(endpoint=platform.URL.get(), **kwargs)
+        kwargs = set_if_exists(kwargs, "insecure", config_file, configuration.Platform.INSECURE)
+        kwargs = set_if_exists(kwargs, "command", config_file, configuration.Credentials.COMMAND)
+        kwargs = set_if_exists(kwargs, "client_id", config_file, configuration.Credentials.CLIENT_ID)
+        kwargs = set_if_exists(
+            kwargs, "client_credentials_secret", config_file, configuration.Credentials.CLIENT_CREDENTIALS_SECRET
+        )
+        kwargs = set_if_exists(kwargs, "scopes", config_file, configuration.Credentials.SCOPES)
+        kwargs = set_if_exists(kwargs, "auth_mode", config_file, configuration.Credentials.AUTH_MODE)
+        endpoint = config_file.get(configuration.Platform.URL)
+        return PlatformConfig(endpoint=endpoint, **kwargs)
 
     @classmethod
     def for_endpoint(cls, endpoint: str, insecure: bool = False) -> PlatformConfig:
@@ -249,27 +277,29 @@ class StatsConfig(object):
     disabled_tags: bool = False
 
     @classmethod
-    def from_config(cls) -> StatsConfig:
+    def from_config(cls, config_file: typing.Union[str, configuration.ConfigFile]) -> StatsConfig:
+        config_file = get_config_file(config_file)
         kwargs = {}
-        kwargs = set_if_exists(kwargs, "host", statsd.HOST)
-        kwargs = set_if_exists(kwargs, "port", statsd.PORT)
-        kwargs = set_if_exists(kwargs, "disabled", statsd.DISABLED)
-        kwargs = set_if_exists(kwargs, "disabled_tags", statsd.DISABLE_TAGS)
+        kwargs = set_if_exists(kwargs, "host", config_file, configuration.StatsD.HOST)
+        kwargs = set_if_exists(kwargs, "port", config_file, configuration.StatsD.PORT)
+        kwargs = set_if_exists(kwargs, "disabled", config_file, configuration.StatsD.DISABLED)
+        kwargs = set_if_exists(kwargs, "disabled_tags", config_file, configuration.StatsD.DISABLE_TAGS)
         return StatsConfig(**kwargs)
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class SecretsConfig(object):
-    secrets_env_prefix: str = "_FSEC_"
-    secrets_default_dir: str = os.path.join(os.sep, "etc", "secrets")
-    secrets_file_prefix: str = ""
+    env_prefix: str = "_FSEC_"
+    default_dir: str = os.path.join(os.sep, "etc", "secrets")
+    file_prefix: str = ""
 
     @classmethod
-    def from_config(cls) -> SecretsConfig:
+    def from_config(cls, config_file: typing.Union[str, configuration.ConfigFile]) -> SecretsConfig:
+        config_file = get_config_file(config_file)
         kwargs = {}
-        kwargs = set_if_exists(kwargs, "secrets_env_prefix", secrets.SECRETS_ENV_PREFIX)
-        kwargs = set_if_exists(kwargs, "secrets_default_prefix", secrets.SECRETS_DEFAULT_DIR)
-        kwargs = set_if_exists(kwargs, "secrets_file_prefix", secrets.SECRETS_FILE_PREFIX)
+        kwargs = set_if_exists(kwargs, "env_prefix", config_file, configuration.Secrets.ENV_PREFIX)
+        kwargs = set_if_exists(kwargs, "default_prefix", config_file, configuration.Secrets.DEFAULT_DIR)
+        kwargs = set_if_exists(kwargs, "file_prefix", config_file, configuration.Secrets.FILE_PREFIX)
         return SecretsConfig(**kwargs)
 
 
@@ -293,15 +323,13 @@ class Config(object):
     @classmethod
     def from_file(
         cls,
-        config_path: str,
-        img: Optional[str] = None,
+        config_file: typing.Union[str, configuration.ConfigFile],
     ) -> Config:
-        set_flyte_config_file(config_file_path=config_path)
+        config_file = get_config_file(config_file)
         return Config(
-            platform=PlatformConfig.from_config(),
-            images=ImageConfig.from_config(img),
-            secrets=SecretsConfig.from_config(),
-            stats=StatsConfig.from_config(),
+            platform=PlatformConfig.from_config(config_file),
+            secrets=SecretsConfig.from_config(config_file),
+            stats=StatsConfig.from_config(config_file),
         )
 
 
@@ -522,10 +550,12 @@ class SecretsManager(object):
             """
             return self._sm.get(self._group, item)
 
-    def __init__(self):
-        self._base_dir = str(secrets.SECRETS_DEFAULT_DIR.get()).strip()
-        self._file_prefix = str(secrets.SECRETS_FILE_PREFIX.get()).strip()
-        self._env_prefix = str(secrets.SECRETS_ENV_PREFIX.get()).strip()
+    def __init__(self, secrets_cfg: typing.Optional[SecretsConfig] = None):
+        if secrets_cfg is None:
+            secrets_cfg = SecretsConfig()
+        self._base_dir = secrets_cfg.default_dir.strip()
+        self._file_prefix = secrets_cfg.file_prefix.strip()
+        self._env_prefix = secrets_cfg.env_prefix.strip()
 
     def __getattr__(self, item: str) -> _GroupSecrets:
         """
@@ -1176,7 +1206,7 @@ class FlyteContextManager(object):
         default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
 
         # Ensure a local directory is available for users to work with.
-        user_space_path = os.path.join(sdk.LOCAL_SANDBOX.get(), "user_space")
+        user_space_path = os.path.join(configuration.LocalSDK.LOCAL_SANDBOX.get_default(), "user_space")
         pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users

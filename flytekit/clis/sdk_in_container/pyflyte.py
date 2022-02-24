@@ -1,11 +1,11 @@
 import click
 
+from flytekit import configuration
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.serialize import serialize
-from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
 
 
 def validate_package(ctx, param, values):
@@ -27,8 +27,15 @@ def validate_package(ctx, param, values):
     help="Dot separated python packages to operate on.  Multiple may be specified  Please note that this "
     "option will override the option specified in the configuration file, or environment variable",
 )
+@click.option(
+    "-c",
+    "--config",
+    required=False,
+    type=str,
+    help="Path to config file for use within container",
+)
 @click.pass_context
-def main(ctx, pkgs=None):
+def main(ctx, pkgs=None, config=None):
     """
     Entrypoint for all the user commands.
     """
@@ -36,8 +43,11 @@ def main(ctx, pkgs=None):
 
     # Handle package management - get from config if not specified on the command line
     pkgs = pkgs or []
-    if len(pkgs) == 0:
-        pkgs = _WORKFLOW_PACKAGES.get()
+    if config:
+        ctx.obj[CTX_CONFIG_FILE] = config
+        cfg = configuration.ConfigFile(config)
+        if not pkgs:
+            pkgs = cfg.get(configuration.LocalSDK.WORKFLOW_PACKAGES)
     ctx.obj[CTX_PACKAGES] = pkgs
 
 
