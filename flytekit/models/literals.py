@@ -1,4 +1,5 @@
 from datetime import datetime as _datetime
+from typing import Optional
 
 import pytz as _pytz
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -548,7 +549,7 @@ class Schema(_common.FlyteIdlEntity):
 
 
 class StructuredDatasetMetadata(_common.FlyteIdlEntity):
-    def __init__(self, structured_dataset_type: StructuredDatasetType):
+    def __init__(self, structured_dataset_type: Optional[StructuredDatasetType] = None):
         self._structured_dataset_type = structured_dataset_type
 
     @property
