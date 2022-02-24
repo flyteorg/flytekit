@@ -105,9 +105,7 @@ class StructuredDataset(object):
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
-        return flyte_dataset_transformer.open_as(
-            ctx, self.literal, self._dataframe_type, updated_metadata=self.metadata
-        )
+        return flyte_dataset_transformer.open_as(ctx, self.literal, self._dataframe_type, self.metadata)
 
     def iter(self) -> Generator[DF, None, None]:
         if self._dataframe_type is None:
@@ -261,7 +259,7 @@ class StructuredDatasetDecoder(ABC):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-        current_task_metadata: Optional[StructuredDatasetMetadata] = None,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> Union[DF, Generator[DF, None, None]]:
         """
         This is code that will be called by the dataset transformer engine to ultimately translate from a Flyte Literal
@@ -270,8 +268,8 @@ class StructuredDatasetDecoder(ABC):
         :param ctx: A FlyteContext, useful in accessing the filesystem and other attributes
         :param flyte_value: This will be a Flyte IDL StructuredDataset Literal - do not confuse this with the
           StructuredDataset class defined also in this module.
-        :param current_task_metadata: Metadata contains column name and type, and decoder will use it to
-         read specific column of parquet file or database table .It might be different from the metadata in the incoming literal.
+        :param current_task_metadata: Metadata object containing the type (and columns if any) for the currently
+         executing task. This type may have more or less information than the type information bundled inside the incoming flyte_value.
         :return: This function can either return an instance of the dataframe that this decoder handles, or an iterator
           of those dataframes.
         """
@@ -588,7 +586,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 sd._literal_sd = sd_literal
                 return sd
             else:
-                return self.open_as(ctx, sd_literal, df_type=expected_python_type)
+                return self.open_as(ctx, sd_literal, expected_python_type, metad)
 
         # Start handling for StructuredDataset scalars, first look at the columns
         incoming_columns = lv.scalar.structured_dataset.metadata.structured_dataset_type.columns
@@ -633,7 +631,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         ctx: FlyteContext,
         sd: literals.StructuredDataset,
         df_type: Type[DF],
-        updated_metadata: Optional[StructuredDatasetMetadata] = None,
+        updated_metadata: StructuredDatasetMetadata,
     ) -> DF:
         """
         :param ctx: A FlyteContext, useful in accessing the filesystem and other attributes
@@ -654,7 +652,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         ctx: FlyteContext,
         sd: literals.StructuredDataset,
         df_type: Type[DF],
-        updated_metadata: Optional[StructuredDatasetMetadata] = None,
+        updated_metadata: StructuredDatasetMetadata,
     ) -> Generator[DF, None, None]:
         protocol = protocol_prefix(sd.uri)
         decoder = self.DECODERS[df_type][protocol][sd.metadata.structured_dataset_type.format]

@@ -221,7 +221,7 @@ def test_sd():
             self,
             ctx: FlyteContext,
             flyte_value: literals.StructuredDataset,
-            current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
+            current_task_metadata: StructuredDatasetMetadata,
         ) -> typing.Union[typing.Generator[pd.DataFrame, None, None]]:
             yield pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
@@ -242,7 +242,7 @@ def test_sd():
             self,
             ctx: FlyteContext,
             flyte_value: literals.StructuredDataset,
-            current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
+            current_task_metadata: StructuredDatasetMetadata,
         ) -> pd.DataFrame:
             return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 

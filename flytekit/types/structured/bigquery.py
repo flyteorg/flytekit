@@ -29,7 +29,7 @@ def _write_to_bq(structured_dataset: StructuredDataset):
 
 
 def _read_from_bq(
-    flyte_value: literals.StructuredDataset, current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None
+    flyte_value: literals.StructuredDataset, current_task_metadata: StructuredDatasetMetadata
 ) -> pd.DataFrame:
     path = flyte_value.uri
     _, project_id, dataset_id, table_id = re.split("\\.|://|:", path)
@@ -77,7 +77,7 @@ class BQToPandasDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> pd.DataFrame:
         return _read_from_bq(flyte_value, current_task_metadata)
 
@@ -106,7 +106,7 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         return pa.Table.from_pandas(_read_from_bq(flyte_value))
 

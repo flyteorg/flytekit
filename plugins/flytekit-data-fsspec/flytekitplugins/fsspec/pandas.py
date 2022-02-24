@@ -58,7 +58,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> pd.DataFrame:
         uri = flyte_value.uri
         columns = None

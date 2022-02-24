@@ -47,7 +47,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         uri = flyte_value.uri
         if not ctx.file_access.is_remote(uri):

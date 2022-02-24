@@ -55,7 +55,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> pd.DataFrame:
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
@@ -93,7 +93,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
