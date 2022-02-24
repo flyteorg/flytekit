@@ -549,7 +549,7 @@ class Schema(_common.FlyteIdlEntity):
 
 
 class StructuredDatasetMetadata(_common.FlyteIdlEntity):
-    def __init__(self, structured_dataset_type: StructuredDatasetType = None):
+    def __init__(self, structured_dataset_type: StructuredDatasetType):
         self._structured_dataset_type = structured_dataset_type
 
     @property

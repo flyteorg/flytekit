@@ -261,14 +261,17 @@ class StructuredDatasetDecoder(ABC):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
+        current_task_metadata: Optional[StructuredDatasetMetadata] = None,
     ) -> Union[DF, Generator[DF, None, None]]:
         """
         This is code that will be called by the dataset transformer engine to ultimately translate from a Flyte Literal
         value into a Python instance.
 
-        :param ctx:
+        :param ctx: A FlyteContext, useful in accessing the filesystem and other attributes
         :param flyte_value: This will be a Flyte IDL StructuredDataset Literal - do not confuse this with the
           StructuredDataset class defined also in this module.
+        :param current_task_metadata: Metadata contains column name and type, and decoder will use it to
+         read specific column of parquet file or database table .It might be different from the metadata in the incoming literal.
         :return: This function can either return an instance of the dataframe that this decoder handles, or an iterator
           of those dataframes.
         """
@@ -596,8 +599,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if column_dict is None or len(column_dict) == 0:
             # but if it does, then we just copy it over
             if incoming_columns is not None and incoming_columns != []:
-                for c in incoming_columns:
-                    final_dataset_columns.append(c)
+                final_dataset_columns = incoming_columns.copy()
         # If the current running task's input does have columns defined
         else:
             final_dataset_columns = self._convert_ordered_dict_of_columns_to_list(column_dict)
@@ -614,7 +616,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         #   t1(input_a: StructuredDataset)  # or
         #   t1(input_a: Annotated[StructuredDataset, my_cols])
         if issubclass(expected_python_type, StructuredDataset):
-            sd = expected_python_type(
+            sd = StructuredDataset(
                 dataframe=None,
                 # Note here that the type being passed in
                 metadata=metad,
@@ -634,19 +636,15 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         updated_metadata: Optional[StructuredDatasetMetadata] = None,
     ) -> DF:
         """
-
-        :param ctx:
+        :param ctx: A FlyteContext, useful in accessing the filesystem and other attributes
         :param sd:
         :param df_type:
-        :param meta: New metadata type, since it might be different from the metadata in the literal.
-        :return:
+        :param updated_metadata: New metadata type, since it might be different from the metadata in the literal.
+        :return: dataframe. It could be pandas dataframe or arrow table, etc.
         """
         protocol = protocol_prefix(sd.uri)
         decoder = self.get_decoder(df_type, protocol, sd.metadata.structured_dataset_type.format)
-        # todo: revisit this, we probably should add a new field to the decoder interface
-        if updated_metadata:
-            sd._metadata = updated_metadata
-        result = decoder.decode(ctx, sd)
+        result = decoder.decode(ctx, sd, updated_metadata)
         if isinstance(result, types.GeneratorType):
             raise ValueError(f"Decoder {decoder} returned iterator {result} but whole value requested from {sd}")
         return result

@@ -39,8 +39,12 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
+        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
     ) -> DataFrame:
         user_ctx = FlyteContext.current_context().user_space_params
+        if current_task_metadata and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
+            return user_ctx.spark_session.read.parquet(flyte_value.uri).select(*columns)
         return user_ctx.spark_session.read.parquet(flyte_value.uri)
 
 
