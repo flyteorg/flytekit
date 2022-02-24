@@ -1,6 +1,8 @@
 from collections import OrderedDict
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
+from flytekit.remote.task import FlyteTask
+from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -40,6 +42,10 @@ FlyteControlPlaneEntity = Union[
     admin_workflow_models.WorkflowSpec,
     workflow_model.Node,
     BranchNodeModel,
+]
+FlyteFetchedEntity = Union[
+    FlyteTask,
+    FlyteWorkflow,
 ]
 
 
@@ -319,6 +325,19 @@ def get_serializable_node(
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
         )
+    elif isinstance(entity.flyte_entity, FlyteTask):
+        # Recursive call doesn't do anything except put the entity on the map.
+        get_serializable(entity_mapping, settings, entity.flyte_entity)
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            output_aliases=[],
+            task_node=workflow_model.TaskNode(
+                reference_id=entity.flyte_entity.id, overrides=TaskNodeOverrides(resources=entity._resources)
+            ),
+        )
     else:
         raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
 
@@ -395,6 +414,8 @@ def get_serializable(
 
     elif isinstance(entity, BranchNode):
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity)
+    elif isinstance(entity, FlyteTask):
+        cp_entity = entity
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 

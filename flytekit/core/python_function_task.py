@@ -224,6 +224,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                         f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
                     )
 
+                # todo: add tasktemplate handling
+
                 # Store the valid task template so that we can pass it to the
                 # DynamicJobSpec later
                 tts.append(model.template)

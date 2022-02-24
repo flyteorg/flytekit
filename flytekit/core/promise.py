@@ -548,6 +548,76 @@ def create_task_output(
     return Output(*promises)  # type: ignore
 
 
+# TODO: Can we merge this with the python_std version and just make the Python type optional?
+def binding_data_without_python_type(
+    ctx: _flyte_context.FlyteContext,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+) -> _literals_models.BindingData:
+    # This handles the case where the given value is the output of another task
+    if isinstance(t_value, Promise):
+        if not t_value.is_ready:
+            return _literals_models.BindingData(promise=t_value.ref)
+
+    elif isinstance(t_value, VoidPromise):
+        raise AssertionError(
+            f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task"
+        )
+
+    elif isinstance(t_value, list):
+        if expected_literal_type.collection_type is None:
+            raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
+        collection = _literals_models.BindingDataCollection(
+            bindings=[
+                binding_data_without_python_type(ctx, expected_literal_type.collection_type, t) for t in t_value
+            ]
+        )
+        return _literals_models.BindingData(collection=collection)
+
+    elif isinstance(t_value, dict):
+        if (
+            expected_literal_type.map_value_type is None
+            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
+        ):
+            raise AssertionError(
+                f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
+            )
+        if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
+            lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
+            return _literals_models.BindingData(scalar=lit.scalar)
+        else:
+            m = _literals_models.BindingDataMap(
+                bindings={
+                    k: binding_data_without_python_type(ctx, expected_literal_type.map_value_type, v)
+                    for k, v in t_value.items()
+                }
+            )
+        return _literals_models.BindingData(map=m)
+
+    elif isinstance(t_value, tuple):
+        raise AssertionError(
+            "Tuples are not a supported type for individual values in Flyte - got a tuple -"
+            f" {t_value}. If using named tuple in an inner task, please, de-reference the"
+            "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
+            "return v.x, instead of v, even if this has a single element"
+        )
+
+    # This is the scalar case - e.g. my_task(in1=5)
+    # This is the main difference from binding_data_from_python_std, we just take type() of the python value here
+    scalar = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type).scalar
+    return _literals_models.BindingData(scalar=scalar)
+
+
+def binding_from_flyte_std(
+    ctx: _flyte_context.FlyteContext,
+    var_name: str,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+) -> _literals_models.Binding:
+    binding_data = binding_data_without_python_type(ctx, expected_literal_type, t_value)
+    return _literals_models.Binding(var=var_name, binding=binding_data)
+
+
 def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
@@ -585,11 +655,11 @@ def binding_data_from_python_std(
             raise AssertionError(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
             )
-        k_type, v_type = DictTransformer.get_dict_types(t_value_type)
         if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
+            k_type, v_type = DictTransformer.get_dict_types(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type)
@@ -703,7 +773,8 @@ class NodeOutput(type_models.OutputReference):
     @property
     def node_id(self):
         """
-        Override the underlying node_id property to refer to SdkNode.
+        Override the underlying node_id property to refer to the Node's id. This is to make sure that overriding
+        node IDs from with_overrides gets serialized correctly.
         :rtype: Text
         """
         return self.node.id
@@ -731,6 +802,19 @@ class SupportsNodeCreation(Protocol):
         ...
 
 
+class HasFlyteInterface(Protocol):
+    @property
+    def name(self) -> str:
+        ...
+
+    @property
+    def interface(self) -> _interface_models.TypedInterface:
+        ...
+
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        ...
+
+
 def extract_obj_name(name: str) -> str:
     """
     Generates a shortened name, without the module information. Useful for node-names etc. Only extracts the final
@@ -741,6 +825,85 @@ def extract_obj_name(name: str) -> str:
     if "." in name:
         return name.split(".")[-1]
     return name
+
+
+def create_and_link_node_from_remote(
+    ctx: FlyteContext,
+    entity: HasFlyteInterface,
+    **kwargs,
+):
+    """
+    This method is used to generate a node with bindings. This is not used in the execution path.
+    """
+    if ctx.compilation_state is None:
+        raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
+
+    used_inputs = set()
+    bindings = []
+
+    # interface = entity.python_interface
+    typed_interface = entity.interface
+
+    for k in sorted(typed_interface.inputs):
+        var = typed_interface.inputs[k]
+        if k not in kwargs:
+            raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+        v = kwargs[k]
+        # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
+        # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
+        # into the function.
+        if isinstance(v, tuple):
+            raise AssertionError(
+                f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
+                f" Check if the predecessor function returning more than one value?"
+            )
+        try:
+            bindings.append(
+                binding_from_flyte_std(
+                    ctx, var_name=k, expected_literal_type=var.type, t_value=v,
+                )
+            )
+            used_inputs.add(k)
+        except Exception as e:
+            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+
+    extra_inputs = used_inputs ^ set(kwargs.keys())
+    if len(extra_inputs) > 0:
+        raise _user_exceptions.FlyteAssertion(
+            "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
+        )
+
+    # Detect upstream nodes
+    # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
+    upstream_nodes = list(
+        set(
+            [
+                input_val.ref.node
+                for input_val in kwargs.values()
+                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
+            ]
+        )
+    )
+
+    flytekit_node = Node(
+        # TODO: Better naming, probably a derivative of the function name.
+        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        metadata=entity.construct_node_metadata(),
+        bindings=sorted(bindings, key=lambda b: b.var),
+        upstream_nodes=upstream_nodes,
+        flyte_entity=entity,
+    )
+    ctx.compilation_state.add_node(flytekit_node)
+
+    if len(typed_interface.outputs) == 0:
+        return VoidPromise(entity.name)
+
+    # Create a node output object for each output, they should all point to this node of course.
+    node_outputs = []
+    for output_name, output_var_model in typed_interface.outputs.items():
+        node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
+
+    return create_task_output(node_outputs)
 
 
 def create_and_link_node(
@@ -819,8 +982,6 @@ def create_and_link_node(
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
-        # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
-        #  is currently just a static str
         node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 

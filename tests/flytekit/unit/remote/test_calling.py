@@ -6,7 +6,7 @@ import pytest
 from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.reference_entity import ReferenceSpec
+from flytekit.models.task import TaskTemplate
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.remote import FlyteLaunchPlan, FlyteTask
@@ -48,18 +48,20 @@ ft = FlyteTask.promote_from_model(t1_spec.template)
 def test_fetched_task():
     @workflow
     def wf(a: int) -> int:
-        return ft(a=a)
+        return ft(a=a).with_overrides(node_name="foobar")
 
     # Should not work unless mocked out.
     with pytest.raises(Exception, match="cannot be run locally"):
         wf(a=3)
 
-    # Should have one reference entity
+    # Should have one task template
     serialized = OrderedDict()
-    get_serializable(serialized, serialization_settings, wf)
+    wf_spec = get_serializable(serialized, serialization_settings, wf)
     vals = [v for v in serialized.values()]
-    refs = [f for f in filter(lambda x: isinstance(x, ReferenceSpec), vals)]
-    assert len(refs) == 1
+    tts = [f for f in filter(lambda x: isinstance(x, TaskTemplate), vals)]
+    assert len(tts) == 1
+    assert wf_spec.template.nodes[0].id == "foobar"
+    assert wf_spec.template.outputs[0].binding.promise.node_id == "foobar"
 
 
 def test_calling_lp():
