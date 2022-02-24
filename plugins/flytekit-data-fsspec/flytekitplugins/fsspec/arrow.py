@@ -47,6 +47,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
+        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
     ) -> pa.Table:
         uri = flyte_value.uri
         if not ctx.file_access.is_remote(uri):
@@ -54,10 +55,8 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         _, path = split_protocol(uri)
 
         columns = None
-        if flyte_value.metadata.structured_dataset_type.columns:
-            columns = []
-            for c in flyte_value.metadata.structured_dataset_type.columns:
-                columns.append(c.name)
+        if current_task_metadata and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             fs = FSSpecPersistence.get_filesystem(uri)
             return pq.read_table(path, filesystem=fs, columns=columns)

@@ -221,6 +221,7 @@ def test_sd():
             self,
             ctx: FlyteContext,
             flyte_value: literals.StructuredDataset,
+            current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
         ) -> typing.Union[typing.Generator[pd.DataFrame, None, None]]:
             yield pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
@@ -241,8 +242,9 @@ def test_sd():
             self,
             ctx: FlyteContext,
             flyte_value: literals.StructuredDataset,
+            current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
         ) -> pd.DataFrame:
-            pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+            return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
     StructuredDatasetTransformerEngine.register(
         MockPandasDecodingHandlers(pd.DataFrame, "tmpfs"), default_for_type=False, override=True

@@ -616,7 +616,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         #   t1(input_a: StructuredDataset)  # or
         #   t1(input_a: Annotated[StructuredDataset, my_cols])
         if issubclass(expected_python_type, StructuredDataset):
-            sd = StructuredDataset(
+            sd = expected_python_type(
                 dataframe=None,
                 # Note here that the type being passed in
                 metadata=metad,
@@ -633,18 +633,18 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         ctx: FlyteContext,
         sd: literals.StructuredDataset,
         df_type: Type[DF],
-        updated_metadata: Optional[StructuredDatasetMetadata] = None,
+        metadata: Optional[StructuredDatasetMetadata] = None,
     ) -> DF:
         """
         :param ctx: A FlyteContext, useful in accessing the filesystem and other attributes
         :param sd:
         :param df_type:
-        :param updated_metadata: New metadata type, since it might be different from the metadata in the literal.
+        :param metadata: New metadata type, since it might be different from the metadata in the literal.
         :return: dataframe. It could be pandas dataframe or arrow table, etc.
         """
         protocol = protocol_prefix(sd.uri)
         decoder = self.get_decoder(df_type, protocol, sd.metadata.structured_dataset_type.format)
-        result = decoder.decode(ctx, sd, updated_metadata)
+        result = decoder.decode(ctx, sd, metadata)
         if isinstance(result, types.GeneratorType):
             raise ValueError(f"Decoder {decoder} returned iterator {result} but whole value requested from {sd}")
         return result

@@ -54,6 +54,7 @@ class MockBQDecodingHandlers(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
+        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
     ) -> pd.DataFrame:
         return pd_df
 
@@ -86,6 +87,7 @@ class NumpyDecodingHandlers(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
+        current_task_metadata: typing.Optional[StructuredDatasetMetadata] = None,
     ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
