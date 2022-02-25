@@ -3,16 +3,19 @@ from collections import OrderedDict
 
 import pytest
 
+from flytekit import dynamic
 from flytekit.core import context_manager
-from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.models.task import TaskTemplate
-from flytekit.models.core.workflow import WorkflowTemplate
 from flytekit.core.task import task
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteAssertion
+from flytekit.models.core.workflow import WorkflowTemplate
+from flytekit.models.task import TaskTemplate
 from flytekit.remote import FlyteLaunchPlan, FlyteTask
-from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.remote.interface import TypedInterface
+from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -66,6 +69,14 @@ def test_fetched_task():
     assert wf_spec.template.outputs[0].binding.promise.node_id == "foobar"
 
 
+def test_misnamed():
+    with pytest.raises(FlyteAssertion):
+
+        @workflow
+        def wf(a: int) -> int:
+            return ft(b=a)
+
+
 def test_calling_lp():
     sub_wf_lp = LaunchPlan.get_or_create(sub_wf)
     serialized = OrderedDict()
@@ -90,10 +101,51 @@ def test_calling_lp():
 
 
 def test_dynamic():
-    ...
+    @dynamic
+    def my_subwf(a: int) -> typing.List[int]:
+        s = []
+        for i in range(a):
+            s.append(ft(a=i))
+        return s
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(
+            context_manager.SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+                fast_serialization_settings=FastSerializationSettings(enabled=True),
+            )
+        )
+    ) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                    additional_context={
+                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
+                        "dynamic_dest_dir": "/User/flyte/workflows",
+                    },
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 2})
+            # Test that it works
+            dynamic_job_spec = my_subwf.dispatch_execute(ctx, input_literal_map)
+            assert len(dynamic_job_spec._nodes) == 2
+            assert len(dynamic_job_spec.tasks) == 1
+            assert dynamic_job_spec.tasks[0].id == ft.id
+
+            # Test that the fast execute stuff does not get applied because the commands of tasks fetched from
+            # Admin should never change.
+            args = " ".join(dynamic_job_spec.tasks[0].container.args)
+            assert not args.startswith("pyflyte-fast-execute")
 
 
 def test_calling_wf():
+    # No way to fetch from Admin in unit tests so we serialize and then promote back
     serialized = OrderedDict()
     wf_spec = get_serializable(serialized, serialization_settings, sub_wf)
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
@@ -104,6 +156,7 @@ def test_calling_wf():
         y = t1(a=a)
         return fwf(a=y, b=b)
 
+    # No way to fetch from Admin in unit tests so we serialize and then promote back
     serialized = OrderedDict()
     wf_spec = get_serializable(serialized, serialization_settings, parent_1)
     # Get task_specs from the second one, merge with the first one. Admin normally would be the one to do this.
@@ -126,4 +179,3 @@ def test_calling_wf():
     wf_spec = get_serializable(serialized, serialization_settings, parent_2)
     # Make sure both were picked up.
     assert len(wf_spec.sub_workflows) == 2
-    print(wf_spec)

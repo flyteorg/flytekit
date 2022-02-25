@@ -1,8 +1,6 @@
 from collections import OrderedDict
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit.remote.task import FlyteTask
-from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -24,6 +22,8 @@ from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import TaskNodeOverrides
+from flytekit.remote.task import FlyteTask
+from flytekit.remote.workflow import FlyteWorkflow
 
 FlyteLocalEntity = Union[
     PythonTask,

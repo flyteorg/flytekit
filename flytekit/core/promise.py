@@ -568,9 +568,7 @@ def binding_data_without_python_type(
         if expected_literal_type.collection_type is None:
             raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
         collection = _literals_models.BindingDataCollection(
-            bindings=[
-                binding_data_without_python_type(ctx, expected_literal_type.collection_type, t) for t in t_value
-            ]
+            bindings=[binding_data_without_python_type(ctx, expected_literal_type.collection_type, t) for t in t_value]
         )
         return _literals_models.BindingData(collection=collection)
 
@@ -841,7 +839,6 @@ def create_and_link_node_from_remote(
     used_inputs = set()
     bindings = []
 
-    # interface = entity.python_interface
     typed_interface = entity.interface
 
     for k in sorted(typed_interface.inputs):
@@ -860,7 +857,10 @@ def create_and_link_node_from_remote(
         try:
             bindings.append(
                 binding_from_flyte_std(
-                    ctx, var_name=k, expected_literal_type=var.type, t_value=v,
+                    ctx,
+                    var_name=k,
+                    expected_literal_type=var.type,
+                    t_value=v,
                 )
             )
             used_inputs.add(k)
