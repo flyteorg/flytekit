@@ -65,7 +65,7 @@ flyteidl==0.22.3
     # via flytekit
 furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
-googleapis-common-protos==1.54.0
+googleapis-common-protos==1.55.0
     # via flyteidl
 grpcio==1.44.0
     # via
@@ -125,7 +125,10 @@ protobuf==3.19.4
     #   googleapis-common-protos
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
-    # via flyteidl
+    # via
+    #   flyteidl
+    #   flytekit
+
 py==1.11.0
     # via retry
 pyarrow==6.0.1
