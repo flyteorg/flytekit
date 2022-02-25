@@ -656,9 +656,9 @@ class SerializationSettings(object):
     """
 
     image_config: ImageConfig
-    project: str = PROJECT_PLACEHOLDER
-    domain: str = DOMAIN_PLACEHOLDER
-    version: str = VERSION_PLACEHOLDER
+    project: str
+    domain: str
+    version: str
     env: Optional[Dict[str, str]] = None
     flytekit_virtualenv_root: Optional[str] = None
     python_interpreter: Optional[str] = None
