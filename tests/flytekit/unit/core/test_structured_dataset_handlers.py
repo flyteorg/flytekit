@@ -6,6 +6,7 @@ import pytest
 
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
+from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured import basic_dfs
 from flytekit.types.structured.structured_dataset import (
@@ -26,12 +27,11 @@ def test_pandas():
     decoder = basic_dfs.ParquetToPandasDecodingHandler("/")
 
     ctx = context_manager.FlyteContextManager.current_context()
-    sd = StructuredDataset(
-        dataframe=df,
-    )
-    sd_lit = encoder.encode(ctx, sd, StructuredDatasetType(format="parquet"))
+    sd = StructuredDataset(dataframe=df)
+    sd_type = StructuredDatasetType(format="parquet")
+    sd_lit = encoder.encode(ctx, sd, sd_type)
 
-    df2 = decoder.decode(ctx, sd_lit)
+    df2 = decoder.decode(ctx, sd_lit, StructuredDatasetMetadata(sd_type))
     assert df.equals(df2)
 
 

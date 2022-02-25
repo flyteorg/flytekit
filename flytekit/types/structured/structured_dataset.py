@@ -656,10 +656,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     ) -> Generator[DF, None, None]:
         protocol = protocol_prefix(sd.uri)
         decoder = self.DECODERS[df_type][protocol][sd.metadata.structured_dataset_type.format]
-        # todo: revisit this, should we add a new field to the decoder interface
-        if updated_metadata:
-            sd._metadata = updated_metadata
-        result = decoder.decode(ctx, sd)
+        result = decoder.decode(ctx, sd, updated_metadata)
         if not isinstance(result, types.GeneratorType):
             raise ValueError(f"Decoder {decoder} didn't return iterator {result} but should have from {sd}")
         return result
