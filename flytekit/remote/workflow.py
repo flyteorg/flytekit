@@ -59,6 +59,11 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
         self._launch_plans = launch_plans
         self._compiled_closure = compiled_closure
         self._node_map = None
+        self._name = id.name
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def sub_workflows(self) -> Optional[Dict[id_models.Identifier, _workflow_models.WorkflowTemplate]]:

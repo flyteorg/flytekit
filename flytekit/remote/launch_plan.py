@@ -15,13 +15,18 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
     """A class encapsulating a remote Flyte launch plan."""
 
     def __init__(self, id, *args, **kwargs):
-        super(FlyteLaunchPlan, self).__init__(*args, id=id, **kwargs)
+        super(FlyteLaunchPlan, self).__init__(*args, **kwargs)
         # Set all the attributes we expect this class to have
         self._id = id
+        self._name = id.name
 
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
         self._python_interface = None
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @classmethod
     def promote_from_model(

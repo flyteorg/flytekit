@@ -1,29 +1,18 @@
+from abc import ABC, abstractmethod
 from typing import Any, Optional, Tuple, Union
 
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.promise import Promise, VoidPromise, create_and_link_node_from_remote, extract_obj_name
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import remote_logger as logger
-from flytekit.models.core.identifier import Identifier
 from flytekit.models.core.workflow import NodeMetadata
 
 
-class RemoteEntity(object):
-    def __init__(self, id: Identifier, *args, **kwargs):
-        from flytekit.remote.launch_plan import FlyteLaunchPlan
-        # TODO: This is a hack, but not sure how to get around this. Refactor this in the future.
-        #  The issue is that FlyteLaunchPlan, FlyteTask, and FlyteWorkflow all should inherit from this
-        #  class, which provides compilation (i.e. node-creation) abilities. However, FlyteLaunchPlan also
-        #  subclasses something (LaunchPlanSpec) which doesn't have an id field.
-        if type(self) is FlyteLaunchPlan:
-            super().__init__(*args, **kwargs)
-        else:
-            super().__init__(id, *args, **kwargs)
-        self._name = id.name
-
+class RemoteEntity(ABC):
     @property
+    @abstractmethod
     def name(self) -> str:
-        return self._name
+        ...
 
     def construct_node_metadata(self) -> NodeMetadata:
         """

@@ -25,6 +25,11 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskT
             config=config,
         )
         self._python_interface = None
+        self._name = id.name
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def resource_type(self) -> _identifier_model.ResourceType:

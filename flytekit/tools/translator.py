@@ -22,10 +22,9 @@ from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import TaskNodeOverrides
+from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.remote.launch_plan import FlyteLaunchPlan
-
 
 FlyteLocalEntity = Union[
     PythonTask,
