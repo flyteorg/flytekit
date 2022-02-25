@@ -571,7 +571,7 @@ class StructuredDatasetMetadata(_common.FlyteIdlEntity):
 
 
 class StructuredDataset(_common.FlyteIdlEntity):
-    def __init__(self, uri: str, metadata: StructuredDatasetMetadata):
+    def __init__(self, uri: str, metadata: Optional[StructuredDatasetMetadata] = None):
         """
         A strongly typed schema that defines the interface of data retrieved from the underlying storage medium.
         """
