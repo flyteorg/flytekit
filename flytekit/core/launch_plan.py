@@ -301,8 +301,8 @@ class LaunchPlan(object):
         FlyteEntities.entities.append(self)
 
     def clone_with(self, name: str,
-                   parameters: _interface_models.ParameterMap,
-                   fixed_inputs: _literal_models.LiteralMap,
+                   parameters: _interface_models.ParameterMap = None,
+                   fixed_inputs: _literal_models.LiteralMap = None,
                    schedule: _schedule_model.Schedule = None,
                    notifications: List[_common_models.Notification] = None,
                    labels: _common_models.Labels = None,
