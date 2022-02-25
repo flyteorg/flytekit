@@ -20,9 +20,9 @@ from flyteidl.core import literals_pb2 as literals_pb2
 
 import flytekit
 from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.configuration import sdk as sdk_config
 from flytekit.core import constants, context_manager, utils
 from flytekit.core.interface import Interface
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 from flytekit.loggers import remote_logger
@@ -35,8 +35,6 @@ except ImportError:
     from singledispatchmethod import singledispatchmethod
 
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.clis.flyte_cli.main import _get_config_file_path
-from flytekit.clis.sdk_in_container import serialize
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import Config, FlyteContextManager, SerializationSettings
 from flytekit.core.data_persistence import FileAccessProvider
@@ -44,7 +42,6 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
-from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models import security
 from flytekit.models.admin.common import Sort
@@ -146,9 +143,12 @@ class FlyteRemote(object):
             default_project: typing.Optional[str] = None,
             default_domain: typing.Optional[str] = None,
             file_access: typing.Optional[FileAccessProvider] = None,
+            **kwargs
     ):
         """Initialize a FlyteRemote object.
 
+        :type kwargs: All arguments that can be passed to create the SynchronousFlyteClient. These are usually grpc
+            parameters, if you want to customize credentials, ssl handling etc.
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
         :param file_access: file access provider to use for offloading non-literal inputs/outputs.
@@ -157,14 +157,14 @@ class FlyteRemote(object):
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
-        self._client = SynchronousFlyteClient(config.platform.endpoint, insecure=config.platform.insecure)
+        self._client = SynchronousFlyteClient(config.platform, **kwargs)
         self._config = config
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
         self._default_domain = default_domain
 
         self._file_access = file_access or FileAccessProvider(
-            local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
+            local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
             raw_output_prefix="/tmp",
         )
 
@@ -726,9 +726,6 @@ class FlyteRemote(object):
         """
         if name or version:
             remote_logger.warning(f"The 'name' and 'version' arguments are ignored for entities of type {type(entity)}")
-        resolved_identifiers = self._resolve_identifier_kwargs(
-            entity, project, domain, entity.id.name, entity.id.version
-        )
         launch_plan = self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version)
         return self.execute(
             launch_plan,
@@ -768,7 +765,13 @@ class FlyteRemote(object):
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except Exception:
-            flyte_task: FlyteTask = self.register(entity, **resolved_identifiers_dict)
+            if issubclass(entity, PythonAutoContainerTask):
+                raise ValueError(
+                    f"PythonTask {entity.name} not already registered. It cannot be auto-registered as the container"
+                    f" image cannot be automatically deducted. Please register and then execute.")
+            ss = SerializationSettings(image_config=None, project=project or self.default_project,
+                                       domain=domain or self._default_domain, version=version)
+            flyte_task: FlyteTask = self.register_task(entity, ss)
         flyte_task.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_task,
@@ -797,30 +800,34 @@ class FlyteRemote(object):
         """Execute an @workflow-decorated function."""
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        ss = SerializationSettings(image_config=None, project=project or self.default_project,
+                                   domain=domain or self._default_domain, version=version)
 
         try:
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logging.info("Try to register FlyteWorkflow because it wasn't found in Flyte Admin!")
-            self._register_entity_if_not_exists(entity, resolved_identifiers_dict)
-            flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
+            flyte_workflow: FlyteWorkflow = self.register_workflow(entity, ss, version=version, all_downstream=True,
+                                                                   options=options)
         flyte_workflow.guessed_python_interface = entity.python_interface
 
         ctx = context_manager.FlyteContext.current_context()
         try:
-            self.fetch_launch_plan(**resolved_identifiers_dict)
+            flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logging.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
             default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-            self.register(default_lp, **resolved_identifiers_dict)
+            self.register_launch_plan(default_lp, ss, version=version, options=options)
+            flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
 
         return self.execute(
-            flyte_workflow,
+            flyte_lp,
             inputs,
-            project=resolved_identifiers.project,
-            domain=resolved_identifiers.domain,
+            project=project,
+            domain=domain,
             execution_name=execution_name,
             wait=wait,
+            options=options,
         )
 
     def _(

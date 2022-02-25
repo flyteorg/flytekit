@@ -319,6 +319,7 @@ class Config(object):
     platform: PlatformConfig
     secrets: SecretsConfig = SecretsConfig()
     stats: StatsConfig = StatsConfig()
+    local_sandbox_path: str = "/tmp"
 
     @classmethod
     def from_file(
@@ -330,6 +331,7 @@ class Config(object):
             platform=PlatformConfig.from_config(config_file),
             secrets=SecretsConfig.from_config(config_file),
             stats=StatsConfig.from_config(config_file),
+            local_sandbox_path=config_file.get(configuration.LocalSDK.LOCAL_SANDBOX),
         )
 
 
