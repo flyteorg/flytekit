@@ -65,7 +65,7 @@ There is only one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPlan>` 
 .. autoclass:: flytekit.core.launch_plan.LaunchPlan
    :noindex:
 
-.. exception_handling:
+.. _exception_handling:
 
 ******************
 Exception Handling
