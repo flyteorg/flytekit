@@ -1,6 +1,6 @@
 from typing import Optional
 
-from flytekit.core import hash as _hash_mixin
+from flytekit.core import hash as hash_mixin
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import remote_logger as logger
@@ -10,7 +10,7 @@ from flytekit.remote import interface as _interfaces
 from flytekit.remote.remote_callable import RemoteEntity
 
 
-class FlyteTask(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskTemplate):
+class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskTemplate):
     """A class encapsulating a remote Flyte task."""
 
     def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None):

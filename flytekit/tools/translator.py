@@ -24,6 +24,8 @@ from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import TaskNodeOverrides
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
+from flytekit.remote.launch_plan import FlyteLaunchPlan
+
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -360,6 +362,23 @@ def get_serializable_node(
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_template.id),
         )
+    elif isinstance(entity.flyte_entity, FlyteLaunchPlan):
+        # Recursive call doesn't do anything except put the entity on the map.
+        get_serializable(entity_mapping, settings, entity.flyte_entity)
+        # Node's inputs should not contain the data which is fixed input
+        node_input = []
+        for b in entity.bindings:
+            if b.var not in entity.flyte_entity.fixed_inputs.literals:
+                node_input.append(b)
+
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=node_input,
+            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            output_aliases=[],
+            workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
+        )
     else:
         raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
 
@@ -437,10 +456,7 @@ def get_serializable(
     elif isinstance(entity, BranchNode):
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity)
 
-    elif isinstance(entity, FlyteTask):
-        cp_entity = entity
-
-    elif isinstance(entity, FlyteWorkflow):
+    elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow) or isinstance(entity, FlyteLaunchPlan):
         cp_entity = entity
 
     else:
