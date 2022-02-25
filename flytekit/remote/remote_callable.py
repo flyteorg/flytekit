@@ -1,5 +1,4 @@
 from typing import Optional, Any, Union, Tuple
-from typing_extensions import Protocol
 
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.promise import (
@@ -10,22 +9,18 @@ from flytekit.core.promise import (
 )
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import remote_logger as logger
+from flytekit.models.core.identifier import Identifier
 from flytekit.models.core.workflow import NodeMetadata
-from flytekit.remote.interface import TypedInterface
 
 
-class HasNameAndFlyteInterface(Protocol):
+class RemoteEntity(object):
+    def __init__(self, id: Identifier, *args, **kwargs):
+        super().__init__(id, *args, **kwargs)
+        self._name = id.name
+
     @property
     def name(self) -> str:
-        ...
-
-    @property
-    def interface(self) -> TypedInterface:
-        ...
-
-
-class RemoteEntity(HasNameAndFlyteInterface):
-    """A class encapsulating a remote Flyte task."""
+        return self._name
 
     def construct_node_metadata(self) -> NodeMetadata:
         """
@@ -36,7 +31,7 @@ class RemoteEntity(HasNameAndFlyteInterface):
         )
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node_from_remote(ctx, entity=self, **kwargs)
+        return create_and_link_node_from_remote(ctx, entity=self, **kwargs)  # noqa
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:

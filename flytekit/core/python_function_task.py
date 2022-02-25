@@ -210,7 +210,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             for entity, model in model_entities.items():
                 # We only care about gathering tasks here. Launch plans are handled by
                 # propeller. Subworkflows should already be in the workflow spec.
-                if not isinstance(entity, Task):
+                if not isinstance(entity, Task) and not isinstance(entity, task_models.TaskTemplate):
+                    continue
+
+                # Handle FlyteTask
+                if isinstance(entity, task_models.TaskTemplate):
+                    tts.append(entity)
                     continue
 
                 # We are currently not supporting reference tasks since these will
@@ -223,8 +228,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                     raise TypeError(
                         f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
                     )
-
-                # todo: add tasktemplate handling
 
                 # Store the valid task template so that we can pass it to the
                 # DynamicJobSpec later

@@ -989,3 +989,19 @@ def test_guess_of_dataclass():
     lr = LiteralsResolver(lit_dict)
     assert lr.get("a", Foo) == foo
     assert hasattr(lr.get("a", Foo), "hello") is True
+
+
+
+
+class A():
+    def __init__(self, xx: int, *args, **kwargs):
+        print(xx)
+        print(args, kwargs)
+
+
+class B(A):
+    def __init__(self, y: str, xx: int, *args, **kwargs):
+        super().__init__(y, xx, *args, **kwargs)
+
+
+

@@ -7,9 +7,11 @@ from flytekit.core import context_manager
 from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.models.task import TaskTemplate
+from flytekit.models.core.workflow import WorkflowTemplate
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.remote import FlyteLaunchPlan, FlyteTask
+from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.remote.interface import TypedInterface
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
@@ -85,3 +87,43 @@ def test_calling_lp():
     wf_spec = get_serializable(serialized, serialization_settings, wf2)
     print(wf_spec.template.nodes[0].workflow_node.launchplan_ref)
     assert wf_spec.template.nodes[0].workflow_node.launchplan_ref == lp_model.id
+
+
+def test_dynamic():
+    ...
+
+
+def test_calling_wf():
+    serialized = OrderedDict()
+    wf_spec = get_serializable(serialized, serialization_settings, sub_wf)
+    task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
+    fwf = FlyteWorkflow.promote_from_model(wf_spec.template, tasks=task_templates)
+
+    @workflow
+    def parent_1(a: int, b: str) -> typing.Tuple[int, str]:
+        y = t1(a=a)
+        return fwf(a=y, b=b)
+
+    serialized = OrderedDict()
+    wf_spec = get_serializable(serialized, serialization_settings, parent_1)
+    # Get task_specs from the second one, merge with the first one. Admin normally would be the one to do this.
+    task_templates_p1, wf_specs, lp_specs = gather_dependent_entities(serialized)
+    for k, v in task_templates.items():
+        task_templates_p1[k] = v
+
+    # Pick out the subworkflow templates from the ordereddict. We can't use the output of the gather_dependent_entities
+    # function because that only looks for WorkflowSpecs
+    subwf_templates = {x.id: x for x in list(filter(lambda x: isinstance(x, WorkflowTemplate), serialized.values()))}
+    fwf_p1 = FlyteWorkflow.promote_from_model(wf_spec.template, sub_workflows=subwf_templates, tasks=task_templates_p1)
+
+    @workflow
+    def parent_2(a: int, b: str) -> typing.Tuple[int, str]:
+        x, y = fwf_p1(a=a, b=b)
+        z = t1(a=x)
+        return z, y
+
+    serialized = OrderedDict()
+    wf_spec = get_serializable(serialized, serialization_settings, parent_2)
+    # Make sure both were picked up.
+    assert len(wf_spec.sub_workflows) == 2
+    print(wf_spec)
