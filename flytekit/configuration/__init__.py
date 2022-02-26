@@ -255,13 +255,23 @@ class SecretsConfig(object):
 
 @dataclass
 class S3Config(object):
+    """
+    S3 specific configuration
+    """
     enable_debug: bool = False
     endpoint: typing.Optional[str] = None
     retries: int = 3
     backoff: datetime.timedelta = datetime.timedelta(seconds=5)
+    access_key_id: typing.Optional[str] = None
+    secret_access_key: typing.Optional[str] = None
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> S3Config:
+        """
+        Automatically configure
+        :param config_file:
+        :return: Configr
+        """
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "enable_debug", _internal.AWS.ENABLE_DEBUG.read_from_file(config_file))
@@ -269,11 +279,16 @@ class S3Config(object):
         kwargs = set_if_exists(kwargs, "retries", _internal.AWS.RETRIES.read(config_file))
         kwargs = set_if_exists(kwargs, "backoff", _internal.AWS.BACKOFF_SECONDS.read(
             config_file, transform=lambda x: datetime.timedelta(seconds=x)))
+        kwargs = set_if_exists(kwargs, "access_key_id", _internal.AWS.S3_ACCESS_KEY_ID.read(config_file))
+        kwargs = set_if_exists(kwargs, "secret_access_key", _internal.AWS.S3_SECRET_ACCESS_KEY.read(config_file))
         return S3Config(**kwargs)
 
 
 @dataclass
 class GCSConfig(object):
+    """
+    Any GCS specific configuration.
+    """
     gsutil_parallelism: bool = False
 
     @classmethod
@@ -286,6 +301,11 @@ class GCSConfig(object):
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class DataConfig(object):
+    """
+    Any data storage specific configuration. Please do not use this to store secrets, in S3 case, as it is used in
+    Flyte sandbox environment we store the access key id and secret.
+    All DataPersistence plugins are passed all DataConfig and the plugin should correctly use the right config
+    """
     s3: S3Config = S3Config()
     gcs: GCSConfig = GCSConfig()
 
@@ -329,6 +349,14 @@ class Config(object):
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
+        """
+        Automatically constructs the Config Object. The order of precendence is as follows
+          1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
+          2. If not found in environment then values ar read from the config file
+          3. If not found in the file, then the default values are used.
+        :param config_file: file path to read the config from, if not specified default locations are searched
+        :return: Config
+        """
         config_file = get_config_file(config_file)
         kwargs = {}
         set_if_exists(kwargs, "local_sandbox_path", _internal.LocalSDK.LOCAL_SANDBOX.read(cfg=config_file))
@@ -342,16 +370,35 @@ class Config(object):
 
     @classmethod
     def for_sandbox(cls) -> Config:
+        """
+        Constructs a new Config object specifically to connect to :std:ref:`deploy-sandbox-local`.
+        If you are using a hosted Sandbox like environment, then you may need to use port-forward or ingress urls
+        :return: Config
+        """
         return Config(
             platform=PlatformConfig(insecure=True),
-            data_config=DataConfig(s3=S3Config(endpoint="localhost:30084")),
+            data_config=DataConfig(
+                s3=S3Config(endpoint="localhost:30084", access_key_id="minio", secret_access_key="miniostorage")),
         )
 
     @classmethod
-    def for_endpoint(cls, endpoint: str, insecure: bool = False,
+    def for_endpoint(cls, endpoint: str, insecure: bool = False, data_config: typing.Optional[DataConfig] = None,
                      config_file: typing.Union[str, ConfigFile] = None) -> Config:
+        """
+        Creates an automatic config for the given endpoint and uses the config_file or environment variable for default.
+        Refer to `Config.auto()` to understand the default bootstrap behavior.
+
+        data_config can be used to configure how data is downloaded or uploaded to a specific Blob storage like S3 / GCS etc.
+        But, for permissions to a specific backend just use Cloud providers reqcommendation. If using fsspec, then
+        refer to fsspec documentation
+        :param endpoint: -> Endpoint where Flyte admin is available
+        :param insecure: -> if the conection should be inseucre
+        :param data_config: -> Data config, if using specialized connection params like minio etc
+        :param config_file: -> Optional config file in the flytekit config format or flytectl formatl.
+        :return: Config
+        """
         c = cls.auto(config_file)
-        return c.with_params(platform=PlatformConfig.for_endpoint(endpoint, insecure))
+        return c.with_params(platform=PlatformConfig.for_endpoint(endpoint, insecure), data_config=data_config)
 
 
 @dataclass_json

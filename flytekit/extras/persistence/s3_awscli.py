@@ -29,16 +29,12 @@ def _update_cmd_config_and_execute(s3_cfg: S3Config, cmd: List[str]):
         cmd.insert(1, "--endpoint-url")
 
     if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
-        # TODO this is for backwards compatiblity. Once propeller sets only Access Key then we can ignore this
-        v = internal.AWS.S3_ACCESS_KEY_ID.read_from_env()
-        if v:
-            env[S3_ACCESS_KEY_ID_ENV_NAME] = v
+        if s3_cfg.access_key_id:
+            env[S3_ACCESS_KEY_ID_ENV_NAME] = s3_cfg.access_key_id
 
     if S3_SECRET_ACCESS_KEY_ENV_NAME not in os.environ:
-        # TODO this is for backwards compatiblity. Once propeller sets only Access Key then we can ignore this
-        v = internal.AWS.S3_SECRET_ACCESS_KEY.read_from_env()
-        if v:
-            env[S3_SECRET_ACCESS_KEY_ENV_NAME] = v
+        if s3_cfg.secret_access_key:
+            env[S3_SECRET_ACCESS_KEY_ENV_NAME] = s3_cfg.secret_access_key
 
     retry = 0
     while True:

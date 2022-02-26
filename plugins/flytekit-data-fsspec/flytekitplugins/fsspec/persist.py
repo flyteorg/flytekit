@@ -5,7 +5,7 @@ import fsspec
 from fsspec.core import split_protocol
 from fsspec.registry import known_implementations
 
-from flytekit.configuration import S3Config, internal
+from flytekit.configuration import S3Config, internal, DataConfig
 from flytekit.extend import DataPersistence, DataPersistencePlugins
 from flytekit.loggers import logger
 
@@ -13,21 +13,22 @@ from flytekit.loggers import logger
 S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
 S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
 
+# Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
+# for key and secret
+_FSSPEC_S3_KEY_ID = "key"
+_FSSPEC_S3_SECRET = "secret"
+
 
 def s3_setup_args(s3_cfg: S3Config):
+    kwargs = {}
     if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
-        # TODO this is for backwards compatiblity. Once propeller sets only Access Key then we can ignore this
-        v = internal.AWS.S3_ACCESS_KEY_ID.read_from_env()
-        if v:
-            os.environ[S3_ACCESS_KEY_ID_ENV_NAME] = v
+        if s3_cfg.access_key_id:
+            kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
 
     if S3_SECRET_ACCESS_KEY_ENV_NAME not in os.environ:
-        # TODO this is for backwards compatiblity. Once propeller sets only Access Key then we can ignore this
-        v = internal.AWS.S3_SECRET_ACCESS_KEY.read_from_env()
-        if v:
-            os.environ[S3_SECRET_ACCESS_KEY_ENV_NAME] = v
+        if s3_cfg.secret_access_key:
+            kwargs[_FSSPEC_S3_SECRET] = s3_cfg.secret_access_key
 
-    kwargs = {}
     # S3fs takes this as a special arg
     if s3_cfg.endpoint is not None:
         kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
@@ -43,9 +44,10 @@ class FSSpecPersistence(DataPersistence):
     method
     """
 
-    def __init__(self, default_prefix=None):
+    def __init__(self, default_prefix=None, data_config: typing.Optional[DataConfig] = None):
         super(FSSpecPersistence, self).__init__(name="fsspec-persistence", default_prefix=default_prefix)
         self.default_protocol = self.get_protocol(default_prefix)
+        self._data_cfg = data_config if data_config else DataConfig.auto()
 
     @staticmethod
     def get_protocol(path: typing.Optional[str] = None):
@@ -58,14 +60,13 @@ class FSSpecPersistence(DataPersistence):
             protocol = "file"
         return protocol
 
-    @staticmethod
-    def get_filesystem(path: str) -> fsspec.AbstractFileSystem:
+    def get_filesystem(self, path: str) -> fsspec.AbstractFileSystem:
         protocol = FSSpecPersistence.get_protocol(path)
         kwargs = {}
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
         elif protocol == "s3":
-            kwargs = s3_setup_args()
+            kwargs = s3_setup_args(self._data_cfg.s3)
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
     @staticmethod

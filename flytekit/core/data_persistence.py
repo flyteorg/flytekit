@@ -430,5 +430,6 @@ DataPersistencePlugins.register_plugin("/", DiskPersistence)
 # TODO make this use tmpdir
 tmp_dir = os.path.join("/tmp/flyte", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 default_local_file_access_provider = FileAccessProvider(
-    local_sandbox_dir=os.path.join(tmp_dir, "sandbox"), raw_output_prefix=os.path.join(tmp_dir, "raw")
+    local_sandbox_dir=os.path.join(tmp_dir, "sandbox"), raw_output_prefix=os.path.join(tmp_dir, "raw"),
+    data_config=DataConfig.auto(),
 )

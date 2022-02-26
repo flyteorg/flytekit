@@ -166,6 +166,7 @@ class FlyteRemote(object):
         self._file_access = file_access or FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
             raw_output_prefix="/tmp",
+            data_config=config.data_config,
         )
 
         # Save the file access object locally, but also make it available for use from the context.
@@ -388,32 +389,6 @@ class FlyteRemote(object):
         )
         return [FlyteTask.promote_from_model(t.closure.compiled_task.template) for t in t_models]
 
-    ######################
-    # Serialize Entities #
-    ######################
-
-    @singledispatchmethod
-    def _serialize(
-            self,
-            entity: FlyteLocalEntity,
-            project: str = None,
-            domain: str = None,
-            version: str = None,
-            env: typing.Dict[str, str] = None,
-    ) -> FlyteControlPlaneEntity:
-        """Serialize an entity for registration."""
-        serialized_entity_cache = OrderedDict()
-        return get_serializable(
-            serialized_entity_cache,
-            self.config.get_serialization_settings(
-                project=project or self.default_project,
-                domain=domain or self.default_domain,
-                version=version or self.version,
-                env=env,
-            ),
-            entity=entity,
-        )
-
     #####################
     # Register Entities #
     #####################
@@ -578,6 +553,7 @@ class FlyteRemote(object):
                     )
             literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, input_python_types)
         try:
+            print(f"Launching {entity.id}")
             # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
             # and domain, which is specified in the first two arguments of client.create_execution. This is useful
@@ -604,7 +580,11 @@ class FlyteRemote(object):
                 literal_inputs,
             )
         except user_exceptions.FlyteEntityAlreadyExistsException:
-            exec_id = WorkflowExecutionIdentifier(project, domain, execution_name)
+            exec_id = WorkflowExecutionIdentifier(
+                project=project or self.default_project,
+                domain=domain or self.default_domain,
+                name=execution_name
+            )
         execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
         if wait:
             return self.wait(execution)
