@@ -18,7 +18,6 @@ from datetime import datetime, timedelta
 import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
-import flytekit
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.core import constants, context_manager, utils
 from flytekit.core.interface import Interface
@@ -36,7 +35,8 @@ except ImportError:
 
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import Config, FlyteContextManager, SerializationSettings
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.configuration import Config, SerializationSettings
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
@@ -77,14 +77,14 @@ class Options(object):
         specified defaults will be used
 
     """
-    raw_data_prefix: typing.Optional[str] = ""
+    raw_data_prefix: typing.Optional[str] = None
     auth_role: typing.Optional[common_models.AuthRole] = None
     labels: typing.Optional[common_models.Labels] = None
     annotations: typing.Optional[common_models.Annotations] = None
     security_context: typing.Optional[security.SecurityContext] = None
     max_parallelism: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
-    disable_notifications: typing.Optional[bool] = False
+    disable_notifications: typing.Optional[bool] = None
 
 
 @dataclass
@@ -470,7 +470,7 @@ class FlyteRemote(object):
         if default_launch_plan:
             default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
             self.register_launch_plan(default_lp, serialization_settings, version=version, options=options)
-            flytekit.logger.debug("Created default launch plan for Workflow")
+            remote_logger.debug("Created default launch plan for Workflow")
 
         if all_downstream:
             self._register_entity_if_not_exists(entity, serialization_settings=serialization_settings, version=version,
@@ -558,10 +558,15 @@ class FlyteRemote(object):
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
-        if options.disable_notifications:
-            notifications = None
+        if not options:
+            options = Options()
+        if options.disable_notifications is not None:
+            if options.disable_notifications:
+                notifications = None
+            else:
+                notifications = NotificationList(options.notifications)
         else:
-            notifications = NotificationList(options.notifications)
+            notifications = NotificationList([])
 
         with self.remote_context() as ctx:
             input_python_types = entity.guessed_python_interface.inputs

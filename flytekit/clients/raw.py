@@ -14,7 +14,7 @@ from flyteidl.service import auth_pb2_grpc as auth_service
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 
 from flytekit.clis.auth import credentials as _credentials_access
-from flytekit.core.context_manager import PlatformConfig
+from flytekit.configuration import PlatformConfig, AuthType
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
@@ -38,7 +38,7 @@ def _handle_rpc_error(retry=False):
                 try:
                     return fn(*args, **kwargs)
                 except grpc.RpcError as e:
-                    if e.code() == grpc.GrpcStatusCode.UNAUTHENTICATED:
+                    if e.code() == grpc.StatusCode.UNAUTHENTICATED:
                         # Always retry auth errors.
                         if i == (max_retries - 1):
                             # Exit the loop and wrap the authentication error.
@@ -48,9 +48,9 @@ def _handle_rpc_error(retry=False):
                     # There are two cases that we should throw error immediately
                     # 1. Entity already exists when we register entity
                     # 2. Entity not found when we fetch entity
-                    elif e.code() == grpc.GrpcStatusCode.ALREADY_EXISTS:
+                    elif e.code() == grpc.StatusCode.ALREADY_EXISTS:
                         raise _user_exceptions.FlyteEntityAlreadyExistsException(e)
-                    elif e.code() == grpc.GrpcStatusCode.NOT_FOUND:
+                    elif e.code() == grpc.StatusCode.NOT_FOUND:
                         raise _user_exceptions.FlyteEntityNotExistException(e)
                     else:
                         # No more retries if retry=False or max_retries reached.
@@ -72,7 +72,7 @@ def _handle_invalid_create_request(fn):
         try:
             fn(self, create_request)
         except grpc.RpcError as e:
-            if e.code() == grpc.GrpcStatusCode.INVALID_ARGUMENT:
+            if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
                 cli_logger.error("Error creating Flyte entity because of invalid arguments. Create request: ")
                 cli_logger.error(_MessageToJson(create_request))
 
@@ -102,7 +102,17 @@ class RawSynchronousFlyteClient(object):
         if cfg.insecure:
             self._channel = grpc.insecure_channel(cfg.endpoint, **kwargs)
         else:
-            self._channel = grpc.secure_channel(target=cfg.endpoint, **kwargs)
+            if "credentials" not in kwargs:
+                credentials = grpc.ssl_channel_credentials(
+                    root_certificates=kwargs.get("root_certificates", None),
+                    private_key=kwargs.get("private_key", None),
+                    certificate_chain=kwargs.get("certificate_chain", None),
+                )
+            else:
+                credentials = kwargs["credentials"]
+            self._channel = grpc.secure_channel(target=cfg.endpoint, credentials=credentials,
+                                                options=kwargs.get("options", None),
+                                                compression=kwargs.get("compression", None))
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._auth_stub = auth_service.AuthMetadataServiceStub(self._channel)
         try:
@@ -118,6 +128,8 @@ class RawSynchronousFlyteClient(object):
             cli_logger.debug("No OAuth2 Metadata found, skipping.")
             self._oauth2_metadata = None
 
+        cli_logger.info(
+            f"Flyte Client configured -> {self._cfg.endpoint} in {'insecure' if self._cfg.insecure else 'secure'} mode.")
         # metadata will hold the value of the token to send to the various endpoints.
         self._metadata = None
 
@@ -233,11 +245,11 @@ class RawSynchronousFlyteClient(object):
         pass
 
     def refresh_credentials(self):
-        if self._cfg.auth_mode == "standard":
+        if self._cfg.auth_mode == AuthType.STANDARD:
             return self._refresh_credentials_standard()
-        elif self._cfg.auth_mode == "basic" or self._cfg.auth_mode == "client_credentials":
+        elif self._cfg.auth_mode == AuthType.BASIC or self._cfg.auth_mode == AuthType.CLIENT_CREDENTIALS:
             return self._refresh_credentials_basic()
-        elif self._cfg.auth_mode == "external_process":
+        elif self._cfg.auth_mode == AuthType.EXTERNAL_PROCESS:
             return self._refresh_credentials_from_command()
         else:
             raise ValueError(

@@ -11,7 +11,7 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
-from flytekit.configuration import sdk as _sdk_config
+from flytekit.configuration import sdk as _sdk_config, ImageConfig, SerializationSettings, StatsConfig
 from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _constants
 from flytekit.core import utils
@@ -22,8 +22,6 @@ from flytekit.core.context_manager import (
     ExecutionState,
     FlyteContext,
     FlyteContextManager,
-    ImageConfig,
-    SerializationSettings,
 )
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
@@ -210,10 +208,11 @@ def setup_execution(
         ),
         execution_date=_datetime.datetime.utcnow(),
         stats=_get_stats(
+            cfg=StatsConfig(),  # TODO, use env vars?
             # Stats metric path will be:
             # registration_project.registration_domain.app.module.task_name.user_stats
             # and it will be tagged with execution-level values for project/domain/wf/lp
-            f"{tk_project}.{tk_domain}.{tk_name}.user_stats",
+            prefix=f"{tk_project}.{tk_domain}.{tk_name}.user_stats",
             tags={
                 "exec_project": exe_project,
                 "exec_domain": exe_domain,

@@ -4,7 +4,7 @@ from flytekitplugins.spark.task import new_spark_session
 import flytekit
 from flytekit import task
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.extend import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 
 
 def test_spark_task():

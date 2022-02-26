@@ -6,7 +6,7 @@ from sqlalchemy import create_engine  # type: ignore
 
 from flytekit import current_context, kwtypes
 from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.context_manager import SerializationSettings
+from flytekit.configuration import SerializationSettings
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.models import task as task_models

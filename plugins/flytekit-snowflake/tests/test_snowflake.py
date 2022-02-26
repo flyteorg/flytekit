@@ -4,7 +4,8 @@ import pytest
 from flytekitplugins.snowflake import SnowflakeConfig, SnowflakeTask
 
 from flytekit import kwtypes, workflow
-from flytekit.extend import Image, ImageConfig, SerializationSettings, get_serializable
+from flytekit.extend import get_serializable
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.types.schema import FlyteSchema
 
 query_template = """

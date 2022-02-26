@@ -5,10 +5,11 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
+import flytekit.configuration
 from flytekit import StructuredDataset, kwtypes
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
@@ -21,7 +22,7 @@ except ImportError:
     from typing_extensions import Annotated
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",

@@ -4,18 +4,19 @@ from collections import OrderedDict
 
 import pytest
 
+import flytekit.configuration
 from flytekit import ContainerTask, kwtypes
-from flytekit.configuration import set_flyte_config_file
+from flytekit.configuration import set_flyte_config_file, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings, get_image_config
+from flytekit.core.context_manager import get_image_config
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.models.types import SimpleType
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",
@@ -50,7 +51,7 @@ def test_serialization():
         return sum(x=square(val=val1), y=square(val=val2))
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -138,7 +139,7 @@ def test_serialization_branch_compound_conditions():
         return d
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -176,7 +177,7 @@ def test_serialization_branch_complex_2():
         return x, f
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -210,7 +211,7 @@ def test_serialization_branch():
     assert my_wf(a=2) == "hello"
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -246,7 +247,7 @@ def test_serialization_images():
 
     os.environ["FLYTE_INTERNAL_IMAGE"] = "docker.io/default:version"
     set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config"))
-    rs = context_manager.SerializationSettings(
+    rs = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",

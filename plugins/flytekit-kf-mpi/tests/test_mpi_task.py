@@ -1,8 +1,7 @@
 from flytekitplugins.kfmpi.task import MPIJob, MPIJobModel
 
 from flytekit import Resources, task
-from flytekit.core.context_manager import EntrypointSettings
-from flytekit.extend import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Image, ImageConfig, EntrypointSettings, SerializationSettings
 
 
 def test_mpi_model_task():

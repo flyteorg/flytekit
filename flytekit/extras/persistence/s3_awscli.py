@@ -1,3 +1,4 @@
+import os
 import os as _os
 import re as _re
 import string as _string
@@ -6,30 +7,38 @@ import typing
 from shutil import which as shell_which
 from typing import Dict, List, Optional
 
-from flytekit.configuration import aws
+from flytekit.configuration import S3Config, internal, DataConfig
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.loggers import logger
 from flytekit.tools import subprocess
 
 S3_ANONYMOUS_FLAG = "--no-sign-request"
+S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
+S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
 
 
-def _update_cmd_config_and_execute(cmd: List[str]):
+def _update_cmd_config_and_execute(s3_cfg: S3Config, cmd: List[str]):
     env = _os.environ.copy()
 
-    if aws.ENABLE_DEBUG.get():
+    if s3_cfg.enable_debug:
         cmd.insert(1, "--debug")
 
-    if aws.S3_ENDPOINT.get() is not None:
-        cmd.insert(1, aws.S3_ENDPOINT.get())
-        cmd.insert(1, aws.S3_ENDPOINT_ARG_NAME)
+    if s3_cfg.endpoint is not None:
+        cmd.insert(1, s3_cfg.endpoint)
+        cmd.insert(1, "--endpoint-url")
 
-    if aws.S3_ACCESS_KEY_ID.get() is not None:
-        env[aws.S3_ACCESS_KEY_ID_ENV_NAME] = aws.S3_ACCESS_KEY_ID.get()
+    if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
+        # TODO this is for backwards compatiblity. Once propeller sets only Access Key then we can ignore this
+        v = internal.AWS.S3_ACCESS_KEY_ID.read_from_env()
+        if v:
+            env[S3_ACCESS_KEY_ID_ENV_NAME] = v
 
-    if aws.S3_SECRET_ACCESS_KEY.get() is not None:
-        env[aws.S3_SECRET_ACCESS_KEY_ENV_NAME] = aws.S3_SECRET_ACCESS_KEY.get()
+    if S3_SECRET_ACCESS_KEY_ENV_NAME not in os.environ:
+        # TODO this is for backwards compatiblity. Once propeller sets only Access Key then we can ignore this
+        v = internal.AWS.S3_SECRET_ACCESS_KEY.read_from_env()
+        if v:
+            env[S3_SECRET_ACCESS_KEY_ENV_NAME] = v
 
     retry = 0
     while True:
@@ -48,9 +57,9 @@ def _update_cmd_config_and_execute(cmd: List[str]):
         except Exception as e:
             logger.error(f"Exception when trying to execute {cmd}, reason: {str(e)}")
             retry += 1
-            if retry > aws.RETRIES.get():
+            if retry > s3_cfg.retries:
                 raise
-            secs = aws.BACKOFF_SECONDS.get()
+            secs = s3_cfg.backoff
             logger.info(f"Sleeping before retrying again, after {secs} seconds")
             time.sleep(secs)
             logger.info("Retrying again")
@@ -82,8 +91,9 @@ class S3Persistence(DataPersistence):
     _AWS_CLI = "aws"
     _SHARD_CHARACTERS = [str(x) for x in range(10)] + list(_string.ascii_lowercase)
 
-    def __init__(self, default_prefix: Optional[str] = None):
+    def __init__(self, default_prefix: Optional[str] = None, data_config: typing.Optional[DataConfig] = None):
         super().__init__(name="awscli-s3", default_prefix=default_prefix)
+        self.s3_cfg = data_config.s3 if data_config else S3Config.auto()
 
     @staticmethod
     def _check_binary():
@@ -98,9 +108,9 @@ class S3Persistence(DataPersistence):
         """
         splits a valid s3 uri into bucket and key
         """
-        path = path[len("s3://") :]
+        path = path[len("s3://"):]
         first_slash = path.index("/")
-        return path[:first_slash], path[first_slash + 1 :]
+        return path[:first_slash], path[first_slash + 1:]
 
     def exists(self, remote_path):
         """
@@ -122,7 +132,7 @@ class S3Persistence(DataPersistence):
             file_path,
         ]
         try:
-            _update_cmd_config_and_execute(cmd)
+            _update_cmd_config_and_execute(cmd=cmd, s3_cfg=self.s3_cfg)
             return True
         except Exception as ex:
             # The s3api command returns an error if the object does not exist. The error message contains
@@ -144,7 +154,7 @@ class S3Persistence(DataPersistence):
             cmd = [S3Persistence._AWS_CLI, "s3", "cp", "--recursive", from_path, to_path]
         else:
             cmd = [S3Persistence._AWS_CLI, "s3", "cp", from_path, to_path]
-        return _update_cmd_config_and_execute(cmd)
+        return _update_cmd_config_and_execute(cmd=cmd, s3_cfg=self.s3_cfg)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         extra_args = {
@@ -160,7 +170,7 @@ class S3Persistence(DataPersistence):
             cmd += ["--recursive"]
         cmd.extend(_extra_args(extra_args))
         cmd += [from_path, to_path]
-        return _update_cmd_config_and_execute(cmd)
+        return _update_cmd_config_and_execute(cmd=cmd, s3_cfg=self.s3_cfg)
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths: str) -> str:
         paths = list(paths)  # make type check happy

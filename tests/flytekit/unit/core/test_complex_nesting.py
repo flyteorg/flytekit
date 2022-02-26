@@ -6,7 +6,8 @@ from typing import List
 import pytest
 from dataclasses_json import dataclass_json
 
-from flytekit.core.context_manager import ExecutionState, FlyteContextManager, Image, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.type_engine import TypeEngine
 from flytekit.types.directory import FlyteDirectory

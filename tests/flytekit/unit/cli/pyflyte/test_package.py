@@ -6,6 +6,7 @@ from flyteidl.admin.task_pb2 import TaskSpec
 from flyteidl.admin.workflow_pb2 import WorkflowSpec
 
 import flytekit
+import flytekit.configuration
 import flytekit.tools.serialize_helpers
 from flytekit.clis.sdk_in_container import package, pyflyte
 from flytekit.core import context_manager
@@ -24,12 +25,12 @@ def wf():
 
 def test_get_registrable_entities():
     ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
-        context_manager.SerializationSettings(
+        flytekit.configuration.SerializationSettings(
             project="p",
             domain="d",
             version="v",
-            image_config=context_manager.ImageConfig(
-                default_image=context_manager.Image("def", "docker.io/def", "latest")
+            image_config=flytekit.configuration.ImageConfig(
+                default_image=flytekit.configuration.Image("def", "docker.io/def", "latest")
             ),
         )
     )
@@ -75,12 +76,12 @@ def test_duplicate_registrable_entities():
         return t_1()
 
     ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
-        context_manager.SerializationSettings(
+        flytekit.configuration.SerializationSettings(
             project="p",
             domain="d",
             version="v",
-            image_config=context_manager.ImageConfig(
-                default_image=context_manager.Image("def", "docker.io/def", "latest")
+            image_config=flytekit.configuration.ImageConfig(
+                default_image=flytekit.configuration.Image("def", "docker.io/def", "latest")
             ),
         )
     )

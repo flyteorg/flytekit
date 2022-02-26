@@ -1,10 +1,11 @@
 import typing
 from collections import OrderedDict
 
+import flytekit.configuration
 from flytekit import ContainerTask, Resources
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
-from flytekit.core.context_manager import FastSerializationSettings, Image, ImageConfig
+from flytekit.configuration import Image, ImageConfig, FastSerializationSettings
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.reference_entity import ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask, task
@@ -13,7 +14,7 @@ from flytekit.models.core import identifier as identifier_models
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",

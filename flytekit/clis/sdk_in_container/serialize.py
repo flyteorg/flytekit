@@ -9,10 +9,11 @@ from enum import Enum as _Enum
 import click
 
 import flytekit as _flytekit
+import flytekit.configuration
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.core import context_manager as flyte_context
-from flytekit.core.context_manager import ImageConfig, SerializationSettings
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.exceptions.scopes import system_entry_point
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
@@ -65,7 +66,7 @@ def serialize_all(
 
     serialization_settings = SerializationSettings(
         image_config=ImageConfig.from_config(config_file, img_name=image),
-        fast_serialization_settings=flyte_context.FastSerializationSettings(
+        fast_serialization_settings=flytekit.configuration.FastSerializationSettings(
             enabled=mode == SerializationMode.FAST,
             # TODO: if we want to move the destination dir as a serialization argument, we should initialize it here
         ),

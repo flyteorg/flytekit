@@ -4,8 +4,9 @@ from collections import OrderedDict
 import pytest
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
+import flytekit.configuration
 from flytekit.core import context_manager, launch_plan, notification
-from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core.schedule import CronSchedule
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
@@ -15,7 +16,7 @@ from flytekit.models.core import identifier as identifier_models
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",

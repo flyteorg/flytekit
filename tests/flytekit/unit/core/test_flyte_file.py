@@ -6,8 +6,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import flytekit.configuration
 from flytekit.core import context_manager
-from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
@@ -243,7 +245,7 @@ def test_dont_convert_remotes():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",

@@ -5,22 +5,32 @@ import fsspec
 from fsspec.core import split_protocol
 from fsspec.registry import known_implementations
 
-from flytekit.configuration import aws as _aws_config
+from flytekit.configuration import S3Config, internal
 from flytekit.extend import DataPersistence, DataPersistencePlugins
 from flytekit.loggers import logger
 
 
-def s3_setup_args():
+S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
+S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
+
+
+def s3_setup_args(s3_cfg: S3Config):
+    if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
+        # TODO this is for backwards compatiblity. Once propeller sets only Access Key then we can ignore this
+        v = internal.AWS.S3_ACCESS_KEY_ID.read_from_env()
+        if v:
+            os.environ[S3_ACCESS_KEY_ID_ENV_NAME] = v
+
+    if S3_SECRET_ACCESS_KEY_ENV_NAME not in os.environ:
+        # TODO this is for backwards compatiblity. Once propeller sets only Access Key then we can ignore this
+        v = internal.AWS.S3_SECRET_ACCESS_KEY.read_from_env()
+        if v:
+            os.environ[S3_SECRET_ACCESS_KEY_ENV_NAME] = v
+
     kwargs = {}
-    if _aws_config.S3_ACCESS_KEY_ID.get() is not None:
-        os.environ[_aws_config.S3_ACCESS_KEY_ID_ENV_NAME] = _aws_config.S3_ACCESS_KEY_ID.get()
-
-    if _aws_config.S3_SECRET_ACCESS_KEY.get() is not None:
-        os.environ[_aws_config.S3_SECRET_ACCESS_KEY_ENV_NAME] = _aws_config.S3_SECRET_ACCESS_KEY.get()
-
     # S3fs takes this as a special arg
-    if _aws_config.S3_ENDPOINT.get() is not None:
-        kwargs["client_kwargs"] = {"endpoint_url": _aws_config.S3_ENDPOINT.get()}
+    if s3_cfg.endpoint is not None:
+        kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
 
     return kwargs
 

@@ -6,7 +6,8 @@ from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit import StructuredDataset
-from flytekit.extend import SerializationSettings, SQLTask
+from flytekit.extend import SQLTask
+from flytekit.configuration import SerializationSettings
 from flytekit.models import task as _task_model
 
 

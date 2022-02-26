@@ -9,9 +9,9 @@ from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1Resourc
 
 from flytekit import Resources, TaskMetadata, dynamic, map_task, task
 from flytekit.core import context_manager
-from flytekit.core.context_manager import FastSerializationSettings
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend import ExecutionState, Image, ImageConfig, SerializationSettings
+from flytekit.extend import ExecutionState
+from flytekit.configuration import Image, ImageConfig, FastSerializationSettings, SerializationSettings
 from flytekit.tools.translator import get_serializable
 
 

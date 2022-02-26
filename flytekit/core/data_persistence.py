@@ -32,6 +32,7 @@ from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
 
+from flytekit.configuration import DataConfig
 from flytekit.core.utils import PerformanceTimer
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
@@ -283,7 +284,8 @@ class FileAccessProvider(object):
     durable store.
     """
 
-    def __init__(self, local_sandbox_dir: Union[str, os.PathLike], raw_output_prefix: str):
+    def __init__(self, local_sandbox_dir: Union[str, os.PathLike], raw_output_prefix: str,
+                 data_config: typing.Optional[DataConfig] = None):
         """
         Args:
             local_sandbox_dir: A local temporary working directory, that should be used to store data
@@ -296,7 +298,8 @@ class FileAccessProvider(object):
         self._local_sandbox_dir.mkdir(parents=True, exist_ok=True)
         self._local = DiskPersistence(default_prefix=local_sandbox_dir_appended)
 
-        self._default_remote = DataPersistencePlugins.find_plugin(raw_output_prefix)(default_prefix=raw_output_prefix)
+        self._default_remote = DataPersistencePlugins.find_plugin(raw_output_prefix)(default_prefix=raw_output_prefix,
+                                                                                     data_config=data_config)
         self._raw_output_prefix = raw_output_prefix
 
     @staticmethod
@@ -318,7 +321,7 @@ class FileAccessProvider(object):
         return self._local
 
     def construct_random_path(
-        self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
+            self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
     ) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name

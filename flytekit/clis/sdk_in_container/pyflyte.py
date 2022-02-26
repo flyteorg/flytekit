@@ -1,7 +1,8 @@
 import click
 
-from flytekit import configuration
-from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
+import flytekit.configuration.file
+import flytekit.configuration.internal
+from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES, CTX_CONFIG_FILE
 from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
@@ -45,9 +46,9 @@ def main(ctx, pkgs=None, config=None):
     pkgs = pkgs or []
     if config:
         ctx.obj[CTX_CONFIG_FILE] = config
-        cfg = configuration.ConfigFile(config)
+        cfg = flytekit.configuration.file.ConfigFile(config)
         if not pkgs:
-            pkgs = cfg.get(configuration.LocalSDK.WORKFLOW_PACKAGES)
+            pkgs = cfg.get(flytekit.configuration.internal.LocalSDK.WORKFLOW_PACKAGES)
     ctx.obj[CTX_PACKAGES] = pkgs
 
 

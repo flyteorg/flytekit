@@ -1,5 +1,7 @@
 import dataclasses
 import datetime
+
+import flytekit.configuration
 import functools
 import os
 import random
@@ -19,7 +21,8 @@ import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState
+from flytekit.configuration import Image, ImageConfig, FastSerializationSettings
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
@@ -39,7 +42,7 @@ from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="proj",
     domain="dom",
     version="123",
@@ -562,7 +565,7 @@ def test_wf1_with_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
@@ -600,7 +603,7 @@ def test_wf1_with_fast_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
@@ -862,7 +865,7 @@ def test_lp_serialize():
     lp = launch_plan.LaunchPlan.create("serialize_test1", my_subwf)
     lp_with_defaults = launch_plan.LaunchPlan.create("serialize_test2", my_subwf, default_inputs={"a": 3})
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
@@ -1246,7 +1249,7 @@ def test_environment():
         x = t1(a=a)
         return x
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1279,7 +1282,7 @@ def test_resources():
         x = t1(a=a)
         return x
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1394,7 +1397,7 @@ def test_nested_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
-    settings = context_manager.SerializationSettings(
+    settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",

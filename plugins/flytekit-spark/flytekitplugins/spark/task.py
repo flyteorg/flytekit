@@ -8,7 +8,8 @@ from pyspark.sql import SparkSession
 
 from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.extend import ExecutionState, SerializationSettings, TaskPlugins
+from flytekit.extend import ExecutionState, TaskPlugins
+from flytekit.configuration import SerializationSettings
 
 from .models import SparkJob, SparkType
 
