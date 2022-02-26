@@ -34,7 +34,7 @@ hdf5 = typing.TypeVar("hdf5")
 HDF5EncodedFile = FlyteFile[hdf5]
 
 html = typing.TypeVar("html")
-#: Can be used to receive or return an PNGImage. The underlying type is a FlyteFile type. This is just a
+#: Can be used to receive or return an HTMLPage. The underlying type is a FlyteFile type. This is just a
 #: decoration and useful for attaching content type information with the file and automatically documenting code.
 HTMLPage = FlyteFile[html]
 
