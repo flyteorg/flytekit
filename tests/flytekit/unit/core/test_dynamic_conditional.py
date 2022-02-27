@@ -4,10 +4,10 @@ from random import seed
 
 import flytekit.configuration
 from flytekit import dynamic, task, workflow
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState
-from flytekit.configuration import Image, ImageConfig
 
 # seed random number generator
 seed(datetime.now().microsecond)

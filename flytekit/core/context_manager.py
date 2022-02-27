@@ -28,7 +28,7 @@ from enum import Enum
 from typing import Any, Dict, Generator, List, Optional, Union
 
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.configuration import SecretsConfig, SerializationSettings, Config
+from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider

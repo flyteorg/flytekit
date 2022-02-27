@@ -5,8 +5,8 @@ import mock
 
 import flytekit.configuration
 from flytekit import ContainerTask, kwtypes
-from flytekit.core import context_manager
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core import context_manager
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask, TaskTemplateResolver
 from flytekit.core.utils import write_proto_to_file
 from flytekit.tools.translator import get_serializable

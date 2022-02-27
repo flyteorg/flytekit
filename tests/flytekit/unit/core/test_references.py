@@ -4,9 +4,9 @@ from collections import OrderedDict
 import pytest
 
 import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
-from flytekit.configuration import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.promise import VoidPromise

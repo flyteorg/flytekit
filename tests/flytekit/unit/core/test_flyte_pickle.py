@@ -2,8 +2,8 @@ from collections import OrderedDict
 from typing import Dict, List
 
 import flytekit.configuration
-from flytekit.core import context_manager
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core import context_manager
 from flytekit.core.task import task
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata

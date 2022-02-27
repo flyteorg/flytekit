@@ -8,8 +8,8 @@ from google.protobuf.json_format import MessageToDict
 
 import flytekit
 from flytekit import ExecutionParameters, FlyteContextManager, PythonFunctionTask, kwtypes
-from flytekit.extend import ExecutionState, IgnoreOutputs, Interface, PythonTask, TaskPlugins
 from flytekit.configuration import SerializationSettings
+from flytekit.extend import ExecutionState, IgnoreOutputs, Interface, PythonTask, TaskPlugins
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FlyteFile
 

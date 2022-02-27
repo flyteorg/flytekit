@@ -7,8 +7,8 @@ import click
 
 import flytekit.configuration
 from flytekit.clis.sdk_in_container import constants
-from flytekit.core import context_manager
 from flytekit.configuration import ImageConfig
+from flytekit.core import context_manager
 from flytekit.tools import fast_registration, module_loader, serialize_helpers
 
 
@@ -94,9 +94,13 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
             enabled=fast,
             destination_dir=in_container_source_path,
         ),
-        flytekit_virtualenv_root=flytekit.configuration.SerializationSettings.venv_root_from_interpreter(python_interpreter),
+        flytekit_virtualenv_root=flytekit.configuration.SerializationSettings.venv_root_from_interpreter(
+            python_interpreter
+        ),
         python_interpreter=python_interpreter,
-        entrypoint_settings=flytekit.configuration.SerializationSettings.default_entrypoint_settings(python_interpreter),
+        entrypoint_settings=flytekit.configuration.SerializationSettings.default_entrypoint_settings(
+            python_interpreter
+        ),
     )
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]

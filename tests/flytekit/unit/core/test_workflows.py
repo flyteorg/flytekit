@@ -7,9 +7,9 @@ from pandas.testing import assert_frame_equal
 
 import flytekit.configuration
 from flytekit import StructuredDataset, kwtypes
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
-from flytekit.configuration import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException

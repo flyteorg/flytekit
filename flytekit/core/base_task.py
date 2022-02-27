@@ -24,12 +24,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
 from flytekit.configuration import SerializationSettings
-from flytekit.core.context_manager import (
-    ExecutionParameters,
-    FlyteContext,
-    FlyteContextManager,
-    FlyteEntities,
-)
+from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (

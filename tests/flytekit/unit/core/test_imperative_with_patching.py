@@ -2,8 +2,8 @@ import pytest
 from mock import patch as _system_patch
 
 import flytekit.configuration
-from flytekit.core import context_manager
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core import context_manager
 from flytekit.core.task import task
 from flytekit.core.testing import patch as flyte_patch
 from flytekit.core.workflow import ImperativeWorkflow, workflow

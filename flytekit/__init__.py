@@ -163,6 +163,7 @@ else:
     from importlib.metadata import entry_points
 
 from flytekit import configuration
+from flytekit.configuration import internal as _internal
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.checkpointer import Checkpoint
@@ -190,9 +191,8 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, schema
-from flytekit.configuration import internal as _internal
 
-if _internal.LocalSDK.USE_STRUCTURED_DATASET.read_from_env():
+if _internal.LocalSDK.USE_STRUCTURED_DATASET.read():
     from flytekit.types.structured.structured_dataset import (
         StructuredDataset,
         StructuredDatasetFormat,

@@ -8,9 +8,9 @@ from unittest.mock import MagicMock
 import pytest
 
 import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
-from flytekit.configuration import Image, ImageConfig
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.task import task

@@ -1,7 +1,5 @@
 import dataclasses
 import datetime
-
-import flytekit.configuration
 import functools
 import os
 import random
@@ -18,11 +16,12 @@ from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
 
 import flytekit
+import flytekit.configuration
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState
-from flytekit.configuration import Image, ImageConfig, FastSerializationSettings
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise

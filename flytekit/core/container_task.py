@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type
 
-from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.configuration import SerializationSettings
+from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition

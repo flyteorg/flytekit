@@ -4,14 +4,15 @@ import click
 import py
 import pytest
 
-from flytekit.configuration import secrets, Image, ImageConfig, EntrypointSettings, FastSerializationSettings, \
-    SerializationSettings
-from flytekit.core.context_manager import (
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-    SecretsManager,
+from flytekit.configuration import (
+    EntrypointSettings,
+    FastSerializationSettings,
+    Image,
+    ImageConfig,
+    SerializationSettings,
+    secrets,
 )
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SecretsManager
 
 
 class SampleTestClass(object):

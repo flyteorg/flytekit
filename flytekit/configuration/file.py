@@ -10,6 +10,34 @@ from flytekit.exceptions import user as _user_exceptions
 
 
 @dataclass
+class LegacyConfigEntry(object):
+    section: str
+    option: str
+    type_: typing.Type
+
+    def read_from_env(self) -> typing.Optional[typing.Any]:
+        """
+        Reads the config entry from environment variable, the structure of the env var is current
+        ``FLYTE_{SECTION}_{OPTION}`` all upper cased. We will change this in the future.
+        :return:
+        """
+        env = f"FLYTE_{self.section.upper()}_{self.option.upper()}"
+        return os.environ.get(env, None)
+
+    def read_from_file(
+        self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
+    ) -> typing.Optional[typing.Any]:
+        if not cfg:
+            return None
+        try:
+            v = cfg.get(self)
+            return transform(v) if transform else v
+        except configparser.Error:
+            pass
+        return None
+
+
+@dataclass
 class ConfigEntry(object):
     """
     Creates a record for the config entry. contains
@@ -21,38 +49,19 @@ class ConfigEntry(object):
                     Config object
     """
 
-    section: str
-    option: str
-    type_: typing.Type
-    default_val: typing.Any = configparser._UNSET
+    legacy: LegacyConfigEntry
 
-    def get_default(self) -> typing.Any:
-        if self.default_val == configparser._UNSET:
-            return None
-        return self.default_val
-
-    def read_from_env(self) -> typing.Optional[typing.Any]:
+    def read(
+        self, cfg: typing.Optional[ConfigFile] = None, transform: typing.Optional[typing.Callable] = None
+    ) -> typing.Optional[typing.Any]:
         """
-        Reads the config entry from environment variable, the structure of the env var is current
-        ``FLYTE_{SECTION}_{OPTION}`` all upper cased. We will change this in the future.
+        Reads the config Entry from the various sources in the following order,
+         First try to read from environment, if not then try to read from the given config file
+        :param cfg:
+        :param transform:
         :return:
         """
-        env = f"FLYTE_{self.section.upper()}_{self.option.upper()}"
-        return os.environ.get(env, None)
-
-    def read_from_file(self, cfg: ConfigFile,
-                       transform: typing.Optional[typing.Callable] = None) -> typing.Optional[typing.Any]:
-        if not cfg:
-            return None
-        try:
-            v = cfg.get(self)
-            return transform(v) if transform else v
-        except configparser.Error:
-            pass
-        return None
-
-    def read(self, cfg: ConfigFile,  transform: typing.Optional[typing.Callable] = None) -> typing.Optional[typing.Any]:
-        return self.read_from_env() or self.read_from_file(cfg, transform)
+        return self.legacy.read_from_env() or self.legacy.read_from_file(cfg, transform)
 
 
 class ConfigFile(object):
@@ -61,30 +70,39 @@ class ConfigFile(object):
         Load the config from this location
         """
         self._location = location
-        self._config = _configparser.ConfigParser()
-        self._config.read(self._location)
-        if self._config.has_section("internal"):
-            raise _user_exceptions.FlyteAssertion(
-                "The config file '{}' cannot contain a section for internal "
-                "only configurations.".format(self._location)
-            )
+        # TODO, we can choose legacy vs other config using the extension. For .yaml, we can use the new config parser
+        self._legacy_config = self._read_legacy_config(location)
 
-    def get(self, c: ConfigEntry) -> typing.Any:
+    def _read_legacy_config(self, location: str) -> _configparser.ConfigParser:
+        c = _configparser.ConfigParser()
+        c.read(self._location)
+        if c.has_section("internal"):
+            raise _user_exceptions.FlyteAssertion(
+                "The config file '{}' cannot contain a section for internal " "only configurations.".format(location)
+            )
+        return c
+
+    def _get_from_legacy(self, c: LegacyConfigEntry) -> typing.Any:
         if issubclass(c.type_, int):
-            return self._config.getint(c.section, c.option, fallback=c.default_val)
+            return self._legacy_config.getint(c.section, c.option)
 
         if issubclass(c.type_, bool):
-            return self._config.getboolean(c.section, c.option, fallback=c.default_val)
+            return self._legacy_config.getboolean(c.section, c.option)
 
         if issubclass(c.type_, list):
-            v = self._config.get(c.section, c.option, fallback=c.default_val)
+            v = self._legacy_config.get(c.section, c.option)
             return v.split(",")
 
-        return self._config.get(c.section, c.option, fallback=c.default_val)
+        return self._legacy_config.get(c.section, c.option)
+
+    def get(self, c: typing.Union[LegacyConfigEntry]) -> typing.Any:
+        if isinstance(c, LegacyConfigEntry):
+            return self._get_from_legacy(c)
+        raise NotImplemented("Support for other config types besides .ini / .config files not yet supported")
 
     @property
-    def config(self) -> _configparser.ConfigParser:
-        return self._config
+    def legacy_config(self) -> _configparser.ConfigParser:
+        return self._legacy_config
 
 
 def get_config_file(c: typing.Union[str, ConfigFile]) -> typing.Optional[ConfigFile]:

@@ -4,8 +4,8 @@ from collections import OrderedDict
 import pytest
 
 import flytekit.configuration
-from flytekit.core import context_manager
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core import context_manager
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import task

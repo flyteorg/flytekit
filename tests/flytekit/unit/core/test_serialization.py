@@ -6,7 +6,7 @@ import pytest
 
 import flytekit.configuration
 from flytekit import ContainerTask, kwtypes
-from flytekit.configuration import set_flyte_config_file, Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings, set_flyte_config_file
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import get_image_config

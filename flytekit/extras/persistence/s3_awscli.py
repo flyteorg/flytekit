@@ -7,7 +7,7 @@ import typing
 from shutil import which as shell_which
 from typing import Dict, List, Optional
 
-from flytekit.configuration import S3Config, internal, DataConfig
+from flytekit.configuration import DataConfig, S3Config, internal
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.loggers import logger
@@ -104,9 +104,9 @@ class S3Persistence(DataPersistence):
         """
         splits a valid s3 uri into bucket and key
         """
-        path = path[len("s3://"):]
+        path = path[len("s3://") :]
         first_slash = path.index("/")
-        return path[:first_slash], path[first_slash + 1:]
+        return path[:first_slash], path[first_slash + 1 :]
 
     def exists(self, remote_path):
         """

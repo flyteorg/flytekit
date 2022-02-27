@@ -9,13 +9,13 @@ import re
 import tempfile
 import typing
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 from dataclasses_json import dataclass_json
 from docker_image import reference
 
 from flytekit.configuration import internal as _internal
-from flytekit.configuration.file import ConfigFile, ConfigEntry, get_config_file, set_if_exists
+from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, set_if_exists
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -258,6 +258,7 @@ class S3Config(object):
     """
     S3 specific configuration
     """
+
     enable_debug: bool = False
     endpoint: typing.Optional[str] = None
     retries: int = 3
@@ -274,11 +275,14 @@ class S3Config(object):
         """
         config_file = get_config_file(config_file)
         kwargs = {}
-        kwargs = set_if_exists(kwargs, "enable_debug", _internal.AWS.ENABLE_DEBUG.read_from_file(config_file))
-        kwargs = set_if_exists(kwargs, "endpoint", _internal.AWS.S3_ENDPOINT.read_from_file(config_file))
+        kwargs = set_if_exists(kwargs, "enable_debug", _internal.AWS.ENABLE_DEBUG.read(config_file))
+        kwargs = set_if_exists(kwargs, "endpoint", _internal.AWS.S3_ENDPOINT.read(config_file))
         kwargs = set_if_exists(kwargs, "retries", _internal.AWS.RETRIES.read(config_file))
-        kwargs = set_if_exists(kwargs, "backoff", _internal.AWS.BACKOFF_SECONDS.read(
-            config_file, transform=lambda x: datetime.timedelta(seconds=x)))
+        kwargs = set_if_exists(
+            kwargs,
+            "backoff",
+            _internal.AWS.BACKOFF_SECONDS.read(config_file, transform=lambda x: datetime.timedelta(seconds=x)),
+        )
         kwargs = set_if_exists(kwargs, "access_key_id", _internal.AWS.S3_ACCESS_KEY_ID.read(config_file))
         kwargs = set_if_exists(kwargs, "secret_access_key", _internal.AWS.S3_SECRET_ACCESS_KEY.read(config_file))
         return S3Config(**kwargs)
@@ -289,6 +293,7 @@ class GCSConfig(object):
     """
     Any GCS specific configuration.
     """
+
     gsutil_parallelism: bool = False
 
     @classmethod
@@ -306,6 +311,7 @@ class DataConfig(object):
     Flyte sandbox environment we store the access key id and secret.
     All DataPersistence plugins are passed all DataConfig and the plugin should correctly use the right config
     """
+
     s3: S3Config = S3Config()
     gcs: GCSConfig = GCSConfig()
 
@@ -337,8 +343,14 @@ class Config(object):
     data_config: DataConfig = DataConfig()
     local_sandbox_path: str = tempfile.mkdtemp(prefix="flyte")
 
-    def with_params(self, platform: PlatformConfig = None, secrets: SecretsConfig = None, stats: StatsConfig = None,
-                    data_config: DataConfig = None, local_sandbox_path: str = None) -> Config:
+    def with_params(
+        self,
+        platform: PlatformConfig = None,
+        secrets: SecretsConfig = None,
+        stats: StatsConfig = None,
+        data_config: DataConfig = None,
+        local_sandbox_path: str = None,
+    ) -> Config:
         return Config(
             platform=platform or self.platform,
             secrets=secrets or self.secrets,
@@ -365,7 +377,7 @@ class Config(object):
             secrets=SecretsConfig.auto(config_file),
             stats=StatsConfig.auto(config_file),
             data_config=DataConfig.auto(config_file),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -378,12 +390,18 @@ class Config(object):
         return Config(
             platform=PlatformConfig(insecure=True),
             data_config=DataConfig(
-                s3=S3Config(endpoint="localhost:30084", access_key_id="minio", secret_access_key="miniostorage")),
+                s3=S3Config(endpoint="localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
+            ),
         )
 
     @classmethod
-    def for_endpoint(cls, endpoint: str, insecure: bool = False, data_config: typing.Optional[DataConfig] = None,
-                     config_file: typing.Union[str, ConfigFile] = None) -> Config:
+    def for_endpoint(
+        cls,
+        endpoint: str,
+        insecure: bool = False,
+        data_config: typing.Optional[DataConfig] = None,
+        config_file: typing.Union[str, ConfigFile] = None,
+    ) -> Config:
         """
         Creates an automatic config for the given endpoint and uses the config_file or environment variable for default.
         Refer to `Config.auto()` to understand the default bootstrap behavior.
@@ -501,12 +519,12 @@ class SerializationSettings(object):
 
     @classmethod
     def for_image(
-            cls,
-            image: str,
-            version: str,
-            project: str = "",
-            domain: str = "",
-            python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+        cls,
+        image: str,
+        version: str,
+        project: str = "",
+        domain: str = "",
+        python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     ) -> SerializationSettings:
         img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
         entrypoint_settings = cls.default_entrypoint_settings(python_interpreter_path)

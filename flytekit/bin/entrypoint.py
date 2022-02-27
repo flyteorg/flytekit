@@ -11,18 +11,14 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
-from flytekit.configuration import sdk as _sdk_config, ImageConfig, SerializationSettings, StatsConfig
+from flytekit.configuration import ImageConfig, SerializationSettings, StatsConfig
+from flytekit.configuration import sdk as _sdk_config
 from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.context_manager import (
-    ExecutionParameters,
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-)
+from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.promise import VoidPromise

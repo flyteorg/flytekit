@@ -5,9 +5,9 @@ from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements
 
 from flytekit import FlyteContext, PythonFunctionTask
+from flytekit.configuration import SerializationSettings
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.extend import Promise, TaskPlugins
-from flytekit.configuration import SerializationSettings
 from flytekit.loggers import logger
 from flytekit.models import task as _task_models
 

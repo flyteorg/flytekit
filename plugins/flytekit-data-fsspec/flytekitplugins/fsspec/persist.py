@@ -5,10 +5,9 @@ import fsspec
 from fsspec.core import split_protocol
 from fsspec.registry import known_implementations
 
-from flytekit.configuration import S3Config, internal, DataConfig
+from flytekit.configuration import DataConfig, S3Config, internal
 from flytekit.extend import DataPersistence, DataPersistencePlugins
 from flytekit.loggers import logger
-
 
 S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
 S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"

@@ -6,8 +6,8 @@ from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit import PythonFunctionTask
-from flytekit.extend import TaskPlugins
 from flytekit.configuration import SerializationSettings
+from flytekit.extend import TaskPlugins
 
 
 @dataclass_json

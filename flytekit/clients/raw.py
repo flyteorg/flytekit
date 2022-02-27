@@ -14,7 +14,7 @@ from flyteidl.service import auth_pb2_grpc as auth_service
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 
 from flytekit.clis.auth import credentials as _credentials_access
-from flytekit.configuration import PlatformConfig, AuthType
+from flytekit.configuration import AuthType, PlatformConfig
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
@@ -110,9 +110,12 @@ class RawSynchronousFlyteClient(object):
                 )
             else:
                 credentials = kwargs["credentials"]
-            self._channel = grpc.secure_channel(target=cfg.endpoint, credentials=credentials,
-                                                options=kwargs.get("options", None),
-                                                compression=kwargs.get("compression", None))
+            self._channel = grpc.secure_channel(
+                target=cfg.endpoint,
+                credentials=credentials,
+                options=kwargs.get("options", None),
+                compression=kwargs.get("compression", None),
+            )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._auth_stub = auth_service.AuthMetadataServiceStub(self._channel)
         try:
@@ -129,7 +132,8 @@ class RawSynchronousFlyteClient(object):
             self._oauth2_metadata = None
 
         cli_logger.info(
-            f"Flyte Client configured -> {self._cfg.endpoint} in {'insecure' if self._cfg.insecure else 'secure'} mode.")
+            f"Flyte Client configured -> {self._cfg.endpoint} in {'insecure' if self._cfg.insecure else 'secure'} mode."
+        )
         # metadata will hold the value of the token to send to the various endpoints.
         self._metadata = None
 

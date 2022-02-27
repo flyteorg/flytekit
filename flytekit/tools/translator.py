@@ -2,11 +2,11 @@ from collections import OrderedDict
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask
+from flytekit.configuration import SerializationSettings
 from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
-from flytekit.configuration import SerializationSettings
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask

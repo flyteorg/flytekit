@@ -4,10 +4,10 @@ from collections import OrderedDict
 import pytest
 
 import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.configuration import Image, ImageConfig
 from flytekit.core.python_auto_container import default_task_resolver
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow

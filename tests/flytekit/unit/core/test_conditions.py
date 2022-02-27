@@ -6,9 +6,9 @@ import pytest
 
 import flytekit.configuration
 from flytekit import task, workflow
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.models.core.workflow import Node
 from flytekit.tools.translator import get_serializable
 
