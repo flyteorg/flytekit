@@ -108,6 +108,8 @@ class ConfigFile(object):
 def get_config_file(c: typing.Union[str, ConfigFile]) -> typing.Optional[ConfigFile]:
     """
     Checks if the given argument is a file or a configFile and returns a loaded configFile else returns None
+
+    # TODO support automatic loading from Home dir .flyte/
     """
     if c is None:
         return None
