@@ -56,8 +56,8 @@ def _update_cmd_config_and_execute(s3_cfg: S3Config, cmd: List[str]):
             if retry > s3_cfg.retries:
                 raise
             secs = s3_cfg.backoff
-            logger.info(f"Sleeping before retrying again, after {secs} seconds")
-            time.sleep(secs)
+            logger.info(f"Sleeping before retrying again, after {secs.total_seconds()} seconds")
+            time.sleep(secs.total_seconds())
             logger.info("Retrying again")
 
 
