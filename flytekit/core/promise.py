@@ -548,13 +548,71 @@ def create_task_output(
     return Output(*promises)  # type: ignore
 
 
+# TODO: Can we merge this with the python_std version and just make the Python type optional?
+def binding_data_without_python_type(
+    ctx: _flyte_context.FlyteContext,
+    expected_literal_type: _type_models.LiteralType,
+    t_value: typing.Any,
+) -> _literals_models.BindingData:
+    # This handles the case where the given value is the output of another task
+    if isinstance(t_value, Promise):
+        if not t_value.is_ready:
+            return _literals_models.BindingData(promise=t_value.ref)
+
+    elif isinstance(t_value, VoidPromise):
+        raise AssertionError(
+            f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task"
+        )
+
+    elif isinstance(t_value, list):
+        if expected_literal_type.collection_type is None:
+            raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
+        collection = _literals_models.BindingDataCollection(
+            bindings=[binding_data_without_python_type(ctx, expected_literal_type.collection_type, t) for t in t_value]
+        )
+        return _literals_models.BindingData(collection=collection)
+
+    elif isinstance(t_value, dict):
+        if (
+            expected_literal_type.map_value_type is None
+            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
+        ):
+            raise AssertionError(
+                f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
+            )
+        if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
+            lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
+            return _literals_models.BindingData(scalar=lit.scalar)
+        else:
+            m = _literals_models.BindingDataMap(
+                bindings={
+                    k: binding_data_without_python_type(ctx, expected_literal_type.map_value_type, v)
+                    for k, v in t_value.items()
+                }
+            )
+        return _literals_models.BindingData(map=m)
+
+    elif isinstance(t_value, tuple):
+        raise AssertionError(
+            "Tuples are not a supported type for individual values in Flyte - got a tuple -"
+            f" {t_value}. If using named tuple in an inner task, please, de-reference the"
+            "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
+            "return v.x, instead of v, even if this has a single element"
+        )
+
+    # This is the scalar case - e.g. my_task(in1=5)
+    # This is the main difference from binding_data_from_python_std, we just take type() of the python value here
+    scalar = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type).scalar
+    return _literals_models.BindingData(scalar=scalar)
+
+
 def binding_from_flyte_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
     expected_literal_type: _type_models.LiteralType,
     t_value: typing.Any,
 ) -> _literals_models.Binding:
-    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type=None)
+    binding_data = binding_data_without_python_type(ctx, expected_literal_type, t_value)
     return _literals_models.Binding(var=var_name, binding=binding_data)
 
 
@@ -562,7 +620,7 @@ def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
     t_value: typing.Any,
-    t_value_type: Optional[type] = None,
+    t_value_type: type,
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
@@ -578,7 +636,7 @@ def binding_data_from_python_std(
         if expected_literal_type.collection_type is None:
             raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
 
-        sub_type = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
+        sub_type = ListTransformer.get_sub_type(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
                 binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
@@ -599,7 +657,7 @@ def binding_data_from_python_std(
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            k_type, v_type = DictTransformer.get_dict_types(t_value_type) if t_value_type else None, None
+            k_type, v_type = DictTransformer.get_dict_types(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type)
@@ -617,7 +675,7 @@ def binding_data_from_python_std(
         )
 
     # This is the scalar case - e.g. my_task(in1=5)
-    scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
+    scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
     return _literals_models.BindingData(scalar=scalar)
 
 
