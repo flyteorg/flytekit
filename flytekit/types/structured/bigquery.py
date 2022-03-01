@@ -38,7 +38,7 @@ def _read_from_bq(
     parent = "projects/{}".format(project_id)
 
     read_options = None
-    if current_task_metadata and current_task_metadata.structured_dataset_type.columns:
+    if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
         columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         read_options = types.ReadSession.TableReadOptions(selected_fields=columns)
 

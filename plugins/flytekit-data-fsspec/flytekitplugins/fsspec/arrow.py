@@ -55,7 +55,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         _, path = split_protocol(uri)
 
         columns = None
-        if current_task_metadata and current_task_metadata.structured_dataset_type.columns:
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             fs = FSSpecPersistence.get_filesystem(uri)

@@ -60,7 +60,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(path, local_dir, is_multipart=True)
-        if current_task_metadata and current_task_metadata.structured_dataset_type.columns:
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pd.read_parquet(local_dir, columns=columns)
         return pd.read_parquet(local_dir)
@@ -98,7 +98,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(path, local_dir, is_multipart=True)
-        if current_task_metadata and current_task_metadata.structured_dataset_type.columns:
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pq.read_table(local_dir, columns=columns)
         return pq.read_table(local_dir)
