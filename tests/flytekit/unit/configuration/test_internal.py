@@ -1,13 +1,16 @@
-import pytest
+import os
 
-from flytekit.configuration.internal import look_up_version_from_image_tag
+from flytekit.configuration import get_config_file
+from flytekit.configuration.internal import Images
 
 
-def test_parsing():
-    str = "somedocker.com/myimage:someversion123"
-    version = look_up_version_from_image_tag(str)
-    assert version == "someversion123"
+def test_load_images():
+    cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config"))
+    imgs = Images.get_specified_images(cfg)
+    assert imgs == {"abc": "docker.io/abc", "xyz": "docker.io/xyz:latest"}
 
-    str = "ffjdskl/jfkljkdfls"
-    with pytest.raises(Exception):
-        look_up_version_from_image_tag(str)
+
+def test_no_images():
+    cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
+    imgs = Images.get_specified_images(cfg)
+    assert imgs == {}

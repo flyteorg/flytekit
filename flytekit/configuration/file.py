@@ -11,6 +11,13 @@ from flytekit.exceptions import user as _user_exceptions
 
 @dataclass
 class LegacyConfigEntry(object):
+    """
+    Creates a record for the config entry. contains
+    Args:
+        section: section the option should be found unddd
+        option: the option str to lookup
+        type_: Expected type of the value
+    """
     section: str
     option: str
     type_: typing.Type
@@ -40,13 +47,8 @@ class LegacyConfigEntry(object):
 @dataclass
 class ConfigEntry(object):
     """
-    Creates a record for the config entry. contains
-    Args:
-        section: section the option should be found unddd
-        option: the option str to lookup
-        type_: Expected type of the value
-        default_val: stores the default value. Use this only in some circumstances, where you are not using flytekit
-                    Config object
+    A top level Config entry holder, that holds multiple different represnetations of the config.
+    Currently only legacy is supported, but more will be added soon
     """
 
     legacy: LegacyConfigEntry

@@ -22,12 +22,12 @@ class Images(object):
         if cfg is None:
             return images
         try:
-            image_names = cfg.config.options("images")
+            image_names = cfg.legacy_config.options("images")
         except configparser.NoSectionError:
             image_names = None
         if image_names:
             for i in image_names:
-                images[str(i)] = cfg.config.get("images", i)
+                images[str(i)] = cfg.legacy_config.get("images", i)
         return images
 
 
