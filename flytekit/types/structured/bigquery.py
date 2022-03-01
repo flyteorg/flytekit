@@ -11,7 +11,6 @@ from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     BIGQUERY,
-    DF,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -29,7 +28,9 @@ def _write_to_bq(structured_dataset: StructuredDataset):
     client.load_table_from_dataframe(df, table_id)
 
 
-def _read_from_bq(flyte_value: literals.StructuredDataset) -> pd.DataFrame:
+def _read_from_bq(
+    flyte_value: literals.StructuredDataset, current_task_metadata: StructuredDatasetMetadata
+) -> pd.DataFrame:
     path = flyte_value.uri
     _, project_id, dataset_id, table_id = re.split("\\.|://|:", path)
     client = bigquery_storage.BigQueryReadClient()
@@ -37,10 +38,8 @@ def _read_from_bq(flyte_value: literals.StructuredDataset) -> pd.DataFrame:
     parent = "projects/{}".format(project_id)
 
     read_options = None
-    if flyte_value.metadata.structured_dataset_type.columns:
-        columns = []
-        for c in flyte_value.metadata.structured_dataset_type.columns:
-            columns.append(c.name)
+    if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
+        columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         read_options = types.ReadSession.TableReadOptions(selected_fields=columns)
 
     requested_session = types.ReadSession(table=table, data_format=types.DataFormat.ARROW, read_options=read_options)
@@ -78,8 +77,9 @@ class BQToPandasDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-    ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
-        return _read_from_bq(flyte_value)
+        current_task_metadata: StructuredDatasetMetadata,
+    ) -> pd.DataFrame:
+        return _read_from_bq(flyte_value, current_task_metadata)
 
 
 class ArrowToBQEncodingHandlers(StructuredDatasetEncoder):
@@ -106,7 +106,8 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
-    ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
+        current_task_metadata: StructuredDatasetMetadata,
+    ) -> pa.Table:
         return pa.Table.from_pandas(_read_from_bq(flyte_value))
 
 
