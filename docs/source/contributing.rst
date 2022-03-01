@@ -9,14 +9,10 @@ First off, thank you for thinking about contributing! Below you'll find instruct
 Please also take some time to read through the :std:ref:`design guides <design>`, which describe the various parts of Flytekit and should make contributing easier.
 
 *******************
-📜 Quick Background
+📜 Background
 *******************
 
-The first version of the Flytekit library was written circa 2017, before mypy typing was mainstream, and
-targeted Python 2. That legacy code will be fully deprecated and removed in 2022. Since there are still
-users of Flytekit that rely on that legacy API, you'll see 2 separate and distinct code paths within this repo.
-Users and contributors should ignore the legacy sections. Below is a listing of the most important packages that
-comprise the new API:
+Below is a listing of the most important packages that comprise the flytekit SDK:
 
 - ``flytekit/core``
   This holds all the core functionality of the new API.
@@ -44,17 +40,6 @@ comprise the new API:
   This holds all the configuration objects, but dependency on configuration should be carefully considered as it
   makes compiled Flyte tasks and workflows less portable (i.e. if you run ``pyflyte package`` can someone else use
   those serialized objects).
-
-Most of the other folders are for legacy Flytekit, support for which will be dropped in early 2022. For the most part,
-please ignore the following folders:
-
-- ``flytekit/plugins``
-- ``flytekit/common``
-  (the ``translator.py`` file is an exception)
-- ``flytekit/engines``
-- ``flytekit/interfaces``
-- ``flytekit/sdk``
-- ``flytekit/type_engines``
 
 Please also see the :std:ref:`design overview section <design>` for more in-depth information.
 
