@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 import shutil
 from dataclasses import dataclass
@@ -15,6 +14,7 @@ from great_expectations.exceptions import ValidationError
 from flytekit import PythonInstanceTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
+from flytekit.loggers import logger
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
@@ -276,6 +276,6 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             # raise a Great Expectations' exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        logging.info("Validation succeeded!")
+        logger.info("Validation succeeded!")
 
         return final_result

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging as _logging
 from typing import Dict, List, Optional, Union
 
 from flytekit.core import constants as _constants
@@ -8,6 +7,7 @@ from flytekit.core import hash as _hash_mixin
 from flytekit.core.promise import NodeOutput
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.loggers import remote_logger
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as id_models
@@ -75,7 +75,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         node_model_id = model.id
         # TODO: Consider removing
         if id in {_constants.START_NODE_ID, _constants.END_NODE_ID}:
-            _logging.warning(f"Should not call promote from model on a start node or end node {model}")
+            remote_logger.warning(f"Should not call promote from model on a start node or end node {model}")
             return None
 
         flyte_task_node, flyte_workflow_node = None, None

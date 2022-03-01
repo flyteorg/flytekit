@@ -1,4 +1,3 @@
-import logging as _logging
 import math as _math
 import os as _os
 import sys
@@ -21,6 +20,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.scopes import system_entry_point
 from flytekit.exceptions.user import FlyteValidationException
+from flytekit.loggers import cli_logger
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
@@ -294,7 +294,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def workflows(ctx, folder=None):
-    _logging.getLogger().setLevel(_logging.DEBUG)
+    cli_logger.getLogger().setLevel(cli_logger.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")
@@ -322,7 +322,7 @@ def fast(ctx):
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def fast_workflows(ctx, folder=None):
-    _logging.getLogger().setLevel(_logging.DEBUG)
+    cli_logger.getLogger().setLevel(cli_logger.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")

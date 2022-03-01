@@ -5,7 +5,6 @@ but in Python object form.
 """
 from __future__ import annotations
 
-import logging
 import os
 import time
 import typing
@@ -635,9 +634,9 @@ class FlyteRemote(object):
                 else:
                     raise NotImplementedError(f"We don't support registering this kind of entity: {node.flyte_entity}")
             except FlyteEntityAlreadyExistsException:
-                logging.info(f"{entity.name} already exists")
+                remote_logger.info(f"{entity.name} already exists")
             except Exception as e:
-                logging.info(f"Failed to register entity {entity.name} with error {e}")
+                remote_logger.info(f"Failed to register entity {entity.name} with error {e}")
 
     ####################
     # Execute Entities #
@@ -923,7 +922,7 @@ class FlyteRemote(object):
         try:
             flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            logging.info("Try to register FlyteWorkflow because it wasn't found in Flyte Admin!")
+            remote_logger.info("Try to register FlyteWorkflow because it wasn't found in Flyte Admin!")
             self._register_entity_if_not_exists(entity, resolved_identifiers_dict)
             flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
         flyte_workflow.guessed_python_interface = entity.python_interface
@@ -932,7 +931,7 @@ class FlyteRemote(object):
         try:
             self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            logging.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
+            remote_logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
             default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
             self.register(default_lp, **resolved_identifiers_dict)
 

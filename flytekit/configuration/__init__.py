@@ -1,6 +1,7 @@
-import logging as _logging
 import os as _os
 import pathlib as _pathlib
+
+from flytekit.loggers import logger
 
 
 def set_flyte_config_file(config_file_path):
@@ -14,12 +15,12 @@ def set_flyte_config_file(config_file_path):
         original_config_file_path = config_file_path
         config_file_path = _os.path.abspath(config_file_path)
         if not _pathlib.Path(config_file_path).is_file():
-            _logging.warning(
+            logger.warning(
                 f"No config file provided or invalid flyte config_file_path {original_config_file_path} specified."
             )
         _os.environ[_internal.CONFIGURATION_PATH.env_var] = config_file_path
     elif _internal.CONFIGURATION_PATH.env_var in _os.environ:
-        _logging.debug("Deleting configuration path {} from env".format(_internal.CONFIGURATION_PATH.env_var))
+        logger.debug("Deleting configuration path {} from env".format(_internal.CONFIGURATION_PATH.env_var))
         del _os.environ[_internal.CONFIGURATION_PATH.env_var]
     _common.CONFIGURATION_SINGLETON.reset_config(config_file_path)
 

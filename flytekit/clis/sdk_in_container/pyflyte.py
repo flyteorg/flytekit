@@ -1,4 +1,3 @@
-import logging as _logging
 import os as _os
 from pathlib import Path
 
@@ -16,6 +15,7 @@ from flytekit.configuration import set_flyte_config_file
 from flytekit.configuration.internal import CONFIGURATION_PATH
 from flytekit.configuration.platform import URL as _URL
 from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
+from flytekit.loggers import cli_logger
 
 
 def validate_package(ctx, param, values):
@@ -61,7 +61,7 @@ def main(ctx, config=None, pkgs=None, insecure=None):
     # Update the logger if it's set
     log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
     if log_level is not None:
-        _logging.getLogger().setLevel(log_level)
+        cli_logger.getLogger().setLevel(log_level)
 
     ctx.obj = dict()
 
