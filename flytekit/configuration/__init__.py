@@ -278,11 +278,7 @@ class S3Config(object):
         kwargs = set_if_exists(kwargs, "enable_debug", _internal.AWS.ENABLE_DEBUG.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.AWS.S3_ENDPOINT.read(config_file))
         kwargs = set_if_exists(kwargs, "retries", _internal.AWS.RETRIES.read(config_file))
-        kwargs = set_if_exists(
-            kwargs,
-            "backoff",
-            _internal.AWS.BACKOFF_SECONDS.read(config_file, transform=lambda x: datetime.timedelta(seconds=x)),
-        )
+        kwargs = set_if_exists(kwargs, "backoff", _internal.AWS.BACKOFF_SECONDS.read(config_file))
         kwargs = set_if_exists(kwargs, "access_key_id", _internal.AWS.S3_ACCESS_KEY_ID.read(config_file))
         kwargs = set_if_exists(kwargs, "secret_access_key", _internal.AWS.S3_SECRET_ACCESS_KEY.read(config_file))
         return S3Config(**kwargs)

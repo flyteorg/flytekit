@@ -1,7 +1,9 @@
 import configparser
+import datetime
 import os
 
 import pytest
+from pytimeparse.timeparse import timeparse
 
 from flytekit.configuration import set_if_exists, get_config_file, ConfigEntry
 from flytekit.configuration.file import LegacyConfigEntry
@@ -13,8 +15,9 @@ def test_set_if_exists():
     assert len(d) == 0
     d = set_if_exists(d, "k", [])
     assert len(d) == 0
-    d = set_if_exists(d, "k", 1)
+    d = set_if_exists(d, "k", "x")
     assert len(d) == 1
+    assert d["k"] == "x"
 
 
 def test_get_config_file():
@@ -47,6 +50,9 @@ def test_config_entry_file():
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
     assert c.read(cfg) == "fakeflyte.com"
 
+    c = ConfigEntry(LegacyConfigEntry("platform", "url2", str))  # Does not exist
+    assert c.read(cfg) is None
+
 
 def test_config_entry_precedence():
     # Pytest feature
@@ -59,3 +65,23 @@ def test_config_entry_precedence():
     assert c.read(cfg) == "xyz"
     # reset
     os.environ = old_environ
+
+
+def test_config_entry_types():
+    cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
+
+    l = ConfigEntry(LegacyConfigEntry("sdk", "workflow_packages", list))
+    assert l.read(cfg) == ["this.module", "that.module"]
+
+    s = ConfigEntry(LegacyConfigEntry("madeup", "string_value"))
+    assert s.read(cfg) == "abc"
+
+    i = ConfigEntry(LegacyConfigEntry("madeup", "int_value", int))
+    assert i.read(cfg) == 3
+
+    b = ConfigEntry(LegacyConfigEntry("madeup", "bool_value", bool))
+    assert b.read(cfg) is False
+
+    t = ConfigEntry(LegacyConfigEntry("madeup", "timedelta_value", datetime.timedelta),
+                    transform=lambda x: datetime.timedelta(seconds=timeparse(x)))
+    assert t.read(cfg) == datetime.timedelta(hours=20)

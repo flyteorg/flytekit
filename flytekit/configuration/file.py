@@ -20,7 +20,7 @@ class LegacyConfigEntry(object):
     """
     section: str
     option: str
-    type_: typing.Type
+    type_: typing.Type = str
 
     def read_from_env(self) -> typing.Optional[typing.Any]:
         """
@@ -52,18 +52,16 @@ class ConfigEntry(object):
     """
 
     legacy: LegacyConfigEntry
+    transform: typing.Optional[typing.Callable[[str], typing.Any]] = None
 
-    def read(
-        self, cfg: typing.Optional[ConfigFile] = None, transform: typing.Optional[typing.Callable] = None
-    ) -> typing.Optional[typing.Any]:
+    def read(self, cfg: typing.Optional[ConfigFile] = None) -> typing.Optional[typing.Any]:
         """
         Reads the config Entry from the various sources in the following order,
          First try to read from environment, if not then try to read from the given config file
         :param cfg:
-        :param transform:
         :return:
         """
-        return self.legacy.read_from_env() or self.legacy.read_from_file(cfg, transform)
+        return self.legacy.read_from_env() or self.legacy.read_from_file(cfg, self.transform)
 
 
 class ConfigFile(object):
@@ -85,11 +83,11 @@ class ConfigFile(object):
         return c
 
     def _get_from_legacy(self, c: LegacyConfigEntry) -> typing.Any:
-        if issubclass(c.type_, int):
-            return self._legacy_config.getint(c.section, c.option)
-
         if issubclass(c.type_, bool):
             return self._legacy_config.getboolean(c.section, c.option)
+
+        if issubclass(c.type_, int):
+            return self._legacy_config.getint(c.section, c.option)
 
         if issubclass(c.type_, list):
             v = self._legacy_config.get(c.section, c.option)

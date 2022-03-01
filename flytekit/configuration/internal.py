@@ -1,4 +1,5 @@
 import configparser
+import datetime
 import tempfile
 import typing
 
@@ -33,12 +34,13 @@ class Images(object):
 
 class AWS(object):
     SECTION = "aws"
-    S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint", str))
-    S3_ACCESS_KEY_ID = ConfigEntry(LegacyConfigEntry(SECTION, "access_key_id", str))
-    S3_SECRET_ACCESS_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "secret_access_key", str))
+    S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint"))
+    S3_ACCESS_KEY_ID = ConfigEntry(LegacyConfigEntry(SECTION, "access_key_id"))
+    S3_SECRET_ACCESS_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "secret_access_key"))
     ENABLE_DEBUG = ConfigEntry(LegacyConfigEntry(SECTION, "enable_debug", bool))
     RETRIES = ConfigEntry(LegacyConfigEntry(SECTION, "retries", int))
-    BACKOFF_SECONDS = ConfigEntry(LegacyConfigEntry(SECTION, "backoff_seconds", int))
+    BACKOFF_SECONDS = ConfigEntry(LegacyConfigEntry(SECTION, "backoff_seconds", datetime.timedelta),
+                                  transform=lambda x: datetime.timedelta(seconds=int(x)))
 
 
 class GCP(object):
@@ -48,18 +50,18 @@ class GCP(object):
 
 class Credentials(object):
     SECTION = "credentials"
-    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command", str))
+    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command"))
     """
     This command is executed to return a token using an external process.
     """
 
-    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id", str))
+    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"))
     """
     This is the public identifier for the app which handles authorization for a Flyte deployment.
     More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
     """
 
-    CLIENT_CREDENTIALS_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret", str))
+    CLIENT_CREDENTIALS_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret"))
     """
     Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
     password directly from the environment variable. Note that this is less secure! Please only use this if mounting the
@@ -68,7 +70,7 @@ class Credentials(object):
 
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list))
 
-    AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode", str))
+    AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"))
     """
     The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
     - 'standard' This uses the pkce-enhanced authorization code flow by opening a browser window to initiate credentials
@@ -81,7 +83,7 @@ class Credentials(object):
 
 class Platform(object):
     SECTION = "platform"
-    URL = ConfigEntry(LegacyConfigEntry(SECTION, "url", str))
+    URL = ConfigEntry(LegacyConfigEntry(SECTION, "url"))
     INSECURE = ConfigEntry(LegacyConfigEntry(SECTION, "insecure", bool))
 
 
@@ -93,7 +95,7 @@ class LocalSDK(object):
     and execution of entities.
     """
 
-    LOCAL_SANDBOX = ConfigEntry(LegacyConfigEntry(SECTION, "local_sandbox", str))
+    LOCAL_SANDBOX = ConfigEntry(LegacyConfigEntry(SECTION, "local_sandbox"))
     """
     This is the path where SDK will place files during local executions and testing.  The SDK will not automatically
     clean up data in these directories.
@@ -119,19 +121,19 @@ class LocalSDK(object):
 class Secrets(object):
     SECTION = "secrets"
     # Secrets management
-    ENV_PREFIX = ConfigEntry(LegacyConfigEntry(SECTION, "env_prefix", str))
+    ENV_PREFIX = ConfigEntry(LegacyConfigEntry(SECTION, "env_prefix"))
     """
     This is the prefix that will be used to lookup for injected secrets at runtime. This can be overridden to using
     FLYTE_SECRETS_ENV_PREFIX variable
     """
 
-    DEFAULT_DIR = ConfigEntry(LegacyConfigEntry(SECTION, "default_dir", str))
+    DEFAULT_DIR = ConfigEntry(LegacyConfigEntry(SECTION, "default_dir"))
     """
     This is the default directory that will be used to find secrets as individual files under. This can be overridden using
     FLYTE_SECRETS_DEFAULT_DIR.
     """
 
-    FILE_PREFIX = ConfigEntry(LegacyConfigEntry(SECTION, "file_prefix", str))
+    FILE_PREFIX = ConfigEntry(LegacyConfigEntry(SECTION, "file_prefix"))
     """
     This is the prefix for the file in the default dir.
     """
@@ -142,7 +144,7 @@ class StatsD(object):
     # StatsD Config flags should ideally be controlled at the platform level and not through flytekit's config file.
     # They are meant to allow administrators to control certain behavior according to how the system is configured.
 
-    HOST = ConfigEntry(LegacyConfigEntry(SECTION, "host", str))
+    HOST = ConfigEntry(LegacyConfigEntry(SECTION, "host"))
     PORT = ConfigEntry(LegacyConfigEntry(SECTION, "port", int))
     DISABLED = ConfigEntry(LegacyConfigEntry(SECTION, "disabled", bool))
     DISABLE_TAGS = ConfigEntry(LegacyConfigEntry(SECTION, "disable_tags", bool))
