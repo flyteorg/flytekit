@@ -126,7 +126,7 @@ def get_serializable_workflow(
     settings: SerializationSettings,
     entity: WorkflowBase,
 ) -> admin_workflow_models.WorkflowSpec:
-    # TODO: Try to move up following config refactor
+    # TODO: Try to move up following config refactor - https://github.com/flyteorg/flyte/issues/2214
     from flytekit.remote.workflow import FlyteWorkflow
 
     # Get node models
@@ -249,7 +249,7 @@ def get_serializable_node(
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
 
-    # TODO: Try to move back up following config refactor
+    # TODO: Try to move back up following config refactor - https://github.com/flyteorg/flyte/issues/2214
     from flytekit.remote.launch_plan import FlyteLaunchPlan
     from flytekit.remote.task import FlyteTask
     from flytekit.remote.workflow import FlyteWorkflow
@@ -435,7 +435,7 @@ def get_serializable(
     :return: The resulting control plane entity, in addition to being added to the mutable entity_mapping parameter
       is also returned.
     """
-    # TODO: Try to replace following config refactor
+    # TODO: Try to replace following config refactor - https://github.com/flyteorg/flyte/issues/2214
     from flytekit.remote.launch_plan import FlyteLaunchPlan
     from flytekit.remote.task import FlyteTask
     from flytekit.remote.workflow import FlyteWorkflow
