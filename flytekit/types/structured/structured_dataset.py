@@ -37,6 +37,7 @@ DF = typing.TypeVar("DF")  # Dataframe type
 # Protocols
 BIGQUERY = "bq"
 S3 = "s3"
+GCS = "gs"
 LOCAL = "/"
 
 # For specifying the storage formats of StructuredDatasets. It's just a string, nothing fancy.

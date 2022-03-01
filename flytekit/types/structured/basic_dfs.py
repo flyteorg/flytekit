@@ -12,6 +12,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
+    GCS,
     LOCAL,
     PARQUET,
     S3,
@@ -106,7 +107,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(local_dir)
 
 
-for protocol in [LOCAL, S3]:  # Should we add GCS
+for protocol in [LOCAL, S3, GCS]:
     StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol), default_for_type=True)
     StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
     StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), default_for_type=True)
