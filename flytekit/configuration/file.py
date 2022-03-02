@@ -18,6 +18,7 @@ class LegacyConfigEntry(object):
         option: the option str to lookup
         type_: Expected type of the value
     """
+
     section: str
     option: str
     type_: typing.Type = str
@@ -105,7 +106,7 @@ class ConfigFile(object):
         return self._legacy_config
 
 
-def get_config_file(c: typing.Union[str, ConfigFile]) -> typing.Optional[ConfigFile]:
+def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[ConfigFile]:
     """
     Checks if the given argument is a file or a configFile and returns a loaded configFile else returns None
 

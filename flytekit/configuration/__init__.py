@@ -103,7 +103,7 @@ class ImageConfig(object):
         return None
 
     @staticmethod
-    def validate_image(ctx: typing.Any, param: str, values: tuple) -> ImageConfig:
+    def validate_image(_: typing.Any, param: str, values: tuple) -> ImageConfig:
         """
         Validates the image to match the standard format. Also validates that only one default image
         is provided. a default image, is one that is specified as
@@ -185,7 +185,7 @@ class PlatformConfig(object):
     auth_mode: AuthType = AuthType.STANDARD
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> PlatformConfig:
+    def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
         """
         Reads from Config file, and overrides from Environment variables. Refer to ConfigEntry for details
         :param config_file:

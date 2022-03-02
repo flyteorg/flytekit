@@ -1,13 +1,12 @@
 import click
 
-import flytekit.configuration.file
-import flytekit.configuration.internal
 from flytekit import configuration
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES
 from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.serialize import serialize
+from flytekit.configuration.internal import LocalSDK
 
 
 def validate_package(ctx, param, values):
@@ -49,7 +48,7 @@ def main(ctx, pkgs=None, config=None):
         ctx.obj[CTX_CONFIG_FILE] = config
         cfg = configuration.ConfigFile(config)
         if not pkgs:
-            pkgs = flytekit.configuration.internal.LocalSDK.WORKFLOW_PACKAGES.read(cfg)
+            pkgs = LocalSDK.WORKFLOW_PACKAGES.read(cfg)
             if pkgs is None:
                 pkgs = []
     ctx.obj[CTX_PACKAGES] = pkgs

@@ -5,7 +5,7 @@ import os
 import pytest
 from pytimeparse.timeparse import timeparse
 
-from flytekit.configuration import set_if_exists, get_config_file, ConfigEntry
+from flytekit.configuration import ConfigEntry, get_config_file, set_if_exists
 from flytekit.configuration.file import LegacyConfigEntry
 
 
@@ -82,6 +82,8 @@ def test_config_entry_types():
     b = ConfigEntry(LegacyConfigEntry("madeup", "bool_value", bool))
     assert b.read(cfg) is False
 
-    t = ConfigEntry(LegacyConfigEntry("madeup", "timedelta_value", datetime.timedelta),
-                    transform=lambda x: datetime.timedelta(seconds=timeparse(x)))
+    t = ConfigEntry(
+        LegacyConfigEntry("madeup", "timedelta_value", datetime.timedelta),
+        transform=lambda x: datetime.timedelta(seconds=timeparse(x)),
+    )
     assert t.read(cfg) == datetime.timedelta(hours=20)

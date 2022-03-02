@@ -39,8 +39,10 @@ class AWS(object):
     S3_SECRET_ACCESS_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "secret_access_key"))
     ENABLE_DEBUG = ConfigEntry(LegacyConfigEntry(SECTION, "enable_debug", bool))
     RETRIES = ConfigEntry(LegacyConfigEntry(SECTION, "retries", int))
-    BACKOFF_SECONDS = ConfigEntry(LegacyConfigEntry(SECTION, "backoff_seconds", datetime.timedelta),
-                                  transform=lambda x: datetime.timedelta(seconds=int(x)))
+    BACKOFF_SECONDS = ConfigEntry(
+        LegacyConfigEntry(SECTION, "backoff_seconds", datetime.timedelta),
+        transform=lambda x: datetime.timedelta(seconds=int(x)),
+    )
 
 
 class GCP(object):
