@@ -166,7 +166,7 @@ class AuthType(enum.Enum):
 class PlatformConfig(object):
     endpoint: str = "localhost:30081"
     insecure: bool = False
-    command: typing.Optional[str] = None
+    command: typing.Optional[typing.List[str]] = None
     """
     This command is executed to return a token using an external process.
     """
@@ -406,9 +406,9 @@ class Config(object):
         But, for permissions to a specific backend just use Cloud providers reqcommendation. If using fsspec, then
         refer to fsspec documentation
         :param endpoint: -> Endpoint where Flyte admin is available
-        :param insecure: -> if the conection should be inseucre
+        :param insecure: -> if the connection should be insecure, default is secure (SSL ON)
         :param data_config: -> Data config, if using specialized connection params like minio etc
-        :param config_file: -> Optional config file in the flytekit config format or flytectl formatl.
+        :param config_file: -> Optional config file in the flytekit config format.
         :return: Config
         """
         c = cls.auto(config_file)

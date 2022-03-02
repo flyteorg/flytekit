@@ -51,7 +51,7 @@ class GCP(object):
 
 class Credentials(object):
     SECTION = "credentials"
-    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command"))
+    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command"), list)
     """
     This command is executed to return a token using an external process.
     """

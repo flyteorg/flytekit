@@ -10,7 +10,6 @@ from flytekit.configuration import (
     Image,
     ImageConfig,
     SerializationSettings,
-    secrets,
 )
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SecretsManager
 

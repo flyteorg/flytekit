@@ -27,9 +27,6 @@ def _handle_rpc_error(retry=False):
         def handler(*args, **kwargs):
             """
             Wraps rpc errors as Flyte exceptions and handles authentication the client.
-            :param args:
-            :param kwargs:
-            :return:
             """
             max_retries = 3
             max_wait_time = 1000
@@ -44,15 +41,16 @@ def _handle_rpc_error(retry=False):
                             # Exit the loop and wrap the authentication error.
                             raise _user_exceptions.FlyteAuthenticationException(str(e))
                         cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
-                        refresh_handler_fn = args[0].refresh_credentials()
-                    # There are two cases that we should throw error immediately
-                    # 1. Entity already exists when we register entity
-                    # 2. Entity not found when we fetch entity
+                        args[0].refresh_credentials()
                     elif e.code() == grpc.StatusCode.ALREADY_EXISTS:
+                        # There are two cases that we should throw error immediately
+                        # 1. Entity already exists when we register entity
+                        # 2. Entity not found when we fetch entity
                         raise _user_exceptions.FlyteEntityAlreadyExistsException(e)
                     elif e.code() == grpc.StatusCode.NOT_FOUND:
                         raise _user_exceptions.FlyteEntityNotExistException(e)
                     else:
+                        print(e)
                         # No more retries if retry=False or max_retries reached.
                         if (retry is False) or i == (max_retries - 1):
                             raise
