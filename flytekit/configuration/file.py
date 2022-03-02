@@ -48,7 +48,7 @@ class LegacyConfigEntry(object):
 @dataclass
 class ConfigEntry(object):
     """
-    A top level Config entry holder, that holds multiple different represnetations of the config.
+    A top level Config entry holder, that holds multiple different representations of the config.
     Currently only legacy is supported, but more will be added soon
     """
 

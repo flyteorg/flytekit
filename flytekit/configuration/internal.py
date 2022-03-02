@@ -1,6 +1,5 @@
 import configparser
 import datetime
-import tempfile
 import typing
 
 from flytekit.configuration.file import ConfigEntry, ConfigFile, LegacyConfigEntry

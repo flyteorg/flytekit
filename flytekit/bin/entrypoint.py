@@ -158,7 +158,13 @@ def _dispatch_execute(
     logger.debug("Finished _dispatch_execute")
 
 
-def get_one_of(*args):
+def get_one_of(*args) -> str:
+    """
+    Helper function to iterate through a series of different environment variables. This function exists because for
+    some settings reference multiple environment variables for legacy reasons.
+    :param args: List of environment variables to look for.
+    :return: The first defined value in the environment, or an empty string if nothing is found.
+    """
     for k in args:
         if k in os.environ:
             return os.environ[k]
