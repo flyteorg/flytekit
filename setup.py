@@ -35,8 +35,7 @@ setup(
         ]
     },
     install_requires=[
-        # TODO: put the flyteidl constraint back
-        # "flyteidl>=0.21.4",
+        "flyteidl>=0.23.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<7.0.0",
