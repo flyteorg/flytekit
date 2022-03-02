@@ -905,7 +905,11 @@ def test_union_of_lists():
             structure=TypeStructure(tag="Typed List"),
         ),
     ]
-    assert not union_type_tags_unique(lt)  # tags are deliberately NOT unique
+    # Tags are deliberately NOT unique beacuse they are not required to encode the deep type structure,
+    # only the top-level type transformer choice
+    #
+    # The stored typed will be used to differentiate union variants and must produce a unique choice.
+    assert not union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", "world"], pt, lt)
