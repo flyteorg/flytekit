@@ -1,7 +1,7 @@
-from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
+from flytekit.configuration.internal import LocalSDK
 from flytekit.loggers import logger
 
-if USE_STRUCTURED_DATASET.get():
+if LocalSDK.USE_STRUCTURED_DATASET.read():
     from .basic_dfs import (
         ArrowToParquetEncodingHandler,
         PandasToParquetEncodingHandler,

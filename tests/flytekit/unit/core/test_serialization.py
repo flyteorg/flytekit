@@ -6,10 +6,8 @@ import pytest
 
 import flytekit.configuration
 from flytekit import ContainerTask, kwtypes
-from flytekit.configuration import Image, ImageConfig, SerializationSettings, set_flyte_config_file
-from flytekit.core import context_manager
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import get_image_config
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.models.types import SimpleType
