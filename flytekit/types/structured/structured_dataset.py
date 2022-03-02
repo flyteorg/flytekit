@@ -381,6 +381,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
         self._type_assertions_enabled = False
 
+        # Instances of StructuredDataset opt-in to the ability of being cached.
+        self._hash_overridable = True
+
     @classmethod
     def register(cls, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
         """

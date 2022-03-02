@@ -112,6 +112,9 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
     def __init__(self):
         super().__init__("PandasDataFrame<->GenericSchema", pandas.DataFrame)
         self._parquet_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
+        # Pandas dataframes can have their hashes overriden to facilitate the case of caching pandas dataframes by
+        # value.
+        self._hash_overridable = True
 
     @staticmethod
     def _get_schema_type() -> SchemaType:
