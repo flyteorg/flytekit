@@ -20,7 +20,6 @@ from pandas._testing import assert_frame_equal
 
 import flytekit.common.exceptions.user as user_exceptions
 from flytekit import kwtypes
-from flytekit.common.types import primitives
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import (
@@ -785,7 +784,7 @@ def test_union_from_unambiguous_literal():
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
-    lv = TypeEngine.to_literal(ctx, 3, int, primitives.Integer.to_flyte_literal_type())
+    lv = TypeEngine.to_literal(ctx, 3, int, LiteralType(simple=SimpleType.INTEGER))
     assert lv.scalar.primitive.integer == 3
 
     v = TypeEngine.to_python_value(ctx, lv, pt)
@@ -806,7 +805,7 @@ def test_union_custom_transformer():
         SimpleTransformer(
             "MyInt",
             MyInt,
-            primitives.Integer.to_flyte_literal_type(),
+            LiteralType(simple=SimpleType.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x.val))),
             lambda x: MyInt(x.scalar.primitive.integer),
         )
@@ -833,7 +832,7 @@ def test_union_custom_transformer():
     assert lv.scalar.union.value.scalar.primitive.integer == 10
     assert v == MyInt(10)
 
-    lv = TypeEngine.to_literal(ctx, 4, int, primitives.Integer.to_flyte_literal_type())
+    lv = TypeEngine.to_literal(ctx, 4, int, LiteralType(simple=SimpleType.INTEGER))
     assert lv.scalar.primitive.integer == 4
     try:
         TypeEngine.to_python_value(ctx, lv, pt)
@@ -859,7 +858,7 @@ def test_union_custom_transformer_sanity_check():
             super().__init__("UnsignedInt", UnsignedInt)
 
         def get_literal_type(self, t: typing.Type[T]) -> LiteralType:
-            return primitives.Integer.to_flyte_literal_type()
+            return LiteralType(simple=SimpleType.INTEGER)
 
         def to_literal(
             self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType

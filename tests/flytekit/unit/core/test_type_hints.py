@@ -19,7 +19,6 @@ from pandas._testing import assert_frame_equal
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
-from flytekit.common.types import primitives
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
@@ -1713,7 +1712,7 @@ def test_union_type_ambiguity_checking():
         SimpleTransformer(
             "MyInt",
             MyInt,
-            primitives.Integer.to_flyte_literal_type(),
+            LiteralType(simple=SimpleType.INTEGER),
             lambda x: _literal_models.Literal(
                 scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))
             ),
@@ -1753,7 +1752,7 @@ def test_union_type_ambiguity_resolution():
         SimpleTransformer(
             "MyInt",
             MyInt,
-            primitives.Integer.to_flyte_literal_type(),
+            LiteralType(simple=SimpleType.INTEGER),
             lambda x: _literal_models.Literal(
                 scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))
             ),
