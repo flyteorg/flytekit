@@ -4,6 +4,7 @@ import logging as python_logging
 import os
 import os as _os
 import pathlib
+import tempfile
 import traceback as _traceback
 from typing import List, Optional
 
@@ -12,7 +13,6 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
 from flytekit.configuration import ImageConfig, SerializationSettings, StatsConfig
-from flytekit.configuration import sdk as _sdk_config
 from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _constants
 from flytekit.core import utils
@@ -225,7 +225,7 @@ def setup_execution(
 
     try:
         file_access = FileAccessProvider(
-            local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
+            local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"),
             raw_output_prefix=raw_output_data_prefix,
         )
     except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
