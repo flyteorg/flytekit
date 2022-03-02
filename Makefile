@@ -50,7 +50,8 @@ test: lint unit_test
 
 .PHONY: unit_test
 unit_test:
-	FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE pytest tests/flytekit/unit tests/flytekit_compatibility
+	FLYTE_SDK_USE_STRUCTURED_DATASET=FALSE pytest tests/flytekit_compatibility && \
+		FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE pytest tests/flytekit/unit
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools

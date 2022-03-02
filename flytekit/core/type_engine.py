@@ -10,13 +10,6 @@ import typing
 from abc import ABC, abstractmethod
 from typing import NamedTuple, Optional, Type, cast
 
-from typing_extensions import get_args as _get_args
-
-try:
-    from typing import Annotated, get_args, get_origin
-except ImportError:
-    from typing_extensions import Annotated, get_origin, get_args
-
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import reflection as _proto_reflection
@@ -26,9 +19,11 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
+from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
@@ -52,14 +47,9 @@ from flytekit.models.literals import (
 from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
 
 try:
-    from typing import get_args as _get_args
+    from typing import Annotated, get_args, get_origin
 except ImportError:
-    try:
-        from typing_extensions import get_args as _get_args
-    except ImportError:
-
-        def _get_args(t):
-            return t.__args__
+    from typing_extensions import Annotated, get_args, get_origin
 
 
 T = typing.TypeVar("T")
@@ -75,10 +65,13 @@ class TypeTransformer(typing.Generic[T]):
     Base transformer type that should be implemented for every python native type that can be handled by flytekit
     """
 
-    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True):
+    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True, hash_overridable: bool = False):
         self._t = t
         self._name = name
         self._type_assertions_enabled = enable_type_assertions
+        # `hash_overridable` indicates that the literals produced by this type transformer can set their hashes if needed.
+        # See (link to documentation where this feature is explained).
+        self._hash_overridable = hash_overridable
 
     @property
     def name(self):
@@ -97,6 +90,10 @@ class TypeTransformer(typing.Generic[T]):
         Indicates if the transformer wants type assertions to be enabled at the core type engine layer
         """
         return self._type_assertions_enabled
+
+    @property
+    def hash_overridable(self) -> bool:
+        return self._hash_overridable
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, t):
@@ -677,7 +674,25 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
             transformer.assert_type(python_type, python_val)
+
+        # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
+        hash = None
+        if transformer.hash_overridable and get_origin(python_type) is Annotated:
+            # We are now dealing with one of two cases:
+            # 1. The annotated type is a `HashMethod`, which indicates that we should we should produce the hash using
+            #    the method indicated in the annotation.
+            # 2. The annotated type is being used for a different purpose other than calculating hash values, in which case
+            #    we should just continue.
+            for annotation in get_args(python_type)[1:]:
+                if not isinstance(annotation, HashMethod):
+                    continue
+                hash = annotation.calculate(python_val)
+                break
+
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
+
+        if hash is not None:
+            lv.hash = hash
         return lv
 
     @classmethod
@@ -933,7 +948,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         try:
-            trans = [(TypeEngine.get_transformer(x), x) for x in _get_args(t)]
+            trans = [(TypeEngine.get_transformer(x), x) for x in get_args(t)]
             variants = [_add_tag_to_type(t.get_literal_type(x), t.name) for (t, x) in trans]
             return _type_models.LiteralType(union_type=UnionType(variants))
         except Exception as e:
@@ -943,7 +958,7 @@ class UnionTransformer(TypeTransformer[T]):
         found_res = False
         res = None
         res_type = None
-        for t in _get_args(python_type):
+        for t in get_args(python_type):
             try:
                 trans = TypeEngine.get_transformer(t)
 
@@ -973,7 +988,7 @@ class UnionTransformer(TypeTransformer[T]):
         found_res = False
         res = None
         res_tag = None
-        for v in _get_args(expected_python_type):
+        for v in get_args(expected_python_type):
             try:
                 trans = TypeEngine.get_transformer(v)
                 if union_tag is not None:
@@ -1080,6 +1095,7 @@ class DictTransformer(TypeTransformer[dict]):
         for k, v in python_val.items():
             if type(k) != str:
                 raise ValueError("Flyte MapType expects all keys to be strings")
+            # TODO: log a warning for Annotated objects that contain HashMethod
             k_type, v_type = self.get_dict_types(python_type)
             lit_map[k] = TypeEngine.to_literal(ctx, v, v_type, expected.map_value_type)
         return Literal(map=LiteralMap(literals=lit_map))
