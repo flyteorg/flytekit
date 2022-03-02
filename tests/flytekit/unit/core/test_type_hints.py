@@ -19,7 +19,6 @@ from pandas._testing import assert_frame_equal
 
 import flytekit
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
-from flytekit.common.translator import get_serializable
 from flytekit.common.types import primitives
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional

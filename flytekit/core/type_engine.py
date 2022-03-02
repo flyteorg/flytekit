@@ -8,8 +8,9 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from re import L
 from typing import NamedTuple, Optional, Type, cast
+
+from typing_extensions import get_args as _get_args
 
 try:
     from typing import Annotated, get_args, get_origin
@@ -185,7 +186,7 @@ class SimpleTransformer(TypeTransformer[T]):
             if type(res) != self._type:
                 raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
             return res
-        except AttributeError as e:
+        except AttributeError:
             # Assume that this is because a property on `lv` was None
             raise TypeTransformerFailedError(f"Cannot convert literal {lv}")
 
@@ -503,7 +504,7 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
         struct = Struct()
         try:
             struct.update(_MessageToDict(python_val))
-        except:
+        except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
         return Literal(scalar=Scalar(generic=struct))
 
@@ -866,7 +867,7 @@ class UnionTransformer(TypeTransformer[T]):
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 if found_res:
                     # Should really never happen, sanity check
-                    raise TypeError(f"Ambiguous choice of variant for union type")
+                    raise TypeError("Ambiguous choice of variant for union type")
                 found_res = True
             except TypeTransformerFailedError as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
