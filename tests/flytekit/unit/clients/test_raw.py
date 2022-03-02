@@ -9,12 +9,8 @@ from flyteidl.service import auth_pb2
 from mock import MagicMock, patch
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as RawSynchronousFlyteClient
-from flytekit.clients.raw import (
-    get_basic_authorization_header,
-    get_token,
-)
-
-from flytekit.configuration import PlatformConfig, AuthType
+from flytekit.clients.raw import get_basic_authorization_header, get_token
+from flytekit.configuration import AuthType, PlatformConfig
 
 
 def get_admin_stub_mock() -> mock.MagicMock:
@@ -76,14 +72,14 @@ def test_refresh_credentials_from_command(mock_call_to_external_process):
 @mock.patch("flytekit.clients.raw._insecure_channel")
 @mock.patch("flytekit.clients.raw._secure_channel")
 def test_refresh_client_credentials_aka_basic(
-        mock_secure_channel,
-        mock_channel,
-        mock_admin,
-        mock_admin_auth,
-        mock_get_token,
-        mock_get_basic_header,
-        mock_secret,
-        mock_scopes,
+    mock_secure_channel,
+    mock_channel,
+    mock_admin,
+    mock_admin_auth,
+    mock_get_token,
+    mock_get_basic_header,
+    mock_secret,
+    mock_scopes,
 ):
     mock_secret.return_value = "sosecret"
     mock_scopes.return_value = ["a", "b", "c", "d"]

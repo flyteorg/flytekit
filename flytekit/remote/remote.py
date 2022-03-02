@@ -116,12 +116,12 @@ def _get_latest_version(list_entities_method: typing.Callable, project: str, dom
 
 
 def _get_entity_identifier(
-        list_entities_method: typing.Callable,
-        resource_type: int,  # from flytekit.models.core.identifier.ResourceType
-        project: str,
-        domain: str,
-        name: str,
-        version: typing.Optional[str] = None,
+    list_entities_method: typing.Callable,
+    resource_type: int,  # from flytekit.models.core.identifier.ResourceType
+    project: str,
+    domain: str,
+    name: str,
+    version: typing.Optional[str] = None,
 ):
     return Identifier(
         resource_type,
@@ -145,12 +145,12 @@ class FlyteRemote(object):
     """
 
     def __init__(
-            self,
-            config: Config,
-            default_project: typing.Optional[str] = None,
-            default_domain: typing.Optional[str] = None,
-            file_access: typing.Optional[FileAccessProvider] = None,
-            **kwargs,
+        self,
+        config: Config,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        file_access: typing.Optional[FileAccessProvider] = None,
+        **kwargs,
     ):
         """Initialize a FlyteRemote object.
 
@@ -213,12 +213,12 @@ class FlyteRemote(object):
         )
 
     def with_overrides(
-            self,
-            config: typing.Optional[Config] = None,
-            default_project: typing.Optional[str] = None,
-            default_domain: typing.Optional[str] = None,
-            file_access: typing.Optional[FileAccessProvider] = None,
-            grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
+        self,
+        config: typing.Optional[Config] = None,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        file_access: typing.Optional[FileAccessProvider] = None,
+        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
     ) -> FlyteRemote:
         """Create a copy of the remote object, overriding the specified attributes."""
         new_remote = deepcopy(self)
@@ -262,7 +262,7 @@ class FlyteRemote(object):
         return flyte_task
 
     def fetch_workflow(
-            self, project: str = None, domain: str = None, name: str = None, version: str = None
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> FlyteWorkflow:
         """Fetch a workflow entity from flyte admin.
 
@@ -296,7 +296,7 @@ class FlyteRemote(object):
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
     def fetch_launch_plan(
-            self, project: str = None, domain: str = None, name: str = None, version: str = None
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> FlyteLaunchPlan:
         """Fetch a launchplan entity from flyte admin.
 
@@ -331,7 +331,7 @@ class FlyteRemote(object):
         return flyte_launch_plan
 
     def fetch_workflow_execution(
-            self, project: str = None, domain: str = None, name: str = None
+        self, project: str = None, domain: str = None, name: str = None
     ) -> FlyteWorkflowExecution:
         """Fetch a workflow execution entity from flyte admin.
 
@@ -360,10 +360,10 @@ class FlyteRemote(object):
     ######################
 
     def recent_executions(
-            self,
-            project: typing.Optional[str] = None,
-            domain: typing.Optional[str] = None,
-            limit: typing.Optional[int] = 100,
+        self,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: typing.Optional[int] = 100,
     ) -> typing.List[FlyteWorkflowExecution]:
         # Ignore token for now
         exec_models, _ = self.client.list_executions_paginated(
@@ -375,11 +375,11 @@ class FlyteRemote(object):
         return [FlyteWorkflowExecution.promote_from_model(e) for e in exec_models]
 
     def list_tasks_by_version(
-            self,
-            version: str,
-            project: typing.Optional[str] = None,
-            domain: typing.Optional[str] = None,
-            limit: typing.Optional[int] = 100,
+        self,
+        version: str,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: typing.Optional[int] = 100,
     ) -> typing.List[FlyteTask]:
         if not version:
             raise ValueError("Must specify a version")
@@ -413,8 +413,7 @@ class FlyteRemote(object):
         return ident
 
     def register_task(
-            self, entity: PythonTask, serialization_settings: SerializationSettings,
-            version: typing.Optional[str] = None
+        self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
     ) -> FlyteTask:
         """
         Register a qualified task (PythonTask) with Remote
@@ -434,13 +433,13 @@ class FlyteRemote(object):
         )
 
     def register_workflow(
-            self,
-            entity: WorkflowBase,
-            serialization_settings: SerializationSettings,
-            version: typing.Optional[str] = None,
-            default_launch_plan: bool = True,
-            all_downstream: bool = False,
-            options: typing.Optional[Options] = None,
+        self,
+        entity: WorkflowBase,
+        serialization_settings: SerializationSettings,
+        version: typing.Optional[str] = None,
+        default_launch_plan: bool = True,
+        all_downstream: bool = False,
+        options: typing.Optional[Options] = None,
     ) -> FlyteWorkflow:
         """
         Use this method to register a workflow.
@@ -470,11 +469,11 @@ class FlyteRemote(object):
         return self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
 
     def register_launch_plan(
-            self,
-            entity: LaunchPlan,
-            serialization_settings: typing.Optional[SerializationSettings] = None,
-            version: typing.Optional[str] = None,
-            options: typing.Optional[Options] = None,
+        self,
+        entity: LaunchPlan,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
+        version: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
     ) -> FlyteLaunchPlan:
         """
         Register a given launchplan, possibly applying overrides from the provided options.
@@ -513,11 +512,11 @@ class FlyteRemote(object):
         return self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
 
     def _register_entity_if_not_exists(
-            self,
-            entity: WorkflowBase,
-            serialization_settings: SerializationSettings,
-            version: typing.Optional[str] = None,
-            options: typing.Optional[Options] = None,
+        self,
+        entity: WorkflowBase,
+        serialization_settings: SerializationSettings,
+        version: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
     ):
         for node in entity.nodes:
             try:
@@ -553,14 +552,14 @@ class FlyteRemote(object):
     ####################
 
     def _execute(
-            self,
-            entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
-            inputs: typing.Dict[str, typing.Any],
-            project: str = None,
-            domain: str = None,
-            execution_name: str = None,
-            options: typing.Optional[Options] = None,
-            wait: bool = False,
+        self,
+        entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        execution_name: str = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -619,8 +618,10 @@ class FlyteRemote(object):
                 literal_inputs,
             )
         except user_exceptions.FlyteEntityAlreadyExistsException as e:
-            remote_logger.warning(f"Execution with Execution ID {execution_name} already exists. "
-                                  f"Assuming this is the same execution, returning!")
+            remote_logger.warning(
+                f"Execution with Execution ID {execution_name} already exists. "
+                f"Assuming this is the same execution, returning!"
+            )
             exec_id = WorkflowExecutionIdentifier(
                 project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
             )
@@ -630,14 +631,14 @@ class FlyteRemote(object):
         return execution
 
     def _resolve_identifier_kwargs(
-            self,
-            entity: typing.Any,
-            project: str,
-            domain: str,
-            name: str,
-            from_project: str,
-            from_domain: str,
-            version: str,
+        self,
+        entity: typing.Any,
+        project: str,
+        domain: str,
+        name: str,
+        from_project: str,
+        from_domain: str,
+        version: str,
     ) -> ResolvedIdentifiers:
         """
         Resolves the identifier attributes based on user input, falling back on the default project/domain and
@@ -658,18 +659,18 @@ class FlyteRemote(object):
 
     @singledispatchmethod
     def execute(
-            self,
-            entity: typing.Union[FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan],
-            inputs: typing.Dict[str, typing.Any],
-            project: str = None,
-            domain: str = None,
-            name: str = None,
-            version: str = None,
-            execution_name: str = None,
-            from_project: str = None,
-            from_domain: str = None,
-            options: typing.Optional[Options] = None,
-            wait: bool = False,
+        self,
+        entity: typing.Union[FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan],
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        version: str = None,
+        execution_name: str = None,
+        from_project: str = None,
+        from_domain: str = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Execute a task, workflow, or launchplan.
 
@@ -706,18 +707,18 @@ class FlyteRemote(object):
     @execute.register(FlyteTask)
     @execute.register(FlyteLaunchPlan)
     def _(
-            self,
-            entity: typing.Union[FlyteTask, FlyteLaunchPlan],
-            inputs: typing.Dict[str, typing.Any],
-            project: str = None,
-            domain: str = None,
-            name: str = None,
-            version: str = None,
-            execution_name: str = None,
-            from_project: str = None,
-            from_domain: str = None,
-            options: typing.Optional[Options] = None,
-            wait: bool = False,
+        self,
+        entity: typing.Union[FlyteTask, FlyteLaunchPlan],
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        version: str = None,
+        execution_name: str = None,
+        from_project: str = None,
+        from_domain: str = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -737,18 +738,18 @@ class FlyteRemote(object):
 
     @execute.register
     def _(
-            self,
-            entity: FlyteWorkflow,
-            inputs: typing.Dict[str, typing.Any],
-            project: str = None,
-            domain: str = None,
-            name: str = None,
-            version: str = None,
-            execution_name: str = None,
-            from_project: str = None,
-            from_domain: str = None,
-            options: typing.Optional[Options] = None,
-            wait: bool = False,
+        self,
+        entity: FlyteWorkflow,
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        version: str = None,
+        execution_name: str = None,
+        from_project: str = None,
+        from_domain: str = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -776,18 +777,18 @@ class FlyteRemote(object):
 
     @execute.register
     def _(
-            self,
-            entity: PythonTask,
-            inputs: typing.Dict[str, typing.Any],
-            project: str = None,
-            domain: str = None,
-            name: str = None,
-            version: str = None,
-            execution_name: str = None,
-            from_project: str = None,
-            from_domain: str = None,
-            options: typing.Optional[Options] = None,
-            wait: bool = False,
+        self,
+        entity: PythonTask,
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        version: str = None,
+        execution_name: str = None,
+        from_project: str = None,
+        from_domain: str = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Execute an @task-decorated function or TaskTemplate task."""
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -819,18 +820,18 @@ class FlyteRemote(object):
 
     @execute.register
     def _(
-            self,
-            entity: WorkflowBase,
-            inputs: typing.Dict[str, typing.Any],
-            project: str = None,
-            domain: str = None,
-            name: str = None,
-            version: str = None,
-            execution_name: str = None,
-            from_project: str = None,
-            from_domain: str = None,
-            options: typing.Optional[Options] = None,
-            wait: bool = False,
+        self,
+        entity: WorkflowBase,
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        version: str = None,
+        execution_name: str = None,
+        from_project: str = None,
+        from_domain: str = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Execute an @workflow-decorated function."""
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -871,18 +872,18 @@ class FlyteRemote(object):
         )
 
     def _(
-            self,
-            entity: LaunchPlan,
-            inputs: typing.Dict[str, typing.Any],
-            project: str = None,
-            domain: str = None,
-            name: str = None,
-            version: str = None,
-            execution_name: str = None,
-            from_project: str = None,
-            from_domain: str = None,
-            options: typing.Optional[Options] = None,
-            wait: bool = False,
+        self,
+        entity: LaunchPlan,
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        version: str = None,
+        execution_name: str = None,
+        from_project: str = None,
+        from_domain: str = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Execute a LaunchPlan object."""
         resolved_identifiers = self._resolve_identifier_kwargs(
@@ -918,11 +919,11 @@ class FlyteRemote(object):
     ###################################
 
     def wait(
-            self,
-            execution: FlyteWorkflowExecution,
-            timeout: typing.Optional[timedelta] = None,
-            poll_interval: typing.Optional[timedelta] = None,
-            sync_nodes: bool = True,
+        self,
+        execution: FlyteWorkflowExecution,
+        timeout: typing.Optional[timedelta] = None,
+        poll_interval: typing.Optional[timedelta] = None,
+        sync_nodes: bool = True,
     ) -> FlyteWorkflowExecution:
         """Wait for an execution to finish.
 
@@ -947,10 +948,10 @@ class FlyteRemote(object):
     ########################
 
     def sync(
-            self,
-            execution: FlyteWorkflowExecution,
-            entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-            sync_nodes: bool = False,
+        self,
+        execution: FlyteWorkflowExecution,
+        entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
+        sync_nodes: bool = False,
     ) -> FlyteWorkflowExecution:
         """
         This function was previously a singledispatchmethod. We've removed that but this function remains
@@ -968,10 +969,10 @@ class FlyteRemote(object):
         return self.sync_workflow_execution(execution, entity_definition, sync_nodes)
 
     def sync_workflow_execution(
-            self,
-            execution: FlyteWorkflowExecution,
-            entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
-            sync_nodes: bool = False,
+        self,
+        execution: FlyteWorkflowExecution,
+        entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
+        sync_nodes: bool = False,
     ) -> FlyteWorkflowExecution:
         """
         Sync a FlyteWorkflowExecution object with its corresponding remote state.
@@ -1033,7 +1034,7 @@ class FlyteRemote(object):
         return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
 
     def sync_node_execution(
-            self, execution: FlyteNodeExecution, node_mapping: typing.Dict[str, FlyteNode]
+        self, execution: FlyteNodeExecution, node_mapping: typing.Dict[str, FlyteNode]
     ) -> FlyteNodeExecution:
         """
         Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
@@ -1119,9 +1120,9 @@ class FlyteRemote(object):
                 # TODO: Inspect branch nodes for launch plans
                 for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
                     if (
-                            node.workflow_node is not None
-                            and node.workflow_node.launchplan_ref is not None
-                            and node.workflow_node.launchplan_ref not in node_launch_plans
+                        node.workflow_node is not None
+                        and node.workflow_node.launchplan_ref is not None
+                        and node.workflow_node.launchplan_ref not in node_launch_plans
                     ):
                         node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
                             node.workflow_node.launchplan_ref
@@ -1172,7 +1173,7 @@ class FlyteRemote(object):
         return execution
 
     def sync_task_execution(
-            self, execution: FlyteTaskExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
+        self, execution: FlyteTaskExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
         if entity_definition is not None:
@@ -1202,10 +1203,10 @@ class FlyteRemote(object):
     ##################
 
     def _assign_inputs_and_outputs(
-            self,
-            execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
-            execution_data,
-            interface,
+        self,
+        execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
+        execution_data,
+        interface,
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         with self.remote_context() as ctx:

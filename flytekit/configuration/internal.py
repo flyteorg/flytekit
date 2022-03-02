@@ -1,6 +1,5 @@
 import configparser
 import datetime
-import tempfile
 import typing
 
 from flytekit.configuration.file import ConfigEntry, ConfigFile, LegacyConfigEntry
@@ -39,8 +38,10 @@ class AWS(object):
     S3_SECRET_ACCESS_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "secret_access_key"))
     ENABLE_DEBUG = ConfigEntry(LegacyConfigEntry(SECTION, "enable_debug", bool))
     RETRIES = ConfigEntry(LegacyConfigEntry(SECTION, "retries", int))
-    BACKOFF_SECONDS = ConfigEntry(LegacyConfigEntry(SECTION, "backoff_seconds", datetime.timedelta),
-                                  transform=lambda x: datetime.timedelta(seconds=int(x)))
+    BACKOFF_SECONDS = ConfigEntry(
+        LegacyConfigEntry(SECTION, "backoff_seconds", datetime.timedelta),
+        transform=lambda x: datetime.timedelta(seconds=int(x)),
+    )
 
 
 class GCP(object):
@@ -114,7 +115,6 @@ class LocalSDK(object):
     USE_STRUCTURED_DATASET = ConfigEntry(LegacyConfigEntry(SECTION, "use_structured_dataset", bool))
     """
     Note: This gate will be switched to True at some point in the future. Definitely by 1.0, if not v0.31.0.
-
     """
 
 

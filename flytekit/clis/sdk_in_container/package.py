@@ -5,9 +5,13 @@ import tempfile
 
 import click
 
-import flytekit.configuration
 from flytekit.clis.sdk_in_container import constants
-from flytekit.configuration import ImageConfig
+from flytekit.configuration import (
+    DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+    FastSerializationSettings,
+    ImageConfig,
+    SerializationSettings,
+)
 from flytekit.core import context_manager
 from flytekit.tools import fast_registration, module_loader, serialize_helpers
 
@@ -63,7 +67,7 @@ from flytekit.tools import fast_registration, module_loader, serialize_helpers
 @click.option(
     "-p",
     "--python-interpreter",
-    default=flytekit.configuration.DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+    default=DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     required=False,
     help="Use this to override the default location of the in-container python interpreter that will be used by "
     "Flyte to load your program. This is usually where you install flytekit within the container.",
@@ -88,19 +92,15 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
     if os.path.exists(output) and not force:
         raise click.BadParameter(click.style(f"Output file {output} already exists, specify -f to override.", fg="red"))
 
-    serialization_settings = flytekit.configuration.SerializationSettings(
+    serialization_settings = SerializationSettings(
         image_config=image_config,
-        fast_serialization_settings=flytekit.configuration.FastSerializationSettings(
+        fast_serialization_settings=FastSerializationSettings(
             enabled=fast,
             destination_dir=in_container_source_path,
         ),
-        flytekit_virtualenv_root=flytekit.configuration.SerializationSettings.venv_root_from_interpreter(
-            python_interpreter
-        ),
+        flytekit_virtualenv_root=SerializationSettings.venv_root_from_interpreter(python_interpreter),
         python_interpreter=python_interpreter,
-        entrypoint_settings=flytekit.configuration.SerializationSettings.default_entrypoint_settings(
-            python_interpreter
-        ),
+        entrypoint_settings=SerializationSettings.default_entrypoint_settings(python_interpreter),
     )
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]

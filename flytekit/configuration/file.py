@@ -18,6 +18,7 @@ class LegacyConfigEntry(object):
         option: the option str to lookup
         type_: Expected type of the value
     """
+
     section: str
     option: str
     type_: typing.Type = str
@@ -47,7 +48,7 @@ class LegacyConfigEntry(object):
 @dataclass
 class ConfigEntry(object):
     """
-    A top level Config entry holder, that holds multiple different represnetations of the config.
+    A top level Config entry holder, that holds multiple different representations of the config.
     Currently only legacy is supported, but more will be added soon
     """
 
@@ -105,7 +106,7 @@ class ConfigFile(object):
         return self._legacy_config
 
 
-def get_config_file(c: typing.Union[str, ConfigFile]) -> typing.Optional[ConfigFile]:
+def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[ConfigFile]:
     """
     Checks if the given argument is a file or a configFile and returns a loaded configFile else returns None
 
@@ -120,13 +121,12 @@ def get_config_file(c: typing.Union[str, ConfigFile]) -> typing.Optional[ConfigF
 
 def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
     """
-    Given a dict `d` sets the key `k` with value of config `c`, if the config `c` is set
-    It also returns the updated dictionary.
+    Given a dict ``d`` sets the key ``k`` with value of config ``v``, if the config value ``v`` is set
+    and return the updated dictionary.
 
     .. note::
 
-        The input dictionary `d` will be mutated.
-
+        The input dictionary ``d`` will be mutated.
     """
     if v:
         d[k] = v
