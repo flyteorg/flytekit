@@ -30,11 +30,13 @@ child_loggers = {
     "cli": logger.getChild("cli"),
     "remote": logger.getChild("remote"),
     "entrypoint": logger.getChild("entrypoint"),
+    "user_space": logger.getChild("user_space"),
 }
 auth_logger = child_loggers["auth"]
 cli_logger = child_loggers["cli"]
 remote_logger = child_loggers["remote"]
 entrypoint_logger = child_loggers["entrypoint"]
+user_space_logger = child_loggers["user_space"]
 
 # create console handler
 ch = logging.StreamHandler()

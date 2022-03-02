@@ -38,7 +38,7 @@ from flytekit.core.data_persistence import FileAccessProvider, default_local_fil
 from flytekit.core.node import Node
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
-from flytekit.loggers import logger
+from flytekit.loggers import user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -156,7 +156,7 @@ class ExecutionParameters(object):
     class Builder(object):
         stats: taggable.TaggableStats
         execution_date: datetime
-        logging: logger
+        logging: user_space_logger
         execution_id: str
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
@@ -245,7 +245,7 @@ class ExecutionParameters(object):
         return self._stats
 
     @property
-    def logging(self) -> logger:
+    def logging(self) -> user_space_logger:
         """
         A handle to a useful logging object.
         TODO: Usage examples
@@ -898,7 +898,7 @@ class FlyteContextManager(object):
         ctx.set_stackframe(f)
         FlyteContextManager._OBJS.append(ctx)
         t = "\t"
-        logger.debug(
+        user_space_logger.debug(
             f"{t * ctx.level}[{len(FlyteContextManager._OBJS)}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
         return ctx
@@ -907,7 +907,7 @@ class FlyteContextManager(object):
     def pop_context() -> FlyteContext:
         ctx = FlyteContextManager._OBJS.pop()
         t = "\t"
-        logger.debug(
+        user_space_logger.debug(
             f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
         if len(FlyteContextManager._OBJS) == 0:
@@ -962,7 +962,7 @@ class FlyteContextManager(object):
             execution_id=str(WorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
             execution_date=_datetime.datetime.utcnow(),
             stats=mock_stats.MockStats(),
-            logging=logger,
+            logging=user_space_logger,
             tmp_dir=user_space_path,
             raw_output_prefix=default_context.file_access._raw_output_prefix,
         )
