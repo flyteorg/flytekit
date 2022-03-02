@@ -23,7 +23,7 @@ from flytekit.configuration.creds import CLIENT_ID as _CLIENT_ID
 from flytekit.configuration.creds import COMMAND as _COMMAND
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlyteAuthenticationException
-from flytekit.loggers import cli_logger, logger
+from flytekit.loggers import cli_logger
 
 _utf_8 = "utf-8"
 
@@ -822,7 +822,7 @@ def get_token(token_endpoint, authorization_header, scope):
         body["scope"] = scope
     response = _requests.post(token_endpoint, data=body, headers=headers)
     if response.status_code != 200:
-        logger.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
+        cli_logger.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
         raise FlyteAuthenticationException("Non-200 received from IDP")
 
     response = response.json()
