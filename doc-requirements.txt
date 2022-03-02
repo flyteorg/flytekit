@@ -63,8 +63,12 @@ docutils==0.17.1
     # via
     #   sphinx
     #   sphinx-panels
+flyteidl==0.23.0
+    # via flytekit
 furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
+googleapis-common-protos==1.55.0
+    # via flyteidl
 grpcio==1.44.0
     # via
     #   -r doc-requirements.in
@@ -121,7 +125,13 @@ pandas==1.4.1
 poyo==0.5.0
     # via cookiecutter
 protobuf==3.19.4
-    # via flytekit
+    # via
+    #   flyteidl
+    #   flytekit
+    #   googleapis-common-protos
+    #   protoc-gen-swagger
+protoc-gen-swagger==0.1.0
+    # via flyteidl
 py==1.11.0
     # via retry
 pyarrow==6.0.1

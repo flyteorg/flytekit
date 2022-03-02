@@ -116,6 +116,10 @@ docstring-parser==0.13
     #   flytekit
 filelock==3.6.0
     # via virtualenv
+flyteidl==0.23.0
+    # via
+    #   -c requirements.txt
+    #   flytekit
 google-api-core[grpc]==2.5.0
     # via
     #   google-cloud-bigquery
@@ -137,6 +141,8 @@ google-resumable-media==2.3.0
     # via google-cloud-bigquery
 googleapis-common-protos==1.55.0
     # via
+    #   -c requirements.txt
+    #   flyteidl
     #   google-api-core
     #   grpcio-status
 grpcio==1.44.0
@@ -250,12 +256,18 @@ proto-plus==1.20.3
 protobuf==3.19.4
     # via
     #   -c requirements.txt
+    #   flyteidl
     #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
     #   googleapis-common-protos
     #   grpcio-status
     #   proto-plus
+    #   protoc-gen-swagger
+protoc-gen-swagger==0.1.0
+    # via
+    #   -c requirements.txt
+    #   flyteidl
 py==1.11.0
     # via
     #   -c requirements.txt
