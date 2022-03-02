@@ -274,7 +274,7 @@ pyzmq==22.3.0
     # via
     #   jupyter-client
     #   notebook
-regex==2022.1.18
+regex==2022.3.2
     # via docker-image-py
 requests==2.27.1
     # via
