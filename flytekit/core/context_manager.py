@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import datetime as _datetime
+import logging
 import os
 import pathlib
 import re
@@ -156,7 +157,7 @@ class ExecutionParameters(object):
     class Builder(object):
         stats: taggable.TaggableStats
         execution_date: datetime
-        logging: logger
+        logging: logging.Logger
         execution_id: str
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
@@ -245,7 +246,7 @@ class ExecutionParameters(object):
         return self._stats
 
     @property
-    def logging(self) -> logger:
+    def logging(self) -> logging.Logger:
         """
         A handle to a useful logging object.
         TODO: Usage examples
