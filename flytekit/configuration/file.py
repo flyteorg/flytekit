@@ -121,13 +121,12 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
 
 def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
     """
-    Given a dict `d` sets the key `k` with value of config `c`, if the config `c` is set
-    It also returns the updated dictionary.
+    Given a dict ``d`` sets the key ``k`` with value of config ``v``, if the config value ``v`` is set
+    and return the updated dictionary.
 
     .. note::
 
-        The input dictionary `d` will be mutated.
-
+        The input dictionary ``d`` will be mutated.
     """
     if v:
         d[k] = v
