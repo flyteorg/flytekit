@@ -10,7 +10,7 @@ import click
 
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
-from flytekit.configuration import ImageConfig, SerializationSettings, FastSerializationSettings
+from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import context_manager as flyte_context
 from flytekit.exceptions.scopes import system_entry_point
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
@@ -133,6 +133,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
         # instead.
         import flytekit
+
         entrypoint_path = _os.path.abspath(flytekit.__file__)
         if entrypoint_path.endswith(".pyc"):
             entrypoint_path = entrypoint_path[:-1]
