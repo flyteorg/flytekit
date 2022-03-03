@@ -155,7 +155,6 @@ class FlyteRemote(object):
         :param default_domain: default domain to use when fetching or executing flyte entities.
         :param file_access: file access provider to use for offloading non-literal inputs/outputs.
         """
-        remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
