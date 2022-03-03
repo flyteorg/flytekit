@@ -21,7 +21,7 @@ class InstanceTrackingMeta(type):
     def _find_instance_module():
         frame = _inspect.currentframe()
         while frame:
-            if frame.f_code.co_name == "<module>":
+            if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 return frame.f_globals["__name__"]
             frame = frame.f_back
         return None
