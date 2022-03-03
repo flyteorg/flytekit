@@ -19,7 +19,10 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
-from typing_extensions import Annotated, get_args, get_origin
+from typing_extensions import Annotated
+from typing_extensions import get_args
+from typing_extensions import get_args as _get_args
+from typing_extensions import get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext

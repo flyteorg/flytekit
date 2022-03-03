@@ -54,11 +54,6 @@ from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 T = typing.TypeVar("T")
 
 

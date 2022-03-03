@@ -15,7 +15,7 @@ from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import T, TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 
