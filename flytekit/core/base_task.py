@@ -19,8 +19,6 @@
 
 import collections
 import datetime
-import json
-import os
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
@@ -155,14 +153,14 @@ class Task(object):
     """
 
     def __init__(
-            self,
-            task_type: str,
-            name: str,
-            interface: Optional[_interface_models.TypedInterface] = None,
-            metadata: Optional[TaskMetadata] = None,
-            task_type_version=0,
-            security_ctx: Optional[SecurityContext] = None,
-            **kwargs,
+        self,
+        task_type: str,
+        name: str,
+        interface: Optional[_interface_models.TypedInterface] = None,
+        metadata: Optional[TaskMetadata] = None,
+        task_type_version=0,
+        security_ctx: Optional[SecurityContext] = None,
+        **kwargs,
     ):
         self._task_type = task_type
         self._name = name
@@ -329,9 +327,9 @@ class Task(object):
 
     @abstractmethod
     def dispatch_execute(
-            self,
-            ctx: FlyteContext,
-            input_literal_map: _literal_models.LiteralMap,
+        self,
+        ctx: FlyteContext,
+        input_literal_map: _literal_models.LiteralMap,
     ) -> _literal_models.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -369,13 +367,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     """
 
     def __init__(
-            self,
-            task_type: str,
-            name: str,
-            task_config: T,
-            interface: Optional[Interface] = None,
-            environment: Optional[Dict[str, str]] = None,
-            **kwargs,
+        self,
+        task_type: str,
+        name: str,
+        task_config: T,
+        interface: Optional[Interface] = None,
+        environment: Optional[Dict[str, str]] = None,
+        **kwargs,
     ):
         """
         Args:
@@ -454,7 +452,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self.interface.outputs  # type: ignore
 
     def dispatch_execute(
-            self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
+        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
@@ -472,8 +470,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-                ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
-                # type: ignore
+            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
+            # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
@@ -496,7 +494,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
             if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-                    native_outputs, _dynamic_job.DynamicJobSpec
+                native_outputs, _dynamic_job.DynamicJobSpec
             ):
                 return native_outputs
 
@@ -535,7 +533,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     ) from e
 
             from flytekit.deck.deck import _output_deck
-            _output_deck(new_user_params, native_inputs, native_outputs_as_map)
+
+            _output_deck(self.lhs, new_user_params, native_inputs, native_outputs_as_map)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map

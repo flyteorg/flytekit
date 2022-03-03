@@ -181,6 +181,7 @@ from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
+from flytekit.deck import Deck
 from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
 from flytekit.models.common import Annotations, AuthRole, Labels
@@ -189,7 +190,6 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, schema
-from flytekit.deck import Deck
 
 if USE_STRUCTURED_DATASET.get():
     from flytekit.types.structured.structured_dataset import (

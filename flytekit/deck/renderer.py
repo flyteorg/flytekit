@@ -1,3 +1,4 @@
+import typing
 from abc import ABC
 from typing import List, Union
 
@@ -16,37 +17,40 @@ class Renderer(ABC):
 
 
 class FrameRenderer(Renderer):
-    def __init__(self, dataframe: pd.DataFrame):
-        self.dataframe = dataframe
+    def __init__(self, dataframe: pd.DataFrame, max_rows: typing.Optional[int] = None):
+        self._dataframe = dataframe
+        self._max_rows = max_rows
 
     def render(self) -> str:
-        if isinstance(self.dataframe, pd.DataFrame):
-            return self.dataframe.to_html()
+        if isinstance(self._dataframe, pd.DataFrame):
+            return self._dataframe.to_html(max_rows=self._max_rows)
 
 
+# Will move it to flytekitplugins-deck
 class FrameProfilingRenderer(Renderer):
     def __init__(self, dataframe: pd.DataFrame):
-        self.dataframe = dataframe
+        self._dataframe = dataframe
 
     def render(self) -> str:
-        if isinstance(self.dataframe, pd.DataFrame):
-            profile = ProfileReport(self.dataframe, title="Pandas Profiling Report")
+        if isinstance(self._dataframe, pd.DataFrame):
+            profile = ProfileReport(self._dataframe, title="Pandas Profiling Report")
             return profile.to_html()
 
 
 class MarkdownRenderer(Renderer):
     def __init__(self, text: str):
-        self.text = text
+        self._text = text
 
     def render(self) -> str:
-        return markdown.markdown(self.text)
+        return markdown.markdown(self._text)
 
 
 class ScatterRenderer(Renderer):
+    # https://plotly.com/python/line-and-scatter/
     def __init__(self, x: Union[List, range], y: Union[List, range]):
-        self.x = x
-        self.y = y
+        self._x = x
+        self._y = y
 
     def render(self) -> str:
-        fig = px.scatter(x=self.x, y=self.y)
+        fig = px.scatter(x=self._x, y=self._y)
         return fig.to_html()

@@ -1,12 +1,10 @@
 import os
 from typing import List, Union
 
-from flytekit.core.type_engine import TypeEngine
-
-from flytekit.loggers import logger
 from jinja2 import Environment, FileSystemLoader
 
-from flytekit import FlyteContextManager, ExecutionParameters, FlyteContext
+from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.deck.renderer import Renderer
 
 
@@ -22,13 +20,13 @@ class Deck:
         return self
 
 
-def _output_deck(new_user_params: ExecutionParameters, task_input: dict, task_output: dict):
+def _output_deck(task_name: str, new_user_params: ExecutionParameters, task_input: dict, task_output: dict):
     deck_map = {}
     INPUT = "input"
     OUTPUT = "output"
     ctx = FlyteContext.current_context()
-    # output_dir = ctx.file_access.get_random_local_directory()
-    output_dir = "/Users/kevin/git/flytekit/deck_outputs"
+    output_dir = ctx.file_access.get_random_local_directory()
+    # output_dir = "/Users/kevin/git/flytekit/deck_outputs"
 
     deck_map[INPUT] = []
     for k, v in task_input.items():
@@ -45,16 +43,16 @@ def _output_deck(new_user_params: ExecutionParameters, task_input: dict, task_ou
             _deck_to_html_file(deck_map, deck.name, output_dir, file_name, deck.renderers[i].render())
 
     root = os.path.dirname(os.path.abspath(__file__))
-    templates_dir = os.path.join(root, 'html')
+    templates_dir = os.path.join(root, "html")
     env = Environment(loader=FileSystemLoader(templates_dir))
-    template = env.get_template('template.html')
+    template = env.get_template("template.html")
 
     deck_path = os.path.join(output_dir, "deck.html")
-    with open(deck_path, 'w') as f:
+    with open(deck_path, "w") as f:
         f.write(template.render(metadata=deck_map))
 
-    # TODO: upload deck to remote filesystems (s3, gcs)
-    logger.info(f"Output flytekit deck html to {deck_path}")
+    # TODO: upload deck file to remote filesystems (s3, gcs)
+    print(f"{task_name} output flytekit deck html to file://{deck_path}")
 
 
 def _deck_to_html_file(deck_map, deck_name, output_dir, file_name, html: str):

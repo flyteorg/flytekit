@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
+import pandas
 import pyarrow
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
@@ -629,6 +630,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means
         # we should do the opening/downloading and whatever else it might entail right now. No iteration option here.
         return self.open_as(ctx, lv.scalar.structured_dataset, df_type=expected_python_type, updated_metadata=metad)
+
+    def to_html(self, ctx: FlyteContext, python_val: typing.Any):
+        if issubclass(type(python_val), pandas.DataFrame):
+            return python_val.to_html()
 
     def open_as(
         self,

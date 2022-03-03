@@ -2,8 +2,8 @@ import pandas as pd
 import plotly.express as px
 
 import flytekit
-from flytekit import task, workflow, dynamic
-from flytekit.deck import FrameProfilingRenderer, FrameRenderer, MarkdownRenderer, ScatterRenderer, default_deck
+from flytekit import dynamic, task, workflow
+from flytekit.deck import FrameRenderer, MarkdownRenderer, ScatterRenderer, default_deck
 
 
 @task()
@@ -20,7 +20,7 @@ def t1(x: int) -> str:
 @task()
 def t2() -> pd.DataFrame:
     df = px.data.iris()
-    flytekit.Deck("my dataframe", [FrameRenderer(df)])
+    flytekit.Deck("custom", [FrameRenderer(df, max_rows=5)])
     return df
 
 
