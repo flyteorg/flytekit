@@ -122,6 +122,10 @@ class TypeTransformer(typing.Generic[T]):
             f"Conversion to python value expected type {expected_python_type} from literal not implemented"
         )
 
+    @abstractmethod
+    def to_html(self, ctx: FlyteContext, python_val: T):
+        return str(python_val)
+
     def __repr__(self):
         return f"{self._name} Transforms ({self._t}) to Flyte native"
 
@@ -650,6 +654,11 @@ class TypeEngine(typing.Generic[T]):
         """
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
+
+    @classmethod
+    def to_html(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type):
+        transformer = cls.get_transformer(python_type)
+        return transformer.to_html(ctx, python_val)
 
     @classmethod
     def named_tuple_to_variable_map(cls, t: typing.NamedTuple) -> _interface_models.VariableMap:

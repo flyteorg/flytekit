@@ -144,6 +144,9 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         r = PandasSchemaReader(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
         return r.all()
 
+    def to_html(self, ctx: FlyteContext, python_val: pandas.DataFrame):
+        return python_val.to_html()
+
 
 SchemaEngine.register_handler(
     SchemaHandler("pandas-dataframe-schema", pandas.DataFrame, PandasSchemaReader, PandasSchemaWriter)

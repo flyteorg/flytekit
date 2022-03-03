@@ -987,7 +987,7 @@ class FlyteContextManager(object):
             logging=_logging,
             tmp_dir=user_space_path,
             raw_output_prefix=default_context.file_access._raw_output_prefix,
-            decks={},
+            decks=[],
         )
 
         default_context = default_context.with_execution_state(
