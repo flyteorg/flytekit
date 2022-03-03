@@ -824,8 +824,13 @@ class ListTransformer(TypeTransformer[T]):
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[T]:
+        try:
+            lits = lv.collection.literals
+        except AttributeError:
+            raise TypeTransformerFailedError()
+
         st = self.get_sub_type(expected_python_type)
-        return [TypeEngine.to_python_value(ctx, x, st) for x in lv.collection.literals]
+        return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[list]:
         if literal_type.collection_type:
@@ -837,6 +842,85 @@ class ListTransformer(TypeTransformer[T]):
 def _add_tag_to_type(x: LiteralType, tag: str) -> LiteralType:
     x._structure = TypeStructure(tag=tag)
     return x
+
+
+def _type_essence(x: LiteralType) -> LiteralType:
+    if x.metadata is not None or x.structure is not None or x.annotation is not None:
+        x = LiteralType.from_flyte_idl(x.to_flyte_idl())
+        x._metadata = None
+        x._structure = None
+        x._annotation = None
+
+    return x
+
+
+def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
+    if upstream.collection_type is not None:
+        if upstream.collection_type is None:
+            return False
+
+        return _are_types_castable(upstream.collection_type, downstream.collection_type)
+
+    if upstream.map_value_type is not None:
+        if upstream.map_value_type is None:
+            return False
+
+        return _are_types_castable(upstream.map_value_type, downstream.map_value_type)
+
+    if upstream.structured_dataset_type is not None:
+        if downstream.structured_dataset_type is None:
+            return False
+
+        usdt = upstream.structured_dataset_type
+        dsdt = downstream.structured_dataset_type
+
+        if usdt.format != dsdt.format:
+            return False
+
+        if usdt.external_schema_type != dsdt.external_schema_type:
+            return False
+
+        if usdt.external_schema_bytes != dsdt.external_schema_bytes:
+            return False
+
+        ucols = usdt.columns
+        dcols = dsdt.columns
+
+        if len(ucols) != len(dcols):
+            return False
+
+        for (u, d) in zip(ucols, dcols):
+            if u.name != d.name:
+                return False
+
+            if not _are_types_castable(u.literal_type, d.literal_type):
+                return False
+
+        return True
+
+    if downstream.union_type is not None:
+        if upstream.union_type is not None:
+            # for each upstream variant, there must be a compatible type downstream
+            for v in upstream.union_type:
+                if not _are_types_castable(v, downstream):
+                    return False
+            return True
+
+        else:
+            # there must be a compatible downstream type
+            for v in downstream.union_type.variants:
+                if _are_types_castable(upstream, v):
+                    return True
+
+    if upstream.enum_type is not None:
+        # enums are castable to string
+        if downstream.simple == SimpleType.STRING:
+            return True
+
+    if _type_essence(upstream) == _type_essence(downstream):
+        return True
+
+    return False
 
 
 class UnionTransformer(TypeTransformer[T]):
@@ -880,6 +964,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         union_tag = None
+        union_type = None
         if lv.scalar is not None and lv.scalar.union is not None:
             union_type = lv.scalar.union.stored_type
             if union_type.structure is not None:
@@ -893,6 +978,10 @@ class UnionTransformer(TypeTransformer[T]):
                 trans = TypeEngine.get_transformer(v)
                 if union_tag is not None:
                     if trans.name != union_tag:
+                        continue
+
+                    expected_literal_type = TypeEngine.to_literal_type(v)
+                    if not _are_types_castable(union_type, expected_literal_type):
                         continue
 
                     assert lv.scalar is not None  # type checker
@@ -1014,8 +1103,11 @@ class DictTransformer(TypeTransformer[dict]):
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
-            return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
-        raise TypeError(f"Cannot convert from {lv} to {expected_python_type}")
+            try:
+                return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+            except TypeError:
+                raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+        raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.map_value_type:

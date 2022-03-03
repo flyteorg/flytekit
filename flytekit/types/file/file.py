@@ -326,8 +326,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
-
-        uri = lv.scalar.blob.uri
+        try:
+            uri = lv.scalar.blob.uri
+        except AttributeError:
+            raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
         # Using is instead of issubclass because FlyteFile does actually subclass it
         if expected_python_type is os.PathLike:
