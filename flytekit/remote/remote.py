@@ -439,6 +439,7 @@ class FlyteRemote(object):
         wf_id = flyte_launch_plan.workflow_id
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         flyte_launch_plan._interface = workflow.interface
+        flyte_launch_plan._flyte_workflow = workflow
         flyte_launch_plan.guessed_python_interface = Interface(
             inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
             outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
@@ -1052,6 +1053,7 @@ class FlyteRemote(object):
         if execution.spec.launch_plan.resource_type == ResourceType.TASK:
             # This condition is only true for single-task executions
             flyte_entity = self.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            node_interface = flyte_entity.interface
             if sync_nodes:
                 # Need to construct the mapping. There should've been returned exactly three nodes, a start,
                 # an end, and a task node.
@@ -1079,10 +1081,10 @@ class FlyteRemote(object):
                 )
         else:
             # This is the default case, an execution of a normal workflow through a launch plan
-            wf_id = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version).workflow_id
-            flyte_entity = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
-            execution._flyte_workflow = flyte_entity
-            node_mapping = flyte_entity._node_map
+            fetched_lp = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            node_interface = fetched_lp.flyte_workflow.interface
+            execution._flyte_workflow = fetched_lp.flyte_workflow
+            node_mapping = fetched_lp.flyte_workflow._node_map
 
         # update node executions (if requested), and inputs/outputs
         if sync_nodes:
@@ -1090,10 +1092,12 @@ class FlyteRemote(object):
             for n in underlying_node_executions:
                 node_execs[n.id.node_id] = self.sync_node_execution(n, node_mapping)
             execution._node_executions = node_execs
-        return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
+        return self._assign_inputs_and_outputs(execution, execution_data, node_interface)
 
     def sync_node_execution(
-        self, execution: FlyteNodeExecution, node_mapping: typing.Dict[str, FlyteNode]
+        self,
+        execution: FlyteNodeExecution,
+        node_mapping: typing.Dict[str, FlyteNode],
     ) -> FlyteNodeExecution:
         """
         Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
@@ -1200,13 +1204,9 @@ class FlyteRemote(object):
                     for t in iterate_task_executions(self.client, execution.id)
                 ]
                 execution._interface = dynamic_flyte_wf.interface
-            else:
-                # If it does not, then it should be a static subworkflow
-                if not isinstance(execution._node.flyte_entity, FlyteWorkflow):
-                    remote_logger.error(
-                        f"NE {execution} entity should be a workflow, {type(execution._node)}, {execution._node}"
-                    )
-                    raise Exception(f"Node entity has type {type(execution._node)}")
+
+            # Handle the case where it's a static subworkflow
+            elif isinstance(execution._node.flyte_entity, FlyteWorkflow):
                 sub_flyte_workflow = execution._node.flyte_entity
                 sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
                 execution._underlying_node_executions = [
@@ -1214,6 +1214,14 @@ class FlyteRemote(object):
                     for cne in child_node_executions
                 ]
                 execution._interface = sub_flyte_workflow.interface
+
+            # Handle the case where it's a branch node
+            elif execution._node.branch_node is not None:
+                remote_logger.debug("Skipping remote node execution for now")
+                return execution
+            else:
+                remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
+                raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
         # This is the plain ol' task execution case
         else:

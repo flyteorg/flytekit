@@ -1,7 +1,7 @@
 import importlib
 
 from flytekit import USE_STRUCTURED_DATASET, StructuredDatasetTransformerEngine, logger
-from flytekit.types.structured.structured_dataset import S3
+from flytekit.types.structured.structured_dataset import GCS, S3
 
 from .persist import FSSpecPersistence
 
@@ -18,3 +18,6 @@ if USE_STRUCTURED_DATASET.get():
 
     if importlib.util.find_spec("s3fs"):
         _register(S3)
+
+    if importlib.util.find_spec("gcsfs"):
+        _register(GCS)
