@@ -96,7 +96,10 @@ class ImageConfig(object):
         """
         Return an image, by name, if it exists.
         """
-        lookup_images = self.images + [self.default_image] if self.images else [self.default_image]
+        lookup_images = [self.default_image] if self.default_image else []
+        if self.images:
+            lookup_images.extend(self.images)
+        # lookup_images = l + [self.default_image] if self.images else [self.default_image]
         for i in lookup_images:
             if i.name == name:
                 return i
@@ -141,8 +144,8 @@ class ImageConfig(object):
         if config_file is None and img_name is None:
             raise ValueError("Either an image or a config with a default image should be provided")
 
-        default_img = Image.look_up_image_info("default", img_name) if img_name is not None and img_name != "" else None
-        all_images = [default_img]
+        default_img = Image.look_up_image_info("default", img_name) if img_name else None
+        all_images = [default_img] if default_img else []
 
         other_images = []
         if config_file:
@@ -184,10 +187,16 @@ class PlatformConfig(object):
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
 
-    def with_parameters(self, endpoint: str = "localhost:30081", insecure: bool = False,
-                        command: typing.Optional[typing.List[str]] = None,
-                        client_id: typing.Optional[str] = None, client_credentials_secret: typing.Optional[str] = None,
-                        scopes: List[str] = None, auth_mode: AuthType = AuthType.STANDARD) -> PlatformConfig:
+    def with_parameters(
+        self,
+        endpoint: str = "localhost:30081",
+        insecure: bool = False,
+        command: typing.Optional[typing.List[str]] = None,
+        client_id: typing.Optional[str] = None,
+        client_credentials_secret: typing.Optional[str] = None,
+        scopes: List[str] = None,
+        auth_mode: AuthType = AuthType.STANDARD,
+    ) -> PlatformConfig:
         return PlatformConfig(
             endpoint=endpoint,
             command=command,
@@ -353,12 +362,12 @@ class Config(object):
     local_sandbox_path: str = tempfile.mkdtemp(prefix="flyte")
 
     def with_params(
-            self,
-            platform: PlatformConfig = None,
-            secrets: SecretsConfig = None,
-            stats: StatsConfig = None,
-            data_config: DataConfig = None,
-            local_sandbox_path: str = None,
+        self,
+        platform: PlatformConfig = None,
+        secrets: SecretsConfig = None,
+        stats: StatsConfig = None,
+        data_config: DataConfig = None,
+        local_sandbox_path: str = None,
     ) -> Config:
         return Config(
             platform=platform or self.platform,
@@ -405,11 +414,11 @@ class Config(object):
 
     @classmethod
     def for_endpoint(
-            cls,
-            endpoint: str,
-            insecure: bool = False,
-            data_config: typing.Optional[DataConfig] = None,
-            config_file: typing.Union[str, ConfigFile] = None,
+        cls,
+        endpoint: str,
+        insecure: bool = False,
+        data_config: typing.Optional[DataConfig] = None,
+        config_file: typing.Union[str, ConfigFile] = None,
     ) -> Config:
         """
         Creates an automatic config for the given endpoint and uses the config_file or environment variable for default.
@@ -528,12 +537,12 @@ class SerializationSettings(object):
 
     @classmethod
     def for_image(
-            cls,
-            image: str,
-            version: str,
-            project: str = "",
-            domain: str = "",
-            python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+        cls,
+        image: str,
+        version: str,
+        project: str = "",
+        domain: str = "",
+        python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     ) -> SerializationSettings:
         img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
         entrypoint_settings = cls.default_entrypoint_settings(python_interpreter_path)

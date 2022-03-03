@@ -423,7 +423,11 @@ def test_fast():
         version="version",
         env={"FOO": "baz"},
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
-        fast_serialization_settings=FastSerializationSettings(enabled=True),
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=True,
+            destination_dir="/User/flyte/workflows",
+            distribution_location="s3://my-s3-bucket/fast/123",
+        ),
     )
 
     with context_manager.FlyteContextManager.with_context(
@@ -433,10 +437,6 @@ def test_fast():
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
                 )
             )
         ) as ctx:

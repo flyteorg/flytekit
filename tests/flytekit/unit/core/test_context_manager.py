@@ -1,6 +1,5 @@
 import os
 
-import click
 import py
 import pytest
 
@@ -9,9 +8,10 @@ from flytekit.configuration import (
     FastSerializationSettings,
     Image,
     ImageConfig,
-    SerializationSettings, SecretsConfig,
+    SecretsConfig,
+    SerializationSettings,
 )
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SecretsManager
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, SecretsManager
 
 
 class SampleTestClass(object):
@@ -99,25 +99,6 @@ def test_validate_image():
     assert ic.default_image.full == img3
     assert len(ic.images) == 1
     assert ic.images[0].full == img4
-
-
-def test_additional_context():
-    ctx = FlyteContext.current_context()
-    with FlyteContextManager.with_context(
-        ctx.with_execution_state(
-            ctx.new_execution_state().with_params(
-                mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "outer", 2: "foo"}
-            )
-        )
-    ) as exec_ctx_outer:
-        with FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                exec_ctx_outer.execution_state.with_params(
-                    mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "inner", 3: "baz"}
-                )
-            )
-        ) as exec_ctx_inner:
-            assert exec_ctx_inner.execution_state.additional_context == {1: "inner", 2: "foo", 3: "baz"}
 
 
 def test_secrets_manager_default():

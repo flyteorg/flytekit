@@ -391,8 +391,6 @@ class ExecutionState(object):
         working_dir (os.PathLike): Specifies the remote, external directory where inputs, outputs and other protobufs
             are uploaded
         engine_dir (os.PathLike):
-        additional_context Optional[Dict[Any, Any]]: Free form dictionary used to store additional values, for example
-            those used for dynamic, fast registration.
         branch_eval_mode Optional[BranchEvalMode]: Used to determine whether a branch node should execute.
         user_space_params Optional[ExecutionParameters]: Provides run-time, user-centric context such as a statsd
             handler, a logging handler, the current execution id and a working directory.
@@ -422,7 +420,6 @@ class ExecutionState(object):
     mode: Optional[ExecutionState.Mode]
     working_dir: os.PathLike
     engine_dir: Optional[Union[os.PathLike, str]]
-    additional_context: Optional[Dict[Any, Any]]
     branch_eval_mode: Optional[BranchEvalMode]
     user_space_params: Optional[ExecutionParameters]
 
@@ -431,7 +428,6 @@ class ExecutionState(object):
         working_dir: os.PathLike,
         mode: Optional[ExecutionState.Mode] = None,
         engine_dir: Optional[Union[os.PathLike, str]] = None,
-        additional_context: Optional[Dict[Any, Any]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
     ):
@@ -441,7 +437,6 @@ class ExecutionState(object):
         self.mode = mode
         self.engine_dir = engine_dir if engine_dir else os.path.join(self.working_dir, "engine_dir")
         pathlib.Path(self.engine_dir).mkdir(parents=True, exist_ok=True)
-        self.additional_context = additional_context
         self.branch_eval_mode = branch_eval_mode
         self.user_space_params = user_space_params
 
@@ -464,24 +459,16 @@ class ExecutionState(object):
         working_dir: Optional[os.PathLike] = None,
         mode: Optional[Mode] = None,
         engine_dir: Optional[os.PathLike] = None,
-        additional_context: Optional[Dict[Any, Any]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
     ) -> ExecutionState:
         """
         Produces a copy of the current execution state and overrides the copy's parameters with passed parameter values.
         """
-        if self.additional_context:
-            if additional_context:
-                additional_context = {**self.additional_context, **additional_context}
-            else:
-                additional_context = self.additional_context
-
         return ExecutionState(
             working_dir=working_dir if working_dir else self.working_dir,
             mode=mode if mode else self.mode,
             engine_dir=engine_dir if engine_dir else self.engine_dir,
-            additional_context=additional_context,
             branch_eval_mode=branch_eval_mode if branch_eval_mode else self.branch_eval_mode,
             user_space_params=user_space_params if user_space_params else self.user_space_params,
         )
