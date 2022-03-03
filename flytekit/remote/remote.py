@@ -11,11 +11,9 @@ import time
 import typing
 import uuid
 from collections import OrderedDict
-from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
-import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -60,9 +58,6 @@ from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.translator import (
-    FlyteControlPlaneEntity,
-    FlyteLocalEntity,
-    get_serializable,
     get_serializable_launch_plan,
     get_serializable_task,
     get_serializable_workflow,
@@ -211,29 +206,6 @@ class FlyteRemote(object):
         return FlyteContextManager.with_context(
             FlyteContextManager.current_context().with_file_access(self.file_access)
         )
-
-    def with_overrides(
-        self,
-        config: typing.Optional[Config] = None,
-        default_project: typing.Optional[str] = None,
-        default_domain: typing.Optional[str] = None,
-        file_access: typing.Optional[FileAccessProvider] = None,
-        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
-    ) -> FlyteRemote:
-        """Create a copy of the remote object, overriding the specified attributes."""
-        new_remote = deepcopy(self)
-        if default_project:
-            new_remote._default_project = default_project
-        if default_domain:
-            new_remote._default_domain = default_project
-        if config:
-            new_remote._config = config
-            new_remote._client = SynchronousFlyteClient(
-                config.platform.endpoint, config.platform.insecure, grpc_credentials=grpc_credentials
-            )
-        if file_access:
-            new_remote._file_access = file_access
-        return new_remote
 
     def fetch_task(self, project: str = None, domain: str = None, name: str = None, version: str = None) -> FlyteTask:
         """Fetch a task entity from flyte admin.
