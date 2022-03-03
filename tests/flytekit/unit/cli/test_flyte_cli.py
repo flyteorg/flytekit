@@ -98,7 +98,7 @@ def test_setup_config_insecure_mode():
 
 def test_flyte_cli():
     runner = _CliRunner()
-    result = runner.invoke(_main._flyte_cli, ["-c", "~/.flyte/config", "activate-project", "-i"])
+    result = runner.invoke(_main._flyte_cli, ["-c", "~/.blah/config", "activate-project", "-i"])
     assert "Config file not found at ~/.flyte/config" in result.output
     with _mock.patch("os.path.exists") as mock_exists:
         result = runner.invoke(_main._flyte_cli, ["activate-project", "-p", "foo", "-i"])

@@ -1,7 +1,6 @@
 import contextlib
 import datetime as _datetime
-import logging as python_logging
-import os as _os
+import os
 import pathlib
 import tempfile
 import traceback as _traceback
@@ -11,7 +10,7 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
-from flytekit.configuration import ImageConfig, SerializationSettings, StatsConfig
+from flytekit.configuration import SerializationSettings, StatsConfig
 from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _constants
 from flytekit.core import utils
@@ -50,10 +49,10 @@ def _compute_array_job_index():
     :rtype: int
     """
     offset = 0
-    if _os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
-        offset = int(_os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
-    if _os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-        return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+    if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
+        offset = int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
+    if os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
+        return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
     return offset
 
 
@@ -76,7 +75,7 @@ def _dispatch_execute(
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
         # Step1
-        local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+        local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
@@ -151,7 +150,7 @@ def _dispatch_execute(
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
-        utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
+        utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
@@ -354,7 +353,7 @@ def _execute_map_task(
         map_task = MapPythonTask(_task_def, max_concurrency)
 
         task_index = _compute_array_job_index()
-        output_prefix = _os.path.join(output_prefix, str(task_index))
+        output_prefix = os.path.join(output_prefix, str(task_index))
 
         if test:
             logger.info(
@@ -447,12 +446,12 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     """
     if additional_distribution is not None:
         if not dest_dir:
-            dest_dir = _os.getcwd()
+            dest_dir = os.getcwd()
         _download_distribution(additional_distribution, dest_dir)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    _os.system(" ".join(task_execute_cmd))
+    os.system(" ".join(task_execute_cmd))
 
 
 @_pass_through.command("pyflyte-map-execute")
