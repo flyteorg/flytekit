@@ -18,9 +18,9 @@ _Please replace this text with a description of what this PR accomplishes._
  _How did you fix the bug, make the feature etc. Link to any design docs etc_
 
 ## Tracking Issue
-https://github.com/lyft/flyte/issues/<number>
+https://github.com/flyteorg/flyte/issues/<number>
 
 ## Follow-up issue
 _NA_
 OR
-_https://github.com/lyft/flyte/issues/<number>_
+_https://github.com/flyteorg/flyte/issues/<number>_

@@ -8,6 +8,7 @@ import flytekit.configuration
 from flytekit import ContainerTask, kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
+from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.models.types import SimpleType
@@ -222,51 +223,56 @@ def test_serialization_branch():
     assert wf_spec.template.nodes[1].branch_node is not None
 
 
+def test_bad_configuration():
+    container_image = "{{.image.xyz.fqn}}:{{.image.default.version}}"
+    image_config = ImageConfig.auto(
+        config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
+    )
+    # No default image in the images.config file so nothing to pull version from
+    with pytest.raises(AssertionError):
+        get_registerable_container_image(container_image, image_config)
+
+
 def test_serialization_images():
-    @task(container_image="{{.image.xyz.fqn}}:{{.image.default.version}}")
+    @task(container_image="{{.image.xyz.fqn}}:{{.image.xyz.version}}")
     def t1(a: int) -> int:
         return a
 
-    @task(container_image="{{.image.default.fqn}}:{{.image.default.version}}")
+    @task(container_image="{{.image.abc.fqn}}:{{.image.xyz.version}}")
     def t2():
-        pass
-
-    @task
-    def t3():
         pass
 
     @task(container_image="docker.io/org/myimage:latest")
     def t4():
         pass
 
-    @task(container_image="docker.io/org/myimage:{{.image.default.version}}")
+    @task(container_image="docker.io/org/myimage:{{.image.xyz.version}}")
     def t5(a: int) -> int:
         return a
 
     os.environ["FLYTE_INTERNAL_IMAGE"] = "docker.io/default:version"
-    set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config"))
+    imgs = ImageConfig.auto(
+        config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
+    )
     rs = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env=None,
-        image_config=get_image_config(),
+        image_config=imgs,
     )
     t1_spec = get_serializable(OrderedDict(), rs, t1)
-    assert t1_spec.template.container.image == "docker.io/xyz:version"
+    assert t1_spec.template.container.image == "docker.io/xyz:latest"
     t1_spec.to_flyte_idl()
 
     t2_spec = get_serializable(OrderedDict(), rs, t2)
-    assert t2_spec.template.container.image == "docker.io/default:version"
-
-    t3_spec = get_serializable(OrderedDict(), rs, t3)
-    assert t3_spec.template.container.image == "docker.io/default:version"
+    assert t2_spec.template.container.image == "docker.io/abc:latest"
 
     t4_spec = get_serializable(OrderedDict(), rs, t4)
     assert t4_spec.template.container.image == "docker.io/org/myimage:latest"
 
     t5_spec = get_serializable(OrderedDict(), rs, t5)
-    assert t5_spec.template.container.image == "docker.io/org/myimage:version"
+    assert t5_spec.template.container.image == "docker.io/org/myimage:latest"
 
 
 def test_serialization_command1():
