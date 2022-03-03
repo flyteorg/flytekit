@@ -9,7 +9,7 @@ from flytekit.configuration import (
     FastSerializationSettings,
     Image,
     ImageConfig,
-    SerializationSettings,
+    SerializationSettings, SecretsConfig,
 )
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SecretsManager
 
@@ -73,28 +73,28 @@ def test_validate_image():
     img4 = "docker.io/my:azb"
     img4_cli = f"my_img={img4}"
 
-    ic = Image.validate_image(None, "image", (img1,))
+    ic = ImageConfig.validate_image(None, "image", (img1,))
     assert ic
     assert ic.default_image.full == img1
 
-    ic = Image.validate_image(None, "image", (img2,))
+    ic = ImageConfig.validate_image(None, "image", (img2,))
     assert ic
     assert ic.default_image.full == img2
 
-    ic = Image.validate_image(None, "image", (img3_cli,))
+    ic = ImageConfig.validate_image(None, "image", (img3_cli,))
     assert ic
     assert ic.default_image.full == img3
 
-    with pytest.raises(click.BadParameter):
-        Image.validate_image(None, "image", (img1, img3_cli))
+    with pytest.raises(ValueError):
+        ImageConfig.validate_image(None, "image", (img1, img3_cli))
 
-    with pytest.raises(click.BadParameter):
-        Image.validate_image(None, "image", (img1, img2))
+    with pytest.raises(ValueError):
+        ImageConfig.validate_image(None, "image", (img1, img2))
 
-    with pytest.raises(click.BadParameter):
-        Image.validate_image(None, "image", (img1, img1))
+    with pytest.raises(ValueError):
+        ImageConfig.validate_image(None, "image", (img1, img1))
 
-    ic = Image.validate_image(None, "image", (img3_cli, img4_cli))
+    ic = ImageConfig.validate_image(None, "image", (img3_cli, img4_cli))
     assert ic
     assert ic.default_image.full == img3
     assert len(ic.images) == 1
@@ -135,7 +135,8 @@ def test_secrets_manager_get_envvar():
         sec.get_secrets_env_var("test", "")
     with pytest.raises(ValueError):
         sec.get_secrets_env_var("", "x")
-    assert sec.get_secrets_env_var("group", "test") == f"{secrets.SECRETS_ENV_PREFIX.get()}GROUP_TEST"
+    cfg = SecretsConfig.auto()
+    assert sec.get_secrets_env_var("group", "test") == f"{cfg.env_prefix}GROUP_TEST"
 
 
 def test_secrets_manager_get_file():
@@ -144,10 +145,11 @@ def test_secrets_manager_get_file():
         sec.get_secrets_file("test", "")
     with pytest.raises(ValueError):
         sec.get_secrets_file("", "x")
+    cfg = SecretsConfig.auto()
     assert sec.get_secrets_file("group", "test") == os.path.join(
-        secrets.SECRETS_DEFAULT_DIR.get(),
+        cfg.default_dir,
         "group",
-        f"{secrets.SECRETS_FILE_PREFIX.get()}test",
+        f"{cfg.file_prefix}test",
     )
 
 

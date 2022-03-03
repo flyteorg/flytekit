@@ -261,7 +261,7 @@ class SecretsConfig(object):
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "env_prefix", _internal.Secrets.ENV_PREFIX.read(config_file))
-        kwargs = set_if_exists(kwargs, "default_prefix", _internal.Secrets.DEFAULT_DIR.read(config_file))
+        kwargs = set_if_exists(kwargs, "default_dir", _internal.Secrets.DEFAULT_DIR.read(config_file))
         kwargs = set_if_exists(kwargs, "file_prefix", _internal.Secrets.FILE_PREFIX.read(config_file))
         return SecretsConfig(**kwargs)
 
