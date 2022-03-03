@@ -75,5 +75,6 @@ def test_get(mock_exec):
 def test_get_recursive(mock_exec):
     proxy = S3Persistence()
     proxy.get("s3://my-bucket/k1", "/test", True)
-    mock_exec.assert_called_with(cmd=["aws", "s3", "cp", "--recursive", "s3://my-bucket/k1", "/test"],
-                                 s3_cfg=S3Config.auto())
+    mock_exec.assert_called_with(
+        cmd=["aws", "s3", "cp", "--recursive", "s3://my-bucket/k1", "/test"], s3_cfg=S3Config.auto()
+    )
