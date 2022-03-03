@@ -1,5 +1,4 @@
 import logging as _logging
-import os
 import os as _os
 import sys
 import tarfile as _tarfile
@@ -13,6 +12,11 @@ from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import context_manager as flyte_context
 from flytekit.exceptions.scopes import system_entry_point
+from flytekit.exceptions.user import FlyteValidationException
+from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import task as task_models
+from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import trigger_loading
@@ -148,7 +152,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def workflows(ctx, folder=None):
-    _logging.getLogger().setLevel(_logging.DEBUG)
+    cli_logger.getLogger().setLevel(logging.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")
@@ -177,7 +181,7 @@ def fast(ctx):
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def fast_workflows(ctx, folder=None):
-    _logging.getLogger().setLevel(_logging.DEBUG)
+    cli_logger.getLogger().setLevel(logging.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")

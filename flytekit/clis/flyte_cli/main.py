@@ -319,7 +319,6 @@ _optional_principal_option = _click.option(
 )
 _insecure_option = _click.option(*_INSECURE_FLAGS, is_flag=True, help="Do not use SSL")
 _urn_option = _click.option("-u", "--urn", required=True, help="The unique identifier for an entity.")
-
 _optional_urn_option = _click.option("-u", "--urn", required=False, help="The unique identifier for an entity.")
 
 _host_option = _click.option(

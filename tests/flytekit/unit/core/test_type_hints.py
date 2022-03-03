@@ -14,6 +14,7 @@ import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
+from typing_extensions import Annotated
 
 import flytekit
 import flytekit.configuration
@@ -23,6 +24,7 @@ from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.hash import HashMethod
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
@@ -1601,3 +1603,110 @@ def test_error_messages():
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
         foo3(a=[{"hello": 2}])
+
+
+def test_task_annotate_primitive_type_has_no_effect():
+    @task
+    def plus_two(
+        a: int,
+    ) -> Annotated[int, HashMethod(str)]:  # Note the use of `str` as the hash function for ints. This has no effect.
+        return a + 2
+
+    assert plus_two(a=1) == 3
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = plus_two.dispatch_execute(
+        ctx,
+        _literal_models.LiteralMap(
+            literals={
+                "a": _literal_models.Literal(
+                    scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=3))
+                )
+            }
+        ),
+    )
+    assert output_lm.literals["o0"].scalar.primitive.integer == 5
+    assert output_lm.literals["o0"].hash is None
+
+
+def test_task_hash_return_pandas_dataframe():
+    constant_value = "road-hash"
+
+    def constant_function(df: pandas.DataFrame) -> str:
+        return constant_value
+
+    @task
+    def t0() -> Annotated[pandas.DataFrame, HashMethod(constant_function)]:
+        return pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = t0.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    assert output_lm.literals["o0"].hash == constant_value
+
+    # Confirm that the literal containing a hash does not have any effect on the scalar.
+    df = TypeEngine.to_python_value(ctx, output_lm.literals["o0"], pandas.DataFrame)
+    expected_df = pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    assert df.equals(expected_df)
+
+
+def test_workflow_containing_multiple_annotated_tasks():
+    def hash_function_t0(df: pandas.DataFrame) -> str:
+        return "hash-0"
+
+    @task
+    def t0() -> Annotated[pandas.DataFrame, HashMethod(hash_function_t0)]:
+        return pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+
+    def hash_function_t1(df: pandas.DataFrame) -> str:
+        return "hash-1"
+
+    @task
+    def t1() -> Annotated[pandas.DataFrame, HashMethod(hash_function_t1)]:
+        return pandas.DataFrame(data={"col1": [10, 20], "col2": [30, 40]})
+
+    @task
+    def t2() -> pandas.DataFrame:
+        return pandas.DataFrame(data={"col1": [100, 200], "col2": [300, 400]})
+
+    # Auxiliary task used to sum up the dataframes. It demonstrates that the use of `Annotated` does not
+    # have any impact in the definition and execution of cached or uncached downstream tasks
+    @task
+    def sum_dataframes(df0: pandas.DataFrame, df1: pandas.DataFrame, df2: pandas.DataFrame) -> pandas.DataFrame:
+        return df0 + df1 + df2
+
+    @workflow
+    def wf() -> pandas.DataFrame:
+        df0 = t0()
+        df1 = t1()
+        df2 = t2()
+        return sum_dataframes(df0=df0, df1=df1, df2=df2)
+
+    df = wf()
+
+    expected_df = pandas.DataFrame(data={"col1": [1 + 10 + 100, 2 + 20 + 200], "col2": [3 + 30 + 300, 4 + 40 + 400]})
+    assert expected_df.equals(df)
+
+
+def test_list_containing_multiple_annotated_pandas_dataframes():
+    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
+        return str(pandas.util.hash_pandas_object(df))
+
+    @task
+    def produce_list_of_annotated_dataframes() -> typing.List[
+        Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]
+    ]:
+        return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [4, 5, 6]})]
+
+    @task(cache=True, cache_version="v0")
+    def sum_list_of_pandas_dataframes(lst: typing.List[pandas.DataFrame]) -> pandas.DataFrame:
+        return sum(lst)
+
+    @workflow
+    def wf() -> pandas.DataFrame:
+        lst = produce_list_of_annotated_dataframes()
+        return sum_list_of_pandas_dataframes(lst=lst)
+
+    df = wf()
+
+    expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
+    assert expected_df.equals(df)

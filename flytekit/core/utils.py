@@ -1,4 +1,3 @@
-import logging as _logging
 import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
@@ -6,7 +5,7 @@ import time as _time
 from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import Dict, List, Optional
-
+from flytekit.loggers import logger
 from flytekit.models import task as _task_models
 
 
@@ -219,14 +218,14 @@ class PerformanceTimer(object):
         self._start_process_time = None
 
     def __enter__(self):
-        _logging.info("Entering timed context: {}".format(self._context_statement))
+        logger.info("Entering timed context: {}".format(self._context_statement))
         self._start_wall_time = _time.perf_counter()
         self._start_process_time = _time.process_time()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         end_wall_time = _time.perf_counter()
         end_process_time = _time.process_time()
-        _logging.info(
+        logger.info(
             "Exiting timed context: {} [Wall Time: {}s, Process Time: {}s]".format(
                 self._context_statement,
                 end_wall_time - self._start_wall_time,

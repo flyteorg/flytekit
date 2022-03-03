@@ -1,16 +1,16 @@
 from typing import Optional
 
-from flytekit.core import hash as _hash_mixin
+from flytekit.core import hash as hash_mixin
 from flytekit.core.interface import Interface
-from flytekit.core.task import ReferenceTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import remote_logger as logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.remote import interface as _interfaces
+from flytekit.remote.remote_callable import RemoteEntity
 
 
-class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
+class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskTemplate):
     """A class encapsulating a remote Flyte task."""
 
     def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None):
@@ -25,44 +25,11 @@ class FlyteTask(_hash_mixin.HashOnReferenceMixin, _task_model.TaskTemplate):
             config=config,
         )
         self._python_interface = None
-        self._reference_entity = None
-
-    def __call__(self, *args, **kwargs):
-        if self.reference_entity is None:
-            logger.warning(
-                f"FlyteTask {self} is not callable, most likely because flytekit could not "
-                f"guess the python interface. The workflow calling this task may not behave correctly"
-            )
-            return
-        return self.reference_entity(*args, **kwargs)
-
-    # TODO: Refactor behind mixin
-    @property
-    def reference_entity(self) -> Optional[ReferenceTask]:
-        if self._reference_entity is None:
-            if self.guessed_python_interface is None:
-                try:
-                    self.guessed_python_interface = Interface(
-                        TypeEngine.guess_python_types(self.interface.inputs),
-                        TypeEngine.guess_python_types(self.interface.outputs),
-                    )
-                except Exception as e:
-                    logger.warning(f"Error backing out interface {e}, Flyte interface {self.interface}")
-                    return None
-
-            self._reference_entity = ReferenceTask(
-                self.id.project,
-                self.id.domain,
-                self.id.name,
-                self.id.version,
-                inputs=self.guessed_python_interface.inputs,
-                outputs=self.guessed_python_interface.outputs,
-            )
-        return self._reference_entity
+        self._name = id.name
 
     @property
-    def interface(self) -> _interfaces.TypedInterface:
-        return super(FlyteTask, self).interface
+    def name(self) -> str:
+        return self._name
 
     @property
     def resource_type(self) -> _identifier_model.ResourceType:

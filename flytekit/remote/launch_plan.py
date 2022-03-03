@@ -1,60 +1,39 @@
+from __future__ import annotations
+
 from typing import Optional
 
+from flytekit.core import hash as hash_mixin
 from flytekit.core.interface import Interface
-from flytekit.core.launch_plan import ReferenceLaunchPlan
-from flytekit.core.type_engine import TypeEngine
-from flytekit.loggers import remote_logger as logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.core import identifier as id_models
 from flytekit.remote import interface as _interface
+from flytekit.remote.remote_callable import RemoteEntity
 
 
-class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
+class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_plan_models.LaunchPlanSpec):
     """A class encapsulating a remote Flyte launch plan."""
 
     def __init__(self, id, *args, **kwargs):
         super(FlyteLaunchPlan, self).__init__(*args, **kwargs)
         # Set all the attributes we expect this class to have
         self._id = id
+        self._name = id.name
 
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
         self._python_interface = None
-        self._reference_entity = None
 
-    def __call__(self, *args, **kwargs):
-        if self.reference_entity is None:
-            logger.warning(
-                f"FlyteLaunchPlan {self} is not callable, most likely because flytekit could not "
-                f"guess the python interface. The workflow calling this launch plan may not behave correctly."
-            )
-            return
-        return self.reference_entity(*args, **kwargs)
-
-    # TODO: Refactor behind mixin
     @property
-    def reference_entity(self) -> Optional[ReferenceLaunchPlan]:
-        if self._reference_entity is None:
-            if self.guessed_python_interface is None:
-                try:
-                    self.guessed_python_interface = Interface(
-                        TypeEngine.guess_python_types(self.interface.inputs),
-                        TypeEngine.guess_python_types(self.interface.outputs),
-                    )
-                except Exception as e:
-                    logger.warning(f"Error backing out interface {e}, Flyte interface {self.interface}")
-                    return None
+    def name(self) -> str:
+        return self._name
 
-            self._reference_entity = ReferenceLaunchPlan(
-                self.id.project,
-                self.id.domain,
-                self.id.name,
-                self.id.version,
-                inputs=self.guessed_python_interface.inputs,
-                outputs=self.guessed_python_interface.outputs,
-            )
-        return self._reference_entity
+        # If fetched when creating this object, can store it here.
+        self._flyte_workflow = None
+
+    @property
+    def flyte_workflow(self) -> Optional["FlyteWorkflow"]:
+        return self._flyte_workflow
 
     @classmethod
     def promote_from_model(
@@ -71,7 +50,6 @@ class FlyteLaunchPlan(_launch_plan_models.LaunchPlanSpec):
             auth_role=model.auth_role,
             raw_output_data_config=model.raw_output_data_config,
         )
-
         return lp
 
     @property

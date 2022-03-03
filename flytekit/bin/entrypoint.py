@@ -1,7 +1,6 @@
 import contextlib
 import datetime as _datetime
 import logging as python_logging
-import os
 import os as _os
 import pathlib
 import tempfile
@@ -25,6 +24,7 @@ from flytekit.core.promise import VoidPromise
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
+from flytekit.loggers import entrypoint_logger
 from flytekit.loggers import entrypoint_logger as logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -223,7 +223,7 @@ def setup_execution(
                 "api_version": _api_version,
             },
         ),
-        logging=python_logging,
+        logging=entrypoint_logger,
         tmp_dir=user_workspace_dir,
         raw_output_prefix=raw_output_data_prefix,
         checkpoint=checkpointer,

@@ -359,7 +359,7 @@ def test_serialization_nested_subwf():
     @workflow
     def parent_wf() -> typing.Tuple[int, int, int, int]:
         m1, m2 = middle_subwf()
-        l1, l2 = leaf_subwf()
+        l1, l2 = leaf_subwf().with_overrides(node_name="foo-node")
         return m1, m2, l1, l2
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, parent_wf)
@@ -371,6 +371,8 @@ def test_serialization_nested_subwf():
     assert len(midwf.nodes) == 1
     assert midwf.nodes[0].workflow_node is not None
     assert midwf.nodes[0].workflow_node.sub_workflow_ref.name == "test_serialization.leaf_subwf"
+    assert wf_spec.template.nodes[1].id == "foo-node"
+    assert wf_spec.template.outputs[2].binding.promise.node_id == "foo-node"
 
 
 def test_serialization_named_outputs_single():

@@ -260,7 +260,7 @@ def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_reg
 def test_execute_sqlite3_task(flyteclient, flyte_workflows_register, flyte_remote_env):
     remote = FlyteRemote.from_config(PROJECT, "development")
 
-    example_db = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
+    example_db = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
     interactive_sql_task = SQLite3Task(
         "basic_querying",
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
