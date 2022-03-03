@@ -505,6 +505,7 @@ class _FlyteSubCommand(_click.Command):
             # then use when constructing the commands
             config = _detect_default_config_file()
 
+        print("Config loading")
         ctx.obj["config"] = configuration.PlatformConfig.auto(config_file=config)
         return ctx
 
@@ -512,7 +513,7 @@ class _FlyteSubCommand(_click.Command):
 @_click.option(
     *_CONFIG_FLAGS,
     required=False,
-    type=str,
+    type=_click.Path(exists=True),
     default=None,
     help="[Optional] The filepath to the config file to pass to the sub-command (if applicable)."
     "  If set again in the sub-command, the sub-command's parameter takes precedence.",
