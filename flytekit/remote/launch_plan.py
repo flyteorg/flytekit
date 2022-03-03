@@ -28,6 +28,13 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
     def name(self) -> str:
         return self._name
 
+        # If fetched when creating this object, can store it here.
+        self._flyte_workflow = None
+
+    @property
+    def flyte_workflow(self) -> Optional["FlyteWorkflow"]:
+        return self._flyte_workflow
+
     @classmethod
     def promote_from_model(
         cls, id: id_models.Identifier, model: _launch_plan_models.LaunchPlanSpec
