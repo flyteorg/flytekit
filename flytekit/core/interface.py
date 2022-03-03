@@ -3,7 +3,6 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
-import logging as _logging
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
@@ -258,7 +257,7 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
         else:
             TypeEngine.get_transformer(t)
     except ValueError:
-        _logging.warning(
+        logger.warning(
             f"Unsupported Type {t} found, Flyte will default to use PickleFile as the transport. "
             f"Pickle can only be used to send objects between the exact same version of Python, "
             f"and we strongly recommend to use python type that flyte support."
@@ -267,7 +266,7 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
     return t
 
 
-def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring] = None) -> Interface:
+def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object

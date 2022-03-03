@@ -1,7 +1,7 @@
-import logging as _logging
 from typing import Dict
 
 from flytekit.exceptions import system as _system_exceptions
+from flytekit.loggers import remote_logger
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as id_models
@@ -41,7 +41,7 @@ class FlyteTaskNode(_workflow_model.TaskNode):
 
         if base_model.reference_id in tasks:
             task = tasks[base_model.reference_id]
-            _logging.debug(f"Found existing task template for {task.id}, will not retrieve from Admin")
+            remote_logger.debug(f"Found existing task template for {task.id}, will not retrieve from Admin")
             flyte_task = FlyteTask.promote_from_model(task)
             return cls(flyte_task)
 

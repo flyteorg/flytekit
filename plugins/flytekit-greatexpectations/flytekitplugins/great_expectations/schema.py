@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 import typing
 from dataclasses import dataclass
@@ -14,6 +13,7 @@ from great_expectations.exceptions import ValidationError
 
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
+from flytekit.loggers import logger
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Literal, Primitive, Scalar
 from flytekit.models.types import LiteralType
@@ -328,7 +328,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             # raise a Great Expectations' exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        logging.info("Validation succeeded!")
+        logger.info("Validation succeeded!")
 
         return typing.cast(GreatExpectationsType, return_dataset)
 

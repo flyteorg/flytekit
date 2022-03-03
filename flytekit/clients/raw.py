@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64 as _base64
-import logging as _logging
 import subprocess
 import time
 from typing import Optional
@@ -823,7 +822,7 @@ def get_token(token_endpoint, authorization_header, scope):
         body["scope"] = scope
     response = _requests.post(token_endpoint, data=body, headers=headers)
     if response.status_code != 200:
-        _logging.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
+        cli_logger.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
         raise FlyteAuthenticationException("Non-200 received from IDP")
 
     response = response.json()
