@@ -23,16 +23,24 @@ def test_s3_setup_args():
 
 
 def test_get_protocol():
-    assert FSSpecPersistence._get_protocol("s3://abc") == "s3"
-    assert FSSpecPersistence._get_protocol("/abc") == "file"
-    assert FSSpecPersistence._get_protocol("file://abc") == "file"
-    assert FSSpecPersistence._get_protocol("gs://abc") == "gs"
-    assert FSSpecPersistence._get_protocol("sftp://abc") == "sftp"
-    assert FSSpecPersistence._get_protocol("abfs://abc") == "abfs"
+    assert FSSpecPersistence.get_protocol("s3://abc") == "s3"
+    assert FSSpecPersistence.get_protocol("/abc") == "file"
+    assert FSSpecPersistence.get_protocol("file://abc") == "file"
+    assert FSSpecPersistence.get_protocol("gs://abc") == "gs"
+    assert FSSpecPersistence.get_protocol("sftp://abc") == "sftp"
+    assert FSSpecPersistence.get_protocol("abfs://abc") == "abfs"
+
+
+def test_get_anonymous_filesystem():
+    fs = FSSpecPersistence.get_anonymous_filesystem("/abc")
+    assert fs is None
+    fs = FSSpecPersistence.get_anonymous_filesystem("s3://abc")
+    assert fs is not None
+    assert fs.protocol == ["s3", "s3a"]
 
 
 def test_get_filesystem():
-    fs = FSSpecPersistence._get_filesystem("/abc")
+    fs = FSSpecPersistence.get_filesystem("/abc")
     assert fs is not None
     assert isinstance(fs, LocalFileSystem)
 

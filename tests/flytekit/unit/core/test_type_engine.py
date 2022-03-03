@@ -17,10 +17,14 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
+from typing_extensions import Annotated
 
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.hash import HashMethod
+from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
@@ -44,12 +48,8 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
+from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
 
 
 def test_type_engine():
@@ -841,6 +841,77 @@ def test_dict_to_literal_map_with_wrong_input_type():
     guessed_python_types = {"a": str}
     with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
+
+
+def test_pass_annotated_to_downstream_tasks():
+    """
+    Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
+    """
+    # pandas dataframe hash function
+    def hash_pandas_dataframe(df: pd.DataFrame) -> str:
+        return str(pd.util.hash_pandas_object(df))
+
+    @task
+    def t0(a: int) -> Annotated[int, HashMethod(function=str)]:
+        return a + 1
+
+    @task
+    def annotated_return_task() -> Annotated[pd.DataFrame, HashMethod(hash_pandas_dataframe)]:
+        return pd.DataFrame({"column_1": [1, 2, 3]})
+
+    @task(cache=True, cache_version="42")
+    def downstream_t(a: int, df: pd.DataFrame) -> int:
+        return a + 2 + len(df)
+
+    @dynamic
+    def t1(a: int) -> int:
+        v = t0(a=a)
+        df = annotated_return_task()
+
+        # We should have a cache miss in the first call to downstream_t
+        v_1 = downstream_t(a=v, df=df)
+        v_2 = downstream_t(a=v, df=df)
+
+        return v_1 + v_2
+
+    assert t1(a=3) == (6 + 6 + 6)
+
+
+def test_literal_hash_int_not_set():
+    """
+    Test to confirm that annotating an integer with `HashMethod` does not force the literal to have its
+    hash set.
+    """
+    ctx = FlyteContext.current_context()
+    lv = TypeEngine.to_literal(
+        ctx, 42, Annotated[int, HashMethod(str)], LiteralType(simple=model_types.SimpleType.INTEGER)
+    )
+    assert lv.scalar.primitive.integer == 42
+    assert lv.hash is None
+
+
+def test_literal_hash_to_python_value():
+    """
+    Test to confirm that literals can be converted to python values, regardless of the hash value set in the literal.
+    """
+    ctx = FlyteContext.current_context()
+
+    def constant_hash(df: pd.DataFrame) -> str:
+        return "h4Sh"
+
+    df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    pandas_df_transformer = PandasDataFrameTransformer()
+    literal_with_hash_set = TypeEngine.to_literal(
+        ctx,
+        df,
+        Annotated[pd.DataFrame, HashMethod(constant_hash)],
+        pandas_df_transformer.get_literal_type(pd.DataFrame),
+    )
+    assert literal_with_hash_set.hash == "h4Sh"
+    # Confirm tha the loaded dataframe is not affected
+    python_df = TypeEngine.to_python_value(ctx, literal_with_hash_set, pd.DataFrame)
+    expected_df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    assert expected_df.equals(python_df)
 
 
 def test_annotated_simple_types():

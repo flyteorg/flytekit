@@ -52,7 +52,7 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
         instance = next(self._ids)
-        name = f"{python_function_task._task_function.__module__}.mapper_{python_function_task._task_function.__name__}_{instance}"
+        name = f"{python_function_task.task_function.__module__}.mapper_{python_function_task.task_function.__name__}_{instance}"
 
         self._run_task = python_function_task
         self._max_concurrency = concurrency

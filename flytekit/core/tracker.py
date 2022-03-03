@@ -1,10 +1,10 @@
 import importlib as _importlib
 import inspect
 import inspect as _inspect
-import logging as _logging
 from typing import Callable
 
 from flytekit.exceptions import system as _system_exceptions
+from flytekit.loggers import logger
 
 
 class InstanceTrackingMeta(type):
@@ -70,12 +70,12 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         if self._instantiated_in is None or self._instantiated_in == "":
             raise _system_exceptions.FlyteSystemException(f"Object {self} does not have an _instantiated in")
 
-        _logging.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
+        logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
         m = _importlib.import_module(self._instantiated_in)
         for k in dir(m):
             try:
                 if getattr(m, k) is self:
-                    _logging.debug(f"Found LHS for {self}, {k}")
+                    logger.debug(f"Found LHS for {self}, {k}")
                     self._lhs = k
                     return k
             except ValueError as err:
@@ -84,10 +84,10 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                 #   a.any() or a.all()
                 # Since dataframes aren't registrable entities to begin with we swallow any errors they raise and
                 # continue looping through m.
-                _logging.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
+                logger.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
                 pass
 
-        _logging.error(f"Could not find LHS for {self} in {self._instantiated_in}")
+        logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
         raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
 
 

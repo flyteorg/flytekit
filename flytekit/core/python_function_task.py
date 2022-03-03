@@ -210,7 +210,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             for entity, model in model_entities.items():
                 # We only care about gathering tasks here. Launch plans are handled by
                 # propeller. Subworkflows should already be in the workflow spec.
-                if not isinstance(entity, Task):
+                if not isinstance(entity, Task) and not isinstance(entity, task_models.TaskTemplate):
+                    continue
+
+                # Handle FlyteTask
+                if isinstance(entity, task_models.TaskTemplate):
+                    tts.append(entity)
                     continue
 
                 # We are currently not supporting reference tasks since these will
