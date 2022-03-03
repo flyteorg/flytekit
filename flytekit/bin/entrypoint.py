@@ -242,17 +242,11 @@ def setup_execution(
         mode=ExecutionState.Mode.TASK_EXECUTION,
         user_space_params=execution_parameters,
     )
-    if compressed_serialization_settings == "":
-        ss = SerializationSettings(
-            project=tk_project,
-            domain=tk_domain,
-            version=tk_version,
-            image_config=ImageConfig.auto(img_name=os.environ.get("FLYTE_INTERNAL_IMAGE")),
-        )
-    else:
-        ss = SerializationSettings.from_transport(compressed_serialization_settings)
+    cb = ctx.new_builder().with_file_access(file_access).with_execution_state(es)
 
-    cb = ctx.new_builder().with_file_access(file_access).with_execution_state(es).with_serialization_settings(ss)
+    if compressed_serialization_settings:
+        ss = SerializationSettings.from_transport(compressed_serialization_settings)
+        cb = cb.with_serialization_settings(ss)
 
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
