@@ -271,7 +271,7 @@ class SecretsManager(object):
 
     def __init__(self, secrets_cfg: typing.Optional[SecretsConfig] = None):
         if secrets_cfg is None:
-            secrets_cfg = SecretsConfig()
+            secrets_cfg = SecretsConfig.auto()
         self._base_dir = secrets_cfg.default_dir.strip()
         self._file_prefix = secrets_cfg.file_prefix.strip()
         self._env_prefix = secrets_cfg.env_prefix.strip()

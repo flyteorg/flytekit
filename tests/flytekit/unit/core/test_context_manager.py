@@ -62,7 +62,7 @@ def test_look_up_image_info():
 
 
 def test_validate_image():
-    ic = Image.validate_image(None, "image", ())
+    ic = ImageConfig.validate_image(None, "image", ())
     assert ic
     assert ic.default_image is None
 

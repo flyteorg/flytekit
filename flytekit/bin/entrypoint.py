@@ -247,7 +247,7 @@ def setup_execution(
             project=tk_project,
             domain=tk_domain,
             version=tk_version,
-            image_config=ImageConfig.from_config(),
+            image_config=ImageConfig.auto(img_name=os.environ.get("FLYTE_INTERNAL_IMAGE")),
         )
     else:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
