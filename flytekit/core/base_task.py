@@ -528,8 +528,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     raise TypeError(
                         f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
                     ) from e
-
-            _output_deck(self.location.split(".")[-1], new_user_params, native_inputs, native_outputs_as_map)
+            _output_deck(self.name.split(".")[-1], new_user_params, native_inputs, native_outputs_as_map)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map
