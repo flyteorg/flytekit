@@ -209,7 +209,7 @@ def setup_execution(
         ),
         execution_date=_datetime.datetime.utcnow(),
         stats=_get_stats(
-            cfg=StatsConfig(),  # TODO, use env vars?
+            cfg=StatsConfig.auto(),
             # Stats metric path will be:
             # registration_project.registration_domain.app.module.task_name.user_stats
             # and it will be tagged with execution-level values for project/domain/wf/lp
@@ -245,7 +245,11 @@ def setup_execution(
 
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
-        cb = cb.with_serialization_settings(ss)
+        ssb = ss.new_builder()
+        ssb.project = exe_project
+        ssb.domain = exe_domain
+        ssb.version = tk_version
+        cb = cb.with_serialization_settings(ssb.build())
 
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
