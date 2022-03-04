@@ -126,11 +126,12 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     """
     ctx.obj[CTX_IMAGE] = image
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
-    ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = in_container_virtualenv_root
-    ctx.obj[CTX_PYTHON_INTERPRETER] = os.path.join(in_container_virtualenv_root, "/bin/python3")
     click.echo("Serializing Flyte elements with image {}".format(image))
 
-    if not in_container_virtualenv_root:
+    if in_container_virtualenv_root:
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = in_container_virtualenv_root
+        ctx.obj[CTX_PYTHON_INTERPRETER] = os.path.join(in_container_virtualenv_root, "/bin/python3")
+    else:
         # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
         # instead.
         import flytekit
