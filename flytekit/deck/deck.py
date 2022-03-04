@@ -7,13 +7,27 @@ from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.deck.renderer import Renderer
 
+DEFAULT_DECK_NAME = "default"
+
 
 class Deck:
+    # Deck enable users to get customizable and default visibility into their tasks.
+    #
+    # Deck contains a list of renderers (FrameRenderer, MarkdownRenderer) that can
+    # generate a html file. For example, FrameRenderer can render a DataFrame as an HTML table,
+    # MarkdownRenderer can convert Markdown string to HTML
+    #
+    # Flyte context saves a list of deck objects, and we use renderers in those decks to render
+    # the data and create an HTML file when those tasks are executed
+    #
+    # Each task has a least three decks (input, output, default). Input/output decks are
+    # used to render tasks' input/output data, and the default deck is used to render line plots,
+    # scatter plots or markdown text. In addition, users can create new decks to render
+    # their data with custom renderers.
     def __init__(self, name: str, renderers: Union[List[Renderer], Renderer]):
         self.name = name
         self.renderers = renderers if isinstance(renderers, list) else [renderers]
-        ctx = FlyteContextManager.current_context()
-        ctx.user_space_params.decks.append(self)
+        FlyteContextManager.current_context().user_space_params.decks.append(self)
 
     def append(self, r: Renderer) -> "Deck":
         self.renderers.append(r)
@@ -37,6 +51,8 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters, task_inpu
         _deck_to_html_file(deck_map, OUTPUT, output_dir, k, TypeEngine.to_html(ctx, v, type(v)))
 
     for deck in new_user_params.decks:
+        # if len(deck.renderers) == 0:
+        #     continue
         deck_map[deck.name] = []
         for i in range(len(deck.renderers)):
             file_name = deck.name + "_" + str(i)
@@ -63,4 +79,4 @@ def _deck_to_html_file(deck_map, deck_name, output_dir, file_name, html: str):
         output.write(html)
 
 
-default_deck = Deck("default", [])
+default_deck = Deck(DEFAULT_DECK_NAME, [])

@@ -233,7 +233,6 @@ class Task(object):
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
-        # ctx.user_space_params._decks = []
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
@@ -282,10 +281,6 @@ class Task(object):
             return VoidPromise(self.name)
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
-        # for deck in ctx.user_space_params.decks:
-        #     # TODO: change path to file_access.random_remote_path
-        #     deck.upload("./deck_outputs")
-
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):
@@ -466,8 +461,10 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
-        new_user_params._decks = []
+        from flytekit.deck.deck import _output_deck, default_deck
 
+        default_deck.renderers = []
+        new_user_params._decks = [default_deck]
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
@@ -532,9 +529,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
                     ) from e
 
-            from flytekit.deck.deck import _output_deck
-
-            _output_deck(self.lhs, new_user_params, native_inputs, native_outputs_as_map)
+            _output_deck(self.location.split(".")[-1], new_user_params, native_inputs, native_outputs_as_map)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map
