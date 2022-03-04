@@ -150,7 +150,6 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def workflows(ctx, folder=None):
-    cli_logger.setLevel(logging.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")
@@ -179,7 +178,6 @@ def fast(ctx):
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def fast_workflows(ctx, folder=None):
-    cli_logger.getLogger().setLevel(logging.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")
