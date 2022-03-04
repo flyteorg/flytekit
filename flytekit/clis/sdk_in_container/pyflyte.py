@@ -58,11 +58,6 @@ def main(ctx, config=None, pkgs=None, insecure=None):
     """
     update_configuration_file(config)
 
-    # Update the logger if it's set
-    log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
-    if log_level is not None:
-        cli_logger.getLogger().setLevel(log_level)
-
     ctx.obj = dict()
 
     # Determine SSL.  Note that the insecure option in this command is not a flag because we want to look
