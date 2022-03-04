@@ -51,8 +51,6 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters, task_inpu
         _deck_to_html_file(deck_map, OUTPUT, output_dir, k, TypeEngine.to_html(ctx, v, type(v)))
 
     for deck in new_user_params.decks:
-        # if len(deck.renderers) == 0:
-        #     continue
         deck_map[deck.name] = []
         for i in range(len(deck.renderers)):
             file_name = deck.name + "_" + str(i)
