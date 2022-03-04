@@ -57,11 +57,7 @@ from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.tools.translator import (
-    get_serializable_launch_plan,
-    get_serializable_task,
-    get_serializable_workflow,
-)
+from flytekit.tools.translator import get_serializable_launch_plan, get_serializable_task, get_serializable_workflow
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
