@@ -64,7 +64,7 @@ def serialize_all(
         raise AssertionError(f"Unrecognized serialization mode: {mode}")
 
     serialization_settings = SerializationSettings(
-        image_config=ImageConfig.from_config(config_file, img_name=image),
+        image_config=ImageConfig.auto(config_file, img_name=image),
         fast_serialization_settings=FastSerializationSettings(
             enabled=mode == SerializationMode.FAST,
             # TODO: if we want to move the destination dir as a serialization argument, we should initialize it here
