@@ -3,9 +3,11 @@ from collections import OrderedDict
 
 import pytest
 
-import flytekit.configuration
+from flytekit import dynamic
 from flytekit.configuration import Image, ImageConfig
+from flytekit.configuration import SerializationSettings, FastSerializationSettings
 from flytekit.core import context_manager
+from flytekit.core.context_manager import ExecutionState
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
@@ -19,7 +21,7 @@ from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = flytekit.configuration.SerializationSettings(
+serialization_settings = SerializationSettings(
     project="project",
     domain="domain",
     version="version",
@@ -45,8 +47,7 @@ def sub_wf(a: int, b: str) -> (int, str):
     return x, d
 
 
-serialized = OrderedDict()
-t1_spec = get_serializable(serialized, serialization_settings, t1)
+t1_spec = get_serializable(OrderedDict(), serialization_settings, t1)
 ft = FlyteTask.promote_from_model(t1_spec.template)
 
 
@@ -124,10 +125,6 @@ def test_dynamic():
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
                 )
             )
         ) as ctx:
