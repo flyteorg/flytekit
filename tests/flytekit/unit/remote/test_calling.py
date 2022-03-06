@@ -4,8 +4,7 @@ from collections import OrderedDict
 import pytest
 
 from flytekit import dynamic
-from flytekit.configuration import Image, ImageConfig
-from flytekit.configuration import SerializationSettings, FastSerializationSettings
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.core.launch_plan import LaunchPlan
