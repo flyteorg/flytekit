@@ -877,13 +877,13 @@ def _type_essence(x: LiteralType) -> LiteralType:
 
 def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
     if upstream.collection_type is not None:
-        if upstream.collection_type is None:
+        if downstream.collection_type is None:
             return False
 
         return _are_types_castable(upstream.collection_type, downstream.collection_type)
 
     if upstream.map_value_type is not None:
-        if upstream.map_value_type is None:
+        if downstream.map_value_type is None:
             return False
 
         return _are_types_castable(upstream.map_value_type, downstream.map_value_type)
@@ -919,19 +919,18 @@ def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
 
         return True
 
-    if downstream.union_type is not None:
-        if upstream.union_type is not None:
-            # for each upstream variant, there must be a compatible type downstream
-            for v in upstream.union_type:
-                if not _are_types_castable(v, downstream):
-                    return False
-            return True
+    if upstream.union_type is not None:
+        # for each upstream variant, there must be a compatible type downstream
+        for v in upstream.union_type.variants:
+            if not _are_types_castable(v, downstream):
+                return False
+        return True
 
-        else:
-            # there must be a compatible downstream type
-            for v in downstream.union_type.variants:
-                if _are_types_castable(upstream, v):
-                    return True
+    if downstream.union_type is not None:
+        # there must be a compatible downstream type
+        for v in downstream.union_type.variants:
+            if _are_types_castable(upstream, v):
+                return True
 
     if upstream.enum_type is not None:
         # enums are castable to string

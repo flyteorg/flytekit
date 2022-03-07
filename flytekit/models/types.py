@@ -258,7 +258,7 @@ class LiteralType(_common.FlyteIdlEntity):
         :param flytekit.models.core.types.TypeStructure structure: Type matching hints
         :param flytekit.models.core.types.StructuredDatasetType structured_dataset_type: structured dataset
         :param dict[Text, T] metadata: Additional data describing the type
-        :param flytekit.models.annotation.FlyteAnnotation annotation: Additional data
+        :param flytekit.models.annotation.TypeAnnotation annotation: Additional data
             describing the type _intended to be saturated by the client_
         """
         self._simple = simple
