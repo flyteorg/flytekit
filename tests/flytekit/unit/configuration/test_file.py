@@ -1,6 +1,7 @@
 import configparser
 import datetime
 import os
+
 import mock
 import pytest
 from pytimeparse.timeparse import timeparse
@@ -89,16 +90,29 @@ def test_config_entry_types():
     assert t.read(cfg) == datetime.timedelta(hours=20)
 
 
-def test_env_var_bool_transformer():
+@mock.patch("flytekit.configuration.file.LegacyConfigEntry.read_from_file")
+def test_env_var_bool_transformer(mock_file_read):
+    mock_file_read.return_value = None
     test_env_var = "FLYTE_MADEUP_TEST_VAR_ABC123"
+    b = ConfigEntry(LegacyConfigEntry("madeup", "test_var_abc123", bool))
 
     os.environ[test_env_var] = "FALSE"
-    b = ConfigEntry(LegacyConfigEntry("madeup", "test_var_abc123", bool))
     assert b.read() is False
 
     os.environ[test_env_var] = ""
-    b = ConfigEntry(LegacyConfigEntry("madeup", "test_var_abc123", bool))
     assert b.read() is False
+
+    os.environ[test_env_var] = "1"
+    assert b.read()
+
+    os.environ[test_env_var] = "truee"
+    assert b.read()
+    # The above reads shouldn't have triggered the file read since the env var was set
+    assert mock_file_read.call_count == 0
 
     del os.environ[test_env_var]
 
+    assert b.read() is None
+
+    # The last read should've triggered the file read since now the env var is no longer set.
+    assert mock_file_read.call_count == 1
