@@ -1,7 +1,7 @@
 import configparser
 import datetime
 import os
-
+import mock
 import pytest
 from pytimeparse.timeparse import timeparse
 
@@ -87,3 +87,18 @@ def test_config_entry_types():
         transform=lambda x: datetime.timedelta(seconds=timeparse(x)),
     )
     assert t.read(cfg) == datetime.timedelta(hours=20)
+
+
+def test_env_var_bool_transformer():
+    test_env_var = "FLYTE_MADEUP_TEST_VAR_ABC123"
+
+    os.environ[test_env_var] = "FALSE"
+    b = ConfigEntry(LegacyConfigEntry("madeup", "test_var_abc123", bool))
+    assert b.read() is False
+
+    os.environ[test_env_var] = ""
+    b = ConfigEntry(LegacyConfigEntry("madeup", "test_var_abc123", bool))
+    assert b.read() is False
+
+    del os.environ[test_env_var]
+
