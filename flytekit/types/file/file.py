@@ -38,14 +38,17 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     the contents of the files to the blob store connected with your Flyte installation. That is, the Python native
     literal that represents a file is typically just the path to the file on the local filesystem. However in Flyte,
     an instance of a file is represented by a :py:class:`Blob <flytekit.models.literals.Blob>` literal,
-    with the ``uri`` field set to the location in the Flyte blob store (AWS/GCS etc.).
+    with the ``uri`` field set to the location in the Flyte blob store (AWS/GCS etc.). Take a look at the
+    :std:ref:`data handling doc <flyte:divedeep-data-management>` for a deeper discussion.
 
     We decided to not support ``pathlib.Path`` as an input/output type because if you wanted the automatic
     upload/download behavior, you should just use the ``FlyteFile`` type. If you do not, then a ``str`` works just as
     well.
 
     The prefix for where uploads go is set by the raw output data prefix setting, which should be set at registration
-    time. See the flytectl option for more information.
+    time in the launch plan. See the option listed under ``flytectl register examples --help`` for more information.
+    If not set in the launch plan, then your Flyte backend will specify a default. This default is itself configurable
+    as well. Contact your Flyte platform administrators to change or ascertain the value.
 
     In short, if a task returns ``"/path/to/file"`` and the task's signature is set to return ``FlyteFile``, then the
     contents of ``/path/to/file`` are uploaded.
