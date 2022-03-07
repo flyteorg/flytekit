@@ -176,6 +176,9 @@ class SimpleTransformer(TypeTransformer[T]):
         return self._to_literal_transformer(python_val)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        while get_origin(expected_python_type) is Annotated:
+            expected_python_type = _get_args(expected_python_type)[0]
+
         if expected_python_type != self._type:
             raise TypeTransformerFailedError(
                 f"Cannot convert to type {expected_python_type}, only {self._type} is supported"
