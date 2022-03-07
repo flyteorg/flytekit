@@ -1,4 +1,3 @@
-import logging
 import math as _math
 import os as _os
 import sys
@@ -21,7 +20,6 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.scopes import system_entry_point
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.loggers import cli_logger
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
