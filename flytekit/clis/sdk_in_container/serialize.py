@@ -1,6 +1,4 @@
-import logging
 import os
-import os as _os
 import sys
 import tarfile as _tarfile
 import typing
@@ -13,7 +11,6 @@ from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import context_manager as flyte_context
 from flytekit.exceptions.scopes import system_entry_point
-from flytekit.loggers import cli_logger
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.module_loader import trigger_loading
@@ -136,11 +133,11 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         # instead.
         import flytekit
 
-        entrypoint_path = _os.path.abspath(flytekit.__file__)
+        entrypoint_path = os.path.abspath(flytekit.__file__)
         if entrypoint_path.endswith(".pyc"):
             entrypoint_path = entrypoint_path[:-1]
 
-        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = _os.path.dirname(entrypoint_path)
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = os.path.dirname(entrypoint_path)
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
 
@@ -185,7 +182,7 @@ def fast_workflows(ctx, folder=None):
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     digest = _compute_digest(source_dir)
     folder = folder if folder else ""
-    archive_fname = _os.path.join(folder, f"{digest}.tar.gz")
+    archive_fname = os.path.join(folder, f"{digest}.tar.gz")
     click.echo(f"Writing compressed archive to {archive_fname}")
     # Write using gzip
     with _tarfile.open(archive_fname, "w:gz") as tar:
