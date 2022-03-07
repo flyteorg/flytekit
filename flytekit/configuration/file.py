@@ -23,14 +23,17 @@ class LegacyConfigEntry(object):
     option: str
     type_: typing.Type = str
 
-    def read_from_env(self) -> typing.Optional[typing.Any]:
+    def read_from_env(self, transform: typing.Optional[typing.Callable] = None) -> typing.Optional[typing.Any]:
         """
         Reads the config entry from environment variable, the structure of the env var is current
         ``FLYTE_{SECTION}_{OPTION}`` all upper cased. We will change this in the future.
         :return:
         """
         env = f"FLYTE_{self.section.upper()}_{self.option.upper()}"
-        return os.environ.get(env, None)
+        v = os.environ.get(env, None)
+        if v is None:
+            return None
+        return transform(v) if transform else v
 
     def read_from_file(
         self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
@@ -45,6 +48,13 @@ class LegacyConfigEntry(object):
         return None
 
 
+def bool_transformer(config_val: typing.Any):
+    if type(config_val) is str:
+        return True if config_val and not config_val.lower() in ["false", "0", "off", "no"] else False
+    else:
+        return config_val
+
+
 @dataclass
 class ConfigEntry(object):
     """
@@ -55,6 +65,15 @@ class ConfigEntry(object):
     legacy: LegacyConfigEntry
     transform: typing.Optional[typing.Callable[[str], typing.Any]] = None
 
+    legacy_default_transforms = {
+        bool: bool_transformer,
+    }
+
+    def __post_init__(self):
+        if self.legacy:
+            if not self.transform and self.legacy.type_ in ConfigEntry.legacy_default_transforms:
+                self.transform = ConfigEntry.legacy_default_transforms[self.legacy.type_]
+
     def read(self, cfg: typing.Optional[ConfigFile] = None) -> typing.Optional[typing.Any]:
         """
         Reads the config Entry from the various sources in the following order,
@@ -62,7 +81,10 @@ class ConfigEntry(object):
         :param cfg:
         :return:
         """
-        return self.legacy.read_from_env() or self.legacy.read_from_file(cfg, self.transform)
+        from_env = self.legacy.read_from_env(self.transform)
+        if from_env is None:
+            return self.legacy.read_from_file(cfg, self.transform)
+        return from_env
 
 
 class ConfigFile(object):
