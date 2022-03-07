@@ -1,6 +1,7 @@
 # Flytekit Modin Plugin
 
-Modin is an emerging drop-in replacement or rather extension of Pandas. This plugin could be helpful to use Modin as a data type.
+Modin is a Python extension for Pandas that helps handle large datasets. It is a light-weight extension that is similar to Pandas API. It uses the concept of parallelisation to reduce overhead, and improve performance of Pandas operations by leveraging the compute resources available. This plugin could help use Modin as a data type.
+
 
 To install the plugin, run the following command:
 
@@ -8,4 +9,4 @@ To install the plugin, run the following command:
 pip install flytekitplugins-modin
 ```
 
-_Example coming soon!_
+All [examples](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/modin_examples/index.html) can be found in the documentation.
