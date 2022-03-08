@@ -371,7 +371,9 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         try:
             h = SchemaEngine.get_handler(type(python_val))
         except ValueError as e:
-            raise TypeTransformerFailedError(f"Could not convert {type(python_val)} to flyte schema") from e
+            raise TypeTransformerFailedError(
+                f"DataFrames of type {type(python_val)} are not supported currently"
+            ) from e
         writer = schema.open(type(python_val))
         writer.write(python_val)
         if not h.handles_remote_io:
