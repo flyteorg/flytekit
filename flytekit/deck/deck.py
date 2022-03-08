@@ -40,7 +40,6 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters, task_inpu
     OUTPUT = "output"
     ctx = FlyteContext.current_context()
     output_dir = ctx.file_access.get_random_local_directory()
-    # output_dir = "/Users/kevin/git/flytekit/deck_outputs"
 
     deck_map[INPUT] = []
     for k, v in task_input.items():

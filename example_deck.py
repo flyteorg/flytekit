@@ -1,9 +1,10 @@
 import pandas as pd
 import plotly.express as px
+from flytekitplugins.deck.renderer import MarkdownRenderer, ScatterRenderer
 
 import flytekit
 from flytekit import dynamic, task, workflow
-from flytekit.deck import FrameRenderer, MarkdownRenderer, ScatterRenderer, default_deck
+from flytekit.deck import FrameRenderer, default_deck
 
 
 @task()
