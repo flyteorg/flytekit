@@ -124,15 +124,7 @@ python-dateutil==2.8.2
     #   pandas
 python-json-logger==2.0.2
     # via flytekit
-<<<<<<< HEAD
-<<<<<<< HEAD
 python-slugify==6.1.1
-=======
-python-slugify==6.1.0
->>>>>>> 6a1ceea5 (Bump idl (#862))
-=======
-python-slugify==6.1.1
->>>>>>> 0da523c7 (Caching of offloaded objects (#762))
     # via cookiecutter
 pytimeparse==1.1.8
     # via flytekit
@@ -142,7 +134,7 @@ pytz==2021.3
     #   pandas
 pyyaml==5.4.1
     # via -r requirements.in
-regex==2022.3.2
+regex==2022.1.18
     # via docker-image-py
 requests==2.27.1
     # via

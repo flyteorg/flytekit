@@ -19,7 +19,6 @@ from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated
 
-import flytekit.common.exceptions.user as user_exceptions
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -373,6 +372,14 @@ def test_guessing_basic():
     lt = model_types.LiteralType(simple=model_types.SimpleType.NONE)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is type(None)  # noqa: E721
+
+    lt = model_types.LiteralType(
+        blob=BlobType(
+            format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
+        )
+    )
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is FlytePickle
 
     lt = model_types.LiteralType(
         blob=BlobType(

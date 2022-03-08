@@ -19,10 +19,6 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
-from typing_extensions import Annotated
-from typing_extensions import get_args
-from typing_extensions import get_args as _get_args
-from typing_extensions import get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
@@ -53,7 +49,6 @@ try:
     from typing import Annotated, get_args, get_origin
 except ImportError:
     from typing_extensions import Annotated, get_args, get_origin
-
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -177,7 +172,7 @@ class SimpleTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         while get_origin(expected_python_type) is Annotated:
-            expected_python_type = _get_args(expected_python_type)[0]
+            expected_python_type = get_args(expected_python_type)[0]
 
         if expected_python_type != self._type:
             raise TypeTransformerFailedError(

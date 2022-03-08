@@ -8,14 +8,11 @@ from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.serialize import serialize
-from flytekit.configuration import internal as _internal_config
 from flytekit.configuration import platform as _platform_config
-from flytekit.configuration import sdk as _sdk_config
 from flytekit.configuration import set_flyte_config_file
 from flytekit.configuration.internal import CONFIGURATION_PATH
 from flytekit.configuration.platform import URL as _URL
 from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
-from flytekit.loggers import cli_logger
 
 
 def validate_package(ctx, param, values):
@@ -57,11 +54,6 @@ def main(ctx, config=None, pkgs=None, insecure=None):
     Entrypoint for all the user commands.
     """
     update_configuration_file(config)
-
-    # Update the logger if it's set
-    log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
-    if log_level is not None:
-        cli_logger.getLogger().setLevel(log_level)
 
     ctx.obj = dict()
 

@@ -239,9 +239,9 @@ class LiteralType(_common.FlyteIdlEntity):
         blob=None,
         enum_type=None,
         union_type=None,
-        structure=None,
         structured_dataset_type=None,
         metadata=None,
+        structure=None,
         annotation=None,
     ):
         """
@@ -268,9 +268,9 @@ class LiteralType(_common.FlyteIdlEntity):
         self._blob = blob
         self._enum_type = enum_type
         self._union_type = union_type
-        self._structure = structure
         self._structured_dataset_type = structured_dataset_type
         self._metadata = metadata
+        self._structure = structure
         self._annotation = annotation
 
     @property
@@ -354,12 +354,12 @@ class LiteralType(_common.FlyteIdlEntity):
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
             union_type=self.union_type.to_flyte_idl() if self.union_type else None,
-            structure=self.structure.to_flyte_idl() if self.structure else None,
             structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
             if self.structured_dataset_type
             else None,
             metadata=metadata,
             annotation=self.annotation.to_flyte_idl() if self.annotation else None,
+            structure=self.structure.to_flyte_idl() if self.structure else None,
         )
         return t
 
@@ -383,11 +383,11 @@ class LiteralType(_common.FlyteIdlEntity):
             blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
             enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
             union_type=UnionType.from_flyte_idl(proto.union_type) if proto.HasField("union_type") else None,
-            structure=TypeStructure.from_flyte_idl(proto.structure) if proto.HasField("structure") else None,
             structured_dataset_type=StructuredDatasetType.from_flyte_idl(proto.structured_dataset_type)
             if proto.HasField("structured_dataset_type")
             else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
+            structure=TypeStructure.from_flyte_idl(proto.structure) if proto.HasField("structure") else None,
             annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.HasField("annotation") else None,
         )
 
