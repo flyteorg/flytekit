@@ -897,11 +897,11 @@ def test_union_of_lists():
     lt = TypeEngine.to_literal_type(pt)
     assert lt.union_type.variants == [
         LiteralType(
-            collection_type=LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+            collection_type=LiteralType(simple=SimpleType.INTEGER),
             structure=TypeStructure(tag="Typed List"),
         ),
         LiteralType(
-            collection_type=LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+            collection_type=LiteralType(simple=SimpleType.STRING),
             structure=TypeStructure(tag="Typed List"),
         ),
     ]
