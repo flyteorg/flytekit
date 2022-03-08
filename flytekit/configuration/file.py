@@ -138,13 +138,13 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
         # See if there's a config file in the current directory where Python is being run from
         current_location_config = Path("flytekit.config")
         if current_location_config.exists():
-            logger.info(f"Using configuration from Python process root {current_location_config.absolute()}")
+            logger.warning(f"Using configuration from Python process root {current_location_config.absolute()}")
             return ConfigFile(current_location_config.absolute())
 
         # If not, see if there's a config in the user's home directory
         home_dir_config = Path(Path.home(), ".flyte", "config")  # _default_config_file_name in main.py
         if home_dir_config.exists():
-            logger.info(f"Using configuration from home directory {home_dir_config.absolute()}")
+            logger.warning(f"Using configuration from home directory {home_dir_config.absolute()}")
             return ConfigFile(home_dir_config.absolute())
 
         # If not, then return None and let caller handle
