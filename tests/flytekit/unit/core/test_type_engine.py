@@ -389,6 +389,14 @@ def test_guessing_basic():
     pt = TypeEngine.guess_python_type(lt)
     assert pt is FlytePickle
 
+    lt = model_types.LiteralType(
+        blob=BlobType(
+            format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
+        )
+    )
+    pt = TypeEngine.guess_python_type(lt)
+    assert pt is FlytePickle
+
 
 def test_guessing_containers():
     b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)

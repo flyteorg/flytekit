@@ -112,7 +112,7 @@ docstring-parser==0.13
     #   flytekit
 filelock==3.6.0
     # via virtualenv
-google-api-core[grpc]==2.6.1
+google-api-core[grpc]==2.7.0
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage

@@ -271,6 +271,8 @@ class LiteralType(_common.FlyteIdlEntity):
         self._structured_dataset_type = structured_dataset_type
         self._metadata = metadata
         self._structure = structure
+        self._structured_dataset_type = structured_dataset_type
+        self._metadata = metadata
         self._annotation = annotation
 
     @property
