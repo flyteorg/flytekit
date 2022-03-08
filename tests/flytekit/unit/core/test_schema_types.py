@@ -24,7 +24,7 @@ def test_assert_type():
         schema = FlyteSchema[kwtypes(x=int, y=float)]
         fst = FlyteSchemaTransformer()
         lt = fst.get_literal_type(schema)
-        with pytest.raises(ValueError, match="Could not convert <class 'int'> to flyte schema"):
+        with pytest.raises(ValueError, match="DataFrames of type <class 'int'> are not supported currently"):
             TypeEngine.to_literal(ctx, 3, schema, lt)
 
 
