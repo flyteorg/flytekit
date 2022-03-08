@@ -311,6 +311,7 @@ class LiteralType(_common.FlyteIdlEntity):
     def structure(self) -> TypeStructure:
         return self._structure
 
+    @property
     def structured_dataset_type(self) -> StructuredDatasetType:
         return self._structured_dataset_type
 
