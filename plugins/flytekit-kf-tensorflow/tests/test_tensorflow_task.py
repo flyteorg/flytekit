@@ -1,7 +1,7 @@
 from flytekitplugins.kftensorflow import TfJob
 
 from flytekit import Resources, task
-from flytekit.extend import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 
 
 def test_tensorflow_task():

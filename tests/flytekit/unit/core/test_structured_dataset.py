@@ -2,8 +2,10 @@ import typing
 
 import pytest
 
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Image, ImageConfig
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -34,7 +36,7 @@ my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typin
 fields = [("some_int", pa.int32()), ("some_string", pa.string())]
 arrow_schema = pa.schema(fields)
 
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="proj",
     domain="dom",
     version="123",

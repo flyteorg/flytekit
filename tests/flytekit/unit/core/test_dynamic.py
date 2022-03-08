@@ -1,8 +1,10 @@
 import typing
 
+import flytekit.configuration
 from flytekit import dynamic
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
@@ -28,13 +30,17 @@ def test_wf1_with_fast_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
                 image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
                 env={},
-                fast_serialization_settings=FastSerializationSettings(enabled=True),
+                fast_serialization_settings=FastSerializationSettings(
+                    enabled=True,
+                    destination_dir="/User/flyte/workflows",
+                    distribution_location="s3://my-s3-bucket/fast/123",
+                ),
             )
         )
     ) as ctx:
@@ -42,10 +48,6 @@ def test_wf1_with_fast_dynamic():
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
                 )
             )
         ) as ctx:

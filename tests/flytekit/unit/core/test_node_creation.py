@@ -4,9 +4,10 @@ from collections import OrderedDict
 
 import pytest
 
+import flytekit.configuration
 from flytekit import Resources, map_task
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
@@ -39,7 +40,7 @@ def test_normal_task():
     assert r == "hello world"
     assert x == ["0 world", "1 world", "2 world"]
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -73,7 +74,7 @@ def test_normal_task():
         t3_node = create_node(t3)
         t3_node >> t2_node
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -183,7 +184,7 @@ def test_resource_request_override():
         map_node = mappy(a=a).with_overrides(requests=Resources(cpu="1", mem="100", ephemeral_storage="500Mi"))
         return map_node
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -212,7 +213,7 @@ def test_resource_limits_override():
         map_node = mappy(a=a).with_overrides(limits=Resources(cpu="2", mem="200", ephemeral_storage="1Gi"))
         return map_node
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -243,7 +244,7 @@ def test_resources_override():
         )
         return map_node
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -279,7 +280,7 @@ def test_timeout_override(timeout, expected):
     def my_wf(a: str) -> str:
         return t1(a=a).with_overrides(timeout=timeout)
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -315,7 +316,7 @@ def test_retries_override(retries, expected):
     def my_wf(a: str) -> str:
         return t1(a=a).with_overrides(retries=retries)
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -337,7 +338,7 @@ def test_interruptible_override(interruptible):
     def my_wf(a: str) -> str:
         return t1(a=a).with_overrides(interruptible=interruptible)
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",

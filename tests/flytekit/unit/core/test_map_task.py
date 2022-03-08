@@ -3,9 +3,10 @@ from collections import OrderedDict
 
 import pytest
 
+import flytekit.configuration
 from flytekit import LaunchPlan, map_task
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
@@ -15,7 +16,7 @@ from flytekit.tools.translator import get_serializable
 @pytest.fixture
 def serialization_settings():
     default_img = Image(name="default", fqn="test", tag="tag")
-    return context_manager.SerializationSettings(
+    return flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",

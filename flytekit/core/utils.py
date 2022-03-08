@@ -6,7 +6,6 @@ from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from flytekit.configuration import resources as _resource_config
 from flytekit.loggers import logger
 from flytekit.models import task as _task_models
 
@@ -66,16 +65,16 @@ def _get_container_definition(
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
 ) -> _task_models.Container:
-    storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
-    storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
-    ephemeral_storage_limit = ephemeral_storage_limit or _resource_config.DEFAULT_EPHEMERAL_STORAGE_LIMIT.get()
-    ephemeral_storage_request = ephemeral_storage_request or _resource_config.DEFAULT_EPHEMERAL_STORAGE_REQUEST.get()
-    cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
-    cpu_request = cpu_request or _resource_config.DEFAULT_CPU_REQUEST.get()
-    gpu_limit = gpu_limit or _resource_config.DEFAULT_GPU_LIMIT.get()
-    gpu_request = gpu_request or _resource_config.DEFAULT_GPU_REQUEST.get()
-    memory_limit = memory_limit or _resource_config.DEFAULT_MEMORY_LIMIT.get()
-    memory_request = memory_request or _resource_config.DEFAULT_MEMORY_REQUEST.get()
+    storage_limit = storage_limit
+    storage_request = storage_request
+    ephemeral_storage_limit = ephemeral_storage_limit
+    ephemeral_storage_request = ephemeral_storage_request
+    cpu_limit = cpu_limit
+    cpu_request = cpu_request
+    gpu_limit = gpu_limit
+    gpu_request = gpu_request
+    memory_limit = memory_limit
+    memory_request = memory_request
 
     requests = []
     if storage_request:

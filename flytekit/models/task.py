@@ -755,6 +755,9 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._env
 
+    def add_env(self, key: str, val: str):
+        self._env[key] = val
+
     @property
     def config(self):
         """

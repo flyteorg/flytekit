@@ -786,7 +786,8 @@ def create_and_link_node_from_remote(
     for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
-            raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+            # TODO to improve the error message, should we show python equivalent types for var.type?
+            raise _user_exceptions.FlyteAssertion("Missing input `{}` type `{}`".format(k, var.type))
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed

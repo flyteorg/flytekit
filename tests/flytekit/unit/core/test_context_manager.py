@@ -3,14 +3,15 @@ import os
 import py
 import pytest
 
-from flytekit.configuration import secrets
-from flytekit.core.context_manager import (
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-    SecretsManager,
-    look_up_image_info,
+from flytekit.configuration import (
+    EntrypointSettings,
+    FastSerializationSettings,
+    Image,
+    ImageConfig,
+    SecretsConfig,
+    SerializationSettings,
 )
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, SecretsManager
 
 
 class SampleTestClass(object):
@@ -39,44 +40,65 @@ def test_default():
 
 
 def test_look_up_image_info():
-    img = look_up_image_info(name="x", tag="docker.io/xyz", optional_tag=True)
+    img = Image.look_up_image_info(name="x", tag="docker.io/xyz", optional_tag=True)
     assert img.name == "x"
     assert img.tag is None
     assert img.fqn == "docker.io/xyz"
 
-    img = look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=True)
+    img = Image.look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=True)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.fqn == "docker.io/xyz"
 
-    img = look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=False)
+    img = Image.look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=False)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.fqn == "docker.io/xyz"
 
-    img = look_up_image_info(name="x", tag="localhost:5000/xyz:latest", optional_tag=False)
+    img = Image.look_up_image_info(name="x", tag="localhost:5000/xyz:latest", optional_tag=False)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.fqn == "localhost:5000/xyz"
 
 
-def test_additional_context():
-    ctx = FlyteContext.current_context()
-    with FlyteContextManager.with_context(
-        ctx.with_execution_state(
-            ctx.new_execution_state().with_params(
-                mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "outer", 2: "foo"}
-            )
-        )
-    ) as exec_ctx_outer:
-        with FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                exec_ctx_outer.execution_state.with_params(
-                    mode=ExecutionState.Mode.TASK_EXECUTION, additional_context={1: "inner", 3: "baz"}
-                )
-            )
-        ) as exec_ctx_inner:
-            assert exec_ctx_inner.execution_state.additional_context == {1: "inner", 2: "foo", 3: "baz"}
+def test_validate_image():
+    ic = ImageConfig.validate_image(None, "image", ())
+    assert ic
+    assert ic.default_image is None
+
+    img1 = "xyz:latest"
+    img2 = "docker.io/xyz:latest"
+    img3 = "docker.io/xyz:latest"
+    img3_cli = f"default={img3}"
+    img4 = "docker.io/my:azb"
+    img4_cli = f"my_img={img4}"
+
+    ic = ImageConfig.validate_image(None, "image", (img1,))
+    assert ic
+    assert ic.default_image.full == img1
+
+    ic = ImageConfig.validate_image(None, "image", (img2,))
+    assert ic
+    assert ic.default_image.full == img2
+
+    ic = ImageConfig.validate_image(None, "image", (img3_cli,))
+    assert ic
+    assert ic.default_image.full == img3
+
+    with pytest.raises(ValueError):
+        ImageConfig.validate_image(None, "image", (img1, img3_cli))
+
+    with pytest.raises(ValueError):
+        ImageConfig.validate_image(None, "image", (img1, img2))
+
+    with pytest.raises(ValueError):
+        ImageConfig.validate_image(None, "image", (img1, img1))
+
+    ic = ImageConfig.validate_image(None, "image", (img3_cli, img4_cli))
+    assert ic
+    assert ic.default_image.full == img3
+    assert len(ic.images) == 1
+    assert ic.images[0].full == img4
 
 
 def test_secrets_manager_default():
@@ -94,7 +116,8 @@ def test_secrets_manager_get_envvar():
         sec.get_secrets_env_var("test", "")
     with pytest.raises(ValueError):
         sec.get_secrets_env_var("", "x")
-    assert sec.get_secrets_env_var("group", "test") == f"{secrets.SECRETS_ENV_PREFIX.get()}GROUP_TEST"
+    cfg = SecretsConfig.auto()
+    assert sec.get_secrets_env_var("group", "test") == f"{cfg.env_prefix}GROUP_TEST"
 
 
 def test_secrets_manager_get_file():
@@ -103,10 +126,11 @@ def test_secrets_manager_get_file():
         sec.get_secrets_file("test", "")
     with pytest.raises(ValueError):
         sec.get_secrets_file("", "x")
+    cfg = SecretsConfig.auto()
     assert sec.get_secrets_file("group", "test") == os.path.join(
-        secrets.SECRETS_DEFAULT_DIR.get(),
+        cfg.default_dir,
         "group",
-        f"{secrets.SECRETS_FILE_PREFIX.get()}test",
+        f"{cfg.file_prefix}test",
     )
 
 
@@ -150,3 +174,30 @@ def test_secrets_manager_env():
 
     os.environ[sec.get_secrets_env_var(group="group", key="key")] = "value"
     assert sec.get(group="group", key="key") == "value"
+
+
+def test_serialization_settings_transport():
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"hello": "blah"},
+        image_config=ImageConfig(
+            default_image=default_img,
+            images=[default_img],
+        ),
+        flytekit_virtualenv_root="/opt/venv/blah",
+        python_interpreter="/opt/venv/bin/python3",
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=True,
+            destination_dir="/opt/blah/blah/blah",
+            distribution_location="s3://my-special-bucket/blah/bha/asdasdasd/cbvsdsdf/asdddasdasdasdasdasdasd.tar.gz",
+        ),
+    )
+
+    tp = serialization_settings.prepare_for_transport()
+    ss = SerializationSettings.from_transport(tp)
+    assert ss is not None
+    assert ss == serialization_settings
+    assert len(tp) == 376

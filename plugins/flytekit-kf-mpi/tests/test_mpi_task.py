@@ -1,8 +1,7 @@
 from flytekitplugins.kfmpi.task import MPIJob, MPIJobModel
 
 from flytekit import Resources, task
-from flytekit.core.context_manager import EntrypointSettings
-from flytekit.extend import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import EntrypointSettings, Image, ImageConfig, SerializationSettings
 
 
 def test_mpi_model_task():
@@ -38,7 +37,6 @@ def test_mpi_task():
         version="version",
         env={"FOO": "baz"},
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
-        entrypoint_settings=EntrypointSettings(path="/etc/my-entrypoint", command="my-entrypoint"),
     )
 
     assert my_mpi_task.get_custom(settings) == {"numLauncherReplicas": 10, "numWorkers": 10, "slots": 1}

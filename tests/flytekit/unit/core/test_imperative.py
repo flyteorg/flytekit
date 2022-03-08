@@ -4,9 +4,10 @@ from collections import OrderedDict
 import pandas as pd
 import pytest
 
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow, get_promise, workflow
@@ -19,7 +20,7 @@ from flytekit.types.schema import FlyteSchema
 from flytekit.types.structured.structured_dataset import StructuredDatasetType
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",

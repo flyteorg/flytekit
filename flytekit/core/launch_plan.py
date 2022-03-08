@@ -300,6 +300,33 @@ class LaunchPlan(object):
 
         FlyteEntities.entities.append(self)
 
+    def clone_with(
+        self,
+        name: str,
+        parameters: _interface_models.ParameterMap = None,
+        fixed_inputs: _literal_models.LiteralMap = None,
+        schedule: _schedule_model.Schedule = None,
+        notifications: List[_common_models.Notification] = None,
+        labels: _common_models.Labels = None,
+        annotations: _common_models.Annotations = None,
+        raw_output_data_config: _common_models.RawOutputDataConfig = None,
+        auth_role: _common_models.AuthRole = None,
+        max_parallelism: int = None,
+    ) -> LaunchPlan:
+        return LaunchPlan(
+            name=name,
+            workflow=self.workflow,
+            parameters=parameters or self.parameters,
+            fixed_inputs=fixed_inputs or self.fixed_inputs,
+            schedule=schedule or self.schedule,
+            notifications=notifications or self.notifications,
+            labels=labels or self.labels,
+            annotations=annotations or self.annotations,
+            raw_output_data_config=raw_output_data_config or self.raw_output_data_config,
+            auth_role=auth_role or self._auth_role,
+            max_parallelism=max_parallelism or self.max_parallelism,
+        )
+
     @property
     def python_interface(self) -> Interface:
         return self.workflow.python_interface

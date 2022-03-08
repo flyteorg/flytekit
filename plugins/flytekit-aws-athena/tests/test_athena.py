@@ -4,7 +4,8 @@ import pytest
 from flytekitplugins.athena import AthenaConfig, AthenaTask
 
 from flytekit import kwtypes, workflow
-from flytekit.extend import Image, ImageConfig, SerializationSettings, get_serializable
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.extend import get_serializable
 from flytekit.types.schema import FlyteSchema
 
 
