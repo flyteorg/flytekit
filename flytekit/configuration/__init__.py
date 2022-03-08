@@ -522,7 +522,6 @@ class SerializationSettings(object):
         env: Optional[Dict[str, str]] = None
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
-        entrypoint_settings: Optional[EntrypointSettings] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
 
         def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
@@ -538,7 +537,6 @@ class SerializationSettings(object):
                 env=self.env,
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,
-                entrypoint_settings=self.entrypoint_settings,
                 fast_serialization_settings=self.fast_serialization_settings,
             )
 
@@ -558,13 +556,11 @@ class SerializationSettings(object):
         python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     ) -> SerializationSettings:
         img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
-        entrypoint_settings = cls.default_entrypoint_settings(python_interpreter_path)
         return SerializationSettings(
             image_config=img,
             project=project,
             domain=domain,
             version=version,
-            entrypoint_settings=entrypoint_settings,
             python_interpreter=python_interpreter_path,
             flytekit_virtualenv_root=cls.venv_root_from_interpreter(python_interpreter_path),
         )
@@ -582,7 +578,6 @@ class SerializationSettings(object):
             env=self.env,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
-            entrypoint_settings=self.entrypoint_settings,
             fast_serialization_settings=self.fast_serialization_settings,
         )
 

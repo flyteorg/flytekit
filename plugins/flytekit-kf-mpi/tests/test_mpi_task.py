@@ -37,7 +37,6 @@ def test_mpi_task():
         version="version",
         env={"FOO": "baz"},
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
-        entrypoint_settings=EntrypointSettings(path="/etc/my-entrypoint", command="my-entrypoint"),
     )
 
     assert my_mpi_task.get_custom(settings) == {"numLauncherReplicas": 10, "numWorkers": 10, "slots": 1}

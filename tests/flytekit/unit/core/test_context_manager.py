@@ -189,11 +189,6 @@ def test_serialization_settings_transport():
         ),
         flytekit_virtualenv_root="/opt/venv/blah",
         python_interpreter="/opt/venv/bin/python3",
-        entrypoint_settings=EntrypointSettings(
-            path="/opt/venv/bin/entrypoint.py",
-            command="/opt/venv/bin/python",
-            version=0,
-        ),
         fast_serialization_settings=FastSerializationSettings(
             enabled=True,
             destination_dir="/opt/blah/blah/blah",
