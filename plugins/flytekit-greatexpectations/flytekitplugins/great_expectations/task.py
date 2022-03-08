@@ -140,7 +140,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                 dataset.remote_path, self._local_file_path, is_multipart=True
             )
 
-        # DataFrame (pandas, Spark, etc.)
+        # DataFrame (Pandas, Spark, etc.)
         else:
             if not os.path.exists(self._local_file_path):
                 os.makedirs(self._local_file_path, exist_ok=True)
