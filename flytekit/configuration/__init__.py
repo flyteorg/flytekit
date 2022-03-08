@@ -6,6 +6,7 @@ import enum
 import gzip
 import os
 import re
+import sys
 import tempfile
 import typing
 from dataclasses import dataclass, field
@@ -441,13 +442,11 @@ class Config(object):
 @dataclass
 class EntrypointSettings(object):
     """
-    This object carries information about the command, path and version of the entrypoint program that will be invoked
-    to execute tasks at runtime.
+    This object carries information about the path of the entrypoint command that will be invoked at runtime.
+    This is where `pyflyte-execute` code can be found. This is useful for cases like pyspark execution.
     """
 
     path: Optional[str] = None
-    command: Optional[str] = None
-    version: int = 0
 
 
 @dataclass_json
@@ -466,11 +465,13 @@ class FastSerializationSettings(object):
 
 
 @dataclass_json
-@dataclass(frozen=True)
+@dataclass()
 class SerializationSettings(object):
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.
+
+    TODO: ImageConfig, python_interpreter, venv_root, fast_serialization_settings.destination_dir should be combined.
 
     Attributes:
         project (str): The project (if any) with which to register entities under.
@@ -495,10 +496,22 @@ class SerializationSettings(object):
     domain: typing.Optional[str] = None
     version: typing.Optional[str] = None
     env: Optional[Dict[str, str]] = None
+    python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
-    python_interpreter: Optional[str] = None
-    entrypoint_settings: Optional[EntrypointSettings] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
+
+    def __post_init__(self):
+        if self.flytekit_virtualenv_root is None:
+            self.flytekit_virtualenv_root = self.venv_root_from_interpreter(self.python_interpreter)
+
+    @property
+    def entrypoint_settings(self) -> EntrypointSettings:
+        return EntrypointSettings(
+            path=os.path.join(
+                SerializationSettings.venv_root_from_interpreter(self.python_interpreter),
+                DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC,
+            )
+        )
 
     @dataclass
     class Builder(object):

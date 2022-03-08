@@ -95,7 +95,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
-            application_file="local://" + settings.entrypoint_settings.path if settings.entrypoint_settings else "",
+            application_file="local://" + settings.entrypoint_settings.path,
             executor_path=settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,

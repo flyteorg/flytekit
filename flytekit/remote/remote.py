@@ -399,7 +399,10 @@ class FlyteRemote(object):
         ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, serialization_settings)
         self.client.create_task(ident, task_spec=task_spec)
         return self.fetch_task(
-            serialization_settings.project, serialization_settings.domain, entity.name, serialization_settings.version
+            serialization_settings.project,
+            serialization_settings.domain,
+            entity.name,
+            version or serialization_settings.version,
         )
 
     def register_workflow(
@@ -760,7 +763,11 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
-        """Execute an @task-decorated function or TaskTemplate task."""
+        """
+        Execute an @task-decorated function or TaskTemplate task.
+        TODO: We should not fetch the entity first, we should always register it. The version should be computed using
+              the hash of pickle?
+        """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
         try:

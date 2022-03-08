@@ -68,7 +68,6 @@ def serialize_all(
         ),
         flytekit_virtualenv_root=flytekit_virtualenv_root,
         python_interpreter=python_interpreter,
-        entrypoint_settings=SerializationSettings.default_entrypoint_settings(python_interpreter),
     )
 
     ctx = flyte_context.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
@@ -133,11 +132,8 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         # instead.
         import flytekit
 
-        entrypoint_path = os.path.abspath(flytekit.__file__)
-        if entrypoint_path.endswith(".pyc"):
-            entrypoint_path = entrypoint_path[:-1]
-
-        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = os.path.dirname(entrypoint_path)
+        flytekit_install_loc = os.path.abspath(flytekit.__file__)
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = os.path.dirname(flytekit_install_loc)
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
 

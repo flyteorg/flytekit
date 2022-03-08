@@ -98,9 +98,7 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
             enabled=fast,
             destination_dir=in_container_source_path,
         ),
-        flytekit_virtualenv_root=SerializationSettings.venv_root_from_interpreter(python_interpreter),
         python_interpreter=python_interpreter,
-        entrypoint_settings=SerializationSettings.default_entrypoint_settings(python_interpreter),
     )
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
