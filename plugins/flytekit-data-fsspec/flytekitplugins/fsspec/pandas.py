@@ -58,14 +58,13 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> pd.DataFrame:
         uri = flyte_value.uri
         columns = None
         kwargs = get_storage_options(uri)
-        if flyte_value.metadata.structured_dataset_type.columns:
-            columns = []
-            for c in flyte_value.metadata.structured_dataset_type.columns:
-                columns.append(c.name)
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             return pd.read_parquet(uri, columns=columns, storage_options=kwargs)
         except NoCredentialsError:

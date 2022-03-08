@@ -126,6 +126,9 @@ def get_serializable_workflow(
     settings: SerializationSettings,
     entity: WorkflowBase,
 ) -> admin_workflow_models.WorkflowSpec:
+    # TODO: Try to move up following config refactor - https://github.com/flyteorg/flyte/issues/2214
+    from flytekit.remote.workflow import FlyteWorkflow
+
     # Get node models
     upstream_node_models = [
         get_serializable(entity_mapping, settings, n)
@@ -151,6 +154,11 @@ def get_serializable_workflow(
             sub_wfs.append(sub_wf_spec.template)
             sub_wfs.extend(sub_wf_spec.sub_workflows)
 
+        if isinstance(n.flyte_entity, FlyteWorkflow):
+            get_serializable(entity_mapping, settings, n.flyte_entity)
+            sub_wfs.append(n.flyte_entity)
+            sub_wfs.extend([s for s in n.flyte_entity.sub_workflows.values()])
+
         if isinstance(n.flyte_entity, BranchNode):
             if_else: workflow_model.IfElseBlock = n.flyte_entity._ifelse_block
             # See comment in get_serializable_branch_node also. Again this is a List[Node] even though it's supposed
@@ -168,6 +176,10 @@ def get_serializable_workflow(
                     sub_wf_spec = get_serializable(entity_mapping, settings, leaf_node.flyte_entity)
                     sub_wfs.append(sub_wf_spec.template)
                     sub_wfs.extend(sub_wf_spec.sub_workflows)
+                elif isinstance(leaf_node.flyte_entity, FlyteWorkflow):
+                    get_serializable(entity_mapping, settings, leaf_node.flyte_entity)
+                    sub_wfs.append(leaf_node.flyte_entity)
+                    sub_wfs.extend([s for s in leaf_node.flyte_entity.sub_workflows.values()])
 
     wf_id = _identifier_model.Identifier(
         resource_type=_identifier_model.ResourceType.WORKFLOW,
@@ -236,6 +248,11 @@ def get_serializable_node(
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
+
+    # TODO: Try to move back up following config refactor - https://github.com/flyteorg/flyte/issues/2214
+    from flytekit.remote.launch_plan import FlyteLaunchPlan
+    from flytekit.remote.task import FlyteTask
+    from flytekit.remote.workflow import FlyteWorkflow
 
     upstream_sdk_nodes = [
         get_serializable(entity_mapping, settings, n)
@@ -319,6 +336,49 @@ def get_serializable_node(
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
         )
+
+    elif isinstance(entity.flyte_entity, FlyteTask):
+        # Recursive call doesn't do anything except put the entity on the map.
+        get_serializable(entity_mapping, settings, entity.flyte_entity)
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            output_aliases=[],
+            task_node=workflow_model.TaskNode(
+                reference_id=entity.flyte_entity.id, overrides=TaskNodeOverrides(resources=entity._resources)
+            ),
+        )
+    elif isinstance(entity.flyte_entity, FlyteWorkflow):
+        wf_template = get_serializable(entity_mapping, settings, entity.flyte_entity)
+        for _, sub_wf in entity.flyte_entity.sub_workflows.items():
+            get_serializable(entity_mapping, settings, sub_wf)
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            output_aliases=[],
+            workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_template.id),
+        )
+    elif isinstance(entity.flyte_entity, FlyteLaunchPlan):
+        # Recursive call doesn't do anything except put the entity on the map.
+        get_serializable(entity_mapping, settings, entity.flyte_entity)
+        # Node's inputs should not contain the data which is fixed input
+        node_input = []
+        for b in entity.bindings:
+            if b.var not in entity.flyte_entity.fixed_inputs.literals:
+                node_input.append(b)
+
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=node_input,
+            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            output_aliases=[],
+            workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
+        )
     else:
         raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
 
@@ -375,6 +435,11 @@ def get_serializable(
     :return: The resulting control plane entity, in addition to being added to the mutable entity_mapping parameter
       is also returned.
     """
+    # TODO: Try to replace following config refactor - https://github.com/flyteorg/flyte/issues/2214
+    from flytekit.remote.launch_plan import FlyteLaunchPlan
+    from flytekit.remote.task import FlyteTask
+    from flytekit.remote.workflow import FlyteWorkflow
+
     if entity in entity_mapping:
         return entity_mapping[entity]
 
@@ -395,6 +460,10 @@ def get_serializable(
 
     elif isinstance(entity, BranchNode):
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity)
+
+    elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow) or isinstance(entity, FlyteLaunchPlan):
+        cp_entity = entity
+
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 

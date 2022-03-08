@@ -23,6 +23,7 @@ setup(
     extras_require={
         # https://github.com/fsspec/filesystem_spec/blob/master/setup.py#L36
         "aws": ["s3fs>=2021.7.0"],
+        "gcp": ["gcsfs>=2021.7.0"],
     },
     license="apache2",
     python_requires=">=3.7",

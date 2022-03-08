@@ -31,31 +31,34 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
-    in or return a file. There is ``pathlib.Path`` of course, (which is usable in flytekit as a return value, though
+    in or return a file. There is ``pathlib.Path`` of course, (which is usable in Flytekit as a return value, though
     not a return type), but it made more sense to create a new type esp. since we can add on additional properties.
 
-    Files (and directories) differ from the primitive types like floats and string in that flytekit typically uploads
+    Files (and directories) differ from the primitive types like floats and string in that Flytekit typically uploads
     the contents of the files to the blob store connected with your Flyte installation. That is, the Python native
     literal that represents a file is typically just the path to the file on the local filesystem. However in Flyte,
     an instance of a file is represented by a :py:class:`Blob <flytekit.models.literals.Blob>` literal,
-    with the ``uri`` field set to the location in the Flyte blob store (AWS/GCS etc.).
+    with the ``uri`` field set to the location in the Flyte blob store (AWS/GCS etc.). Take a look at the
+    :std:ref:`data handling doc <flyte:divedeep-data-management>` for a deeper discussion.
 
     We decided to not support ``pathlib.Path`` as an input/output type because if you wanted the automatic
     upload/download behavior, you should just use the ``FlyteFile`` type. If you do not, then a ``str`` works just as
     well.
 
     The prefix for where uploads go is set by the raw output data prefix setting, which should be set at registration
-    time. See the flytectl option for more information.
+    time in the launch plan. See the option listed under ``flytectl register examples --help`` for more information.
+    If not set in the launch plan, then your Flyte backend will specify a default. This default is itself configurable
+    as well. Contact your Flyte platform administrators to change or ascertain the value.
 
     In short, if a task returns ``"/path/to/file"`` and the task's signature is set to return ``FlyteFile``, then the
     contents of ``/path/to/file`` are uploaded.
 
-    You can also make it so that the upload does not happen. There are a few different types you use for
+    You can also make it so that the upload does not happen. There are different types of
     task/workflow signatures. Keep in mind that in the backend, in Admin and in the blob store, there is only one type
     that represents files, the :py:class:`Blob <flytekit.models.core.types.BlobType>` type.
 
-    Whether or not the uploading happens, and the behavior of the translation between Python native values and Flyte
-    literal values depends on a few things:
+    Whether the uploading happens or not, the behavior of the translation between Python native values and Flyte
+    literal values depends on a few attributes:
 
     * The declared Python type in the signature. These can be
       * :class:`python:flytekit.FlyteFile`
@@ -65,9 +68,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
       * :py:class:`flytekit.FlyteFile`
       * :py:class:`pathlib.Path`
       * :py:class:`str`
-    * Whether the value being converted is a "remote" path or not. For instance if a task returns a value of
+    * Whether the value being converted is a "remote" path or not. For instance, if a task returns a value of
       "http://www.google.com" as a ``FlyteFile``, obviously it doesn't make sense for us to try to upload that to the
-      Flyte blob store. So no remote paths are uploaded. flytekit considers a path remote if it starts with ``s3://``,
+      Flyte blob store. So no remote paths are uploaded. Flytekit considers a path remote if it starts with ``s3://``,
       ``gs://``, ``http(s)://``, or even ``file://``.
 
     -----------
@@ -208,7 +211,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     @property
     def remote_source(self) -> str:
         """
-        If this is an input to a task, and the original path is ``s3://something``, flytekit will download the
+        If this is an input to a task, and the original path is an ``s3`` bucket, Flytekit downloads the
         file for the user. In case the user wants access to the original path, it will be here.
         """
         return typing.cast(str, self._remote_source)
