@@ -142,7 +142,7 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
             return ConfigFile(current_location_config.absolute())
 
         # If not, see if there's a config in the user's home directory
-        home_dir_config = Path(Path.home(), ".flyte/config")  # _default_config_file_name in main.py
+        home_dir_config = Path(Path.home(), ".flyte", "config")  # _default_config_file_name in main.py
         if home_dir_config.exists():
             logger.debug(f"Using configuration from home directory {home_dir_config.absolute()}")
             return ConfigFile(home_dir_config.absolute())
