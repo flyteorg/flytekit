@@ -306,6 +306,11 @@ class FileAccessProvider(object):
             default_prefix=raw_output_prefix, data_config=data_config
         )
         self._raw_output_prefix = raw_output_prefix
+        self._data_config = data_config if data_config else DataConfig.auto()
+
+    @property
+    def data_config(self) -> DataConfig:
+        return self._data_config
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:

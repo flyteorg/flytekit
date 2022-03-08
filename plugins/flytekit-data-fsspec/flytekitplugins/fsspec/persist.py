@@ -5,7 +5,7 @@ import fsspec
 from fsspec.core import split_protocol
 from fsspec.registry import known_implementations
 
-from flytekit.configuration import DataConfig, S3Config, internal
+from flytekit.configuration import DataConfig, S3Config
 from flytekit.extend import DataPersistence, DataPersistencePlugins
 from flytekit.loggers import logger
 
@@ -68,11 +68,10 @@ class FSSpecPersistence(DataPersistence):
             kwargs = s3_setup_args(self._data_cfg.s3)
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
-    @staticmethod
-    def get_anonymous_filesystem(path: str) -> typing.Optional[fsspec.AbstractFileSystem]:
+    def get_anonymous_filesystem(self, path: str) -> typing.Optional[fsspec.AbstractFileSystem]:
         protocol = FSSpecPersistence.get_protocol(path)
         if protocol == "s3":
-            kwargs = s3_setup_args()
+            kwargs = s3_setup_args(self._data_cfg.s3)
             anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
             return anonymous_fs
         return None
