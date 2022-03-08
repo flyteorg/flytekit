@@ -4,10 +4,7 @@ PLUGIN_NAME = "spark"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = [
-    "flytekit @git+https://github.com/flyteorg/flytekit.git@3b785ab535db593c1c7f4e5738d38b3f7edd196b#egg=flytekit",
-    "pyspark>=3.0.0",
-]
+plugin_requires = ["flytekit>=0.16.0b0,<1.0.0", "pyspark>=3.0.0"]
 
 __version__ = "0.0.0+develop"
 
