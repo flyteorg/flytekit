@@ -232,6 +232,7 @@ class PlatformConfig(object):
     :param scopes: List of scopes to request. This is only applicable to the client credentials flow.
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
     """
+
     endpoint: str = "localhost:30081"
     insecure: bool = False
     command: typing.Optional[typing.List[str]] = None
@@ -294,6 +295,7 @@ class StatsConfig(object):
     :param disabled: Whether or not to send
     :param disabled_tags: Turn on to reduce cardinality.
     """
+
     host: str = "localhost"
     port: int = 8125
     disabled: bool = False
@@ -324,6 +326,7 @@ class SecretsConfig(object):
     :param default_dir: This is the default directory that will be used to find secrets as individual files under.
     :param file_prefix: This is the prefix for the file in the default dir.
     """
+
     env_prefix: str = "_FSEC_"
     default_dir: str = os.path.join(os.sep, "etc", "secrets")
     file_prefix: str = ""
@@ -348,6 +351,7 @@ class S3Config(object):
     """
     S3 specific configuration
     """
+
     enable_debug: bool = False
     endpoint: typing.Optional[str] = None
     retries: int = 3
