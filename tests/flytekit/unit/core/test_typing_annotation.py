@@ -5,7 +5,6 @@ import typing_extensions
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core import context_manager
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.task import task
 from flytekit.models.annotation import TypeAnnotation

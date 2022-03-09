@@ -7,7 +7,6 @@ import pytest
 import flytekit.configuration
 from flytekit import Resources, map_task
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core import context_manager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task

@@ -4,7 +4,6 @@ from collections import OrderedDict
 import flytekit.configuration
 from flytekit import ContainerTask, Resources
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
-from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.reference_entity import ReferenceSpec, ReferenceTemplate

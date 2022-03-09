@@ -123,7 +123,7 @@ class ConfigFile(object):
     def get(self, c: typing.Union[LegacyConfigEntry]) -> typing.Any:
         if isinstance(c, LegacyConfigEntry):
             return self._get_from_legacy(c)
-        raise NotImplemented("Support for other config types besides .ini / .config files not yet supported")
+        raise NotImplementedError("Support for other config types besides .ini / .config files not yet supported")
 
     @property
     def legacy_config(self) -> _configparser.ConfigParser:

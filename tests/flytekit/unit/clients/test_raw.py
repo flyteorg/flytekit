@@ -179,7 +179,7 @@ def test_refresh_basic(mocked_method):
 
 
 @patch.object(RawSynchronousFlyteClient, "_refresh_credentials_from_command")
-def test_refresh_basic(mocked_method):
+def test_refresh_command(mocked_method):
     cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.EXTERNAL_PROCESS))
     cc.refresh_credentials()
     assert mocked_method.called
