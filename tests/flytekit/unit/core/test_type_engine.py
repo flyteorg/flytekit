@@ -766,6 +766,59 @@ def test_union_type():
     assert v == "hello"
 
 
+def test_union_type_with_annotated():
+    pt = typing.Union[
+        Annotated[str, FlyteAnnotation({"hello": "world"})], Annotated[int, FlyteAnnotation({"test": 123})]
+    ]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(
+            simple=SimpleType.STRING, structure=TypeStructure(tag="str"), annotation=TypeAnnotation({"hello": "world"})
+        ),
+        LiteralType(
+            simple=SimpleType.INTEGER, structure=TypeStructure(tag="int"), annotation=TypeAnnotation({"test": 123})
+        ),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "str"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
+def test_annotated_union_type():
+    pt = Annotated[typing.Union[str, int], FlyteAnnotation({"hello": "world"})]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert lt.annotation == TypeAnnotation({"hello": "world"})
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "str"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
 def test_optional_type():
     pt = typing.Optional[int]
     lt = TypeEngine.to_literal_type(pt)

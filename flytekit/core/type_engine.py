@@ -653,16 +653,8 @@ class TypeEngine(typing.Generic[T]):
                 data = x.data
         if data is not None:
             idl_type_annotation = TypeAnnotationModel(annotations=data)
-            return LiteralType(
-                simple=res.simple,
-                schema=res.schema,
-                collection_type=res.collection_type,
-                map_value_type=res.map_value_type,
-                blob=res.blob,
-                enum_type=res.enum_type,
-                metadata=res.metadata,
-                annotation=idl_type_annotation,
-            )
+            res = LiteralType.from_flyte_idl(res.to_flyte_idl())
+            res._annotation = idl_type_annotation
         return res
 
     @classmethod
@@ -947,14 +939,22 @@ class UnionTransformer(TypeTransformer[T]):
         super().__init__("Typed Union", typing.Union)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
+        if get_origin(t) is Annotated:
+            t = get_args(t)[0]
+
         try:
             trans = [(TypeEngine.get_transformer(x), x) for x in get_args(t)]
-            variants = [_add_tag_to_type(t.get_literal_type(x), t.name) for (t, x) in trans]
+            # must go through TypeEngine.to_literal_type instead of trans.get_literal_type
+            # to handle Annotated
+            variants = [_add_tag_to_type(TypeEngine.to_literal_type(x), t.name) for (t, x) in trans]
             return _type_models.LiteralType(union_type=UnionType(variants))
         except Exception as e:
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
+
         found_res = False
         res = None
         res_type = None
@@ -978,6 +978,9 @@ class UnionTransformer(TypeTransformer[T]):
         raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
+        if get_origin(expected_python_type) is Annotated:
+            expected_python_type = get_args(expected_python_type)[0]
+
         union_tag = None
         union_type = None
         if lv.scalar is not None and lv.scalar.union is not None:
