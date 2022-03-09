@@ -77,7 +77,7 @@ Exception handling takes place along two dimensions:
 
 Here's the user exception tree. Feel free to raise any of these exception classes. Note that the ``FlyteRecoverableException`` is the only recoverable exception. All others, along with all the non-Flytekit defined exceptions, are non-recoverable.
 
-.. inheritance-diagram:: flytekit.common.exceptions.user.FlyteValidationException flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException flytekit.common.exceptions.user.FlyteValueException flytekit.common.exceptions.user.FlyteTimeout flytekit.common.exceptions.user.FlyteAuthenticationException flytekit.common.exceptions.user.FlyteRecoverableException
+.. inheritance-diagram:: flytekit.exceptions.user.FlyteValidationException flytekit.exceptions.user.FlyteEntityAlreadyExistsException flytekit.exceptions.user.FlyteValueException flytekit.exceptions.user.FlyteTimeout flytekit.exceptions.user.FlyteAuthenticationException flytekit.exceptions.user.FlyteRecoverableException
    :parts: 1
    :top-classes: Exception
 
@@ -86,9 +86,9 @@ Implementation
 For those who want to dig deeper, take a look at the :py:class:`flytekit.common.exceptions.scopes.FlyteScopedException` classes.
 There are two decorators that are interspersed throughout the codebase.
 
-.. autofunction:: flytekit.common.exceptions.scopes.system_entry_point
+.. autofunction:: flytekit.exceptions.scopes.system_entry_point
 
-.. autofunction:: flytekit.common.exceptions.scopes.user_entry_point
+.. autofunction:: flytekit.exceptions.scopes.user_entry_point
 
 **************
 Call Patterns
