@@ -1,4 +1,3 @@
-import click
 import pytest
 from click.testing import CliRunner
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan
@@ -8,7 +7,7 @@ from flyteidl.admin.workflow_pb2 import WorkflowSpec
 import flytekit
 import flytekit.configuration
 import flytekit.tools.serialize_helpers
-from flytekit.clis.sdk_in_container import package, pyflyte
+from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.core import context_manager
 from flytekit.exceptions.user import FlyteValidationException
 

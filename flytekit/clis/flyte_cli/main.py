@@ -2111,18 +2111,18 @@ def list_matching_attributes(host, insecure, resource_type):
     client = _get_client(host, insecure)
 
     attributes = client.list_matchable_attributes(_MatchableResource.string_to_enum(resource_type.upper()))
-    for configuration in attributes.configurations:
+    for cfg in attributes.configurations:
         _click.secho(
             "{:20} {:20} {:20} {:20}\n".format(
-                _tt(configuration.project),
-                _tt(configuration.domain),
-                _tt(configuration.workflow),
-                _tt(configuration.launch_plan),
+                _tt(cfg.project),
+                _tt(cfg.domain),
+                _tt(cfg.workflow),
+                _tt(cfg.launch_plan),
             ),
             fg="blue",
             nl=False,
         )
-        _click.echo("{}".format(configuration.attributes))
+        _click.echo("{}".format(cfg.attributes))
 
 
 @_flyte_cli.command("setup-config", cls=_FlyteSubCommand)

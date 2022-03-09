@@ -7,7 +7,7 @@ import typing
 from shutil import which as shell_which
 from typing import Dict, List, Optional
 
-from flytekit.configuration import DataConfig, S3Config, internal
+from flytekit.configuration import DataConfig, S3Config
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.loggers import logger

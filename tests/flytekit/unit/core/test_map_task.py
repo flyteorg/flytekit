@@ -6,7 +6,6 @@ import pytest
 import flytekit.configuration
 from flytekit import LaunchPlan, map_task
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core import context_manager
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow

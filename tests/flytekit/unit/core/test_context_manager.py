@@ -3,14 +3,7 @@ import os
 import py
 import pytest
 
-from flytekit.configuration import (
-    EntrypointSettings,
-    FastSerializationSettings,
-    Image,
-    ImageConfig,
-    SecretsConfig,
-    SerializationSettings,
-)
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SecretsConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, SecretsManager
 
 

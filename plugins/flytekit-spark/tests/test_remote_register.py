@@ -1,5 +1,5 @@
 from flytekitplugins.spark import Spark
-from mock import MagicMock, patch
+from mock import MagicMock
 
 from flytekit import task
 from flytekit.configuration import Config, SerializationSettings

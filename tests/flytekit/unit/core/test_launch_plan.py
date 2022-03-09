@@ -6,7 +6,7 @@ from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core import context_manager, launch_plan, notification
+from flytekit.core import launch_plan, notification
 from flytekit.core.schedule import CronSchedule
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow

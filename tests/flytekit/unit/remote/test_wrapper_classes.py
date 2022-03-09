@@ -5,7 +5,6 @@ import pytest
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task

@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Generator, List, Optional, Union
 
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
@@ -42,6 +42,7 @@ from flytekit.models.core import identifier as _identifier
 # Enables static type checking https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING
 if typing.TYPE_CHECKING:
     from flytekit.core.base_task import TaskResolverMixin
+
 
 # Identifier fields use placeholders for registration-time substitution.
 # Additional fields, such as auth and the raw output data prefix have more complex structures

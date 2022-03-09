@@ -1,6 +1,5 @@
 import mock as _mock
 import pytest
-import responses as _responses
 from click.testing import CliRunner as _CliRunner
 
 from flytekit.clis.flyte_cli import main as _main

@@ -590,7 +590,7 @@ class FlyteRemote(object):
                 ),
                 literal_inputs,
             )
-        except user_exceptions.FlyteEntityAlreadyExistsException as e:
+        except user_exceptions.FlyteEntityAlreadyExistsException:
             remote_logger.warning(
                 f"Execution with Execution ID {execution_name} already exists. "
                 f"Assuming this is the same execution, returning!"

@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 from flytekit.configuration import StatsConfig
 from flytekit.interfaces.stats import client as _stats_client

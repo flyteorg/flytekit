@@ -4,7 +4,6 @@ import pytest
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
