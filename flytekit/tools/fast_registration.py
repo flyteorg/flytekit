@@ -1,4 +1,5 @@
 import os as _os
+import posixpath
 import subprocess as _subprocess
 import tarfile as _tarfile
 import tempfile as _tempfile
@@ -50,7 +51,7 @@ def get_additional_distribution_loc(remote_location: str, identifier: str) -> st
     :param Text identifier:
     :return Text:
     """
-    return _os.path.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
+    return posixpath.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
 
 
 def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: str, dry_run=False) -> str:

@@ -25,6 +25,8 @@ simple implementation that ships with the core.
 import datetime
 import os
 import pathlib
+import re
+import tempfile
 import typing
 from abc import abstractmethod
 from distutils import dir_util
@@ -136,13 +138,20 @@ class DataPersistencePlugins(object):
 
         cls._PLUGINS[protocol] = plugin
 
+    @staticmethod
+    def get_protocol(url: str):
+        parts = re.split(r"(\:\:|\://)", url, 1)
+        if len(parts) > 1:
+            return parts[0]
+        return "file"
+
     @classmethod
     def find_plugin(cls, path: str) -> typing.Type[DataPersistence]:
         """
         Returns a plugin for the given protocol, else raise a TypeError
         """
         for k, p in cls._PLUGINS.items():
-            if path.startswith(k) or path.startswith(k.replace("://", "")):
+            if cls.get_protocol(path) == k.replace("://", "") or path.startswith(k):
                 return p
         raise TypeError(f"No plugin found for matching protocol of path {path}")
 
@@ -438,7 +447,13 @@ DataPersistencePlugins.register_plugin("file://", DiskPersistence)
 DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
 # TODO make this use tmpdir
-tmp_dir = os.path.join("/tmp/flyte", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+tmp_dir_prefix = "/tmp/flyte"
+
+# Update tmp_dir_prefix if running on Windows
+if os.name == "nt":
+    tmp_dir_prefix = os.path.join(tempfile.gettempdir(), "flyte")
+
+tmp_dir = os.path.join(tmp_dir_prefix, datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 default_local_file_access_provider = FileAccessProvider(
     local_sandbox_dir=os.path.join(tmp_dir, "sandbox"),
     raw_output_prefix=os.path.join(tmp_dir, "raw"),

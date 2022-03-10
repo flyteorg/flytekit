@@ -1,8 +1,8 @@
 import os
 import typing
+from urllib.parse import urlparse
 
 import fsspec
-from fsspec.core import split_protocol
 from fsspec.registry import known_implementations
 
 from flytekit.configuration import DataConfig, S3Config
@@ -51,8 +51,8 @@ class FSSpecPersistence(DataPersistence):
     @staticmethod
     def get_protocol(path: typing.Optional[str] = None):
         if path:
-            protocol, _ = split_protocol(path)
-            if protocol is None and path.startswith("/"):
+            protocol = urlparse(path).scheme
+            if protocol == "" and path.startswith("/"):
                 logger.info("Setting protocol to file")
                 protocol = "file"
         else:
