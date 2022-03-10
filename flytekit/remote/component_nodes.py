@@ -9,7 +9,9 @@ from flytekit.models.core import workflow as _workflow_model
 
 
 class FlyteTaskNode(_workflow_model.TaskNode):
-    """A class encapsulating a task that a Flyte node needs to execute."""
+    """
+    A class encapsulating a task that a Flyte node needs to execute.
+    """
 
     def __init__(self, flyte_task: "flytekit.remote.task.FlyteTask"):
         self._flyte_task = flyte_task
@@ -17,7 +19,9 @@ class FlyteTaskNode(_workflow_model.TaskNode):
 
     @property
     def reference_id(self) -> id_models.Identifier:
-        """A globally unique identifier for the task."""
+        """
+        A globally unique identifier for the task.
+        """
         return self._flyte_task.id
 
     @property

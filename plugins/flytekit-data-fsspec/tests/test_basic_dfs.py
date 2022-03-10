@@ -3,7 +3,7 @@ import pyarrow as pa
 from flytekitplugins.fsspec.pandas import get_storage_options
 
 from flytekit import kwtypes, task
-from flytekit.configuration import aws
+from flytekit.configuration import DataConfig, S3Config
 
 try:
     from typing import Annotated
@@ -13,11 +13,11 @@ except ImportError:
 
 def test_get_storage_options():
     endpoint = "https://s3.amazonaws.com"
-    with aws.S3_ENDPOINT.get_patcher(endpoint):
-        options = get_storage_options("s3://bucket/somewhere")
-        assert options == {"client_kwargs": {"endpoint_url": endpoint}}
 
-    options = get_storage_options("/tmp/file")
+    options = get_storage_options(DataConfig(s3=S3Config(endpoint=endpoint)), "s3://bucket/somewhere")
+    assert options == {"client_kwargs": {"endpoint_url": endpoint}}
+
+    options = get_storage_options(DataConfig(), "/tmp/file")
     assert options is None
 
 

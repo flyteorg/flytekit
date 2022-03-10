@@ -1,4 +1,6 @@
-from flytekit.configuration.statsd import DISABLE_TAGS
+from typing import Dict
+
+from flytekit.configuration import StatsConfig
 from flytekit.interfaces.stats import client as _stats_client
 
 
@@ -6,10 +8,11 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
     # List of functions we will proxy and prefix the first string argument on
     EXTENDABLE_FUNC = ["incr", "decr", "timing", "timer", "gauge", "set"]
 
-    def __init__(self, client, full_prefix, prefix=None, tags=None):
+    def __init__(self, client, full_prefix, cfg: StatsConfig, prefix=None, tags=None):
         super(TaggableStats, self).__init__(client, prefix=prefix)
         self._tags = tags if tags else {}
         self._full_prefix = full_prefix
+        self._cfg = cfg
 
     def _create_wrapped_function(self, base_func):
         if self._scope_prefix:
@@ -20,7 +23,7 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
                 if kwargs.pop("per_host", False):
                     tags["_f"] = "i"
 
-                if bool(tags) and not DISABLE_TAGS.get():
+                if bool(tags) and not self._cfg.disabled_tags:
                     stat = self._serialize_tags(stat, tags)
                 return base_func(self._p_with_prefix(stat), *args, **kwargs)
 
@@ -32,7 +35,7 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
                 if kwargs.pop("per_host", False):
                     tags["_f"] = "i"
 
-                if bool(tags) and not DISABLE_TAGS.get():
+                if bool(tags) and not self._cfg.disabled_tags:
                     stat = self._serialize_tags(stat, tags)
                 return base_func(stat, *args, **kwargs)
 
@@ -48,6 +51,7 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
         return TaggableStats(
             self._client.pipeline(),
             self._full_prefix,
+            cfg=self._cfg,
             prefix=self._scope_prefix,
             tags=dict(self._tags),
         )
@@ -56,6 +60,7 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
         return TaggableStats(
             self._client.__enter__(),
             self._full_prefix,
+            cfg=self._cfg,
             prefix=self._scope_prefix,
             tags=dict(self._tags),
         )
@@ -79,13 +84,13 @@ class TaggableStats(_stats_client.ScopeableStatsProxy):
         return self._full_prefix
 
 
-def get_stats(prefix, tags=None):
+def get_stats(cfg: StatsConfig, prefix: str, tags: Dict[str, str] = None) -> TaggableStats:
     """
     :rtype: TaggableStats
     """
 
     # If tagging is disabled, do not pass tags to the constructor.
-    if DISABLE_TAGS.get():
+    if cfg.disabled_tags:
         tags = None
 
-    return TaggableStats(_stats_client.get_base_stats(prefix.lower()), prefix.lower(), tags=tags)
+    return TaggableStats(_stats_client.get_base_stats(cfg, prefix.lower()), prefix.lower(), cfg=cfg, tags=tags)

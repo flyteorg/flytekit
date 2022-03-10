@@ -23,13 +23,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
-from flytekit.core.context_manager import (
-    ExecutionParameters,
-    FlyteContext,
-    FlyteContextManager,
-    FlyteEntities,
-    SerializationSettings,
-)
+from flytekit.configuration import SerializationSettings
+from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
@@ -290,13 +285,13 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
         """
         Returns the container definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
+    def get_k8s_pod(self, settings: SerializationSettings) -> Optional[_task_model.K8sPod]:
         """
         Returns the kubernetes pod definition (if any) that is used to run the task on hosted Flyte.
         """
@@ -308,13 +303,13 @@ class Task(object):
         """
         return None
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         """
         Return additional plugin-specific custom data (if any) as a serializable dictionary.
         """
         return None
 
-    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         """
         Returns the task config as a serializable dictionary. This task config consists of metadata about the custom
         defined for this task.

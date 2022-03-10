@@ -1,11 +1,12 @@
 import importlib
 
-from flytekit import USE_STRUCTURED_DATASET, StructuredDatasetTransformerEngine, logger
+from flytekit import StructuredDatasetTransformerEngine, logger
+from flytekit.configuration import internal
 from flytekit.types.structured.structured_dataset import GCS, S3
 
 from .persist import FSSpecPersistence
 
-if USE_STRUCTURED_DATASET.get():
+if internal.LocalSDK.USE_STRUCTURED_DATASET.read():
     from .arrow import ArrowToParquetEncodingHandler, ParquetToArrowDecodingHandler
     from .pandas import PandasToParquetEncodingHandler, ParquetToPandasDecodingHandler
 
