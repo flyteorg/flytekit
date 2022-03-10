@@ -66,10 +66,10 @@ MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.S
 @dataclass
 class Options(object):
     """
-    These are settings that may change from one workflow run to another. For instance two people may want to run the
-    same workflow but have the offloaded data stored in two different buckets. Or you may want labels or annotations
-    to be different. This object is used when launching an execution in a Flyte backend, and also when registering
-    launch plans.
+    These are options that can be configured for a launchplan during registration or overridden during an execution.
+    For instance two people may want to run the same workflow but have the offloaded data stored in two different
+    buckets. Or you may want labels or annotations to be different. This object is used when launching an execution
+    in a Flyte backend, and also when registering launch plans.
 
     Args:
         raw_data_prefix: str -> remote prefix for storage location of the form ``s3://<bucket>/key...`` or

@@ -31,6 +31,20 @@ Configuration usage can roughly be bucketed into the following areas,
 Configuration Objects
 ---------------------
 
+The following objects are encapsulated in a parent object called ``Config``.
+
+.. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
+
+   ~Config
+
+.. _configuration-compile-time-settings:
+
+Compilation (Serialization) Time Settings
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. autosummary::
    :template: custom.rst
    :toctree: generated/
@@ -39,6 +53,17 @@ Configuration Objects
    ~Image
    ~ImageConfig
    ~SerializationSettings
+
+.. _configuration-execution-time-settings:
+
+Execution Time Settings
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
+
    ~PlatformConfig
    ~StatsConfig
    ~SecretsConfig
