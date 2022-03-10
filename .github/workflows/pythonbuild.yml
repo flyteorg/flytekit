@@ -3,11 +3,11 @@ name: Build
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
 
 env:
-  FLYTE_SDK_LOGGING_LEVEL: 10  # debug
+  FLYTE_SDK_LOGGING_LEVEL: 10 # debug
 
 jobs:
   build:
@@ -18,45 +18,45 @@ jobs:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         spark-version-suffix: ["", "-spark2"]
         exclude:
-        - python-version: 3.8
-          spark-version-suffix: "-spark2"
-        - python-version: 3.9
-          spark-version-suffix: "-spark2"
-        - python-version: 3.10
-          spark-version-suffix: "-spark2"
+          - python-version: 3.8
+            spark-version-suffix: "-spark2"
+          - python-version: 3.9
+            spark-version-suffix: "-spark2"
+          - python-version: 3.10
+            spark-version-suffix: "-spark2"
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        # This path is specific to Ubuntu
-        path: ~/.cache/pip
-        # Look to see if there is a cache hit for the corresponding requirements files
-        key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('requirements{0}.txt', matrix.spark-version-suffix))) }}
-    - name: Install dependencies
-      run: |
-        make setup${{ matrix.spark-version-suffix }}
-        pip freeze
-    - name: Test FlyteSchema compatibility
-      run: |
-        FLYTE_SDK_USE_STRUCTURED_DATASET=FALSE python -m pytest tests/flytekit_compatibility
-    - name: Test with coverage
-      run: |
-        FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit
-    - name: Integration Tests with coverage
-      # https://github.com/actions/runner/issues/241#issuecomment-577360161
-      shell: 'script -q -e -c "bash {0}"'
-      run: |
-        python -m pip install awscli
-        FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run --append -m pytest tests/flytekit/integration
-    - name: Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        fail_ci_if_error: true # optional (default = false)
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('requirements{0}.txt', matrix.spark-version-suffix))) }}
+      - name: Install dependencies
+        run: |
+          make setup${{ matrix.spark-version-suffix }}
+          pip freeze
+      - name: Test FlyteSchema compatibility
+        run: |
+          FLYTE_SDK_USE_STRUCTURED_DATASET=FALSE python -m pytest tests/flytekit_compatibility
+      - name: Test with coverage
+        run: |
+          FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit
+      - name: Integration Tests with coverage
+        # https://github.com/actions/runner/issues/241#issuecomment-577360161
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          python -m pip install awscli
+          FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run --append -m pytest tests/flytekit/integration
+      - name: Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true # optional (default = false)
 
   build-plugins:
     runs-on: ubuntu-latest
@@ -71,6 +71,7 @@ jobs:
           - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-data-fsspec
+          - flytekit-dbt
           - flytekit-dolt
           - flytekit-greatexpectations
           - flytekit-hive
@@ -85,35 +86,45 @@ jobs:
           - flytekit-spark
           - flytekit-sqlalchemy
         exclude:
-        # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
-        # Issue tracked in https://github.com/ray-project/ray/issues/19116.
-        - python-version: 3.10
-          plugin-names: "flytekit-modin"
+          # dbt is not supported on 3.10 yet.
+          # https://github.com/dbt-labs/dbt-core/issues/4562
+          - python-version: 3.10
+            plugin-names: "flytekit-dbt"
+          # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
+          # Issue tracked in https://github.com/ray-project/ray/issues/19116.
+          - python-version: 3.10
+            plugin-names: "flytekit-modin"
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        # This path is specific to Ubuntu
-        path: ~/.cache/pip
-        # Look to see if there is a cache hit for the corresponding requirements files
-        key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
-    - name: Install dependencies
-      run: |
-        make setup
-        cd plugins/${{ matrix.plugin-names }}
-        pip install -e .
-        if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-        pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
-        pip freeze
-    - name: Test with coverage
-      run: |
-        cd plugins/${{ matrix.plugin-names }}
-        FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests
+      - uses: actions/checkout@v2
+      - name: Set up postgres (linux)
+        if: runner.os == 'Linux' && matrix.plugin-names == 'flytekit-dbt'
+        shell: bash
+        run: |
+          sudo systemctl start postgresql.service
+          pg_isready
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
+      - name: Install dependencies
+        run: |
+          make setup
+          cd plugins/${{ matrix.plugin-names }}
+          pip install -e .
+          if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
+          pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
+          pip freeze
+      - name: Test with coverage
+        run: |
+          cd plugins/${{ matrix.plugin-names }}
+          FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests
 
   lint:
     runs-on: ubuntu-latest
@@ -140,8 +151,7 @@ jobs:
       - name: ShellCheck
         uses: ludeeus/action-shellcheck@master
         with:
-          ignore_paths:
-            boilerplate
+          ignore_paths: boilerplate
 
   docs:
     runs-on: ubuntu-latest

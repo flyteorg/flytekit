@@ -1,0 +1,13 @@
+jaffle_shop:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      user: postgres
+      password: ""
+      port: 5432
+      dbname: dbttest
+      schema: public
+      threads: 1
+      sslmode: disable
