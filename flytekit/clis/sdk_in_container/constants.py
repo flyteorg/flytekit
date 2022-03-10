@@ -6,6 +6,7 @@ CTX_VERSION = "version"
 CTX_TEST = "test"
 CTX_PACKAGES = "pkgs"
 CTX_NOTIFICATIONS = "notifications"
+CTX_CONFIG_FILE = "config_file"
 
 
 project_option = _click.option(

@@ -4,10 +4,10 @@ from collections import OrderedDict
 import mock
 import pytest
 
+import flytekit.configuration
 from flytekit import task, workflow
-from flytekit.core import context_manager
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
 from flytekit.models.core.workflow import Node
 from flytekit.tools.translator import get_serializable
 
@@ -226,7 +226,7 @@ def test_subworkflow_condition_serialization():
         return conditional("nested test").if_(x == 2).then(ifelse_branching(x=x)).else_().then(wf5())
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",

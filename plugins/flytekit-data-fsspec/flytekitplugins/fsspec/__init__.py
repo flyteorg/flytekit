@@ -1,11 +1,12 @@
 import importlib
 
-from flytekit import USE_STRUCTURED_DATASET, StructuredDatasetTransformerEngine, logger
-from flytekit.types.structured.structured_dataset import S3
+from flytekit import StructuredDatasetTransformerEngine, logger
+from flytekit.configuration import internal
+from flytekit.types.structured.structured_dataset import GCS, S3
 
 from .persist import FSSpecPersistence
 
-if USE_STRUCTURED_DATASET.get():
+if internal.LocalSDK.USE_STRUCTURED_DATASET.read():
     from .arrow import ArrowToParquetEncodingHandler, ParquetToArrowDecodingHandler
     from .pandas import PandasToParquetEncodingHandler, ParquetToPandasDecodingHandler
 
@@ -18,3 +19,6 @@ if USE_STRUCTURED_DATASET.get():
 
     if importlib.util.find_spec("s3fs"):
         _register(S3)
+
+    if importlib.util.find_spec("gcsfs"):
+        _register(GCS)

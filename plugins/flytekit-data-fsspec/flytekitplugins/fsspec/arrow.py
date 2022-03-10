@@ -34,7 +34,8 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
-        filesystem = FSSpecPersistence.get_filesystem(path)
+        fp = FSSpecPersistence(data_config=ctx.file_access.data_config)
+        filesystem = fp.get_filesystem(path)
         pq.write_table(structured_dataset.dataframe, strip_protocol(path), filesystem=filesystem)
         return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
@@ -47,6 +48,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         uri = flyte_value.uri
         if not ctx.file_access.is_remote(uri):
@@ -54,12 +56,11 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         _, path = split_protocol(uri)
 
         columns = None
-        if flyte_value.metadata.structured_dataset_type.columns:
-            columns = []
-            for c in flyte_value.metadata.structured_dataset_type.columns:
-                columns.append(c.name)
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
-            fs = FSSpecPersistence.get_filesystem(uri)
+            fp = FSSpecPersistence(data_config=ctx.file_access.data_config)
+            fs = fp.get_filesystem(uri)
             return pq.read_table(path, filesystem=fs, columns=columns)
         except NoCredentialsError as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")

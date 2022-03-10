@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Type
 
-from flytekit.extend import SerializationSettings, SQLTask
+from flytekit.configuration import SerializationSettings
+from flytekit.extend import SQLTask
 from flytekit.models import task as _task_model
 from flytekit.types.schema import FlyteSchema
 

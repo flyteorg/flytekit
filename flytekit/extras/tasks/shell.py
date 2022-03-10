@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 import string
 import subprocess
@@ -11,6 +10,7 @@ from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.task import TaskPlugins
+from flytekit.loggers import logger
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 
@@ -191,7 +191,7 @@ class ShellTask(PythonInstanceTask[T]):
         """
         Executes the given script by substituting the inputs and outputs and extracts the outputs from the filesystem
         """
-        logging.info(f"Running shell script as type {self.task_type}")
+        logger.info(f"Running shell script as type {self.task_type}")
         if self.script_file:
             with open(self.script_file) as f:
                 self._script = f.read()
@@ -212,7 +212,7 @@ class ShellTask(PythonInstanceTask[T]):
         except subprocess.CalledProcessError as e:
             files = os.listdir("./")
             fstr = "\n-".join(files)
-            logging.error(
+            logger.error(
                 f"Failed to Execute Script, return-code {e.returncode} \n"
                 f"StdErr: {e.stderr}\n"
                 f"StdOut: {e.stdout}\n"

@@ -9,7 +9,8 @@ from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import FlyteContext
-from flytekit.extend import DictTransformer, PythonTask, SerializationSettings, TypeEngine, TypeTransformer
+from flytekit.configuration import SerializationSettings
+from flytekit.extend import DictTransformer, PythonTask, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType, SimpleType
 

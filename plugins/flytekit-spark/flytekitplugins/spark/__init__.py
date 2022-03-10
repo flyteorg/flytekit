@@ -1,7 +1,7 @@
-from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
+from flytekit.configuration import internal as _internal
 
 from .schema import SparkDataFrameSchemaReader, SparkDataFrameSchemaWriter, SparkDataFrameTransformer  # noqa
-from .task import Spark, new_spark_session
+from .task import Spark, new_spark_session  # noqa
 
-if USE_STRUCTURED_DATASET.get():
+if _internal.LocalSDK.USE_STRUCTURED_DATASET.read():
     from .sd_transformers import ParquetToSparkDecodingHandler, SparkToParquetEncodingHandler
