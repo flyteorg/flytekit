@@ -34,11 +34,9 @@ Flytekit plugins are structured as micro-libs and can be authored in an independ
 
 The plugins maintained by the core team are maintained in this repository and provide a simple way of discovery.
 
-## Tests 🧪
+## Unit tests 🧪
 
 Plugins should have their own unit tests.
-
-For integration testing, mark your test with `@pytest.mark.integration` decorator.
 
 ## Guidelines 📜
 
