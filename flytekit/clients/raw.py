@@ -84,7 +84,13 @@ class RawSynchronousFlyteClient(object):
     This is a thin synchronous wrapper around the auto-generated GRPC stubs for communicating with the admin service.
 
     This client should be usable regardless of environment in which this is used. In other words, configurations should
-    be explicit as opposed to inferred from the environment or a configuration file.
+    be explicit as opposed to inferred from the environment or a configuration file. To create a client,
+
+    .. code-block:: python
+
+        from flytekit.configuration import PlatformConfig
+        RawSynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))  # or
+        SynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))
     """
 
     def __init__(self, cfg: PlatformConfig, **kwargs):

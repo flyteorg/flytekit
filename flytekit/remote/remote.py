@@ -66,12 +66,23 @@ MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.S
 @dataclass
 class Options(object):
     """
+    These are options that can be configured for a launchplan during registration or overridden during an execution.
+    For instance two people may want to run the same workflow but have the offloaded data stored in two different
+    buckets. Or you may want labels or annotations to be different. This object is used when launching an execution
+    in a Flyte backend, and also when registering launch plans.
+
     Args:
         raw_data_prefix: str -> remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-            ``gcs://...`` or ``file://...``. If not specified will use the platform configured default.
-        auth_role: common_models.AuthRole -> Specifies the Kubernetes Service account, IAM role etc to be used. If not
-        specified defaults will be used
-
+           ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
+           the data for offloaded types is stored.
+        auth_role: Specifies the Kubernetes Service account,
+           IAM role etc to be used. If not specified defaults will be used.
+        labels:
+        annotations:
+        security_context:
+        max_parallelism:
+        notifications:
+        disable_notifications:
     """
 
     raw_data_prefix: typing.Optional[str] = None
