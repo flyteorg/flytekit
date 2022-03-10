@@ -72,6 +72,7 @@ Expected output:
    Flytekit Python <self>
    design/index
    flytekit
+   configuration
    remote
    testing
    extend
