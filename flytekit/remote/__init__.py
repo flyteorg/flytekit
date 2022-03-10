@@ -39,6 +39,7 @@ Entrypoint
    :nosignatures:
 
    ~remote.FlyteRemote
+   ~remote.Options
 
 .. _remote-flyte-entities:
 
