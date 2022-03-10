@@ -41,12 +41,9 @@ jobs:
       run: |
         make setup${{ matrix.spark-version-suffix }}
         pip freeze
-    - name: Test FlyteSchema compatibility
-      run: |
-        FLYTE_SDK_USE_STRUCTURED_DATASET=FALSE python -m pytest tests/flytekit_compatibility
     - name: Test with coverage
       run: |
-        FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit
+        coverage run -m pytest tests/flytekit/unit
     - name: Integration Tests with coverage
       # https://github.com/actions/runner/issues/241#issuecomment-577360161
       shell: 'script -q -e -c "bash {0}"'
@@ -113,7 +110,7 @@ jobs:
     - name: Test with coverage
       run: |
         cd plugins/${{ matrix.plugin-names }}
-        FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests
+        coverage run -m pytest tests
 
   lint:
     runs-on: ubuntu-latest

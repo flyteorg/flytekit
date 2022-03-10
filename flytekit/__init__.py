@@ -193,13 +193,12 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, schema
 
-if _internal.LocalSDK.USE_STRUCTURED_DATASET.read():
-    from flytekit.types.structured.structured_dataset import (
-        StructuredDataset,
-        StructuredDatasetFormat,
-        StructuredDatasetTransformerEngine,
-        StructuredDatasetType,
-    )
+from flytekit.types.structured.structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetFormat,
+    StructuredDatasetTransformerEngine,
+    StructuredDatasetType,
+)
 
 __version__ = "0.0.0+develop"
 

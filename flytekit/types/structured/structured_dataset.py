@@ -391,10 +391,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         The string "://" should not be present in any handler's protocol so we don't check for it.
         """
-        if not LocalSDK.USE_STRUCTURED_DATASET.read():
-            logger.info(f"Structured datasets not enabled, not registering handler {h}")
-            return
-
         lowest_level = cls._handler_finder(h)
         if h.supported_format in lowest_level and override is False:
             raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
@@ -724,9 +720,5 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         raise ValueError(f"StructuredDatasetTransformerEngine cannot reverse {literal_type}")
 
 
-if LocalSDK.USE_STRUCTURED_DATASET.read():
-    logger.debug("Structured dataset module load... using structured datasets!")
-    flyte_dataset_transformer = StructuredDatasetTransformerEngine()
-    TypeEngine.register(flyte_dataset_transformer)
-else:
-    logger.debug("Structured dataset module load... not using structured datasets")
+flyte_dataset_transformer = StructuredDatasetTransformerEngine()
+TypeEngine.register(flyte_dataset_transformer)
