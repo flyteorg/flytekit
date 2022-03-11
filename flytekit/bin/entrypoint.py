@@ -499,7 +499,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    os.system(" ".join(task_execute_cmd))
+    entrypoint_logger.warning(f"command {cmd}")
+    os.system(" ".join(cmd))
 
 
 @_pass_through.command("pyflyte-map-execute")
