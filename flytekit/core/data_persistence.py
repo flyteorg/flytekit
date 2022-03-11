@@ -140,6 +140,7 @@ class DataPersistencePlugins(object):
 
     @staticmethod
     def get_protocol(url: str):
+        # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
         parts = re.split(r"(\:\:|\://)", url, 1)
         if len(parts) > 1:
             return parts[0]
@@ -451,7 +452,7 @@ tmp_dir_prefix = "/tmp/flyte"
 
 # Update tmp_dir_prefix if running on Windows
 if os.name == "nt":
-    tmp_dir_prefix = os.path.join(tempfile.gettempdir(), "flyte")
+    tmp_dir_prefix = os.path.join(tempfile.mkdtemp(), "flyte")
 
 tmp_dir = os.path.join(tmp_dir_prefix, datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 default_local_file_access_provider = FileAccessProvider(

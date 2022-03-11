@@ -1,6 +1,6 @@
 import os
+import re
 import typing
-from urllib.parse import urlparse
 
 import fsspec
 from fsspec.registry import known_implementations
@@ -49,15 +49,13 @@ class FSSpecPersistence(DataPersistence):
         self._data_cfg = data_config if data_config else DataConfig.auto()
 
     @staticmethod
-    def get_protocol(path: typing.Optional[str] = None):
-        if path:
-            protocol = urlparse(path).scheme
-            if protocol == "" and path.startswith("/"):
-                logger.info("Setting protocol to file")
-                protocol = "file"
-        else:
-            protocol = "file"
-        return protocol
+    def get_protocol(url: typing.Optional[str] = None):
+        # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
+        parts = re.split(r"(\:\:|\://)", url, 1)
+        if len(parts) > 1:
+            return parts[0]
+        logger.info("Setting protocol to file")
+        return "file"
 
     def get_filesystem(self, path: str) -> fsspec.AbstractFileSystem:
         protocol = FSSpecPersistence.get_protocol(path)
