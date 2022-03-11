@@ -188,6 +188,7 @@ def setup_execution(
     :param dynamic_dest_dir: See above.
     :return:
     """
+    entrypoint_logger.warning(f"Dynamic {dynamic_addl_distro} {dynamic_dest_dir}")
     exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
     exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
     exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_NAME", "_F_NM")
