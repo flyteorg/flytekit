@@ -23,8 +23,8 @@ from flytekit.core.promise import VoidPromise
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.loggers import entrypoint_logger
 from flytekit.loggers import entrypoint_logger as logger
+from flytekit.loggers import user_space_logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
@@ -188,7 +188,6 @@ def setup_execution(
     :param dynamic_dest_dir: See above.
     :return:
     """
-    entrypoint_logger.warning(f"Dynamic {dynamic_addl_distro} {dynamic_dest_dir}")
     exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
     exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
     exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_NAME", "_F_NM")
@@ -235,7 +234,7 @@ def setup_execution(
                 "api_version": _api_version,
             },
         ),
-        logging=entrypoint_logger,
+        logging=user_space_logger,
         tmp_dir=user_workspace_dir,
         raw_output_prefix=raw_output_data_prefix,
         checkpoint=checkpointer,
@@ -499,7 +498,6 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    entrypoint_logger.warning(f"command {cmd}")
     os.system(" ".join(cmd))
 
 
