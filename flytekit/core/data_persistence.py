@@ -447,14 +447,7 @@ class FileAccessProvider(object):
 DataPersistencePlugins.register_plugin("file://", DiskPersistence)
 DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
-# TODO make this use tmpdir
-tmp_dir_prefix = "/tmp/flyte"
-
-# Update tmp_dir_prefix if running on Windows
-if os.name == "nt":
-    tmp_dir_prefix = os.path.join(tempfile.mkdtemp(), "flyte")
-
-tmp_dir = os.path.join(tmp_dir_prefix, datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+tmp_dir = os.path.join(tempfile.mkdtemp(dir="/tmp/flyte"), datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 default_local_file_access_provider = FileAccessProvider(
     local_sandbox_dir=os.path.join(tmp_dir, "sandbox"),
     raw_output_prefix=os.path.join(tmp_dir, "raw"),

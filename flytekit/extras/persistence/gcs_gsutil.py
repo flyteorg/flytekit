@@ -1,4 +1,5 @@
 import os
+import posixpath
 import typing
 from shutil import which as shell_which
 
@@ -14,7 +15,7 @@ def _update_cmd_config_and_execute(cmd):
 
 
 def _amend_path(path):
-    return os.path.join(path, "*") if not path.endswith("*") else path
+    return posixpath.join(path, "*") if not path.endswith("*") else path
 
 
 class GCSPersistence(DataPersistence):
