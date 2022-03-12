@@ -22,7 +22,6 @@ import _datetime
 import numpy as _np
 import pyarrow as pa
 
-from flytekit.configuration.internal import LocalSDK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
