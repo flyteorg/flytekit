@@ -47,7 +47,7 @@ class HttpPersistence(DataPersistence):
                 "Request for data @ {} failed. Expected status code {}".format(from_path, type(self)._HTTP_OK),
             )
         head, _ = os.path.split(to_path)
-        if head and (head.startswith("/") or ":\\" in to_path):
+        if head and head.startswith("/"):
             logger.debug(f"HttpPersistence creating {head} so that parent dirs exist")
             pathlib.Path(head).mkdir(parents=True, exist_ok=True)
         with open(to_path, "wb") as writer:
