@@ -22,6 +22,7 @@ from typing_extensions import Annotated
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import tmp_dir_prefix
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
 from flytekit.core.task import task
@@ -654,7 +655,7 @@ def test_structured_dataset_type():
 
     ctx = FlyteContextManager.current_context()
     lv = tf.to_literal(ctx, df, pd.DataFrame, lt)
-    assert "/tmp/flyte" in lv.scalar.structured_dataset.uri
+    assert tmp_dir_prefix in lv.scalar.structured_dataset.uri
     metadata = lv.scalar.structured_dataset.metadata
     assert metadata.structured_dataset_type.format == "parquet"
     v1 = tf.to_python_value(ctx, lv, pd.DataFrame)
@@ -666,7 +667,7 @@ def test_structured_dataset_type():
     assert subset_lt.structured_dataset_type is not None
 
     subset_lv = tf.to_literal(ctx, df, pd.DataFrame, subset_lt)
-    assert "/tmp/flyte" in subset_lv.scalar.structured_dataset.uri
+    assert tmp_dir_prefix in subset_lv.scalar.structured_dataset.uri
     v1 = tf.to_python_value(ctx, subset_lv, pd.DataFrame)
     v2 = tf.to_python_value(ctx, subset_lv, pa.Table)
     subset_data = pd.DataFrame({name: ["Tom", "Joseph"]})
@@ -724,7 +725,7 @@ def test_pickle_type():
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, Foo(1), FlytePickle, lt)
-    assert "/tmp/flyte/" in lv.scalar.blob.uri
+    assert tmp_dir_prefix in lv.scalar.blob.uri
 
     transformer = FlytePickleTransformer()
     gt = transformer.guess_python_type(lt)

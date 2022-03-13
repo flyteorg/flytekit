@@ -447,11 +447,7 @@ class FileAccessProvider(object):
 DataPersistencePlugins.register_plugin("file://", DiskPersistence)
 DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
-tmp_dir_prefix = "/tmp/flyte"
-
-# Update tmp_dir_prefix if running on Windows
-if os.name == "nt":
-    tmp_dir_prefix = os.path.join(tempfile.gettempdir(), "flyte")
+tmp_dir_prefix = f"{os.sep}tmp{os.sep}flyte"
 
 tmp_dir = os.path.join(tmp_dir_prefix, datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 default_local_file_access_provider = FileAccessProvider(
