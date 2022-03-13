@@ -2,7 +2,6 @@ import typing
 from collections import OrderedDict
 
 import mock
-import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
 
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution

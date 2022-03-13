@@ -1,5 +1,4 @@
 import os
-import re
 import typing
 
 import fsspec
@@ -49,11 +48,9 @@ class FSSpecPersistence(DataPersistence):
         self._data_cfg = data_config if data_config else DataConfig.auto()
 
     @staticmethod
-    def get_protocol(url: typing.Optional[str] = None):
-        # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
-        parts = re.split(r"(\:\:|\://)", url, 1)
-        if len(parts) > 1:
-            return parts[0]
+    def get_protocol(path: typing.Optional[str] = None):
+        if path:
+            return DataPersistencePlugins.get_protocol(path)
         logger.info("Setting protocol to file")
         return "file"
 

@@ -12,7 +12,7 @@ test_module_dir = Path(os.path.dirname(__file__))
 
 
 def test_wrapped_tasks_happy_path(capfd):
-    p = subprocess.run(
+    subprocess.run(
         [sys.executable, str(test_module_dir / "simple_decorator.py")],
         env={"SCRIPT_INPUT": "10", "SYSTEMROOT": "C:\\Windows", "HOMEPATH": "C:\\Windows"},
         text=True,

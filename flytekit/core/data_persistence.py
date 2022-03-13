@@ -144,6 +144,7 @@ class DataPersistencePlugins(object):
         parts = re.split(r"(\:\:|\://)", url, 1)
         if len(parts) > 1:
             return parts[0]
+        logger.info("Setting protocol to file")
         return "file"
 
     @classmethod
