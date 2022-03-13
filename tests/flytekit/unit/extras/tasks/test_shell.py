@@ -34,7 +34,12 @@ def test_shell_task_no_io():
 
 
 def test_shell_task_fail():
-    t = ShellTask(name="test", script="non-existent blah")
+    t = ShellTask(
+        name="test",
+        script="""
+            non-existent blah
+            """,
+    )
 
     with pytest.raises(Exception):
         t()
@@ -188,22 +193,20 @@ def test_input_output_extra_and_missing_variables(script):
 
 
 def test_reuse_variables_for_both_inputs_and_outputs():
-    script = """
-            cat {inputs.f} >> {outputs.y}
-            echo "Hello World {inputs.y} on  {inputs.j}"
-            """
-    if os.name == "nt":
-        script = script.replace("cat", "type")
-
     t = ShellTask(
         name="test",
         debug=True,
-        script=script,
+        script="""
+        cat {inputs.f} >> {outputs.y}
+        echo "Hello World {inputs.y} on  {inputs.j}"
+        """,
         inputs=kwtypes(f=CSVFile, y=FlyteDirectory, j=datetime.datetime),
         output_locs=[
             OutputLocation(var="y", var_type=FlyteFile, location="{inputs.f}.pyc"),
         ],
     )
+    if os.name == "nt":
+        t._script = t._script.replace("cat", "type")
 
     t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
@@ -214,19 +217,18 @@ def test_can_use_complex_types_for_inputs_to_f_string_template():
     class InputArgs:
         in_file: CSVFile
 
-    script = """cat {inputs.input_args.in_file} >> {inputs.input_args.in_file}.tmp"""
-    if os.name == "nt":
-        script = script.replace("cat", "type")
-
     t = ShellTask(
         name="test",
         debug=True,
-        script=script,
+        script="""cat {inputs.input_args.in_file} >> {inputs.input_args.in_file}.tmp""",
         inputs=kwtypes(input_args=InputArgs),
         output_locs=[
             OutputLocation(var="x", var_type=FlyteFile, location="{inputs.input_args.in_file}.tmp"),
         ],
     )
+
+    if os.name == "nt":
+        t._script = t._script.replace("cat", "type")
 
     input_args = InputArgs(FlyteFile(path=test_csv))
     x = t(input_args=input_args)
