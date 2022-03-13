@@ -34,10 +34,7 @@ def test_shell_task_no_io():
 
 
 def test_shell_task_fail():
-    t = ShellTask(
-        name="test",
-        script="non-existent blah"
-   )
+    t = ShellTask(name="test", script="non-existent blah")
 
     with pytest.raises(Exception):
         t()
