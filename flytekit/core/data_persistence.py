@@ -26,7 +26,6 @@ import datetime
 import os
 import pathlib
 import re
-import tempfile
 import typing
 from abc import abstractmethod
 from distutils import dir_util
