@@ -25,6 +25,11 @@ jobs:
           spark-version-suffix: "-spark2"
         - python-version: 3.10
           spark-version-suffix: "-spark2"
+        # Ignore this test because we failed to install docker-py
+        # docker-py will install pywin32==227, whereas pywin only added support for python 3.10 in version 301.
+        # For more detail, see https://github.com/flyteorg/flytekit/pull/856#issuecomment-1067152855
+        - python-version: 3.10
+          os: windows-latest
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
