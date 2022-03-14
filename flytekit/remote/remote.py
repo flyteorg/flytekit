@@ -89,6 +89,7 @@ class Options(object):
     auth_role: typing.Optional[common_models.AuthRole] = None
     labels: typing.Optional[common_models.Labels] = None
     annotations: typing.Optional[common_models.Annotations] = None
+    raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
     security_context: typing.Optional[security.SecurityContext] = None
     max_parallelism: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
@@ -596,6 +597,7 @@ class FlyteRemote(object):
                     disable_all=options.disable_notifications,
                     labels=options.labels,
                     annotations=options.annotations,
+                    raw_output_data_config=options.raw_output_data_config,
                     auth_role=options.auth_role,
                     max_parallelism=options.max_parallelism,
                 ),
