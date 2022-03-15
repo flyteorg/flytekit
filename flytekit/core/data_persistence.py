@@ -25,6 +25,7 @@ simple implementation that ships with the core.
 import datetime
 import os
 import pathlib
+import re
 import typing
 from abc import abstractmethod
 from distutils import dir_util
@@ -136,13 +137,22 @@ class DataPersistencePlugins(object):
 
         cls._PLUGINS[protocol] = plugin
 
+    @staticmethod
+    def get_protocol(url: str):
+        # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
+        parts = re.split(r"(\:\:|\://)", url, 1)
+        if len(parts) > 1:
+            return parts[0]
+        logger.info("Setting protocol to file")
+        return "file"
+
     @classmethod
     def find_plugin(cls, path: str) -> typing.Type[DataPersistence]:
         """
         Returns a plugin for the given protocol, else raise a TypeError
         """
         for k, p in cls._PLUGINS.items():
-            if path.startswith(k) or path.startswith(k.replace("://", "")):
+            if cls.get_protocol(path) == k.replace("://", "") or path.startswith(k):
                 return p
         raise TypeError(f"No plugin found for matching protocol of path {path}")
 
@@ -408,6 +418,7 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer(f"Copying ({remote_path} -> {local_path})"):
+                pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
                 DataPersistencePlugins.find_plugin(remote_path)().get(remote_path, local_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
@@ -437,8 +448,9 @@ class FileAccessProvider(object):
 DataPersistencePlugins.register_plugin("file://", DiskPersistence)
 DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
-# TODO make this use tmpdir
-tmp_dir = os.path.join("/tmp/flyte", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+tmp_dir_prefix = f"{os.sep}tmp{os.sep}flyte"
+
+tmp_dir = os.path.join(tmp_dir_prefix, datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
 default_local_file_access_provider = FileAccessProvider(
     local_sandbox_dir=os.path.join(tmp_dir, "sandbox"),
     raw_output_prefix=os.path.join(tmp_dir, "raw"),
