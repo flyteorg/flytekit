@@ -77,12 +77,13 @@ class Options(object):
            the data for offloaded types is stored.
         auth_role: Specifies the Kubernetes Service account,
            IAM role etc to be used. If not specified defaults will be used.
-        labels:
-        annotations:
-        security_context:
-        max_parallelism:
-        notifications:
-        disable_notifications:
+        labels: Custom labels to be applied to the execution resource
+        annotations: Custom annotations to be applied to the execution resource
+        security_context: Indicates security context for permissions triggered with this launch plan
+        raw_output_data_config: Optional location of offloaded data for things like S3, etc.
+        max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
+        notifications: List of notifications for this execution
+        disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
 
     raw_data_prefix: typing.Optional[str] = None
