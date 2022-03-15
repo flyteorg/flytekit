@@ -108,3 +108,10 @@ def test_output_reference():
     assert obj.var == "var1"
     obj2 = _types.OutputReference.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
+
+
+def test_literafdsafsdl_types():
+    obj = _types.LiteralType(simple=_types.SimpleType.INTEGER)
+    print("\n------------------------------------")
+    print(str(obj))
+    print("====================================")

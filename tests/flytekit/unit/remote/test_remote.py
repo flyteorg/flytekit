@@ -6,7 +6,9 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
+from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote, Options
+from flytekit.remote.workflow import FlyteWorkflow
 
 CLIENT_METHODS = {
     ResourceType.WORKFLOW: "list_workflows_paginated",
@@ -146,3 +148,33 @@ def test_passing_of_kwargs(mock_client):
     FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args)
     assert mock_client.called
     assert mock_client.call_args[1] == additional_args
+
+
+def test_asdf1():
+    rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
+    # wf = rr.fetch_workflow(name="core.control_flow.run_merge_sort.merge_sort", version="v0.3.39")
+    wf = rr.fetch_workflow(name="core.flyte_basics.files.rotate_one_workflow", version="v0.3.39")
+    print("---------")
+    print(repr(wf))
+
+
+def test_asdf2():
+    rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
+    # wf = rr.fetch_workflow(
+    #     name="core.control_flow.run_conditions.nested_conditions", version="v0.3.39"
+    # )
+    # print(wf)
+    we = rr.fetch_workflow_execution(name="suss7xonol")
+    rr.sync_workflow_execution(we, sync_nodes=True)
+    print(rr)
+
+
+from tests.flytekit.unit.common_tests.test_workflow_promote import get_compiled_workflow_closure
+
+
+def test_asdf3():
+    cwc = get_compiled_workflow_closure()
+    fw = FlyteWorkflow.promote_from_closure(cwc)
+    print("\n------------------------------------")
+    print(str(fw))
+    print("====================================")

@@ -1,3 +1,4 @@
+import textwrap
 from datetime import datetime as _datetime
 from typing import Optional
 
@@ -377,6 +378,23 @@ class BindingData(_common.FlyteIdlEntity):
         self._collection = collection
         self._promise = promise
         self._map = map
+
+    def verbose_string(self) -> str:
+        if self.scalar:
+            return f"Scalar: {str(self.scalar)}"
+        if self.promise:
+            return f"{self.promise.var} of node {self.promise.node_id}"
+        if self.collection:
+            entries = [str(x) for x in self.collection.bindings]
+            indented_entries = textwrap.indent("".join(entries), " " * 2)
+            return f"[\n{indented_entries}]"
+        if self.map:
+            entries = []
+            for k, v in self.map.bindings.items():
+                entry = f"{k}:\n{textwrap.indent(str(v), ' ' * 2)}"
+                entries.append(entry)
+            indented_entries = textwrap.indent("".join(entries), " " * 2)
+            return "{\n" + indented_entries + "\n}"
 
     @property
     def scalar(self):

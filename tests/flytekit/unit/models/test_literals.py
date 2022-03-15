@@ -432,6 +432,8 @@ def test_binding_data_map():
     assert obj2.collection is None
     assert obj2.value.bindings["three"].value.value.value == 2
     assert obj2.value.bindings["sample_map"].value.bindings["first"].value.value.value == 5
+    print("")
+    print(str(obj))
 
 
 def test_binding_data_promise():

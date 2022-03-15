@@ -223,6 +223,9 @@ class LiteralType(_common.FlyteIdlEntity):
         self._metadata = metadata
         self._annotation = annotation
 
+    def verbose_string(self, i: int = 0):
+        return f"Type: {self.get_type}"
+
     @property
     def simple(self) -> SimpleType:
         return self._simple
@@ -333,10 +336,6 @@ class LiteralType(_common.FlyteIdlEntity):
             metadata=_json_format.MessageToDict(proto.metadata) or None,
             annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.HasField("annotation") else None,
         )
-
-    def verbose_string(self):
-        
-        return str(self.to_flyte_idl()).replace("\n", " ")
 
 
 class OutputReference(_common.FlyteIdlEntity):

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import textwrap
 from typing import Dict, List, Optional
 
 from flytekit.core import constants as _constants
 from flytekit.core import hash as _hash_mixin
 from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import task as _task_models
 from flytekit.models.core import compiler as compiler_models
@@ -58,14 +58,35 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
     def name(self) -> str:
         return self._name
 
-    def __str__(self) -> str:
-        return f"id({id(self)}) FlyteWorkflow()"
-
-    def __repr__(self) -> str:
-        r = f"""{self.id.verbose_string()}
-        {self.interface.verbose_string()}
+    def verbose_string(self, indent: int = 0) -> str:
+        header = f"""\
+        Workflow ID:
+          [{self.id.project}/{self.id.domain}]
+          {self.name}@{self.id.version}
         """
-        return r
+        header = textwrap.dedent(header)
+
+        io = str(self.interface)
+        io = f"Interface:\n{textwrap.indent(io, ' ' * 2) if io else '  None'}"
+
+        behavior = f"""\
+        Failure Policy: {"Fail immediately" if not self.metadata.on_failure else "Wait for executable nodes"}
+        Interruptible: {self.metadata_defaults.interruptible}
+        """
+        behavior = textwrap.dedent(behavior)
+
+        binding_strs = []
+        for b in self.outputs:
+            binding_strs.append(b.var + ":\n" + textwrap.indent(str(b.binding), " " * 2))
+        all_bindings = textwrap.indent("\n".join(binding_strs), " " * 2)
+        bindings = f"Output Bindings:\n" + all_bindings
+
+        # Nodes
+        node_strs = [str(n) for n in self.nodes]
+        all_nodes = textwrap.indent("\n".join(node_strs), " " * 2)
+        nodes = f"\nNodes:\n" + all_nodes
+
+        return textwrap.dedent(header + io + behavior + bindings + nodes)
 
     @property
     def sub_workflows(self) -> Optional[Dict[id_models.Identifier, _workflow_models.WorkflowTemplate]]:
