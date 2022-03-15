@@ -4,7 +4,7 @@ PLUGIN_NAME = "modin"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.22.0,<1.0.0", "modin>=0.13.0","modin", "ray", "fsspec"]
+plugin_requires = ["flytekit>=0.22.0,<1.0.0", "modin>=0.13.0", "modin", "ray", "fsspec"]
 
 __version__ = "0.0.0+develop"
 
