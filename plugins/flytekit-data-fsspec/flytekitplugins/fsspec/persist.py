@@ -2,7 +2,6 @@ import os
 import typing
 
 import fsspec
-from fsspec.core import split_protocol
 from fsspec.registry import known_implementations
 
 from flytekit.configuration import DataConfig, S3Config
@@ -51,13 +50,9 @@ class FSSpecPersistence(DataPersistence):
     @staticmethod
     def get_protocol(path: typing.Optional[str] = None):
         if path:
-            protocol, _ = split_protocol(path)
-            if protocol is None and path.startswith("/"):
-                logger.info("Setting protocol to file")
-                protocol = "file"
-        else:
-            protocol = "file"
-        return protocol
+            return DataPersistencePlugins.get_protocol(path)
+        logger.info("Setting protocol to file")
+        return "file"
 
     def get_filesystem(self, path: str) -> fsspec.AbstractFileSystem:
         protocol = FSSpecPersistence.get_protocol(path)
