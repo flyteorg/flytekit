@@ -111,12 +111,6 @@ class LocalSDK(object):
     TODO delete the one from internal config
     """
 
-    # Feature Gate
-    USE_STRUCTURED_DATASET = ConfigEntry(LegacyConfigEntry(SECTION, "use_structured_dataset", bool))
-    """
-    Note: This gate will be switched to True at some point in the future. Definitely by 1.0, if not v0.31.0.
-    """
-
 
 class Secrets(object):
     SECTION = "secrets"

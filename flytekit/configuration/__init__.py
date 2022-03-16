@@ -278,6 +278,7 @@ class PlatformConfig(object):
     ) -> PlatformConfig:
         return PlatformConfig(
             endpoint=endpoint,
+            insecure=insecure,
             command=command,
             client_id=client_id,
             client_credentials_secret=client_credentials_secret,
