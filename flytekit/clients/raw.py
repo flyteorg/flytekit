@@ -459,13 +459,7 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.workflow_pb2.Workflow
         :raises: TODO
         """
-        admin_workflow = self._stub.GetWorkflow(get_object_request, metadata=self._metadata)
-        cwc = admin_workflow.closure.compiled_workflow
-        from flytekit.core.utils import write_proto_to_file
-
-        fn = "/Users/ytong/go/src/github.com/flyteorg/flytekit/tests/flytekit/unit/common_tests/resources/protos/merge_sort_cwc.pb"
-        write_proto_to_file(cwc, fn)
-        return admin_workflow
+        return self._stub.GetWorkflow(get_object_request, metadata=self._metadata)
 
     ####################################################################################################################
     #
