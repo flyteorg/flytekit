@@ -13,6 +13,8 @@ from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
 from flytekit.models.types import StructuredDatasetType
 
+MAX_OFFSET = 20
+
 
 class RetryStrategy(_common.FlyteIdlEntity):
     def __init__(self, retries):
@@ -649,6 +651,21 @@ class LiteralMap(_common.FlyteIdlEntity):
         :param dict[Text, Literal] literals: A dictionary mapping Text key names to Literal objects.
         """
         self._literals = literals
+
+    def verbose_string(self, indent: int = 0):
+        if not self.literals:
+            return "{}"
+        offset = min(MAX_OFFSET, max([len(x) for x in self.literals.keys()]))
+        res = []
+        for (
+            k,
+            v,
+        ) in self.literals.items():
+            padding = max(0, offset - len(k))
+            r = f"{k}: " + " " * padding + str(v)
+            res.append(r)
+        combined = "\n".join(res)
+        return textwrap.indent(combined, " " * indent)
 
     @property
     def literals(self):

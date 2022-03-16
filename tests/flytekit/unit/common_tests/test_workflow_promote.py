@@ -1,12 +1,10 @@
 from datetime import timedelta
 from os import path as _path
 
-from flyteidl.core import compiler_pb2 as _compiler_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
 
 from flytekit.models import literals as _literals
 from flytekit.models import task as _task_model
-from flytekit.models.core import compiler as _compiler_model
 from flytekit.models.core import workflow as _workflow_model
 
 
@@ -94,17 +92,3 @@ def get_workflow_template():
 
     wt = _workflow_model.WorkflowTemplate.from_flyte_idl(workflow_template_pb)
     return wt
-
-
-def get_compiled_workflow_closure():
-    """
-    :rtype: flytekit.models.core.compiler.CompiledWorkflowClosure
-    """
-    cwc_pb = _compiler_pb2.CompiledWorkflowClosure()
-    # So that tests that use this work when run from any directory
-    basepath = _path.dirname(__file__)
-    filepath = _path.abspath(_path.join(basepath, "resources/protos", "CompiledWorkflowClosure.pb"))
-    with open(filepath, "rb") as fh:
-        cwc_pb.ParseFromString(fh.read())
-
-    return _compiler_model.CompiledWorkflowClosure.from_flyte_idl(cwc_pb)

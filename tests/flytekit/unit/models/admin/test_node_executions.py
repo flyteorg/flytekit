@@ -1,6 +1,6 @@
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.core import catalog, identifier
-from tests.flytekit.unit.common_tests.test_workflow_promote import get_compiled_workflow_closure
+from tests.flytekit.unit.common_tests.get_resources import get_compiled_workflow_closure
 
 
 def test_metadata():

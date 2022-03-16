@@ -4,11 +4,13 @@ from mock import MagicMock, patch
 from flytekit.configuration import Config
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
-from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
+from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.remote.executions import FlyteWorkflowExecution
+from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.remote import FlyteRemote, Options
 from flytekit.remote.workflow import FlyteWorkflow
+from tests.flytekit.unit.common_tests import get_resources
 
 CLIENT_METHODS = {
     ResourceType.WORKFLOW: "list_workflows_paginated",
@@ -169,12 +171,37 @@ def test_asdf2():
     print(rr)
 
 
-from tests.flytekit.unit.common_tests.test_workflow_promote import get_compiled_workflow_closure
+from tests.flytekit.unit.common_tests.get_resources import get_compiled_workflow_closure
 
 
 def test_asdf3():
     cwc = get_compiled_workflow_closure()
     fw = FlyteWorkflow.promote_from_closure(cwc)
+    print("\n------------------------------------")
+    print(str(fw))
+    print("====================================")
+    print(repr(fw))
+
+
+def test_asdf4():
+    lp_spec = get_resources.get_launch_plan_spec()
+    lp_id = Identifier(
+        resource_type=ResourceType.LAUNCH_PLAN,
+        project="proj",
+        domain="dev",
+        name=lp_spec.workflow_id.name,
+        version="abc",
+    )
+    lp = FlyteLaunchPlan.promote_from_model(lp_id, lp_spec)
+    print("\n------------------------------------")
+    print(str(lp))
+    print("====================================")
+    print(repr(lp))
+
+
+def test_asdf5():
+    e = get_resources.get_merge_sort_exec()
+    fw = FlyteWorkflowExecution.promote_from_model(e)
     print("\n------------------------------------")
     print(str(fw))
     print("====================================")
