@@ -58,7 +58,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
     def name(self) -> str:
         return self._name
 
-    def verbose_string(self, indent: int = 0) -> str:
+    def verbose_string(self) -> str:
         header = f"""\
         Workflow ID:
           [{self.id.project}/{self.id.domain}]
@@ -84,7 +84,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
         # Nodes
         node_strs = [str(n) for n in self.nodes]
         all_nodes = textwrap.indent("\n".join(node_strs), " " * 2)
-        nodes = f"\nNodes:\n" + all_nodes
+        nodes = f"Nodes:\n" + all_nodes
 
         return textwrap.dedent(header + io + behavior + bindings + nodes)
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import textwrap
 from typing import Dict, List, Optional, Union
 
@@ -70,8 +71,11 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             binding_strs.append(b.var + ":\n" + textwrap.indent(str(b.binding), " " * 2))
         inputs_str = "Inputs:\n" + textwrap.indent("\n".join(binding_strs), " " * 2) + "\n"
 
-        upstream_ids = "Depends on:\n  " + \
-                       (", ".join([un.id for un in self.upstream_nodes]) if self.upstream_nodes else "None")
+        upstream_ids = (
+            "Upstream nodes:\n  "
+            + (", ".join([un.id for un in self.upstream_nodes]) if self.upstream_nodes else "None")
+            + "\n"
+        )
         executable = "Executable:\n" + textwrap.indent(str(self.flyte_entity), " " * 2)
 
         return node_id + textwrap.indent(inputs_str + upstream_ids + executable, " " * 2)
