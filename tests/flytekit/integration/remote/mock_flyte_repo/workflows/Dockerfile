@@ -6,7 +6,6 @@ ENV VENV /opt/venv
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 ENV PYTHONPATH /root
-ENV FLYTE_SDK_USE_STRUCTURED_DATASET TRUE
 
 # This is necessary for opencv to work
 RUN apt-get update && apt-get install -y libsm6 libxext6 libxrender-dev ffmpeg build-essential

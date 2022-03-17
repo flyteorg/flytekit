@@ -6,9 +6,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.context_manager import ExecutionState
+from flytekit.core.data_persistence import FileAccessProvider, tmp_dir_prefix
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
@@ -205,7 +207,7 @@ def test_file_handling_remote_file_handling_flyte_file():
 
         # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
         # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)
-        assert workflow_output.path.startswith(f"{random_dir}/local_flytekit")
+        assert workflow_output.path.startswith(f"{random_dir}{os.sep}local_flytekit")
         # But the remote source should still be the https address
         assert workflow_output.remote_source == SAMPLE_DATA
 
@@ -243,7 +245,7 @@ def test_dont_convert_remotes():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
@@ -420,7 +422,7 @@ def test_flyte_file_in_dyn():
     @task
     def t2(ff: FlyteFile) -> os.PathLike:
         assert ff.remote_source == "s3://somewhere"
-        assert "/tmp/flyte/" in ff.path
+        assert tmp_dir_prefix in ff.path
 
         return ff.path
 
@@ -430,4 +432,4 @@ def test_flyte_file_in_dyn():
         dyn(fs=n1)
         return t2(ff=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+    assert tmp_dir_prefix in wf(path="s3://somewhere").path

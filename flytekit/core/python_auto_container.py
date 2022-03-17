@@ -5,8 +5,9 @@ import re
 from abc import ABC
 from typing import Callable, Dict, List, Optional, TypeVar
 
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
-from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance

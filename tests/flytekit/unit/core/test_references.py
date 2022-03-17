@@ -3,9 +3,10 @@ from collections import OrderedDict
 
 import pytest
 
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.promise import VoidPromise
@@ -58,7 +59,7 @@ def test_ref():
     assert ref_t1.id.name == "recipes.aaa.simple.join_strings"
     assert ref_t1.id.version == "553018f39e519bdb2597b652639c30ce16b99c79"
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -247,7 +248,7 @@ def test_lps(resource_type):
     def wf1(a: str, b: int):
         ref_entity(a=a, b=b)
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -294,7 +295,7 @@ def test_ref_sub_wf():
     def wf1(a: str, b: int):
         ref_entity(a=a, b=b)
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -342,7 +343,7 @@ def test_lp_with_output():
 
     inner_test()
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -412,7 +413,7 @@ def test_ref_dynamic_task():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
@@ -441,7 +442,7 @@ def test_ref_dynamic_lp():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
