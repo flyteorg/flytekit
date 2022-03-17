@@ -162,7 +162,7 @@ We use `codespell <https://github.com/codespell-project/codespell>`__ to catch s
 4. Open HTML pages present in the ``docs/build`` directory in the browser
 5. After creating the pull request, check if the docs are rendered correctly by clicking on the documentation check
 
-   .. image:: https://raw.githubusercontent.com/flyteorg/flyte/static-resources/img/flytesnacks/contribution-guide/test_docs_link.png
+   .. image:: https://raw.githubusercontent.com/flyteorg/static-resources/main/common/test_docs_link.png
        :alt: Doc link in PR
 
 **********************************
