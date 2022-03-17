@@ -77,18 +77,20 @@ class Options(object):
            the data for offloaded types is stored.
         auth_role: Specifies the Kubernetes Service account,
            IAM role etc to be used. If not specified defaults will be used.
-        labels:
-        annotations:
-        security_context:
-        max_parallelism:
-        notifications:
-        disable_notifications:
+        labels: Custom labels to be applied to the execution resource
+        annotations: Custom annotations to be applied to the execution resource
+        security_context: Indicates security context for permissions triggered with this launch plan
+        raw_output_data_config: Optional location of offloaded data for things like S3, etc.
+        max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
+        notifications: List of notifications for this execution
+        disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
 
     raw_data_prefix: typing.Optional[str] = None
     auth_role: typing.Optional[common_models.AuthRole] = None
     labels: typing.Optional[common_models.Labels] = None
     annotations: typing.Optional[common_models.Annotations] = None
+    raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
     security_context: typing.Optional[security.SecurityContext] = None
     max_parallelism: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
@@ -596,6 +598,7 @@ class FlyteRemote(object):
                     disable_all=options.disable_notifications,
                     labels=options.labels,
                     annotations=options.annotations,
+                    raw_output_data_config=options.raw_output_data_config,
                     auth_role=options.auth_role,
                     max_parallelism=options.max_parallelism,
                 ),

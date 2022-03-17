@@ -85,12 +85,14 @@ def test_underscore_execute_fall_back_remote_attributes(mock_wf_exec):
     remote._client = mock_client
 
     options = Options(
+        raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
         auth_role=common_models.AuthRole(assumable_iam_role="iam:some:role"),
     )
 
     def local_assertions(*args, **kwargs):
         execution_spec = args[3]
         assert execution_spec.auth_role.assumable_iam_role == "iam:some:role"
+        assert execution_spec.raw_output_data_config.output_location_prefix == "raw_output"
 
     mock_client.create_execution.side_effect = local_assertions
 

@@ -82,6 +82,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         labels=None,
         annotations=None,
         auth_role=None,
+        raw_output_data_config=None,
         max_parallelism=None,
     ):
         """
@@ -92,6 +93,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param flytekit.models.common.Labels labels: Labels to apply to the execution.
         :param flytekit.models.common.Annotations annotations: Annotations to apply to the execution
         :param flytekit.models.common.AuthRole auth_role: The authorization method with which to execute the workflow.
+        :param raw_output_data_config: Optional location of offloaded data for things like S3, etc.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
@@ -104,6 +106,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._labels = labels or _common_models.Labels({})
         self._annotations = annotations or _common_models.Annotations({})
         self._auth_role = auth_role or _common_models.AuthRole()
+        self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
 
     @property
@@ -157,6 +160,13 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return self._auth_role
 
     @property
+    def raw_output_data_config(self):
+        """
+        :rtype: flytekit.models.common.RawOutputDataConfig
+        """
+        return self._raw_output_data_config
+
+    @property
     def max_parallelism(self) -> int:
         return self._max_parallelism
 
@@ -172,6 +182,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self._auth_role.to_flyte_idl() if self.auth_role else None,
+            raw_output_data_config=self._raw_output_data_config.to_flyte_idl()
+            if self._raw_output_data_config
+            else None,
             max_parallelism=self.max_parallelism,
         )
 
@@ -189,6 +202,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             labels=_common_models.Labels.from_flyte_idl(p.labels),
             annotations=_common_models.Annotations.from_flyte_idl(p.annotations),
             auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role),
+            raw_output_data_config=_common_models.RawOutputDataConfig.from_flyte_idl(p.raw_output_data_config)
+            if p.HasField("raw_output_data_config")
+            else None,
             max_parallelism=p.max_parallelism,
         )
 
