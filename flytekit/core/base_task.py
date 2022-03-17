@@ -23,7 +23,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
-from flytekit.configuration.sdk import ENABLE_DECK
+from flytekit.configuration.deck import ENABLE_DECK
 from flytekit.core.context_manager import (
     ExecutionParameters,
     FlyteContext,
@@ -464,7 +464,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         new_user_params = self.pre_execute(ctx.user_space_params)
         from flytekit.deck.deck import _output_deck, default_deck
 
-        default_deck.renderers = []
         new_user_params._decks = [default_deck]
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
@@ -529,8 +528,24 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     raise TypeError(
                         f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
                     ) from e
+
+            INPUT = "input"
+            OUTPUT = "output"
+            from flytekit import Deck
+
+            input_deck = Deck(INPUT)
+            for k, v in native_inputs.items():
+                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+
+            output_deck = Deck(OUTPUT)
+            for k, v in native_outputs_as_map.items():
+                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+
+            new_user_params.decks.append(input_deck)
+            new_user_params.decks.append(output_deck)
+
             if ENABLE_DECK.get():
-                _output_deck(self.name.split(".")[-1], new_user_params, native_inputs, native_outputs_as_map)
+                _output_deck(self.name.split(".")[-1], new_user_params)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map

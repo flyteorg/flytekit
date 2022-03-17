@@ -148,7 +148,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         return r.all()
 
     def to_html(self, ctx: FlyteContext, python_val: pandas.DataFrame):
-        return python_val.to_html()
+        return python_val.describe().to_html()
 
 
 SchemaEngine.register_handler(

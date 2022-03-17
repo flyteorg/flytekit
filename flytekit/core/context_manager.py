@@ -174,7 +174,7 @@ class ExecutionParameters(object):
             self.execution_id = current.execution_id if current else None
             self.logging = current.logging if current else None
             self.checkpoint = current._checkpoint if current else None
-            self.decks = current._decks if current else None
+            self.decks = current._decks if current else []
             self.attrs = current._attrs if current else {}
             self.raw_output_prefix = current.raw_output_prefix if current else None
 
@@ -322,6 +322,9 @@ class ExecutionParameters(object):
 
     @property
     def decks(self) -> typing.List:
+        """
+        A list of decks of the tasks, and it will be rendered to a html at the end of the task execution.
+        """
         return self._decks
 
     def __getattr__(self, attr_name: str) -> typing.Any:

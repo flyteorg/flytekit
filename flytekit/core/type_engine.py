@@ -19,7 +19,11 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
-from typing_extensions import Annotated, get_args, get_origin
+
+try:
+    from typing import Annotated, get_args, get_origin
+except ImportError:
+    from typing_extensions import Annotated, get_origin, get_args
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
@@ -127,7 +131,10 @@ class TypeTransformer(typing.Generic[T]):
         )
 
     @abstractmethod
-    def to_html(self, ctx: FlyteContext, python_val: T):
+    def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
+        """
+        Converts any python val (dataframe, int, float) to a html string, and it will be wrapped in the HTML div
+        """
         return str(python_val)
 
     def __repr__(self):
@@ -678,9 +685,12 @@ class TypeEngine(typing.Generic[T]):
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
     @classmethod
-    def to_html(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type):
-        transformer = cls.get_transformer(python_type)
-        return transformer.to_html(ctx, python_val)
+    def to_html(cls, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[T]) -> str:
+        transformer = cls.get_transformer(expected_python_type)
+        if get_origin(expected_python_type) is Annotated:
+            _, renderer = get_args(expected_python_type)
+            return renderer.to_html(python_val)
+        return transformer.to_html(ctx, python_val, expected_python_type)
 
     @classmethod
     def named_tuple_to_variable_map(cls, t: typing.NamedTuple) -> _interface_models.VariableMap:

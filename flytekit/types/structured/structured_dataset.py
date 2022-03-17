@@ -631,9 +631,18 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # we should do the opening/downloading and whatever else it might entail right now. No iteration option here.
         return self.open_as(ctx, lv.scalar.structured_dataset, df_type=expected_python_type, updated_metadata=metad)
 
-    def to_html(self, ctx: FlyteContext, python_val: typing.Any):
-        if issubclass(type(python_val), pandas.DataFrame):
-            return python_val.to_html()
+    def to_html(self, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[T]) -> str:
+        if not isinstance(python_val, StructuredDataset):
+            df = python_val
+        else:
+            df = typing.cast(StructuredDataset, python_val).open(expected_python_type).all()
+
+        if isinstance(df, pandas.DataFrame):
+            return python_val.describe().to_html()
+        elif isinstance(df, pa.Table):
+            return typing.cast(pa.Table, python_val).to_string()
+        else:
+            raise NotImplementedError("Conversion to html string should be implemented")
 
     def open_as(
         self,

@@ -2,7 +2,7 @@ from setuptools import setup
 
 PLUGIN_NAME = "deck"
 
-microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
+microlib_name = f"flytekitplugins-{PLUGIN_NAME}-standard"
 
 plugin_requires = ["flytekit>=0.21.3,<1.0.0", "markdown", "plotly", "pandas_profiling"]
 
