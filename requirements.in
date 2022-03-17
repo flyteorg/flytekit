@@ -1,5 +1,4 @@
 .[all]
--e git+https://github.com/maximsmol/flyteidl.git@maximsmol/union-types#egg=flyteidl
 -e file:.#egg=flytekit
 attrs<21
 # We need to restrict constrain the versions of both jsonschema and pyyaml because of docker-compose (which is

@@ -4,10 +4,6 @@
 #
 #    make dev-requirements.txt
 #
--e git+https://github.com/maximsmol/flyteidl.git@maximsmol/union-types#egg=flyteidl
-    # via
-    #   -c requirements.txt
-    #   flytekit
 -e file:.#egg=flytekit
     # via
     #   -c requirements.txt
@@ -120,12 +116,16 @@ docstring-parser==0.13
     #   flytekit
 filelock==3.6.0
     # via virtualenv
+flyteidl==0.24.0
+    # via
+    #   -c requirements.txt
+    #   flytekit
 google-api-core[grpc]==2.7.1
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
     #   google-cloud-core
-google-auth==2.6.0
+google-auth==2.6.2
     # via
     #   google-api-core
     #   google-cloud-core
@@ -141,6 +141,7 @@ google-resumable-media==2.3.2
     # via google-cloud-bigquery
 googleapis-common-protos==1.56.0
     # via
+    #   -c requirements.txt
     #   flyteidl
     #   google-api-core
     #   grpcio-status
@@ -266,7 +267,9 @@ protobuf==3.19.4
     #   proto-plus
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
-    # via flyteidl
+    # via
+    #   -c requirements.txt
+    #   flyteidl
 py==1.11.0
     # via
     #   -c requirements.txt
