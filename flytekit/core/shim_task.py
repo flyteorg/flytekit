@@ -98,7 +98,7 @@ class ExecutableTemplateShimTask(object):
                 logger.exception(f"Exception when executing {e}")
                 raise e
 
-            logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+            logger.debug("Task executed successfully in user level")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
             native_outputs = self.post_execute(new_user_params, native_outputs)

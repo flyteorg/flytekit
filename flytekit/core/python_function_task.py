@@ -20,7 +20,7 @@ from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from flytekit.core.base_task import Task, TaskResolverMixin
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
@@ -210,7 +210,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             for entity, model in model_entities.items():
                 # We only care about gathering tasks here. Launch plans are handled by
                 # propeller. Subworkflows should already be in the workflow spec.
-                if not isinstance(entity, Task):
+                if not isinstance(entity, Task) and not isinstance(entity, task_models.TaskTemplate):
+                    continue
+
+                # Handle FlyteTask
+                if isinstance(entity, task_models.TaskTemplate):
+                    tts.append(entity)
                     continue
 
                 # We are currently not supporting reference tasks since these will
@@ -227,17 +232,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 # Store the valid task template so that we can pass it to the
                 # DynamicJobSpec later
                 tts.append(model.template)
-
-            if ctx.serialization_settings.should_fast_serialize():
-                if (
-                    not ctx.execution_state
-                    or not ctx.execution_state.additional_context
-                    or not ctx.execution_state.additional_context.get("dynamic_addl_distro")
-                ):
-                    raise AssertionError(
-                        "Compilation for a dynamic workflow called in fast execution mode but no additional code "
-                        "distribution could be retrieved"
-                    )
 
             dj_spec = _dynamic_job.DynamicJobSpec(
                 min_successes=len(workflow_spec.template.nodes),
@@ -270,24 +264,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 return exception_scopes.user_entry_point(task_function)(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            is_fast_execution = bool(
-                ctx.execution_state
-                and ctx.execution_state.additional_context
-                and ctx.execution_state.additional_context.get("dynamic_addl_distro")
-            )
-            if is_fast_execution:
-                ctx = ctx.with_serialization_settings(
-                    ctx.serialization_settings.new_builder()
-                    .with_fast_serialization_settings(
-                        FastSerializationSettings(
-                            enabled=True,
-                            destination_dir=ctx.execution_state.additional_context.get("dynamic_dest_dir", "."),
-                            distribution_location=ctx.execution_state.additional_context.get("dynamic_addl_distro"),
-                        )
-                    )
-                    .build()
-                )
-
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:

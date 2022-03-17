@@ -9,7 +9,8 @@ from flyteidl.plugins import mpi_pb2 as _mpi_task
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask
-from flytekit.extend import SerializationSettings, TaskPlugins
+from flytekit.configuration import SerializationSettings
+from flytekit.extend import TaskPlugins
 from flytekit.models import common as _common
 
 

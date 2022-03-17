@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 import typing
 from dataclasses import dataclass
@@ -14,6 +13,7 @@ from great_expectations.exceptions import ValidationError
 
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
+from flytekit.loggers import logger
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Literal, Primitive, Scalar
 from flytekit.models.types import LiteralType
@@ -286,27 +286,14 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 }
             )
 
-        checkpoint_config = {
-            "class_name": "SimpleCheckpoint",
-            "validations": [
-                {
-                    "batch_request": final_batch_request,
-                    "expectation_suite_name": ge_conf.expectation_suite_name,
-                }
-            ],
-        }
-
         if ge_conf.checkpoint_params:
             checkpoint = SimpleCheckpoint(
                 f"_tmp_checkpoint_{ge_conf.expectation_suite_name}",
                 context,
-                **checkpoint_config,
                 **ge_conf.checkpoint_params,
             )
         else:
-            checkpoint = SimpleCheckpoint(
-                f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context, **checkpoint_config
-            )
+            checkpoint = SimpleCheckpoint(f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context)
 
         # identify every run uniquely
         run_id = RunIdentifier(
@@ -316,7 +303,15 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             }
         )
 
-        checkpoint_result = checkpoint.run(run_id=run_id)
+        checkpoint_result = checkpoint.run(
+            run_id=run_id,
+            validations=[
+                {
+                    "batch_request": final_batch_request,
+                    "expectation_suite_name": ge_conf.expectation_suite_name,
+                }
+            ],
+        )
         final_result = convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
 
         result_string = ""
@@ -333,7 +328,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             # raise a Great Expectations' exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        logging.info("Validation succeeded!")
+        logger.info("Validation succeeded!")
 
         return typing.cast(GreatExpectationsType, return_dataset)
 

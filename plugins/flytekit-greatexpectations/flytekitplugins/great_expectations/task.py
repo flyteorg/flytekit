@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 import shutil
 from dataclasses import dataclass
@@ -15,6 +14,7 @@ from great_expectations.exceptions import ValidationError
 from flytekit import PythonInstanceTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
+from flytekit.loggers import logger
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
@@ -231,26 +231,16 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                 }
             )
 
-        checkpoint_config = {
-            "class_name": "SimpleCheckpoint",
-            "validations": [
-                {
-                    "batch_request": final_batch_request,
-                    "expectation_suite_name": self._expectation_suite_name,
-                }
-            ],
-        }
-
         if self._checkpoint_params:
             checkpoint = SimpleCheckpoint(
                 f"_tmp_checkpoint_{self._expectation_suite_name}",
                 context,
-                **checkpoint_config,
                 **self._checkpoint_params,
             )
         else:
             checkpoint = SimpleCheckpoint(
-                f"_tmp_checkpoint_{self._expectation_suite_name}", context, **checkpoint_config
+                f"_tmp_checkpoint_{self._expectation_suite_name}",
+                context,
             )
 
         # identify every run uniquely
@@ -261,7 +251,15 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             }
         )
 
-        checkpoint_result = checkpoint.run(run_id=run_id)
+        checkpoint_result = checkpoint.run(
+            run_id=run_id,
+            validations=[
+                {
+                    "batch_request": final_batch_request,
+                    "expectation_suite_name": self._expectation_suite_name,
+                }
+            ],
+        )
         final_result = convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
 
         result_string = ""
@@ -278,6 +276,6 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             # raise a Great Expectations' exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        logging.info("Validation succeeded!")
+        logger.info("Validation succeeded!")
 
         return final_result

@@ -155,12 +155,15 @@ Common Flyte IDL Objects
 
 import sys
 
+import flytekit.configuration.internal
+
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
     from importlib.metadata import entry_points
 
-from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
+from flytekit import configuration
+from flytekit.configuration import internal as _internal
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.checkpointer import Checkpoint
@@ -169,6 +172,7 @@ from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack
@@ -188,14 +192,12 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, schema
-
-if USE_STRUCTURED_DATASET.get():
-    from flytekit.types.structured.structured_dataset import (
-        StructuredDataset,
-        StructuredDatasetFormat,
-        StructuredDatasetTransformerEngine,
-        StructuredDatasetType,
-    )
+from flytekit.types.structured.structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetFormat,
+    StructuredDatasetTransformerEngine,
+    StructuredDatasetType,
+)
 
 __version__ = "0.0.0+develop"
 

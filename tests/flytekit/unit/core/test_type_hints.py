@@ -14,13 +14,17 @@ import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
+from typing_extensions import Annotated
 
 import flytekit
+import flytekit.configuration
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.context_manager import ExecutionState
+from flytekit.core.data_persistence import FileAccessProvider, tmp_dir_prefix
+from flytekit.core.hash import HashMethod
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
@@ -39,7 +43,7 @@ from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="proj",
     domain="dom",
     version="123",
@@ -53,7 +57,7 @@ def test_default_wf_params_works():
     def my_task(a: int):
         wf_params = flytekit.current_context()
         assert wf_params.execution_id == "ex:local:local:local"
-        assert "/tmp/flyte/" in wf_params.raw_output_prefix
+        assert tmp_dir_prefix in wf_params.raw_output_prefix
 
     my_task(a=3)
     assert context_manager.FlyteContextManager.size() == 1
@@ -383,9 +387,9 @@ def test_flyte_file_in_dataclass():
         assert fs.a.remote_source == "s3://somewhere"
         assert fs.b.a.remote_source == "s3://somewhere"
         assert fs.b.b.remote_source == "s3://somewhere"
-        assert "/tmp/flyte/" in fs.a.path
-        assert "/tmp/flyte/" in fs.b.a.path
-        assert "/tmp/flyte/" in fs.b.b.path
+        assert tmp_dir_prefix in fs.a.path
+        assert tmp_dir_prefix in fs.b.a.path
+        assert tmp_dir_prefix in fs.b.b.path
 
         return fs.a.path
 
@@ -399,8 +403,8 @@ def test_flyte_file_in_dataclass():
         dyn(fs=n1)
         return t2(fs=n1), t3(fs=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere")[0].path
-    assert "/tmp/flyte/" in wf(path="s3://somewhere")[1].path
+    assert tmp_dir_prefix in wf(path="s3://somewhere")[0].path
+    assert tmp_dir_prefix in wf(path="s3://somewhere")[1].path
     assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
 
 
@@ -432,7 +436,7 @@ def test_flyte_directory_in_dataclass():
         n1 = t1(path=path)
         return t2(fs=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+    assert tmp_dir_prefix in wf(path="s3://somewhere").path
 
 
 def test_structured_dataset_in_dataclass():
@@ -562,7 +566,7 @@ def test_wf1_with_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
@@ -600,13 +604,17 @@ def test_wf1_with_fast_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
                 image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
                 env={},
-                fast_serialization_settings=FastSerializationSettings(enabled=True),
+                fast_serialization_settings=FastSerializationSettings(
+                    enabled=True,
+                    destination_dir="/User/flyte/workflows",
+                    distribution_location="s3://my-s3-bucket/fast/123",
+                ),
             )
         )
     ) as ctx:
@@ -614,10 +622,6 @@ def test_wf1_with_fast_dynamic():
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
                 )
             )
         ) as ctx:
@@ -862,7 +866,7 @@ def test_lp_serialize():
     lp = launch_plan.LaunchPlan.create("serialize_test1", my_subwf)
     lp_with_defaults = launch_plan.LaunchPlan.create("serialize_test2", my_subwf, default_inputs={"a": 3})
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
@@ -1246,7 +1250,7 @@ def test_environment():
         x = t1(a=a)
         return x
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1279,7 +1283,7 @@ def test_resources():
         x = t1(a=a)
         return x
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1394,7 +1398,7 @@ def test_nested_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
-    settings = context_manager.SerializationSettings(
+    settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1599,3 +1603,110 @@ def test_error_messages():
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
         foo3(a=[{"hello": 2}])
+
+
+def test_task_annotate_primitive_type_has_no_effect():
+    @task
+    def plus_two(
+        a: int,
+    ) -> Annotated[int, HashMethod(str)]:  # Note the use of `str` as the hash function for ints. This has no effect.
+        return a + 2
+
+    assert plus_two(a=1) == 3
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = plus_two.dispatch_execute(
+        ctx,
+        _literal_models.LiteralMap(
+            literals={
+                "a": _literal_models.Literal(
+                    scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=3))
+                )
+            }
+        ),
+    )
+    assert output_lm.literals["o0"].scalar.primitive.integer == 5
+    assert output_lm.literals["o0"].hash is None
+
+
+def test_task_hash_return_pandas_dataframe():
+    constant_value = "road-hash"
+
+    def constant_function(df: pandas.DataFrame) -> str:
+        return constant_value
+
+    @task
+    def t0() -> Annotated[pandas.DataFrame, HashMethod(constant_function)]:
+        return pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = t0.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    assert output_lm.literals["o0"].hash == constant_value
+
+    # Confirm that the literal containing a hash does not have any effect on the scalar.
+    df = TypeEngine.to_python_value(ctx, output_lm.literals["o0"], pandas.DataFrame)
+    expected_df = pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    assert df.equals(expected_df)
+
+
+def test_workflow_containing_multiple_annotated_tasks():
+    def hash_function_t0(df: pandas.DataFrame) -> str:
+        return "hash-0"
+
+    @task
+    def t0() -> Annotated[pandas.DataFrame, HashMethod(hash_function_t0)]:
+        return pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+
+    def hash_function_t1(df: pandas.DataFrame) -> str:
+        return "hash-1"
+
+    @task
+    def t1() -> Annotated[pandas.DataFrame, HashMethod(hash_function_t1)]:
+        return pandas.DataFrame(data={"col1": [10, 20], "col2": [30, 40]})
+
+    @task
+    def t2() -> pandas.DataFrame:
+        return pandas.DataFrame(data={"col1": [100, 200], "col2": [300, 400]})
+
+    # Auxiliary task used to sum up the dataframes. It demonstrates that the use of `Annotated` does not
+    # have any impact in the definition and execution of cached or uncached downstream tasks
+    @task
+    def sum_dataframes(df0: pandas.DataFrame, df1: pandas.DataFrame, df2: pandas.DataFrame) -> pandas.DataFrame:
+        return df0 + df1 + df2
+
+    @workflow
+    def wf() -> pandas.DataFrame:
+        df0 = t0()
+        df1 = t1()
+        df2 = t2()
+        return sum_dataframes(df0=df0, df1=df1, df2=df2)
+
+    df = wf()
+
+    expected_df = pandas.DataFrame(data={"col1": [1 + 10 + 100, 2 + 20 + 200], "col2": [3 + 30 + 300, 4 + 40 + 400]})
+    assert expected_df.equals(df)
+
+
+def test_list_containing_multiple_annotated_pandas_dataframes():
+    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
+        return str(pandas.util.hash_pandas_object(df))
+
+    @task
+    def produce_list_of_annotated_dataframes() -> typing.List[
+        Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]
+    ]:
+        return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [4, 5, 6]})]
+
+    @task(cache=True, cache_version="v0")
+    def sum_list_of_pandas_dataframes(lst: typing.List[pandas.DataFrame]) -> pandas.DataFrame:
+        return sum(lst)
+
+    @workflow
+    def wf() -> pandas.DataFrame:
+        lst = produce_list_of_annotated_dataframes()
+        return sum_list_of_pandas_dataframes(lst=lst)
+
+    df = wf()
+
+    expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
+    assert expected_df.equals(df)

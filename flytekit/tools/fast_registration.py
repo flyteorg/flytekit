@@ -1,4 +1,5 @@
 import os as _os
+import posixpath
 import subprocess as _subprocess
 import tarfile as _tarfile
 import tempfile as _tempfile
@@ -50,7 +51,7 @@ def get_additional_distribution_loc(remote_location: str, identifier: str) -> st
     :param Text identifier:
     :return Text:
     """
-    return _os.path.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
+    return posixpath.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
 
 
 def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: str, dry_run=False) -> str:
@@ -100,8 +101,7 @@ def download_distribution(additional_distribution: str, destination: str):
     """
     file_access.get_data(additional_distribution, destination)
     tarfile_name = _os.path.basename(additional_distribution)
-    file_suffix = _Path(tarfile_name).suffixes
-    if len(file_suffix) != 2 or file_suffix[0] != ".tar" or file_suffix[1] != ".gz":
+    if not tarfile_name.endswith(".tar.gz"):
         raise ValueError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.

@@ -14,21 +14,22 @@ from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.remote import interface as _interfaces
 from flytekit.remote import nodes as _nodes
+from flytekit.remote.remote_callable import RemoteEntity
 
 
-class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowTemplate):
+class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_models.WorkflowTemplate):
     """A class encapsulating a remote Flyte workflow."""
 
     def __init__(
         self,
+        id: id_models.Identifier,
         nodes: List[_nodes.FlyteNode],
         interface,
         output_bindings,
-        id: id_models.Identifier,
         metadata,
         metadata_defaults,
         subworkflows: Optional[Dict[id_models.Identifier, _workflow_models.WorkflowTemplate]] = None,
-        tasks: Optional[Dict[id_models.Identifier, _task_models.TaskSpec]] = None,
+        tasks: Optional[Dict[id_models.Identifier, _task_models.TaskTemplate]] = None,
         launch_plans: Optional[Dict[id_models.Identifier, launch_plan_models.LaunchPlanSpec]] = None,
         compiled_closure: Optional[compiler_models.CompiledWorkflowClosure] = None,
     ):
@@ -57,12 +58,16 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         self._tasks = tasks
         self._launch_plans = launch_plans
         self._compiled_closure = compiled_closure
-
         self._node_map = None
+        self._name = id.name
 
     @property
-    def interface(self) -> _interfaces.TypedInterface:
-        return super(FlyteWorkflow, self).interface
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def sub_workflows(self) -> Optional[Dict[id_models.Identifier, _workflow_models.WorkflowTemplate]]:
+        return self._subworkflows
 
     @property
     def entity_type_text(self) -> str:
@@ -115,8 +120,8 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
 
         # No inputs/outputs specified, see the constructor for more information on the overrides.
         wf = cls(
-            nodes=list(node_map.values()),
             id=base_model.id,
+            nodes=list(node_map.values()),
             metadata=base_model.metadata,
             metadata_defaults=base_model.metadata_defaults,
             interface=_interfaces.TypedInterface.promote_from_model(base_model.interface),
@@ -160,6 +165,3 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         )
         flyte_wf._compiled_closure = closure
         return flyte_wf
-
-    def __call__(self, *args, **input_map):
-        raise NotImplementedError

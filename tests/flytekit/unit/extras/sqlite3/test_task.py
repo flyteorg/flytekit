@@ -6,7 +6,7 @@ from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema
 
-EXAMPLE_DB = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
+EXAMPLE_DB = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
 
 # This task belongs to test_task_static but is intentionally here to help test tracking
 tk = SQLite3Task(
@@ -28,7 +28,7 @@ def test_task_static():
 
 def test_task_schema():
     # sqlite3_start
-    DB_LOCATION = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
+    DB_LOCATION = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
 
     sql_task = SQLite3Task(
         "test",

@@ -2,8 +2,9 @@ import typing
 
 import pytest
 
-from flytekit.core import context_manager
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Image, ImageConfig
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -34,7 +35,7 @@ my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typin
 fields = [("some_int", pa.int32()), ("some_string", pa.string())]
 arrow_schema = pa.schema(fields)
 
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="proj",
     domain="dom",
     version="123",
@@ -221,6 +222,7 @@ def test_sd():
             self,
             ctx: FlyteContext,
             flyte_value: literals.StructuredDataset,
+            current_task_metadata: StructuredDatasetMetadata,
         ) -> typing.Union[typing.Generator[pd.DataFrame, None, None]]:
             yield pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
@@ -241,8 +243,9 @@ def test_sd():
             self,
             ctx: FlyteContext,
             flyte_value: literals.StructuredDataset,
+            current_task_metadata: StructuredDatasetMetadata,
         ) -> pd.DataFrame:
-            pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+            return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
     StructuredDatasetTransformerEngine.register(
         MockPandasDecodingHandlers(pd.DataFrame, "tmpfs"), default_for_type=False, override=True
@@ -288,7 +291,7 @@ def test_to_python_value_with_incoming_columns():
 
     # check when columns are not specified, should pull both and add column information.
     sd = fdt.to_python_value(ctx, lit, StructuredDataset)
-    assert sd.metadata.structured_dataset_type.columns[0].name == "age"
+    assert len(sd.metadata.structured_dataset_type.columns) == 2
 
     # should also work if subset type is just an annotated pd.DataFrame
     subset_pd_type = Annotated[pd.DataFrame, kwtypes(age=int)]

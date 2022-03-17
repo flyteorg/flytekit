@@ -5,34 +5,41 @@ import tempfile
 from flytekitplugins.fsspec.persist import FSSpecPersistence, s3_setup_args
 from fsspec.implementations.local import LocalFileSystem
 
-from flytekit.configuration import aws
+from flytekit.configuration import S3Config
 
 
 def test_s3_setup_args():
-    kwargs = s3_setup_args()
+    kwargs = s3_setup_args(S3Config())
     assert kwargs == {}
 
-    with aws.S3_ENDPOINT.get_patcher("http://localhost:30084"):
-        kwargs = s3_setup_args()
-        assert kwargs == {"client_kwargs": {"endpoint_url": "http://localhost:30084"}}
+    kwargs = s3_setup_args(S3Config(endpoint="http://localhost:30084"))
+    assert kwargs == {"client_kwargs": {"endpoint_url": "http://localhost:30084"}}
 
-    with aws.S3_ACCESS_KEY_ID.get_patcher("access"):
-        kwargs = s3_setup_args()
-        assert kwargs == {}
-        assert os.environ[aws.S3_ACCESS_KEY_ID_ENV_NAME] == "access"
+    kwargs = s3_setup_args(S3Config(access_key_id="access"))
+    assert kwargs == {"key": "access"}
 
 
 def test_get_protocol():
-    assert FSSpecPersistence._get_protocol("s3://abc") == "s3"
-    assert FSSpecPersistence._get_protocol("/abc") == "file"
-    assert FSSpecPersistence._get_protocol("file://abc") == "file"
-    assert FSSpecPersistence._get_protocol("gs://abc") == "gs"
-    assert FSSpecPersistence._get_protocol("sftp://abc") == "sftp"
-    assert FSSpecPersistence._get_protocol("abfs://abc") == "abfs"
+    assert FSSpecPersistence.get_protocol("s3://abc") == "s3"
+    assert FSSpecPersistence.get_protocol("/abc") == "file"
+    assert FSSpecPersistence.get_protocol("file://abc") == "file"
+    assert FSSpecPersistence.get_protocol("gs://abc") == "gs"
+    assert FSSpecPersistence.get_protocol("sftp://abc") == "sftp"
+    assert FSSpecPersistence.get_protocol("abfs://abc") == "abfs"
+
+
+def test_get_anonymous_filesystem():
+    fp = FSSpecPersistence()
+    fs = fp.get_anonymous_filesystem("/abc")
+    assert fs is None
+    fs = fp.get_anonymous_filesystem("s3://abc")
+    assert fs is not None
+    assert fs.protocol == ["s3", "s3a"]
 
 
 def test_get_filesystem():
-    fs = FSSpecPersistence._get_filesystem("/abc")
+    fp = FSSpecPersistence()
+    fs = fp.get_filesystem("/abc")
     assert fs is not None
     assert isinstance(fs, LocalFileSystem)
 
