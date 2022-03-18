@@ -439,16 +439,18 @@ class FlyteRemote(object):
         m = OrderedDict()
         workflow_spec = get_serializable_workflow(m, serialization_settings, entity)
         ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        self.client.create_workflow(ident, workflow_spec=workflow_spec)
-        if default_launch_plan:
-            default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
-            self.register_launch_plan(default_lp, serialization_settings, version=version, options=options)
-            remote_logger.debug("Created default launch plan for Workflow")
 
         if all_downstream:
             self._register_entity_if_not_exists(
                 entity, serialization_settings=serialization_settings, version=version, options=options
             )
+
+        self.client.create_workflow(ident, workflow_spec=workflow_spec)
+
+        if default_launch_plan:
+            default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+            self.register_launch_plan(default_lp, serialization_settings, version=version, options=options)
+            remote_logger.debug("Created default launch plan for Workflow")
 
         return self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
 
@@ -473,7 +475,7 @@ class FlyteRemote(object):
 
         if serialization_settings is None:
             serialization_settings = SerializationSettings(
-                image_config=None, project=self.default_project, domain=self.default_domain
+                image_config=self._config.image_config, project=self.default_project, domain=self.default_domain
             )
 
         raw = None
@@ -620,8 +622,6 @@ class FlyteRemote(object):
         project: str,
         domain: str,
         name: str,
-        from_project: str,
-        from_domain: str,
         version: str,
     ) -> ResolvedIdentifiers:
         """
@@ -629,8 +629,8 @@ class FlyteRemote(object):
         auto-generated version, and ultimately the entity project/domain if entity is a remote flyte entity.
         """
         ident = ResolvedIdentifiers(
-            project=from_project or project or self.default_project,
-            domain=from_domain or domain or self.default_domain,
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
             name=name or entity.name,
             version=version,
         )
@@ -651,8 +651,6 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
-        from_project: str = None,
-        from_domain: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
@@ -665,8 +663,6 @@ class FlyteRemote(object):
         - ``LaunchPlan`` objects.
 
         :param options:
-        :param from_domain:
-        :param from_project:
         :param entity: entity to execute
         :param inputs: dictionary mapping argument names to values
         :param project: execute entity in this project. If entity doesn't exist in the project, register the entity
@@ -699,8 +695,6 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
-        from_project: str = None,
-        from_domain: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
@@ -730,8 +724,6 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
-        from_project: str = None,
-        from_domain: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
@@ -750,8 +742,6 @@ class FlyteRemote(object):
             execution_name=execution_name,
             options=options,
             wait=wait,
-            from_domain=from_domain,
-            from_project=from_project,
             version=version,
             name=name,
         )
@@ -769,7 +759,6 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
-        from_project: str = None,
         from_domain: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
@@ -790,7 +779,7 @@ class FlyteRemote(object):
                     f" image cannot be automatically deducted. Please register and then execute."
                 )
             ss = SerializationSettings(
-                image_config=None,
+                image_config=self._config.image_config,
                 project=project or self.default_project,
                 domain=domain or self._default_domain,
                 version=version,
@@ -816,18 +805,14 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
-        from_project: str = None,
-        from_domain: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Execute an @workflow-decorated function."""
-        resolved_identifiers = self._resolve_identifier_kwargs(
-            entity, project, domain, name, from_project, from_domain, version
-        )
+        resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
         ss = SerializationSettings(
-            image_config=None,
+            image_config=self._config.image_config,
             project=project or self.default_project,
             domain=domain or self._default_domain,
             version=version,
@@ -870,21 +855,19 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
-        from_project: str = None,
-        from_domain: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """Execute a LaunchPlan object."""
-        resolved_identifiers = self._resolve_identifier_kwargs(
-            entity, project, domain, name, from_project, from_domain, version
-        )
+        resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         dict_ids = asdict(resolved_identifiers)
         try:
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**dict_ids)
         except Exception:
             ss = SerializationSettings(
-                image_config=None, project=resolved_identifiers.project, domain=resolved_identifiers.domain
+                image_config=self._config.image_config,
+                project=resolved_identifiers.project,
+                domain=resolved_identifiers.domain,
             )
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity, serialization_settings=ss, version=resolved_identifiers.version
@@ -898,8 +881,6 @@ class FlyteRemote(object):
             execution_name=execution_name,
             options=options,
             wait=wait,
-            from_domain=from_domain,
-            from_project=from_project,
             version=version,
             name=name,
         )

@@ -459,6 +459,7 @@ class Config(object):
     secrets: SecretsConfig = SecretsConfig()
     stats: StatsConfig = StatsConfig()
     data_config: DataConfig = DataConfig()
+    image_config: ImageConfig = ImageConfig()
     local_sandbox_path: str = tempfile.mkdtemp(prefix="flyte")
 
     def with_params(
