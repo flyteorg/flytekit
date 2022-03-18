@@ -19,6 +19,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
+from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
@@ -44,11 +45,6 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
-
-try:
-    from typing import Annotated, get_args, get_origin
-except ImportError:
-    from typing_extensions import Annotated, get_args, get_origin
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -875,6 +871,8 @@ def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
 
         return _are_types_castable(upstream.map_value_type, downstream.map_value_type)
 
+    # TODO: Structured dataset type matching requires that downstream structured datasets
+    # are a strict sub-set of the upstream structured dataset.
     if upstream.structured_dataset_type is not None:
         if downstream.structured_dataset_type is None:
             return False
