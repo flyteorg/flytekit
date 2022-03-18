@@ -1145,7 +1145,7 @@ def test_nested_annotated():
     """
     Test to show that nested Annotated types are flattened.
     """
-    pt = Annotated[Annotated[int, 'inner-annotation'], 'outer-annotation']
+    pt = Annotated[Annotated[int, "inner-annotation"], "outer-annotation"]
     lt = TypeEngine.to_literal_type(pt)
     assert lt.simple == model_types.SimpleType.INTEGER
 
