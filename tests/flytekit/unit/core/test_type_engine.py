@@ -1141,6 +1141,20 @@ def test_dict_to_literal_map_with_wrong_input_type():
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
 
 
+def test_nested_annotated():
+    """
+    Test to show that nested Annotated types are flattened.
+    """
+    pt = Annotated[Annotated[int, 'inner-annotation'], 'outer-annotation']
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.simple == model_types.SimpleType.INTEGER
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 42, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert v == 42
+
+
 def test_pass_annotated_to_downstream_tasks():
     """
     Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
