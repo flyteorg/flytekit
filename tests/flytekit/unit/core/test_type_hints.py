@@ -1621,7 +1621,7 @@ def test_union_type():
     assert wf(a=2) == 2
     assert wf(a="2") == "2"
     assert wf(a=2.0) == 2.0
-    file = tempfile.NamedTemporaryFile()
+    file = tempfile.NamedTemporaryFile(delete=False)
     assert isinstance(wf(a=FlyteFile(file.name)), FlyteFile)
     assert isinstance(wf(a=FlyteSchema()), FlyteSchema)
     assert wf(a=[1, 2, 3]) == [1, 2, 3]
