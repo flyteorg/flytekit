@@ -1,27 +1,16 @@
-"""
-This module provides the ``FlyteRemote`` object, which is the end-user's main starting point for interacting
-with a Flyte backend in an interactive and programmatic way. This of this experience as kind of like the web UI
-but in Python object form.
-"""
 from __future__ import annotations
 
 import textwrap
-import typing
 from typing import TYPE_CHECKING
 
 from flytekit.models import schedule, interface as interface_models
-from flytekit.models.admin import common as admin_common_models
 from flytekit.models.core import execution as execution_models
 from flytekit.models.core import identifier as identifier_models
-
 
 MAX_OFFSET = 20
 
 from flytekit.models import literals as literal_models
-from flytekit.models.execution import (
-    NodeExecutionGetDataResponse,
-    WorkflowExecutionGetDataResponse,
-)
+
 if TYPE_CHECKING:
     from flytekit.remote.executions import FlyteWorkflowExecution
     from flytekit.remote.nodes import FlyteNode
@@ -29,10 +18,6 @@ if TYPE_CHECKING:
     from flytekit.remote.workflow import FlyteWorkflow
     from flytekit.remote.interface import TypedInterface
     from flytekit.remote.launch_plan import FlyteLaunchPlan
-
-ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
-
-MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
 
 
 def spaces(i: int) -> str:
