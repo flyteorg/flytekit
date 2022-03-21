@@ -3,10 +3,12 @@ import datetime
 import functools
 import os
 import random
+import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
+from textwrap import dedent
 
 import pandas
 import pandas as pd
@@ -30,7 +32,7 @@ from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
-from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
+from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
@@ -1603,6 +1605,185 @@ def test_error_messages():
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
         foo3(a=[{"hello": 2}])
+
+
+def test_union_type():
+    ut = typing.Union[int, str, float, FlyteFile, FlyteSchema, typing.List[int], typing.Dict[str, int]]
+
+    @task
+    def t1(a: ut) -> ut:
+        return a
+
+    @workflow
+    def wf(a: ut) -> ut:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a="2") == "2"
+    assert wf(a=2.0) == 2.0
+    file = tempfile.NamedTemporaryFile(delete=False)
+    assert isinstance(wf(a=FlyteFile(file.name)), FlyteFile)
+    assert isinstance(wf(a=FlyteSchema()), FlyteSchema)
+    assert wf(a=[1, 2, 3]) == [1, 2, 3]
+    assert wf(a={"a": 1}) == {"a": 1}
+
+    @task
+    def t2(a: typing.Union[float, dict]) -> typing.Union[float, dict]:
+        return a
+
+    @workflow
+    def wf2(a: typing.Union[int, str]) -> typing.Union[int, str]:
+        return t2(a=a)
+
+    with pytest.raises(
+        TypeError,
+        match=dedent(
+            r"""
+            Cannot convert from scalar {
+              union {
+                value {
+                  scalar {
+                    primitive {
+                      string_value: "2"
+                    }
+                  }
+                }
+                type {
+                  simple: STRING
+                  structure {
+                    tag: "str"
+                  }
+                }
+              }
+            }
+             to typing.Union\[float, dict\] \(using tag str\)
+        """
+        )[1:-1],
+    ):
+        assert wf2(a="2") == "2"
+
+
+def test_optional_type():
+    @task
+    def t1(a: typing.Optional[int]) -> typing.Optional[int]:
+        return a
+
+    @workflow
+    def wf(a: typing.Optional[int]) -> typing.Optional[int]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=None) is None
+
+
+def test_optional_type_implicit_wrapping():
+    @task
+    def t1(a: int) -> typing.Optional[int]:
+        return a if a > 0 else None
+
+    @workflow
+    def wf(a: int) -> typing.Optional[int]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=-10) is None
+
+
+def test_union_type_implicit_wrapping():
+    @task
+    def t1(a: int) -> typing.Union[int, str]:
+        return a if a > 0 else str(a)
+
+    @workflow
+    def wf(a: int) -> typing.Union[int, str]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=-10) == "-10"
+
+
+def test_union_type_ambiguity_checking():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            LiteralType(simple=SimpleType.INTEGER),
+            lambda x: _literal_models.Literal(
+                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))
+            ),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    @task
+    def t1(a: typing.Union[int, MyInt]) -> int:
+        if isinstance(a, MyInt):
+            return a.val
+        return a
+
+    @workflow
+    def wf(a: int) -> int:
+        return t1(a=a)
+
+    with pytest.raises(
+        TypeError, match="Ambiguous choice of variant for union type. Both int and MyInt transformers match"
+    ):
+        assert wf(a=10) == 10
+
+    del TypeEngine._REGISTRY[MyInt]
+
+
+def test_union_type_ambiguity_resolution():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            LiteralType(simple=SimpleType.INTEGER),
+            lambda x: _literal_models.Literal(
+                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))
+            ),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    @task
+    def t1(a: typing.Union[int, MyInt]) -> str:
+        if isinstance(a, MyInt):
+            return f"MyInt {str(a.val)}"
+        return str(a)
+
+    @task
+    def t2(a: int) -> typing.Union[int, MyInt]:
+        if a < 0:
+            return MyInt(a)
+        return a
+
+    @workflow
+    def wf(a: int) -> str:
+        return t1(a=t2(a=a))
+
+    assert wf(a=10) == "10"
+    assert wf(a=-10) == "MyInt -10"
+
+    del TypeEngine._REGISTRY[MyInt]
 
 
 def test_task_annotate_primitive_type_has_no_effect():
