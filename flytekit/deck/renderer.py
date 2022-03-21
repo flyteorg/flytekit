@@ -1,11 +1,16 @@
-import typing
+from typing import Any, Optional, Protocol
 
-import pandas as pd
+try:
+    from typing import runtime_checkable
+except ImportError:
+    from typing_extensions import runtime_checkable
+
+import pandas
 
 
-@typing.runtime_checkable
-class Renderable(typing.Protocol):
-    def to_html(self, python_value: typing.Any) -> str:
+@runtime_checkable
+class Renderable(Protocol):
+    def to_html(self, python_value: Any) -> str:
         """Convert a object(markdown, pandas.dataframe) to HTML and return HTML as a unicode string.
         Returns: An HTML document as a string.
         """
@@ -17,9 +22,9 @@ class TopFrameRenderer:
     Render a DataFrame as an HTML table.
     """
 
-    def __init__(self, max_rows: typing.Optional[int] = None):
+    def __init__(self, max_rows: Optional[int] = None):
         self._max_rows = max_rows
 
-    def to_html(self, dataframe: pd.DataFrame) -> str:
-        assert isinstance(dataframe, pd.DataFrame)
-        return dataframe.to_html(max_rows=self._max_rows)
+    def to_html(self, df: pandas.DataFrame) -> str:
+        assert isinstance(df, pandas.DataFrame)
+        return df.to_html(max_rows=self._max_rows)
