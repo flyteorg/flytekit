@@ -200,6 +200,15 @@ def test_asdf4():
 
 
 def test_asdf5():
+    cwc = get_resources.get_merge_sort_cwc()
+    fw = FlyteWorkflow.promote_from_closure(cwc)
+    print("\n------------------------------------")
+    print(str(fw))
+    print("====================================")
+    print(repr(fw))
+
+
+def test_asdf6():
     e = get_resources.get_merge_sort_exec()
     fw = FlyteWorkflowExecution.promote_from_model(e)
     print("\n------------------------------------")

@@ -58,7 +58,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
     def name(self) -> str:
         return self._name
 
-    def verbose_string(self) -> str:
+    def __str__(self) -> str:
         header = f"""\
         Workflow ID:
           [{self.id.project}/{self.id.domain}]

@@ -10,6 +10,7 @@ from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
 from flytekit.remote.workflow import FlyteWorkflow
+from flytekit.remote import printer
 
 
 class FlyteTaskExecution(admin_task_execution_models.TaskExecution):
@@ -87,6 +88,9 @@ class FlyteWorkflowExecution(execution_models.Execution):
         self._raw_inputs: Optional[LiteralsResolver] = None
         self._raw_outputs: Optional[LiteralsResolver] = None
 
+    def verbose_string(self) -> str:
+        return printer.render_workflow_execution(self)
+
     @property
     def node_executions(self) -> Dict[str, "FlyteNodeExecution"]:
         """Get a dictionary of node executions that are a part of this workflow execution."""
@@ -123,7 +127,7 @@ class FlyteWorkflowExecution(execution_models.Execution):
     @property
     def raw_inputs(self) -> LiteralsResolver:
         if self._raw_inputs is None:
-            raise ValueError(f"WF execution: {self} doesn't have raw inputs set")
+            raise ValueError(f"WF execution: {self.id} doesn't have raw inputs set")
         return self._raw_inputs
 
     @property
@@ -192,8 +196,9 @@ class FlyteNodeExecution(node_execution_models.NodeExecution):
         )
 
     @property
-    def executions(self) -> List[Union[FlyteTaskExecution, FlyteWorkflowExecution]]:
-        return self.task_executions or self._underlying_node_executions or []
+    def executions(self) -> Union[List[FlyteTaskExecution, FlyteWorkflowExecution], Dict[str, FlyteNodeExecution]]:
+        # Todo: Awkward in that we return both list and dict, pick one or the other
+        return self.task_executions or self.workflow_executions or self.subworkflow_node_executions or []
 
     @property
     def inputs(self) -> Dict[str, Any]:
