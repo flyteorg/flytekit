@@ -23,8 +23,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
-from flytekit.configuration.deck import ENABLE_DECK
 from flytekit.configuration import SerializationSettings
+from flytekit.configuration import internal as _internal
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
@@ -539,7 +539,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             new_user_params.decks.append(input_deck)
             new_user_params.decks.append(output_deck)
 
-            if ENABLE_DECK.get():
+            if _internal.Deck.ENABLE_DECK.read() is not False:
                 _output_deck(self.name.split(".")[-1], new_user_params)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed

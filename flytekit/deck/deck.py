@@ -50,7 +50,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     decks = new_user_params.decks
     ctx = FlyteContext.current_context()
 
-    # output_dir = "/Users/kevin/git/flytekit/deck_outputs"
+    # TODO: upload deck file to remote filesystems (s3, gcs)
     output_dir = ctx.file_access.get_random_local_directory()
 
     for deck in decks:
@@ -65,7 +65,6 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     with open(deck_path, "w") as f:
         f.write(template.render(metadata=deck_map))
 
-    # TODO: upload deck file to remote filesystems (s3, gcs)
     print(f"{task_name} output flytekit deck html to file://{deck_path}")
 
 

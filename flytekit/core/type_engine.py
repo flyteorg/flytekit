@@ -689,7 +689,10 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(expected_python_type)
         if get_origin(expected_python_type) is Annotated:
             _, renderer = get_args(expected_python_type)
-            return renderer.to_html(python_val)
+            from flytekit.deck.renderer import Renderable
+
+            if isinstance(renderer, Renderable):
+                return renderer.to_html(python_val)
         return transformer.to_html(ctx, python_val, expected_python_type)
 
     @classmethod
