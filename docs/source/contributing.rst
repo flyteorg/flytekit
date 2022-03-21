@@ -6,7 +6,7 @@ Flytekit Contribution Guide
 
 First off, thank you for thinking about contributing! Below you'll find instructions that will hopefully guide you through how to fix, improve, and extend Flytekit.
 
-Please also take some time to read through the :std:ref:`design guides <design>`, which describe the various parts of Flytekit and should make contributing easier.
+Take some time to read through the :std:ref:`design guides <design>`, which describe the various parts of Flytekit and should make contributing easier.
 
 *******************
 📜 Background
@@ -17,28 +17,28 @@ Below is a listing of the most important packages that comprise the flytekit SDK
 - ``flytekit/core``
   This holds all the core functionality of the new API.
 - ``flytekit/types``
-  We bundle some special types like ``FlyteFile, FlyteSchema etc`` by default here.
+  We bundle some special types like ``FlyteFile, FlyteSchema``,etc.
 - ``flytekit/extend``
-  This is the future home of extension points, and currently serves as the raw documentation for extensions.
+  This is the future home of extension points and currently serves as the raw documentation for extensions.
 - ``flytekit/extras``
-  This contains code that we want bundled with Flytekit but not everyone may find useful (for example AWS and GCP
+  This contains code that we want bundled with Flytekit. Still, not everyone may find it useful (For example, AWS and GCP
   specific logic).
 - ``flytekit/remote``
   This implements the interface to interact with the Flyte service. Think of the code here as the Python-object version of Console.
 - ``flytekit/testing``
-  is the future home for testing functionality like ``mock`` etc, and currently serves as documentation.
+  is the future home for testing functionality like ``mock`` and currently serves as documentation.
   All test extensions should be imported from here.
 - ``flytekit/models``
-  Protobuf generated Python code is not terribly user-friendly, so we improve upon those ``flyteidl`` classes here.
+  Protobuf generated Python code is not user-friendly, so we improve upon those ``flyteidl`` classes here.
 - ``plugins``
-  is the source of all plugins
+  are the source of all plugins
 - ``flytekit/bin/entrypoint.py``
   The run time entrypoint for flytekit. When a task kicks off, this is where the click command goes.
 - ``flytekit/clis``
   This is the home for the CLIs.
 - ``flytekit/configuration``
-  This holds all the configuration objects, but dependency on configuration should be carefully considered as it
-  makes compiled Flyte tasks and workflows less portable (i.e. if you run ``pyflyte package`` can someone else use
+  This holds all the configuration objects. Still, dependency on configuration should be carefully considered as it
+  makes compiled Flyte tasks and workflows less portable (i.e., if you run the ``pyflyte package``, can someone else use
   those serialized objects).
 
 Please also see the :std:ref:`design overview section <design>` for more in-depth information.
@@ -51,7 +51,7 @@ Please also see the :std:ref:`design overview section <design>` for more in-dept
 Setup (Do Once)
 ===============
 
-We recommend using a virtual environment to develop Flytekit. Inside the top level Flytekit repo folder, run: ::
+We recommend using a virtual environment to develop Flytekit. Inside the top-level Flytekit repo folder, run: ::
 
     virtualenv ~/.virtualenvs/flytekit
     source ~/.virtualenvs/flytekit/bin/activate
@@ -63,16 +63,16 @@ Install `shellcheck <https://github.com/koalaman/shellcheck>`__ for linting shel
 
 .. note::
     It's important to maintain separate virtualenvs for flytekit *development* and Flytekit *use*. The reason is that installing a Python
-    library in editable mode will link it to your source code. That is, the behavior will change as you work on the code,
+    library in editable mode will link it to your source code. The behavior will change as you work on the code,
     check out different branches, etc.
 
-This will install Flytekit dependencies and also install Flytekit itself in editable mode. This basically links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``.
+This will install Flytekit dependencies and also install Flytekit itself in editable mode. This links your virtual Python ``site-packages`` with your local repo folder, allowing your local changes to occur when the same Python interpreter runs ``import flytekit``.
 
 Plugin Development
 ==================
 
-As discussed in the design component, Flytekit plugins currently live in this Flytekit repo, but under a different top level folder ``plugins``.
-In the future, this will be separated out into a different repo. These plugins follow a `microlib <https://medium.com/@jherreras/python-microlibs-5be9461ad979>`__ structure, which will persist even if we move repos. ::
+As discussed in the design component, Flytekit plugins currently live in this Flytekit repoq but under different top-level folder ``plugins``.
+In the future, this will be separated into a different repo. These plugins follow a `microlib <https://medium.com/@jherreras/python-microlibs-5be9461ad979>`__ structure, which will persist even if we move repos. ::
 
     source ~/.virtualenvs/flytekit/bin/activate
     cd plugins
@@ -108,7 +108,7 @@ Running unit tests: ::
 Cookbook Testing
 ----------------
 Please see the `cookbook <https://github.com/flyteorg/flytesnacks/tree/master/cookbook>`__ and the generated `docs <https://flytecookbook.readthedocs.io/en/latest/>`__ for more information.
-This example repo can be cloned and run on a local Flyte cluster, or just in your IDE or other Python environment.
+This example repo can be cloned and run on a local Flyte cluster or in your IDE or other Python environments.
 
 Follow the setup instructions for the cookbook and then override it with the version of Flytekit you're interested in testing by running something like: ::
 
@@ -116,7 +116,7 @@ Follow the setup instructions for the cookbook and then override it with the ver
     # Or for a plugin
     pip install https://github.com/flyteorg/flytekit/archive/e128f66dda48bbfc6076d240d39e4221d6af2d2b.zip#subdirectory=plugins/pod&egg=flytekitplugins-pod
 
-Change the actual link to be from your fork if you are using a fork.
+Change the actual link to be from your fork if you use a fork.
 
 End-to-end Testing
 ------------------
@@ -124,22 +124,21 @@ End-to-end Testing
 .. TODO: Replace this with actual instructions
 
 The Flyte developer experience team has put together an end-to-end testing framework that will spin up a K8s cluster, install Flyte onto it, and run through a series of workflows.
-Please contact us if you reach this stage and would like more information on this.
-
+Don't hesitate to contact us if you reach this stage and want more information.
 
 Pre-commit hooks
 ================
 
 We use `pre-commit <https://pre-commit.com/>`__ to automate linting and code formatting on every commit.
-Configured hooks include `black <https://github.com/psf/black>`__, `isort <https://github.com/PyCQA/isort>`__, and `flake8 <https://github.com/PyCQA/flake8>`__ and also linters to check for the validity of YAML files and ensuring that newlines are added to the end of files.
+Configured hooks include `black <https://github.com/psf/black>`__, `isort <https://github.com/PyCQA/isort>`__, `flake8 <https://github.com/PyCQA/flake8>`__ and linters to check for the validity of YAML files and ensure that newlines are added to the end of files.
 
-We run all those hooks in CI, but if you want to run them locally on every commit, run `pre-commit install` after installing the dev environment requirements. In case you want to disable `pre-commit` hooks locally, for example, while you're iterating on some feature, run `pre-commit uninstall`. More info in https://pre-commit.com/.
+We run all those hooks in CI, but if you want to run them locally on every commit, run `pre-commit install` after installing the dev environment requirements. If you want to disable `pre-commit` hooks locally, for example, while iterating on some feature, run `pre-commit uninstall`. More info in https://pre-commit.com/.
 
 
 Formatting
 ==========
 
-We use `black <https://github.com/psf/black>`__ and `isort <https://github.com/PyCQA/isort>`__ to autoformat code. In fact, they have been configured as git hooks in `pre-commit`. Run the following commands to execute the formatters. ::
+We use `black <https://github.com/psf/black>`__ and `isort <https://github.com/PyCQA/isort>`__ to autoformat code. They have been configured as git hooks in `pre-commit`. Run the following commands to execute the formatters. ::
 
     source ~/.virtualenvs/flytekit/bin/activate
     make fmt
@@ -170,5 +169,5 @@ We use `codespell <https://github.com/codespell-project/codespell>`__ to catch s
 **********************************
 
 Currently, Flytekit and all its plugins share one common version.
-To release, contact a member of the Flytekit repo maintainers or committers, and request a release.
-We will create a GitHub release off of master, which will automatically publish a Pypi package.
+To release, contact a Flytekit repo maintainers or committers member and request a release.
+We will create a GitHub release off of master, that automatically publish a Pypi package.
