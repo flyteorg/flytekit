@@ -224,7 +224,7 @@ def render_workflow_execution(wf_exec: FlyteWorkflowExecution) -> str:
     # Add rendering and display of uri
     # todo: fix raw inputs when removing guessing
     if wf_exec._raw_inputs is not None:
-        result += "    Inputs:\n" + render_literal_map(wf_exec.raw_inputs.literals, 8)
+        result += "    Inputs:\n" + render_literal_map(wf_exec.raw_inputs, 8)
     # Add output rendering and display of uri
 
     if wf_exec.closure.error is not None:

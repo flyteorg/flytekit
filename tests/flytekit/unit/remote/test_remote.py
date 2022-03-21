@@ -153,7 +153,7 @@ def test_passing_of_kwargs(mock_client):
 
 
 def test_asdf1():
-    rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
+    rr = FlyteRemote(Config.auto(config_file="/Users/ytong/.flyte/local_sandbox"), "flytesnacks", "development")
     # wf = rr.fetch_workflow(name="core.control_flow.run_merge_sort.merge_sort", version="v0.3.39")
     wf = rr.fetch_workflow(name="core.flyte_basics.files.rotate_one_workflow", version="v0.3.39")
     print("\nRotate one Workflow ------------------------------------")
@@ -162,14 +162,14 @@ def test_asdf1():
 
 
 def test_asdf2():
-    rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
+    rr = FlyteRemote(Config.auto(config_file="/Users/ytong/.flyte/local_sandbox"), "flytesnacks", "development")
     # wf = rr.fetch_workflow(
     #     name="core.control_flow.run_conditions.nested_conditions", version="v0.3.39"
     # )
     # print(wf)
-    we = rr.fetch_workflow_execution(name="suss7xonol")
+    we = rr.fetch_workflow_execution(name="djdo2l2s0s")
     rr.sync_workflow_execution(we, sync_nodes=True)
-    print(rr)
+    print(we)
 
 
 def test_asdf3():
