@@ -1,8 +1,4 @@
-import textwrap
-import typing
-
 from flytekit.models import interface as _interface_models
-from flytekit.models.interface import Variable
 
 
 class TypedInterface(_interface_models.TypedInterface):

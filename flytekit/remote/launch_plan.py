@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import textwrap
 from typing import Optional
 
 from flytekit.core import hash as hash_mixin
@@ -24,50 +23,6 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
         self._python_interface = None
-
-    def verbose_string(self) -> str:
-
-        """
-        labels: _common.Labels,
-        annotations: _common.Annotations,
-        auth_role: _common.AuthRole,
-        raw_output_data_config: _common.RawOutputDataConfig,
-        max_parallelism=None,
-        """
-        header = f"""\
-        Launch Plan ID:
-          [{self.id.project}/{self.id.domain}]
-          {self.name}@{self.id.version}
-          Workflow:
-          [{self.workflow_id.project}/{self.workflow_id.domain}]
-          {self.workflow_id.name}@{self.workflow_id.version}        
-        """
-        header = textwrap.dedent(header)
-
-        schedule = f"Schedule: {self.entity_metadata.schedule}" if self.entity_metadata.schedule else ""
-        notifies = f"Notifications: {self.entity_metadata.notifications}" if self.entity_metadata.notifications else ""
-        labels = f"Labels: {str(self.labels)}" if len(self.labels.values) > 0 else ""
-        annotate = f"Annotations: {str(self.annotations)}" if len(self.annotations.values) > 0 else ""
-
-        data = f"Offloaded data location: {self.raw_output_data_config.output_location_prefix or '(default)'}"
-        iam = f"IAM Role: {self.auth_role.assumable_iam_role}" if self.auth_role.assumable_iam_role else ""
-        svc = (
-            f"Service Account: {self.auth_role.kubernetes_service_account}"
-            if self.auth_role.kubernetes_service_account
-            else ""
-        )
-        fixed = "Fixed inputs:" + (
-            "\n" + self.fixed_inputs.verbose_string(indent=4) if len(self.fixed_inputs.literals) > 0 else " None"
-        )
-        defaults = "Default inputs:" + (
-            "\n" + self.default_inputs.verbose_string(indent=4) if len(self.default_inputs.parameters) > 0 else " None"
-        )
-
-        # Filter out empty strings
-        entries = filter(
-            lambda x: bool(x), [header, schedule, notifies, labels, annotate, data, iam, svc, fixed, defaults]
-        )
-        return textwrap.dedent("\n".join(entries))
 
     @property
     def name(self) -> str:

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from flytekit.remote.task import FlyteTask
     from flytekit.remote.workflow import FlyteWorkflow
     from flytekit.remote.interface import TypedInterface
+    from flytekit.remote.launch_plan import FlyteLaunchPlan
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -78,8 +79,6 @@ def render_typed_interface(iface: TypedInterface) -> str:
     outstr = "\n".join(outs)
     outstr = textwrap.indent(outstr, " " * 2)
     return f"Inputs:\n{instr}\nOutputs:\n{outstr}"
-
-    return inputs + outputs
 
 
 def render_binding_data(bd: literal_models.BindingData) -> str:
@@ -175,6 +174,43 @@ def render_flyte_task(task: FlyteTask) -> str:
     container = task.container.image if task.container else ""
 
     return textwrap.dedent(header + io + container)
+
+
+def render_flyte_launch_plan(flp: FlyteLaunchPlan) -> str:
+    header = f"""\
+    Launch Plan ID:
+      [{flp.id.project}/{flp.id.domain}]
+      {flp.name}@{flp.id.version}
+      Workflow:
+      [{flp.workflow_id.project}/{flp.workflow_id.domain}]
+      {flp.workflow_id.name}@{flp.workflow_id.version}        
+    """
+    header = textwrap.dedent(header)
+
+    schedule = f"Schedule: {flp.entity_metadata.schedule}" if flp.entity_metadata.schedule else ""
+    notifies = f"Notifications: {flp.entity_metadata.notifications}" if flp.entity_metadata.notifications else ""
+    labels = f"Labels: {str(flp.labels)}" if len(flp.labels.values) > 0 else ""
+    annotate = f"Annotations: {str(flp.annotations)}" if len(flp.annotations.values) > 0 else ""
+
+    data = f"Offloaded data location: {flp.raw_output_data_config.output_location_prefix or '(default)'}"
+    iam = f"IAM Role: {flp.auth_role.assumable_iam_role}" if flp.auth_role.assumable_iam_role else ""
+    svc = (
+        f"Service Account: {flp.auth_role.kubernetes_service_account}"
+        if flp.auth_role.kubernetes_service_account
+        else ""
+    )
+    fixed = "Fixed inputs:" + (
+        "\n" + render_literal_map(flp.fixed_inputs, indent=4) if len(flp.fixed_inputs.literals) > 0 else " None"
+    )
+    defaults = "Default inputs:" + (
+        "\n" + render_parameter_map(flp.default_inputs, indent=4) if len(flp.default_inputs.parameters) > 0 else " None"
+    )
+
+    # Filter out empty strings
+    entries = filter(
+        lambda x: bool(x), [header, schedule, notifies, labels, annotate, data, iam, svc, fixed, defaults]
+    )
+    return textwrap.dedent("\n".join(entries))
 
 
 def render_workflow_execution(wf_exec: FlyteWorkflowExecution) -> str:

@@ -1,4 +1,3 @@
-import textwrap
 from typing import Optional
 
 from flytekit.core import hash as hash_mixin
