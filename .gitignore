@@ -28,3 +28,4 @@ _build/
 docs/source/generated/
 .pytest_flyte
 htmlcov
+*.ipynb

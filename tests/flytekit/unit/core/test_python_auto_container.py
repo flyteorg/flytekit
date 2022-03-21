@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
 
 

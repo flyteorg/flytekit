@@ -5,7 +5,7 @@ import sys
 
 import statsd
 
-from flytekit.configuration import statsd as _statsd_config
+from flytekit.configuration import StatsConfig
 
 RESERVED_TAG_WORDS = frozenset(
     ["asg", "az", "backend", "canary", "host", "period", "region", "shard", "window", "source"]
@@ -129,21 +129,21 @@ class StatsClientProxy(ScopeableStatsProxy):
         return self._scope_prefix
 
 
-def _get_stats_client():
+def _get_stats_client(cfg: StatsConfig):
     global _stats_client
-    if _statsd_config.DISABLED.get() is True:
+    if cfg.disabled is True:
         _stats_client = DummyStatsClient()
     if _stats_client is None:
-        _stats_client = statsd.StatsClient(_statsd_config.HOST.get(), _statsd_config.PORT.get())
+        _stats_client = statsd.StatsClient(cfg.host, cfg.port)
     return _stats_client
 
 
-def get_base_stats(prefix):
-    return StatsClientProxy(_get_stats_client(), prefix=prefix)
+def get_base_stats(cfg: StatsConfig, prefix: str):
+    return StatsClientProxy(_get_stats_client(cfg), prefix=prefix)
 
 
-def get_stats(prefix):
-    return get_base_stats(prefix)
+def get_stats(cfg: StatsConfig, prefix: str):
+    return get_base_stats(cfg, prefix)
 
 
 class DummyStatsClient(statsd.StatsClient):

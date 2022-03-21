@@ -201,6 +201,9 @@ class ShellTask(PythonInstanceTask[T]):
             for v in self._output_locs:
                 outputs[v.var] = self._interpolizer.interpolate(v.location, inputs=kwargs)
 
+        if os.name == "nt":
+            self._script = self._script.lstrip().rstrip().replace("\n", "&&")
+
         gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
         if self._debug:
             print("\n==============================================\n")
@@ -210,7 +213,7 @@ class ShellTask(PythonInstanceTask[T]):
         try:
             subprocess.check_call(gen_script, shell=True)
         except subprocess.CalledProcessError as e:
-            files = os.listdir("./")
+            files = os.listdir(".")
             fstr = "\n-".join(files)
             logger.error(
                 f"Failed to Execute Script, return-code {e.returncode} \n"

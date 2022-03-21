@@ -6,7 +6,7 @@ from flyteidl.admin.workflow_pb2 import WorkflowSpec
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
 
-from flytekit.clis.sdk_in_container.serialize import _DOMAIN_PLACEHOLDER, _PROJECT_PLACEHOLDER, _VERSION_PLACEHOLDER
+from flytekit.configuration import DOMAIN_PLACEHOLDER, PROJECT_PLACEHOLDER, VERSION_PLACEHOLDER
 
 
 def parse_args_into_dict(input_arguments):
@@ -33,13 +33,13 @@ def str2bool(str):
 def _hydrate_identifier(
     project: str, domain: str, version: str, identifier: _identifier_pb2.Identifier
 ) -> _identifier_pb2.Identifier:
-    if not identifier.project or identifier.project == _PROJECT_PLACEHOLDER:
+    if not identifier.project or identifier.project == PROJECT_PLACEHOLDER:
         identifier.project = project
 
-    if not identifier.domain or identifier.domain == _DOMAIN_PLACEHOLDER:
+    if not identifier.domain or identifier.domain == DOMAIN_PLACEHOLDER:
         identifier.domain = domain
 
-    if not identifier.version or identifier.version == _VERSION_PLACEHOLDER:
+    if not identifier.version or identifier.version == VERSION_PLACEHOLDER:
         identifier.version = version
     return identifier
 

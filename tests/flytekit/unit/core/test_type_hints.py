@@ -17,11 +17,13 @@ from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated
 
 import flytekit
+import flytekit.configuration
 from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.context_manager import ExecutionState
+from flytekit.core.data_persistence import FileAccessProvider, tmp_dir_prefix
 from flytekit.core.hash import HashMethod
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
@@ -41,7 +43,7 @@ from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="proj",
     domain="dom",
     version="123",
@@ -55,7 +57,7 @@ def test_default_wf_params_works():
     def my_task(a: int):
         wf_params = flytekit.current_context()
         assert wf_params.execution_id == "ex:local:local:local"
-        assert "/tmp/flyte/" in wf_params.raw_output_prefix
+        assert tmp_dir_prefix in wf_params.raw_output_prefix
 
     my_task(a=3)
     assert context_manager.FlyteContextManager.size() == 1
@@ -385,9 +387,9 @@ def test_flyte_file_in_dataclass():
         assert fs.a.remote_source == "s3://somewhere"
         assert fs.b.a.remote_source == "s3://somewhere"
         assert fs.b.b.remote_source == "s3://somewhere"
-        assert "/tmp/flyte/" in fs.a.path
-        assert "/tmp/flyte/" in fs.b.a.path
-        assert "/tmp/flyte/" in fs.b.b.path
+        assert tmp_dir_prefix in fs.a.path
+        assert tmp_dir_prefix in fs.b.a.path
+        assert tmp_dir_prefix in fs.b.b.path
 
         return fs.a.path
 
@@ -401,8 +403,8 @@ def test_flyte_file_in_dataclass():
         dyn(fs=n1)
         return t2(fs=n1), t3(fs=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere")[0].path
-    assert "/tmp/flyte/" in wf(path="s3://somewhere")[1].path
+    assert tmp_dir_prefix in wf(path="s3://somewhere")[0].path
+    assert tmp_dir_prefix in wf(path="s3://somewhere")[1].path
     assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
 
 
@@ -434,7 +436,7 @@ def test_flyte_directory_in_dataclass():
         n1 = t1(path=path)
         return t2(fs=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+    assert tmp_dir_prefix in wf(path="s3://somewhere").path
 
 
 def test_structured_dataset_in_dataclass():
@@ -564,7 +566,7 @@ def test_wf1_with_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
@@ -602,13 +604,17 @@ def test_wf1_with_fast_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
                 image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
                 env={},
-                fast_serialization_settings=FastSerializationSettings(enabled=True),
+                fast_serialization_settings=FastSerializationSettings(
+                    enabled=True,
+                    destination_dir="/User/flyte/workflows",
+                    distribution_location="s3://my-s3-bucket/fast/123",
+                ),
             )
         )
     ) as ctx:
@@ -616,10 +622,6 @@ def test_wf1_with_fast_dynamic():
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
                 )
             )
         ) as ctx:
@@ -864,7 +866,7 @@ def test_lp_serialize():
     lp = launch_plan.LaunchPlan.create("serialize_test1", my_subwf)
     lp_with_defaults = launch_plan.LaunchPlan.create("serialize_test2", my_subwf, default_inputs={"a": 3})
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
@@ -1248,7 +1250,7 @@ def test_environment():
         x = t1(a=a)
         return x
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1281,7 +1283,7 @@ def test_resources():
         x = t1(a=a)
         return x
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1396,7 +1398,7 @@ def test_nested_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
-    settings = context_manager.SerializationSettings(
+    settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",

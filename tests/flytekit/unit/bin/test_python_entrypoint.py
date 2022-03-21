@@ -2,12 +2,12 @@ import typing
 from collections import OrderedDict
 
 import mock
-import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
 
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
+from flytekit.core.data_persistence import DiskPersistence
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
@@ -277,10 +277,9 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
         assert ed.error.origin == execution_models.ExecutionError.ErrorKind.SYSTEM
 
 
-def test_setup_bad_prefix():
-    with pytest.raises(TypeError):
-        with setup_execution("qwerty"):
-            ...
+def test_setup_disk_prefix():
+    with setup_execution("qwerty") as ctx:
+        assert isinstance(ctx.file_access._default_remote, DiskPersistence)
 
 
 def test_setup_cloud_prefix():

@@ -7,6 +7,7 @@ from botocore.exceptions import NoCredentialsError
 from flytekitplugins.fsspec.persist import FSSpecPersistence, s3_setup_args
 
 from flytekit import FlyteContext, logger
+from flytekit.configuration import DataConfig
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -19,10 +20,10 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
-def get_storage_options(uri: str) -> typing.Optional[typing.Dict]:
+def get_storage_options(cfg: DataConfig, uri: str) -> typing.Optional[typing.Dict]:
     protocol = FSSpecPersistence.get_protocol(uri)
     if protocol == S3:
-        kwargs = s3_setup_args()
+        kwargs = s3_setup_args(cfg.s3)
         if kwargs:
             return kwargs
     return None
@@ -44,7 +45,10 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         path = os.path.join(uri, f"{0:05}")
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
         df.to_parquet(
-            path, coerce_timestamps="us", allow_truncated_timestamps=False, storage_options=get_storage_options(path)
+            path,
+            coerce_timestamps="us",
+            allow_truncated_timestamps=False,
+            storage_options=get_storage_options(ctx.file_access.data_config, path),
         )
         structured_dataset_type.format = PARQUET
         return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
@@ -62,7 +66,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
     ) -> pd.DataFrame:
         uri = flyte_value.uri
         columns = None
-        kwargs = get_storage_options(uri)
+        kwargs = get_storage_options(ctx.file_access.data_config, uri)
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
