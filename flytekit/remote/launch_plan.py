@@ -7,7 +7,7 @@ from flytekit.core.interface import Interface
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.core import identifier as id_models
-from flytekit.remote import interface as _interface
+from flytekit.remote import interface as _interfacej, printer
 from flytekit.remote.remote_callable import RemoteEntity
 
 
@@ -23,6 +23,9 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
         self._python_interface = None
+
+    def verbose_string(self) -> str:
+        return printer.render_flyte_launch_plan(self)
 
     @property
     def name(self) -> str:

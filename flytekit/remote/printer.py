@@ -78,7 +78,7 @@ def render_typed_interface(iface: TypedInterface) -> str:
         outs.append(f"{k}: {v.type}")
     outstr = "\n".join(outs)
     outstr = textwrap.indent(outstr, " " * 2)
-    return f"Inputs:\n{instr}\nOutputs:\n{outstr}"
+    return f"Inputs:\n{instr}\nOutputs:\n{outstr}\n"
 
 
 def render_binding_data(bd: literal_models.BindingData) -> str:
@@ -243,7 +243,7 @@ def render_flyte_workflow(fwf: FlyteWorkflow) -> str:
     """
     header = textwrap.dedent(header)
 
-    io = str(fwf.interface)
+    io = render_typed_interface(fwf.interface)
     io = f"Interface:\n{textwrap.indent(io, ' ' * 2) if io else '  None'}"
 
     behavior = f"""\

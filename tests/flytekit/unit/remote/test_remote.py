@@ -156,8 +156,9 @@ def test_asdf1():
     rr = FlyteRemote.from_config("flytesnacks", "development", config_file_path="/Users/ytong/.flyte/local_sandbox")
     # wf = rr.fetch_workflow(name="core.control_flow.run_merge_sort.merge_sort", version="v0.3.39")
     wf = rr.fetch_workflow(name="core.flyte_basics.files.rotate_one_workflow", version="v0.3.39")
-    print("---------")
-    print(repr(wf))
+    print("\nRotate one Workflow ------------------------------------")
+    print(str(wf))
+    print("====================================")
 
 
 def test_asdf2():
@@ -171,16 +172,13 @@ def test_asdf2():
     print(rr)
 
 
-from tests.flytekit.unit.common_tests.get_resources import get_compiled_workflow_closure
-
-
 def test_asdf3():
-    cwc = get_compiled_workflow_closure()
+    cwc = get_resources.get_compiled_workflow_closure()
     fw = FlyteWorkflow.promote_from_closure(cwc)
     print("\n------------------------------------")
     print(str(fw))
     print("====================================")
-    print(repr(fw))
+    # print(repr(fw))
 
 
 def test_asdf4():
@@ -196,7 +194,7 @@ def test_asdf4():
     print("\n------------------------------------")
     print(str(lp))
     print("====================================")
-    print(repr(lp))
+    # print(repr(lp))
 
 
 def test_asdf5():

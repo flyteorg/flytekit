@@ -12,7 +12,7 @@ from flytekit.models.core import compiler as compiler_models
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.remote import interface as _interfaces
-from flytekit.remote import nodes as _nodes
+from flytekit.remote import nodes as _nodes, printer
 from flytekit.remote.remote_callable import RemoteEntity
 
 
@@ -52,6 +52,9 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
         self._compiled_closure = compiled_closure
         self._node_map = None
         self._name = id.name
+
+    def verbose_string(self) -> str:
+        return printer.render_flyte_workflow(self)
 
     @property
     def name(self) -> str:

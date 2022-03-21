@@ -6,7 +6,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import remote_logger as logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.remote import interface as _interfaces
+from flytekit.remote import interface as _interfaces, printer
 from flytekit.remote.remote_callable import RemoteEntity
 
 
@@ -26,6 +26,9 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskT
         )
         self._python_interface = None
         self._name = id.name
+
+    def verbose_string(self) -> str:
+        return printer.render_flyte_task(self)
 
     @property
     def name(self) -> str:

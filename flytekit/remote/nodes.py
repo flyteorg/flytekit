@@ -12,7 +12,7 @@ from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.remote import component_nodes as _component_nodes
+from flytekit.remote import component_nodes as _component_nodes, printer
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
@@ -62,6 +62,9 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             branch_node=flyte_branch_node,
         )
         self._upstream = upstream_nodes
+
+    def verbose_string(self) -> str:
+        return printer.render_flyte_node(self)
 
     @property
     def flyte_entity(self) -> Union["FlyteTask", "FlyteWorkflow", "FlyteLaunchPlan"]:
