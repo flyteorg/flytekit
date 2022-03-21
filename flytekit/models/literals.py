@@ -1,4 +1,3 @@
-import textwrap
 from datetime import datetime as _datetime
 from typing import Optional
 
@@ -12,8 +11,6 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
 from flytekit.models.types import StructuredDatasetType
-
-MAX_OFFSET = 20
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
@@ -381,23 +378,6 @@ class BindingData(_common.FlyteIdlEntity):
         self._promise = promise
         self._map = map
 
-    def verbose_string(self) -> str:
-        if self.scalar:
-            return f"Scalar: {str(self.scalar)}"
-        if self.promise:
-            return f"{self.promise.var} of node {self.promise.node_id}"
-        if self.collection:
-            entries = [str(x) for x in self.collection.bindings]
-            indented_entries = textwrap.indent("".join(entries), " " * 2)
-            return f"[\n{indented_entries}]"
-        if self.map:
-            entries = []
-            for k, v in self.map.bindings.items():
-                entry = f"{k}:\n{textwrap.indent(str(v), ' ' * 2)}"
-                entries.append(entry)
-            indented_entries = textwrap.indent("".join(entries), " " * 2)
-            return "{\n" + indented_entries + "\n}"
-
     @property
     def scalar(self):
         """
@@ -651,21 +631,6 @@ class LiteralMap(_common.FlyteIdlEntity):
         :param dict[Text, Literal] literals: A dictionary mapping Text key names to Literal objects.
         """
         self._literals = literals
-
-    def verbose_string(self, indent: int = 0):
-        if not self.literals:
-            return "{}"
-        offset = min(MAX_OFFSET, max([len(x) for x in self.literals.keys()]))
-        res = []
-        for (
-            k,
-            v,
-        ) in self.literals.items():
-            padding = max(0, offset - len(k))
-            r = f"{k}: " + " " * padding + str(v)
-            res.append(r)
-        combined = "\n".join(res)
-        return textwrap.indent(combined, " " * indent)
 
     @property
     def literals(self):

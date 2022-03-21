@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import textwrap
 from typing import Dict, List, Optional, Union
 
 from flytekit.core import constants as _constants
@@ -63,22 +62,6 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             branch_node=flyte_branch_node,
         )
         self._upstream = upstream_nodes
-
-    def verbose_string(self) -> str:
-        node_id = f"{self.id}:\n"
-        binding_strs = []
-        for b in self.inputs:
-            binding_strs.append(b.var + ":\n" + textwrap.indent(str(b.binding), " " * 2))
-        inputs_str = "Inputs:\n" + textwrap.indent("\n".join(binding_strs), " " * 2) + "\n"
-
-        upstream_ids = (
-            "Upstream nodes:\n  "
-            + (", ".join([un.id for un in self.upstream_nodes]) if self.upstream_nodes else "None")
-            + "\n"
-        )
-        executable = "Executable:\n" + textwrap.indent(str(self.flyte_entity), " " * 2)
-
-        return node_id + textwrap.indent(inputs_str + upstream_ids + executable, " " * 2)
 
     @property
     def flyte_entity(self) -> Union["FlyteTask", "FlyteWorkflow", "FlyteLaunchPlan"]:

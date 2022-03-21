@@ -1,4 +1,3 @@
-import textwrap
 import typing
 
 from flyteidl.core import interface_pb2 as _interface_pb2
@@ -6,8 +5,6 @@ from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.models import common as _common
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
-
-MAX_OFFSET = 20
 
 
 class Variable(_common.FlyteIdlEntity):
@@ -97,17 +94,6 @@ class TypedInterface(_common.FlyteIdlEntity):
         """
         self._inputs = inputs
         self._outputs = outputs
-
-    def verbose_string(self) -> str:
-        ins = []
-        for k, v in self.inputs.items():
-            ins.append(f"{k}: {v.type}")
-        instr = "\n".join(ins)
-        outs = []
-        for k, v in self.outputs.items():
-            outs.append(f"{k}: {v.type}")
-        outstr = "\n".join(outs)
-        return f"Inputs: {instr}\nOutputs: {outstr}"
 
     @property
     def inputs(self) -> typing.Dict[str, Variable]:
@@ -209,22 +195,6 @@ class ParameterMap(_common.FlyteIdlEntity):
         :param dict[Text, Parameter]: parameters
         """
         self._parameters = parameters
-
-    def verbose_string(self, indent: int = 0):
-        if not self.parameters:
-            return "{}"
-
-        offset = min(MAX_OFFSET, max([len(x) for x in self.parameters.keys()]))
-        res = []
-        for (
-            k,
-            v,
-        ) in self.parameters.items():
-            padding = max(0, offset - len(k))
-            r = f"{k}: " + " " * padding + str(v)
-            res.append(r)
-        combined = "\n".join(res)
-        return textwrap.indent(combined, " " * indent)
 
     @property
     def parameters(self):

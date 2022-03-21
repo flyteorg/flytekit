@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import textwrap
 from typing import Dict, List, Optional
 
 from flytekit.core import constants as _constants
@@ -57,36 +56,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
     @property
     def name(self) -> str:
         return self._name
-
-    def __str__(self) -> str:
-        header = f"""\
-        Workflow ID:
-          [{self.id.project}/{self.id.domain}]
-          {self.name}@{self.id.version}
-        """
-        header = textwrap.dedent(header)
-
-        io = str(self.interface)
-        io = f"Interface:\n{textwrap.indent(io, ' ' * 2) if io else '  None'}"
-
-        behavior = f"""\
-        Failure Policy: {"Fail immediately" if not self.metadata.on_failure else "Wait for executable nodes"}
-        Interruptible: {self.metadata_defaults.interruptible}
-        """
-        behavior = textwrap.dedent(behavior)
-
-        binding_strs = []
-        for b in self.outputs:
-            binding_strs.append(b.var + ":\n" + textwrap.indent(str(b.binding), " " * 2))
-        all_bindings = textwrap.indent("\n".join(binding_strs), " " * 2)
-        bindings = f"Output Bindings:\n" + all_bindings
-
-        # Nodes
-        node_strs = [str(n) for n in self.nodes]
-        all_nodes = textwrap.indent("\n".join(node_strs), " " * 2)
-        nodes = f"Nodes:\n" + all_nodes
-
-        return textwrap.dedent(header + io + behavior + bindings + nodes)
 
     @property
     def sub_workflows(self) -> Optional[Dict[id_models.Identifier, _workflow_models.WorkflowTemplate]]:

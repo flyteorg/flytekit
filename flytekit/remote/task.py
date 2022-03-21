@@ -28,21 +28,6 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskT
         self._python_interface = None
         self._name = id.name
 
-    def verbose_string(self) -> str:
-        header = f"""\
-        Task ID:
-          [{self.id.project}/{self.id.domain}]
-          {self.name}@{self.id.version}
-        """
-        header = textwrap.dedent(header)
-
-        io = str(self.interface)
-        io = f"Interface:\n{textwrap.indent(io, ' ' * 2) if io else '  None'}"
-
-        container = self.container.image if self.container else ""
-
-        return textwrap.dedent(header + io + container)
-
     @property
     def name(self) -> str:
         return self._name
