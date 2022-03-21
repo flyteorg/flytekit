@@ -12,7 +12,8 @@ from flytekit.models.core import compiler as compiler_models
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.remote import interface as _interfaces
-from flytekit.remote import nodes as _nodes, printer
+from flytekit.remote import nodes as _nodes
+from flytekit.remote import printer
 from flytekit.remote.remote_callable import RemoteEntity
 
 

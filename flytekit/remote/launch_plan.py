@@ -7,7 +7,8 @@ from flytekit.core.interface import Interface
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.core import identifier as id_models
-from flytekit.remote import interface as _interface, printer
+from flytekit.remote import interface as _interface
+from flytekit.remote import printer
 from flytekit.remote.remote_callable import RemoteEntity
 
 

@@ -1,10 +1,10 @@
 from os import path as _path
 
+from flyteidl.admin import execution_pb2, launch_plan_pb2
 from flyteidl.core import compiler_pb2 as _compiler_pb2
-from flyteidl.admin import launch_plan_pb2, execution_pb2
 
+from flytekit.models import execution, launch_plan
 from flytekit.models.core import compiler as compiler_model
-from flytekit.models import launch_plan, execution
 
 # Helper functions.
 # Easier to have a separate function for each rather than remembering file names

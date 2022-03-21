@@ -6,7 +6,8 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import remote_logger as logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
-from flytekit.remote import interface as _interfaces, printer
+from flytekit.remote import interface as _interfaces
+from flytekit.remote import printer
 from flytekit.remote.remote_callable import RemoteEntity
 
 

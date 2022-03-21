@@ -3,7 +3,8 @@ from __future__ import annotations
 import textwrap
 from typing import TYPE_CHECKING
 
-from flytekit.models import schedule, interface as interface_models
+from flytekit.models import interface as interface_models
+from flytekit.models import schedule
 from flytekit.models.core import execution as execution_models
 from flytekit.models.core import identifier as identifier_models
 
@@ -13,11 +14,11 @@ from flytekit.models import literals as literal_models
 
 if TYPE_CHECKING:
     from flytekit.remote.executions import FlyteWorkflowExecution
+    from flytekit.remote.interface import TypedInterface
+    from flytekit.remote.launch_plan import FlyteLaunchPlan
     from flytekit.remote.nodes import FlyteNode
     from flytekit.remote.task import FlyteTask
     from flytekit.remote.workflow import FlyteWorkflow
-    from flytekit.remote.interface import TypedInterface
-    from flytekit.remote.launch_plan import FlyteLaunchPlan
 
 
 def spaces(i: int) -> str:
@@ -118,8 +119,8 @@ def render_literal_map(lm: literal_models.LiteralMap, indent: int = 0) -> str:
     offset = min(MAX_OFFSET, max([len(x) for x in lm.literals.keys()]))
     res = []
     for (
-            k,
-            v,
+        k,
+        v,
     ) in lm.literals.items():
         padding = max(0, offset - len(k))
         r = f"{k}: " + " " * padding + str(v)
@@ -192,17 +193,17 @@ def render_flyte_launch_plan(flp: FlyteLaunchPlan) -> str:
     )
 
     # Filter out empty strings
-    entries = filter(
-        lambda x: bool(x), [header, schedule, notifies, labels, annotate, data, iam, svc, fixed, defaults]
-    )
+    entries = filter(lambda x: bool(x), [header, schedule, notifies, labels, annotate, data, iam, svc, fixed, defaults])
     return textwrap.dedent("\n".join(entries))
 
 
 def render_workflow_execution(wf_exec: FlyteWorkflowExecution) -> str:
     result = f"\nExecution {wf_exec.id.project}:{wf_exec.id.domain}:{wf_exec.id.name}\n"
 
-    result += "\t{:12} ".format("State:") + \
-              f"{execution_models.WorkflowExecutionPhase.enum_to_string(wf_exec.closure.phase):10} "
+    result += (
+        "\t{:12} ".format("State:")
+        + f"{execution_models.WorkflowExecutionPhase.enum_to_string(wf_exec.closure.phase):10} "
+    )
 
     result += render_id(wf_exec.spec.launch_plan, indent=6) + "\n"
 
@@ -268,7 +269,9 @@ def render_node_executions(wf_exec: FlyteWorkflowExecution, indent: int = 0) -> 
             continue
 
         node_res = textwrap.indent(f"Node: {ne.id.node_id}\n", spaces(6))
-        node_res += textwrap.indent(f"{'Status:':10} {execution_models.NodeExecutionPhase.enum_to_string(ne.closure.phase)}\n", spaces(9))
+        node_res += textwrap.indent(
+            f"{'Status:':10} {execution_models.NodeExecutionPhase.enum_to_string(ne.closure.phase)}\n", spaces(9)
+        )
 
         node_res += textwrap.indent("{:15} {:60} \n".format("Started:", str(ne.closure.started_at)), spaces(9))
         node_res += textwrap.indent("{:15} {:60} \n".format("Duration:", str(ne.closure.duration)), spaces(9))
@@ -291,7 +294,12 @@ def render_node_executions(wf_exec: FlyteWorkflowExecution, indent: int = 0) -> 
                 node_res += textwrap.indent("{:15} {:60}\n".format("Started:", str(te.closure.started_at)), spaces(15))
                 node_res += textwrap.indent("{:15} {:60}\n".format("Updated:", str(te.closure.updated_at)), spaces(15))
                 node_res += textwrap.indent("{:15} {:60}\n".format("Duration:", str(te.closure.duration)), spaces(15))
-                node_res += textwrap.indent("{:15} {:10}\n".format("Status:", execution_models.TaskExecutionPhase.enum_to_string(te.closure.phase)), spaces(15))
+                node_res += textwrap.indent(
+                    "{:15} {:10}\n".format(
+                        "Status:", execution_models.TaskExecutionPhase.enum_to_string(te.closure.phase)
+                    ),
+                    spaces(15),
+                )
                 if len(te.closure.logs) == 0:
                     node_res += spaces(15) + "{:15} {:60}\n".format("Logs:", "(None Found Yet)")
                 else:
