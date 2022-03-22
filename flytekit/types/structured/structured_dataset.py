@@ -9,7 +9,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
+import numpy as np
 import pandas
+import pandas as pd
 import pyarrow
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
@@ -627,15 +629,20 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return self.open_as(ctx, lv.scalar.structured_dataset, df_type=expected_python_type, updated_metadata=metad)
 
     def to_html(self, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[T]) -> str:
-        if not isinstance(python_val, StructuredDataset):
-            df = python_val
+        if isinstance(python_val, StructuredDataset):
+            if python_val.dataframe is not None:
+                df = python_val.dataframe
+            else:
+                df = typing.cast(StructuredDataset, python_val).open(pa.Table).all()
         else:
-            df = typing.cast(StructuredDataset, python_val).open(expected_python_type).all()
+            df = python_val
 
         if isinstance(df, pandas.DataFrame):
-            return python_val.describe().to_html()
+            return df.describe().to_html()
         elif isinstance(df, pa.Table):
-            return typing.cast(pa.Table, python_val).to_string()
+            return df.to_string()
+        elif isinstance(df, np.ndarray):
+            return "pd.DataFrame(df).describe().to_html()"
         else:
             raise NotImplementedError("Conversion to html string should be implemented")
 

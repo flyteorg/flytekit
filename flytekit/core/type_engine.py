@@ -688,11 +688,12 @@ class TypeEngine(typing.Generic[T]):
     def to_html(cls, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[T]) -> str:
         transformer = cls.get_transformer(expected_python_type)
         if get_origin(expected_python_type) is Annotated:
-            _, renderer = get_args(expected_python_type)
+            expected_python_type, *annotate_args = get_args(expected_python_type)
             from flytekit.deck.renderer import Renderable
 
-            if isinstance(renderer, Renderable):
-                return renderer.to_html(python_val)
+            for arg in annotate_args:
+                if isinstance(arg, Renderable):
+                    return arg.to_html(python_val)
         return transformer.to_html(ctx, python_val, expected_python_type)
 
     @classmethod
