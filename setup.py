@@ -21,6 +21,8 @@ setup(
     maintainer="Flyte Contributors",
     maintainer_email="admin@flyte.org",
     packages=find_packages(exclude=["tests*"]),
+    include_package_data=True,
+    package_data={"deck.html": ["template.html"]},
     url="https://github.com/flyteorg/flytekit",
     description="Flyte SDK for Python",
     long_description=open("README.md", encoding="utf-8").read(),
