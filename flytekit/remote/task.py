@@ -2,8 +2,8 @@ from typing import Optional
 
 from flytekit.core import hash as hash_mixin
 from flytekit.core.interface import Interface
-from flytekit.core.type_engine import TypeEngine
-from flytekit.loggers import remote_logger as logger
+# from flytekit.core.type_engine import TypeEngine
+# from flytekit.loggers import remote_logger as logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.remote import interface as _interfaces
@@ -64,13 +64,13 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskT
         if not base_model.id.is_empty:
             t._id = base_model.id
 
-        if t.interface is not None:
-            try:
-                t.guessed_python_interface = Interface(
-                    inputs=TypeEngine.guess_python_types(t.interface.inputs),
-                    outputs=TypeEngine.guess_python_types(t.interface.outputs),
-                )
-            except ValueError:
-                logger.warning(f"Could not infer Python types for FlyteTask {base_model.id}")
+        # if t.interface is not None:
+        #     try:
+        #         t.guessed_python_interface = Interface(
+        #             inputs=TypeEngine.guess_python_types(t.interface.inputs),
+        #             outputs=TypeEngine.guess_python_types(t.interface.outputs),
+        #         )
+        #     except ValueError:
+        #         logger.warning(f"Could not infer Python types for FlyteTask {base_model.id}")
 
         return t

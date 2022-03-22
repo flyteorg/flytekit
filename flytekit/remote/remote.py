@@ -304,6 +304,7 @@ class FlyteRemote(object):
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         flyte_launch_plan._interface = workflow.interface
         flyte_launch_plan._flyte_workflow = workflow
+
         flyte_launch_plan.guessed_python_interface = Interface(
             inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
             outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
@@ -578,7 +579,7 @@ class FlyteRemote(object):
                     )
             literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, input_python_types)
         try:
-            # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
+            # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
             # and domain, which is specified in the first two arguments of client.create_execution. This is useful
             # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
@@ -693,7 +694,7 @@ class FlyteRemote(object):
 
     @execute.register(FlyteTask)
     @execute.register(FlyteLaunchPlan)
-    def _(
+    def execute_remote_task_lp(
         self,
         entity: typing.Union[FlyteTask, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
@@ -702,8 +703,6 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
-        from_project: str = None,
-        from_domain: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
@@ -724,7 +723,7 @@ class FlyteRemote(object):
         )
 
     @execute.register
-    def _(
+    def execute_remote_wf(
         self,
         entity: FlyteWorkflow,
         inputs: typing.Dict[str, typing.Any],
@@ -763,7 +762,7 @@ class FlyteRemote(object):
     # -----------------
 
     @execute.register
-    def _(
+    def execute_local_task(
         self,
         entity: PythonTask,
         inputs: typing.Dict[str, typing.Any],
@@ -772,9 +771,6 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
-        from_project: str = None,
-        from_domain: str = None,
-        options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
         """
@@ -810,7 +806,7 @@ class FlyteRemote(object):
         )
 
     @execute.register
-    def _(
+    def execute_local_workflow(
         self,
         entity: WorkflowBase,
         inputs: typing.Dict[str, typing.Any],
@@ -864,7 +860,8 @@ class FlyteRemote(object):
             options=options,
         )
 
-    def _(
+    @execute.register
+    def execute_local_launch_plan(
         self,
         entity: LaunchPlan,
         inputs: typing.Dict[str, typing.Any],

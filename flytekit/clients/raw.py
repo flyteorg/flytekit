@@ -252,11 +252,11 @@ class RawSynchronousFlyteClient(object):
         pass
 
     def refresh_credentials(self):
-        if self._cfg.auth_mode == AuthType.STANDARD:
+        if self._cfg.auth_mode == AuthType.STANDARD.value:
             return self._refresh_credentials_standard()
-        elif self._cfg.auth_mode == AuthType.BASIC or self._cfg.auth_mode == AuthType.CLIENT_CREDENTIALS:
+        elif self._cfg.auth_mode == AuthType.BASIC.value or self._cfg.auth_mode == AuthType.CLIENT_CREDENTIALS.value:
             return self._refresh_credentials_basic()
-        elif self._cfg.auth_mode == AuthType.EXTERNAL_PROCESS:
+        elif self._cfg.auth_mode == AuthType.EXTERNAL_PROCESS.value:
             return self._refresh_credentials_from_command()
         else:
             raise ValueError(

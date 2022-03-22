@@ -242,6 +242,7 @@ class AuthorizationClient(object):
             )
 
         access_token = response_body["access_token"]
+        print(f"Auth reponse body!!! {response_body}")
         _keyring.set_password(_keyring_service_name, _keyring_access_token_storage_key, access_token)
         self._credentials = Credentials(access_token=access_token)
 
