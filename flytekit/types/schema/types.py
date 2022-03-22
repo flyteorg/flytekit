@@ -15,7 +15,7 @@ from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 
@@ -368,9 +368,14 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             local_path=ctx.file_access.get_random_local_directory(),
             remote_path=ctx.file_access.get_random_remote_directory(),
         )
+        try:
+            h = SchemaEngine.get_handler(type(python_val))
+        except ValueError as e:
+            raise TypeTransformerFailedError(
+                f"DataFrames of type {type(python_val)} are not supported currently"
+            ) from e
         writer = schema.open(type(python_val))
         writer.write(python_val)
-        h = SchemaEngine.get_handler(type(python_val))
         if not h.handles_remote_io:
             ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))

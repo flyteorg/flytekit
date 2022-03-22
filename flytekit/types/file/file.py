@@ -9,7 +9,7 @@ from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -263,7 +263,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         should_upload = True
 
         if python_val is None:
-            raise AssertionError("None value cannot be converted to a file.")
+            raise TypeTransformerFailedError("None value cannot be converted to a file.")
 
         if not (python_type is os.PathLike or issubclass(python_type, FlyteFile)):
             raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")
@@ -308,13 +308,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                     if isinstance(python_val, str):
                         p = pathlib.Path(python_val)
                         if not p.is_file():
-                            raise ValueError(f"Error converting {python_val} because it's not a file.")
+                            raise TypeTransformerFailedError(f"Error converting {python_val} because it's not a file.")
             # python_type must be os.PathLike - see check at beginning of function
             else:
                 should_upload = False
 
         else:
-            raise AssertionError(f"Expected FlyteFile or os.PathLike object, received {type(python_val)}")
+            raise TypeTransformerFailedError(f"Expected FlyteFile or os.PathLike object, received {type(python_val)}")
 
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
@@ -329,8 +329,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
-
-        uri = lv.scalar.blob.uri
+        try:
+            uri = lv.scalar.blob.uri
+        except AttributeError:
+            raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
         # Using is instead of issubclass because FlyteFile does actually subclass it
         if expected_python_type is os.PathLike:
