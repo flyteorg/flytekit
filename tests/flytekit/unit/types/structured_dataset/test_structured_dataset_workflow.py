@@ -38,6 +38,9 @@ pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 
 class MockBQEncodingHandlers(StructuredDatasetEncoder):
+    def __init__(self):
+        super().__init__(pd.DataFrame, BIGQUERY, "")
+
     def encode(
         self,
         ctx: FlyteContext,
@@ -50,6 +53,9 @@ class MockBQEncodingHandlers(StructuredDatasetEncoder):
 
 
 class MockBQDecodingHandlers(StructuredDatasetDecoder):
+    def __init__(self):
+        super().__init__(pd.DataFrame, BIGQUERY, "")
+
     def decode(
         self,
         ctx: FlyteContext,
@@ -59,8 +65,8 @@ class MockBQDecodingHandlers(StructuredDatasetDecoder):
         return pd_df
 
 
-StructuredDatasetTransformerEngine.register(MockBQEncodingHandlers(pd.DataFrame, BIGQUERY), False, True)
-StructuredDatasetTransformerEngine.register(MockBQDecodingHandlers(pd.DataFrame, BIGQUERY), False, True)
+StructuredDatasetTransformerEngine.register(MockBQEncodingHandlers(), False, True)
+StructuredDatasetTransformerEngine.register(MockBQDecodingHandlers(), False, True)
 
 
 class NumpyEncodingHandlers(StructuredDatasetEncoder):

@@ -633,7 +633,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             if python_val.dataframe is not None:
                 df = python_val.dataframe
             else:
-                df = typing.cast(StructuredDataset, python_val).open(pa.Table).all()
+                df = typing.cast(StructuredDataset, python_val).open(pd.DataFrame).all()
         else:
             df = python_val
 
@@ -642,7 +642,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         elif isinstance(df, pa.Table):
             return df.to_string()
         elif isinstance(df, np.ndarray):
-            return "pd.DataFrame(df).describe().to_html()"
+            return pd.DataFrame(df).describe().to_html()
         else:
             raise NotImplementedError("Conversion to html string should be implemented")
 
