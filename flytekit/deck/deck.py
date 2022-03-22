@@ -56,7 +56,6 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     for deck in decks:
         _deck_to_html_file(deck, deck_map, output_dir)
 
-    print(__file__)
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, "html")
     env = Environment(loader=FileSystemLoader(templates_dir))
