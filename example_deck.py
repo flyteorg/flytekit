@@ -1,11 +1,7 @@
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 import pandas as pd
 import plotly.express as px
 from flytekitplugins.deck.renderer import BoxRenderer, MarkdownRenderer
+from typing_extensions import Annotated
 
 import flytekit
 from flytekit import dynamic, task, workflow

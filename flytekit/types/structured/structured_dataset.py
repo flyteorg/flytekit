@@ -9,21 +9,16 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
+import _datetime
 import numpy as np
+import numpy as _np
 import pandas
 import pandas as pd
 import pyarrow
+import pyarrow as pa
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
-
-try:
-    from typing import Annotated, TypeAlias, get_args, get_origin
-except ImportError:
-    from typing_extensions import Annotated, get_origin, get_args, TypeAlias
-
-import _datetime
-import numpy as _np
-import pyarrow as pa
+from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer

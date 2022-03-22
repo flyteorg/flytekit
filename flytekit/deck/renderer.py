@@ -1,11 +1,7 @@
 from typing import Any, Optional
 
-try:
-    from typing import Protocol, runtime_checkable
-except ImportError:
-    from typing_extensions import runtime_checkable, Protocol
-
 import pandas
+from typing_extensions import Protocol, runtime_checkable
 
 
 @runtime_checkable

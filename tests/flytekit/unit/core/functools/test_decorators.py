@@ -19,7 +19,7 @@ def test_wrapped_tasks_happy_path(capfd):
         text=True,
     )
     out = capfd.readouterr().out
-    out = re.sub(r"file:///.*", "", out)
+    out = re.sub(r"file:.*", "", out)
 
     assert out.replace("\r", "").strip().split("\n") == [
         "before running my_task",
@@ -56,7 +56,7 @@ def test_stacked_wrapped_tasks(capfd):
         text=True,
     )
     out = capfd.readouterr().out
-    out = re.sub(r"file:///.*", "", out)
+    out = re.sub(r"file:.*", "", out)
 
     assert out.replace("\r", "").strip().split("\n") == [
         "running task_decorator_1",
