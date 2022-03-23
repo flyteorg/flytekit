@@ -1,7 +1,8 @@
 # Flytekit Modin Plugin
 
-Modin is a Python extension for pandas that helps handle large datasets. It is a light-weight extension that is similar to pandas API. It uses the concept of parallelism to reduce overhead, and improve performance of pandas operations by leveraging the compute resources available. This plugin could help use Modin as a data type.
+Modin is a pandas-accelerator that helps handle large datasets. It is a light-weight extension that is similar to the pandas API. It uses the concept of parallelism to reduce overhead, and improve the performance of pandas operations by leveraging the compute resources available. This plugin could help use Modin as a data type.
 
+This plugin supports Modin as a data type.
 
 To install the plugin, run the following command:
 
