@@ -103,14 +103,14 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             **kwargs,
         )
 
-    def _flyte_file(self, dataset) -> str:
+    def _flyte_file(self, dataset: FlyteFile) -> str:
         if not self._local_file_path:
             raise ValueError("local_file_path is missing!")
 
         shutil.copy(dataset, self._local_file_path)
         return os.path.basename(dataset)
 
-    def _flyte_schema(self, dataset) -> str:
+    def _flyte_schema(self, dataset: FlyteSchema) -> str:
         if not self._local_file_path:
             raise ValueError("local_file_path is missing!")
 
