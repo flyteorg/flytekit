@@ -1,0 +1,6 @@
+admin:
+  # For GRPC endpoints you might want to use dns:///flyte.myexample.com
+  endpoint: dns:///flyte.mycorp.io
+  authType: Pkce
+  insecure: true
+  clientId: propeller
