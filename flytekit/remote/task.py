@@ -39,15 +39,15 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskT
     def entity_type_text(self) -> str:
         return "Task"
 
-    @property
-    def guessed_python_interface(self) -> Optional[Interface]:
-        return self._python_interface
-
-    @guessed_python_interface.setter
-    def guessed_python_interface(self, value):
-        if self._python_interface is not None:
-            return
-        self._python_interface = value
+    # @property
+    # def guessed_python_interface(self) -> Optional[Interface]:
+    #     return self._python_interface
+    #
+    # @guessed_python_interface.setter
+    # def guessed_python_interface(self, value):
+    #     if self._python_interface is not None:
+    #         return
+    #     self._python_interface = value
 
     @classmethod
     def promote_from_model(cls, base_model: _task_model.TaskTemplate) -> "FlyteTask":

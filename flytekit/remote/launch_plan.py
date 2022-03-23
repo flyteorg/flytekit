@@ -88,15 +88,15 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
     def entity_type_text(self) -> str:
         return "Launch Plan"
 
-    @property
-    def guessed_python_interface(self) -> Optional[Interface]:
-        return self._python_interface
-
-    @guessed_python_interface.setter
-    def guessed_python_interface(self, value):
-        if self._python_interface is not None:
-            return
-        self._python_interface = value
+    # @property
+    # def guessed_python_interface(self) -> Optional[Interface]:
+    #     return self._python_interface
+    #
+    # @guessed_python_interface.setter
+    # def guessed_python_interface(self, value):
+    #     if self._python_interface is not None:
+    #         return
+    #     self._python_interface = value
 
     def __repr__(self) -> str:
         return f"FlyteLaunchPlan(ID: {self.id} Interface: {self.interface} WF ID: {self.workflow_id})"

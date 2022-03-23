@@ -305,10 +305,10 @@ class FlyteRemote(object):
         flyte_launch_plan._interface = workflow.interface
         flyte_launch_plan._flyte_workflow = workflow
 
-        flyte_launch_plan.guessed_python_interface = Interface(
-            inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
-            outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
-        )
+        # flyte_launch_plan.guessed_python_interface = Interface(
+        #     inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
+        #     outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
+        # )
         return flyte_launch_plan
 
     def fetch_workflow_execution(
@@ -795,7 +795,7 @@ class FlyteRemote(object):
                 version=version,
             )
             flyte_task: FlyteTask = self.register_task(entity, ss)
-        flyte_task.guessed_python_interface = entity.python_interface
+        # flyte_task.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_task,
             inputs,
@@ -839,7 +839,7 @@ class FlyteRemote(object):
             flyte_workflow: FlyteWorkflow = self.register_workflow(
                 entity, ss, version=version, all_downstream=True, options=options
             )
-        flyte_workflow.guessed_python_interface = entity.python_interface
+        # flyte_workflow.guessed_python_interface = entity.python_interface
 
         ctx = context_manager.FlyteContext.current_context()
         try:
@@ -889,7 +889,7 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity, serialization_settings=ss, version=resolved_identifiers.version
             )
-        flyte_launchplan.guessed_python_interface = entity.python_interface
+        # flyte_launchplan.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_launchplan,
             inputs,

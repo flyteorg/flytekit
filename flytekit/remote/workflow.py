@@ -81,15 +81,15 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
     def flyte_nodes(self) -> List[_nodes.FlyteNode]:
         return self._flyte_nodes
 
-    @property
-    def guessed_python_interface(self) -> Optional[Interface]:
-        return self._python_interface
-
-    @guessed_python_interface.setter
-    def guessed_python_interface(self, value):
-        if self._python_interface is not None:
-            return
-        self._python_interface = value
+    # @property
+    # def guessed_python_interface(self) -> Optional[Interface]:
+    #     return self._python_interface
+    #
+    # @guessed_python_interface.setter
+    # def guessed_python_interface(self, value):
+    #     if self._python_interface is not None:
+    #         return
+    #     self._python_interface = value
 
     @classmethod
     def get_non_system_nodes(cls, nodes: List[_workflow_models.Node]) -> List[_workflow_models.Node]:
