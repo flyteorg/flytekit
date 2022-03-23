@@ -85,7 +85,7 @@ import tempfile
 import typing
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
-
+from flytekit.loggers import logger
 from dataclasses_json import dataclass_json
 from docker_image import reference
 
@@ -293,6 +293,15 @@ class PlatformConfig(object):
         :return:
         """
         config_file = get_config_file(config_file)
+
+        auth_mode = None
+        auth_mode_str = _internal.Credentials.AUTH_MODE.read(config_file)
+        if auth_mode_str:
+            try:
+                auth_mode = AuthType[auth_mode_str.upper()]
+            except KeyError:
+                logger.warning(f"{auth_mode_str} is not a valid authentication type. Using default (standard).")
+
         kwargs = {}
         kwargs = set_if_exists(kwargs, "insecure", _internal.Platform.INSECURE.read(config_file))
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
@@ -301,7 +310,7 @@ class PlatformConfig(object):
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
         )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
-        kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
+        kwargs = set_if_exists(kwargs, "auth_mode", auth_mode)
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         return PlatformConfig(**kwargs)
 
