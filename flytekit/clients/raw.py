@@ -268,8 +268,7 @@ class RawSynchronousFlyteClient(object):
             return self._refresh_credentials_from_command()
         else:
             raise ValueError(
-                f"Invalid auth mode [{cfg_auth}] specified."
-                f"Please update the creds config to use a valid value"
+                f"Invalid auth mode [{cfg_auth}] specified." f"Please update the creds config to use a valid value"
             )
 
     def set_access_token(self, access_token: str, authorization_header_key: Optional[str] = "authorization"):
