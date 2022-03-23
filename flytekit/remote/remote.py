@@ -592,7 +592,7 @@ class FlyteRemote(object):
                     entity.id,
                     ExecutionMetadata(
                         ExecutionMetadata.ExecutionMode.MANUAL,
-                        "placeholder",  # TODO: get principle
+                        "placeholder",  # Admin replaces this from oidc token if auth is enabled.
                         0,
                     ),
                     notifications=notifications,
