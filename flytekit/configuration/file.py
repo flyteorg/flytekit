@@ -93,7 +93,8 @@ def bool_transformer(config_val: typing.Any):
 class ConfigEntry(object):
     """
     A top level Config entry holder, that holds multiple different representations of the config.
-    Legacy means the INI style config files. YAML support is for the stuff
+    Legacy means the INI style config files. YAML support is for the flytectl config file, which is there by default
+    when flytectl starts a sandbox
     """
 
     legacy: LegacyConfigEntry
@@ -112,7 +113,12 @@ class ConfigEntry(object):
     def read(self, cfg: typing.Optional[ConfigFile] = None) -> typing.Optional[typing.Any]:
         """
         Reads the config Entry from the various sources in the following order,
-         First try to read from environment, if not then try to read from the given config file
+        #. First try to read from the relevant environment variable,
+        #. If missing, then try to read from the legacy config file, if one was parsed.
+        #. If missing, then try to read from the yaml file.
+
+        The constructor for ConfigFile currently does not allow specification of both the ini and yaml style formats.
+
         :param cfg:
         :return:
         """
