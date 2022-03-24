@@ -8,6 +8,7 @@ from pathlib import Path as _Path
 import checksumdir
 
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.tools.package_helpers import create_archive
 
 _tmp_versions_dir = "tmp/versions"
 
@@ -30,19 +31,6 @@ def _write_marker(marker: _os.PathLike):
         pass
 
 
-def filter_tar_file_fn(tarinfo: _tarfile.TarInfo) -> _tarfile.TarInfo:
-    """
-    Excludes designated file types from tar archive
-    :param _tarfile.TarInfo tarinfo:
-    :return _tarfile.TarInfo:
-    """
-    if tarinfo.name.endswith(".pyc"):
-        return None
-    if tarinfo.name.startswith(".cache"):
-        return None
-    if "__pycache__" in tarinfo.name:
-        return None
-    return tarinfo
 
 
 def get_additional_distribution_loc(remote_location: str, identifier: str) -> str:
@@ -79,8 +67,7 @@ def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: s
 
     with _tempfile.NamedTemporaryFile() as fp:
         # Write using gzip
-        with _tarfile.open(fp.name, "w:gz") as tar:
-            tar.add(source_dir, arcname="", filter=filter_tar_file_fn)
+        create_archive(source_dir, fp.name)
         if dry_run:
             print("Would upload {} to {}".format(fp.name, full_remote_path))
         else:

@@ -13,6 +13,9 @@ from flytekit.exceptions.scopes import system_entry_point
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.repo import serialize_to_folder
+from flytekit.tools.module_loader import trigger_loading
+from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
+from flytekit.tools.package_helpers import create_archive
 
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
@@ -170,8 +173,7 @@ def fast_workflows(ctx, folder=None):
     archive_fname = os.path.join(folder, f"{digest}.tar.gz")
     click.echo(f"Writing compressed archive to {archive_fname}")
     # Write using gzip
-    with _tarfile.open(archive_fname, "w:gz") as tar:
-        tar.add(source_dir, arcname="", filter=_filter_tar_file_fn)
+    create_archive(source_dir, archive_fname)
 
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
