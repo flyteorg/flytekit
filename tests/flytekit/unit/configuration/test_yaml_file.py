@@ -20,17 +20,12 @@ def test_config_entry_file():
     assert c.read(cfg) is None
 
 
-@mock.patch("flytekit.configuration.file.os.environ.get")
+@mock.patch("flytekit.configuration.file.getenv")
 def test_config_entry_file_2(mock_get):
     # Test reading of the environment variable that flytectl asks users to set.
     sample_yaml_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml")
 
-    def side_effect(key, _):
-        if key == "FLYTECTL_CONFIG":
-            return sample_yaml_file_name
-        return None
-
-    mock_get.side_effect = side_effect
+    mock_get.return_value = sample_yaml_file_name
 
     c = ConfigEntry(
         LegacyConfigEntry("platform", "url", str), YamlConfigEntry("admin.endpoint"), lambda x: x.replace("dns:///", "")

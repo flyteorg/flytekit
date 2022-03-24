@@ -5,6 +5,7 @@ import configparser as _configparser
 import os
 import typing
 from dataclasses import dataclass
+from os import getenv
 from pathlib import Path
 
 import yaml
@@ -225,7 +226,7 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
             return ConfigFile(home_dir_config.absolute())
 
         # If not, see if the env var that flytectl sandbox tells the user to set is set.
-        flytectl_path_from_env = os.environ.get(FLYTECTL_CONFIG_ENV_VAR, None)
+        flytectl_path_from_env = getenv(FLYTECTL_CONFIG_ENV_VAR, None)
         if flytectl_path_from_env:
             flytectl_env_path = Path(flytectl_path_from_env)
             if flytectl_env_path.exists():
