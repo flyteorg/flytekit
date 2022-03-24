@@ -1,6 +1,6 @@
 import pytest
 from typing import List, Dict
-from flytekit.tools.filter import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 from pathlib import Path
 import subprocess
 from unittest.mock import patch
@@ -160,7 +160,7 @@ def test_nested_gitignore(nested_gitignore):
     assert not gitignore.is_ignored(str(nested_gitignore / ".git"))
 
 
-@patch('flytekit.tools.filter.which')
+@patch('flytekit.tools.ignore.which')
 def test_no_git(mock_which, simple_gitignore):
     """ Test that nothing is ignored if no git cli available """
     mock_which.return_value = None
