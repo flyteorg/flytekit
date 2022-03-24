@@ -1,18 +1,44 @@
 import os
 
+import mock
+
 from flytekit.configuration import ConfigEntry, get_config_file
 from flytekit.configuration.file import LegacyConfigEntry, YamlConfigEntry
 from flytekit.configuration.internal import AWS, Credentials, Platform
 
 
 def test_config_entry_file():
-    # Pytest feature
     c = ConfigEntry(
         LegacyConfigEntry("platform", "url", str), YamlConfigEntry("admin.endpoint"), lambda x: x.replace("dns:///", "")
     )
     assert c.read() is None
 
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
+    assert c.read(cfg) == "flyte.mycorp.io"
+
+    c = ConfigEntry(LegacyConfigEntry("platform", "url2", str))  # Does not exist
+    assert c.read(cfg) is None
+
+
+@mock.patch("flytekit.configuration.file.os.environ.get")
+def test_config_entry_file(mock_get):
+    # Test reading of the environment variable that flytectl asks users to set.
+    sample_yaml_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml")
+
+    def side_effect(key, _):
+        if key == "FLYTECTL_CONFIG":
+            return sample_yaml_file_name
+        return None
+
+    mock_get.side_effect = side_effect
+
+    c = ConfigEntry(
+        LegacyConfigEntry("platform", "url", str), YamlConfigEntry("admin.endpoint"), lambda x: x.replace("dns:///", "")
+    )
+    assert c.read() is None
+
+    mock_get.return_value = sample_yaml_file_name
+    cfg = get_config_file(sample_yaml_file_name)
     assert c.read(cfg) == "flyte.mycorp.io"
 
     c = ConfigEntry(LegacyConfigEntry("platform", "url2", str))  # Does not exist
