@@ -37,7 +37,6 @@ def test_config_entry_file_2(mock_get):
     )
     assert c.read() is None
 
-    mock_get.return_value = sample_yaml_file_name
     cfg = get_config_file(sample_yaml_file_name)
     assert c.read(cfg) == "flyte.mycorp.io"
 
