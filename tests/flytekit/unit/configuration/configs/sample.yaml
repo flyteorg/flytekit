@@ -4,6 +4,8 @@ admin:
   authType: Pkce
   insecure: true
   clientId: propeller
+  scopes:
+    - all
 storage:
   connection:
     access-key: minio

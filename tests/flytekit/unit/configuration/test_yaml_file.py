@@ -2,7 +2,7 @@ import os
 
 from flytekit.configuration import ConfigEntry, get_config_file
 from flytekit.configuration.file import LegacyConfigEntry, YamlConfigEntry
-from flytekit.configuration.internal import AWS, Platform
+from flytekit.configuration.internal import AWS, Credentials, Platform
 
 
 def test_config_entry_file():
@@ -35,3 +35,6 @@ def test_real_config():
 
     res = AWS.S3_SECRET_ACCESS_KEY.read(config_file)
     assert res == "miniostorage"
+
+    res = Credentials.SCOPES.read(config_file)
+    assert res == ["all"]
