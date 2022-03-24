@@ -21,7 +21,7 @@ def test_config_entry_file():
 
 
 @mock.patch("flytekit.configuration.file.os.environ.get")
-def test_config_entry_file(mock_get):
+def test_config_entry_file_2(mock_get):
     # Test reading of the environment variable that flytectl asks users to set.
     sample_yaml_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml")
 
