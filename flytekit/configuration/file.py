@@ -225,19 +225,16 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
             logger.info(f"Using configuration from home directory {home_dir_config.absolute()}")
             return ConfigFile(home_dir_config.absolute())
 
-        # If not, see if the env var that flytectl sandbox tells the user to set is set.
+        # If not, see if the env var that flytectl sandbox tells the user to set is set,
+        # or see if there's something in the default home directory location
+        flytectl_path = Path(Path.home(), ".flyte", "config.yaml")
         flytectl_path_from_env = getenv(FLYTECTL_CONFIG_ENV_VAR, None)
-        if flytectl_path_from_env:
-            flytectl_env_path = Path(flytectl_path_from_env)
-            if flytectl_env_path.exists():
-                logger.info(f"Using flytectl/YAML config from home directory {flytectl_env_path.absolute()}")
-                return ConfigFile(str(flytectl_env_path.absolute()))
 
-        # If not, see if there's a yaml config file in the user's home directory
-        home_dir_yaml_config = Path(Path.home(), ".flyte", "config.yaml")
-        if home_dir_yaml_config.exists():
-            logger.info(f"Using flytectl/YAML config from home directory {home_dir_yaml_config.absolute()}")
-            return ConfigFile(str(home_dir_yaml_config.absolute()))
+        if flytectl_path_from_env:
+            flytectl_path = Path(flytectl_path_from_env)
+        if flytectl_path.exists():
+            logger.info(f"Using flytectl/YAML config {flytectl_path.absolute()}")
+            return ConfigFile(str(flytectl_path.absolute()))
 
         # If not, then return None and let caller handle
         return None
