@@ -5,6 +5,7 @@ from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAG
 from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
+from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.configuration.internal import LocalSDK
 
@@ -58,6 +59,7 @@ main.add_command(serialize)
 main.add_command(package)
 main.add_command(local_cache)
 main.add_command(init)
+main.add_command(run)
 
 if __name__ == "__main__":
     main()
