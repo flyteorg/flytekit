@@ -16,6 +16,7 @@ from flytekit.core import context_manager
 from flytekit.tools import fast_registration, module_loader, serialize_helpers
 from flytekit.tools.package_helpers import create_archive
 
+
 @click.command("package")
 @click.option(
     "-i",

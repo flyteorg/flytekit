@@ -14,8 +14,8 @@ from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.repo import serialize_to_folder
 from flytekit.tools.module_loader import trigger_loading
-from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
 from flytekit.tools.package_helpers import create_archive
+from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
 
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"

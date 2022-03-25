@@ -1,5 +1,6 @@
 import tarfile
-from flytekit.tools.ignore import IgnoreGroup, GitIgnore, DockerIgnore, StandardIgnore
+
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
 
 def create_archive(source: str, name: str) -> None:

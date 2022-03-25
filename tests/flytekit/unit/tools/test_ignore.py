@@ -1,11 +1,14 @@
-import pytest
-from typing import List, Dict
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
-from pathlib import Path
 import subprocess
-from unittest.mock import patch
-from docker.utils.build import PatternMatcher
+from pathlib import Path
 from tarfile import TarInfo
+from typing import Dict, List
+from unittest.mock import patch
+
+import pytest
+from docker.utils.build import PatternMatcher
+
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+
 
 def make_tree(root: Path, tree: Dict):
     for name, content in tree.items():
@@ -21,17 +24,10 @@ def make_tree(root: Path, tree: Dict):
 @pytest.fixture
 def simple_gitignore(tmp_path):
     tree = {
-        "sub" : {
-            "some.bar": ""
-        },
+        "sub": {"some.bar": ""},
         "test.foo": "",
         "keep.foo": "",
-        ".gitignore": "\n".join([
-            "*.foo",
-            "!keep.foo",
-            "# A comment",
-            "sub"
-        ])
+        ".gitignore": "\n".join(["*.foo", "!keep.foo", "# A comment", "sub"]),
     }
 
     make_tree(tmp_path, tree)
@@ -42,22 +38,17 @@ def simple_gitignore(tmp_path):
 @pytest.fixture
 def nested_gitignore(tmp_path):
     tree = {
-        "sub" : {
-            "some.foo": "",
-            "another.foo": "",
-            ".gitignore": "!another.foo"
-        },
-        "data" : {
-            ".gitignore" : "*",
-            "large.file" : ""
-        },
+        "sub": {"some.foo": "", "another.foo": "", ".gitignore": "!another.foo"},
+        "data": {".gitignore": "*", "large.file": ""},
         "test.foo": "",
         "keep.foo": "",
-        ".gitignore": "\n".join([
-            "*.foo",
-            "!keep.foo",
-            "# A comment",
-        ])
+        ".gitignore": "\n".join(
+            [
+                "*.foo",
+                "!keep.foo",
+                "# A comment",
+            ]
+        ),
     }
 
     make_tree(tmp_path, tree)
@@ -68,17 +59,10 @@ def nested_gitignore(tmp_path):
 @pytest.fixture
 def simple_dockerignore(tmp_path):
     tree = {
-        "sub" : {
-            "some.bar": ""
-        },
+        "sub": {"some.bar": ""},
         "test.foo": "",
         "keep.foo": "",
-        ".dockerignore": "\n".join([
-            "*.foo",
-            "!keep.foo",
-            "# A comment",
-            "sub"
-        ])
+        ".dockerignore": "\n".join(["*.foo", "!keep.foo", "# A comment", "sub"]),
     }
 
     make_tree(tmp_path, tree)
@@ -88,9 +72,7 @@ def simple_dockerignore(tmp_path):
 @pytest.fixture
 def no_ignore(tmp_path):
     tree = {
-        "sub" : {
-            "some.bar": ""
-        },
+        "sub": {"some.bar": ""},
         "test.foo": "",
         "keep.foo": "",
     }
@@ -102,29 +84,16 @@ def no_ignore(tmp_path):
 @pytest.fixture
 def all_ignore(tmp_path):
     tree = {
-        "sub" : {
+        "sub": {
             "some.bar": "",
-            "__pycache__": {
-                "some.pyc"
-            },
+            "__pycache__": {"some.pyc"},
         },
-        "data" : {
-            "reallybigfile.bar": ""
-        },
-        ".cache" : {
-            "something.cached": ""
-        },
+        "data": {"reallybigfile.bar": ""},
+        ".cache": {"something.cached": ""},
         "test.foo": "",
         "keep.foo": "",
-        ".dockerignore": "\n".join([
-            "# A comment",
-            "data",
-            ".git"
-        ]),
-        ".gitignore": "\n".join([
-            "*.foo",
-            "!keep.foo"
-        ])
+        ".dockerignore": "\n".join(["# A comment", "data", ".git"]),
+        ".gitignore": "\n".join(["*.foo", "!keep.foo"]),
     }
 
     make_tree(tmp_path, tree)
@@ -143,13 +112,13 @@ def test_simple_gitignore(simple_gitignore):
 
 
 def test_not_subpath(simple_gitignore):
-    """ Test edge case that if path is not on root it cannot not be ignored """
+    """Test edge case that if path is not on root it cannot not be ignored"""
     gitignore = GitIgnore(simple_gitignore)
     assert not gitignore.is_ignored("/whatever/test.foo")
 
 
 def test_nested_gitignore(nested_gitignore):
-    """ Test override with nested gitignore and star-ignore """
+    """Test override with nested gitignore and star-ignore"""
     gitignore = GitIgnore(nested_gitignore)
     assert gitignore.is_ignored(str(nested_gitignore / "test.foo"))
     assert not gitignore.is_ignored(str(nested_gitignore / "sub"))
@@ -160,9 +129,9 @@ def test_nested_gitignore(nested_gitignore):
     assert not gitignore.is_ignored(str(nested_gitignore / ".git"))
 
 
-@patch('flytekit.tools.ignore.which')
+@patch("flytekit.tools.ignore.which")
 def test_no_git(mock_which, simple_gitignore):
-    """ Test that nothing is ignored if no git cli available """
+    """Test that nothing is ignored if no git cli available"""
     mock_which.return_value = None
     gitignore = GitIgnore(simple_gitignore)
     assert not gitignore.has_git
@@ -174,28 +143,15 @@ def test_no_git(mock_which, simple_gitignore):
 
 
 def test_dockerignore_parse(simple_dockerignore):
-    """ Test .dockerignore file parsing """
+    """Test .dockerignore file parsing"""
     dockerignore = DockerIgnore(simple_dockerignore)
-    assert [p.cleaned_pattern for p in dockerignore.pm.patterns] == [
-        "*.foo",
-        "keep.foo",
-        "sub",
-        ".dockerignore"
-    ]
-    assert [p.exclusion for p in dockerignore.pm.patterns] == [
-        False,
-        True,
-        False,
-        True
-    ]
+    assert [p.cleaned_pattern for p in dockerignore.pm.patterns] == ["*.foo", "keep.foo", "sub", ".dockerignore"]
+    assert [p.exclusion for p in dockerignore.pm.patterns] == [False, True, False, True]
+
 
 def test_patternmatcher():
-    """ Test that PatternMatcher works as expected """
-    patterns = [
-        "*.foo",
-        "!keep.foo",
-        "sub"
-    ]
+    """Test that PatternMatcher works as expected"""
+    patterns = ["*.foo", "!keep.foo", "sub"]
     pm = PatternMatcher(patterns)
     assert pm.matches("whatever.foo")
     assert not pm.matches("keep.foo")
@@ -212,7 +168,7 @@ def test_simple_dockerignore(simple_dockerignore):
 
 
 def test_no_ignore(no_ignore):
-    """ Test that nothing is ignored if no ignore files present """
+    """Test that nothing is ignored if no ignore files present"""
     dockerignore = DockerIgnore(no_ignore)
     assert not dockerignore.is_ignored(str(no_ignore / "test.foo"))
     assert not dockerignore.is_ignored(str(no_ignore / "keep.foo"))
@@ -227,15 +183,8 @@ def test_no_ignore(no_ignore):
 
 
 def test_standard_ignore():
-    """ Test the standard ignore cases previously hardcoded """
-    patterns = [
-        "*.pyc",
-        ".cache",
-        ".cache/*",
-        "__pycache__",
-        "**/__pycache__",
-        "*.foo"
-    ]
+    """Test the standard ignore cases previously hardcoded"""
+    patterns = ["*.pyc", ".cache", ".cache/*", "__pycache__", "**/__pycache__", "*.foo"]
     ignore = StandardIgnore(root=".", patterns=patterns)
     assert not ignore.is_ignored("foo.py")
     assert ignore.is_ignored("foo.pyc")
@@ -246,7 +195,7 @@ def test_standard_ignore():
 
 
 def test_all_ignore(all_ignore):
-    """ Test all ignores grouped together """
+    """Test all ignores grouped together"""
     ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore])
     assert not ignore.is_ignored("sub")
     assert not ignore.is_ignored("sub/some.bar")
@@ -264,7 +213,7 @@ def test_all_ignore(all_ignore):
 
 
 def test_all_ignore_tar_filter(all_ignore):
-    """ Test tar_filter method of all ignores grouped together """
+    """Test tar_filter method of all ignores grouped together"""
     ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore])
     assert ignore.tar_filter(TarInfo(name="sub")).name == "sub"
     assert ignore.tar_filter(TarInfo(name="sub/some.bar")).name == "sub/some.bar"

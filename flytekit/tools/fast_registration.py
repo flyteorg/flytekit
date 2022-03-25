@@ -31,8 +31,6 @@ def _write_marker(marker: _os.PathLike):
         pass
 
 
-
-
 def get_additional_distribution_loc(remote_location: str, identifier: str) -> str:
     """
     :param Text remote_location:
