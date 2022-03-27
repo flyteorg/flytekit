@@ -1445,7 +1445,16 @@ class LiteralsResolver(object):
     def literals(self):
         return self._literals
 
-    def get(self, attr: str, as_type: Optional[typing.Type] = None):
+    def get(self, attr: str, as_type: Optional[typing.Type] = None) -> typing.Any:
+        """
+        This will get the ``attr`` value from the Literal map, and invoke the TypeEngine to convert it into a Python
+        native value. A Python type can optionally be supplied. If successful, the native value will be cached and
+        future calls will return the cached value instead.
+
+        :param attr:
+        :param as_type:
+        :return: Python native value from the LiteralMap
+        """
         if attr not in self._literals:
             raise AttributeError(f"Attribute {attr} not found")
         if attr in self.native_values:

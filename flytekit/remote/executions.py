@@ -71,7 +71,9 @@ class RemoteExecutionBase(object):
     def outputs(self, type_map: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
         """
         Returns the outputs to the execution in the standard python format as dictated by the type engine.
-
+        :param type_map: type hints to be provided to the TypeEngine so that it doesn't have to invoke the guessing
+          logic. Map does not need to be complete, missing entries will just trigger the guessing.
+        :return: Python native values of the output map for this execution
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
         if not self.is_complete:
