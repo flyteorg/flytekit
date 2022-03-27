@@ -1,24 +1,109 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from abc import abstractmethod
+from typing import Any, Dict, List, Optional, Type, Union
 
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions import user as user_exceptions
+from flytekit.loggers import remote_logger
 from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
+from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
 
 
-class FlyteTaskExecution(admin_task_execution_models.TaskExecution):
+class RemoteExecutionBase(object):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._inputs = None
+        self._outputs = None
+        self._raw_inputs: Optional[LiteralsResolver] = None
+        self._raw_outputs: Optional[LiteralsResolver] = None
+
+    @property
+    def raw_inputs(self) -> LiteralsResolver:
+        if self._raw_inputs is None:
+            raise ValueError(f"Execution {self.id} doesn't have raw inputs set")  # noqa
+        return self._raw_inputs
+
+    @property
+    def raw_outputs(self) -> LiteralsResolver:
+        if self._raw_outputs is None:
+            raise ValueError(f"Execution {self.id} doesn't have raw outputs set")  # noqa
+        return self._raw_outputs
+
+    @property
+    def inputs(self, type_map: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
+        """
+        Return the inputs in the literal map stored under the LiteralsResolver as Python native values. Use the type
+        map to provide type hints to the TypeEngine if necessary, otherwise the guessing logic will be invoked.
+
+        :param type_map: type hints to be provided to the TypeEngine so that it doesn't have to invoke the guessing
+          logic. Map does not need to be complete, missing entries will just trigger the guessing.
+        :return: Python native values of the input map for this execution
+        """
+        type_map = type_map or {}
+        if self._inputs is not None:
+            return self._inputs
+
+        if not self.raw_inputs.native_values_complete:
+            remote_logger.debug("Inputs native values incomplete, attempting guessing on remainder")
+            for missing in self.raw_inputs.missing_keys:
+                self.raw_inputs.get(missing, as_type=type_map.get(missing, None))
+
+        self._inputs = self.raw_inputs.native_values
+        return self._inputs
+
+    @property
+    @abstractmethod
+    def error(self) -> core_execution_models.ExecutionError:
+        ...
+
+    @property
+    @abstractmethod
+    def is_complete(self) -> bool:
+        ...
+
+    @property
+    def outputs(self, type_map: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
+        """
+        Returns the outputs to the execution in the standard python format as dictated by the type engine.
+
+        :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
+        """
+        if not self.is_complete:
+            raise _user_exceptions.FlyteAssertion(
+                "Please wait until the execution has completed before requesting the outputs."
+            )
+        if self.error:
+            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
+
+        type_map = type_map or {}
+        if self._outputs is not None:
+            return self._outputs
+
+        if not self.raw_outputs.native_values_complete:
+            remote_logger.debug("Output native values incomplete, attempting guessing on remainder")
+            for missing in self.raw_outputs.missing_keys:
+                self.raw_outputs.get(missing, as_type=type_map.get(missing, None))
+
+        self._outputs = self.raw_outputs.native_values
+        return self._outputs
+
+
+class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskExecution):
     """A class encapsulating a task execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
         super(FlyteTaskExecution, self).__init__(*args, **kwargs)
-        self._inputs = None
-        self._outputs = None
+        self._flyte_task = None
+
+    @property
+    def task(self) -> Optional[FlyteTask]:
+        return self._flyte_task
 
     @property
     def is_complete(self) -> bool:
@@ -28,30 +113,6 @@ class FlyteTaskExecution(admin_task_execution_models.TaskExecution):
             core_execution_models.TaskExecutionPhase.FAILED,
             core_execution_models.TaskExecutionPhase.SUCCEEDED,
         }
-
-    @property
-    def inputs(self) -> Dict[str, Any]:
-        """
-        Returns the inputs of the task execution in the standard Python format that is produced by
-        the type engine.
-        """
-        return self._inputs
-
-    @property
-    def outputs(self) -> Dict[str, Any]:
-        """
-        Returns the outputs of the task execution, if available, in the standard Python format that is produced by
-        the type engine.
-
-        :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
-        """
-        if not self.is_complete:
-            raise user_exceptions.FlyteAssertion(
-                "Please wait until the node execution has completed before requesting the outputs."
-            )
-        if self.error:
-            raise user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
-        return self._outputs
 
     @property
     def error(self) -> Optional[core_execution_models.ExecutionError]:
@@ -75,56 +136,22 @@ class FlyteTaskExecution(admin_task_execution_models.TaskExecution):
         )
 
 
-class FlyteWorkflowExecution(execution_models.Execution):
+class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
     """A class encapsulating a workflow execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
         super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
         self._node_executions = None
-        self._inputs = None
-        self._outputs = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
-        self._raw_inputs: Optional[LiteralsResolver] = None
-        self._raw_outputs: Optional[LiteralsResolver] = None
+
+    @property
+    def flyte_workflow(self) -> Optional[FlyteWorkflow]:
+        return self._flyte_workflow
 
     @property
     def node_executions(self) -> Dict[str, "FlyteNodeExecution"]:
         """Get a dictionary of node executions that are a part of this workflow execution."""
         return self._node_executions or {}
-
-    @property
-    def inputs(self) -> Dict[str, Any]:
-        """
-        Returns the inputs to the execution in the standard python format as dictated by the type engine.
-        """
-        return self._inputs
-
-    @property
-    def outputs(self) -> Dict[str, Any]:
-        """
-        Returns the outputs to the execution in the standard python format as dictated by the type engine.
-
-        :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
-        """
-        if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
-                "Please wait until the node execution has completed before requesting the outputs."
-            )
-        if self.error:
-            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
-        return self._outputs
-
-    @property
-    def raw_outputs(self) -> LiteralsResolver:
-        if self._raw_outputs is None:
-            raise ValueError(f"WF execution: {self} doesn't have raw outputs set")
-        return self._raw_outputs
-
-    @property
-    def raw_inputs(self) -> LiteralsResolver:
-        if self._raw_inputs is None:
-            raise ValueError(f"WF execution: {self} doesn't have raw inputs set")
-        return self._raw_inputs
 
     @property
     def error(self) -> core_execution_models.ExecutionError:
@@ -159,7 +186,7 @@ class FlyteWorkflowExecution(execution_models.Execution):
         )
 
 
-class FlyteNodeExecution(node_execution_models.NodeExecution):
+class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecution):
     """A class encapsulating a node execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
@@ -167,9 +194,8 @@ class FlyteNodeExecution(node_execution_models.NodeExecution):
         self._task_executions = None
         self._workflow_executions = []
         self._underlying_node_executions = None
-        self._inputs = None
-        self._outputs = None
         self._interface = None
+        self._flyte_node = None
 
     @property
     def task_executions(self) -> List[FlyteTaskExecution]:
@@ -194,28 +220,6 @@ class FlyteNodeExecution(node_execution_models.NodeExecution):
     @property
     def executions(self) -> List[Union[FlyteTaskExecution, FlyteWorkflowExecution]]:
         return self.task_executions or self._underlying_node_executions or []
-
-    @property
-    def inputs(self) -> Dict[str, Any]:
-        """
-        Returns the inputs to the execution in the standard python format as dictated by the type engine.
-        """
-        return self._inputs
-
-    @property
-    def outputs(self) -> Dict[str, Any]:
-        """
-        Returns the outputs to the execution in the standard python format as dictated by the type engine.
-
-        :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
-        """
-        if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
-                "Please wait until the node execution has completed before requesting the outputs."
-            )
-        if self.error:
-            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
-        return self._outputs
 
     @property
     def error(self) -> core_execution_models.ExecutionError:

@@ -8,7 +8,7 @@ import json as _json
 import mimetypes
 import typing
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Optional, Type, cast
+from typing import Dict, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -1409,11 +1409,37 @@ class LiteralsResolver(object):
     LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
     where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
     correspond to an element of the map.
-    TODO: Add an optional Flyte idl interface model object to the constructor
     """
 
-    def __init__(self, literals: typing.Dict[str, Literal]):
+    def __init__(
+        self, literals: typing.Dict[str, Literal], variable_map: Optional[Dict[str, _interface_models.Variable]] = None
+    ):
         self._literals = literals
+        self._variable_map = variable_map
+        self._native_values = {}
+
+    @property
+    def native_values(self) -> typing.Dict[str, typing.Any]:
+        return self._native_values
+
+    @property
+    def variable_map(self) -> Optional[Dict[str, _interface_models.Variable]]:
+        return self._variable_map
+
+    @property
+    def missing_keys(self) -> typing.List[str]:
+        stored = set(self.native_values.keys())
+        lm_keys = set(self.variable_map.keys())
+        return list(lm_keys.difference(stored))
+
+    @property
+    def native_values_complete(self) -> bool:
+        """
+        This function returns true if the cache of native Python values is complete (i.e. all the keys in the Python
+          native map matches the keys in the Literal map). Returns false otherwise.
+        :return: bool whether native values for all keys in the Literal map have been cached.
+        """
+        return len(self.missing_keys) == 0
 
     @property
     def literals(self):
@@ -1422,9 +1448,21 @@ class LiteralsResolver(object):
     def get(self, attr: str, as_type: Optional[typing.Type] = None):
         if attr not in self._literals:
             raise AttributeError(f"Attribute {attr} not found")
+        if attr in self.native_values:
+            return self.native_values[attr]
+
         if as_type is None:
-            raise ValueError("as_type argument can't be None yet.")
-        return TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
+            if self.variable_map and attr in self.variable_map:
+                try:
+                    as_type = TypeEngine.guess_python_type(self.variable_map[attr].type)
+                except ValueError as e:
+                    logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
+                    raise e
+            else:
+                ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
+        val = TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
+        self._native_values[attr] = val
+        return val
 
 
 _register_default_type_transformers()

@@ -4,7 +4,8 @@ from typing import Dict, List, Optional
 
 from flytekit.core import constants as _constants
 from flytekit.core import hash as _hash_mixin
-from flytekit.core.interface import Interface
+
+# from flytekit.core.interface import Interface
 # from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import launch_plan as launch_plan_models

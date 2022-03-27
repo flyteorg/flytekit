@@ -2,6 +2,7 @@ from typing import Optional
 
 from flytekit.core import hash as hash_mixin
 from flytekit.core.interface import Interface
+
 # from flytekit.core.type_engine import TypeEngine
 # from flytekit.loggers import remote_logger as logger
 from flytekit.models import task as _task_model
