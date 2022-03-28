@@ -38,6 +38,7 @@ def test_fetch_one_wf():
     print("====================================")
 
 
+@pytest.mark.sandbox_test
 def test_get_parent_wf_run():
     rr = FlyteRemote(
         Config.auto(config_file="/Users/ytong/.flyte/local_sandbox"),
@@ -49,6 +50,7 @@ def test_get_parent_wf_run():
     print(we)
 
 
+@pytest.mark.sandbox_test
 def test_get_merge_sort_run():
     rr = FlyteRemote(
         Config.auto(config_file="/Users/ytong/.flyte/local_sandbox"),

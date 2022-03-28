@@ -1503,7 +1503,7 @@ def test_guess_dict():
     input_map = {"a": {"k1": "v1", "k2": "2"}}
     guessed_types = {"a": pt}
     ctx = context_manager.FlyteContext.current_context()
-    lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, guessed_python_types=guessed_types)
+    lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, type_map=guessed_types)
     assert isinstance(lm.literals["a"].scalar.generic, Struct)
 
     output_lm = t2.dispatch_execute(ctx, lm)

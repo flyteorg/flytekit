@@ -314,10 +314,6 @@ class FlyteRemote(object):
         flyte_launch_plan._interface = workflow.interface
         flyte_launch_plan._flyte_workflow = workflow
 
-        # flyte_launch_plan.guessed_python_interface = Interface(
-        #     inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
-        #     outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
-        # )
         return flyte_launch_plan
 
     def fetch_workflow_execution(
@@ -553,6 +549,7 @@ class FlyteRemote(object):
         execution_name: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
+        type_map: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -562,6 +559,8 @@ class FlyteRemote(object):
         :param domain: domain on which to execute the entity referenced by flyte_id
         :param execution_name: name of the execution
         :param wait: if True, waits for execution to complete
+        :param type_map: map of python types to inputs so that the TypeEngine knows how to convert the input values
+          into Flyte Literals.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
@@ -575,15 +574,21 @@ class FlyteRemote(object):
         else:
             notifications = NotificationList([])
 
+        type_map = type_map or {}
         with self.remote_context() as ctx:
-            input_python_types = entity.guessed_python_interface.inputs
-            expected_input = entity.interface.inputs
+            input_flyte_type_map = entity.interface.inputs
+
             for k, v in inputs.items():
-                if expected_input.get(k) is None:
+                if input_flyte_type_map.get(k) is None:
                     raise user_exceptions.FlyteValueException(
                         k, f"The {entity.__class__.__name__} doesn't have this input key."
                     )
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, input_python_types)
+                if k not in type_map:
+                    try:
+                        type_map[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
+                    except ValueError:
+                        remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
+            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, type_map)
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -661,6 +666,7 @@ class FlyteRemote(object):
         execution_name: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
+        type_map: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a task, workflow, or launchplan.
 
@@ -681,6 +687,11 @@ class FlyteRemote(object):
         :param version: execute entity using this version. If None, uses auto-generated value.
         :param execution_name: name of the execution. If None, uses auto-generated value.
         :param wait: if True, waits for execution to complete
+        :param type_map: Python types to be passed to the TypeEngine so that it knows how to properly convert the
+          input values for the execution into Flyte literals. If missing, will default to first guessing the type
+          using the type engine, and then to ``type(v)``. Providing the correct Python types is particularly important
+          if the inputs are containers like lists or maps, or if the Python type is one of the more complex Flyte
+          provided classes (like a StructuredDataset that's annotated with columns).
 
         .. note:
 
@@ -705,6 +716,7 @@ class FlyteRemote(object):
         execution_name: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
+        type_map: typing.Optional[typing.Dict[str, typing.Type]] = None
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -720,6 +732,7 @@ class FlyteRemote(object):
             execution_name=execution_name,
             wait=wait,
             options=options,
+            type_map=type_map,
         )
 
     @execute.register
@@ -734,6 +747,7 @@ class FlyteRemote(object):
         execution_name: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
+        type_map: typing.Optional[typing.Dict[str, typing.Type]] = None
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -750,10 +764,9 @@ class FlyteRemote(object):
             execution_name=execution_name,
             options=options,
             wait=wait,
-            from_domain=from_domain,
-            from_project=from_project,
             version=version,
             name=name,
+            type_map=type_map,
         )
 
     # Flytekit Entities
@@ -787,7 +800,6 @@ class FlyteRemote(object):
                     f" image cannot be automatically deducted. Please register and then execute."
                 )
             flyte_task: FlyteTask = self.register_task(entity, self.serialization_settings)
-        # flyte_task.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_task,
             inputs,
@@ -795,6 +807,7 @@ class FlyteRemote(object):
             domain=resolved_identifiers.domain,
             execution_name=execution_name,
             wait=wait,
+            type_map=entity.python_interface.inputs,
         )
 
     @execute.register
@@ -818,13 +831,14 @@ class FlyteRemote(object):
         ss = ss_builder.build()
 
         try:
-            flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
+            # Just here to see if it already exists
+            # todo: Add logic to check that the fetched workflow is functionally equivalent.
+            self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             remote_logger.info("Try to register FlyteWorkflow because it wasn't found in Flyte Admin!")
-            flyte_workflow: FlyteWorkflow = self.register_workflow(
+            self.register_workflow(
                 entity, ss, version=version, all_downstream=True, options=options
             )
-        # flyte_workflow.guessed_python_interface = entity.python_interface
 
         ctx = context_manager.FlyteContext.current_context()
         try:
@@ -843,6 +857,7 @@ class FlyteRemote(object):
             execution_name=execution_name,
             wait=wait,
             options=options,
+            type_map=entity.python_interface.inputs,
         )
 
     @execute.register
@@ -867,7 +882,6 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity, serialization_settings=self.serialization_settings, version=resolved_identifiers.version
             )
-        # flyte_launchplan.guessed_python_interface = entity.python_interface
         return self.execute(
             flyte_launchplan,
             inputs,
@@ -878,6 +892,7 @@ class FlyteRemote(object):
             wait=wait,
             version=version,
             name=name,
+            type_map=entity.python_interface.inputs,
         )
 
     ###################################
