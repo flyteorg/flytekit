@@ -4,7 +4,6 @@ from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Type, Union
 
 from flytekit.core.type_engine import LiteralsResolver
-from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import remote_logger
 from flytekit.models import execution as execution_models
@@ -77,11 +76,11 @@ class RemoteExecutionBase(object):
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
+            raise user_exceptions.FlyteAssertion(
                 "Please wait until the execution has completed before requesting the outputs."
             )
         if self.error:
-            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
+            raise user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
         type_map = type_map or {}
         if self._outputs is not None:
@@ -162,7 +161,7 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         reaching completion.
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
+            raise user_exceptions.FlyteAssertion(
                 "Please wait until a workflow has completed before checking for an error."
             )
         return self.closure.error
@@ -230,7 +229,7 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         reaching completion.
         """
         if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
+            raise user_exceptions.FlyteAssertion(
                 "Please wait until the node execution has completed before requesting error information."
             )
         return self.closure.error
