@@ -1600,7 +1600,10 @@ def test_error_messages():
     with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
         foo(a="hello", b=10)
 
-    with pytest.raises(TypeError, match="Failed to convert return value for var o0 for function test_type_hints.foo2"):
+    with pytest.raises(
+        TypeError,
+        match="Failed to convert return value for var o0 for " "function tests.flytekit.unit.core.test_type_hints.foo2",
+    ):
         foo2(a=10, b="hello")
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):

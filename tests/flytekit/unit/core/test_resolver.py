@@ -44,7 +44,7 @@ def test_wf_resolving():
 
     # Because the workflow is nested inside a test, calling location will fail as it tries to find the LHS that the
     # workflow was assigned to
-    assert my_wf.location == "test_resolver.my_wf"
+    assert my_wf.location == "tests.flytekit.unit.core.test_resolver.my_wf"
 
     workflows_tasks = my_wf.get_all_tasks()
     assert len(workflows_tasks) == 2  # Two tasks were declared inside
@@ -54,7 +54,7 @@ def test_wf_resolving():
     srz_t0_spec = get_serializable(OrderedDict(), serialization_settings, workflows_tasks[0])
     assert srz_t0_spec.template.container.args[-4:] == [
         "--resolver",
-        "test_resolver.my_wf",
+        "tests.flytekit.unit.core.test_resolver.my_wf",
         "--",
         "0",
     ]
@@ -62,7 +62,7 @@ def test_wf_resolving():
     srz_t1_spec = get_serializable(OrderedDict(), serialization_settings, workflows_tasks[1])
     assert srz_t1_spec.template.container.args[-4:] == [
         "--resolver",
-        "test_resolver.my_wf",
+        "tests.flytekit.unit.core.test_resolver.my_wf",
         "--",
         "1",
     ]

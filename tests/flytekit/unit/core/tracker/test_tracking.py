@@ -41,7 +41,11 @@ NAMES, TESTS = convert_to_test(
     {
         "local-convert_to_test": (
             convert_to_test,
-            ("tracker.test_tracking.convert_to_test", "tracker.test_tracking", "convert_to_test"),
+            (
+                "tests.flytekit.unit.core.tracker.test_tracking.convert_to_test",
+                "tests.flytekit.unit.core.tracker.test_tracking",
+                "convert_to_test",
+            ),
         ),
         "core.task": (task, ("flytekit.core.task.task", "flytekit.core.task", "task")),
         "current-mod-tasks": (

@@ -178,13 +178,16 @@ class _ModuleSanitizer(object):
     def __init__(self):
         self._module_cache = {}
 
-    def _resolve_abs_module_name(self, basename: str, dirname: str, package_root: str) -> str:
+    def _resolve_abs_module_name(self, path: str, package_root: str) -> str:
         """
         Recursively finds the root python package under-which basename exists
         """
         # If we have already computed the module for this directory - return
-        if dirname in self._module_cache:
-            return self._module_cache[dirname]
+        if path in self._module_cache:
+            return self._module_cache[path]
+
+        basename = os.path.basename(path)
+        dirname = os.path.dirname(path)
 
         # Let us remove any extensions like .py
         basename = os.path.splitext(basename)[0]
@@ -197,9 +200,9 @@ class _ModuleSanitizer(object):
             return basename
 
         # Now  recurse down such that we can extract the absolute module path
-        mod_name = self._resolve_abs_module_name(os.path.basename(dirname), os.path.dirname(dirname), package_root)
+        mod_name = self._resolve_abs_module_name(dirname, package_root)
         final_mod_name = f"{mod_name}.{basename}" if mod_name else basename
-        self._module_cache[dirname] = final_mod_name
+        self._module_cache[path] = final_mod_name
         return final_mod_name
 
     def get_absolute_module_name(self, path: str, package_root: typing.Optional[str] = None) -> str:
@@ -207,7 +210,7 @@ class _ModuleSanitizer(object):
         Returns the absolute module path for a given python file path. This assumes that every module correctly contains
         a __init__.py file. Absence of this file, indicates the root.
         """
-        return self._resolve_abs_module_name(os.path.basename(path), os.path.dirname(path), package_root)
+        return self._resolve_abs_module_name(path, package_root)
 
 
 _mod_sanitizer = _ModuleSanitizer()
@@ -224,7 +227,8 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         mod = importlib.import_module(f.instantiated_in)
         mod_name = mod.__name__
         name = f.lhs
-        f = f.__class__
+        # We cannot get the sourcefile for an instance, so we replace it with the module
+        f = mod
     else:
         mod = inspect.getmodule(f)
         if mod is None:
