@@ -1,12 +1,15 @@
 import pytest
 
-from flytekit.configuration import Config, Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.remote.remote import FlyteRemote
 
 from .resources import hello_wf
 
+###
+# THESE TESTS ARE NOT RUN IN CI. THEY ARE HERE TO MAKE LOCAL TESTING EASIER.
 # Update this to use these tests
 SANDBOX_CONFIG_FILE = "/Users/ytong/.flyte/local_sandbox"
+###
 
 
 @pytest.mark.sandbox_test
@@ -64,7 +67,7 @@ def test_register_a_hello_world_wf():
         default_domain="development",
     )
     ic = ImageConfig.auto(img_name="docker.io/def:latest")
-    ver = "test_unit_2"
+    ver = "test_unit_7"
 
     ss = SerializationSettings(ic, project="flytesnacks", domain="development", version=ver)
     rr.register_workflow(hello_wf, serialization_settings=ss)
@@ -72,3 +75,17 @@ def test_register_a_hello_world_wf():
     fetched_wf = rr.fetch_workflow(name=hello_wf.name, version=ver)
 
     rr.execute(fetched_wf, inputs={"a": 5})
+
+
+@pytest.mark.sandbox_test
+def test_run_directly_hello_world_wf():
+    rr = FlyteRemote(
+        Config.auto(config_file=SANDBOX_CONFIG_FILE),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+    ic = ImageConfig.auto(img_name="docker.io/def:latest")
+    ver = "test_unit_9"
+
+    ss = SerializationSettings(ic, project="flytesnacks", domain="development", version=ver)
+    rr.execute(hello_wf, inputs={"a": 5}, serialization_settings=ss)
