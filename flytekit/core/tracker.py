@@ -224,6 +224,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         mod = importlib.import_module(f.instantiated_in)
         mod_name = mod.__name__
         name = f.lhs
+        f = f.__class__
     else:
         mod = inspect.getmodule(f)
         if mod is None:

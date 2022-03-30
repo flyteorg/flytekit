@@ -217,13 +217,13 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
         current_location_config = Path("flytekit.config")
         if current_location_config.exists():
             logger.info(f"Using configuration from Python process root {current_location_config.absolute()}")
-            return ConfigFile(current_location_config.absolute())
+            return ConfigFile(str(current_location_config.absolute()))
 
         # If not, see if there's a config in the user's home directory
         home_dir_config = Path(Path.home(), ".flyte", "config")  # _default_config_file_name in main.py
         if home_dir_config.exists():
             logger.info(f"Using configuration from home directory {home_dir_config.absolute()}")
-            return ConfigFile(home_dir_config.absolute())
+            return ConfigFile(str(home_dir_config.absolute()))
 
         # If not, see if the env var that flytectl sandbox tells the user to set is set,
         # or see if there's something in the default home directory location
