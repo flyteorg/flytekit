@@ -4,7 +4,7 @@ import pytest
 import tasks
 
 from flytekit import task
-from flytekit.core.module_utils import extract_task_module
+from flytekit.core.tracker import extract_task_module
 
 
 def convert_to_test(d: dict) -> typing.Tuple[typing.List[str], typing.List]:
@@ -18,10 +18,7 @@ def convert_to_test(d: dict) -> typing.Tuple[typing.List[str], typing.List]:
 
 NAMES, TESTS = convert_to_test(
     {
-        "local-convert_to_test": (
-            convert_to_test,
-            ("test_module_utils.convert_to_test", "test_module_utils", "convert_to_test"),
-        ),
+        "local-convert_to_test": (convert_to_test, ("test_tracker.convert_to_test", "test_tracker", "convert_to_test")),
         "core.task": (task, ("flytekit.core.task.task", "flytekit.core.task", "task")),
         "current-mod-tasks": (tasks.tasks, ("tasks.tasks", "tasks", "tasks")),
         "tasks-core-task": (tasks.task, ("flytekit.core.task.task", "flytekit.core.task", "task")),
