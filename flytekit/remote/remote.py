@@ -24,13 +24,8 @@ from flytekit.loggers import remote_logger
 from flytekit.models import filters as filter_models
 from flytekit.models.admin import common as admin_common_models
 
-try:
-    from functools import singledispatchmethod
-except ImportError:
-    from singledispatchmethod import singledispatchmethod
-
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
