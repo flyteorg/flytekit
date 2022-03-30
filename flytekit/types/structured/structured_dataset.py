@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import importlib
 import os
 import re
 import types
@@ -16,6 +17,9 @@ import pandas
 import pandas as pd
 import pyarrow
 import pyarrow as pa
+
+if importlib.util.find_spec("pyspark") is not None:
+    import pyspark
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
@@ -641,6 +645,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return df.to_string()
         elif isinstance(df, np.ndarray):
             return pd.DataFrame(df).describe().to_html()
+        elif importlib.util.find_spec("pyspark") is not None and isinstance(df, pyspark.sql.DataFrame):
+            return df.printSchema() if df.printSchema() else ""
         else:
             raise NotImplementedError("Conversion to html string should be implemented")
 
