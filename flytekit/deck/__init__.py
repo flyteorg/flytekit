@@ -1,2 +1,2 @@
-from .deck import Deck, default_deck
+from .deck import Deck
 from .renderer import TopFrameRenderer

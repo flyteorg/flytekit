@@ -457,9 +457,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
-        from flytekit.deck.deck import _output_deck, default_deck
+        from flytekit.deck.deck import _output_deck
 
-        new_user_params._decks = [default_deck]
+        new_user_params._decks = [ctx.user_space_params.default_deck]
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))

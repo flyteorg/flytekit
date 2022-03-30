@@ -244,6 +244,12 @@ class ExecutionParameters(object):
         """
         return self._decks
 
+    @property
+    def default_deck(self) -> "Deck":
+        from flytekit import Deck
+
+        return Deck("default")
+
     def __getattr__(self, attr_name: str) -> typing.Any:
         """
         This houses certain task specific context. For example in Spark, it houses the SparkSession, etc

@@ -114,7 +114,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         r = PandasSchemaReader(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
         return r.all()
 
-    def to_html(self, ctx: FlyteContext, python_val: pandas.DataFrame):
+    def to_html(self, ctx: FlyteContext, python_val: pandas.DataFrame, expected_python_type: Type[T]):
         return python_val.describe().to_html()
 
 

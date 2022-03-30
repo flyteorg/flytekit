@@ -189,7 +189,7 @@ def t9(dataframe: np.ndarray) -> Annotated[StructuredDataset, my_cols]:
 
 
 @task
-def t10(dataset: StructuredDataset) -> np.ndarray:
+def t10(dataset: Annotated[StructuredDataset, my_cols]) -> np.ndarray:
     # s3 (parquet) -> Arrow table -> numpy
     np_array = dataset.open(np.ndarray).all()
     return np_array

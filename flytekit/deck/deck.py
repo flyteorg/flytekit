@@ -5,8 +5,6 @@ from jinja2 import Environment, FileSystemLoader
 
 from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager
 
-DEFAULT_DECK_NAME = "default"
-
 
 class Deck:
     """
@@ -74,6 +72,3 @@ def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):
     with open(path, "w") as output:
         deck_map[deck.name] = file_name
         output.write(deck.html)
-
-
-default_deck = Deck(DEFAULT_DECK_NAME)

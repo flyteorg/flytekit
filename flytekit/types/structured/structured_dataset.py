@@ -628,7 +628,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             if python_val.dataframe is not None:
                 df = python_val.dataframe
             else:
-                df = typing.cast(StructuredDataset, python_val).open(pd.DataFrame).all()
+                # Here we only render column information by default instead of opening the structured dataset.
+                col = typing.cast(StructuredDataset, python_val).columns()
+                df = pd.DataFrame(col, ["column type"])
+                return df.to_html()
         else:
             df = python_val
 

@@ -4,8 +4,7 @@ from flytekitplugins.deck.renderer import BoxRenderer, MarkdownRenderer
 from typing_extensions import Annotated
 
 import flytekit
-from flytekit import dynamic, task, workflow
-from flytekit.deck import default_deck
+from flytekit import FlyteContextManager, dynamic, task, workflow
 from flytekit.deck.renderer import TopFrameRenderer
 
 iris_df = px.data.iris()
@@ -18,6 +17,7 @@ def t1() -> str:
     s = BoxRenderer("sepal_length")
     deck = flytekit.Deck("demo", s.to_html(iris_df))
     deck.append(m.to_html(md_text))
+    default_deck = FlyteContextManager.current_context().user_space_params.default_deck
     default_deck.append(m.to_html(md_text))
     return md_text
 
