@@ -7,7 +7,7 @@ def _get(key: str, default_val: str) -> str:
 
 
 class FeatureFlags:
-    FLYTE_PYTHON_PACKAGE_ROOT = _get("FLYTE_PYTHON_PACKAGE_ROOT", ".")
+    FLYTE_PYTHON_PACKAGE_ROOT = _get("FLYTE_PYTHON_PACKAGE_ROOT", "auto")
     """
     Valid values, "auto", "." or an actual path
     """
