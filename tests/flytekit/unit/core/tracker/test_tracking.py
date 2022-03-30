@@ -75,6 +75,6 @@ def test_extract_task_module(test_input, expected):
     FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT = "auto"
     try:
         assert extract_task_module(test_input) == expected
-    except:
+    except Exception:
         FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT = old
         raise
