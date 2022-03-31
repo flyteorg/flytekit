@@ -33,6 +33,7 @@ release = "0.16.0b9"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "autoapi.extension",
     "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
@@ -49,14 +50,20 @@ extensions = [
     "sphinx_fontawesome",
     "sphinx_panels",
     "sphinxcontrib.yt",
-    'autoapi.extension'
 ]
 
 autoapi_type = 'python'
 
-autoapi_dirs = [
-    '../../plugins/flytekit-aws-athena/flytekitplugins/'
-]
+plugins_directory = os.path.abspath('../../plugins')
+underlying_path_to_check = 'flytekitplugins'
+
+autoapi_dirs = []
+
+for possible_plugin_dir in os.listdir(plugins_directory):
+    dir_path = os.path.join(plugins_directory, possible_plugin_dir)
+    plugin_path = os.path.join(dir_path, underlying_path_to_check)
+    if os.path.isdir(dir_path) and os.path.exists(plugin_path):
+        autoapi_dirs.append(plugin_path)
 
 
 # build the templated autosummary files
