@@ -11,7 +11,7 @@ from flytekit.clis.helpers import _hydrate_identifier, _hydrate_workflow_templat
 
 
 def test_parse_args_into_dict():
-    sample_args1 = (u"input_b=mystr", u"input_c=18")
+    sample_args1 = ("input_b=mystr", "input_c=18")
     sample_args2 = ("input_a=mystr===d",)
     sample_args3 = ()
     output = helpers.parse_args_into_dict(sample_args1)
