@@ -212,7 +212,7 @@ class ShellTask(PythonInstanceTask[T]):
 
         if "env" in kwargs:
             kwargs["export_env"] = self.make_export_string_from_env_dict(kwargs["env"])
-
+        breakpoint()
         gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
         if self._debug:
             print("\n==============================================\n")
@@ -251,7 +251,7 @@ class ShellTask(PythonInstanceTask[T]):
 portable_shell_task = ShellTask(
     name="portable_shell_task_instance",
     debug=True,
-    inputs=kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
+    inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
     output_locs=[
         OutputLocation(
             var="k",
@@ -260,14 +260,14 @@ portable_shell_task = ShellTask(
         )
     ],
     script="""
-    #!/bin/bash
+#!/bin/bash
 
-    set -uexo pipefail
+set -uexo pipefail
 
-    cd {ctx.working_directory}
+cd {ctx.working_directory}
 
-    {inputs.export_env}
+{inputs.export_env}
 
-    bash {inputs.script_file} {inputs.script_args}
+bash {inputs.script_file} {inputs.script_args}
     """
 )
