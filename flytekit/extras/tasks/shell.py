@@ -184,7 +184,15 @@ class ShellTask(PythonInstanceTask[T]):
     def script_file(self) -> typing.Optional[os.PathLike]:
         return self._script_file
 
-    def make_export_string_from_env_dict(self, d):
+    def make_export_string_from_env_dict(self, d) -> str:
+        """
+        Utility function to convert a dictionary of desired environment variable key: value pairs into a string of
+        `
+        export k1=v1
+        export k2=v2
+        ...
+        `
+        """
         items = []
         for k, v in d.items():
             items.append(f"export {k}={v}")
@@ -210,7 +218,7 @@ class ShellTask(PythonInstanceTask[T]):
         if os.name == "nt":
             self._script = self._script.lstrip().rstrip().replace("\n", "&&")
 
-        if "env" in kwargs:
+        if "env" in kwargs and isinstance(kwargs["env"], dict):
             kwargs["export_env"] = self.make_export_string_from_env_dict(kwargs["env"])
 
         gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
