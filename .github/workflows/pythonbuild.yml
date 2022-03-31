@@ -70,6 +70,7 @@ jobs:
           - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-data-fsspec
+          - flytekit-deck-standard
           - flytekit-dolt
           - flytekit-greatexpectations
           - flytekit-hive
