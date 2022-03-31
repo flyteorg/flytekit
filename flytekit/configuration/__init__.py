@@ -81,7 +81,6 @@ import enum
 import gzip
 import os
 import re
-import sys
 import tempfile
 import typing
 from dataclasses import dataclass, field

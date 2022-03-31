@@ -201,7 +201,7 @@ def test_wf_nested_comp():
     sub_wf = model_wf.sub_workflows[0]
     assert len(sub_wf.nodes) == 1
     assert sub_wf.nodes[0].id == "n0"
-    assert sub_wf.nodes[0].task_node.reference_id.name == "test_workflows.t1"
+    assert sub_wf.nodes[0].task_node.reference_id.name == "tests.flytekit.unit.core.test_workflows.t1"
 
 
 @task
@@ -254,7 +254,7 @@ def test_all_node_types():
     sub_wf = model_wf.sub_workflows[0]
     assert len(sub_wf.nodes) == 1
     assert sub_wf.nodes[0].id == "n0"
-    assert sub_wf.nodes[0].task_node.reference_id.name == "test_workflows.add_5"
+    assert sub_wf.nodes[0].task_node.reference_id.name == "tests.flytekit.unit.core.test_workflows.add_5"
 
 
 def test_wf_docstring():

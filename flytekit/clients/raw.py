@@ -55,7 +55,7 @@ def _handle_rpc_error(retry=False):
                             raise
                         else:
                             # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
-                            wait_time = min(200 * (2 ** i), max_wait_time)
+                            wait_time = min(200 * (2**i), max_wait_time)
                             cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                             time.sleep(wait_time / 1000)
 
@@ -252,16 +252,23 @@ class RawSynchronousFlyteClient(object):
         pass
 
     def refresh_credentials(self):
-        if self._cfg.auth_mode == AuthType.STANDARD:
+        cfg_auth = self._cfg.auth_mode
+        if type(cfg_auth) is str:
+            try:
+                cfg_auth = AuthType[cfg_auth.upper()]
+            except KeyError:
+                cli_logger.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
+                cfg_auth = AuthType.STANDARD
+
+        if cfg_auth == AuthType.STANDARD:
             return self._refresh_credentials_standard()
-        elif self._cfg.auth_mode == AuthType.BASIC or self._cfg.auth_mode == AuthType.CLIENT_CREDENTIALS:
+        elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS:
             return self._refresh_credentials_basic()
-        elif self._cfg.auth_mode == AuthType.EXTERNAL_PROCESS:
+        elif cfg_auth == AuthType.EXTERNAL_PROCESS:
             return self._refresh_credentials_from_command()
         else:
             raise ValueError(
-                f"Invalid auth mode [{self._cfg.auth_mode}] specified."
-                f"Please update the creds config to use a valid value"
+                f"Invalid auth mode [{cfg_auth}] specified." f"Please update the creds config to use a valid value"
             )
 
     def set_access_token(self, access_token: str, authorization_header_key: Optional[str] = "authorization"):
