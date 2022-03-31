@@ -90,7 +90,7 @@ def test_serialization(serialization_settings):
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "test_map_task",
+        "tests.flytekit.unit.core.test_map_task",
         "task-name",
         "t1",
     ]
