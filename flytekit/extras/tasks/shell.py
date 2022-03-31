@@ -255,8 +255,8 @@ portable_shell_task = ShellTask(
     output_locs=[
         OutputLocation(
             var="k",
-            var_type=FlyteFile,
-            location="{ctx.working_directory}/test_output.txt",
+            var_type=FlyteDirectory,
+            location="{ctx.working_directory}",
         )
     ],
     script="""
