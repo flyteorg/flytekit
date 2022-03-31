@@ -51,6 +51,14 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
         )
     ),
+    types.LiteralType(
+        union_type=types.UnionType(
+            variants=[
+                types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+                types.LiteralType(simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")),
+            ]
+        )
+    ),
 ]
 
 
@@ -170,6 +178,46 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
         timedelta(seconds=5),
     ),
     (literals.Scalar(none_type=literals.Void()), None),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=10))),
+                stored_type=types.LiteralType(
+                    simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")
+                ),
+            )
+        ),
+        10,
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=10))),
+                stored_type=types.LiteralType(
+                    simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")
+                ),
+            )
+        ),
+        10,
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="test"))),
+                stored_type=types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+            )
+        ),
+        "test",
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="test"))),
+                stored_type=types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+            )
+        ),
+        "test",
+    ),
 ]
 
 LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE = [

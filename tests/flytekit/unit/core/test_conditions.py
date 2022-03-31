@@ -127,7 +127,7 @@ def test_condition_tuple_branches():
     assert len(wf_spec.template.nodes) == 1
     assert (
         wf_spec.template.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name
-        == "test_conditions.sum_sub"
+        == "tests.flytekit.unit.core.test_conditions.sum_sub"
     )
 
 
@@ -234,11 +234,12 @@ def test_subworkflow_condition_serialization():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
+    fmt = "tests.flytekit.unit.core.test_conditions.{}"
     for wf, expected_subworkflows in [
-        (ifelse_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2")]),
-        (ifelse_branching_fail, ["test_conditions.{}".format(x) for x in ("wf1",)]),
-        (if_elif_else_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
-        (nested_branching, ["test_conditions.{}".format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
+        (ifelse_branching, [fmt.format(x) for x in ("wf1", "wf2")]),
+        (ifelse_branching_fail, [fmt.format(x) for x in ("wf1",)]),
+        (if_elif_else_branching, [fmt.format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
+        (nested_branching, [fmt.format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
     ]:
         wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
         subworkflows = wf_spec.sub_workflows

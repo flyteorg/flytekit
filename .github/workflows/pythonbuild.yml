@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
 
 env:
@@ -19,43 +19,43 @@ jobs:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         spark-version-suffix: ["", "-spark2"]
         exclude:
-        - python-version: 3.8
-          spark-version-suffix: "-spark2"
-        - python-version: 3.9
-          spark-version-suffix: "-spark2"
-        - python-version: 3.10
-          spark-version-suffix: "-spark2"
-        # Ignore this test because we failed to install docker-py
-        # docker-py will install pywin32==227, whereas pywin only added support for python 3.10 in version 301.
-        # For more detail, see https://github.com/flyteorg/flytekit/pull/856#issuecomment-1067152855
-        - python-version: 3.10
-          os: windows-latest
+          - python-version: 3.8
+            spark-version-suffix: "-spark2"
+          - python-version: 3.9
+            spark-version-suffix: "-spark2"
+          - python-version: 3.10
+            spark-version-suffix: "-spark2"
+          # Ignore this test because we failed to install docker-py
+          # docker-py will install pywin32==227, whereas pywin only added support for python 3.10 in version 301.
+          # For more detail, see https://github.com/flyteorg/flytekit/pull/856#issuecomment-1067152855
+          - python-version: 3.10
+            os: windows-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        # This path is specific to Ubuntu
-        path: ~/.cache/pip
-        # Look to see if there is a cache hit for the corresponding requirements files
-        key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('requirements{0}.txt', matrix.spark-version-suffix))) }}
-    - name: Install dependencies
-      run: |
-        make setup${{ matrix.spark-version-suffix }}
-        pip freeze
-    - name: Test with coverage
-      env:
-        FLYTE_SDK_USE_STRUCTURED_DATASET: "TRUE"
-      run: |
-        coverage run -m pytest tests/flytekit/unit
-    - name: Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        fail_ci_if_error: true # optional (default = false)
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('requirements{0}.txt', matrix.spark-version-suffix))) }}
+      - name: Install dependencies
+        run: |
+          make setup${{ matrix.spark-version-suffix }}
+          pip freeze
+      - name: Test with coverage
+        env:
+          FLYTE_SDK_USE_STRUCTURED_DATASET: "TRUE"
+        run: |
+          coverage run -m pytest tests/flytekit/unit
+      - name: Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true # optional (default = false)
 
   build-plugins:
     runs-on: ubuntu-latest
@@ -84,35 +84,35 @@ jobs:
           - flytekit-spark
           - flytekit-sqlalchemy
         exclude:
-        # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
-        # Issue tracked in https://github.com/ray-project/ray/issues/19116.
-        - python-version: 3.10
-          plugin-names: "flytekit-modin"
+          # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
+          # Issue tracked in https://github.com/ray-project/ray/issues/19116.
+          - python-version: 3.10
+            plugin-names: "flytekit-modin"
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        # This path is specific to Ubuntu
-        path: ~/.cache/pip
-        # Look to see if there is a cache hit for the corresponding requirements files
-        key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
-    - name: Install dependencies
-      run: |
-        make setup
-        cd plugins/${{ matrix.plugin-names }}
-        pip install -e .
-        if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-        pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
-        pip freeze
-    - name: Test with coverage
-      run: |
-        cd plugins/${{ matrix.plugin-names }}
-        coverage run -m pytest tests
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
+      - name: Install dependencies
+        run: |
+          make setup
+          cd plugins/${{ matrix.plugin-names }}
+          pip install -e .
+          if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
+          pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
+          pip freeze
+      - name: Test with coverage
+        run: |
+          cd plugins/${{ matrix.plugin-names }}
+          coverage run -m pytest tests
 
   lint:
     runs-on: ubuntu-latest
@@ -139,8 +139,7 @@ jobs:
       - name: ShellCheck
         uses: ludeeus/action-shellcheck@master
         with:
-          ignore_paths:
-            boilerplate
+          ignore_paths: boilerplate
 
   docs:
     runs-on: ubuntu-latest

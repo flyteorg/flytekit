@@ -175,7 +175,18 @@ def test_refresh_basic(mocked_method):
 
     cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.CLIENT_CREDENTIALS))
     cc.refresh_credentials()
+    assert mocked_method.call_count == 2
+
+
+@patch.object(RawSynchronousFlyteClient, "_refresh_credentials_basic")
+def test_basic_strings(mocked_method):
+    cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode="basic"))
+    cc.refresh_credentials()
     assert mocked_method.called
+
+    cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode="client_credentials"))
+    cc.refresh_credentials()
+    assert mocked_method.call_count == 2
 
 
 @patch.object(RawSynchronousFlyteClient, "_refresh_credentials_from_command")

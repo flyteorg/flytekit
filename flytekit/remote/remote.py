@@ -424,7 +424,7 @@ class FlyteRemote(object):
         serialization_settings: SerializationSettings,
         version: typing.Optional[str] = None,
         default_launch_plan: bool = True,
-        all_downstream: bool = False,
+        all_downstream: bool = True,
         options: typing.Optional[Options] = None,
     ) -> FlyteWorkflow:
         """
@@ -591,7 +591,7 @@ class FlyteRemote(object):
                     entity.id,
                     ExecutionMetadata(
                         ExecutionMetadata.ExecutionMode.MANUAL,
-                        "placeholder",  # TODO: get principle
+                        "placeholder",  # Admin replaces this from oidc token if auth is enabled.
                         0,
                     ),
                     notifications=notifications,
