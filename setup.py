@@ -71,9 +71,6 @@ setup(
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
         "numpy<=1.22.1; python_version < '3.8.0'",
-        "markdown",
-        "plotly",
-        "pandas_profiling",  # Will move it to flytekitplugins-deck
     ],
     extras_require=extras_require,
     scripts=[
