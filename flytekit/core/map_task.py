@@ -61,10 +61,11 @@ class MapPythonTask(PythonTask):
         self._array_task_interface = python_function_task.python_interface
         if "metadata" not in kwargs and python_function_task.metadata:
             kwargs["metadata"] = python_function_task.metadata
+        if "security_ctx" not in kwargs and python_function_task.security_context:
+            kwargs["security_ctx"] = python_function_task.security_context
         super().__init__(
             name=name,
             interface=collection_interface,
-            security_ctx=python_function_task.security_ctx,
             task_type=SdkTaskType.CONTAINER_ARRAY_TASK,
             task_config=None,
             task_type_version=1,
