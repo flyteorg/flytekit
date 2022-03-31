@@ -237,3 +237,76 @@ class ShellTask(PythonInstanceTask[T]):
 
     def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
         return self._config_task_instance.post_execute(user_params, rval)
+
+
+class PortableShellTask(ShellTask):
+
+    def __init__(
+        self,
+        name: str,
+        script_file: str,
+        debug: bool = False,
+        task_config: T = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        output_locs: typing.Optional[typing.List[OutputLocation]] = None,
+        **kwargs,
+    ):
+        self._script = """
+        #!/bin/bash
+        
+        set -uexo pipefail
+        
+        {inputs.export_env}
+        
+        bash {inputs.script_file} {inputs.args}
+        """
+
+        def execute(self, **kwargs) -> typing.Any:
+            """
+            Executes the given script by substituting the inputs and outputs and extracts the outputs from the filesystem
+            """
+            logger.info(f"Running shell script as type {self.task_type}")
+            if self.script_file:
+                with open(self.script_file) as f:
+                    self._script = f.read()
+
+            outputs: typing.Dict[str, str] = {}
+            if self._output_locs:
+                for v in self._output_locs:
+                    outputs[v.var] = self._interpolizer.interpolate(v.location, inputs=kwargs)
+
+            if os.name == "nt":
+                self._script = self._script.lstrip().rstrip().replace("\n", "&&")
+
+            gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
+            if self._debug:
+                print("\n==============================================\n")
+                print(gen_script)
+                print("\n==============================================\n")
+
+            try:
+                subprocess.check_call(gen_script, shell=True)
+            except subprocess.CalledProcessError as e:
+                files = os.listdir(".")
+                fstr = "\n-".join(files)
+                logger.error(
+                    f"Failed to Execute Script, return-code {e.returncode} \n"
+                    f"StdErr: {e.stderr}\n"
+                    f"StdOut: {e.stdout}\n"
+                    f" Current directory contents: .\n-{fstr}"
+                )
+                raise
+
+            final_outputs = []
+            for v in self._output_locs:
+                if issubclass(v.var_type, FlyteFile):
+                    final_outputs.append(FlyteFile(outputs[v.var]))
+                if issubclass(v.var_type, FlyteDirectory):
+                    final_outputs.append(FlyteDirectory(outputs[v.var]))
+            if len(final_outputs) == 1:
+                return final_outputs[0]
+            if len(final_outputs) > 1:
+                return tuple(final_outputs)
+            return None
+
+
