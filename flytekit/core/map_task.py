@@ -64,6 +64,7 @@ class MapPythonTask(PythonTask):
         super().__init__(
             name=name,
             interface=collection_interface,
+            security_ctx=python_function_task.security_ctx,
             task_type=SdkTaskType.CONTAINER_ARRAY_TASK,
             task_config=None,
             task_type_version=1,
