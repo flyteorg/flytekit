@@ -212,7 +212,7 @@ class ShellTask(PythonInstanceTask[T]):
 
         if "env" in kwargs:
             kwargs["export_env"] = self.make_export_string_from_env_dict(kwargs["env"])
-        breakpoint()
+
         gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
         if self._debug:
             print("\n==============================================\n")
