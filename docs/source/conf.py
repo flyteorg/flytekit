@@ -49,7 +49,15 @@ extensions = [
     "sphinx_fontawesome",
     "sphinx_panels",
     "sphinxcontrib.yt",
+    'autoapi.extension'
 ]
+
+autoapi_type = 'python'
+
+autoapi_dirs = [
+    '../../plugins/flytekit-aws-athena/flytekitplugins/'
+]
+
 
 # build the templated autosummary files
 autosummary_generate = True

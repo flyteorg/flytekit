@@ -3,6 +3,7 @@
 
 git+https://github.com/flyteorg/furo@main
 sphinx
+sphinx-autoapi
 sphinx-gallery
 sphinx-prompt
 sphinx-material
