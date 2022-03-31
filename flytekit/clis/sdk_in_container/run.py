@@ -1,5 +1,6 @@
 import importlib
 import os
+import shutil
 import tarfile
 import tempfile
 from pathlib import Path
@@ -86,6 +87,19 @@ def run(
     source_path = os.fspath(source)
     digest = fast_registration.compute_digest(source_path)
     archive_fname = os.path.join(tmp_dir.name, f"{digest}.tar.gz")
+    with tempfile.TemporaryDirectory() as t_dir:
+        breakpoint()
+        # for each package in pkg, create a directory and touch a __init__.py in it
+        path = t_dir
+        for p in pkg.split("."):
+            os.mkdir(path)
+            Path(os.path.join(path, p, "__init__.py")).touch()
+            path = os.path.join(path, p)
+        shutil.copy(source_path, os.path.join(t_dir, "flyte/workflows/example.py"))
+
+        with tarfile.open(archive_fname, "w:gz") as tar:
+            tar.add("flyte", arcname="")
+
     with tarfile.open(archive_fname, "w:gz") as tar:
         tar.add(source, arcname="", filter=fast_registration.filter_tar_file_fn)
     serialize_helpers.persist_registrable_entities(registrable_entities, tmp_dir.name)
