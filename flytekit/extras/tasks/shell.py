@@ -255,7 +255,9 @@ class ShellTask(PythonInstanceTask[T]):
     def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
         return self._config_task_instance.post_execute(user_params, rval)
 
-
+# The portable_shell_task is an instance of ShellTask which wraps a 'pure' shell script
+# This utility function allows for the specification of env variables, arguments, and the actual script within the
+# workflow definition rather than at `ShellTask` instantiation
 portable_shell_task = ShellTask(
     name="portable_shell_task_instance",
     debug=True,
