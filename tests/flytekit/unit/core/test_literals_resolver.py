@@ -122,7 +122,9 @@ def test_interface():
     # Based on guessing, so no column information
     assert len(guessed_df.metadata.structured_dataset_type.columns) == 0
 
-    lr2 = LiteralsResolver(lm, variable_map=variable_map)
-    guessed_df = lr2.get("my_df", annotated_sd_type)
+    # Update type hints with the annotated type
+    lr.update_type_hints({"my_df": annotated_sd_type})
+    del lr._native_values["my_df"]
+    guessed_df = lr.get("my_df")
     # Using the user specified type, so number of columns is correct.
     assert len(guessed_df.metadata.structured_dataset_type.columns) == 2

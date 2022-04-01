@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional, Union
 
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.exceptions import user as user_exceptions
-from flytekit.loggers import remote_logger
 from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
@@ -17,41 +16,11 @@ from flytekit.remote.workflow import FlyteWorkflow
 class RemoteExecutionBase(object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._inputs = None
-        self._outputs = None
-        self._raw_inputs: Optional[LiteralsResolver] = None
-        self._raw_outputs: Optional[LiteralsResolver] = None
+        self._inputs: Optional[LiteralsResolver] = None
+        self._outputs: Optional[LiteralsResolver] = None
 
     @property
-    def raw_inputs(self) -> LiteralsResolver:
-        if self._raw_inputs is None:
-            raise ValueError(f"Execution {self.id} doesn't have raw inputs set")  # noqa
-        return self._raw_inputs
-
-    @property
-    def raw_outputs(self) -> LiteralsResolver:
-        if self._raw_outputs is None:
-            raise ValueError(f"Execution {self.id} doesn't have raw outputs set")  # noqa
-        return self._raw_outputs
-
-    @property
-    def inputs(self, type_hints: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
-        """
-        Return the inputs in the literal map stored under the LiteralsResolver as Python native values. Use the type
-        map to provide type hints to the TypeEngine if necessary, otherwise the guessing logic will be invoked.
-
-        :param type_hints: type hints to be provided to the TypeEngine so that it doesn't have to invoke the guessing
-          logic. Map does not need to be complete, missing entries will just trigger the guessing.
-        :return: Python native values of the input map for this execution
-        """
-        type_hints = type_hints or {}
-        if self._inputs is not None:
-            return self._inputs
-
-        for name in self.raw_inputs.literals.keys():
-            self.raw_inputs.get(name, as_type=type_hints.get(name, None))
-
-        self._inputs = self.raw_inputs.native_values
+    def inputs(self) -> Optional[LiteralsResolver]:
         return self._inputs
 
     @property
@@ -65,12 +34,9 @@ class RemoteExecutionBase(object):
         ...
 
     @property
-    def outputs(self, type_hints: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
+    def outputs(self) -> Optional[LiteralsResolver]:
         """
-        Returns the outputs to the execution in the standard python format as dictated by the type engine.
-        :param type_hints: type hints to be provided to the TypeEngine so that it doesn't have to invoke the guessing
-          logic. Map does not need to be complete, missing entries will just trigger the guessing.
-        :return: Python native values of the output map for this execution
+        :return: Returns the outputs LiteralsResolver to the execution
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
         if not self.is_complete:
@@ -80,14 +46,6 @@ class RemoteExecutionBase(object):
         if self.error:
             raise user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
-        type_hints = type_hints or {}
-        if self._outputs is not None:
-            return self._outputs
-
-        for name in self.raw_outputs.literals.keys():
-            self.raw_outputs.get(name, as_type=type_hints.get(name, None))
-
-        self._outputs = self.raw_outputs.native_values
         return self._outputs
 
 

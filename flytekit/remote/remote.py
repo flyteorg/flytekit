@@ -1346,11 +1346,11 @@ class FlyteRemote(object):
         """Helper for assigning synced inputs and outputs to an execution object."""
         with self.remote_context():
             input_literal_map = self._get_input_literal_map(execution_data)
-            execution._raw_inputs = LiteralsResolver(input_literal_map.literals, interface.inputs)
+            execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs)
 
             if execution.is_complete and not execution.error:
                 output_literal_map = self._get_output_literal_map(execution_data)
-                execution._raw_outputs = LiteralsResolver(output_literal_map.literals, interface.outputs)
+                execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs)
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:

@@ -1421,17 +1421,7 @@ class LiteralsResolver(object):
         self._literals = literals
         self._variable_map = variable_map
         self._native_values = {}
-
-    def __getitem__(self, key: str):
-        # First check to see if it's even in the literal map.
-        if key not in self._literals:
-            raise ValueError(f"Key {key} is not in the literal map")
-
-        # Return the cached value if it's cached
-        if key in self._native_values:
-            return self._native_values[key]
-
-        return self.get(key)
+        self._type_hints = {}
 
     @property
     def native_values(self) -> typing.Dict[str, typing.Any]:
@@ -1445,11 +1435,25 @@ class LiteralsResolver(object):
     def literals(self):
         return self._literals
 
+    def update_type_hints(self, type_hints: typing.Dict[str, typing.Type]):
+        self._type_hints.update(type_hints)
+
     def get_literal(self, key: str) -> Literal:
         if key not in self._literals:
             raise ValueError(f"Key {key} is not in the literal map")
 
         return self._literals[key]
+
+    def __getitem__(self, key: str):
+        # First check to see if it's even in the literal map.
+        if key not in self._literals:
+            raise ValueError(f"Key {key} is not in the literal map")
+
+        # Return the cached value if it's cached
+        if key in self._native_values:
+            return self._native_values[key]
+
+        return self.get(key)
 
     def get(self, attr: str, as_type: Optional[typing.Type] = None) -> typing.Any:
         """
@@ -1467,14 +1471,17 @@ class LiteralsResolver(object):
             return self.native_values[attr]
 
         if as_type is None:
-            if self.variable_map and attr in self.variable_map:
-                try:
-                    as_type = TypeEngine.guess_python_type(self.variable_map[attr].type)
-                except ValueError as e:
-                    logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
-                    raise e
+            if attr in self._type_hints:
+                as_type = self._type_hints[attr]
             else:
-                ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
+                if self.variable_map and attr in self.variable_map:
+                    try:
+                        as_type = TypeEngine.guess_python_type(self.variable_map[attr].type)
+                    except ValueError as e:
+                        logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
+                        raise e
+                else:
+                    ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
         val = TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
         self._native_values[attr] = val
         return val
