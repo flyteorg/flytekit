@@ -646,7 +646,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         elif isinstance(df, np.ndarray):
             return pd.DataFrame(df).describe().to_html()
         elif importlib.util.find_spec("pyspark") is not None and isinstance(df, pyspark.sql.DataFrame):
-            return df.printSchema() if df.printSchema() else ""
+            return pd.DataFrame(df.schema, columns=["StructField"]).to_html()
         else:
             raise NotImplementedError("Conversion to html string should be implemented")
 

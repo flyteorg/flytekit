@@ -1,3 +1,4 @@
+import pandas as pd
 import pyspark
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import new_spark_session
@@ -59,8 +60,8 @@ def test_new_spark_session():
 
 def test_to_html():
     spark = SparkSession.builder.getOrCreate()
-    df = spark.createDataFrame([("Alice", 1)], ["name", "age"])
+    df = spark.createDataFrame([("Bob", 10)], ["name", "age"])
     sd = StructuredDataset(dataframe=df)
     tf = StructuredDatasetTransformerEngine()
     output = tf.to_html(FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame)
-    assert df.printSchema() == output
+    assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output

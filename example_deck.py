@@ -17,7 +17,7 @@ def t1() -> str:
     s = BoxRenderer("sepal_length")
     deck = flytekit.Deck("demo", s.to_html(iris_df))
     deck.append(m.to_html(md_text))
-    default_deck = FlyteContextManager.current_context().user_space_params.default_deck
+    default_deck = flytekit.current_context().default_deck
     default_deck.append(m.to_html(md_text))
     return md_text
 
