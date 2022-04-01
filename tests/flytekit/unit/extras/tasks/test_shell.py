@@ -9,7 +9,7 @@ from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import kwtypes
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask
+from flytekit.extras.tasks.shell import OutputLocation, ShellTask, portable_shell_task
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -20,6 +20,7 @@ if os.name == "nt":
     script_sh = os.path.join(testdata, "script.exe")
 else:
     script_sh = os.path.join(testdata, "script.sh")
+    script_sh_2 = os.path.join(testdata, "script_args_env.sh")
 
 
 def test_shell_task_no_io():
@@ -249,3 +250,36 @@ def test_shell_script():
 
     assert t.script_file == script_sh
     t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+
+
+def test_portable_shell_task_with_args(capfd):
+    portable_shell_task(
+        script_file=script_sh_2,
+        script_args="first_arg second_arg",
+        env={}
+    )
+    cap = capfd.readouterr()
+    assert "first_arg" in cap.out
+    assert "second_arg" in cap.out
+
+
+def test_shell_task_with_env(capfd):
+    portable_shell_task(
+        script_file=script_sh_2,
+        env={"A": "AAAA", "B": "BBBB"},
+        script_args=""
+    )
+    cap = capfd.readouterr()
+    assert "AAAA" in cap.out
+    assert "BBBB" in cap.out
+
+
+def test_shell_task_properly_restores_env_after_execution():
+    env_as_dict = os.environ.copy()
+    portable_shell_task(
+        script_file=script_sh_2,
+        env={"A": "AAAA", "B": "BBBB"},
+        script_args=""
+    )
+    env_as_dict_after = os.environ.copy()
+    assert env_as_dict == env_as_dict_after
