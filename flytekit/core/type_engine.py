@@ -721,19 +721,19 @@ class TypeEngine(typing.Generic[T]):
         cls,
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
-        type_map: Optional[typing.Dict[str, type]] = None,
+        type_hints: Optional[typing.Dict[str, type]] = None,
     ) -> LiteralMap:
         """
         Given a dictionary mapping string keys to python values and a dictionary containing guessed types for such string keys,
         convert to a LiteralMap.
         """
-        type_map = type_map or {}
+        type_hints = type_hints or {}
         literal_map = {}
         for k, v in d.items():
             # The guessed type takes precedence over the type returned by the python runtime. This is needed
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
-            python_type = type_map.get(k, type(v))
+            python_type = type_hints.get(k, type(v))
             try:
                 literal_map[k] = TypeEngine.to_literal(
                     ctx=ctx,

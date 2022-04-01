@@ -547,7 +547,7 @@ class FlyteRemote(object):
         execution_name: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
-        type_map: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -557,7 +557,7 @@ class FlyteRemote(object):
         :param domain: domain on which to execute the entity referenced by flyte_id
         :param execution_name: name of the execution
         :param wait: if True, waits for execution to complete
-        :param type_map: map of python types to inputs so that the TypeEngine knows how to convert the input values
+        :param type_hints: map of python types to inputs so that the TypeEngine knows how to convert the input values
           into Flyte Literals.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
@@ -572,7 +572,7 @@ class FlyteRemote(object):
         else:
             notifications = NotificationList([])
 
-        type_map = type_map or {}
+        type_hints = type_hints or {}
         with self.remote_context() as ctx:
             input_flyte_type_map = entity.interface.inputs
 
@@ -581,12 +581,12 @@ class FlyteRemote(object):
                     raise user_exceptions.FlyteValueException(
                         k, f"The {entity.__class__.__name__} doesn't have this input key."
                     )
-                if k not in type_map:
+                if k not in type_hints:
                     try:
-                        type_map[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
+                        type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
                     except ValueError:
                         remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, type_map)
+            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, type_hints)
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -664,7 +664,7 @@ class FlyteRemote(object):
         execution_name: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
-        type_map: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -694,7 +694,7 @@ class FlyteRemote(object):
         :param version: execute entity using this version. If None, uses auto-generated value.
         :param execution_name: name of the execution. If None, uses auto-generated value.
         :param wait: if True, waits for execution to complete
-        :param type_map: Python types to be passed to the TypeEngine so that it knows how to properly convert the
+        :param type_hints: Python types to be passed to the TypeEngine so that it knows how to properly convert the
           input values for the execution into Flyte literals. If missing, will default to first guessing the type
           using the type engine, and then to ``type(v)``. Providing the correct Python types is particularly important
           if the inputs are containers like lists or maps, or if the Python type is one of the more complex Flyte
@@ -714,7 +714,7 @@ class FlyteRemote(object):
                 execution_name=execution_name,
                 options=options,
                 wait=wait,
-                type_map=type_map,
+                type_hints=type_hints,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -725,7 +725,7 @@ class FlyteRemote(object):
                 execution_name=execution_name,
                 options=options,
                 wait=wait,
-                type_map=type_map,
+                type_hints=type_hints,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -777,7 +777,7 @@ class FlyteRemote(object):
         execution_name: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
-        type_map: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -791,7 +791,7 @@ class FlyteRemote(object):
             execution_name=execution_name,
             wait=wait,
             options=options,
-            type_map=type_map,
+            type_hints=type_hints,
         )
 
     def execute_remote_wf(
@@ -803,7 +803,7 @@ class FlyteRemote(object):
         execution_name: str = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
-        type_map: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -818,7 +818,7 @@ class FlyteRemote(object):
             execution_name=execution_name,
             options=options,
             wait=wait,
-            type_map=type_map,
+            type_hints=type_hints,
         )
 
     # Flytekit Entities
@@ -896,7 +896,7 @@ class FlyteRemote(object):
             domain=resolved_identifiers.domain,
             execution_name=execution_name,
             wait=wait,
-            type_map=entity.python_interface.inputs,
+            type_hints=entity.python_interface.inputs,
         )
 
     def execute_local_workflow(
@@ -988,7 +988,7 @@ class FlyteRemote(object):
             execution_name=execution_name,
             wait=wait,
             options=options,
-            type_map=entity.python_interface.inputs,
+            type_hints=entity.python_interface.inputs,
         )
 
     def execute_local_launch_plan(
@@ -1036,7 +1036,7 @@ class FlyteRemote(object):
             execution_name=execution_name,
             options=options,
             wait=wait,
-            type_map=entity.python_interface.inputs,
+            type_hints=entity.python_interface.inputs,
         )
 
     ###################################

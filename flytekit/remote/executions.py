@@ -35,21 +35,21 @@ class RemoteExecutionBase(object):
         return self._raw_outputs
 
     @property
-    def inputs(self, type_map: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
+    def inputs(self, type_hints: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
         """
         Return the inputs in the literal map stored under the LiteralsResolver as Python native values. Use the type
         map to provide type hints to the TypeEngine if necessary, otherwise the guessing logic will be invoked.
 
-        :param type_map: type hints to be provided to the TypeEngine so that it doesn't have to invoke the guessing
+        :param type_hints: type hints to be provided to the TypeEngine so that it doesn't have to invoke the guessing
           logic. Map does not need to be complete, missing entries will just trigger the guessing.
         :return: Python native values of the input map for this execution
         """
-        type_map = type_map or {}
+        type_hints = type_hints or {}
         if self._inputs is not None:
             return self._inputs
 
         for name in self.raw_inputs.literals.keys():
-            self.raw_inputs.get(name, as_type=type_map.get(name, None))
+            self.raw_inputs.get(name, as_type=type_hints.get(name, None))
 
         self._inputs = self.raw_inputs.native_values
         return self._inputs
@@ -65,10 +65,10 @@ class RemoteExecutionBase(object):
         ...
 
     @property
-    def outputs(self, type_map: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
+    def outputs(self, type_hints: Optional[Dict[str, Type]] = None) -> Optional[Dict[str, Any]]:
         """
         Returns the outputs to the execution in the standard python format as dictated by the type engine.
-        :param type_map: type hints to be provided to the TypeEngine so that it doesn't have to invoke the guessing
+        :param type_hints: type hints to be provided to the TypeEngine so that it doesn't have to invoke the guessing
           logic. Map does not need to be complete, missing entries will just trigger the guessing.
         :return: Python native values of the output map for this execution
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
@@ -80,14 +80,12 @@ class RemoteExecutionBase(object):
         if self.error:
             raise user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
 
-        type_map = type_map or {}
+        type_hints = type_hints or {}
         if self._outputs is not None:
             return self._outputs
 
-        if not self.raw_outputs.native_values_complete:
-            remote_logger.debug("Output native values incomplete, attempting guessing on remainder")
-            for missing in self.raw_outputs.missing_keys:
-                self.raw_outputs.get(missing, as_type=type_map.get(missing, None))
+        for name in self.raw_outputs.literals.keys():
+            self.raw_outputs.get(name, as_type=type_hints.get(name, None))
 
         self._outputs = self.raw_outputs.native_values
         return self._outputs
