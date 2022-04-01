@@ -1409,14 +1409,29 @@ class LiteralsResolver(object):
     LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
     where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
     correspond to an element of the map.
+
+    TODO: Consider inheriting from collections.UserDict instead of manually having the _native_values cache
     """
 
     def __init__(
         self, literals: typing.Dict[str, Literal], variable_map: Optional[Dict[str, _interface_models.Variable]] = None
     ):
+        if literals is None:
+            raise ValueError(f"Cannot instantiate LiteralsResolver without a map of Literals.")
         self._literals = literals
         self._variable_map = variable_map
         self._native_values = {}
+
+    def __getitem__(self, key: str):
+        # First check to see if it's even in the literal map.
+        if key not in self._literals:
+            raise ValueError(f"Key {key} is not in the literal map")
+
+        # Return the cached value if it's cached
+        if key in self._native_values:
+            return self._native_values[key]
+
+        return self.get(key)
 
     @property
     def native_values(self) -> typing.Dict[str, typing.Any]:
@@ -1427,23 +1442,14 @@ class LiteralsResolver(object):
         return self._variable_map
 
     @property
-    def missing_keys(self) -> typing.List[str]:
-        stored = set(self.native_values.keys())
-        lm_keys = set(self.variable_map.keys())
-        return list(lm_keys.difference(stored))
-
-    @property
-    def native_values_complete(self) -> bool:
-        """
-        This function returns true if the cache of native Python values is complete (i.e. all the keys in the Python
-          native map matches the keys in the Literal map). Returns false otherwise.
-        :return: bool whether native values for all keys in the Literal map have been cached.
-        """
-        return len(self.missing_keys) == 0
-
-    @property
     def literals(self):
         return self._literals
+
+    def get_literal(self, key: str) -> Literal:
+        if key not in self._literals:
+            raise ValueError(f"Key {key} is not in the literal map")
+
+        return self._literals[key]
 
     def get(self, attr: str, as_type: Optional[typing.Type] = None) -> typing.Any:
         """

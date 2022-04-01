@@ -48,10 +48,8 @@ class RemoteExecutionBase(object):
         if self._inputs is not None:
             return self._inputs
 
-        if not self.raw_inputs.native_values_complete:
-            remote_logger.debug("Inputs native values incomplete, attempting guessing on remainder")
-            for missing in self.raw_inputs.missing_keys:
-                self.raw_inputs.get(missing, as_type=type_map.get(missing, None))
+        for name in self.raw_inputs.literals.keys():
+            self.raw_inputs.get(name, as_type=type_map.get(name, None))
 
         self._inputs = self.raw_inputs.native_values
         return self._inputs
