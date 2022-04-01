@@ -334,7 +334,6 @@ def test_to_python_value_without_incoming_columns():
 
 def test_format_correct():
     ctx = FlyteContextManager.current_context()
-    lt = TypeEngine.to_literal_type(pd.DataFrame)
     df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     annotated_sd_type = Annotated[StructuredDataset, "avro", kwtypes(name=str, age=int)]
@@ -348,6 +347,12 @@ def test_format_correct():
     assert df_literal_type.structured_dataset_type.format == "avro"
 
     sd = annotated_sd_type(df)
-    # assert sd.file_format == "avro"
-    sd_literal = TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=lt)
-    # assert sd_literal.scalar.structured_dataset.metadata.structured_dataset_type.format == "avro"
+    # assert sd.file_format == "avro"  # this fails
+    sd_literal = TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
+    # assert sd_literal.scalar.structured_dataset.metadata.structured_dataset_type.format == "avro"  # this fails
+
+    sd2 = annotated_sd_type(df)
+    sd2.file_format = "avro"  # have to set it manually!
+    with pytest.raises(ValueError):
+        # This works, because we explicitly set the format, and there's no avro handler, so we raise an error
+        TypeEngine.to_literal(ctx, sd2, python_type=annotated_sd_type, expected=df_literal_type)

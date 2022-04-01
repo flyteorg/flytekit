@@ -105,8 +105,14 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(local_dir)
 
 
-for protocol in [LOCAL, S3, GCS]:
-    StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol), default_for_type=True)
-    StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol), default_for_type=True)
-    StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), default_for_type=True)
-    StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol), default_for_type=True)
+for protocol in [LOCAL, S3]:
+    StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol))
+    StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol))
+    StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol))
+    StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol))
+
+# Don't override the default for GCS.
+StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(GCS), default_for_type=False)
+StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(GCS), default_for_type=False)
+StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(GCS), default_for_type=False)
+StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(GCS), default_for_type=False)
