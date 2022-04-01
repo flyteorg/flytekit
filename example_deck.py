@@ -4,7 +4,7 @@ from flytekitplugins.deck.renderer import BoxRenderer, MarkdownRenderer
 from typing_extensions import Annotated
 
 import flytekit
-from flytekit import FlyteContextManager, dynamic, task, workflow
+from flytekit import dynamic, task, workflow
 from flytekit.deck.renderer import TopFrameRenderer
 
 iris_df = px.data.iris()
