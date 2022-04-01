@@ -120,8 +120,9 @@ jeepney==0.7.1
     # via
     #   keyring
     #   secretstorage
-jinja2==3.1.1
+jinja2==3.1.0
     # via
+    #   -r requirements.in
     #   altair
     #   cookiecutter
     #   great-expectations
