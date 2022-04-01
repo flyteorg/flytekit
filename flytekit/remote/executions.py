@@ -30,7 +30,7 @@ class RemoteExecutionBase(object):
 
     @property
     @abstractmethod
-    def is_complete(self) -> bool:
+    def is_done(self) -> bool:
         ...
 
     @property
@@ -39,7 +39,7 @@ class RemoteExecutionBase(object):
         :return: Returns the outputs LiteralsResolver to the execution
         :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
         """
-        if not self.is_complete:
+        if not self.is_done:
             raise user_exceptions.FlyteAssertion(
                 "Please wait until the execution has completed before requesting the outputs."
             )
@@ -61,7 +61,7 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
         return self._flyte_task
 
     @property
-    def is_complete(self) -> bool:
+    def is_done(self) -> bool:
         """Whether or not the execution is complete."""
         return self.closure.phase in {
             core_execution_models.TaskExecutionPhase.ABORTED,
@@ -75,7 +75,7 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
         If execution is in progress, raise an exception. Otherwise, return None if no error was present upon
         reaching completion.
         """
-        if not self.is_complete:
+        if not self.is_done:
             raise user_exceptions.FlyteAssertion(
                 "Please what until the task execution has completed before requesting error information."
             )
@@ -114,14 +114,14 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         If execution is in progress, raise an exception.  Otherwise, return None if no error was present upon
         reaching completion.
         """
-        if not self.is_complete:
+        if not self.is_done:
             raise user_exceptions.FlyteAssertion(
                 "Please wait until a workflow has completed before checking for an error."
             )
         return self.closure.error
 
     @property
-    def is_complete(self) -> bool:
+    def is_done(self) -> bool:
         """
         Whether or not the execution is complete.
         """
@@ -182,14 +182,14 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         If execution is in progress, raise an exception. Otherwise, return None if no error was present upon
         reaching completion.
         """
-        if not self.is_complete:
+        if not self.is_done:
             raise user_exceptions.FlyteAssertion(
                 "Please wait until the node execution has completed before requesting error information."
             )
         return self.closure.error
 
     @property
-    def is_complete(self) -> bool:
+    def is_done(self) -> bool:
         """Whether or not the execution is complete."""
         return self.closure.phase in {
             core_execution_models.NodeExecutionPhase.ABORTED,

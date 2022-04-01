@@ -1062,7 +1062,7 @@ class FlyteRemote(object):
 
         while datetime.utcnow() < time_to_give_up:
             execution = self.sync_workflow_execution(execution, sync_nodes=sync_nodes)
-            if execution.is_complete:
+            if execution.is_done:
                 return execution
             time.sleep(poll_interval.total_seconds())
 
@@ -1106,7 +1106,7 @@ class FlyteRemote(object):
             raise ValueError("Entity definition arguments aren't supported when syncing workflow executions")
 
         # Update closure, and then data, because we don't want the execution to finish between when we get the data,
-        # and then for the closure to have is_complete to be true.
+        # and then for the closure to have is_done to be true.
         execution._closure = self.client.get_execution(execution.id).closure
         execution_data = self.client.get_execution_data(execution.id)
         lp_id = execution.spec.launch_plan
@@ -1223,7 +1223,7 @@ class FlyteRemote(object):
                 project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
             )
             self.sync_workflow_execution(launched_exec)
-            if launched_exec.is_complete:
+            if launched_exec.is_done:
                 # The synced underlying execution should've had these populated.
                 execution._inputs = launched_exec.inputs
                 execution._outputs = launched_exec.outputs
@@ -1348,7 +1348,7 @@ class FlyteRemote(object):
             input_literal_map = self._get_input_literal_map(execution_data)
             execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs)
 
-            if execution.is_complete and not execution.error:
+            if execution.is_done and not execution.error:
                 output_literal_map = self._get_output_literal_map(execution_data)
                 execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs)
         return execution
