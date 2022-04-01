@@ -7,13 +7,13 @@ from typing import Optional
 
 import grpc
 import requests as _requests
-from google.protobuf.json_format import MessageToJson as _MessageToJson
-
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
+from google.protobuf.json_format import MessageToJson as _MessageToJson
+
 from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.configuration import AuthType, PlatformConfig
 from flytekit.exceptions import user as _user_exceptions

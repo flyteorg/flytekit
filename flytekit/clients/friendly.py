@@ -1,7 +1,5 @@
 import typing
 
-from google.protobuf.duration_pb2 import Duration
-
 from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
@@ -14,6 +12,8 @@ from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
+from google.protobuf.duration_pb2 import Duration
+
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.models import common as _common
 from flytekit.models import execution as _execution
