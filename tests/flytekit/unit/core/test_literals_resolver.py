@@ -121,6 +121,8 @@ def test_interface():
     guessed_df = lr["my_df"]
     # Based on guessing, so no column information
     assert len(guessed_df.metadata.structured_dataset_type.columns) == 0
+    guessed_df_2 = lr["my_df"]
+    assert guessed_df is guessed_df_2
 
     # Update type hints with the annotated type
     lr.update_type_hints({"my_df": annotated_sd_type})

@@ -6,11 +6,6 @@ from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.loggers import logger
 from flytekit.remote.remote import FlyteRemote
 
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 from .resources import hello_wf
 
 #####

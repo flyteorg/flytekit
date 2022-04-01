@@ -6,6 +6,7 @@ import enum
 import inspect
 import json as _json
 import mimetypes
+import textwrap
 import typing
 from abc import ABC, abstractmethod
 from typing import Dict, NamedTuple, Optional, Type, cast
@@ -1417,11 +1418,29 @@ class LiteralsResolver(object):
         self, literals: typing.Dict[str, Literal], variable_map: Optional[Dict[str, _interface_models.Variable]] = None
     ):
         if literals is None:
-            raise ValueError(f"Cannot instantiate LiteralsResolver without a map of Literals.")
+            raise ValueError("Cannot instantiate LiteralsResolver without a map of Literals.")
         self._literals = literals
         self._variable_map = variable_map
         self._native_values = {}
         self._type_hints = {}
+
+    def __str__(self) -> str:
+        if len(self._literals) == len(self._native_values):
+            return str(self._native_values)
+        header = "Partially converted to native values, call get(key, <type_hint>) to convert rest...\n"
+        strs = []
+        for key, literal in self._literals.items():
+            if key in self._native_values:
+                strs.append(f"{key}: " + str(self._native_values[key]) + "\n")
+            else:
+                lit_txt = str(self._literals[key])
+                lit_txt = textwrap.indent(lit_txt, " " * (len(key) + 2))
+                strs.append(f"{key}: \n" + lit_txt)
+
+        return header + "{\n" + textwrap.indent("".join(strs), " " * 2) + "\n}"
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def native_values(self) -> typing.Dict[str, typing.Any]:
