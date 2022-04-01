@@ -6,6 +6,7 @@ import enum
 import inspect
 import json as _json
 import mimetypes
+import textwrap
 import typing
 from abc import ABC, abstractmethod
 from typing import Dict, NamedTuple, Optional, Type, cast
@@ -1417,21 +1418,29 @@ class LiteralsResolver(object):
         self, literals: typing.Dict[str, Literal], variable_map: Optional[Dict[str, _interface_models.Variable]] = None
     ):
         if literals is None:
-            raise ValueError(f"Cannot instantiate LiteralsResolver without a map of Literals.")
+            raise ValueError("Cannot instantiate LiteralsResolver without a map of Literals.")
         self._literals = literals
         self._variable_map = variable_map
         self._native_values = {}
+        self._type_hints = {}
 
-    def __getitem__(self, key: str):
-        # First check to see if it's even in the literal map.
-        if key not in self._literals:
-            raise ValueError(f"Key {key} is not in the literal map")
+    def __str__(self) -> str:
+        if len(self._literals) == len(self._native_values):
+            return str(self._native_values)
+        header = "Partially converted to native values, call get(key, <type_hint>) to convert rest...\n"
+        strs = []
+        for key, literal in self._literals.items():
+            if key in self._native_values:
+                strs.append(f"{key}: " + str(self._native_values[key]) + "\n")
+            else:
+                lit_txt = str(self._literals[key])
+                lit_txt = textwrap.indent(lit_txt, " " * (len(key) + 2))
+                strs.append(f"{key}: \n" + lit_txt)
 
-        # Return the cached value if it's cached
-        if key in self._native_values:
-            return self._native_values[key]
+        return header + "{\n" + textwrap.indent("".join(strs), " " * 2) + "\n}"
 
-        return self.get(key)
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def native_values(self) -> typing.Dict[str, typing.Any]:
@@ -1445,11 +1454,25 @@ class LiteralsResolver(object):
     def literals(self):
         return self._literals
 
+    def update_type_hints(self, type_hints: typing.Dict[str, typing.Type]):
+        self._type_hints.update(type_hints)
+
     def get_literal(self, key: str) -> Literal:
         if key not in self._literals:
             raise ValueError(f"Key {key} is not in the literal map")
 
         return self._literals[key]
+
+    def __getitem__(self, key: str):
+        # First check to see if it's even in the literal map.
+        if key not in self._literals:
+            raise ValueError(f"Key {key} is not in the literal map")
+
+        # Return the cached value if it's cached
+        if key in self._native_values:
+            return self._native_values[key]
+
+        return self.get(key)
 
     def get(self, attr: str, as_type: Optional[typing.Type] = None) -> typing.Any:
         """
@@ -1467,14 +1490,17 @@ class LiteralsResolver(object):
             return self.native_values[attr]
 
         if as_type is None:
-            if self.variable_map and attr in self.variable_map:
-                try:
-                    as_type = TypeEngine.guess_python_type(self.variable_map[attr].type)
-                except ValueError as e:
-                    logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
-                    raise e
+            if attr in self._type_hints:
+                as_type = self._type_hints[attr]
             else:
-                ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
+                if self.variable_map and attr in self.variable_map:
+                    try:
+                        as_type = TypeEngine.guess_python_type(self.variable_map[attr].type)
+                    except ValueError as e:
+                        logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
+                        raise e
+                else:
+                    ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
         val = TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
         self._native_values[attr] = val
         return val

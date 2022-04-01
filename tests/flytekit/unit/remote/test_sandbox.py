@@ -6,11 +6,6 @@ from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.loggers import logger
 from flytekit.remote.remote import FlyteRemote
 
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 from .resources import hello_wf
 
 #####
@@ -61,7 +56,7 @@ def test_get_parent_wf_run():
 
 @pytest.mark.sandbox_test
 def test_get_merge_sort_run():
-    we = rr.fetch_workflow_execution(name="djdo2l2s0s")
+    we = rr.fetch_workflow_execution(name="fa27d79540d464fe0a99")
     rr.sync_workflow_execution(we, sync_nodes=True)
     print(we)
 
