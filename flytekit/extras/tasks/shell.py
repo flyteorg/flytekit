@@ -219,6 +219,8 @@ class ShellTask(PythonInstanceTask[T]):
             self._script = self._script.lstrip().rstrip().replace("\n", "&&")
 
         if "env" in kwargs and isinstance(kwargs["env"], dict):
+            # This supports the portable_shell_task by adding an additional key:value pair to kwargs/input
+            # This will cause collisions if a user tries to use `env` AND `export_env` in their inputs
             kwargs["export_env"] = self.make_export_string_from_env_dict(kwargs["env"])
 
         gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
