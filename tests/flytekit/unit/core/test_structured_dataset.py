@@ -330,3 +330,24 @@ def test_to_python_value_without_incoming_columns():
     subset_pd_type = Annotated[pd.DataFrame, kwtypes(age=int)]
     sub_df = fdt.to_python_value(ctx, lit, subset_pd_type)
     assert sub_df.shape[1] == 1
+
+
+def test_format_correct():
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(pd.DataFrame)
+    df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+    annotated_sd_type = Annotated[StructuredDataset, "avro", kwtypes(name=str, age=int)]
+    df_literal_type = TypeEngine.to_literal_type(annotated_sd_type)
+    assert df_literal_type.structured_dataset_type is not None
+    assert len(df_literal_type.structured_dataset_type.columns) == 2
+    assert df_literal_type.structured_dataset_type.columns[0].name == "name"
+    assert df_literal_type.structured_dataset_type.columns[0].literal_type.simple is not None
+    assert df_literal_type.structured_dataset_type.columns[1].name == "age"
+    assert df_literal_type.structured_dataset_type.columns[1].literal_type.simple is not None
+    assert df_literal_type.structured_dataset_type.format == "avro"
+
+    sd = annotated_sd_type(df)
+    # assert sd.file_format == "avro"
+    sd_literal = TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=lt)
+    # assert sd_literal.scalar.structured_dataset.metadata.structured_dataset_type.format == "avro"
