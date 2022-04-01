@@ -35,7 +35,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.24.0",
+        "flyteidl>=0.24.10",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<7.0.0",
@@ -43,7 +43,7 @@ setup(
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
         "python-dateutil>=2.1",
-        "grpcio>=1.3.0,<2.0",
+        "grpcio>=1.45.0,<2.0",
         "protobuf>=3.6.1,<4",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",

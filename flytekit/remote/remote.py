@@ -424,7 +424,7 @@ class FlyteRemote(object):
         serialization_settings: SerializationSettings,
         version: typing.Optional[str] = None,
         default_launch_plan: bool = True,
-        all_downstream: bool = False,
+        all_downstream: bool = True,
         options: typing.Optional[Options] = None,
     ) -> FlyteWorkflow:
         """
