@@ -36,7 +36,7 @@ except ImportError:
     from singledispatchmethod import singledispatchmethod
 
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, SerializationSettings
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -65,8 +65,6 @@ from flytekit.tools.translator import (
     FlyteLocalEntity,
     get_serializable,
     get_serializable_launch_plan,
-    get_serializable_task,
-    get_serializable_workflow,
 )
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
@@ -447,7 +445,7 @@ class FlyteRemote(object):
                         workflow_model.TaskNode,
                     ),
                 ):
-                    remote_logger.debug(f"Ignoring node registrations")
+                    remote_logger.debug("Ignoring nodes for registration.")
                 else:
                     raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
             except FlyteEntityAlreadyExistsException:
@@ -468,7 +466,7 @@ class FlyteRemote(object):
         :param version: version that will be used to register. If not specified will default to using the serialization settings default
         :return:
         """
-        ident = self._serialize_and_register(self, entity=entity, settings=serialization_settings, version=version)
+        ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
         return self.fetch_task(
             ident.project,
             ident.domain,
@@ -543,7 +541,7 @@ class FlyteRemote(object):
             annotations=options.annotations,
         )
 
-        ss = SerializationSettings(image_config=None, project=project, domain=domain, version=version)
+        ss = SerializationSettings(image_config=ImageConfig(), project=project, domain=domain, version=version)
 
         ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
@@ -551,7 +549,7 @@ class FlyteRemote(object):
         try:
             self.client.create_launch_plan(ident, idl_lp.spec)
         except FlyteEntityAlreadyExistsException:
-            remote_logger.debug(f"Launchplan already exists, ignoring")
+            remote_logger.debug("Launchplan already exists, ignoring")
         return self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
 
     ####################
