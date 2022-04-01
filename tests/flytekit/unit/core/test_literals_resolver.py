@@ -1,54 +1,44 @@
 import typing
 
-import pytest
-from flytekit import kwtypes
-
-from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.type_engine import (
-    LiteralsResolver,
-)
-from flytekit.core.type_engine import TypeEngine
-from flytekit.models.literals import Literal, Scalar
-from flytekit.models.literals import LiteralCollection, LiteralMap, Primitive
-from flytekit.models import interface as interface_models
-from typing_extensions import Annotated
-from flytekit.types.structured.structured_dataset import StructuredDataset
-
-
 import pandas as pd
+import pytest
+from typing_extensions import Annotated
 
-from flytekit.types.structured.structured_dataset import (
-    StructuredDatasetTransformerEngine,
-)
+from flytekit import kwtypes
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.type_engine import LiteralsResolver, TypeEngine
+from flytekit.models import interface as interface_models
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
 @pytest.mark.parametrize(
     "literal_value,python_type,expected_python_value",
     [
         (
-                Literal(
-                    collection=LiteralCollection(
-                        literals=[
-                            Literal(scalar=Scalar(primitive=Primitive(integer=1))),
-                            Literal(scalar=Scalar(primitive=Primitive(integer=2))),
-                            Literal(scalar=Scalar(primitive=Primitive(integer=3))),
-                        ]
-                    )
-                ),
-                typing.List[int],
-                [1, 2, 3],
+            Literal(
+                collection=LiteralCollection(
+                    literals=[
+                        Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                        Literal(scalar=Scalar(primitive=Primitive(integer=2))),
+                        Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                    ]
+                )
+            ),
+            typing.List[int],
+            [1, 2, 3],
         ),
         (
-                Literal(
-                    map=LiteralMap(
-                        literals={
-                            "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
-                            "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
-                        },
-                    )
-                ),
-                typing.Dict[str, str],
-                {"k1": "v1", "k2": "2"},
+            Literal(
+                map=LiteralMap(
+                    literals={
+                        "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
+                        "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
+                    },
+                )
+            ),
+            typing.Dict[str, str],
+            {"k1": "v1", "k2": "2"},
         ),
     ],
 )
@@ -65,7 +55,7 @@ def test_interface():
     lt = TypeEngine.to_literal_type(pd.DataFrame)
     df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
-    annotated_sd_type = Annotated[StructuredDataset, "avro", kwtypes(name=str, age=int)]
+    annotated_sd_type = Annotated[StructuredDataset, kwtypes(name=str, age=int)]
     df_literal_type = TypeEngine.to_literal_type(annotated_sd_type)
     assert df_literal_type.structured_dataset_type is not None
     assert len(df_literal_type.structured_dataset_type.columns) == 2
@@ -73,12 +63,9 @@ def test_interface():
     assert df_literal_type.structured_dataset_type.columns[0].literal_type.simple is not None
     assert df_literal_type.structured_dataset_type.columns[1].name == "age"
     assert df_literal_type.structured_dataset_type.columns[1].literal_type.simple is not None
-    assert df_literal_type.structured_dataset_type.format == "avro"
 
     sd = annotated_sd_type(df)
-    # assert sd.file_format == "avro"
     sd_literal = TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=lt)
-    # print(sd_literal)
 
     lm = {
         "my_map": Literal(
@@ -89,7 +76,6 @@ def test_interface():
                 },
             )
         ),
-
         "my_list": Literal(
             collection=LiteralCollection(
                 literals=[
@@ -133,12 +119,10 @@ def test_interface():
     assert lr.get_literal("my_df") is sd_literal
 
     guessed_df = lr["my_df"]
-    # Wrong format is guessed because guessing never works because the metadata is part of the instance, not the class
-    assert guessed_df.metadata.structured_dataset_type.format == "parquet"
+    # Based on guessing, so no column information
+    assert len(guessed_df.metadata.structured_dataset_type.columns) == 0
 
     lr2 = LiteralsResolver(lm, variable_map=variable_map)
     guessed_df = lr2.get("my_df", annotated_sd_type)
-    print(guessed_df)
-
-
-
+    # Using the user specified type, so number of columns is correct.
+    assert len(guessed_df.metadata.structured_dataset_type.columns) == 2

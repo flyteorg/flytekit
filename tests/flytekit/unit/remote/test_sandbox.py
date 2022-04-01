@@ -2,8 +2,7 @@ import uuid
 
 import pytest
 
-from flytekit.configuration import Config, SerializationSettings
-from flytekit.configuration import ImageConfig
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.loggers import logger
 from flytekit.remote.remote import FlyteRemote
 
