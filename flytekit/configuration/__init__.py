@@ -209,6 +209,13 @@ class ImageConfig(object):
         return ImageConfig(default_image, images)
 
     @classmethod
+    def create_from(cls, default_image: Image, other_images: typing.Optional[typing.List[Image]] = None) -> ImageConfig:
+        all_images = [default_image] if default_image else []
+        if other_images:
+            all_images.extend(other_images)
+        return ImageConfig(default_image=default_image, images=all_images)
+
+    @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None, img_name: Optional[str] = None) -> ImageConfig:
         """
         Reads from config file or from img_name
@@ -220,7 +227,6 @@ class ImageConfig(object):
             raise ValueError("Either an image or a config with a default image should be provided")
 
         default_img = Image.look_up_image_info("default", img_name) if img_name else None
-        all_images = [default_img] if default_img else []
 
         other_images = []
         if config_file:
@@ -229,8 +235,28 @@ class ImageConfig(object):
                 Image.look_up_image_info(k, tag=v, optional_tag=True)
                 for k, v in _internal.Images.get_specified_images(config_file).items()
             ]
-        all_images.extend(other_images)
-        return ImageConfig(default_image=default_img, images=all_images)
+        return cls.create_from(default_img, other_images)
+
+    @classmethod
+    def from_images(cls, default_image: str, m: typing.Optional[typing.Dict[str, str]] = None):
+        """
+            Allows you to programmatically create an ImageConfig. Usually only the default_image is required, unless
+            your workflow uses multiple images
+
+            .. code:: python
+
+              ImageConfig.from_dict(
+                  "ghcr.io/flyteorg/flytecookbook:v1.0.0",
+                   {
+                        "spark": "ghcr.io/flyteorg/myspark:...",
+                        "other": "...",
+              })
+
+        :return:
+        """
+        def_img = Image.look_up_image_info("default", default_image) if default_image else None
+        other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in m.items()]
+        return cls.create_from(def_img, other_images)
 
 
 class AuthType(enum.Enum):
@@ -611,33 +637,6 @@ class SerializationSettings(object):
             )
         )
 
-    @dataclass
-    class Builder(object):
-        project: str
-        domain: str
-        version: str
-        image_config: ImageConfig
-        env: Optional[Dict[str, str]] = None
-        flytekit_virtualenv_root: Optional[str] = None
-        python_interpreter: Optional[str] = None
-        fast_serialization_settings: Optional[FastSerializationSettings] = None
-
-        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
-            self.fast_serialization_settings = fss
-            return self
-
-        def build(self) -> SerializationSettings:
-            return SerializationSettings(
-                project=self.project,
-                domain=self.domain,
-                version=self.version,
-                image_config=self.image_config,
-                env=self.env,
-                flytekit_virtualenv_root=self.flytekit_virtualenv_root,
-                python_interpreter=self.python_interpreter,
-                fast_serialization_settings=self.fast_serialization_settings,
-            )
-
     @classmethod
     def from_transport(cls, s: str) -> SerializationSettings:
         compressed_val = base64.b64decode(s.encode("utf-8"))
@@ -661,6 +660,25 @@ class SerializationSettings(object):
             version=version,
             python_interpreter=python_interpreter_path,
             flytekit_virtualenv_root=cls.venv_root_from_interpreter(python_interpreter_path),
+        )
+
+    @staticmethod
+    def venv_root_from_interpreter(interpreter_path: str) -> str:
+        """
+        Computes the path of the virtual environment root, based on the passed in python interpreter path
+        for example /opt/venv/bin/python3 -> /opt/venv
+        """
+        return os.path.dirname(os.path.dirname(interpreter_path))
+
+    @staticmethod
+    def default_entrypoint_settings(interpreter_path: str) -> EntrypointSettings:
+        """
+        Assumes the entrypoint is installed in a virtual-environment where the interpreter is
+        """
+        return EntrypointSettings(
+            path=os.path.join(
+                SerializationSettings.venv_root_from_interpreter(interpreter_path), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC
+            )
         )
 
     def new_builder(self) -> Builder:
@@ -690,21 +708,29 @@ class SerializationSettings(object):
         compressed_value = gzip.compress(json_str.encode("utf-8"))
         return base64.b64encode(compressed_value).decode("utf-8")
 
-    @staticmethod
-    def venv_root_from_interpreter(interpreter_path: str) -> str:
-        """
-        Computes the path of the virtual environment root, based on the passed in python interpreter path
-        for example /opt/venv/bin/python3 -> /opt/venv
-        """
-        return os.path.dirname(os.path.dirname(interpreter_path))
+    @dataclass
+    class Builder(object):
+        project: str
+        domain: str
+        version: str
+        image_config: ImageConfig
+        env: Optional[Dict[str, str]] = None
+        flytekit_virtualenv_root: Optional[str] = None
+        python_interpreter: Optional[str] = None
+        fast_serialization_settings: Optional[FastSerializationSettings] = None
 
-    @staticmethod
-    def default_entrypoint_settings(interpreter_path: str) -> EntrypointSettings:
-        """
-        Assumes the entrypoint is installed in a virtual-environment where the interpreter is
-        """
-        return EntrypointSettings(
-            path=os.path.join(
-                SerializationSettings.venv_root_from_interpreter(interpreter_path), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC
+        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
+            self.fast_serialization_settings = fss
+            return self
+
+        def build(self) -> SerializationSettings:
+            return SerializationSettings(
+                project=self.project,
+                domain=self.domain,
+                version=self.version,
+                image_config=self.image_config,
+                env=self.env,
+                flytekit_virtualenv_root=self.flytekit_virtualenv_root,
+                python_interpreter=self.python_interpreter,
+                fast_serialization_settings=self.fast_serialization_settings,
             )
-        )
