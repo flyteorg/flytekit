@@ -210,11 +210,29 @@ def get_serializable_launch_plan(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: LaunchPlan,
+    recurse_downstream: bool = True,
 ) -> _launch_plan_models.LaunchPlan:
-    wf_spec = get_serializable(entity_mapping, settings, entity.workflow)
+    """
+    :param entity_mapping:
+    :param settings:
+    :param entity:
+    :param recurse_downstream: This boolean indicate is wf for the entity should also be recursed to
+    :return:
+    """
+    if recurse_downstream:
+        wf_spec = get_serializable(entity_mapping, settings, entity.workflow)
+        wf_id = wf_spec.template.id
+    else:
+        wf_id = _identifier_model.Identifier(
+            resource_type=_identifier_model.ResourceType.WORKFLOW,
+            project=settings.project,
+            domain=settings.domain,
+            name=entity.workflow.name,
+            version=settings.version,
+        )
 
     lps = _launch_plan_models.LaunchPlanSpec(
-        workflow_id=wf_spec.template.id,
+        workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
             notifications=entity.notifications,
