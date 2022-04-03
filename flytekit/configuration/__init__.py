@@ -187,6 +187,7 @@ class ImageConfig(object):
         is provided. a default image, is one that is specified as
           default=img or just img. All other images should be provided with a name, in the format
           name=img
+        This method can be used wit the CLI
         """
         default_image = None
         images = []
@@ -206,7 +207,7 @@ class ImageConfig(object):
             else:
                 images.append(img)
 
-        return ImageConfig(default_image, images)
+        return ImageConfig.create_from(default_image=default_image, images=images)
 
     @classmethod
     def create_from(cls, default_image: Image, other_images: typing.Optional[typing.List[Image]] = None) -> ImageConfig:
