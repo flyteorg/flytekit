@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
-import numpy as np
 import numpy as _np
 import pandas
 import pandas as pd
@@ -643,7 +642,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return df.describe().to_html()
         elif isinstance(df, pa.Table):
             return df.to_string()
-        elif isinstance(df, np.ndarray):
+        elif isinstance(df, _np.ndarray):
             return pd.DataFrame(df).describe().to_html()
         elif importlib.util.find_spec("pyspark") is not None and isinstance(df, pyspark.sql.DataFrame):
             return pd.DataFrame(df.schema, columns=["StructField"]).to_html()

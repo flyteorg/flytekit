@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 from jinja2 import Environment, FileSystemLoader
 
-from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 
 
 class Deck:
@@ -21,6 +21,11 @@ class Deck:
     used to render tasks' input/output data, and the default deck is used to render line plots,
     scatter plots or markdown text. In addition, users can create new decks to render
     their data with custom renderers.
+
+    .. warning::
+
+        This feature is in beta.
+
     """
 
     def __init__(self, name: str, html: Optional[str] = ""):

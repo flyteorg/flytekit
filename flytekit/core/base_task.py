@@ -39,6 +39,7 @@ from flytekit.core.promise import (
 )
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
+from flytekit.deck.deck import Deck
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -364,6 +365,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
+        disable_deck: bool = False,
         **kwargs,
     ):
         """
@@ -377,6 +379,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 signature of the task
             environment (Optional[Dict[str, str]]): Any environment variables that should be supplied during the
                 execution of the task. Supplied as a dictionary of key/value pairs
+            disable_deck (bool): If true, this task will not output deck html file
         """
         super().__init__(
             task_type=task_type,
@@ -387,6 +390,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
+        self._disable_deck = disable_deck
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
@@ -526,7 +530,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             INPUT = "input"
             OUTPUT = "output"
-            from flytekit import Deck
 
             input_deck = Deck(INPUT)
             for k, v in native_inputs.items():
@@ -539,7 +542,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             new_user_params.decks.append(input_deck)
             new_user_params.decks.append(output_deck)
 
-            if _internal.Deck.ENABLE_DECK.read() is not False:
+            if _internal.Deck.ENABLE_DECK.read() is not False and self.disable_deck is not False:
                 _output_deck(self.name.split(".")[-1], new_user_params)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
@@ -580,6 +583,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         Any environment variables that supplied during the execution of the task.
         """
         return self._environment
+
+    @property
+    def disable_deck(self) -> bool:
+        """
+        If true, this task will not output deck html file
+        """
+        return self._disable_deck
 
 
 class TaskResolverMixin(object):
