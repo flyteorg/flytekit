@@ -1,7 +1,5 @@
 import os
 import sys
-import tarfile
-import tempfile
 
 import click
 
@@ -12,8 +10,7 @@ from flytekit.configuration import (
     ImageConfig,
     SerializationSettings,
 )
-from flytekit.core import context_manager
-from flytekit.tools import fast_registration, module_loader, serialize_helpers
+from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
 
 
 @click.command("package")
@@ -106,31 +103,7 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
         click.secho("No packages to scan for flyte entities. Aborting!", fg="red")
         sys.exit(-1)
 
-    ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
-    with context_manager.FlyteContextManager.with_context(ctx) as ctx:
-        # Scan all modules. the act of loading populates the global singleton that contains all objects
-        with module_loader.add_sys_path(source):
-            click.secho(f"Loading packages {pkgs} under source root {source}", fg="yellow")
-            module_loader.just_load_modules(pkgs=pkgs)
-
-        registrable_entities = serialize_helpers.get_registrable_entities(ctx)
-
-        if registrable_entities:
-            with tempfile.TemporaryDirectory() as output_tmpdir:
-                serialize_helpers.persist_registrable_entities(registrable_entities, output_tmpdir)
-
-                # If Fast serialization is enabled, then an archive is also created and packaged
-                if fast:
-                    digest = fast_registration.compute_digest(source)
-                    archive_fname = os.path.join(output_tmpdir, f"{digest}.tar.gz")
-                    click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
-                    # Write using gzip
-                    with tarfile.open(archive_fname, "w:gz") as tar:
-                        tar.add(source, arcname="", filter=fast_registration.filter_tar_file_fn)
-
-                with tarfile.open(output, "w:gz") as tar:
-                    tar.add(output_tmpdir, arcname="")
-
-            click.secho(f"Successfully packaged {len(registrable_entities)} flyte objects into {output}", fg="green")
-        else:
-            click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")
+    try:
+        serialize_and_package(pkgs, serialization_settings, source, output, fast)
+    except NoSerializableEntitiesError:
+        click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")

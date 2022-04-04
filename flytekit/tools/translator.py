@@ -1,4 +1,6 @@
+import typing
 from collections import OrderedDict
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask
@@ -15,8 +17,10 @@ from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
+from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import security
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as _identifier_model
@@ -43,6 +47,40 @@ FlyteControlPlaneEntity = Union[
     workflow_model.Node,
     BranchNodeModel,
 ]
+
+
+@dataclass
+class Options(object):
+    """
+    These are options that can be configured for a launchplan during registration or overridden during an execution.
+    For instance two people may want to run the same workflow but have the offloaded data stored in two different
+    buckets. Or you may want labels or annotations to be different. This object is used when launching an execution
+    in a Flyte backend, and also when registering launch plans.
+
+    Args:
+        raw_data_prefix: str -> remote prefix for storage location of the form ``s3://<bucket>/key...`` or
+           ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
+           the data for offloaded types is stored.
+        auth_role: Specifies the Kubernetes Service account,
+           IAM role etc to be used. If not specified defaults will be used.
+        labels: Custom labels to be applied to the execution resource
+        annotations: Custom annotations to be applied to the execution resource
+        security_context: Indicates security context for permissions triggered with this launch plan
+        raw_output_data_config: Optional location of offloaded data for things like S3, etc.
+        max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
+        notifications: List of notifications for this execution
+        disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
+    """
+
+    raw_data_prefix: typing.Optional[str] = None
+    auth_role: typing.Optional[common_models.AuthRole] = None
+    labels: typing.Optional[common_models.Labels] = None
+    annotations: typing.Optional[common_models.Annotations] = None
+    raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
+    security_context: typing.Optional[security.SecurityContext] = None
+    max_parallelism: typing.Optional[int] = None
+    notifications: typing.Optional[typing.List[common_models.Notification]] = None
+    disable_notifications: typing.Optional[bool] = None
 
 
 def to_serializable_case(
@@ -210,22 +248,49 @@ def get_serializable_launch_plan(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: LaunchPlan,
+    recurse_downstream: bool = True,
+    options: Optional[Options] = None,
 ) -> _launch_plan_models.LaunchPlan:
-    wf_spec = get_serializable(entity_mapping, settings, entity.workflow)
+    """
+    :param entity_mapping:
+    :param settings:
+    :param entity:
+    :param options:
+    :param recurse_downstream: This boolean indicate is wf for the entity should also be recursed to
+    :return:
+    """
+    if recurse_downstream:
+        wf_spec = get_serializable(entity_mapping, settings, entity.workflow)
+        wf_id = wf_spec.template.id
+    else:
+        wf_id = _identifier_model.Identifier(
+            resource_type=_identifier_model.ResourceType.WORKFLOW,
+            project=settings.project,
+            domain=settings.domain,
+            name=entity.workflow.name,
+            version=settings.version,
+        )
+
+    if not options:
+        options = Options()
+
+    raw = None
+    if options.raw_data_prefix:
+        raw = common_models.RawOutputDataConfig(options.raw_data_prefix)
 
     lps = _launch_plan_models.LaunchPlanSpec(
-        workflow_id=wf_spec.template.id,
+        workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
-            notifications=entity.notifications,
+            notifications=options.notifications or entity.notifications,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
-        labels=entity.labels or _common_models.Labels({}),
-        annotations=entity.annotations or _common_models.Annotations({}),
-        auth_role=entity._auth_role or _common_models.AuthRole(),
-        raw_output_data_config=entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
-        max_parallelism=entity.max_parallelism,
+        labels=options.labels or entity.labels or _common_models.Labels({}),
+        annotations=options.annotations or entity.annotations or _common_models.Annotations({}),
+        auth_role=options.auth_role or entity._auth_role or _common_models.AuthRole(),
+        raw_output_data_config=raw or entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
+        max_parallelism=options.max_parallelism or entity.max_parallelism,
     )
     lp_id = _identifier_model.Identifier(
         resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
@@ -424,6 +489,7 @@ def get_serializable(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
+    options: Optional[Options] = None,
 ) -> FlyteControlPlaneEntity:
     """
     The flytekit authoring code produces objects representing Flyte entities (tasks, workflows, etc.). In order to
@@ -438,6 +504,7 @@ def get_serializable(
       the parent entity this function is called with.
     :param settings: used to pick up project/domain/name - to be deprecated.
     :param entity: The local flyte entity to try to convert (along with its dependencies)
+    :param options: Optionally pass in a set of options that can be used to add additional metadata for Launchplans
     :return: The resulting control plane entity, in addition to being added to the mutable entity_mapping parameter
       is also returned.
     """
@@ -462,7 +529,7 @@ def get_serializable(
         cp_entity = get_serializable_node(entity_mapping, settings, entity)
 
     elif isinstance(entity, LaunchPlan):
-        cp_entity = get_serializable_launch_plan(entity_mapping, settings, entity)
+        cp_entity = get_serializable_launch_plan(entity_mapping, settings, entity, options=options)
 
     elif isinstance(entity, BranchNode):
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity)
