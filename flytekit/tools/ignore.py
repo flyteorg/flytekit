@@ -100,6 +100,7 @@ class IgnoreGroup(Ignore):
     Ignore considers it ignored."""
 
     def __init__(self, root: str, ignores: List[Ignore]):
+        super().__init__(root)
         self.ignores = [ignore(root) for ignore in ignores]
 
     def _is_ignored(self, path: str) -> bool:
@@ -107,3 +108,12 @@ class IgnoreGroup(Ignore):
             if ignore.is_ignored(path):
                 return True
         return False
+
+    def list_ignored(self) -> List[str]:
+        ignored = []
+        for root, _, files in os.walk(self.root):
+            for file in files:
+                abs_path = os.path.join(root, file)
+                if self.is_ignored(abs_path):
+                    ignored.append(os.path.relpath(abs_path, self.root))
+        return ignored
