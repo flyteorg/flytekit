@@ -11,7 +11,6 @@ from .resources import hello_wf
 #####
 # THESE TESTS ARE NOT RUN IN CI. THEY ARE HERE TO MAKE LOCAL TESTING EASIER.
 # Update these to use these tests
-SANDBOX_CONFIG_FILE = "/Users/ytong/.flyte/local_sandbox"
 IMAGE_STR = "flytecookbook:core-f7af27e23b3935a166645cf96a68583cdd263a87"
 FETCH_VERSION = "f7af27e23b3935a166645cf96a68583cdd263a87"
 RELEASED_EXAMPLES_VERSION = "v0.3.56"
@@ -20,7 +19,7 @@ RELEASED_EXAMPLES_VERSION = "v0.3.56"
 image_config = ImageConfig.auto(img_name=IMAGE_STR)
 
 rr = FlyteRemote(
-    Config.auto(config_file=SANDBOX_CONFIG_FILE),
+    Config.for_sandbox(),
     default_project="flytesnacks",
     default_domain="development",
 )
