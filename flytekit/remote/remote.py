@@ -49,6 +49,7 @@ from flytekit.models.execution import (
     ExecutionSpec,
     NodeExecutionGetDataResponse,
     NotificationList,
+    TaskExecutionGetDataResponse,
     WorkflowExecutionGetDataResponse,
 )
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
@@ -58,7 +59,7 @@ from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.translator import get_serializable_launch_plan, get_serializable_task, get_serializable_workflow
 
-ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
+ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse, TaskExecutionGetDataResponse]
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
 
@@ -977,6 +978,7 @@ class FlyteRemote(object):
         # and then for the closure to have is_complete to be true.
         execution._closure = self.client.get_execution(execution.id).closure
         execution_data = self.client.get_execution_data(execution.id)
+        execution._temp_exec_data = execution_data
         lp_id = execution.spec.launch_plan
         if sync_nodes:
             underlying_node_executions = [
@@ -1052,6 +1054,7 @@ class FlyteRemote(object):
         """
         # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
         node_id = execution.metadata.spec_node_id
+        print(f"Syncing node id {node_id}! #######-----------------------------------#######")
         # This case supports single-task execution compiled workflows.
         if node_id and node_id not in node_mapping and execution.id.node_id in node_mapping:
             node_id = execution.id.node_id
@@ -1090,12 +1093,25 @@ class FlyteRemote(object):
                 project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
             )
             self.sync_workflow_execution(launched_exec)
-            if launched_exec.is_complete:
-                # The synced underlying execution should've had these populated.
-                execution._inputs = launched_exec.inputs
-                execution._outputs = launched_exec.outputs
+            # print("=-================================ here 1")
+            # print(node_execution_get_data_response)
+            # print("=-================================  info")
+            # if launched_exec.is_complete:
+            #     print("=-================================ here 2")
+            #     print(type(execution))
+            #     print(execution)
+            #     # The synced underlying execution should've had these populated.
+            #     execution._inputs = launched_exec.inputs
+            #     execution._outputs = launched_exec.outputs
             execution._workflow_executions.append(launched_exec)
             execution._interface = launched_exec._flyte_workflow.interface
+
+            execution._inputs = launched_exec._inputs
+            execution._outputs = launched_exec._outputs
+            execution._raw_inputs = launched_exec._raw_inputs
+            execution._raw_outputs = launched_exec._raw_outputs
+            # am is missing
+            # self._assign_inputs_and_outputs(execution, node_execution_get_data_response, execution._interface)
             return execution
 
         # If a node ran a static subworkflow or a dynamic subworkflow then the parent flag will be set.
@@ -1132,11 +1148,15 @@ class FlyteRemote(object):
                 # This is copied from below - dynamic tasks have both task executions (executions of the parent
                 # task) as well as underlying node executions (of the generated subworkflow). Feel free to refactor
                 # if you can think of a better way.
+                tes = [t for t in iterate_task_executions(self.client, execution.id)]
+                print(f"#===================================>>>>> {len(tes)}")
+
                 execution._task_executions = [
                     self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
-                    for t in iterate_task_executions(self.client, execution.id)
+                    for t in tes
                 ]
                 execution._interface = dynamic_flyte_wf.interface
+                print(f"Finished!!!!!!!!!")
 
             # Handle the case where it's a static subworkflow
             elif isinstance(execution._node.flyte_entity, FlyteWorkflow):
@@ -1184,6 +1204,7 @@ class FlyteRemote(object):
         execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
         task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
+        # TODO: Need to special case this here for dynamic tasks - 
         return self._assign_inputs_and_outputs(execution, execution_data, task.interface)
 
     #############################
@@ -1205,7 +1226,7 @@ class FlyteRemote(object):
     def _assign_inputs_and_outputs(
         self,
         execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
-        execution_data,
+        execution_data: ExecutionDataResponse,
         interface,
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""

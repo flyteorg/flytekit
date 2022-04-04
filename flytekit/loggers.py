@@ -18,7 +18,7 @@ flytekit_root_env_var = f"{LOGGING_ENV_VAR}_ROOT"
 if os.getenv(flytekit_root_env_var) is not None:
     logger.setLevel(int(os.getenv(flytekit_root_env_var)))
 else:
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.WARNING)
 
 # Stop propagation so that configuration is isolated to this file (so that it doesn't matter what the
 # global Python root logger is set to).

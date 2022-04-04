@@ -711,8 +711,10 @@ class TypeEngine(typing.Generic[T]):
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
         """
         if len(lm.literals) != len(python_types):
+            logger.error(f"Mismatch between literal keys {lm.literals.keys()} and type map {python_types.keys()}")
             raise ValueError(
-                f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
+                f"Received different number of inputs {len(lm.literals)} "
+                f"than allowed by the input spec {len(python_types)}"
             )
         return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
 

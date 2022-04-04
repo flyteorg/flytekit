@@ -148,3 +148,16 @@ def test_passing_of_kwargs(mock_client):
     FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args)
     assert mock_client.called
     assert mock_client.call_args[1] == additional_args
+
+
+def test_debug():
+    from flytekit.remote.remote import FlyteRemote
+    from flytekit.configuration import Config
+    rr = FlyteRemote(
+        Config.auto(config_file="/Users/ytong/.flyte/local_sandbox"),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+    we = rr.fetch_workflow_execution(name="q142ao4upw")
+    rr.sync_workflow_execution(we, sync_nodes=True)
+

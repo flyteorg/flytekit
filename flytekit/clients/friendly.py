@@ -583,12 +583,11 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def get_execution_data(self, id):
+    def get_execution_data(self, id) -> _execution.WorkflowExecutionGetDataResponse:
         """
         Returns signed URLs to LiteralMap blobs for an execution's inputs and outputs (when available).
 
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
-        :rtype: flytekit.models.execution.WorkflowExecutionGetDataResponse
         """
         return _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_execution_data(
@@ -776,12 +775,11 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def get_task_execution_data(self, task_execution_identifier):
+    def get_task_execution_data(self, task_execution_identifier) -> _execution.TaskExecutionGetDataResponse:
         """
         Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
 
         :param flytekit.models.core.identifier.TaskExecutionIdentifier task_execution_identifier:
-        :rtype: flytekit.models.execution.NodeExecutionGetDataResponse
         """
         return _execution.TaskExecutionGetDataResponse.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_task_execution_data(
