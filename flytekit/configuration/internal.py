@@ -2,7 +2,7 @@ import configparser
 import datetime
 import typing
 
-from flytekit.configuration.file import ConfigEntry, ConfigFile, LegacyConfigEntry
+from flytekit.configuration.file import ConfigEntry, ConfigFile, LegacyConfigEntry, YamlConfigEntry
 
 
 class Images(object):
@@ -31,11 +31,20 @@ class Images(object):
         return images
 
 
+class Deck(object):
+    SECTION = "deck"
+    DISABLE_DECK = ConfigEntry(LegacyConfigEntry(SECTION, "disable_deck", bool))
+
+
 class AWS(object):
     SECTION = "aws"
-    S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint"))
-    S3_ACCESS_KEY_ID = ConfigEntry(LegacyConfigEntry(SECTION, "access_key_id"))
-    S3_SECRET_ACCESS_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "secret_access_key"))
+    S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint"), YamlConfigEntry("storage.connection.endpoint"))
+    S3_ACCESS_KEY_ID = ConfigEntry(
+        LegacyConfigEntry(SECTION, "access_key_id"), YamlConfigEntry("storage.connection.access-key")
+    )
+    S3_SECRET_ACCESS_KEY = ConfigEntry(
+        LegacyConfigEntry(SECTION, "secret_access_key"), YamlConfigEntry("storage.connection.secret-key")
+    )
     ENABLE_DEBUG = ConfigEntry(LegacyConfigEntry(SECTION, "enable_debug", bool))
     RETRIES = ConfigEntry(LegacyConfigEntry(SECTION, "retries", int))
     BACKOFF_SECONDS = ConfigEntry(
@@ -51,12 +60,12 @@ class GCP(object):
 
 class Credentials(object):
     SECTION = "credentials"
-    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command"), list)
+    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command"), None, list)
     """
     This command is executed to return a token using an external process.
     """
 
-    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"))
+    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"), YamlConfigEntry("admin.clientId"))
     """
     This is the public identifier for the app which handles authorization for a Flyte deployment.
     More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -69,7 +78,7 @@ class Credentials(object):
     secret as a file is impossible.
     """
 
-    SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list))
+    SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
 
     AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"))
     """
@@ -84,8 +93,10 @@ class Credentials(object):
 
 class Platform(object):
     SECTION = "platform"
-    URL = ConfigEntry(LegacyConfigEntry(SECTION, "url"))
-    INSECURE = ConfigEntry(LegacyConfigEntry(SECTION, "insecure", bool))
+    URL = ConfigEntry(
+        LegacyConfigEntry(SECTION, "url"), YamlConfigEntry("admin.endpoint"), lambda x: x.replace("dns:///", "")
+    )
+    INSECURE = ConfigEntry(LegacyConfigEntry(SECTION, "insecure", bool), YamlConfigEntry("admin.insecure", bool))
 
 
 class LocalSDK(object):

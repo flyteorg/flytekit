@@ -10,6 +10,8 @@ import requests as _requests
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
+from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
+from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 
 from flytekit.clis.auth import credentials as _credentials_access
@@ -55,7 +57,7 @@ def _handle_rpc_error(retry=False):
                             raise
                         else:
                             # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
-                            wait_time = min(200 * (2 ** i), max_wait_time)
+                            wait_time = min(200 * (2**i), max_wait_time)
                             cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                             time.sleep(wait_time / 1000)
 
@@ -92,6 +94,8 @@ class RawSynchronousFlyteClient(object):
         RawSynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))  # or
         SynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))
     """
+
+    _dataproxy_stub: DataProxyServiceStub
 
     def __init__(self, cfg: PlatformConfig, **kwargs):
         """
@@ -133,6 +137,7 @@ class RawSynchronousFlyteClient(object):
         except grpc.RpcError:
             cli_logger.debug("No OAuth2 Metadata found, skipping.")
             self._oauth2_metadata = None
+        self._dataproxy_stub = dataproxy_service.DataProxyServiceStub(self._channel)
 
         cli_logger.info(
             f"Flyte Client configured -> {self._cfg.endpoint} in {'insecure' if self._cfg.insecure else 'secure'} mode."
@@ -809,6 +814,20 @@ class RawSynchronousFlyteClient(object):
 
     # TODO: (P2) Implement the event endpoints in case there becomes a use-case for third-parties to submit events
     # through the client in Python.
+
+    ####################################################################################################################
+    #
+    #  Data proxy endpoints
+    #
+    ####################################################################################################################
+    @_handle_rpc_error()
+    def create_upload_location(self, create_upload_location_request):
+        """
+        Get a signed url to be used during fast registration
+        :param flyteidl.service.dataproxy_pb2.CreateUploadLocationRequest:
+        :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
+        """
+        return self._dataproxy_stub.CreateUploadLocation(create_upload_location_request)
 
 
 def get_token(token_endpoint, authorization_header, scope):

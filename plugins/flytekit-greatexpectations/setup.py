@@ -4,7 +4,7 @@ PLUGIN_NAME = "great_expectations"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.21.0,<1.0.0", "great-expectations>=0.13.30,<0.14.6", "sqlalchemy>=1.4.23"]
+plugin_requires = ["flytekit>=0.21.0,<1.0.0", "great-expectations>=0.13.30", "sqlalchemy>=1.4.23"]
 
 __version__ = "0.0.0+develop"
 
