@@ -35,24 +35,8 @@ class Ignore(ABC):
         pass
 
 
-class GitIgnoreV1(Ignore):
-    """Uses git cli (if available) to check whether a path is ignored."""
-
-    def __init__(self, root: Path):
-        super().__init__(root)
-        self.has_git = which("git") is not None
-
-    def _is_ignored(self, path: str) -> bool:
-        if self.has_git:
-            out = subprocess.run(["git", "check-ignore", path], cwd=self.root)
-            # Returncode is 0 if file is ignored and 1 if otherwise
-            return not out.returncode
-        cli_logger.info(f"No git executable found, not applying any filters")
-        return False
-
-
 class GitIgnore(Ignore):
-    """Uses git cli (if available) to check whether a path is ignored."""
+    """Uses git cli (if available) to list all ignored files and compare with those."""
 
     def __init__(self, root: Path):
         super().__init__(root)
