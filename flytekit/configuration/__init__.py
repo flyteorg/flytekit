@@ -187,7 +187,12 @@ class ImageConfig(object):
         is provided. a default image, is one that is specified as
           default=img or just img. All other images should be provided with a name, in the format
           name=img
-        This method can be used wit the CLI
+        This method can be used with the CLI
+
+        :param _: click argument, ignored here.
+        :param param: the click argument, here should be "image"
+        :param values: user-supplied images
+        :return:
         """
         default_image = None
         images = []
