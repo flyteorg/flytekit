@@ -207,7 +207,7 @@ class ImageConfig(object):
             else:
                 images.append(img)
 
-        return ImageConfig.create_from(default_image=default_image, images=images)
+        return ImageConfig.create_from(default_image=default_image, other_images=images)
 
     @classmethod
     def create_from(cls, default_image: Image, other_images: typing.Optional[typing.List[Image]] = None) -> ImageConfig:
