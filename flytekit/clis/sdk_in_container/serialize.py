@@ -168,12 +168,9 @@ def fast_workflows(ctx, folder=None):
         click.echo(f"Writing output to {folder}")
 
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
-    digest = _compute_digest(source_dir)
-    folder = folder if folder else ""
-    archive_fname = os.path.join(folder, f"{digest}.tar.gz")
-    click.echo(f"Writing compressed archive to {archive_fname}")
     # Write using gzip
-    create_archive(source_dir, archive_fname)
+    archive_fname = create_archive(source_dir, folder)
+    click.echo(f"Writing compressed archive to {archive_fname}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
