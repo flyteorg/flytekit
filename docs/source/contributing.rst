@@ -62,11 +62,11 @@ We recommend using a virtual environment to develop Flytekit. Inside the top lev
 Install `shellcheck <https://github.com/koalaman/shellcheck>`__ for linting shell scripts.
 
 .. note::
-    It's important to maintain separate virtualenvs for flytekit *development* and Flytekit *use*. The reason is that installing a Python
-    library in editable mode will link it to your source code. That is, the behavior will change as you work on the code,
+    It is important to maintain separate virtualenvs for flytekit *development* and flytekit *use* because installing a Python
+    library in editable mode will link it to your source code. The behavior will change as you work on the code,
     check out different branches, etc.
 
-This will install Flytekit dependencies and also install Flytekit itself in editable mode. This basically links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``.
+This will install Flytekit dependencies and Flytekit in editable mode. This links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``.
 
 Plugin Development
 ==================
