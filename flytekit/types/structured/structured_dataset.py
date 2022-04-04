@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import importlib
 import os
 import re
 import types
@@ -9,18 +10,18 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
-import pyarrow
-from dataclasses_json import config, dataclass_json
-from marshmallow import fields
-
-try:
-    from typing import Annotated, TypeAlias, get_args, get_origin
-except ImportError:
-    from typing_extensions import Annotated, get_origin, get_args, TypeAlias
-
 import _datetime
 import numpy as _np
+import pandas
+import pandas as pd
+import pyarrow
 import pyarrow as pa
+
+if importlib.util.find_spec("pyspark") is not None:
+    import pyspark
+from dataclasses_json import config, dataclass_json
+from marshmallow import fields
+from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -624,6 +625,29 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means
         # we should do the opening/downloading and whatever else it might entail right now. No iteration option here.
         return self.open_as(ctx, lv.scalar.structured_dataset, df_type=expected_python_type, updated_metadata=metad)
+
+    def to_html(self, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[T]) -> str:
+        if isinstance(python_val, StructuredDataset):
+            if python_val.dataframe is not None:
+                df = python_val.dataframe
+            else:
+                # Here we only render column information by default instead of opening the structured dataset.
+                col = typing.cast(StructuredDataset, python_val).columns()
+                df = pd.DataFrame(col, ["column type"])
+                return df.to_html()
+        else:
+            df = python_val
+
+        if isinstance(df, pandas.DataFrame):
+            return df.describe().to_html()
+        elif isinstance(df, pa.Table):
+            return df.to_string()
+        elif isinstance(df, _np.ndarray):
+            return pd.DataFrame(df).describe().to_html()
+        elif importlib.util.find_spec("pyspark") is not None and isinstance(df, pyspark.sql.DataFrame):
+            return pd.DataFrame(df.schema, columns=["StructField"]).to_html()
+        else:
+            raise NotImplementedError("Conversion to html string should be implemented")
 
     def open_as(
         self,

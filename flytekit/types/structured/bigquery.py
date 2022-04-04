@@ -108,7 +108,7 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
-        return pa.Table.from_pandas(_read_from_bq(flyte_value))
+        return pa.Table.from_pandas(_read_from_bq(flyte_value, current_task_metadata))
 
 
 StructuredDatasetTransformerEngine.register(PandasToBQEncodingHandlers(), default_for_type=False)

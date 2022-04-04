@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -18,6 +19,7 @@ def test_wrapped_tasks_happy_path(capfd):
         text=True,
     )
     out = capfd.readouterr().out
+    out = re.sub(r"file:.*", "", out)
 
     assert out.replace("\r", "").strip().split("\n") == [
         "before running my_task",
@@ -25,6 +27,7 @@ def test_wrapped_tasks_happy_path(capfd):
         "running my_task",
         "finally after running my_task",
         "after running my_task",
+        "my_task output flytekit deck html to ",
         "11",
     ]
 
@@ -53,11 +56,14 @@ def test_stacked_wrapped_tasks(capfd):
         text=True,
     )
     out = capfd.readouterr().out
+    out = re.sub(r"file:.*", "", out)
+
     assert out.replace("\r", "").strip().split("\n") == [
         "running task_decorator_1",
         "running task_decorator_2",
         "running task_decorator_3",
         "running my_task",
+        "my_task output flytekit deck html to ",
         "11",
     ]
 
