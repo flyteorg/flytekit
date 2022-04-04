@@ -457,7 +457,7 @@ class FlyteRemote(object):
         if default_launch_plan:
             default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
             self.register_launch_plan(
-                default_lp, version=version, project=ident.project, domain=ident.domain, options=options
+                default_lp, version=ident.version, project=ident.project, domain=ident.domain, options=options
             )
             remote_logger.debug("Created default launch plan for Workflow")
 

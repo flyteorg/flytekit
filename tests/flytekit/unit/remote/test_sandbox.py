@@ -12,8 +12,8 @@ from .resources import hello_wf
 # THESE TESTS ARE NOT RUN IN CI. THEY ARE HERE TO MAKE LOCAL TESTING EASIER.
 # Update these to use these tests
 IMAGE_STR = "flytecookbook:core-f7af27e23b3935a166645cf96a68583cdd263a87"
-FETCH_VERSION = "f7af27e23b3935a166645cf96a68583cdd263a87"
-RELEASED_EXAMPLES_VERSION = "v0.3.56"
+FETCH_VERSION = "a351b7c7445a8a818cdf87bf1c1cf38b63beddf1"
+RELEASED_EXAMPLES_VERSION = "a351b7c7445a8a818cdf87bf1c1cf38b63beddf1"
 #####
 
 image_config = ImageConfig.auto(img_name=IMAGE_STR)
@@ -48,7 +48,7 @@ def test_fetch_one_wf():
 
 @pytest.mark.sandbox_test
 def test_get_parent_wf_run():
-    we = rr.fetch_workflow_execution(name="vudmhuxb9b")
+    we = rr.fetch_workflow_execution(name="y1dqoweuzl")
     rr.sync_workflow_execution(we, sync_nodes=True)
     print(we)
 
@@ -81,8 +81,7 @@ def test_register_a_hello_world_wf():
 def test_run_directly_hello_world_wf():
     version = get_version("2")
 
-    ss = SerializationSettings(image_config, project="flytesnacks", domain="development", version=version)
-    rr.execute(hello_wf, inputs={"a": 5}, serialization_settings=ss)
+    rr.execute(hello_wf, inputs={"a": 5}, project="flytesnacks", domain="development", version=version)
 
 
 @pytest.mark.sandbox_test
