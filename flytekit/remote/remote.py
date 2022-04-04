@@ -45,7 +45,6 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as common_models
 from flytekit.models import literals as literal_models
-from flytekit.models import security
 from flytekit.models.admin.common import Sort
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
@@ -61,45 +60,11 @@ from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.tools.translator import FlyteLocalEntity, get_serializable, get_serializable_launch_plan
+from flytekit.tools.translator import FlyteLocalEntity, Options, get_serializable, get_serializable_launch_plan
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
-
-
-@dataclass
-class Options(object):
-    """
-    These are options that can be configured for a launchplan during registration or overridden during an execution.
-    For instance two people may want to run the same workflow but have the offloaded data stored in two different
-    buckets. Or you may want labels or annotations to be different. This object is used when launching an execution
-    in a Flyte backend, and also when registering launch plans.
-
-    Args:
-        raw_data_prefix: str -> remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-           ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
-           the data for offloaded types is stored.
-        auth_role: Specifies the Kubernetes Service account,
-           IAM role etc to be used. If not specified defaults will be used.
-        labels: Custom labels to be applied to the execution resource
-        annotations: Custom annotations to be applied to the execution resource
-        security_context: Indicates security context for permissions triggered with this launch plan
-        raw_output_data_config: Optional location of offloaded data for things like S3, etc.
-        max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
-        notifications: List of notifications for this execution
-        disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
-    """
-
-    raw_data_prefix: typing.Optional[str] = None
-    auth_role: typing.Optional[common_models.AuthRole] = None
-    labels: typing.Optional[common_models.Labels] = None
-    annotations: typing.Optional[common_models.Annotations] = None
-    raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
-    security_context: typing.Optional[security.SecurityContext] = None
-    max_parallelism: typing.Optional[int] = None
-    notifications: typing.Optional[typing.List[common_models.Notification]] = None
-    disable_notifications: typing.Optional[bool] = None
 
 
 @dataclass
@@ -401,14 +366,18 @@ class FlyteRemote(object):
         return ident
 
     def _serialize_and_register(
-        self, entity: FlyteLocalEntity, settings: SerializationSettings, version: str
+        self,
+        entity: FlyteLocalEntity,
+        settings: SerializationSettings,
+        version: str,
+        options: typing.Optional[Options] = None,
     ) -> Identifier:
         """
         This method serializes and register the given Flyte entity
         :return: Identifier of the registered entity
         """
         m = OrderedDict()
-        _ = get_serializable(m, settings=settings, entity=entity)
+        _ = get_serializable(m, settings=settings, entity=entity, options=options)
         ident = None
         for entity, cp_entity in m.items():
             try:
@@ -492,7 +461,7 @@ class FlyteRemote(object):
         b.project = ident.project
         b.domain = ident.domain
         b.version = ident.version
-        ident = self._serialize_and_register(entity, b.build(), version)
+        ident = self._serialize_and_register(entity, b.build(), version, options)
         if default_launch_plan:
             default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
             self.register_launch_plan(
@@ -520,28 +489,11 @@ class FlyteRemote(object):
         :param options:
         :return:
         """
-        if not options:
-            options = Options()
-
-        raw = None
-        if options.raw_data_prefix:
-            raw = common_models.RawOutputDataConfig(options.raw_data_prefix)
-
-        lp = entity.clone_with(
-            name=entity.name,
-            raw_output_data_config=raw,
-            auth_role=options.auth_role,
-            max_parallelism=options.max_parallelism,
-            notifications=options.notifications,
-            labels=options.labels,
-            annotations=options.annotations,
-        )
-
         ss = SerializationSettings(image_config=ImageConfig(), project=project, domain=domain, version=version)
 
         ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
-        idl_lp = get_serializable_launch_plan(m, ss, lp, recurse_downstream=False)
+        idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)
         try:
             self.client.create_launch_plan(ident, idl_lp.spec)
         except FlyteEntityAlreadyExistsException:
