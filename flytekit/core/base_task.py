@@ -542,7 +542,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             new_user_params.decks.append(input_deck)
             new_user_params.decks.append(output_deck)
 
-            if _internal.Deck.ENABLE_DECK.read() is not False and self.disable_deck is not False:
+            a = _internal.Deck.DISABLE_DECK.read()
+            if _internal.Deck.DISABLE_DECK.read() is not True and self.disable_deck is False:
                 _output_deck(self.name.split(".")[-1], new_user_params)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
