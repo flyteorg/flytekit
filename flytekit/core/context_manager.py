@@ -26,6 +26,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Generator, List, Optional, Union
 
+import flytekit
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
@@ -81,7 +82,7 @@ class ExecutionParameters(object):
         attrs: typing.Dict[str, typing.Any]
         working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
         checkpoint: typing.Optional[Checkpoint]
-        decks: List
+        decks: List[flytekit.Deck]
         raw_output_prefix: str
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
