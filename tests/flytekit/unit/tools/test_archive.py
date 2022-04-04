@@ -39,6 +39,7 @@ def test_archive(flyte_project, tmp_path):
             "",  # tar root, output removes leading '/'
             ".dockerignore",
             ".gitignore",
+            ".venv",
             "keep.foo",
             "src",
             "src/workflows",

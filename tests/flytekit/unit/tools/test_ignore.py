@@ -104,7 +104,6 @@ def all_ignore(tmp_path):
 def test_simple_gitignore(simple_gitignore):
     gitignore = GitIgnore(simple_gitignore)
     assert gitignore.is_ignored(str(simple_gitignore / "test.foo"))
-    assert gitignore.is_ignored(str(simple_gitignore / "sub"))
     assert gitignore.is_ignored(str(simple_gitignore / "sub" / "some.bar"))
     assert not gitignore.is_ignored(str(simple_gitignore / "keep.foo"))
     assert not gitignore.is_ignored(str(simple_gitignore / ".gitignore"))
