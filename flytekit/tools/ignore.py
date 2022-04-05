@@ -57,6 +57,9 @@ class GitIgnore(Ignore):
         if self.ignored:
             if path in self.ignored:
                 return True
+            # Ignore empty directories
+            if os.path.isdir(os.path.join(self.root, path)) and all([self.is_ignored(os.path.join(path, f)) for f in os.listdir(os.path.join(self.root, path))]):
+                return True      
         return False
 
 

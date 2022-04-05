@@ -46,7 +46,6 @@ def test_package(flyte_project, tmp_path):
             "",  # tar root, output removes leading '/'
             ".dockerignore",
             ".gitignore",
-            ".venv",  # Included in archive but empty - git ls-files operates on files only
             "keep.foo",
             "src",
             "src/workflows",
