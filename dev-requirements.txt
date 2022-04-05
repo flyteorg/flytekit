@@ -46,10 +46,6 @@ charset-normalizer==2.0.12
     # via
     #   -c requirements.txt
     #   requests
-checksumdir==1.2.0
-    # via
-    #   -c requirements.txt
-    #   flytekit
 click==8.1.2
     # via
     #   -c requirements.txt
@@ -106,6 +102,14 @@ docker-image-py==0.1.12
     # via
     #   -c requirements.txt
     #   flytekit
+docker-py==1.10.6
+    # via
+    #   -c requirements.txt
+    #   flytekit
+docker-pycreds==0.4.0
+    # via
+    #   -c requirements.txt
+    #   docker-py
 dockerpty==0.4.1
     # via docker-compose
 docopt==0.6.2
@@ -357,6 +361,7 @@ requests==2.27.1
     #   cookiecutter
     #   docker
     #   docker-compose
+    #   docker-py
     #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
@@ -380,6 +385,8 @@ six==1.16.0
     #   -c requirements.txt
     #   bcrypt
     #   cookiecutter
+    #   docker-py
+    #   docker-pycreds
     #   dockerpty
     #   google-auth
     #   grpcio
@@ -429,8 +436,10 @@ virtualenv==20.14.0
     # via pre-commit
 websocket-client==0.59.0
     # via
+    #   -c requirements.txt
     #   docker
     #   docker-compose
+    #   docker-py
 wheel==0.37.1
     # via
     #   -c requirements.txt
