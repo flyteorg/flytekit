@@ -205,7 +205,9 @@ pytz==2022.1
     #   flytekit
     #   pandas
 pyyaml==5.4.1
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   flytekit
 regex==2022.3.15
     # via
     #   -r requirements.txt

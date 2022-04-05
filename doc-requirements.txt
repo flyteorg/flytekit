@@ -67,7 +67,7 @@ furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
 googleapis-common-protos==1.56.0
     # via flyteidl
-grpcio==1.44.0
+grpcio==1.45.0
     # via
     #   -r doc-requirements.in
     #   flytekit
@@ -160,7 +160,9 @@ pytz==2022.1
     #   flytekit
     #   pandas
 pyyaml==6.0
-    # via sphinx-autoapi
+    # via
+    #   flytekit
+    #   sphinx-autoapi
 regex==2022.3.15
     # via docker-image-py
 requests==2.27.1
