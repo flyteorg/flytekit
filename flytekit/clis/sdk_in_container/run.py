@@ -1,26 +1,40 @@
+import hashlib
 import importlib
 import os
-import shutil
-import tarfile
-import tempfile
-from pathlib import Path
+import typing
 
 import click
-from flyteidl.core import identifier_pb2
+from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 
-from flytekit import configuration
 from flytekit.clients import friendly
-from flytekit.clis.flyte_cli.main import _extract_and_register
-from flytekit.clis.sdk_in_container.utils import produce_fast_register_task_closure
-from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.core import context_manager
+from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.tools import fast_registration, module_loader, serialize_helpers
+from flytekit.remote.executions import FlyteWorkflowExecution
+from flytekit.remote.remote import FlyteRemote
+from flytekit.tools import module_loader, script_mode
 
 
 @click.command("run")
 @click.argument(
     "module_and_workflow",
+)
+@click.option(
+    "project",
+    "-p",
+    "--project",
+    required=False,
+    type=str,
+    default="flytesnacks",
+)
+@click.option(
+    "domain",
+    "-d",
+    "--domain",
+    required=False,
+    type=str,
+    default="development",
 )
 @click.option(
     "image",
@@ -45,21 +59,39 @@ from flytekit.tools import fast_registration, module_loader, serialize_helpers
 def run(
     click_ctx,
     module_and_workflow,
+    project,
+    domain,
     image,
     help=None,
 ):
     """
     TODO description (remember to document workflow inputs)
     """
-    # TODO is it `--help`? Figure out a way to parse the inputs to the workflow
-
     split_input = module_and_workflow.split(":")
     if len(split_input) != 2:
         raise FlyteValidationException(f"Input {module_and_workflow} must be in format '<module>:<worfklow>'")
 
-    module, workflow_name = split_input
-    pkg, source = _find_full_package_name_and_project_root()
     destination_dir = "/root"
+
+    filename, workflow_name = split_input
+    module = os.path.splitext(filename)[0]
+
+    # Load code naively, i.e. without taking into account the
+    wf_entity = load_naive_entity(module, workflow_name)
+
+    # TODO is it `--help`? Figure out a way to parse the inputs to the workflow
+    if help:
+        # TODO Write a custom help message containing the types of inputs, if any, and an example of how to specify
+        # arguments.
+        return
+
+    config_obj = PlatformConfig.auto()
+    client = friendly.SynchronousFlyteClient(config_obj)
+    # TODO: the data proxy creates a fixed path. We should add a notion of randomness in the suffix. Haytham is fixing it.
+    upload_location: CreateUploadLocationResponse = client.create_upload_location(
+        project=project, domain=domain, suffix="scriptmode.tar.gz"
+    )
+    version = generate_version(filename)
 
     image_config = ImageConfig.validate_single_image(image)
     serialization_settings = SerializationSettings(
@@ -67,90 +99,61 @@ def run(
         fast_serialization_settings=FastSerializationSettings(
             enabled=True,
             destination_dir=destination_dir,
+            distribution_location=upload_location.native_url,
         ),
     )
+
+    remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
+    wf = remote.register_workflow(wf_entity, serialization_settings=serialization_settings, version=version)
+
+    # TODO: replace this with signed_url after the fix for the dataproxy in the sandbox is merged
+    full_remote_path = upload_location.native_url
+    script_mode.fast_register_single_script(version, wf_entity, full_remote_path)
+
+    # TODO: fill in inputs
+    inputs = {}
+    execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
+    dump_flyte_remote_snippet(execution, project, domain)
+
+
+def load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
-        serialization_settings
+        SerializationSettings(None)
     )
-    with context_manager.FlyteContextManager.with_context(flyte_ctx) as flyte_ctx:
-        with module_loader.add_sys_path(source):
-            importlib.import_module(f"{pkg}.{module}")
+    with context_manager.FlyteContextManager.with_context(flyte_ctx):
+        with module_loader.add_sys_path(os.getcwd()):
+            importlib.import_module(module_name)
+    return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
 
-    registrable_entities = serialize_helpers.get_registrable_entities(flyte_ctx)
 
-    if not registrable_entities:
-        click.secho(f"No flyte objects found in package {pkg}", fg="yellow")
-        return
+def generate_version(file_path: typing.Union[os.PathLike, str]) -> str:
+    """
+    Hash a file and produce a digest to be used as a version
+    """
+    # TODO: take file_path as an initial parameter to ensure that moving the file will produce a different version.
+    h = hashlib.sha256()
 
-    # Open a temp directory and dump the contents of the digest.
-    tmp_dir = tempfile.TemporaryDirectory()
-    source_path = os.fspath(source)
-    digest = fast_registration.compute_digest(source_path)
-    archive_fname = os.path.join(tmp_dir.name, f"{digest}.tar.gz")
+    with open(file_path, "rb") as file:
+        while True:
+            # Reading is buffered, so we can read smaller chunks.
+            chunk = file.read(h.block_size)
+            if not chunk:
+                break
+            h.update(chunk)
 
-    t_dir = tempfile.TemporaryDirectory()
-    # for each package in pkg, create a directory and touch a __init__.py in it
-    path = os.path.join(t_dir.name, "pkgs")
-    for p in pkg.split("."):
-        os.makedirs(os.path.join(path, p))
-        Path(os.path.join(path, p, "__init__.py")).touch()
-        path = os.path.join(path, p)
-    shutil.copy(
-        os.path.join(source_path, "flyte/workflows/example.py"),
-        os.path.join(t_dir.name, "pkgs", "flyte/workflows/example.py"),
+    return h.hexdigest()
+
+
+def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
+    click.secho(
+        f"""
+In order to have programmatic access to the execution, use the following snippet:
+
+from flytekit.configuration import Config
+from flytekit.remote import FlyteRemote
+remote = FlyteRemote(Config.auto(), default_project="{project}", default_domain="{domain}")
+exec = remote.fetch_workflow_execution(name="{execution.id.name}")
+remote.sync(exec)
+print(exec.outputs)
+    """
     )
-    breakpoint()
-    with tarfile.open(archive_fname, "w:gz") as tar:
-        tar.add(os.path.join(t_dir.name, "pkgs"), arcname="")
-
-    # breakpoint()
-    # with tarfile.open(archive_fname, "w:gz") as tar:
-    #     tar.add(source, arcname="", filter=fast_registration.filter_tar_file_fn)
-
-    serialize_helpers.persist_registrable_entities(registrable_entities, tmp_dir.name)
-
-    pb_files = []
-    for f in os.listdir(tmp_dir.name):
-        if f.endswith(".pb"):
-            pb_files.append(os.path.join(tmp_dir.name, f))
-
-    version = str(os.getpid())  # TODO: find a better source of entropy
-
-    # TODO Get signed url from flyteadmin
-    full_remote_path = f"s3://my-s3-bucket/fast-register-test/{digest}.tar.gz"
-    flyte_ctx = context_manager.FlyteContextManager.current_context()
-    flyte_ctx.file_access.put_data(archive_fname, full_remote_path)
-
-    patches = {
-        identifier_pb2.TASK: produce_fast_register_task_closure(full_remote_path, destination_dir),
-        # TODO: handle launch plans
-        # _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
-        #     assumable_iam_role, kubernetes_service_account, output_location_prefix
-        # ),
-    }
-
-    # TODO: get this from the config file
-    config_obj = configuration.PlatformConfig.auto()
-    client = friendly.SynchronousFlyteClient(config_obj)
-    _extract_and_register(client, "flytesnacks", "development", version, pb_files, patches)
-
-    # TODO: Schedule execution using flyteremote
-    # TODO: Dump flyteremote snippet to access the run
-
-
-def _find_full_package_name_and_project_root() -> (str, Path):
-    """
-    Traverse from current working directory until it can no longer find __init__.py files
-    """
-    # N.B.: this path traversal is *extremely* naive. In other words it will not handle cycles
-    # and probably will be
-    dirs = []
-    path = Path(os.getcwd())
-    while os.path.exists(os.path.join(path, "__init__.py")):
-        dirs.insert(0, path.parts[-1])
-        path = path.parent
-
-    full_pkg = ".".join(dirs)
-    source = path
-
-    return full_pkg, source
