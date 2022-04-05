@@ -33,6 +33,8 @@ from flytekit.core.type_engine import (
     LiteralsResolver,
     SimpleTransformer,
     TypeEngine,
+    TypeTransformer,
+    TypeTransformerFailedError,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -40,8 +42,8 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
@@ -51,6 +53,8 @@ from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
+
+T = typing.TypeVar("T")
 
 
 def test_type_engine():
@@ -368,7 +372,7 @@ def test_guessing_basic():
 
     lt = model_types.LiteralType(simple=model_types.SimpleType.NONE)
     pt = TypeEngine.guess_python_type(lt)
-    assert pt is None
+    assert pt is type(None)  # noqa: E721
 
     lt = model_types.LiteralType(
         blob=BlobType(
@@ -714,6 +718,283 @@ def test_enum_type():
         TypeEngine.to_literal_type(UnsupportedEnumValues)
 
 
+def union_type_tags_unique(t: LiteralType):
+    seen = set()
+    for x in t.union_type.variants:
+        if x.structure.tag in seen:
+            return False
+        seen.add(x.structure.tag)
+
+    return True
+
+
+def test_union_type():
+    pt = typing.Union[str, int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "str"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
+def test_union_type_with_annotated():
+    pt = typing.Union[
+        Annotated[str, FlyteAnnotation({"hello": "world"})], Annotated[int, FlyteAnnotation({"test": 123})]
+    ]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(
+            simple=SimpleType.STRING, structure=TypeStructure(tag="str"), annotation=TypeAnnotation({"hello": "world"})
+        ),
+        LiteralType(
+            simple=SimpleType.INTEGER, structure=TypeStructure(tag="int"), annotation=TypeAnnotation({"test": 123})
+        ),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "str"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
+def test_annotated_union_type():
+    pt = Annotated[typing.Union[str, int], FlyteAnnotation({"hello": "world"})]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert lt.annotation == TypeAnnotation({"hello": "world"})
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "str"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
+def test_optional_type():
+    pt = typing.Optional[int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, None, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "none"
+    assert lv.scalar.union.value.scalar.none_type == Void()
+    assert v is None
+
+
+def test_union_from_unambiguous_literal():
+    pt = typing.Union[str, int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, int, LiteralType(simple=SimpleType.INTEGER))
+    assert lv.scalar.primitive.integer == 3
+
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert v == 3
+
+
+def test_union_custom_transformer():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            LiteralType(simple=SimpleType.INTEGER),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x.val))),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    pt = typing.Union[int, MyInt]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="MyInt")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, MyInt(10), pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "MyInt"
+    assert lv.scalar.union.value.scalar.primitive.integer == 10
+    assert v == MyInt(10)
+
+    lv = TypeEngine.to_literal(ctx, 4, int, LiteralType(simple=SimpleType.INTEGER))
+    assert lv.scalar.primitive.integer == 4
+    try:
+        TypeEngine.to_python_value(ctx, lv, pt)
+    except TypeError as e:
+        assert "Ambiguous choice of variant" in str(e)
+
+    del TypeEngine._REGISTRY[MyInt]
+
+
+def test_union_custom_transformer_sanity_check():
+    class UnsignedInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, UnsignedInt):
+                return False
+            return other.val == self.val
+
+    # This transformer will not work in the implicit wrapping case
+    class UnsignedIntTransformer(TypeTransformer[UnsignedInt]):
+        def __init__(self):
+            super().__init__("UnsignedInt", UnsignedInt)
+
+        def get_literal_type(self, t: typing.Type[T]) -> LiteralType:
+            return LiteralType(simple=SimpleType.INTEGER)
+
+        def to_literal(
+            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType
+        ) -> Literal:
+            if type(python_val) != int:
+                raise TypeTransformerFailedError("Expected an integer")
+
+            if python_val < 0:
+                raise TypeTransformerFailedError("Expected a non-negative integer")
+
+            return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
+
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> T:
+            val = lv.scalar.primitive.integer
+            return UnsignedInt(0 if val < 0 else val)
+
+    TypeEngine.register(UnsignedIntTransformer())
+
+    pt = typing.Union[int, UnsignedInt]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="UnsignedInt")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    with pytest.raises(TypeError, match="Ambiguous choice of variant for union type"):
+        TypeEngine.to_literal(ctx, 3, pt, lt)
+
+    del TypeEngine._REGISTRY[UnsignedInt]
+
+
+def test_union_of_lists():
+    pt = typing.Union[typing.List[int], typing.List[str]]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(
+            collection_type=LiteralType(simple=SimpleType.INTEGER),
+            structure=TypeStructure(tag="Typed List"),
+        ),
+        LiteralType(
+            collection_type=LiteralType(simple=SimpleType.STRING),
+            structure=TypeStructure(tag="Typed List"),
+        ),
+    ]
+    # Tags are deliberately NOT unique beacuse they are not required to encode the deep type structure,
+    # only the top-level type transformer choice
+    #
+    # The stored typed will be used to differentiate union variants and must produce a unique choice.
+    assert not union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, ["hello", "world"], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "Typed List"
+    assert [x.scalar.primitive.string_value for x in lv.scalar.union.value.collection.literals] == ["hello", "world"]
+    assert v == ["hello", "world"]
+
+    lv = TypeEngine.to_literal(ctx, [1, 3], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "Typed List"
+    assert [x.scalar.primitive.integer for x in lv.scalar.union.value.collection.literals] == [1, 3]
+    assert v == [1, 3]
+
+
+def test_list_of_unions():
+    pt = typing.List[typing.Union[str, int]]
+    lt = TypeEngine.to_literal_type(pt)
+    # todo(maximsmol): seems like the order here is non-deterministic
+    assert lt.collection_type.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert union_type_tags_unique(lt.collection_type)  # tags are deliberately NOT unique
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert [x.scalar.union.stored_type.structure.tag for x in lv.collection.literals] == ["str", "int", "str"]
+    assert v == ["hello", 123, "world"]
+
+
 def test_pickle_type():
     class Foo(object):
         def __init__(self, number: int):
@@ -842,6 +1123,20 @@ def test_dict_to_literal_map_with_wrong_input_type():
     guessed_python_types = {"a": str}
     with pytest.raises(user_exceptions.FlyteTypeException):
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
+
+
+def test_nested_annotated():
+    """
+    Test to show that nested Annotated types are flattened.
+    """
+    pt = Annotated[Annotated[int, "inner-annotation"], "outer-annotation"]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.simple == model_types.SimpleType.INTEGER
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 42, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert v == 42
 
 
 def test_pass_annotated_to_downstream_tasks():

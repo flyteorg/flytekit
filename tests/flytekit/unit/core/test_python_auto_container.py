@@ -51,7 +51,7 @@ def test_default_command(default_serialization_settings):
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "test_python_auto_container",
+        "tests.flytekit.unit.core.test_python_auto_container",
         "task-name",
         "task",
     ]
