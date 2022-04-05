@@ -976,7 +976,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def create_upload_location(self, project, domain, suffix, expires_in):
+    def create_upload_location(self, project, domain, suffix=None, expires_in=None):
         """
         Get a signed url to be used during fast registration
         :param str project: Project to create the upload location for
