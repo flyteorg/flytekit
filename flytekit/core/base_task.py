@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
 from flytekit.configuration import SerializationSettings
+from flytekit.configuration import internal as _internal
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
@@ -38,6 +39,7 @@ from flytekit.core.promise import (
 )
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
+from flytekit.deck.deck import Deck
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -228,7 +230,6 @@ class Task(object):
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
-
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
@@ -364,6 +365,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
+        disable_deck: bool = False,
         **kwargs,
     ):
         """
@@ -377,6 +379,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 signature of the task
             environment (Optional[Dict[str, str]]): Any environment variables that should be supplied during the
                 execution of the task. Supplied as a dictionary of key/value pairs
+            disable_deck (bool): If true, this task will not output deck html file
         """
         super().__init__(
             task_type=task_type,
@@ -387,6 +390,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
+        self._disable_deck = disable_deck
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
@@ -457,10 +461,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
+        from flytekit.deck.deck import _output_deck
 
+        new_user_params._decks = [ctx.user_space_params.default_deck]
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))  # type: ignore
+            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
+            # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
@@ -521,6 +528,22 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
                     ) from e
 
+            INPUT = "input"
+            OUTPUT = "output"
+
+            input_deck = Deck(INPUT)
+            for k, v in native_inputs.items():
+                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+
+            output_deck = Deck(OUTPUT)
+            for k, v in native_outputs_as_map.items():
+                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+
+            new_user_params.decks.append(input_deck)
+            new_user_params.decks.append(output_deck)
+
+            if _internal.Deck.DISABLE_DECK.read() is not True and self.disable_deck is False:
+                _output_deck(self.name.split(".")[-1], new_user_params)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map
@@ -560,6 +583,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         Any environment variables that supplied during the execution of the task.
         """
         return self._environment
+
+    @property
+    def disable_deck(self) -> bool:
+        """
+        If true, this task will not output deck html file
+        """
+        return self._disable_deck
 
 
 class TaskResolverMixin(object):

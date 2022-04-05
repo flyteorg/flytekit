@@ -9,12 +9,10 @@ import click
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.core import context_manager as flyte_context
 from flytekit.exceptions.scopes import system_entry_point
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import trigger_loading
-from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
+from flytekit.tools.repo import serialize_to_folder
 
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
@@ -70,16 +68,7 @@ def serialize_all(
         python_interpreter=python_interpreter,
     )
 
-    ctx = flyte_context.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
-    with flyte_context.FlyteContextManager.with_context(ctx) as ctx:
-        trigger_loading(pkgs, local_source_root=local_source_root)
-        click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
-        loaded_entities = get_registrable_entities(ctx)
-        if folder is None:
-            folder = "."
-        persist_registrable_entities(loaded_entities, folder)
-
-        click.secho(f"Successfully serialized {len(loaded_entities)} flyte objects", fg="green")
+    serialize_to_folder(pkgs, serialization_settings, local_source_root, folder)
 
 
 @click.group("serialize")
