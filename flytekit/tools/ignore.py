@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from fnmatch import fnmatch
 from pathlib import Path
 from shutil import which
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from docker.utils.build import PatternMatcher
 
@@ -43,15 +43,15 @@ class GitIgnore(Ignore):
         self.has_git = which("git") is not None
         self.ignored = self._list_ignored()
 
-    def _list_ignored(self) -> List[str]:
+    def _list_ignored(self) -> Dict:
         if self.has_git:
             out = subprocess.run(["git", "ls-files", "-io", "--exclude-standard"], cwd=self.root, capture_output=True)
             if out.returncode == 0:
-                return out.stdout.decode("utf-8").split("\n")[:-1]
+                return dict.fromkeys(out.stdout.decode("utf-8").split("\n")[:-1])
             cli_logger.warning(f"Could not determine ignored files due to:\n{out.stderr}\nNot applying any filters")
-            return []
+            return {}
         cli_logger.info("No git executable found, not applying any filters")
-        return []
+        return {}
 
     def _is_ignored(self, path: str) -> bool:
         if self.ignored:
