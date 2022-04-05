@@ -1436,6 +1436,13 @@ class LiteralsResolver(object):
     def __init__(
         self, literals: typing.Dict[str, Literal], variable_map: Optional[Dict[str, _interface_models.Variable]] = None
     ):
+        """
+        :param literals: A Python map of strings to Flyte Literal models.
+        :param variable_map: This map should be basically one side (either input or output) of the Flyte
+          TypedInterface model and is used to guess the Python type through the TypeEngine if a Python type is not
+          specified by the user. TypeEngine guessing is flaky though, so calls to get() should specify the as_type
+          parameter when possible.
+        """
         if literals is None:
             raise ValueError("Cannot instantiate LiteralsResolver without a map of Literals.")
         self._literals = literals
