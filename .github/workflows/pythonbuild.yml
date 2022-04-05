@@ -48,10 +48,8 @@ jobs:
           make setup${{ matrix.spark-version-suffix }}
           pip freeze
       - name: Test with coverage
-        env:
-          FLYTE_SDK_USE_STRUCTURED_DATASET: "TRUE"
         run: |
-          coverage run -m pytest tests/flytekit/unit
+          coverage run -m pytest tests/flytekit/unit -m "not sandbox_test"
       - name: Codecov
         uses: codecov/codecov-action@v1
         with:

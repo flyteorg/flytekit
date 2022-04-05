@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Optional
 
 from flytekit.core import hash as hash_mixin
-from flytekit.core.interface import Interface
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.core import identifier as id_models
@@ -87,16 +86,6 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
     @property
     def entity_type_text(self) -> str:
         return "Launch Plan"
-
-    @property
-    def guessed_python_interface(self) -> Optional[Interface]:
-        return self._python_interface
-
-    @guessed_python_interface.setter
-    def guessed_python_interface(self, value):
-        if self._python_interface is not None:
-            return
-        self._python_interface = value
 
     def __repr__(self) -> str:
         return f"FlyteLaunchPlan(ID: {self.id} Interface: {self.interface} WF ID: {self.workflow_id})"

@@ -86,7 +86,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
     execution = remote.sync_workflow_execution(execution, sync_nodes=True)
     while datetime.datetime.utcnow() < time_to_give_up:
 
-        if execution.is_complete:
+        if execution.is_done:
             break
 
         with pytest.raises(

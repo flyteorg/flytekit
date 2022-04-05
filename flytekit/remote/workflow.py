@@ -4,8 +4,6 @@ from typing import Dict, List, Optional
 
 from flytekit.core import constants as _constants
 from flytekit.core import hash as _hash_mixin
-from flytekit.core.interface import Interface
-from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import task as _task_models
@@ -81,16 +79,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
     def flyte_nodes(self) -> List[_nodes.FlyteNode]:
         return self._flyte_nodes
 
-    @property
-    def guessed_python_interface(self) -> Optional[Interface]:
-        return self._python_interface
-
-    @guessed_python_interface.setter
-    def guessed_python_interface(self, value):
-        if self._python_interface is not None:
-            return
-        self._python_interface = value
-
     @classmethod
     def get_non_system_nodes(cls, nodes: List[_workflow_models.Node]) -> List[_workflow_models.Node]:
         return [n for n in nodes if n.id not in {_constants.START_NODE_ID, _constants.END_NODE_ID}]
@@ -131,11 +119,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
             launch_plans=node_launch_plans,
         )
 
-        if wf.interface is not None:
-            wf.guessed_python_interface = Interface(
-                inputs=TypeEngine.guess_python_types(wf.interface.inputs),
-                outputs=TypeEngine.guess_python_types(wf.interface.outputs),
-            )
         wf._node_map = node_map
 
         return wf
