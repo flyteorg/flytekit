@@ -54,7 +54,19 @@ class HttpPersistence(DataPersistence):
             writer.write(rsp.content)
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
-        raise user.FlyteAssertion("Writing data to HTTP endpoint is not currently supported.")
+        if recursive:
+            raise user.FlyteAssertion("Recursive writing data to HTTP endpoint is not currently supported.")
+
+        with open(from_path, "+rb") as local_file:
+            content = local_file.read()
+            content_length = len(content)
+            rsp = requests.put(to_path, data=content, headers={"Content-Length": str(content_length)})
+
+            if rsp.status_code != self._HTTP_OK:
+                raise user.FlyteValueException(
+                    rsp.status_code,
+                    f"Request to send data {to_path} failed.",
+                )
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
         raise user.FlyteAssertion(
