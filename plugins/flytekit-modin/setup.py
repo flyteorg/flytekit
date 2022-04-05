@@ -4,7 +4,7 @@ PLUGIN_NAME = "modin"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.22.0,<1.0.0", "modin", "ray", "fsspec"]
+plugin_requires = ["flytekit>=0.22.0,<1.0.0", "modin>=0.13.0", "ray", "fsspec"]
 
 __version__ = "0.0.0+develop"
 
@@ -25,6 +25,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
