@@ -1,7 +1,5 @@
-import hashlib
 import importlib
 import os
-import typing
 
 import click
 from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
@@ -91,8 +89,7 @@ def run(
     upload_location: CreateUploadLocationResponse = client.create_upload_location(
         project=project, domain=domain, suffix="scriptmode.tar.gz"
     )
-    version = generate_version(filename)
-
+    version = script_mode.hash_script_file(filename)
     image_config = ImageConfig.validate_single_image(image)
     serialization_settings = SerializationSettings(
         image_config=image_config,
@@ -117,6 +114,10 @@ def run(
 
 
 def load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
+    """
+    Load the workflow of a the script file.
+    N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
+    """
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
         SerializationSettings(None)
     )
@@ -124,24 +125,6 @@ def load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
     return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
-
-
-def generate_version(file_path: typing.Union[os.PathLike, str]) -> str:
-    """
-    Hash a file and produce a digest to be used as a version
-    """
-    # TODO: take file_path as an initial parameter to ensure that moving the file will produce a different version.
-    h = hashlib.sha256()
-
-    with open(file_path, "rb") as file:
-        while True:
-            # Reading is buffered, so we can read smaller chunks.
-            chunk = file.read(h.block_size)
-            if not chunk:
-                break
-            h.update(chunk)
-
-    return h.hexdigest()
 
 
 def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
