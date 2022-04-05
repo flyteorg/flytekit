@@ -14,7 +14,7 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
 
 from flytekit.core import context_manager
 from flytekit.tools import module_loader, serialize_helpers
-from flytekit.tools.package_helpers import create_archive
+from flytekit.tools.fast_registration import fast_package
 
 
 @click.command("package")

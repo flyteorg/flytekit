@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 from tarfile import TarInfo
-from typing import Dict, List
+from typing import Dict
 from unittest.mock import patch
 
 import pytest

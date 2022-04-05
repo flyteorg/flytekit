@@ -1,6 +1,5 @@
 import os
 import sys
-import tarfile as _tarfile
 import typing
 from enum import Enum as _Enum
 
@@ -13,8 +12,8 @@ from flytekit.exceptions.scopes import system_entry_point
 from flytekit.tools.fast_registration import compute_digest as _compute_digest
 from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
 from flytekit.tools.repo import serialize_to_folder
+from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.module_loader import trigger_loading
-from flytekit.tools.package_helpers import create_archive
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
 
 CTX_IMAGE = "image"
@@ -169,7 +168,7 @@ def fast_workflows(ctx, folder=None):
 
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     # Write using gzip
-    archive_fname = create_archive(source_dir, folder)
+    archive_fname = fast_package(source_dir, folder)
     click.echo(f"Writing compressed archive to {archive_fname}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
