@@ -166,7 +166,7 @@ def fast_workflows(ctx, folder=None):
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     # Write using gzip
     archive_fname = fast_package(source_dir, folder)
-    click.echo(f"Writing compressed archive to {archive_fname}")
+    click.echo(f"Wrote compressed archive to {archive_fname}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_LOCAL_SRC_ROOT]

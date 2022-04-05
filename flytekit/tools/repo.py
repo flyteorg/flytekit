@@ -84,7 +84,8 @@ def package(
 
         # If Fast serialization is enabled, then an archive is also created and packaged
         if fast:
-            fast_registration.fast_package(source, output_tmpdir)
+            archive_fname = fast_registration.fast_package(source, output_tmpdir)
+            click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
         with tarfile.open(output, "w:gz") as tar:
             tar.add(output_tmpdir, arcname="")
