@@ -9,9 +9,8 @@ from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.exceptions.scopes import system_entry_point
-from flytekit.tools.repo import serialize_to_folder
 from flytekit.tools.fast_registration import fast_package
-
+from flytekit.tools.repo import serialize_to_folder
 
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
