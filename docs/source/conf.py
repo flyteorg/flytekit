@@ -15,8 +15,22 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../flytekit/"))
-sys.path.insert(0, os.path.abspath("../.."))
+full_path = os.path.realpath(__file__)
+source_dir = os.path.dirname(full_path)
+docs_dir = os.path.abspath(os.path.join(source_dir, ".."))
+flytekit_dir = os.path.abspath(os.path.join(docs_dir, ".."))
+flytekit_source_dir = os.path.abspath(os.path.join(flytekit_dir, "flytekit"))
+plugins_dir = os.path.abspath(os.path.join(flytekit_dir, "plugins"))
+aws_athena_dir = os.path.abspath(os.path.join(plugins_dir, "flytekit-aws-athena", "/"))
+
+print(full_path, source_dir, docs_dir, flytekit_dir, flytekit_source_dir, plugins_dir)
+
+sys.path.insert(0, flytekit_source_dir)
+# sys.path.insert(0, aws_athena_dir)
+sys.path.insert(0, flytekit_dir)
+
+print(sys.path)
+print(sys.executable)
 
 # -- Project information -----------------------------------------------------
 
@@ -52,19 +66,22 @@ extensions = [
     "sphinxcontrib.yt",
 ]
 
-autoapi_type = 'python'
+autoapi_type = "python"
+underlying_path_to_check = "flytekitplugins"
 
-plugins_directory = os.path.abspath('../../plugins')
-underlying_path_to_check = 'flytekitplugins'
+autoapi_template_dir = "_templates"
 
 autoapi_dirs = []
 
-for possible_plugin_dir in os.listdir(plugins_directory):
-    dir_path = os.path.join(plugins_directory, possible_plugin_dir)
-    plugin_path = os.path.join(dir_path, underlying_path_to_check)
+for possible_plugin_dir in os.listdir(plugins_dir):
+    dir_path = os.path.abspath((os.path.join(plugins_dir, possible_plugin_dir)))
+    plugin_path = os.path.abspath(os.path.join(dir_path, underlying_path_to_check))
     if os.path.isdir(dir_path) and os.path.exists(plugin_path):
         autoapi_dirs.append(plugin_path)
 
+print(autoapi_dirs)
+
+autoapi_add_toctree_entry = True
 
 # build the templated autosummary files
 autosummary_generate = True
