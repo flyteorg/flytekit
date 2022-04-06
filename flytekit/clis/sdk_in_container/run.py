@@ -14,9 +14,14 @@ from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 
 
-@click.command("run")
+@click.command(
+    context_settings=dict(
+        ignore_unknown_options=True,
+        allow_extra_args=True,
+    )
+)
 @click.argument(
-    "module_and_workflow",
+    "file_and_workflow",
 )
 @click.option(
     "project",
@@ -42,7 +47,6 @@ from flytekit.tools import module_loader, script_mode
     type=str,
     # TODO: fix default images push gh workflow
     default="ghcr.io/flyteorg/flytekit:py39-latest",
-    # default="pyflyte-fast-execute:latest",
     help="Image used to register and run.",
 )
 @click.option(
@@ -56,18 +60,19 @@ from flytekit.tools import module_loader, script_mode
 @click.pass_context
 def run(
     click_ctx,
-    module_and_workflow,
+    file_and_workflow,
     project,
     domain,
     image,
     help=None,
 ):
     """
-    TODO description (remember to document workflow inputs)
+    Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
+    or any interactive environment (e.g. Jupyter notebooks).
     """
-    split_input = module_and_workflow.split(":")
+    split_input = file_and_workflow.split(":")
     if len(split_input) != 2:
-        raise FlyteValidationException(f"Input {module_and_workflow} must be in format '<module>:<worfklow>'")
+        raise FlyteValidationException(f"Input {file_and_workflow} must be in format '<file.py>:<worfklow>'")
 
     destination_dir = "/root"
 
@@ -77,10 +82,10 @@ def run(
     # Load code naively, i.e. without taking into account the
     wf_entity = load_naive_entity(module, workflow_name)
 
-    # TODO is it `--help`? Figure out a way to parse the inputs to the workflow
     if help:
         # TODO Write a custom help message containing the types of inputs, if any, and an example of how to specify
         # arguments.
+        click.secho(f"Inputs for this workflow are: \n{wf_entity.interface.inputs}")
         return
 
     config_obj = PlatformConfig.auto()
@@ -107,10 +112,17 @@ def run(
     full_remote_path = upload_location.native_url
     script_mode.fast_register_single_script(version, wf_entity, full_remote_path)
 
-    # TODO: fill in inputs
-    inputs = {}
+    inputs = parse_inputs(click_ctx, wf_entity)
     execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
     dump_flyte_remote_snippet(execution, project, domain)
+
+
+def parse_inputs(click_ctx, wf_entity):
+    """
+    TODO: parse extraneous inputs from the click context and cast them to the appropriate types.
+    """
+    # This only handles string parameters at the moment
+    return {click_ctx.args[i][2:]: click_ctx.args[i + 1] for i in range(0, len(click_ctx.args), 2)}
 
 
 def load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
