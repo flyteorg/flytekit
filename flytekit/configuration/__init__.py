@@ -181,27 +181,6 @@ class ImageConfig(object):
         return None
 
     @staticmethod
-    def validate_single_image(value: str) -> ImageConfig:
-        """
-        TODO
-        """
-        default_image = None
-        images = []
-
-        if "=" in value:
-            splits = value.split("=", maxsplit=1)
-            img = Image.look_up_image_info(name=splits[0], tag=splits[1], optional_tag=False)
-        else:
-            img = Image.look_up_image_info(DEFAULT_IMAGE_NAME, value, False)
-
-        if img.name == DEFAULT_IMAGE_NAME:
-            default_image = img
-        else:
-            images.append(img)
-
-        return ImageConfig(default_image, images)
-
-    @staticmethod
     def validate_image(_: typing.Any, param: str, values: tuple) -> ImageConfig:
         """
         Validates the image to match the standard format. Also validates that only one default image
