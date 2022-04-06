@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import dataclasses
 import datetime as _datetime
 import enum
@@ -1424,7 +1425,7 @@ def _register_default_type_transformers():
     TypeEngine.register_restricted_type("named tuple", NamedTuple)
 
 
-class LiteralsResolver(object):
+class LiteralsResolver(collections.UserDict):
     """
     LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
     where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
@@ -1443,6 +1444,7 @@ class LiteralsResolver(object):
           specified by the user. TypeEngine guessing is flaky though, so calls to get() should specify the as_type
           parameter when possible.
         """
+        super().__init__(literals)
         if literals is None:
             raise ValueError("Cannot instantiate LiteralsResolver without a map of Literals.")
         self._literals = literals
