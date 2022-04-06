@@ -21,7 +21,6 @@ from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _G
 from flytekit import __version__, configuration
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import hydrate_registration_parameters
-from flytekit.clis.sdk_in_container.utils import produce_fast_register_task_closure
 from flytekit.core import utils
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.exceptions import user as _user_exceptions
@@ -1826,8 +1825,35 @@ def fast_register_files(
     ctx.file_access.put_data(compressed_source, full_remote_path)
     _click.secho(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}", fg="green")
 
+    def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
+        """
+        Updates task definitions during fast-registration in order to use the compatible pyflyte fast execute command at
+        task execution.
+        """
+        # entity is of type flyteidl.admin.task_pb2.TaskSpec
+
+        if entity.template.HasField("container") and len(entity.template.container.args) > 0:
+            complete_args = _substitute_fast_register_task_args(
+                entity.template.container.args, full_remote_path, dest_dir
+            )
+            # Because we're dealing with a proto list, we have to delete the existing args before we can extend the list
+            # with the substituted ones.
+            del entity.template.container.args[:]
+            entity.template.container.args.extend(complete_args)
+
+        if entity.template.HasField("k8s_pod"):
+            pod_spec_struct = entity.template.k8s_pod.pod_spec
+            if "containers" in pod_spec_struct:
+                for idx in range(len(pod_spec_struct["containers"])):
+                    if "args" in pod_spec_struct["containers"][idx]:
+                        # We can directly overwrite the args in the pod spec struct definition.
+                        pod_spec_struct["containers"][idx]["args"] = _substitute_fast_register_task_args(
+                            pod_spec_struct["containers"][idx]["args"], full_remote_path, dest_dir
+                        )
+        return entity
+
     patches = {
-        _identifier_pb2.TASK: produce_fast_register_task_closure(full_remote_path, dest_dir),
+        _identifier_pb2.TASK: fast_register_task,
         _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
             assumable_iam_role, kubernetes_service_account, output_location_prefix
         ),

@@ -6,7 +6,7 @@ from flytekit import HttpPersistence
 def test_put():
     proxy = HttpPersistence()
     with pytest.raises(AssertionError):
-        proxy.put("", "")
+        proxy.put("", "", recursive=True)
 
 
 def test_construct_path():
