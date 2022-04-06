@@ -1,4 +1,3 @@
-import os
 import tarfile
 import tempfile
 import typing
