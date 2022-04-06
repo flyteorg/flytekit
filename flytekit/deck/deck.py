@@ -89,8 +89,6 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     with open(deck_path, "w") as f:
         f.write(template.render(metadata=deck_map))
 
-    print(f"{task_name} output flytekit deck html to file://{deck_path}")
-
 
 def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):
     file_name = deck.name + ".html"
