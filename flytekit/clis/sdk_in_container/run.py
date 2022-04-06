@@ -24,7 +24,6 @@ from flytekit.tools import module_loader, script_mode
     "file_and_workflow",
 )
 @click.option(
-    "project",
     "-p",
     "--project",
     required=False,
@@ -32,7 +31,6 @@ from flytekit.tools import module_loader, script_mode
     default="flytesnacks",
 )
 @click.option(
-    "domain",
     "-d",
     "--domain",
     required=False,
@@ -40,13 +38,15 @@ from flytekit.tools import module_loader, script_mode
     default="development",
 )
 @click.option(
-    "image",
     "-i",
     "--image",
+    "image_config",
     required=False,
-    type=str,
+    multiple=True,
+    type=click.UNPROCESSED,
+    callback=ImageConfig.validate_image,
     # TODO: fix default images push gh workflow
-    default="ghcr.io/flyteorg/flytekit:py39-latest",
+    default=["ghcr.io/flyteorg/flytekit:py39-latest"],
     help="Image used to register and run.",
 )
 @click.option(
@@ -63,7 +63,7 @@ def run(
     file_and_workflow,
     project,
     domain,
-    image,
+    image_config,
     help=None,
 ):
     """
@@ -95,7 +95,6 @@ def run(
         project=project, domain=domain, suffix="scriptmode.tar.gz"
     )
     version = script_mode.hash_script_file(filename)
-    image_config = ImageConfig.validate_single_image(image)
     serialization_settings = SerializationSettings(
         image_config=image_config,
         fast_serialization_settings=FastSerializationSettings(

@@ -58,7 +58,6 @@ def compress_single_script(absolute_project_path: str, destination: str, version
         script_file = Path(source_path, f"{pkgs[-1]}.py")
         script_file_destination = Path(destination_path, f"{pkgs[-1]}.py")
         # Build the final script relative path and copy it to a known place.
-        # script_relative_path = Path(script_relative_path, f"{pkgs[-1]}.py")
         shutil.copy(
             script_file,
             script_file_destination,
