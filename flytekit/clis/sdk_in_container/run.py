@@ -7,6 +7,7 @@ from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 from flytekit.clients import friendly
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.core import context_manager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.remote.executions import FlyteWorkflowExecution
@@ -18,7 +19,7 @@ from flytekit.tools import module_loader, script_mode
     context_settings=dict(
         ignore_unknown_options=True,
         allow_extra_args=True,
-    )
+    ),
 )
 @click.argument(
     "file_and_workflow",
@@ -111,17 +112,30 @@ def run(
     full_remote_path = upload_location.native_url
     script_mode.fast_register_single_script(version, wf_entity, full_remote_path)
 
-    inputs = parse_inputs(click_ctx, wf_entity)
+    inputs = parse_workflow_inputs(click_ctx, wf_entity)
     execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
     dump_flyte_remote_snippet(execution, project, domain)
 
 
-def parse_inputs(click_ctx, wf_entity):
+def parse_workflow_inputs(click_ctx, wf_entity):
     """
     TODO: parse extraneous inputs from the click context and cast them to the appropriate types.
     """
-    # This only handles string parameters at the moment
-    return {click_ctx.args[i][2:]: click_ctx.args[i + 1] for i in range(0, len(click_ctx.args), 2)}
+    type_hints = {k: TypeEngine.guess_python_type(v.type) for k, v in wf_entity.interface.inputs.items()}
+    args = {}
+    for i in range(0, len(click_ctx.args), 2):
+        argument = click_ctx.args[i][2:]
+        value = click_ctx.args[i + 1]
+
+        if type_hints[argument] == str:
+            value = value
+        elif type_hints[argument] == int:
+            value = int(value)
+        else:
+            raise ValueError(f"Unsupported type for argument {argument}")
+
+        args[argument] = value
+    return args
 
 
 def load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
