@@ -7,20 +7,13 @@ from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 from flytekit.clients import friendly
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.core import context_manager
-from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 
 
-@click.command(
-    context_settings=dict(
-        ignore_unknown_options=True,
-        allow_extra_args=True,
-    ),
-)
+@click.command("run")
 @click.argument(
     "file_and_workflow",
 )
@@ -39,6 +32,14 @@ from flytekit.tools import module_loader, script_mode
     default="development",
 )
 @click.option(
+    "--destination-dir",
+    "destination_dir",
+    required=False,
+    type=str,
+    default="/root",
+    help="Directory inside the image where the tar file containing the code will be copied to",
+)
+@click.option(
     "-i",
     "--image",
     "image_config",
@@ -50,22 +51,14 @@ from flytekit.tools import module_loader, script_mode
     default=["ghcr.io/flyteorg/flytekit:py39-latest"],
     help="Image used to register and run.",
 )
-@click.option(
-    "help",
-    "-h",
-    "--help",
-    required=False,
-    is_flag=True,
-    help="Shows inputs to workflow and potentially the workflow docstring",
-)
 @click.pass_context
 def run(
     click_ctx,
     file_and_workflow,
     project,
     domain,
+    destination_dir,
     image_config,
-    help=None,
 ):
     """
     Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
@@ -75,19 +68,11 @@ def run(
     if len(split_input) != 2:
         raise FlyteValidationException(f"Input {file_and_workflow} must be in format '<file.py>:<worfklow>'")
 
-    destination_dir = "/root"
-
     filename, workflow_name = split_input
     module = os.path.splitext(filename)[0]
 
-    # Load code naively, i.e. without taking into account the
+    # Load code naively, i.e. without taking into account the fully qualified package name
     wf_entity = _load_naive_entity(module, workflow_name)
-
-    if help:
-        # TODO Write a custom help message containing the types of inputs, if any, and an example of how to specify
-        # arguments.
-        click.secho(f"Inputs for this workflow are: \n{wf_entity.interface.inputs}")
-        return
 
     config_obj = PlatformConfig.auto()
     client = friendly.SynchronousFlyteClient(config_obj)
@@ -108,31 +93,12 @@ def run(
     remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
     wf = remote.register_workflow(wf_entity, serialization_settings=serialization_settings, version=version)
 
+    # TODO: Print link to launch form of recently registered workflow
+    print(wf)
+
     # TODO: replace this with signed_url after the fix for the dataproxy in the sandbox is merged
     full_remote_path = upload_location.native_url
     script_mode.fast_register_single_script(version, wf_entity, full_remote_path)
-
-    inputs = _parse_workflow_inputs(click_ctx, wf_entity)
-    execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
-    _dump_flyte_remote_snippet(execution, project, domain)
-
-
-def _parse_workflow_inputs(click_ctx, wf_entity):
-    type_hints = {k: TypeEngine.guess_python_type(v.type) for k, v in wf_entity.interface.inputs.items()}
-    args = {}
-    for i in range(0, len(click_ctx.args), 2):
-        argument = click_ctx.args[i][2:]
-        value = click_ctx.args[i + 1]
-
-        if type_hints[argument] == str:
-            value = value
-        elif type_hints[argument] == int:
-            value = int(value)
-        else:
-            raise ValueError(f"Unsupported type for argument {argument}")
-
-        args[argument] = value
-    return args
 
 
 def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
@@ -147,18 +113,3 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
     return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
-
-
-def _dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
-    click.secho(
-        f"""
-In order to have programmatic access to the execution, use the following snippet:
-
-from flytekit.configuration import Config
-from flytekit.remote import FlyteRemote
-remote = FlyteRemote(Config.auto(), default_project="{project}", default_domain="{domain}")
-exec = remote.fetch_workflow_execution(name="{execution.id.name}")
-remote.sync(exec)
-print(exec.outputs)
-    """
-    )
