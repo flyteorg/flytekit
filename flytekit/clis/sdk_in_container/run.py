@@ -69,7 +69,7 @@ def run(
         raise FlyteValidationException(f"Input {file_and_workflow} must be in format '<file.py>:<worfklow>'")
 
     filename, workflow_name = split_input
-    module = os.path.splitext(filename)[0]
+    module = os.path.splitext(filename)[0].replace(os.path.sep, ".")
 
     # Load code naively, i.e. without taking into account the fully qualified package name
     wf_entity = _load_naive_entity(module, workflow_name)
