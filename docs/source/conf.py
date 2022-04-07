@@ -27,8 +27,8 @@ plugins_dir = os.path.abspath(os.path.join(flytekit_dir, "plugins"))
 sys.path.insert(0, flytekit_source_dir)
 sys.path.insert(0, flytekit_dir)
 
-print(f"sys.path: {sys.path}")
-print(f"sys.executable: {sys.executable}")
+# print(f"sys.path: {sys.path}")
+# print(f"sys.executable: {sys.executable}")
 
 # -- Project information -----------------------------------------------------
 
@@ -78,7 +78,9 @@ autoapi_dirs = [
 #     if os.path.isdir(dir_path) and os.path.exists(plugin_path):
 #         autoapi_dirs.append(plugin_path)
 
-print(f"AutoAPI dirs: {autoapi_dirs}")
+# print(f"AutoAPI dirs: {autoapi_dirs}")
+
+autoapi_root = "autoapi"
 
 # build the templated autosummary files
 autosummary_generate = True
