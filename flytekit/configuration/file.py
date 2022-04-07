@@ -188,8 +188,7 @@ class ConfigFile(object):
                 d = d[k]
             return d
         except KeyError:
-            logger.error(f"Switch {c.switch} could not be found in yaml config")
-            logger.debug(self.yaml_config)
+            logger.debug(f"Switch {c.switch} could not be found in yaml config")
             return None
 
     def get(self, c: typing.Union[LegacyConfigEntry, YamlConfigEntry]) -> typing.Any:
