@@ -21,16 +21,14 @@ docs_dir = os.path.abspath(os.path.join(source_dir, ".."))
 flytekit_dir = os.path.abspath(os.path.join(docs_dir, ".."))
 flytekit_source_dir = os.path.abspath(os.path.join(flytekit_dir, "flytekit"))
 plugins_dir = os.path.abspath(os.path.join(flytekit_dir, "plugins"))
-aws_athena_dir = os.path.abspath(os.path.join(plugins_dir, "flytekit-aws-athena", "/"))
 
-print(full_path, source_dir, docs_dir, flytekit_dir, flytekit_source_dir, plugins_dir)
+# print(full_path, source_dir, docs_dir, flytekit_dir, flytekit_source_dir, plugins_dir)
 
 sys.path.insert(0, flytekit_source_dir)
-# sys.path.insert(0, aws_athena_dir)
 sys.path.insert(0, flytekit_dir)
 
-print(sys.path)
-print(sys.executable)
+print(f"sys.path: {sys.path}")
+print(f"sys.executable: {sys.executable}")
 
 # -- Project information -----------------------------------------------------
 
@@ -69,13 +67,16 @@ extensions = [
 autoapi_type = "python"
 underlying_path_to_check = "flytekitplugins"
 
-autoapi_dirs = []
+autoapi_dirs = [
+    os.path.abspath(os.path.join(plugins_dir, "flytekit-aws-athena", underlying_path_to_check, "athena")),
+    os.path.abspath(os.path.join(plugins_dir, "flytekit-aws-batch", underlying_path_to_check, "awsbatch")),
+]
 
-for possible_plugin_dir in os.listdir(plugins_dir):
-    dir_path = os.path.abspath((os.path.join(plugins_dir, possible_plugin_dir)))
-    plugin_path = os.path.abspath(os.path.join(dir_path, underlying_path_to_check))
-    if os.path.isdir(dir_path) and os.path.exists(plugin_path):
-        autoapi_dirs.append(plugin_path)
+# for possible_plugin_dir in os.listdir(plugins_dir):
+#     dir_path = os.path.abspath((os.path.join(plugins_dir, possible_plugin_dir)))
+#     plugin_path = os.path.abspath(os.path.join(dir_path, underlying_path_to_check))
+#     if os.path.isdir(dir_path) and os.path.exists(plugin_path):
+#         autoapi_dirs.append(plugin_path)
 
 print(f"AutoAPI dirs: {autoapi_dirs}")
 

@@ -2,9 +2,12 @@
 Plugins
 #######
 
+.. automodule:: flytekitplugins.athena
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:
 
-# Testing this
-
-.. toctree::
-
-   autoapi/awssagemaker
+.. automodule:: flytekitplugins.awsbatch
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:

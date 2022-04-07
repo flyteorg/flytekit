@@ -10,7 +10,7 @@ from flytekit.types.schema import FlyteSchema
 
 
 @dataclass
-class AthenaConfig(object):
+class AthenaConfig:
     """
     AthenaConfig should be used to configure a Athena Task.
     """
@@ -70,7 +70,11 @@ class AthenaTask(SQLTask[AthenaConfig]):
         self._output_schema_type = output_schema_type
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        # This task is executed using the presto handler in the backend.
+        """
+        Creates custom presto query using provided serialization settings.
+
+        # TODO: Why is settings parameter not used in this method?
+        """
         job = PrestoQuery(
             statement=self.query_template,
             schema=self.task_config.database,
