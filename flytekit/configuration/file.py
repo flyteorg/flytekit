@@ -152,7 +152,6 @@ class ConfigFile(object):
         with open(location, "r") as fh:
             try:
                 yaml_contents = yaml.safe_load(fh)
-                print(yaml_contents)
                 return yaml_contents
             except yaml.YAMLError as exc:
                 logger.warning(f"Error {exc} reading yaml config file at {location}, ignoring...")
