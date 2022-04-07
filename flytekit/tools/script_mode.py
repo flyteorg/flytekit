@@ -67,13 +67,14 @@ def compress_single_script(absolute_project_path: str, destination: str, version
 
 
 def fast_register_single_script(version: str, wf_entity: WorkflowBase, full_remote_path: str):
+    _, mod_name, _, script_full_path = extract_task_module(wf_entity)
     # Find project root by moving up the folder hierarchy until you cannot find a __init__.py file.
-    source_path = _find_project_root()
+    source_path = _find_project_root(script_full_path)
+    breakpoint()
 
     # Open a temp directory and dump the contents of the digest.
     with tempfile.TemporaryDirectory() as tmp_dir:
         archive_fname = os.path.join(tmp_dir, f"{version}.tar.gz")
-        _, mod_name, _ = extract_task_module(wf_entity)
         compress_single_script(source_path, archive_fname, version, mod_name)
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()
@@ -98,11 +99,12 @@ def hash_script_file(file_path: typing.Union[os.PathLike, str]) -> str:
     return h.hexdigest()
 
 
-def _find_project_root() -> Path:
+def _find_project_root(source_path) -> Path:
     """
     Traverse from current working directory until it can no longer find __init__.py files
     """
-    path = Path(os.getcwd())
+    # Start from the directory right above source_path
+    path = Path(source_path).parents[0]
     while os.path.exists(os.path.join(path, "__init__.py")):
         path = path.parent
     return path
