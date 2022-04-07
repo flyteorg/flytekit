@@ -80,12 +80,12 @@ def fast_register_single_script(version: str, wf_entity: WorkflowBase, full_remo
         flyte_ctx.file_access.put_data(archive_fname, full_remote_path)
 
 
-def hash_script_file(file_path: typing.Union[os.PathLike, str]) -> str:
+def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
     """
     Hash a file and produce a digest to be used as a version
     """
     # TODO: take file_path as an initial parameter to ensure that moving the file will produce a different version.
-    h = hashlib.sha256()
+    h = hashlib.md5()
 
     with open(file_path, "rb") as file:
         while True:
@@ -95,7 +95,7 @@ def hash_script_file(file_path: typing.Union[os.PathLike, str]) -> str:
                 break
             h.update(chunk)
 
-    return h.hexdigest()
+    return h.digest(), h.hexdigest()
 
 
 def _find_project_root() -> Path:

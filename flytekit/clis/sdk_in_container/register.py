@@ -76,9 +76,9 @@ def register(
 
     config_obj = PlatformConfig.auto()
     client = friendly.SynchronousFlyteClient(config_obj)
-    version = script_mode.hash_script_file(filename)
+    md5, version = script_mode.hash_file(filename)
     upload_location: CreateUploadLocationResponse = client.create_upload_location(
-        project=project, domain=domain, suffix=f"scriptmode-{version}.tar.gz"
+        project=project, domain=domain, content_md5=md5, suffix=f"scriptmode.tar.gz"
     )
     serialization_settings = SerializationSettings(
         image_config=image_config,
