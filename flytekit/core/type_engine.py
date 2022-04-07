@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import collections
 import dataclasses
 import datetime as _datetime
 import enum
 import inspect
 import json as _json
 import mimetypes
+import textwrap
 import typing
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Optional, Type, cast
+from typing import Dict, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -131,6 +133,13 @@ class TypeTransformer(typing.Generic[T]):
         raise NotImplementedError(
             f"Conversion to python value expected type {expected_python_type} from literal not implemented"
         )
+
+    @abstractmethod
+    def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
+        """
+        Converts any python val (dataframe, int, float) to a html string, and it will be wrapped in the HTML div
+        """
+        return str(python_val)
 
     def __repr__(self):
         return f"{self._name} Transforms ({self._t}) to Flyte native"
@@ -693,6 +702,18 @@ class TypeEngine(typing.Generic[T]):
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
     @classmethod
+    def to_html(cls, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[T]) -> str:
+        transformer = cls.get_transformer(expected_python_type)
+        if get_origin(expected_python_type) is Annotated:
+            expected_python_type, *annotate_args = get_args(expected_python_type)
+            from flytekit.deck.renderer import Renderable
+
+            for arg in annotate_args:
+                if isinstance(arg, Renderable):
+                    return arg.to_html(python_val)
+        return transformer.to_html(ctx, python_val, expected_python_type)
+
+    @classmethod
     def named_tuple_to_variable_map(cls, t: typing.NamedTuple) -> _interface_models.VariableMap:
         """
         Converts a python-native ``NamedTuple`` to a flyte-specific VariableMap of named literals.
@@ -721,19 +742,19 @@ class TypeEngine(typing.Generic[T]):
         cls,
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
-        guessed_python_types: Optional[typing.Dict[str, type]] = None,
+        type_hints: Optional[typing.Dict[str, type]] = None,
     ) -> LiteralMap:
         """
         Given a dictionary mapping string keys to python values and a dictionary containing guessed types for such string keys,
         convert to a LiteralMap.
         """
-        guessed_python_types = guessed_python_types or {}
+        type_hints = type_hints or {}
         literal_map = {}
         for k, v in d.items():
             # The guessed type takes precedence over the type returned by the python runtime. This is needed
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
-            python_type = guessed_python_types.get(k, type(v))
+            python_type = type_hints.get(k, type(v))
             try:
                 literal_map[k] = TypeEngine.to_literal(
                     ctx=ctx,
@@ -1404,27 +1425,113 @@ def _register_default_type_transformers():
     TypeEngine.register_restricted_type("named tuple", NamedTuple)
 
 
-class LiteralsResolver(object):
+class LiteralsResolver(collections.UserDict):
     """
     LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
     where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
     correspond to an element of the map.
-    TODO: Add an optional Flyte idl interface model object to the constructor
+
+    TODO: Consider inheriting from collections.UserDict instead of manually having the _native_values cache
     """
 
-    def __init__(self, literals: typing.Dict[str, Literal]):
+    def __init__(
+        self, literals: typing.Dict[str, Literal], variable_map: Optional[Dict[str, _interface_models.Variable]] = None
+    ):
+        """
+        :param literals: A Python map of strings to Flyte Literal models.
+        :param variable_map: This map should be basically one side (either input or output) of the Flyte
+          TypedInterface model and is used to guess the Python type through the TypeEngine if a Python type is not
+          specified by the user. TypeEngine guessing is flaky though, so calls to get() should specify the as_type
+          parameter when possible.
+        """
+        super().__init__(literals)
+        if literals is None:
+            raise ValueError("Cannot instantiate LiteralsResolver without a map of Literals.")
         self._literals = literals
+        self._variable_map = variable_map
+        self._native_values = {}
+        self._type_hints = {}
+
+    def __str__(self) -> str:
+        if len(self._literals) == len(self._native_values):
+            return str(self._native_values)
+        header = "Partially converted to native values, call get(key, <type_hint>) to convert rest...\n"
+        strs = []
+        for key, literal in self._literals.items():
+            if key in self._native_values:
+                strs.append(f"{key}: " + str(self._native_values[key]) + "\n")
+            else:
+                lit_txt = str(self._literals[key])
+                lit_txt = textwrap.indent(lit_txt, " " * (len(key) + 2))
+                strs.append(f"{key}: \n" + lit_txt)
+
+        return header + "{\n" + textwrap.indent("".join(strs), " " * 2) + "\n}"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @property
+    def native_values(self) -> typing.Dict[str, typing.Any]:
+        return self._native_values
+
+    @property
+    def variable_map(self) -> Optional[Dict[str, _interface_models.Variable]]:
+        return self._variable_map
 
     @property
     def literals(self):
         return self._literals
 
-    def get(self, attr: str, as_type: Optional[typing.Type] = None):
+    def update_type_hints(self, type_hints: typing.Dict[str, typing.Type]):
+        self._type_hints.update(type_hints)
+
+    def get_literal(self, key: str) -> Literal:
+        if key not in self._literals:
+            raise ValueError(f"Key {key} is not in the literal map")
+
+        return self._literals[key]
+
+    def __getitem__(self, key: str):
+        # First check to see if it's even in the literal map.
+        if key not in self._literals:
+            raise ValueError(f"Key {key} is not in the literal map")
+
+        # Return the cached value if it's cached
+        if key in self._native_values:
+            return self._native_values[key]
+
+        return self.get(key)
+
+    def get(self, attr: str, as_type: Optional[typing.Type] = None) -> typing.Any:
+        """
+        This will get the ``attr`` value from the Literal map, and invoke the TypeEngine to convert it into a Python
+        native value. A Python type can optionally be supplied. If successful, the native value will be cached and
+        future calls will return the cached value instead.
+
+        :param attr:
+        :param as_type:
+        :return: Python native value from the LiteralMap
+        """
         if attr not in self._literals:
             raise AttributeError(f"Attribute {attr} not found")
+        if attr in self.native_values:
+            return self.native_values[attr]
+
         if as_type is None:
-            raise ValueError("as_type argument can't be None yet.")
-        return TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
+            if attr in self._type_hints:
+                as_type = self._type_hints[attr]
+            else:
+                if self.variable_map and attr in self.variable_map:
+                    try:
+                        as_type = TypeEngine.guess_python_type(self.variable_map[attr].type)
+                    except ValueError as e:
+                        logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
+                        raise e
+                else:
+                    ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
+        val = TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
+        self._native_values[attr] = val
+        return val
 
 
 _register_default_type_transformers()

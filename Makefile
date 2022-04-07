@@ -50,7 +50,7 @@ test: lint unit_test
 
 .PHONY: unit_test
 unit_test:
-	pytest tests/flytekit/unit
+	pytest -m "not sandbox_test" tests/flytekit/unit
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools
@@ -78,7 +78,7 @@ requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	coverage run -m pytest tests/flytekit/unit/core flytekit/types
+	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""

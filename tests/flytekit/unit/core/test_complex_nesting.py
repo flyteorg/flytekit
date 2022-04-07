@@ -146,7 +146,7 @@ def test_two(two_sample_inputs):
             )
         ) as ctx:
             input_literal_map = TypeEngine.dict_to_literal_map(
-                ctx, d={"a": [my_input, my_input_2]}, guessed_python_types={"a": List[MyInput]}
+                ctx, d={"a": [my_input, my_input_2]}, type_hints={"a": List[MyInput]}
             )
             dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
             assert len(dynamic_job_spec.literals["o0"].collection.literals) == 2
@@ -220,7 +220,7 @@ def test_dc_dyn_directory(folders_and_files_setup):
     )
     with FlyteContextManager.with_context(cb) as ctx:
         input_literal_map = TypeEngine.dict_to_literal_map(
-            ctx, d={"a": [my_input_gcs, my_input_gcs_2]}, guessed_python_types={"a": List[MyInput]}
+            ctx, d={"a": [my_input_gcs, my_input_gcs_2]}, type_hints={"a": List[MyInput]}
         )
         dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
         assert dynamic_job_spec.literals["o0"].collection.literals[0].scalar.blob.uri == "gs://my-bucket/two"
