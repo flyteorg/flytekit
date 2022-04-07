@@ -70,7 +70,6 @@ def fast_register_single_script(version: str, wf_entity: WorkflowBase, full_remo
     _, mod_name, _, script_full_path = extract_task_module(wf_entity)
     # Find project root by moving up the folder hierarchy until you cannot find a __init__.py file.
     source_path = _find_project_root(script_full_path)
-    breakpoint()
 
     # Open a temp directory and dump the contents of the digest.
     with tempfile.TemporaryDirectory() as tmp_dir:

@@ -47,8 +47,7 @@ from flytekit.tools import module_loader, script_mode
     multiple=True,
     type=click.UNPROCESSED,
     callback=ImageConfig.validate_image,
-    # TODO: fix default images push gh workflow
-    default=["ghcr.io/flyteorg/flytekit:py39-latest"],
+    default=["ghcr.io/flyteorg/flytekit:py3.9-latest"],
     help="Image used to register and run.",
 )
 @click.pass_context
