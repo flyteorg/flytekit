@@ -177,6 +177,7 @@ class RawSynchronousFlyteClient(object):
                 "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
                 "Check your Admin server's .well-known endpoints to make sure they're working as expected."
             )
+
         client = _credentials_access.get_client(
             redirect_endpoint=self.public_client_config.redirect_uri,
             client_id=self.public_client_config.client_id,
@@ -184,6 +185,7 @@ class RawSynchronousFlyteClient(object):
             auth_endpoint=self.oauth2_metadata.authorization_endpoint,
             token_endpoint=self.oauth2_metadata.token_endpoint,
         )
+
         if client.has_valid_credentials and not self.check_access_token(client.credentials.access_token):
             # When Python starts up, if credentials have been stored in the keyring, then the AuthorizationClient
             # will have read them into its _credentials field, but it won't be in the RawSynchronousFlyteClient's
@@ -193,7 +195,6 @@ class RawSynchronousFlyteClient(object):
             # scenario where the stored credentials in the keyring are expired. If that's the case, then we only try
             # them once (because client here is a singleton), and the next time, we'll do one of the two other conditions
             # below.
-            client.clear()
             return
         elif client.can_refresh_token:
             client.refresh_access_token()
