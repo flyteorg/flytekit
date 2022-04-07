@@ -263,17 +263,17 @@ class ShellTask(PythonInstanceTask[T]):
 # workflow definition rather than at `ShellTask` instantiation
 def get_portable_shell_task() -> ShellTask:
     return ShellTask(
-    name="portable_shell_task_instance",
-    debug=True,
-    inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
-    output_locs=[
-        OutputLocation(
-            var="k",
-            var_type=FlyteDirectory,
-            location="{ctx.working_directory}",
-        )
-    ],
-    script="""
+        name="portable_shell_task_instance",
+        debug=True,
+        inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
+        output_locs=[
+            OutputLocation(
+                var="k",
+                var_type=FlyteDirectory,
+                location="{ctx.working_directory}",
+            )
+        ],
+        script="""
 #!/bin/bash
 
 set -uexo pipefail
@@ -283,5 +283,5 @@ cd {ctx.working_directory}
 {inputs.export_env}
 
 bash {inputs.script_file} {inputs.script_args}
-    """
+        """
 )
