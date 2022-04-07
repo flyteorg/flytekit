@@ -175,13 +175,16 @@ class AuthorizationClient(object):
         }
 
         # Prefer to use already-fetched token values when they've been set globally.
+        self.set_tokens_from_store()
+
+    def __repr__(self):
+        return f"AuthorizationClient({self._auth_endpoint}, {self._token_endpoint}, {self._client_id}, {self._scopes}, {self._redirect_uri})"
+
+    def set_tokens_from_store(self):
         self._refresh_token = _keyring.get_password(_keyring_service_name, _keyring_refresh_token_storage_key)
         access_token = _keyring.get_password(_keyring_service_name, _keyring_access_token_storage_key)
         if access_token:
             self._credentials = Credentials(access_token=access_token)
-
-    def __repr__(self):
-        return f"AuthorizationClient({self._auth_endpoint}, {self._token_endpoint}, {self._client_id}, {self._scopes}, {self._redirect_uri})"
 
     @property
     def has_valid_credentials(self) -> bool:
@@ -243,7 +246,9 @@ class AuthorizationClient(object):
 
         access_token = response_body["access_token"]
         _keyring.set_password(_keyring_service_name, _keyring_access_token_storage_key, access_token)
-        self._credentials = Credentials(access_token=access_token)
+
+        # Once keyring credentials have been updated, get the singleton AuthorizationClient to read them again.
+        self.set_tokens_from_store()
 
     def request_access_token(self, auth_code):
         if self._state != auth_code.state:
@@ -296,10 +301,6 @@ class AuthorizationClient(object):
         :return flytekit.clis.auth.auth.Credentials:
         """
         return self._credentials
-
-    def clear(self):
-        self._credentials = None
-        self._refresh_token = None
 
     @property
     def expired(self):
