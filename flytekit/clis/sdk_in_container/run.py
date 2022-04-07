@@ -13,7 +13,7 @@ from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 
 
-@click.command("run")
+@click.command("register")
 @click.argument(
     "file_and_workflow",
 )
@@ -52,7 +52,7 @@ from flytekit.tools import module_loader, script_mode
     help="Image used to register and run.",
 )
 @click.pass_context
-def run(
+def register(
     click_ctx,
     file_and_workflow,
     project,
@@ -61,7 +61,7 @@ def run(
     image_config,
 ):
     """
-    Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
+    Register command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
     or any interactive environment (e.g. Jupyter notebooks).
     """
     split_input = file_and_workflow.split(":")
@@ -77,7 +77,6 @@ def run(
     config_obj = PlatformConfig.auto()
     client = friendly.SynchronousFlyteClient(config_obj)
     version = script_mode.hash_script_file(filename)
-    # TODO: the data proxy creates a fixed path. We should add a notion of randomness in the suffix. Haytham is fixing it.
     upload_location: CreateUploadLocationResponse = client.create_upload_location(
         project=project, domain=domain, suffix=f"scriptmode-{version}.tar.gz"
     )
@@ -93,12 +92,13 @@ def run(
     remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
     wf = remote.register_workflow(wf_entity, serialization_settings=serialization_settings, version=version)
 
-    # TODO: Print link to launch form of recently registered workflow
-    print(wf)
-
-    # TODO: replace this with signed_url after the fix for the dataproxy in the sandbox is merged
-    full_remote_path = upload_location.native_url
+    # Finally register the workflow and upload to the pre-signed url
+    full_remote_path = upload_location.signed_url
     script_mode.fast_register_single_script(version, wf_entity, full_remote_path)
+
+    click.secho(
+        f"Go to flyteconsole and check the version {wf.id.version} of workflow {wf.id.name} in project {wf.id.project} and domain {wf.id.domain}"
+    )
 
 
 def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
