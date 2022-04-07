@@ -820,14 +820,14 @@ class RawSynchronousFlyteClient(object):
     #  Data proxy endpoints
     #
     ####################################################################################################################
-    @_handle_rpc_error()
+    @_handle_rpc_error(retry=True)
     def create_upload_location(self, create_upload_location_request):
         """
         Get a signed url to be used during fast registration
         :param flyteidl.service.dataproxy_pb2.CreateUploadLocationRequest:
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
-        return self._dataproxy_stub.CreateUploadLocation(create_upload_location_request)
+        return self._dataproxy_stub.CreateUploadLocation(create_upload_location_request, metadata=self._metadata)
 
 
 def get_token(token_endpoint, authorization_header, scope):
