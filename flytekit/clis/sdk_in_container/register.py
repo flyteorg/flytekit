@@ -90,10 +90,12 @@ def register(
     )
 
     remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
-    wf = remote.register_workflow(wf_entity, serialization_settings=serialization_settings, version=version)
-
-    # Finally register the workflow and upload tar file to pre-signed url
-    script_mode.fast_register_single_script(version, wf_entity, upload_location.signed_url)
+    wf = remote.register_workflow_script_mode(
+        wf_entity,
+        serialization_settings=serialization_settings,
+        version=version,
+        presigned_url=upload_location.signed_url,
+    )
 
     click.secho(
         f"Go to flyteconsole and check the version {wf.id.version} of workflow {wf.id.name} in project {wf.id.project} and domain {wf.id.domain}"
