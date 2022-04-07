@@ -11,9 +11,10 @@ from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.models.literals import StructuredDataset
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
+from flytekit.types.file import CSVFile
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
 @click.command(
@@ -91,6 +92,7 @@ def run(
     if remote:
         config_obj = PlatformConfig.auto()
         client = friendly.SynchronousFlyteClient(config_obj)
+        inputs = _parse_workflow_inputs(click_ctx, wf_entity, client)
         version = script_mode.hash_script_file(filename)
         upload_location: CreateUploadLocationResponse = client.create_upload_location(
             project=project, domain=domain, suffix=f"scriptmode-{version}.tar.gz"
@@ -104,7 +106,6 @@ def run(
             ),
         )
 
-        breakpoint()
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
         wf = remote.register_workflow_script_mode(
             wf_entity,
@@ -113,10 +114,11 @@ def run(
             presigned_url=upload_location.signed_url,
         )
 
-        click.secho(
-            f"Go to flyteconsole and check the version {wf.id.version} of workflow {wf.id.name} in project {wf.id.project} and domain {wf.id.domain}"
-        )
+        execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
+
+        print(execution)
     else:
+        # TODO
         click.secho(wf())
 
 
@@ -134,22 +136,48 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
     return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
 
 
-def _parse_workflow_inputs(click_ctx, wf_entity):
-    type_hints = {k: TypeEngine.guess_python_type(v.type) for k, v in wf_entity.interface.inputs.items()}
+def generate_pandas() -> pd.DataFrame:
+    return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+
+def _parse_workflow_inputs(click_ctx, wf_entity, client):
     args = {}
     for i in range(0, len(click_ctx.args), 2):
         argument = click_ctx.args[i][2:]
         value = click_ctx.args[i + 1]
 
-        if type_hints[argument] == str:
+        python_type = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
+
+        if python_type == str:
             value = value
-        elif type_hints[argument] == int:
+        elif python_type == int:
             value = int(value)
-        if type_hints[argument] == type(StructuredDataset):
+        elif python_type == StructuredDataset:
             # Assume it's a pandas dataframe?
-            value = pd.read_parquet(value)
+            # df = pd.read_parquet(value)
+
+            df_remote_location = client.create_upload_location(project="flytesnacks", domain="development")
+
+            df = generate_pandas()
+            df.to_parquet("/tmp/bla")
+            flyte_ctx = context_manager.FlyteContextManager.current_context()
+            flyte_ctx.file_access.put_data("/tmp/bla", df_remote_location.signed_url)
+
+            # flyte_ctx = context_manager.FlyteContextManager.current_context()
+            # flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
+
+            value = StructuredDataset(uri=df_remote_location.native_url)
+            print(value)
+        # elif python_type == FlyteFile:
         else:
-            raise ValueError(f"Unsupported type for argument {argument}")
+            csv_remote_location = client.create_upload_location(project="flytesnacks", domain="development")
+
+            flyte_ctx = context_manager.FlyteContextManager.current_context()
+            flyte_ctx.file_access.put_data(value, csv_remote_location.signed_url)
+
+            value = CSVFile(path=csv_remote_location.native_url)
+        # else:
+        #     raise ValueError(f"Unsupported type for argument {argument}")
 
         args[argument] = value
     return args
