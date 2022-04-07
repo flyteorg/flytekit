@@ -41,7 +41,11 @@ def _handle_rpc_error(retry=False):
                         if i == (max_retries - 1):
                             # Exit the loop and wrap the authentication error.
                             raise _user_exceptions.FlyteAuthenticationException(str(e))
-                        cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
+                        msg = f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n"
+                        if i == 0:
+                            cli_logger.debug(msg)
+                        else:
+                            cli_logger.error(msg)
                         args[0].refresh_credentials()
                     elif e.code() == grpc.StatusCode.ALREADY_EXISTS:
                         # There are two cases that we should throw error immediately
