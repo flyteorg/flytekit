@@ -69,19 +69,15 @@ extensions = [
 autoapi_type = "python"
 underlying_path_to_check = "flytekitplugins"
 
-autoapi_template_dir = "_templates"
-
 autoapi_dirs = []
 
 for possible_plugin_dir in os.listdir(plugins_dir):
     dir_path = os.path.abspath((os.path.join(plugins_dir, possible_plugin_dir)))
     plugin_path = os.path.abspath(os.path.join(dir_path, underlying_path_to_check))
     if os.path.isdir(dir_path) and os.path.exists(plugin_path):
-        autoapi_dirs.append(plugin_path)
+        autoapi_dirs.add(plugin_path)
 
-print(autoapi_dirs)
-
-autoapi_add_toctree_entry = True
+print(f"AutoAPI dirs: {autoapi_dirs}")
 
 # build the templated autosummary files
 autosummary_generate = True
