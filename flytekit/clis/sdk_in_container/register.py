@@ -1,8 +1,8 @@
+import functools
 import importlib
 import os
 
 import click
-import pandas as pd
 from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 
 from flytekit.clients import friendly
@@ -13,7 +13,6 @@ from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
-from flytekit.types.file import CSVFile
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
@@ -92,7 +91,11 @@ def run(
     if remote:
         config_obj = PlatformConfig.auto()
         client = friendly.SynchronousFlyteClient(config_obj)
-        inputs = _parse_workflow_inputs(click_ctx, wf_entity, client)
+        inputs = _parse_workflow_inputs(
+            click_ctx,
+            wf_entity,
+            functools.partial(client.create_upload_location, project="flytesnacks", domain="development"),
+        )
         version = script_mode.hash_script_file(filename)
         upload_location: CreateUploadLocationResponse = client.create_upload_location(
             project=project, domain=domain, suffix=f"scriptmode-{version}.tar.gz"
@@ -136,11 +139,7 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
     return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
 
 
-def generate_pandas() -> pd.DataFrame:
-    return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
-
-
-def _parse_workflow_inputs(click_ctx, wf_entity, client):
+def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn):
     args = {}
     for i in range(0, len(click_ctx.args), 2):
         argument = click_ctx.args[i][2:]
@@ -153,31 +152,12 @@ def _parse_workflow_inputs(click_ctx, wf_entity, client):
         elif python_type == int:
             value = int(value)
         elif python_type == StructuredDataset:
-            # Assume it's a pandas dataframe?
-            # df = pd.read_parquet(value)
-
-            df_remote_location = client.create_upload_location(project="flytesnacks", domain="development")
-
-            df = generate_pandas()
-            df.to_parquet("/tmp/bla")
+            df_remote_location = create_upload_location_fn()
             flyte_ctx = context_manager.FlyteContextManager.current_context()
-            flyte_ctx.file_access.put_data("/tmp/bla", df_remote_location.signed_url)
-
-            # flyte_ctx = context_manager.FlyteContextManager.current_context()
-            # flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
-
+            flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
             value = StructuredDataset(uri=df_remote_location.native_url)
-            print(value)
-        # elif python_type == FlyteFile:
         else:
-            csv_remote_location = client.create_upload_location(project="flytesnacks", domain="development")
-
-            flyte_ctx = context_manager.FlyteContextManager.current_context()
-            flyte_ctx.file_access.put_data(value, csv_remote_location.signed_url)
-
-            value = CSVFile(path=csv_remote_location.native_url)
-        # else:
-        #     raise ValueError(f"Unsupported type for argument {argument}")
+            raise ValueError(f"Unsupported type for argument {argument}")
 
         args[argument] = value
     return args
