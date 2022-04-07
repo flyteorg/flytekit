@@ -41,7 +41,7 @@ def _handle_rpc_error(retry=False):
                         if i == (max_retries - 1):
                             # Exit the loop and wrap the authentication error.
                             raise _user_exceptions.FlyteAuthenticationException(str(e))
-                        cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
+                        cli_logger.debug(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
                         args[0].refresh_credentials()
                     elif e.code() == grpc.StatusCode.ALREADY_EXISTS:
                         # There are two cases that we should throw error immediately
@@ -191,10 +191,6 @@ class RawSynchronousFlyteClient(object):
             # will have read them into its _credentials field, but it won't be in the RawSynchronousFlyteClient's
             # metadata field yet. Therefore, if there's a mismatch, copy it over.
             self.set_access_token(client.credentials.access_token, authorization_header_key)
-            # However, after copying over credentials from the AuthorizationClient, we have to clear it to avoid the
-            # scenario where the stored credentials in the keyring are expired. If that's the case, then we only try
-            # them once (because client here is a singleton), and the next time, we'll do one of the two other conditions
-            # below.
             return
         elif client.can_refresh_token:
             client.refresh_access_token()
