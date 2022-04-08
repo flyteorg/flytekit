@@ -152,6 +152,8 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = value
         elif python_type == int:
             value = int(value)
+        elif python_type == float:
+            value = float(value)
         elif python_type == StructuredDataset:
             if is_remote:
                 assert create_upload_location_fn
