@@ -419,7 +419,10 @@ class FileAccessProvider(object):
         try:
             with PerformanceTimer(f"Copying ({remote_path} -> {local_path})"):
                 pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-                DataPersistencePlugins.find_plugin(remote_path)().get(remote_path, local_path, recursive=is_multipart)
+                data_persistence_plugin = DataPersistencePlugins.find_plugin(remote_path)
+                data_persistence_plugin(data_config=self.data_config).get(
+                    remote_path, local_path, recursive=is_multipart
+                )
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
