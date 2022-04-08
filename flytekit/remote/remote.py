@@ -15,10 +15,11 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
+from flytekit.clients import friendly
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, ImageConfig, SerializationSettings
-from flytekit.core import constants, context_manager, utils
+from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
+from flytekit.core import constants, context_manager, tracker, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -54,6 +55,8 @@ from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
+from flytekit.tools import script_mode
+from flytekit.tools.script_mode import fast_register_single_script
 from flytekit.tools.translator import FlyteLocalEntity, Options, get_serializable, get_serializable_launch_plan
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
@@ -272,9 +275,7 @@ class FlyteRemote(object):
 
         return flyte_launch_plan
 
-    def fetch_workflow_execution(
-        self, project: str = None, domain: str = None, name: str = None
-    ) -> FlyteWorkflowExecution:
+    def fetch_execution(self, project: str = None, domain: str = None, name: str = None) -> FlyteWorkflowExecution:
         """Fetch a workflow execution entity from flyte admin.
 
         :param project: fetch entity from this project. If None, uses the default_project attribute.
@@ -295,7 +296,7 @@ class FlyteRemote(object):
                 )
             )
         )
-        return self.sync_workflow_execution(execution)
+        return self.sync_execution(execution)
 
     ######################
     #  Listing Entities  #
@@ -462,6 +463,55 @@ class FlyteRemote(object):
             remote_logger.debug("Created default launch plan for Workflow")
 
         return self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
+
+    def register_script(
+        self,
+        entity: WorkflowBase,
+        image_config: typing.Optional[ImageConfig] = None,
+        version: typing.Optional[str] = None,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        destination_dir: str = ".",
+        default_launch_plan: typing.Optional[bool] = True,
+        options: typing.Optional[Options] = None,
+    ) -> FlyteWorkflow:
+        """
+        Use this method to register a workflow via script mode.
+        :param destination_dir:
+        :param domain:
+        :param project:
+        :param image_config:
+        :param version: version for the entity to be registered as
+        :param entity: The workflow to be registered
+        :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
+        :param options: Additional execution options that can be configured for the default launchplan
+        :return:
+        """
+        if version is None:
+            _, _, _, fname = tracker.extract_task_module(entity)
+            version = script_mode.hash_script_file(fname)
+
+        if image_config is None:
+            image_config = ImageConfig.auto_default_image()
+
+        upload_location = self.client.create_upload_location(
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            suffix=f"scriptmode-{version}.tar.gz"
+        )
+        serialization_settings = SerializationSettings(
+            project=project,
+            domain=domain,
+            image_config=image_config,
+            fast_serialization_settings=FastSerializationSettings(
+                enabled=True,
+                destination_dir=destination_dir,
+                distribution_location=upload_location.native_url,
+            ),
+        )
+        fast_register_single_script(version, entity, upload_location.signed_url)
+
+        return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
     def register_launch_plan(
         self,
@@ -975,7 +1025,7 @@ class FlyteRemote(object):
         time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
 
         while datetime.utcnow() < time_to_give_up:
-            execution = self.sync_workflow_execution(execution, sync_nodes=sync_nodes)
+            execution = self.sync_execution(execution, sync_nodes=sync_nodes)
             if execution.is_done:
                 return execution
             time.sleep(poll_interval.total_seconds())
@@ -1005,9 +1055,9 @@ class FlyteRemote(object):
         """
         if not isinstance(execution, FlyteWorkflowExecution):
             raise ValueError(f"remote.sync should only be called on workflow executions, got {type(execution)}")
-        return self.sync_workflow_execution(execution, entity_definition, sync_nodes)
+        return self.sync_execution(execution, entity_definition, sync_nodes)
 
-    def sync_workflow_execution(
+    def sync_execution(
         self,
         execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
@@ -1133,10 +1183,10 @@ class FlyteRemote(object):
             launched_exec_id = execution.closure.workflow_node_metadata.execution_id
             # This is a recursive call, basically going through the same process that brought us here in the first
             # place, but on the launched execution.
-            launched_exec = self.fetch_workflow_execution(
+            launched_exec = self.fetch_execution(
                 project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
             )
-            self.sync_workflow_execution(launched_exec)
+            self.sync_execution(launched_exec)
             if launched_exec.is_done:
                 # The synced underlying execution should've had these populated.
                 execution._inputs = launched_exec.inputs

@@ -1,14 +1,8 @@
+import http.server as _BaseHTTPServer
 import re
 from multiprocessing import Queue as _Queue
 
-from mock import patch
-
 from flytekit.clis.auth import auth as _auth
-
-try:  # Python 3
-    import http.server as _BaseHTTPServer
-except ImportError:  # Python 2
-    import BaseHTTPServer as _BaseHTTPServer
 
 
 def test_generate_code_verifier():
@@ -35,12 +29,3 @@ def test_oauth_http_server():
     server.handle_authorization_code(test_auth_code)
     auth_code = queue.get()
     assert test_auth_code == auth_code
-
-
-@patch("flytekit.clis.auth.auth._keyring.get_password")
-def test_clear(mock_get_password):
-    mock_get_password.return_value = "token"
-    ac = _auth.AuthorizationClient()
-    ac.clear()
-    assert ac.credentials is None
-    assert not ac.can_refresh_token

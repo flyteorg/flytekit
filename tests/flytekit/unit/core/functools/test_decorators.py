@@ -27,7 +27,6 @@ def test_wrapped_tasks_happy_path(capfd):
         "running my_task",
         "finally after running my_task",
         "after running my_task",
-        "my_task output flytekit deck html to ",
         "11",
     ]
 
@@ -63,7 +62,6 @@ def test_stacked_wrapped_tasks(capfd):
         "running task_decorator_2",
         "running task_decorator_3",
         "running my_task",
-        "my_task output flytekit deck html to ",
         "11",
     ]
 

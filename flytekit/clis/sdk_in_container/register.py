@@ -1,21 +1,38 @@
+import functools
 import importlib
 import os
+from typing import Callable, Optional
 
 import click
-from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
+import pandas as pd
 
 from flytekit.clients import friendly
-from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
+from flytekit.configuration import Config, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.core import context_manager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
+from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
-@click.command("register")
+@click.command(
+    context_settings=dict(
+        ignore_unknown_options=True,
+        allow_extra_args=True,
+    ),
+)
 @click.argument(
     "file_and_workflow",
+)
+@click.option(
+    "--remote",
+    "is_remote",
+    required=False,
+    is_flag=True,
+    default=False,
 )
 @click.option(
     "-p",
@@ -47,14 +64,14 @@ from flytekit.tools import module_loader, script_mode
     multiple=True,
     type=click.UNPROCESSED,
     callback=ImageConfig.validate_image,
-    # TODO: fix default images push gh workflow
-    default=["ghcr.io/flyteorg/flytekit:py39-latest"],
+    default=["ghcr.io/flyteorg/flytekit:py3.9-latest"],
     help="Image used to register and run.",
 )
 @click.pass_context
-def register(
+def run(
     click_ctx,
     file_and_workflow,
+    is_remote,
     project,
     domain,
     destination_dir,
@@ -74,31 +91,37 @@ def register(
     # Load code naively, i.e. without taking into account the fully qualified package name
     wf_entity = _load_naive_entity(module, workflow_name)
 
-    config_obj = PlatformConfig.auto()
-    client = friendly.SynchronousFlyteClient(config_obj)
-    md5, version = script_mode.hash_file(filename)
-    upload_location: CreateUploadLocationResponse = client.create_upload_location(
-        project=project, domain=domain, content_md5=md5, suffix=f"scriptmode.tar.gz"
-    )
-    serialization_settings = SerializationSettings(
-        image_config=image_config,
-        fast_serialization_settings=FastSerializationSettings(
-            enabled=True,
+    if is_remote:
+        config_obj = PlatformConfig.auto()
+        client = friendly.SynchronousFlyteClient(config_obj)
+        inputs = _parse_workflow_inputs(
+            click_ctx,
+            wf_entity,
+            functools.partial(client.create_upload_location, project=project, domain=domain),
+            is_remote=True,
+        )
+        md5, version = script_mode.hash_file(filename)
+        remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
+        wf = remote.register_script(
+            wf_entity,
+            project=project,
+            domain=domain,
+            image_config=image_config,
             destination_dir=destination_dir,
-            distribution_location=upload_location.native_url,
-        ),
-    )
+            version=version,
+        )
 
-    remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
-    wf = remote.register_workflow(wf_entity, serialization_settings=serialization_settings, version=version)
+        execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
 
-    # Finally register the workflow and upload to the pre-signed url
-    full_remote_path = upload_location.signed_url
-    script_mode.fast_register_single_script(version, wf_entity, full_remote_path)
-
-    click.secho(
-        f"Go to flyteconsole and check the version {wf.id.version} of workflow {wf.id.name} in project {wf.id.project} and domain {wf.id.domain}"
-    )
+        _dump_flyte_remote_snippet(execution, project, domain)
+    else:
+        inputs = _parse_workflow_inputs(
+            click_ctx,
+            wf_entity,
+            is_remote=False,
+        )
+        # TODO: what do we do in the case of local workflow executions that return values?
+        wf_entity(**inputs)
 
 
 def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
@@ -113,3 +136,47 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
     return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
+
+
+def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Optional[Callable] = None, is_remote=False):
+    args = {}
+    for i in range(0, len(click_ctx.args), 2):
+        argument = click_ctx.args[i][2:]
+        value = click_ctx.args[i + 1]
+
+        python_type = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
+
+        if python_type == str:
+            value = value
+        elif python_type == int:
+            value = int(value)
+        elif python_type == StructuredDataset:
+            if is_remote:
+                assert create_upload_location_fn
+                suffix = "00000.parquet"
+                df_remote_location = create_upload_location_fn(suffix=suffix)
+                flyte_ctx = context_manager.FlyteContextManager.current_context()
+                flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
+                value = StructuredDataset(uri=df_remote_location.native_url[: -len(suffix)])
+            else:
+                value = pd.read_parquet(value)
+        else:
+            raise ValueError(f"Unsupported type for argument {argument}")
+
+        args[argument] = value
+    return args
+
+
+def _dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
+    click.secho(
+        f"""
+In order to have programmatic access to the execution, use the following snippet:
+
+from flytekit.configuration import Config
+from flytekit.remote import FlyteRemote
+remote = FlyteRemote(Config.auto(), default_project="{project}", default_domain="{domain}")
+exec = remote.fetch_execution(name="{execution.id.name}")
+remote.sync(exec)
+print(exec.outputs)
+    """
+    )
