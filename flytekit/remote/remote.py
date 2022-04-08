@@ -497,7 +497,7 @@ class FlyteRemote(object):
         upload_location = self.client.create_upload_location(
             project=project or self.default_project,
             domain=domain or self.default_domain,
-            suffix=f"scriptmode-{version}.tar.gz"
+            suffix=f"scriptmode-{version}.tar.gz",
         )
         serialization_settings = SerializationSettings(
             project=project,
@@ -618,6 +618,7 @@ class FlyteRemote(object):
                     raw_output_data_config=options.raw_output_data_config,
                     auth_role=options.auth_role,
                     max_parallelism=options.max_parallelism,
+                    security_context=options.security_context,
                 ),
                 literal_inputs,
             )
