@@ -12,6 +12,7 @@ from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
+from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 from google.protobuf.json_format import MessageToJson as _MessageToJson
@@ -59,7 +60,7 @@ def _handle_rpc_error(retry=False):
                             raise
                         else:
                             # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
-                            wait_time = min(200 * (2**i), max_wait_time)
+                            wait_time = min(200 * (2 ** i), max_wait_time)
                             cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                             time.sleep(wait_time / 1000)
 
@@ -822,10 +823,11 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
     @_handle_rpc_error(retry=True)
-    def create_upload_location(self, create_upload_location_request):
+    def create_upload_location(self, create_upload_location_request: _dataproxy_pb2.CreateUploadLocationRequest) \
+            -> _dataproxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
-        :param flyteidl.service.dataproxy_pb2.CreateUploadLocationRequest:
+        :param flyteidl.service.dataproxy_pb2.CreateUploadLocationRequest create_upload_location_request:
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
         return self._dataproxy_stub.CreateUploadLocation(create_upload_location_request, metadata=self._metadata)

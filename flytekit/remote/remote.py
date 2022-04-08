@@ -487,9 +487,10 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
+        _, _, _, fname = tracker.extract_task_module(entity)
+        md5, md5_hex = script_mode.hash_file(fname)
         if version is None:
-            _, _, _, fname = tracker.extract_task_module(entity)
-            version = script_mode.hash_script_file(fname)
+            version = md5_hex
 
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
@@ -497,7 +498,8 @@ class FlyteRemote(object):
         upload_location = self.client.create_upload_location(
             project=project or self.default_project,
             domain=domain or self.default_domain,
-            suffix=f"scriptmode-{version}.tar.gz"
+            content_md5=md5,
+            filename=f"scriptmode-{version}.tar.gz"
         )
         serialization_settings = SerializationSettings(
             project=project,

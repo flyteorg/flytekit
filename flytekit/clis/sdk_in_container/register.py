@@ -153,11 +153,12 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
         elif python_type == StructuredDataset:
             if is_remote:
                 assert create_upload_location_fn
-                suffix = "00000.parquet"
-                df_remote_location = create_upload_location_fn(suffix=suffix)
+                filename = "00000.parquet"
+                md5, _ = script_mode.hash_file(value)
+                df_remote_location = create_upload_location_fn(filename=filename, content_md5=md5)
                 flyte_ctx = context_manager.FlyteContextManager.current_context()
                 flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
-                value = StructuredDataset(uri=df_remote_location.native_url[: -len(suffix)])
+                value = StructuredDataset(uri=df_remote_location.native_url[: -len(filename)])
             else:
                 value = pd.read_parquet(value)
         else:

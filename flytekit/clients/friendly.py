@@ -1,3 +1,4 @@
+import datetime
 import typing
 
 from flyteidl.admin import common_pb2 as _common_pb2
@@ -547,7 +548,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .create_execution(
+                .create_execution(
                 _execution_pb2.ExecutionCreateRequest(
                     project=project,
                     domain=domain,
@@ -556,7 +557,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     inputs=inputs.to_flyte_idl(),
                 )
             )
-            .id
+                .id
         )
 
     def recover_execution(self, id, name: str = None):
@@ -568,8 +569,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
-            .id
+                .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
+                .id
         )
 
     def get_execution(self, id):
@@ -657,8 +658,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
-            .id
+                .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
+                .id
         )
 
     ####################################################################################################################
@@ -976,13 +977,17 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def create_upload_location(self, project, domain, suffix=None, expires_in=None):
+    def create_upload_location(self, project: str, domain: str, content_md5: bytes, filename: str = None,
+                               expires_in: datetime.timedelta = None) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
         :param str project: Project to create the upload location for
         :param str domain: Domain to create the upload location for
-        :param str suffix: [Optional] If provided this specifies a desired suffix for the generated location
-        :param datetime.timedelta expires_in: [Optional] If provided this defines a requested expiration duration for the generated url
+        :param bytes content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5
+            will also appear in the generated path.
+        :param str filename: [Optional] If provided this specifies a desired suffix for the generated location
+        :param datetime.timedelta expires_in: [Optional] If provided this defines a requested expiration duration for
+            the generated url
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
         expires_in_pb = None
@@ -993,7 +998,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _data_proxy_pb2.CreateUploadLocationRequest(
                 project=project,
                 domain=domain,
-                suffix=suffix,
+                content_md5=content_md5,
+                filename=filename,
                 expires_in=expires_in_pb,
             )
         )
