@@ -548,7 +548,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-                .create_execution(
+            .create_execution(
                 _execution_pb2.ExecutionCreateRequest(
                     project=project,
                     domain=domain,
@@ -557,7 +557,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     inputs=inputs.to_flyte_idl(),
                 )
             )
-                .id
+            .id
         )
 
     def recover_execution(self, id, name: str = None):
@@ -569,8 +569,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-                .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
-                .id
+            .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
+            .id
         )
 
     def get_execution(self, id):
@@ -658,8 +658,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-                .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
-                .id
+            .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
+            .id
         )
 
     ####################################################################################################################
@@ -977,8 +977,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def create_upload_location(self, project: str, domain: str, content_md5: bytes, filename: str = None,
-                               expires_in: datetime.timedelta = None) -> _data_proxy_pb2.CreateUploadLocationResponse:
+    def create_upload_location(
+        self, project: str, domain: str, content_md5: bytes, filename: str = None, expires_in: datetime.timedelta = None
+    ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
         :param str project: Project to create the upload location for

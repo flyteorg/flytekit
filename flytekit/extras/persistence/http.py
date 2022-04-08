@@ -62,10 +62,9 @@ class HttpPersistence(DataPersistence):
         with open(from_path, "+rb") as local_file:
             content = local_file.read()
             content_length = len(content)
-            rsp = requests.put(to_path, data=content, headers={
-                "Content-Length": str(content_length),
-                "Content-MD5": digest
-            })
+            rsp = requests.put(
+                to_path, data=content, headers={"Content-Length": str(content_length), "Content-MD5": digest}
+            )
 
             if rsp.status_code != self._HTTP_OK:
                 raise user.FlyteValueException(
