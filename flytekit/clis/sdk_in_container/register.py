@@ -120,8 +120,7 @@ def run(
             wf_entity,
             is_remote=False,
         )
-        # TODO: what do we do in the case of local workflow executions that return values?
-        wf_entity(**inputs)
+        print(wf_entity(**inputs))
 
 
 def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
