@@ -393,7 +393,7 @@ class LaunchPlan(object):
 
     @property
     def security_context(self) -> typing.Optional[security.SecurityContext]:
-        return self.security_context
+        return self._security_context
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()
