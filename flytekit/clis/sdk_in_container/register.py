@@ -1,12 +1,13 @@
 import functools
 import importlib
 import os
+from typing import Callable, Optional
 
 import click
-from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
+import pandas as pd
 
 from flytekit.clients import friendly
-from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
+from flytekit.configuration import Config, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
@@ -28,6 +29,7 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
 )
 @click.option(
     "--remote",
+    "is_remote",
     required=False,
     is_flag=True,
     default=False,
@@ -69,7 +71,7 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
 def run(
     click_ctx,
     file_and_workflow,
-    remote,
+    is_remote,
     project,
     domain,
     destination_dir,
@@ -89,41 +91,37 @@ def run(
     # Load code naively, i.e. without taking into account the fully qualified package name
     wf_entity = _load_naive_entity(module, workflow_name)
 
-    if remote:
+    if is_remote:
         config_obj = PlatformConfig.auto()
         client = friendly.SynchronousFlyteClient(config_obj)
         inputs = _parse_workflow_inputs(
             click_ctx,
             wf_entity,
-            functools.partial(client.create_upload_location, project="flytesnacks", domain="development"),
+            functools.partial(client.create_upload_location, project=project, domain=domain),
+            is_remote=True,
         )
         version = script_mode.hash_script_file(filename)
-        upload_location: CreateUploadLocationResponse = client.create_upload_location(
-            project=project, domain=domain, suffix=f"scriptmode-{version}.tar.gz"
-        )
-        serialization_settings = SerializationSettings(
-            image_config=image_config,
-            fast_serialization_settings=FastSerializationSettings(
-                enabled=True,
-                destination_dir=destination_dir,
-                distribution_location=upload_location.native_url,
-            ),
-        )
-
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
-        wf = remote.register_workflow_script_mode(
+        wf = remote.register_script(
             wf_entity,
-            serialization_settings=serialization_settings,
+            project=project,
+            domain=domain,
+            image_config=image_config,
+            destination_dir=destination_dir,
             version=version,
-            presigned_url=upload_location.signed_url,
         )
 
         execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
 
         _dump_flyte_remote_snippet(execution, project, domain)
     else:
-        # TODO
-        click.secho(wf())
+        inputs = _parse_workflow_inputs(
+            click_ctx,
+            wf_entity,
+            is_remote=False,
+        )
+        # TODO: what do we do in the case of local workflow executions that return values?
+        wf_entity(**inputs)
 
 
 def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
@@ -140,7 +138,7 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
     return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
 
 
-def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn):
+def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Optional[Callable] = None, is_remote=False):
     args = {}
     for i in range(0, len(click_ctx.args), 2):
         argument = click_ctx.args[i][2:]
@@ -153,11 +151,15 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn):
         elif python_type == int:
             value = int(value)
         elif python_type == StructuredDataset:
-            suffix = "00000.parquet"
-            df_remote_location = create_upload_location_fn(suffix=suffix)
-            flyte_ctx = context_manager.FlyteContextManager.current_context()
-            flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
-            value = StructuredDataset(uri=df_remote_location.native_url[: -len(suffix)])
+            if is_remote:
+                assert create_upload_location_fn
+                suffix = "00000.parquet"
+                df_remote_location = create_upload_location_fn(suffix=suffix)
+                flyte_ctx = context_manager.FlyteContextManager.current_context()
+                flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
+                value = StructuredDataset(uri=df_remote_location.native_url[: -len(suffix)])
+            else:
+                value = pd.read_parquet(value)
         else:
             raise ValueError(f"Unsupported type for argument {argument}")
 
@@ -169,6 +171,7 @@ def _dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, 
     click.secho(
         f"""
 In order to have programmatic access to the execution, use the following snippet:
+
 from flytekit.configuration import Config
 from flytekit.remote import FlyteRemote
 remote = FlyteRemote(Config.auto(), default_project="{project}", default_domain="{domain}")

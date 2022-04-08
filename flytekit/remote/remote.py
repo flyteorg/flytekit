@@ -15,9 +15,10 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
+from flytekit.clients import friendly
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, ImageConfig, SerializationSettings
+from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.core import constants, context_manager, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -462,11 +463,13 @@ class FlyteRemote(object):
 
         return self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
 
-    def register_workflow_script_mode(
+    def register_script(
         self,
         entity: WorkflowBase,
-        serialization_settings: SerializationSettings,
-        presigned_url: str,
+        project: str,
+        domain: str,
+        image_config: ImageConfig,
+        destination_dir: str,
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
@@ -481,7 +484,20 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
-        fast_register_single_script(version, entity, presigned_url)
+        config_obj = PlatformConfig.auto()
+        client = friendly.SynchronousFlyteClient(config_obj)
+        upload_location = client.create_upload_location(
+            project=project, domain=domain, suffix=f"scriptmode-{version}.tar.gz"
+        )
+        serialization_settings = SerializationSettings(
+            image_config=image_config,
+            fast_serialization_settings=FastSerializationSettings(
+                enabled=True,
+                destination_dir=destination_dir,
+                distribution_location=upload_location.native_url,
+            ),
+        )
+        fast_register_single_script(version, entity, upload_location.signed_url)
 
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
