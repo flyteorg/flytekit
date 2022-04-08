@@ -144,6 +144,9 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
         argument = click_ctx.args[i][2:]
         value = click_ctx.args[i + 1]
 
+        if argument not in wf_entity.interface.inputs:
+            raise FlyteValidationException(f"argument '{argument}' is not listed as a parameter of the workflow")
+
         python_type = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
 
         if python_type == str:
