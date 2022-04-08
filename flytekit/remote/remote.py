@@ -385,15 +385,25 @@ class FlyteRemote(object):
                         remote_logger.debug(f"Skipping registration of Workflow (remote workflow), name: {entity.name}")
                         continue
                     ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
-                    self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
-                elif isinstance(cp_entity, launch_plan_models.LaunchPlanSpec):
+                    try:
+                        self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
+                    except FlyteEntityAlreadyExistsException:
+                        remote_logger.info(f"{entity.name} already exists")
+                    # Let us also create a default launch-plan, ideally the default launchplan should be added
+                    # to the orderedDict, but we do not.
+                    default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+                    lp_entity = get_serializable_launch_plan(
+                        OrderedDict(), settings, default_lp, recurse_downstream=False, options=options
+                    )
+                    self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
+                elif isinstance(cp_entity, launch_plan_models.LaunchPlan):
                     if isinstance(entity, (FlyteLaunchPlan, ReferenceLaunchPlan)):
                         remote_logger.debug(
                             f"Skipping registration of LaunchPlan (remote launchplan), name: {entity.name}"
                         )
                         continue
                     ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, settings)
-                    self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity)
+                    self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
                 elif isinstance(
                     cp_entity,
                     (
@@ -410,6 +420,7 @@ class FlyteRemote(object):
                 remote_logger.info(f"{entity.name} already exists")
             except Exception as e:
                 remote_logger.info(f"Failed to register entity {entity.name} with error {e}")
+                raise
         return ident
 
     def register_task(
