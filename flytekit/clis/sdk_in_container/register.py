@@ -12,9 +12,11 @@ from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
+from flytekit.models.common import AuthRole
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
+from flytekit.tools.translator import Options
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
@@ -67,6 +69,13 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
     default=["ghcr.io/flyteorg/flytekit:py3.9-latest"],
     help="Image used to register and run.",
 )
+@click.option(
+    "--service-account",
+    "service_account",
+    required=False,
+    type=str,
+    default="default",
+)
 @click.pass_context
 def run(
     click_ctx,
@@ -76,6 +85,7 @@ def run(
     domain,
     destination_dir,
     image_config,
+    service_account,
 ):
     """
     Register command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
@@ -111,7 +121,8 @@ def run(
             version=version,
         )
 
-        execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
+        options = Options(AuthRole(kubernetes_service_account=service_account))
+        execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True, options=options)
 
         _dump_flyte_remote_snippet(execution, project, domain)
     else:
