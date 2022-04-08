@@ -7,6 +7,7 @@ import pytz as _pytz
 
 from flytekit.models import common as _common_models
 from flytekit.models import literals as _literals_models
+from flytekit.models import security
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.node_execution import DynamicWorkflowNodeMetadata
@@ -84,6 +85,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         auth_role=None,
         raw_output_data_config=None,
         max_parallelism=None,
+        security_context: typing.Optional[security.SecurityContext] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -108,6 +110,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._auth_role = auth_role or _common_models.AuthRole()
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
+        self._security_context = security_context
 
     @property
     def launch_plan(self):
@@ -170,6 +173,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     def max_parallelism(self) -> int:
         return self._max_parallelism
 
+    @property
+    def security_context(self) -> typing.Optional[security.SecurityContext]:
+        return self._security_context
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -186,6 +193,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             if self._raw_output_data_config
             else None,
             max_parallelism=self.max_parallelism,
+            security_context=self.security_context.to_flyte_idl() if self.security_context else None,
         )
 
     @classmethod
@@ -206,6 +214,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             if p.HasField("raw_output_data_config")
             else None,
             max_parallelism=p.max_parallelism,
+            security_context=security.SecurityContext.from_flyte_idl(p.security_context)
+            if p.security_context
+            else None,
         )
 
 

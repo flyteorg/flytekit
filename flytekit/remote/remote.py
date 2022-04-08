@@ -15,10 +15,9 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit.clients import friendly
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
+from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, context_manager, tracker, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -499,7 +498,7 @@ class FlyteRemote(object):
             project=project or self.default_project,
             domain=domain or self.default_domain,
             content_md5=md5,
-            filename=f"scriptmode-{version}.tar.gz"
+            filename=f"scriptmode-{version}.tar.gz",
         )
         serialization_settings = SerializationSettings(
             project=project,
@@ -620,6 +619,7 @@ class FlyteRemote(object):
                     raw_output_data_config=options.raw_output_data_config,
                     auth_role=options.auth_role,
                     max_parallelism=options.max_parallelism,
+                    security_context=options.security_context,
                 ),
                 literal_inputs,
             )

@@ -82,18 +82,21 @@ class Options(object):
     disable_notifications: typing.Optional[bool] = None
 
     @classmethod
-    def default_from(cls, k8s_service_account: typing.Optional[str] = None,
-                     raw_data_prefix: typing.Optional[str] = None) -> "Options":
+    def default_from(
+        cls, k8s_service_account: typing.Optional[str] = None, raw_data_prefix: typing.Optional[str] = None
+    ) -> "Options":
         return cls(
-            security_context=security.SecurityContext(
-                run_as=security.Identity(k8s_service_account=k8s_service_account)) if k8s_service_account else None,
-            raw_output_data_config=common_models.RawOutputDataConfig(
-                output_location_prefix=raw_data_prefix) if raw_data_prefix else None,
+            security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
+            if k8s_service_account
+            else None,
+            raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix=raw_data_prefix)
+            if raw_data_prefix
+            else None,
         )
 
 
 def to_serializable_case(
-        entity_mapping: OrderedDict, settings: SerializationSettings, c: _core_wf.IfBlock
+    entity_mapping: OrderedDict, settings: SerializationSettings, c: _core_wf.IfBlock
 ) -> _core_wf.IfBlock:
     if c is None:
         raise ValueError("Cannot convert none cases to registrable")
@@ -102,7 +105,7 @@ def to_serializable_case(
 
 
 def to_serializable_cases(
-        entity_mapping: OrderedDict, settings: SerializationSettings, cases: List[_core_wf.IfBlock]
+    entity_mapping: OrderedDict, settings: SerializationSettings, cases: List[_core_wf.IfBlock]
 ) -> Optional[List[_core_wf.IfBlock]]:
     if cases is None:
         return None
@@ -113,7 +116,7 @@ def to_serializable_cases(
 
 
 def _fast_serialize_command_fn(
-        settings: SerializationSettings, task: PythonAutoContainerTask
+    settings: SerializationSettings, task: PythonAutoContainerTask
 ) -> Callable[[SerializationSettings], List[str]]:
     default_command = task.get_default_command(settings)
 
@@ -136,9 +139,9 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
-        entity_mapping: OrderedDict,
-        settings: SerializationSettings,
-        entity: FlyteLocalEntity,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
 ) -> task_models.TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -175,9 +178,9 @@ def get_serializable_task(
 
 
 def get_serializable_workflow(
-        entity_mapping: OrderedDict,
-        settings: SerializationSettings,
-        entity: WorkflowBase,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: WorkflowBase,
 ) -> admin_workflow_models.WorkflowSpec:
     # TODO: Try to move up following config refactor - https://github.com/flyteorg/flyte/issues/2214
     from flytekit.remote.workflow import FlyteWorkflow
@@ -254,11 +257,11 @@ def get_serializable_workflow(
 
 
 def get_serializable_launch_plan(
-        entity_mapping: OrderedDict,
-        settings: SerializationSettings,
-        entity: LaunchPlan,
-        recurse_downstream: bool = True,
-        options: Optional[Options] = None,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: LaunchPlan,
+    recurse_downstream: bool = True,
+    options: Optional[Options] = None,
 ) -> _launch_plan_models.LaunchPlan:
     """
     :param entity_mapping:
@@ -298,6 +301,7 @@ def get_serializable_launch_plan(
         auth_role=options.auth_role or entity._auth_role or _common_models.AuthRole(),
         raw_output_data_config=raw or entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
         max_parallelism=options.max_parallelism or entity.max_parallelism,
+        security_context=options.security_context or entity.security_context,
     )
     lp_id = _identifier_model.Identifier(
         resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
@@ -320,9 +324,9 @@ def get_serializable_launch_plan(
 
 
 def get_serializable_node(
-        entity_mapping: OrderedDict,
-        settings: SerializationSettings,
-        entity: Node,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: Node,
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
@@ -464,9 +468,9 @@ def get_serializable_node(
 
 
 def get_serializable_branch_node(
-        entity_mapping: OrderedDict,
-        settings: SerializationSettings,
-        entity: FlyteLocalEntity,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
 ) -> BranchNodeModel:
     # We have to iterate through the blocks to convert the nodes from the internal Node type to the Node model type.
     # This was done to avoid having to create our own IfElseBlock object (i.e. condition.py just uses the model
@@ -486,17 +490,17 @@ def get_serializable_branch_node(
 
 
 def get_reference_spec(
-        entity_mapping: OrderedDict, settings: SerializationSettings, entity: ReferenceEntity
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: ReferenceEntity
 ) -> ReferenceSpec:
     template = ReferenceTemplate(entity.id, entity.reference.resource_type)
     return ReferenceSpec(template)
 
 
 def get_serializable(
-        entity_mapping: OrderedDict,
-        settings: SerializationSettings,
-        entity: FlyteLocalEntity,
-        options: Optional[Options] = None,
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: FlyteLocalEntity,
+    options: Optional[Options] = None,
 ) -> FlyteControlPlaneEntity:
     """
     The flytekit authoring code produces objects representing Flyte entities (tasks, workflows, etc.). In order to
@@ -553,7 +557,7 @@ def get_serializable(
 
 
 def gather_dependent_entities(
-        serialized: OrderedDict,
+    serialized: OrderedDict,
 ) -> Tuple[
     Dict[_identifier_model.Identifier, task_models.TaskTemplate],
     Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec],
