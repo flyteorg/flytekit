@@ -11,6 +11,7 @@ from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
+from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 from flytekit.types.structured.structured_dataset import StructuredDataset
@@ -119,7 +120,7 @@ def run(
 
         execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True)
 
-        print(execution)
+        _dump_flyte_remote_snippet(execution, project, domain)
     else:
         # TODO
         click.secho(wf())
@@ -152,12 +153,27 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn):
         elif python_type == int:
             value = int(value)
         elif python_type == StructuredDataset:
-            df_remote_location = create_upload_location_fn()
+            suffix = "00000.parquet"
+            df_remote_location = create_upload_location_fn(suffix=suffix)
             flyte_ctx = context_manager.FlyteContextManager.current_context()
             flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
-            value = StructuredDataset(uri=df_remote_location.native_url)
+            value = StructuredDataset(uri=df_remote_location.native_url[: -len(suffix)])
         else:
             raise ValueError(f"Unsupported type for argument {argument}")
 
         args[argument] = value
     return args
+
+
+def _dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
+    click.secho(
+        f"""
+In order to have programmatic access to the execution, use the following snippet:
+from flytekit.configuration import Config
+from flytekit.remote import FlyteRemote
+remote = FlyteRemote(Config.auto(), default_project="{project}", default_domain="{domain}")
+exec = remote.fetch_execution(name="{execution.id.name}")
+remote.sync(exec)
+print(exec.outputs)
+    """
+    )
