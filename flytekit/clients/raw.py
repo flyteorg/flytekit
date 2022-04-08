@@ -3,10 +3,12 @@ from __future__ import annotations
 import base64 as _base64
 import subprocess
 import time
+import typing
 from typing import Optional
 
 import grpc
 import requests as _requests
+from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
@@ -725,12 +727,14 @@ class RawSynchronousFlyteClient(object):
     ####################################################################################################################
 
     @_handle_rpc_error(retry=True)
-    def list_projects(self, project_list_request):
+    def list_projects(self, project_list_request: typing.Optional[ProjectListRequest] = None):
         """
         This will return a list of the projects registered with the Flyte Admin Service
         :param flyteidl.admin.project_pb2.ProjectListRequest project_list_request:
         :rtype: flyteidl.admin.project_pb2.Projects
         """
+        if project_list_request is None:
+            project_list_request = ProjectListRequest()
         return self._stub.ListProjects(project_list_request, metadata=self._metadata)
 
     @_handle_rpc_error()

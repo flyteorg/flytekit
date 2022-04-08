@@ -58,21 +58,20 @@ class Options(object):
     in a Flyte backend, and also when registering launch plans.
 
     Args:
-        raw_data_prefix: str -> remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-           ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
-           the data for offloaded types is stored.
         auth_role: Specifies the Kubernetes Service account,
            IAM role etc to be used. If not specified defaults will be used.
         labels: Custom labels to be applied to the execution resource
         annotations: Custom annotations to be applied to the execution resource
         security_context: Indicates security context for permissions triggered with this launch plan
         raw_output_data_config: Optional location of offloaded data for things like S3, etc.
+                remote prefix for storage location of the form ``s3://<bucket>/key...`` or
+           ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
+           the data for offloaded types is stored.
         max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
         notifications: List of notifications for this execution
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
 
-    raw_data_prefix: typing.Optional[str] = None
     auth_role: typing.Optional[common_models.AuthRole] = None
     labels: typing.Optional[common_models.Labels] = None
     annotations: typing.Optional[common_models.Annotations] = None
@@ -82,9 +81,19 @@ class Options(object):
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
 
+    @classmethod
+    def default_from(cls, k8s_service_account: typing.Optional[str] = None,
+                     raw_data_prefix: typing.Optional[str] = None) -> "Options":
+        return cls(
+            security_context=security.SecurityContext(
+                run_as=security.Identity(k8s_service_account=k8s_service_account)) if k8s_service_account else None,
+            raw_output_data_config=common_models.RawOutputDataConfig(
+                output_location_prefix=raw_data_prefix) if raw_data_prefix else None,
+        )
+
 
 def to_serializable_case(
-    entity_mapping: OrderedDict, settings: SerializationSettings, c: _core_wf.IfBlock
+        entity_mapping: OrderedDict, settings: SerializationSettings, c: _core_wf.IfBlock
 ) -> _core_wf.IfBlock:
     if c is None:
         raise ValueError("Cannot convert none cases to registrable")
@@ -93,7 +102,7 @@ def to_serializable_case(
 
 
 def to_serializable_cases(
-    entity_mapping: OrderedDict, settings: SerializationSettings, cases: List[_core_wf.IfBlock]
+        entity_mapping: OrderedDict, settings: SerializationSettings, cases: List[_core_wf.IfBlock]
 ) -> Optional[List[_core_wf.IfBlock]]:
     if cases is None:
         return None
@@ -104,7 +113,7 @@ def to_serializable_cases(
 
 
 def _fast_serialize_command_fn(
-    settings: SerializationSettings, task: PythonAutoContainerTask
+        settings: SerializationSettings, task: PythonAutoContainerTask
 ) -> Callable[[SerializationSettings], List[str]]:
     default_command = task.get_default_command(settings)
 
@@ -127,9 +136,9 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: FlyteLocalEntity,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: FlyteLocalEntity,
 ) -> task_models.TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -166,9 +175,9 @@ def get_serializable_task(
 
 
 def get_serializable_workflow(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: WorkflowBase,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: WorkflowBase,
 ) -> admin_workflow_models.WorkflowSpec:
     # TODO: Try to move up following config refactor - https://github.com/flyteorg/flyte/issues/2214
     from flytekit.remote.workflow import FlyteWorkflow
@@ -245,11 +254,11 @@ def get_serializable_workflow(
 
 
 def get_serializable_launch_plan(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: LaunchPlan,
-    recurse_downstream: bool = True,
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: LaunchPlan,
+        recurse_downstream: bool = True,
+        options: Optional[Options] = None,
 ) -> _launch_plan_models.LaunchPlan:
     """
     :param entity_mapping:
@@ -275,8 +284,6 @@ def get_serializable_launch_plan(
         options = Options()
 
     raw = None
-    if options.raw_data_prefix:
-        raw = common_models.RawOutputDataConfig(options.raw_data_prefix)
 
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
@@ -313,9 +320,9 @@ def get_serializable_launch_plan(
 
 
 def get_serializable_node(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: Node,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: Node,
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
@@ -457,9 +464,9 @@ def get_serializable_node(
 
 
 def get_serializable_branch_node(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: FlyteLocalEntity,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: FlyteLocalEntity,
 ) -> BranchNodeModel:
     # We have to iterate through the blocks to convert the nodes from the internal Node type to the Node model type.
     # This was done to avoid having to create our own IfElseBlock object (i.e. condition.py just uses the model
@@ -479,17 +486,17 @@ def get_serializable_branch_node(
 
 
 def get_reference_spec(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: ReferenceEntity
+        entity_mapping: OrderedDict, settings: SerializationSettings, entity: ReferenceEntity
 ) -> ReferenceSpec:
     template = ReferenceTemplate(entity.id, entity.reference.resource_type)
     return ReferenceSpec(template)
 
 
 def get_serializable(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: FlyteLocalEntity,
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: FlyteLocalEntity,
+        options: Optional[Options] = None,
 ) -> FlyteControlPlaneEntity:
     """
     The flytekit authoring code produces objects representing Flyte entities (tasks, workflows, etc.). In order to
@@ -546,7 +553,7 @@ def get_serializable(
 
 
 def gather_dependent_entities(
-    serialized: OrderedDict,
+        serialized: OrderedDict,
 ) -> Tuple[
     Dict[_identifier_model.Identifier, task_models.TaskTemplate],
     Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec],
