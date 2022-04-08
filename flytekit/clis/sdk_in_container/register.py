@@ -100,7 +100,7 @@ def run(
             functools.partial(client.create_upload_location, project=project, domain=domain),
             is_remote=True,
         )
-        md5, version = script_mode.hash_file(filename)
+        _, version = script_mode.hash_file(filename)
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
         wf = remote.register_script(
             wf_entity,

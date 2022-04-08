@@ -66,7 +66,7 @@ def compress_single_script(absolute_project_path: str, destination: str, version
             tar.add(os.path.join(tmp_dir, "code"), arcname="")
 
 
-def fast_register_single_script(version: str, wf_entity: WorkflowBase, full_remote_path: str):
+def fast_register_single_script(version: str, wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable):
     _, mod_name, _, script_full_path = extract_task_module(wf_entity)
     # Find project root by moving up the folder hierarchy until you cannot find a __init__.py file.
     source_path = _find_project_root(script_full_path)
@@ -77,7 +77,10 @@ def fast_register_single_script(version: str, wf_entity: WorkflowBase, full_remo
         compress_single_script(source_path, archive_fname, version, mod_name)
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()
-        flyte_ctx.file_access.put_data(archive_fname, full_remote_path)
+        md5, _ = hash_file(archive_fname)
+        upload_location = create_upload_location_fn(content_md5=md5)
+        flyte_ctx.file_access.put_data(archive_fname, upload_location.signed_url)
+        return upload_location
 
 
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
