@@ -977,7 +977,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def create_upload_location(
+    def get_upload_signed_url(
         self, project: str, domain: str, content_md5: bytes, filename: str = None, expires_in: datetime.timedelta = None
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
