@@ -5,6 +5,7 @@ but in Python object form.
 """
 from __future__ import annotations
 
+import functools
 import os
 import time
 import typing
@@ -235,9 +236,8 @@ class FlyteRemote(object):
         # TODO: Inspect branch nodes for launch plans
         for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
             if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
-                node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
-                    node.workflow_node.launchplan_ref
-                ).spec
+                x = self.client.get_launch_plan(node.workflow_node.launchplan_ref)
+                node_launch_plans[node.workflow_node.launchplan_ref] = x.spec
 
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
@@ -497,18 +497,25 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
+        _, _, _, fname = tracker.extract_task_module(entity)
+        _, md5_hex = script_mode.hash_file(fname)
         if version is None:
-            _, _, _, fname = tracker.extract_task_module(entity)
-            version = script_mode.hash_script_file(fname)
+            version = md5_hex
 
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
-        upload_location = self.client.create_upload_location(
-            project=project or self.default_project,
-            domain=domain or self.default_domain,
-            suffix=f"scriptmode-{version}.tar.gz",
+        upload_location = fast_register_single_script(
+            version,
+            entity,
+            functools.partial(
+                self.client.get_upload_signed_url,
+                project=project or self.default_project,
+                domain=domain or self.default_domain,
+                filename=f"scriptmode-{version}.tar.gz",
+            ),
         )
+
         serialization_settings = SerializationSettings(
             project=project,
             domain=domain,
@@ -519,7 +526,6 @@ class FlyteRemote(object):
                 distribution_location=upload_location.native_url,
             ),
         )
-        fast_register_single_script(version, entity, upload_location.signed_url)
 
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
@@ -641,6 +647,7 @@ class FlyteRemote(object):
                 project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
             )
         execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+
         if wait:
             return self.wait(execution)
         return execution

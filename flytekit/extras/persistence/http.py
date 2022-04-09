@@ -1,3 +1,4 @@
+import base64
 import os
 import pathlib
 
@@ -6,6 +7,7 @@ import requests
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.exceptions import user
 from flytekit.loggers import logger
+from flytekit.tools import script_mode
 
 
 class HttpPersistence(DataPersistence):
@@ -57,10 +59,14 @@ class HttpPersistence(DataPersistence):
         if recursive:
             raise user.FlyteAssertion("Recursive writing data to HTTP endpoint is not currently supported.")
 
+        md5, _ = script_mode.hash_file(from_path)
+        encoded_md5 = base64.b64encode(md5)
         with open(from_path, "+rb") as local_file:
             content = local_file.read()
             content_length = len(content)
-            rsp = requests.put(to_path, data=content, headers={"Content-Length": str(content_length)})
+            rsp = requests.put(
+                to_path, data=content, headers={"Content-Length": str(content_length), "Content-MD5": encoded_md5}
+            )
 
             if rsp.status_code != self._HTTP_OK:
                 raise user.FlyteValueException(

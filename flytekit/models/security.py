@@ -58,7 +58,7 @@ class Secret(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object: _sec.Secret) -> "Secret":
         return cls(
             group=pb2_object.group,
-            group_version=pb2_object.group_version,
+            group_version=pb2_object.group_version if pb2_object.group_version else None,
             key=pb2_object.key,
             mount_requirement=Secret.MountType(pb2_object.mount_requirement),
         )
@@ -99,10 +99,10 @@ class Identity(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object: _sec.Identity) -> "Identity":
         return cls(
-            iam_role=pb2_object.iam_role,
-            k8s_service_account=pb2_object.k8s_service_account,
+            iam_role=pb2_object.iam_role if pb2_object.iam_role else None,
+            k8s_service_account=pb2_object.k8s_service_account if pb2_object.k8s_service_account else None,
             oauth2_client=OAuth2Client.from_flyte_idl(pb2_object.oauth2_client)
-            if pb2_object.HasField("oauth2_client")
+            if pb2_object.oauth2_client and pb2_object.oauth2_client.ByteSize()
             else None,
         )
 
@@ -167,7 +167,9 @@ class SecurityContext(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object: _sec.SecurityContext) -> "SecurityContext":
         return cls(
-            run_as=Identity.from_flyte_idl(pb2_object.run_as) if pb2_object.HasField("run_as") else None,
+            run_as=Identity.from_flyte_idl(pb2_object.run_as)
+            if pb2_object.run_as and pb2_object.run_as.ByteSize() > 0
+            else None,
             secrets=[Secret.from_flyte_idl(s) for s in pb2_object.secrets] if pb2_object.secrets else None,
             tokens=[OAuth2TokenRequest.from_flyte_idl(t) for t in pb2_object.tokens] if pb2_object.tokens else None,
         )
