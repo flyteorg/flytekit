@@ -188,7 +188,11 @@ def test_task_template_security_context(sec_ctx):
         security_context=sec_ctx,
     )
     assert obj.security_context == sec_ctx
-    assert task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).security_context == obj.security_context
+    expected = obj.security_context
+    if sec_ctx:
+        if sec_ctx.run_as is None and sec_ctx.secrets is None and sec_ctx.tokens is None:
+            expected = None
+    assert task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).security_context == expected
 
 
 @pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)
