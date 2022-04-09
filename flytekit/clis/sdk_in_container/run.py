@@ -125,7 +125,7 @@ def run(
         inputs = _parse_workflow_inputs(
             click_ctx,
             wf_entity,
-            functools.partial(client.create_upload_location, project=project, domain=domain),
+            functools.partial(client.get_upload_signed_url, project=project, domain=domain),
             is_remote=True,
         )
         _, version = script_mode.hash_file(filename)
