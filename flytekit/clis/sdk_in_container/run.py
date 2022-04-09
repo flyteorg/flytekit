@@ -76,6 +76,22 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
     type=str,
     default="default",
 )
+@click.option(
+    "--wait-execution",
+    "wait_execution",
+    required=False,
+    is_flag=True,
+    default=False,
+    help="Whether wait for the execution to finish",
+)
+@click.option(
+    "--dump-snippet",
+    "dump_snippet",
+    required=False,
+    is_flag=True,
+    default=False,
+    help="Whether dump a code snippet instructing how to load the workflow execution using flyteremote",
+)
 @click.pass_context
 def run(
     click_ctx,
@@ -86,6 +102,8 @@ def run(
     destination_dir,
     image_config,
     service_account,
+    wait_execution,
+    dump_snippet,
 ):
     """
     Register command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
@@ -122,9 +140,15 @@ def run(
         )
 
         options = Options(AuthRole(kubernetes_service_account=service_account))
-        execution = remote.execute(wf, inputs=inputs, project=project, domain=domain, wait=True, options=options)
+        execution = remote.execute(
+            wf, inputs=inputs, project=project, domain=domain, wait=wait_execution, options=options
+        )
 
-        _dump_flyte_remote_snippet(execution, project, domain)
+        console_url = remote.generate_console_url(execution)
+        click.secho(f"Go to {console_url} to see execution in the console.")
+
+        if dump_snippet:
+            _dump_flyte_remote_snippet(execution, project, domain)
     else:
         inputs = _parse_workflow_inputs(
             click_ctx,

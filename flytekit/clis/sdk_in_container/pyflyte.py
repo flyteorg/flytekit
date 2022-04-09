@@ -5,7 +5,7 @@ from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAG
 from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
-from flytekit.clis.sdk_in_container.register import run
+from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.configuration.internal import LocalSDK
 

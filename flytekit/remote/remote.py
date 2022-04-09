@@ -15,10 +15,9 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit.clients import friendly
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, PlatformConfig, SerializationSettings
+from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, context_manager, tracker, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -1354,3 +1353,8 @@ class FlyteRemote(object):
                     utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
+
+    def generate_console_url(
+        self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+    ):
+        return f"http://localhost:30081/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
