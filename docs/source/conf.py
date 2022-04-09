@@ -79,11 +79,11 @@ autoapi_dirs = [
 #         autoapi_dirs.append(plugin_path)
 
 # print(f"AutoAPI dirs: {autoapi_dirs}")
-
-autoapi_root = "autoapi"
-
-# build the templated autosummary files
+autoapi_add_toctree_entry = False
+autoapi_keep_files = False
 autosummary_generate = True
+autoapi_template_dir = os.path.abspath("./_templates/autoapi")
+# print(f'AutoAPI template dir: {autoapi_template_dir}')
 
 autodoc_typehints = "description"
 
@@ -243,3 +243,14 @@ inheritance_edge_attrs = {
 }
 
 autoclass_content = "both"
+
+
+def skip_util_classes(app, what, name, obj, skip, options):
+    if what in ["module"]:
+        skip = True
+    print(f"Processed {obj} and decided to Skip: {skip}")
+    return skip
+
+
+def setup(sphinx):
+    sphinx.connect("autoapi-skip-member", skip_util_classes)
