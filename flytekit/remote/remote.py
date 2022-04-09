@@ -509,7 +509,7 @@ class FlyteRemote(object):
             version,
             entity,
             functools.partial(
-                self.client.create_upload_location,
+                self.client.get_upload_signed_url,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
                 filename=f"scriptmode-{version}.tar.gz",
