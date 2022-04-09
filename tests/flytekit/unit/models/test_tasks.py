@@ -188,9 +188,7 @@ def test_task_template_security_context(sec_ctx):
         security_context=sec_ctx,
     )
     assert obj.security_context == sec_ctx
-    assert text_format.MessageToString(obj.to_flyte_idl()) == text_format.MessageToString(
-        task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
-    )
+    assert task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).security_context == obj.security_context
 
 
 @pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)
