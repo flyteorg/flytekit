@@ -55,6 +55,8 @@ def compress_single_script(absolute_project_path: str, destination: str, version
             if init_file.exists:
                 shutil.copy(init_file, Path(os.path.join(tmp_dir, "code", script_relative_path, "__init__.py")))
 
+        # Ensure destination path exists to cover the case of a single file and no modules.
+        os.makedirs(destination_path, exist_ok=True)
         script_file = Path(source_path, f"{pkgs[-1]}.py")
         script_file_destination = Path(destination_path, f"{pkgs[-1]}.py")
         # Build the final script relative path and copy it to a known place.
