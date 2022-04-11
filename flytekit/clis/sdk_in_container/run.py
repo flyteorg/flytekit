@@ -11,8 +11,8 @@ from flytekit.clients import friendly
 from flytekit.configuration import Config, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
-from flytekit.core.workflow import WorkflowBase
 from flytekit.core.type_engine import TypeEngine
+from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models.common import AuthRole
 from flytekit.remote.executions import FlyteWorkflowExecution
