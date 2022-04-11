@@ -154,7 +154,12 @@ def run(
 
         options = Options(AuthRole(kubernetes_service_account=service_account))
         execution = remote.execute(
-            wf, inputs=inputs, project=project, domain=domain, wait=wait_execution, options=options,
+            wf,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            wait=wait_execution,
+            options=options,
         )
 
         console_url = remote.generate_console_url(execution)
@@ -216,6 +221,9 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
         elif is_dataclass(python_type):
             dataclass_type = python_type
             if is_remote:
+                # This is a workaround to support dataclasses in a remote execution. Currently FlyteRemote._execute
+                # guesses the types based on the workflow's literal types, so this uses that same mechanism to make
+                # sure the correct datatype is being created here
                 dataclass_type = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
             value = dataclass_type(**json.loads(value))
         elif python_type == pd.DataFrame:
