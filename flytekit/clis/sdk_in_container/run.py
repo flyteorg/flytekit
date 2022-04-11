@@ -2,6 +2,7 @@ import functools
 import importlib
 import json
 import os
+from dataclasses import is_dataclass
 from typing import Callable, Optional
 
 import click
@@ -202,8 +203,11 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = float(value)
         elif python_type == bool:
             value = value in {"True", "true", "1"}
-        elif python_type.__origin__ in {list, dict}:
+        elif getattr(python_type, "__origin__", None) in {list, dict}:
             value = json.loads(value)
+        elif is_dataclass(python_type):
+            python_type_from_type_engine = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
+            value = python_type_from_type_engine(**json.loads(value))
         elif python_type == pd.DataFrame:
             if is_remote:
                 assert create_upload_location_fn
@@ -216,7 +220,7 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             else:
                 value = pd.read_parquet(value)
         else:
-            raise ValueError(f"Unsupported type for argument {argument}")
+            raise ValueError(f"Unsupported type '{python_type}' for argument {argument}")
 
         args[argument] = value
     return args
