@@ -4,16 +4,16 @@ import json
 import os
 from dataclasses import is_dataclass
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, Optional, cast
 
 import click
 import pandas as pd
+from dataclasses_json import DataClassJsonMixin
 
 from flytekit.clients import friendly
 from flytekit.configuration import Config, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
-from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteValidationException
 from flytekit.models.common import AuthRole
@@ -132,6 +132,7 @@ def run(
             functools.partial(client.get_upload_signed_url, project=project, domain=domain),
             is_remote=True,
         )
+
         _, version = script_mode.hash_file(filename)
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
 
@@ -160,6 +161,9 @@ def run(
             domain=domain,
             wait=wait_execution,
             options=options,
+            # We need to amend the typehints to account for the fact that in the remote case
+            # we change the type of parameters of type pandas dataframes to StrucuredDataset.
+            # type_hints=_amend_type_hints(inputs, wf_entity.python_interface.inputs),
         )
 
         console_url = remote.generate_console_url(execution)
@@ -220,12 +224,7 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = json.loads(value)
         elif is_dataclass(python_type):
             dataclass_type = python_type
-            if is_remote:
-                # This is a workaround to support dataclasses in a remote execution. Currently FlyteRemote._execute
-                # guesses the types based on the workflow's literal types, so this uses that same mechanism to make
-                # sure the correct datatype is being created here
-                dataclass_type = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
-            value = dataclass_type(**json.loads(value))
+            value = cast(DataClassJsonMixin, dataclass_type).from_json(value)
         elif python_type == pd.DataFrame:
             if is_remote:
                 assert create_upload_location_fn
@@ -257,3 +256,14 @@ remote.sync(exec)
 print(exec.outputs)
     """
     )
+
+
+def _amend_type_hints(parsed_inputs: Dict[str, Any], entity_inputs: Dict[str, Any]):
+    type_hints = {}
+    for k, v in parsed_inputs.items():
+        type_v = type(v)
+        if type_v == StructuredDataset:
+            type_hints[k] = StructuredDataset
+        else:
+            type_hints[k] = type_v
+    return type_hints
