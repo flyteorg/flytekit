@@ -154,7 +154,7 @@ def run(
 
         options = Options(AuthRole(kubernetes_service_account=service_account))
         execution = remote.execute(
-            wf, inputs=inputs, project=project, domain=domain, wait=wait_execution, options=options
+            wf, inputs=inputs, project=project, domain=domain, wait=wait_execution, options=options,
         )
 
         console_url = remote.generate_console_url(execution)
@@ -168,7 +168,8 @@ def run(
             wf_entity,
             is_remote=False,
         )
-        click.secho(wf_entity(**inputs))
+        output = wf_entity(**inputs)
+        click.echo(output)
 
 
 def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
@@ -203,14 +204,20 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
         elif python_type == float:
             value = float(value)
         elif python_type == bool:
-            value = value in {"True", "true", "1"}
+            true_values = {"TRUE", "True", "true", "1"}
+            bool_values = true_values.union({"FALSE", "False", "false", "0"})
+            if value not in bool_values:
+                raise ValueError(f"bool type expected one of {bool_values}, found '{value}'")
+            value = value in true_values
         elif python_type == datetime:
             value = datetime.fromtimestamp(int(value)) if value.isnumeric() else datetime.fromisoformat(value)
         elif getattr(python_type, "__origin__", None) in {list, dict}:
             value = json.loads(value)
         elif is_dataclass(python_type):
-            python_type_from_type_engine = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
-            value = python_type_from_type_engine(**json.loads(value))
+            dataclass_type = python_type
+            if is_remote:
+                dataclass_type = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
+            value = dataclass_type(**json.loads(value))
         elif python_type == pd.DataFrame:
             if is_remote:
                 assert create_upload_location_fn
