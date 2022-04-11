@@ -51,7 +51,6 @@ if level_from_env is not None:
 else:
     ch.setLevel(logging.WARNING)
 
-# Consider this API to be beta
 for log_name, child_logger in child_loggers.items():
     env_var = f"{LOGGING_ENV_VAR}_{log_name.upper()}"
     level_from_env = os.getenv(env_var)

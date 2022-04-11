@@ -1,10 +1,13 @@
+import pandas as pd
+import pyspark
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import new_spark_session
+from pyspark.sql import SparkSession
 
 import flytekit
-from flytekit import task
+from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 
 
 def test_spark_task():
@@ -53,3 +56,12 @@ def test_new_spark_session():
     assert ("spark.master", "local[*]") in configs
     assert ("spark1", "1") in configs
     assert ("spark2", "2") in configs
+
+
+def test_to_html():
+    spark = SparkSession.builder.getOrCreate()
+    df = spark.createDataFrame([("Bob", 10)], ["name", "age"])
+    sd = StructuredDataset(dataframe=df)
+    tf = StructuredDatasetTransformerEngine()
+    output = tf.to_html(FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame)
+    assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output

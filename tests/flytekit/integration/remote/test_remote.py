@@ -83,10 +83,10 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
     poll_interval = datetime.timedelta(seconds=1)
     time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
 
-    execution = remote.sync_workflow_execution(execution, sync_nodes=True)
+    execution = remote.sync_execution(execution, sync_nodes=True)
     while datetime.datetime.utcnow() < time_to_give_up:
 
-        if execution.is_complete:
+        if execution.is_done:
             break
 
         with pytest.raises(
@@ -95,7 +95,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
             execution.outputs
 
         time.sleep(poll_interval.total_seconds())
-        execution = remote.sync_workflow_execution(execution, sync_nodes=True)
+        execution = remote.sync_execution(execution, sync_nodes=True)
 
         if execution.node_executions:
             assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEEDED
@@ -195,7 +195,7 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
 
-    flyte_workflow_execution = remote.fetch_workflow_execution(name=execution.id.name)
+    flyte_workflow_execution = remote.fetch_execution(name=execution.id.name)
     assert execution.inputs == flyte_workflow_execution.inputs
     assert execution.outputs == flyte_workflow_execution.outputs
 

@@ -59,7 +59,7 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
 
     @property
     def location(self) -> str:
-        n, _, _ = extract_task_module(self)
+        n, _, _, _ = extract_task_module(self)
         return n
 
     @property
@@ -216,11 +216,11 @@ class _ModuleSanitizer(object):
 _mod_sanitizer = _ModuleSanitizer()
 
 
-def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, str]:
+def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, str, str]:
     """
     Returns the task-name, absolute module and the string name of the callable.
     :param f: A task or any other callable
-    :return: [name to use: str, module_name: str, function_name: str]
+    :return: [name to use: str, module_name: str, function_name: str, full_path: str]
     """
 
     if isinstance(f, TrackedInstance):
@@ -237,7 +237,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         name = f.__name__.split(".")[-1]
 
     if mod_name == "__main__":
-        return name, "", name
+        return name, "", name, mod.__file__
 
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (
@@ -247,4 +247,4 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         # We only replace the mod_name if it is more specific, else we already have a fully resolved path
         if len(new_mod_name) > len(mod_name):
             mod_name = new_mod_name
-    return f"{mod_name}.{name}", mod_name, name
+    return f"{mod_name}.{name}", mod_name, name, mod.__file__

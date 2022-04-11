@@ -195,10 +195,10 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         from flytekit.core.python_function_task import PythonFunctionTask
 
         if isinstance(task, PythonFunctionTask):
-            _, m, t = extract_task_module(task.task_function)
+            _, m, t, _ = extract_task_module(task.task_function)
             return ["task-module", m, "task-name", t]
         if isinstance(task, TrackedInstance):
-            _, m, t = extract_task_module(task)
+            _, m, t, _ = extract_task_module(task)
             return ["task-module", m, "task-name", t]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:

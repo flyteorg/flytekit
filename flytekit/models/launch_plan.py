@@ -1,9 +1,12 @@
+import typing
+
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import schedule as _schedule
+from flytekit.models import security
 from flytekit.models.core import identifier as _identifier
 
 
@@ -118,7 +121,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         annotations: _common.Annotations,
         auth_role: _common.AuthRole,
         raw_output_data_config: _common.RawOutputDataConfig,
-        max_parallelism=None,
+        max_parallelism: typing.Optional[int] = None,
+        security_context: typing.Optional[security.SecurityContext] = None,
     ):
         """
         The spec for a Launch Plan.
@@ -137,6 +141,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
+        :param security_context: This can be used to add security information to a LaunchPlan, which will be used by
+                                 every execution
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -147,6 +153,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._auth_role = auth_role
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
+        self._security_context = security_context
 
     @property
     def workflow_id(self):
@@ -212,8 +219,12 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._raw_output_data_config
 
     @property
-    def max_parallelism(self) -> int:
+    def max_parallelism(self) -> typing.Optional[int]:
         return self._max_parallelism
+
+    @property
+    def security_context(self) -> typing.Optional[security.SecurityContext]:
+        return self._security_context
 
     def to_flyte_idl(self):
         """
@@ -229,6 +240,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             auth_role=self.auth_role.to_flyte_idl(),
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
             max_parallelism=self.max_parallelism,
+            security_context=self.security_context.to_flyte_idl() if self.security_context else None,
         )
 
     @classmethod
@@ -258,6 +270,9 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             auth_role=auth_role,
             raw_output_data_config=_common.RawOutputDataConfig.from_flyte_idl(pb2.raw_output_data_config),
             max_parallelism=pb2.max_parallelism,
+            security_context=security.SecurityContext.from_flyte_idl(pb2.security_context)
+            if pb2.security_context
+            else None,
         )
 
 
