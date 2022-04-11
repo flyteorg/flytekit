@@ -79,7 +79,7 @@ autoapi_dirs = [
 #         autoapi_dirs.append(plugin_path)
 
 # print(f"AutoAPI dirs: {autoapi_dirs}")
-autoapi_add_toctree_entry = False
+autoapi_add_toctree_entry = True
 autoapi_keep_files = False
 autosummary_generate = True
 autoapi_template_dir = os.path.abspath("./_templates/autoapi")

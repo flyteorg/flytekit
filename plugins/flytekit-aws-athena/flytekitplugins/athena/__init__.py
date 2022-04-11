@@ -1,9 +1,13 @@
 """
-This module provides plugin classes related to AWS Athena configuration.
+====================
+AWS Athena plugin
+====================
+AWS Athena plugin
 
 .. currentmodule:: flytekitplugins.athena
 
 .. autosummary::
+    :template: custom.rst
 
    AthenaConfig
    AthenaTask

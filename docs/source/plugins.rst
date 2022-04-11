@@ -1,5 +1,0 @@
-#######
-Plugins
-#######
-
-.. toctree:: autoapi/index
