@@ -5,6 +5,7 @@ but in Python object form.
 """
 from __future__ import annotations
 
+import functools
 import os
 import time
 import typing
@@ -17,8 +18,8 @@ from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, ImageConfig, SerializationSettings
-from flytekit.core import constants, context_manager, utils
+from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.core import constants, context_manager, tracker, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -54,6 +55,8 @@ from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
+from flytekit.tools import script_mode
+from flytekit.tools.script_mode import fast_register_single_script
 from flytekit.tools.translator import FlyteLocalEntity, Options, get_serializable, get_serializable_launch_plan
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
@@ -233,9 +236,8 @@ class FlyteRemote(object):
         # TODO: Inspect branch nodes for launch plans
         for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
             if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
-                node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
-                    node.workflow_node.launchplan_ref
-                ).spec
+                x = self.client.get_launch_plan(node.workflow_node.launchplan_ref)
+                node_launch_plans[node.workflow_node.launchplan_ref] = x.spec
 
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
@@ -382,15 +384,25 @@ class FlyteRemote(object):
                         remote_logger.debug(f"Skipping registration of Workflow (remote workflow), name: {entity.name}")
                         continue
                     ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
-                    self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
-                elif isinstance(cp_entity, launch_plan_models.LaunchPlanSpec):
+                    try:
+                        self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
+                    except FlyteEntityAlreadyExistsException:
+                        remote_logger.info(f"{entity.name} already exists")
+                    # Let us also create a default launch-plan, ideally the default launchplan should be added
+                    # to the orderedDict, but we do not.
+                    default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+                    lp_entity = get_serializable_launch_plan(
+                        OrderedDict(), settings, default_lp, recurse_downstream=False, options=options
+                    )
+                    self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
+                elif isinstance(cp_entity, launch_plan_models.LaunchPlan):
                     if isinstance(entity, (FlyteLaunchPlan, ReferenceLaunchPlan)):
                         remote_logger.debug(
                             f"Skipping registration of LaunchPlan (remote launchplan), name: {entity.name}"
                         )
                         continue
                     ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, settings)
-                    self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity)
+                    self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
                 elif isinstance(
                     cp_entity,
                     (
@@ -407,6 +419,7 @@ class FlyteRemote(object):
                 remote_logger.info(f"{entity.name} already exists")
             except Exception as e:
                 remote_logger.info(f"Failed to register entity {entity.name} with error {e}")
+                raise
         return ident
 
     def register_task(
@@ -460,6 +473,61 @@ class FlyteRemote(object):
             remote_logger.debug("Created default launch plan for Workflow")
 
         return self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
+
+    def register_script(
+        self,
+        entity: WorkflowBase,
+        image_config: typing.Optional[ImageConfig] = None,
+        version: typing.Optional[str] = None,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        destination_dir: str = ".",
+        default_launch_plan: typing.Optional[bool] = True,
+        options: typing.Optional[Options] = None,
+    ) -> FlyteWorkflow:
+        """
+        Use this method to register a workflow via script mode.
+        :param destination_dir:
+        :param domain:
+        :param project:
+        :param image_config:
+        :param version: version for the entity to be registered as
+        :param entity: The workflow to be registered
+        :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
+        :param options: Additional execution options that can be configured for the default launchplan
+        :return:
+        """
+        _, _, _, fname = tracker.extract_task_module(entity)
+        _, md5_hex = script_mode.hash_file(fname)
+        if version is None:
+            version = md5_hex
+
+        if image_config is None:
+            image_config = ImageConfig.auto_default_image()
+
+        upload_location = fast_register_single_script(
+            version,
+            entity,
+            functools.partial(
+                self.client.get_upload_signed_url,
+                project=project or self.default_project,
+                domain=domain or self.default_domain,
+                filename=f"scriptmode-{version}.tar.gz",
+            ),
+        )
+
+        serialization_settings = SerializationSettings(
+            project=project,
+            domain=domain,
+            image_config=image_config,
+            fast_serialization_settings=FastSerializationSettings(
+                enabled=True,
+                destination_dir=destination_dir,
+                distribution_location=upload_location.native_url,
+            ),
+        )
+
+        return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
     def register_launch_plan(
         self,
@@ -566,6 +634,7 @@ class FlyteRemote(object):
                     raw_output_data_config=options.raw_output_data_config,
                     auth_role=options.auth_role,
                     max_parallelism=options.max_parallelism,
+                    security_context=options.security_context,
                 ),
                 literal_inputs,
             )
@@ -578,6 +647,7 @@ class FlyteRemote(object):
                 project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
             )
         execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+
         if wait:
             return self.wait(execution)
         return execution
@@ -1290,3 +1360,8 @@ class FlyteRemote(object):
                     utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
+
+    def generate_console_url(
+        self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+    ):
+        return f"http://localhost:30081/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
