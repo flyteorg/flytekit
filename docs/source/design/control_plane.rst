@@ -171,7 +171,6 @@ Another example that dynamically creates a launch plan for the ``my_remote_wf`` 
     )
     launch_plan = LaunchPlan.get_or_create(name="my_launch_plan", workflow=flyte_workflow)
 
-
 ********************
 Registering Entities
 ********************
