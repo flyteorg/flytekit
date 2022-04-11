@@ -191,6 +191,8 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = int(value)
         elif python_type == float:
             value = float(value)
+        elif python_type == bool:
+            value = value in {"True", "true", "1"}
         elif python_type.__origin__ in {list, dict}:
             value = json.loads(value)
         elif python_type == pd.DataFrame:
