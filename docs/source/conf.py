@@ -68,11 +68,12 @@ autoapi_type = "python"
 underlying_path_to_check = "flytekitplugins"
 
 autoapi_dirs = []
+skip_plugins = set(["sagemaker"])
 
 for possible_plugin_dir in os.listdir(plugins_dir):
     dir_path = os.path.abspath((os.path.join(plugins_dir, possible_plugin_dir)))
     plugin_path = os.path.abspath(os.path.join(dir_path, underlying_path_to_check))
-    if os.path.isdir(dir_path) and os.path.exists(plugin_path):
+    if os.path.isdir(dir_path) and os.path.exists(plugin_path) and not any([s in dir_path for s in skip_plugins]):
         autoapi_dirs.append(plugin_path)
 
 # print(f"AutoAPI dirs: {autoapi_dirs}")

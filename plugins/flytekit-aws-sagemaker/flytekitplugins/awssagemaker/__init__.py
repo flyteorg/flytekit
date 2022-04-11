@@ -7,6 +7,7 @@ AWS Sagemaker plugin
 .. currentmodule:: flytekitplugins.awssagemaker
 
 .. autosummary::
+    :template: custom.rst
 
     AlgorithmName
     AlgorithmSpecification
