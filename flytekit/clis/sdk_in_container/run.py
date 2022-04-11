@@ -3,6 +3,7 @@ import importlib
 import json
 import os
 from dataclasses import is_dataclass
+from datetime import datetime
 from typing import Callable, Optional
 
 import click
@@ -203,6 +204,8 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = float(value)
         elif python_type == bool:
             value = value in {"True", "true", "1"}
+        elif python_type == datetime:
+            value = datetime.fromtimestamp(int(value)) if value.isnumeric() else datetime.fromisoformat(value)
         elif getattr(python_type, "__origin__", None) in {list, dict}:
             value = json.loads(value)
         elif is_dataclass(python_type):
