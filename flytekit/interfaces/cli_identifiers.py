@@ -47,7 +47,7 @@ class Identifier(_core_identifier.Identifier):
         resource_type, project, domain, name, version = segments
 
         if resource_type not in cls._STRING_TO_TYPE_MAP:
-            raise _user_exceptions.FlyteValueException(
+            raise _user_exceptions.FlyteValueException(resource_type,
                 "The provided string could not be parsed. The first element of an identifier must be one of: {}. "
                 "Received: {}".format(list(cls._STRING_TO_TYPE_MAP.keys()), resource_type)
             )
