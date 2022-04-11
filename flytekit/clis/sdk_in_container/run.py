@@ -8,8 +8,8 @@ import pandas as pd
 
 from flytekit.clients import friendly
 from flytekit.configuration import Config, ImageConfig, PlatformConfig, SerializationSettings
+from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
-from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models.common import AuthRole
@@ -66,7 +66,7 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
     multiple=True,
     type=click.UNPROCESSED,
     callback=ImageConfig.validate_image,
-    default=["ghcr.io/flyteorg/flytekit:py3.9-latest"],
+    default=[DefaultImages._DEFAULT_IMAGES[DefaultImages.PYTHON_3_9]],
     help="Image used to register and run.",
 )
 @click.option(
@@ -155,7 +155,7 @@ def run(
             wf_entity,
             is_remote=False,
         )
-        print(wf_entity(**inputs))
+        click.secho(wf_entity(**inputs))
 
 
 def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
@@ -181,7 +181,7 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
         if argument not in wf_entity.interface.inputs:
             raise FlyteValidationException(f"argument '{argument}' is not listed as a parameter of the workflow")
 
-        python_type = TypeEngine.guess_python_type(wf_entity.interface.inputs[argument].type)
+        python_type = wf_entity.python_interface.inputs[argument]
 
         if python_type == str:
             value = value
@@ -189,7 +189,7 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = int(value)
         elif python_type == float:
             value = float(value)
-        elif python_type == StructuredDataset:
+        elif python_type == pd.DataFrame:
             if is_remote:
                 assert create_upload_location_fn
                 filename = "00000.parquet"
