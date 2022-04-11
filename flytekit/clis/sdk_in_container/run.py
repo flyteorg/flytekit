@@ -16,12 +16,18 @@ from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteValidationException
+from flytekit.models import literals
 from flytekit.models.common import AuthRole
+from flytekit.models.types import StructuredDatasetType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.translator import Options
-from flytekit.types.structured.structured_dataset import StructuredDataset
+from flytekit.types.structured.structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
+)
 
 
 @click.command(
@@ -126,11 +132,16 @@ def run(
     if is_remote:
         config_obj = PlatformConfig.auto()
         client = friendly.SynchronousFlyteClient(config_obj)
+        get_upload_url_fn = functools.partial(client.get_upload_signed_url, project=project, domain=domain)
         inputs = _parse_workflow_inputs(
             click_ctx,
             wf_entity,
-            functools.partial(client.get_upload_signed_url, project=project, domain=domain),
+            get_upload_url_fn,
             is_remote=True,
+        )
+
+        StructuredDatasetTransformerEngine.register(
+            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
         )
 
         _, version = script_mode.hash_file(filename)
@@ -227,13 +238,15 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = cast(DataClassJsonMixin, dataclass_type).from_json(value)
         elif python_type == pd.DataFrame:
             if is_remote:
-                assert create_upload_location_fn
-                filename = "00000.parquet"
-                md5, _ = script_mode.hash_file(value)
-                df_remote_location = create_upload_location_fn(filename=filename, content_md5=md5)
-                flyte_ctx = context_manager.FlyteContextManager.current_context()
-                flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
-                value = StructuredDataset(uri=df_remote_location.native_url[: -len(filename)])
+                ...
+                # assert create_upload_location_fn
+                # filename = "00000.parquet"
+                # md5, _ = script_mode.hash_file(value)
+                # df_remote_location = create_upload_location_fn(filename=filename, content_md5=md5)
+                # flyte_ctx = context_manager.FlyteContextManager.current_context()
+                # flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
+                # # value = StructuredDataset(uri=df_remote_location.native_url[: -len(filename)])
+                # value = pd.Data
             else:
                 value = pd.read_parquet(value)
         else:
@@ -265,5 +278,34 @@ def _amend_type_hints(parsed_inputs: Dict[str, Any], entity_inputs: Dict[str, An
         if type_v == StructuredDataset:
             type_hints[k] = StructuredDataset
         else:
-            type_hints[k] = type_v
+            type_hints[k] = entity_inputs[k]
     return type_hints
+
+
+PARQUET = "parquet"
+
+
+class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
+    def __init__(self, create_upload_fn):
+        super().__init__(pd.DataFrame, "remote", PARQUET)
+        self._create_upload_fn = create_upload_fn
+
+    def encode(
+        self,
+        ctx: context_manager.FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
+    ) -> literals.StructuredDataset:
+        local_path = structured_dataset.dataframe
+
+        filename = "00000.parquet"
+        md5, _ = script_mode.hash_file(local_path)
+        df_remote_location = self._create_upload_fn(filename=filename, content_md5=md5)
+        flyte_ctx = context_manager.FlyteContextManager.current_context()
+        flyte_ctx.file_access.put_data(local_path, df_remote_location.signed_url)
+
+        structured_dataset_type.format = PARQUET
+        return literals.StructuredDataset(
+            uri=df_remote_location.native_url[: -len(filename)],
+            metadata=literals.StructuredDatasetMetadata(structured_dataset_type),
+        )
