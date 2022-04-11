@@ -49,7 +49,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_mo
             outputs=output_bindings,
         )
         self._flyte_nodes = nodes
-        self._python_interface = None
 
         # Optional things that we save for ease of access when promoting from a model or CompiledWorkflowClosure
         self._subworkflows = subworkflows
