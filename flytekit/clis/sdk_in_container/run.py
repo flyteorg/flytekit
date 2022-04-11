@@ -106,7 +106,7 @@ def run(
     dump_snippet,
 ):
     """
-    Register command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
+    Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
     or any interactive environment (e.g. Jupyter notebooks).
     """
     split_input = file_and_workflow.split(":")
