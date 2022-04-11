@@ -177,7 +177,7 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
 def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Optional[Callable] = None, is_remote=False):
     args = {}
     for i in range(0, len(click_ctx.args), 2):
-        argument = click_ctx.args[i][2:]
+        argument = click_ctx.args[i][2:].replace("-", "_")
         value = click_ctx.args[i + 1]
 
         if argument not in wf_entity.interface.inputs:
