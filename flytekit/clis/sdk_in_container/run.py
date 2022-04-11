@@ -1,5 +1,6 @@
 import functools
 import importlib
+import json
 import os
 from typing import Callable, Optional
 
@@ -11,6 +12,7 @@ from flytekit.configuration import Config, ImageConfig, PlatformConfig, Serializ
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.workflow import WorkflowBase
+from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models.common import AuthRole
 from flytekit.remote.executions import FlyteWorkflowExecution
@@ -189,6 +191,8 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = int(value)
         elif python_type == float:
             value = float(value)
+        elif python_type.__origin__ in {list, dict}:
+            value = json.loads(value)
         elif python_type == pd.DataFrame:
             if is_remote:
                 assert create_upload_location_fn
