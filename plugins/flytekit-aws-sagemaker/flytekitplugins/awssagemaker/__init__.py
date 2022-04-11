@@ -1,3 +1,65 @@
+"""
+========================
+AWS Sagemaker plugin
+========================
+AWS Sagemaker plugin
+
+.. currentmodule:: flytekitplugins.awssagemaker
+
+.. autosummary::
+
+    AlgorithmName
+    AlgorithmSpecification
+    CategoricalParameterRange
+    ContinuousParameterRange
+    DISTRIBUTED_TRAINING_CONTEXT_KEY
+    DistributedProtocol
+    DistributedTrainingContext
+    HPOJob
+    HyperparameterScalingType
+    HyperparameterTuningJobConfig
+    HyperparameterTuningObjective
+    HyperparameterTuningObjectiveType
+    HyperparameterTuningStrategy
+    InputContentType
+    InputMode
+    IntegerParameterRange
+    ParameterRangeOneOf
+    SagemakerBuiltinAlgorithmsTask
+    SagemakerCustomTrainingTask
+    SagemakerHPOTask
+    SagemakerTrainingJobConfig
+    TrainingJobEarlyStoppingType
+    TrainingJobResourceConfig
+"""
+
+__all__ = [
+    "AlgorithmName",
+    "AlgorithmSpecification",
+    "CategoricalParameterRange",
+    "ContinuousParameterRange",
+    "DISTRIBUTED_TRAINING_CONTEXT_KEY",
+    "DistributedProtocol",
+    "DistributedTrainingContext",
+    "HPOJob",
+    "HyperparameterScalingType",
+    "HyperparameterTuningJobConfig",
+    "HyperparameterTuningObjective",
+    "HyperparameterTuningObjectiveType",
+    "HyperparameterTuningStrategy",
+    "InputContentType",
+    "InputMode",
+    "IntegerParameterRange",
+    "ParameterRangeOneOf",
+    "SagemakerBuiltinAlgorithmsTask",
+    "SagemakerCustomTrainingTask",
+    "SagemakerHPOTask",
+    "SagemakerTrainingJobConfig",
+    "TrainingJobEarlyStoppingType",
+    "TrainingJobResourceConfig",
+]
+
+
 from flytekitplugins.awssagemaker.models.hpo_job import (
     HyperparameterTuningJobConfig,
     HyperparameterTuningObjective,

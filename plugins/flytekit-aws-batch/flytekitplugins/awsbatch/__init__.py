@@ -1,5 +1,8 @@
 """
-This module provides plugin classes related to AWSBatch configuration.
+========================
+AWS Batch plugin
+========================
+AWS Batch plugin
 
 .. currentmodule:: flytekitplugins.awsbatch
 
