@@ -13,7 +13,7 @@ from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import WorkflowBase
-from flytekit.exceptions.user import FlyteValidationException
+from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteValidationException
 from flytekit.models.common import AuthRole
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
@@ -132,14 +132,23 @@ def run(
         )
         _, version = script_mode.hash_file(filename)
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
-        wf = remote.register_script(
-            wf_entity,
-            project=project,
-            domain=domain,
-            image_config=image_config,
-            destination_dir=destination_dir,
-            version=version,
-        )
+
+        try:
+            wf = remote.fetch_workflow(
+                project=project,
+                domain=domain,
+                name=wf_entity.name,
+                version=version,
+            )
+        except FlyteEntityNotExistException:
+            wf = remote.register_script(
+                wf_entity,
+                project=project,
+                domain=domain,
+                image_config=image_config,
+                destination_dir=destination_dir,
+                version=version,
+            )
 
         options = Options(AuthRole(kubernetes_service_account=service_account))
         execution = remote.execute(
