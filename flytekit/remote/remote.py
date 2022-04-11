@@ -732,6 +732,7 @@ class FlyteRemote(object):
             The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
+        type_hints = type_hints or entity.python_interface
         if isinstance(entity, FlyteTask) or isinstance(entity, FlyteLaunchPlan):
             return self.execute_remote_task_lp(
                 entity=entity,
