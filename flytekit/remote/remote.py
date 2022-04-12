@@ -1374,11 +1374,12 @@ class FlyteRemote(object):
 
         :return:
         """
-        if self.client.public_client_config and self.client.public_client_config.service_http_endpoint:
-            return self.client.public_client_config.service_http_endpoint
-
         protocol = "http" if self.config.platform.insecure else "https"
-        return protocol + f"://{self.config.platform.endpoint}"
+        # We're going to hardcode the console endpoint while we figure out a solution to the problem of loading the
+        # service http endpoint from admin.
+        # N.B.: this assumes we are running single binary, which exposes port 30080 for console. The intent here is
+        # to ensure that the urls produced in the getting started guide point to the correct place.
+        return protocol + "://{localhost:30080}"
 
     def generate_console_url(
         self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
