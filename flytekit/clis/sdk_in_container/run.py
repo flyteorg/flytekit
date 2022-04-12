@@ -161,7 +161,7 @@ def run(
         if service_account:
             # options are only passed for the execution. This is to prevent errors when registering a duplicate workflow
             # It is assumed that the users expectations is to override the service account only for the execution
-            options = Options(AuthRole(kubernetes_service_account=service_account))
+            options = Options.default_from(k8s_service_account=service_account)
 
         execution = remote.execute(
             wf,
