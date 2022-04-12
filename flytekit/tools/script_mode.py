@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 import shutil
@@ -6,12 +7,14 @@ import tempfile
 import typing
 from pathlib import Path
 
+from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
+
 from flytekit.core import context_manager
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.workflow import WorkflowBase
 
 
-def compress_single_script(absolute_project_path: str, destination: str, version: str, full_module_name: str):
+def compress_single_script(absolute_project_path: str, destination: str, full_module_name: str):
     """
     Compresses the single script while maintaining the folder structure for that file.
 
@@ -68,21 +71,22 @@ def compress_single_script(absolute_project_path: str, destination: str, version
             tar.add(os.path.join(tmp_dir, "code"), arcname="")
 
 
-def fast_register_single_script(version: str, wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable):
+def fast_register_single_script(wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable) -> (
+        _data_proxy_pb2.CreateUploadLocationResponse, str):
     _, mod_name, _, script_full_path = extract_task_module(wf_entity)
     # Find project root by moving up the folder hierarchy until you cannot find a __init__.py file.
     source_path = _find_project_root(script_full_path)
 
     # Open a temp directory and dump the contents of the digest.
     with tempfile.TemporaryDirectory() as tmp_dir:
-        archive_fname = os.path.join(tmp_dir, f"{version}.tar.gz")
-        compress_single_script(source_path, archive_fname, version, mod_name)
+        archive_fname = os.path.join(tmp_dir, "script_mode.tar.gz")
+        compress_single_script(source_path, archive_fname, mod_name)
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         md5, _ = hash_file(archive_fname)
         upload_location = create_upload_location_fn(content_md5=md5)
         flyte_ctx.file_access.put_data(archive_fname, upload_location.signed_url)
-        return upload_location
+        return upload_location, base64.b64encode(md5)
 
 
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):

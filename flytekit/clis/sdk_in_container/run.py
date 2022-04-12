@@ -94,16 +94,16 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
 )
 @click.pass_context
 def run(
-    click_ctx,
-    file_and_workflow,
-    is_remote,
-    project,
-    domain,
-    destination_dir,
-    image_config,
-    service_account,
-    wait_execution,
-    dump_snippet,
+        click_ctx,
+        file_and_workflow,
+        is_remote,
+        project,
+        domain,
+        destination_dir,
+        image_config,
+        service_account,
+        wait_execution,
+        dump_snippet,
 ):
     """
     Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
@@ -128,7 +128,7 @@ def run(
             functools.partial(client.get_upload_signed_url, project=project, domain=domain),
             is_remote=True,
         )
-        _, version = script_mode.hash_file(filename)
+
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
         wf = remote.register_script(
             wf_entity,
@@ -136,7 +136,6 @@ def run(
             domain=domain,
             image_config=image_config,
             destination_dir=destination_dir,
-            version=version,
         )
 
         options = Options(AuthRole(kubernetes_service_account=service_account))
