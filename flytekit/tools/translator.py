@@ -1,7 +1,7 @@
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
@@ -138,6 +138,20 @@ def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[s
     ]
 
 
+def _fast_serialize_command_fn(
+    settings: SerializationSettings, task: PythonAutoContainerTask
+) -> Callable[[SerializationSettings], List[str]]:
+    """
+    This function is only applicable for Pod tasks.
+    """
+    default_command = task.get_default_command(settings)
+
+    def fn(settings: SerializationSettings) -> List[str]:
+        return prefix_with_fast_execute(settings, default_command)
+
+    return fn
+
+
 def get_serializable_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -151,11 +165,25 @@ def get_serializable_task(
         settings.version,
     )
     container = entity.get_container(settings)
-    if settings.should_fast_serialize() and isinstance(entity, (PythonAutoContainerTask, MapPythonTask)):
-        # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,
-        # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
-        # parent class
-        container._args = prefix_with_fast_execute(settings, container.args)
+    # This pod will be incorrect when doing fast serialize
+    pod = entity.get_k8s_pod(settings)
+
+    if settings.should_fast_serialize():
+        # This handles container tasks.
+        if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask)):
+            # For fast registration, we'll need to muck with the command, but on
+            # ly for certain kinds of tasks. Specifically,
+            # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
+            # parent class
+            container._args = prefix_with_fast_execute(settings, container.args)
+
+        # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
+        # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
+        # the pod spec is a K8s library object, and we shouldn't be messing around with it in this file.
+        elif pod:
+            entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
+            pod = entity.get_k8s_pod(settings)
+            entity.reset_command_fn()
 
     if container and isinstance(entity, PythonFunctionTask):
         if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
@@ -170,7 +198,7 @@ def get_serializable_task(
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
         config=entity.get_config(settings),
-        k8s_pod=entity.get_k8s_pod(settings),
+        k8s_pod=pod,
         sql=entity.get_sql(settings),
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
