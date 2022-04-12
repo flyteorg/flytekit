@@ -276,7 +276,7 @@ def get_portable_shell_task() -> ShellTask:
     script="""
 #!/bin/bash
 
-set -uexo pipefail
+set -uex
 
 cd {ctx.working_directory}
 
