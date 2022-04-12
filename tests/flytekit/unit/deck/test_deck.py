@@ -17,4 +17,4 @@ def test_deck():
     assert deck.html is not None
     assert len(ctx.user_space_params.decks) == 2
 
-    _output_deck("test_task", ctx.user_space_params)
+    _output_deck(ctx.user_space_params)

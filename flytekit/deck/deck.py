@@ -1,6 +1,8 @@
+import html
 import os
 from typing import Dict, Optional
 
+from IPython.display import HTML, IFrame, display
 from jinja2 import Environment, FileSystemLoader
 
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
@@ -51,7 +53,6 @@ class Deck:
 
     def __init__(self, name: str, html: Optional[str] = ""):
         self._name = name
-        # self.renderers = renderers if isinstance(renderers, list) else [renderers]
         self._html = html
         FlyteContextManager.current_context().user_space_params.decks.append(self)
 
@@ -69,30 +70,41 @@ class Deck:
         return self._html
 
 
-def _output_deck(task_name: str, new_user_params: ExecutionParameters):
+def ipython_check() -> bool:
+    """
+    Check if interface is launching from iPython (not colab)
+    :return is_ipython (bool): True or False
+    """
+    is_ipython = False
+    try:  # Check if running interactively using ipython.
+        from IPython import get_ipython
+
+        if get_ipython() is not None:
+            is_ipython = True
+    except (ImportError, NameError):
+        pass
+    return is_ipython
+
+
+def _output_deck(new_user_params: ExecutionParameters):
     deck_map: Dict[str, str] = {}
     decks = new_user_params.decks
-    ctx = FlyteContext.current_context()
-
-    # TODO: upload deck file to remote filesystems (s3, gcs)
-    output_dir = ctx.file_access.get_random_local_directory()
-
     for deck in decks:
-        _deck_to_html_file(deck, deck_map, output_dir)
+        deck_map[deck.name] = deck.html
 
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, "html")
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template("template.html")
 
-    deck_path = os.path.join(output_dir, "deck.html")
-    with open(deck_path, "w") as f:
-        f.write(template.render(metadata=deck_map))
-
-
-def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):
-    file_name = deck.name + ".html"
-    path = os.path.join(output_dir, file_name)
-    with open(path, "w") as output:
-        deck_map[deck.name] = file_name
-        output.write(deck.html)
+    if ipython_check():
+        iframe = f'<iframe srcdoc="{html.escape(template.render(metadata=deck_map))}" width=100% height=400></iframe> '
+        display(HTML(iframe))
+    else:
+        ctx = FlyteContext.current_context()
+        output_dir = ctx.file_access.get_random_remote_directory()
+        if not ctx.file_access.is_remote(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+        deck_path = os.path.join(output_dir, "deck.html")
+        with open(deck_path, "w") as f:
+            f.write(template.render(metadata=deck_map))

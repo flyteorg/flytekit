@@ -10,7 +10,7 @@
            License: none (public domain)
         */
         html, body, div, span, applet, object, iframe,
-        h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+        p, blockquote, pre,
         a, abbr, acronym, address, big, cite, code,
         del, dfn, em, img, ins, kbd, q, s, samp,
         small, strike, strong, sub, sup, tt, var,
@@ -149,30 +149,27 @@
         element.appendChild(li);
     }
 
-    function createDiv(path, index) {
+    function createDiv(data, index) {
         const div = document.createElement("div");
         if (index === 1) {
             div.setAttribute("class", "active")
         }
         div.setAttribute("link_index", index)
         div.setAttribute("id", "d" + index)
-        const embed = document.createElement("embed");
-        embed.setAttribute("src", path)
-        embed.setAttribute("type", "text/html")
-        embed.setAttribute("width", "1200")
-        embed.setAttribute("height", "600")
+        div.setAttribute("width", "800")
+        div.setAttribute("height", "400")
+        div.innerHTML = data
 
         const element = document.getElementById("flyte-frame-container");
-        div.appendChild(embed);
         element.appendChild(div);
     }
 
     let index = 1
     const fetchDeckMetadata = async (metadata) => {
         try {
-            Object.entries(metadata).forEach(([fileName, path]) => {
-                createTab(fileName, index);
-                createDiv(path, index);
+            Object.entries(metadata).forEach(([tabName, data]) => {
+                createTab(tabName, index);
+                createDiv(data, index);
                 index++;
             });
         } catch (error) {
