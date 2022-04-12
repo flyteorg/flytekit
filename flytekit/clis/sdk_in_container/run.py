@@ -1,23 +1,33 @@
 import functools
 import importlib
+import json
 import os
-from typing import Callable, Optional
+from dataclasses import is_dataclass
+from datetime import datetime
+from typing import Callable, Optional, cast
 
 import click
 import pandas as pd
+from dataclasses_json import DataClassJsonMixin
 
 from flytekit.clients import friendly
 from flytekit.configuration import Config, ImageConfig, PlatformConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.workflow import WorkflowBase
-from flytekit.exceptions.user import FlyteValidationException
+from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteValidationException
+from flytekit.models import literals
 from flytekit.models.common import AuthRole
+from flytekit.models.types import StructuredDatasetType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.translator import Options
-from flytekit.types.structured.structured_dataset import StructuredDataset
+from flytekit.types.structured.structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
+)
 
 
 @click.command(
@@ -122,26 +132,51 @@ def run(
     if is_remote:
         config_obj = PlatformConfig.auto()
         client = friendly.SynchronousFlyteClient(config_obj)
+        get_upload_url_fn = functools.partial(client.get_upload_signed_url, project=project, domain=domain)
         inputs = _parse_workflow_inputs(
             click_ctx,
             wf_entity,
-            functools.partial(client.get_upload_signed_url, project=project, domain=domain),
+            get_upload_url_fn,
             is_remote=True,
         )
+
+        # TODO: leave a comment explaining why we need to register twice
+        StructuredDatasetTransformerEngine.register(
+            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
+        )
+        StructuredDatasetTransformerEngine.register(
+            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
+        )
+
         _, version = script_mode.hash_file(filename)
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
-        wf = remote.register_script(
-            wf_entity,
-            project=project,
-            domain=domain,
-            image_config=image_config,
-            destination_dir=destination_dir,
-            version=version,
-        )
+
+        try:
+            wf = remote.fetch_workflow(
+                project=project,
+                domain=domain,
+                name=wf_entity.name,
+                version=version,
+            )
+        except FlyteEntityNotExistException:
+            wf = remote.register_script(
+                wf_entity,
+                project=project,
+                domain=domain,
+                image_config=image_config,
+                destination_dir=destination_dir,
+                version=version,
+            )
 
         options = Options(AuthRole(kubernetes_service_account=service_account))
         execution = remote.execute(
-            wf, inputs=inputs, project=project, domain=domain, wait=wait_execution, options=options
+            wf,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            wait=wait_execution,
+            options=options,
+            type_hints=wf_entity.python_interface.inputs,
         )
 
         console_url = remote.generate_console_url(execution)
@@ -155,7 +190,8 @@ def run(
             wf_entity,
             is_remote=False,
         )
-        click.secho(wf_entity(**inputs))
+        output = wf_entity(**inputs)
+        click.echo(output)
 
 
 def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
@@ -175,7 +211,7 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
 def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Optional[Callable] = None, is_remote=False):
     args = {}
     for i in range(0, len(click_ctx.args), 2):
-        argument = click_ctx.args[i][2:]
+        argument = click_ctx.args[i][2:].replace("-", "_")
         value = click_ctx.args[i + 1]
 
         if argument not in wf_entity.interface.inputs:
@@ -189,19 +225,34 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             value = int(value)
         elif python_type == float:
             value = float(value)
+        elif python_type == bool:
+            true_values = {"TRUE", "True", "true", "1"}
+            bool_values = true_values.union({"FALSE", "False", "false", "0"})
+            if value not in bool_values:
+                raise ValueError(f"bool type expected one of {bool_values}, found '{value}'")
+            value = value in true_values
+        elif python_type == datetime:
+            value = datetime.fromtimestamp(int(value)) if value.isnumeric() else datetime.fromisoformat(value)
+        elif getattr(python_type, "__origin__", None) in {list, dict}:
+            value = json.loads(value)
+        elif is_dataclass(python_type):
+            dataclass_type = python_type
+            value = cast(DataClassJsonMixin, dataclass_type).from_json(value)
         elif python_type == pd.DataFrame:
             if is_remote:
-                assert create_upload_location_fn
-                filename = "00000.parquet"
-                md5, _ = script_mode.hash_file(value)
-                df_remote_location = create_upload_location_fn(filename=filename, content_md5=md5)
-                flyte_ctx = context_manager.FlyteContextManager.current_context()
-                flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
-                value = StructuredDataset(uri=df_remote_location.native_url[: -len(filename)])
+                ...
+                # assert create_upload_location_fn
+                # filename = "00000.parquet"
+                # md5, _ = script_mode.hash_file(value)
+                # df_remote_location = create_upload_location_fn(filename=filename, content_md5=md5)
+                # flyte_ctx = context_manager.FlyteContextManager.current_context()
+                # flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
+                # # value = StructuredDataset(uri=df_remote_location.native_url[: -len(filename)])
+                # value = pd.Data
             else:
                 value = pd.read_parquet(value)
         else:
-            raise ValueError(f"Unsupported type for argument {argument}")
+            raise ValueError(f"Unsupported type '{python_type}' for argument {argument}")
 
         args[argument] = value
     return args
@@ -220,3 +271,32 @@ remote.sync(exec)
 print(exec.outputs)
     """
     )
+
+
+PARQUET = "parquet"
+
+
+class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
+    def __init__(self, create_upload_fn, kind=pd.DataFrame):
+        super().__init__(kind, "remote", PARQUET)
+        self._create_upload_fn = create_upload_fn
+
+    def encode(
+        self,
+        ctx: context_manager.FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
+    ) -> literals.StructuredDataset:
+        local_path = structured_dataset.dataframe
+
+        filename = "00000.parquet"
+        md5, _ = script_mode.hash_file(local_path)
+        df_remote_location = self._create_upload_fn(filename=filename, content_md5=md5)
+        flyte_ctx = context_manager.FlyteContextManager.current_context()
+        flyte_ctx.file_access.put_data(local_path, df_remote_location.signed_url)
+
+        structured_dataset_type.format = PARQUET
+        return literals.StructuredDataset(
+            uri=df_remote_location.native_url[: -len(filename)],
+            metadata=literals.StructuredDatasetMetadata(structured_dataset_type),
+        )

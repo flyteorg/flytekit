@@ -435,12 +435,14 @@ class FlyteRemote(object):
         :return:
         """
         ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-        return self.fetch_task(
+        ft = self.fetch_task(
             ident.project,
             ident.domain,
             ident.name,
             ident.version,
         )
+        ft._python_interface = entity.python_interface
+        return ft
 
     def register_workflow(
         self,
@@ -472,7 +474,9 @@ class FlyteRemote(object):
             )
             remote_logger.debug("Created default launch plan for Workflow")
 
-        return self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
+        fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
+        fwf._python_interface = entity.python_interface
+        return fwf
 
     def register_script(
         self,
@@ -555,7 +559,9 @@ class FlyteRemote(object):
             self.client.create_launch_plan(ident, idl_lp.spec)
         except FlyteEntityAlreadyExistsException:
             remote_logger.debug("Launchplan already exists, ignoring")
-        return self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
+        flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
+        flp._python_interface = entity.python_interface
+        return flp
 
     ####################
     # Execute Entities #
@@ -729,6 +735,8 @@ class FlyteRemote(object):
             The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
+        if entity.python_interface:
+            type_hints = type_hints or entity.python_interface.inputs
         if isinstance(entity, FlyteTask) or isinstance(entity, FlyteLaunchPlan):
             return self.execute_remote_task_lp(
                 entity=entity,
