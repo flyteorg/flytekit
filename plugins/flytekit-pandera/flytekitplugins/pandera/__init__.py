@@ -11,6 +11,6 @@ Pandera plugin
    PanderaTransformer
 """
 
-from .task import PanderaTransformer
+from .schema import PanderaTransformer
 
 __all__ = ["PanderaTransformer"]
