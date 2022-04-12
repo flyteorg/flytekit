@@ -61,6 +61,22 @@ def test_task_metadata_interruptible_from_flyte_idl():
     assert obj.interruptible is False
 
 
+def test_task_metadata_architecture_from_flyte_idl():
+    idl = task.Container()
+    obj = task.Task.from_flyte_idl(idl)
+    assert obj.architecture is None
+
+    idl = task.Container()
+    idl.architecture = True
+    obj = task.Container.from_flyte_idl(idl)
+    assert obj.architecture is True
+
+    idl = task.Container()
+    idl.architecture = False
+    obj = task.Container.from_flyte_idl(idl)
+    assert obj.architecture is False
+
+
 def test_task_metadata():
     obj = task.TaskMetadata(
         True,
