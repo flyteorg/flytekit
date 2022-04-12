@@ -4,7 +4,7 @@ import json
 import os
 from dataclasses import is_dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional, cast
+from typing import Callable, Optional, cast
 
 import click
 import pandas as pd
@@ -140,8 +140,12 @@ def run(
             is_remote=True,
         )
 
+        # TODO: leave a comment explaining why we need to register twice
         StructuredDatasetTransformerEngine.register(
             PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
+        )
+        StructuredDatasetTransformerEngine.register(
+            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
         )
 
         _, version = script_mode.hash_file(filename)
@@ -172,9 +176,7 @@ def run(
             domain=domain,
             wait=wait_execution,
             options=options,
-            # We need to amend the typehints to account for the fact that in the remote case
-            # we change the type of parameters of type pandas dataframes to StrucuredDataset.
-            # type_hints=_amend_type_hints(inputs, wf_entity.python_interface.inputs),
+            type_hints=wf_entity.python_interface.inputs,
         )
 
         console_url = remote.generate_console_url(execution)
@@ -271,23 +273,12 @@ print(exec.outputs)
     )
 
 
-def _amend_type_hints(parsed_inputs: Dict[str, Any], entity_inputs: Dict[str, Any]):
-    type_hints = {}
-    for k, v in parsed_inputs.items():
-        type_v = type(v)
-        if type_v == StructuredDataset:
-            type_hints[k] = StructuredDataset
-        else:
-            type_hints[k] = entity_inputs[k]
-    return type_hints
-
-
 PARQUET = "parquet"
 
 
 class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, create_upload_fn):
-        super().__init__(pd.DataFrame, "remote", PARQUET)
+    def __init__(self, create_upload_fn, kind=pd.DataFrame):
+        super().__init__(kind, "remote", PARQUET)
         self._create_upload_fn = create_upload_fn
 
     def encode(
