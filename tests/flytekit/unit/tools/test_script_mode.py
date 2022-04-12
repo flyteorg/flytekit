@@ -1,4 +1,3 @@
-# content of test_tmp_path.py
 import os
 
 from flytekit.tools.script_mode import compress_single_script, hash_file
@@ -27,7 +26,7 @@ def test_deterministic_hash(tmp_path):
 
     digest, hex_digest = hash_file(destination)
 
-    # Try again b/c we want determinism
+    # Try again to assert digest determinism
     destination2 = tmp_path / "destination2"
     compress_single_script(workflows_dir, destination2, "hello_world")
     digest2, hex_digest2 = hash_file(destination)
