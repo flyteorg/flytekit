@@ -71,7 +71,7 @@ setup(
         "checksumdir>=1.2.0",
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
-        "numpy<=1.22.1; python_version < '3.8.0'",
+        "numpy<1.22.0; python_version < '3.8.0'",
     ],
     extras_require=extras_require,
     scripts=[
