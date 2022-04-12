@@ -1,3 +1,29 @@
+"""
+====================
+Data specification
+====================
+Data specification plugin
+
+.. currentmodule:: flytekitplugins.fsspec.pandas
+
+.. autosummary::
+
+   ArrowToParquetEncodingHandler
+   ParquetToArrowDecodingHandler
+   PandasToParquetEncodingHandler
+   ParquetToPandasDecodingHandler
+   FSSpecPersistence
+
+"""
+
+__all__ = [
+    "ArrowToParquetEncodingHandler",
+    "ParquetToArrowDecodingHandler",
+    "PandasToParquetEncodingHandler",
+    "ParquetToPandasDecodingHandler",
+    "FSSpecPersistence",
+]
+
 import importlib
 
 from flytekit import StructuredDatasetTransformerEngine, logger

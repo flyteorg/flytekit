@@ -7,7 +7,6 @@ SQL Alchemy
 .. currentmodule:: flytekitplugins.sqlalchemy
 
 .. autosummary::
-    :template: custom.rst
 
    SQLAlchemyConfig
    SQLAlchemyTask
@@ -15,7 +14,6 @@ SQL Alchemy
 """
 
 __all__ = ["SQLAlchemyConfig", "SQLAlchemyTask", "SQLAlchemyTaskExecutor"]
-
 
 from flytekitplugins.sqlalchemy.task import SQLAlchemyTaskExecutor
 
