@@ -237,7 +237,9 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         name = f.__name__.split(".")[-1]
 
     if mod_name == "__main__":
-        return name, "", name, mod.__file__
+        # running a task in the context of a main module will never need the module_name and full_path
+        # hence we return empty strings for both.
+        return name, "", name, ""
 
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (

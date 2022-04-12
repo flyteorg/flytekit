@@ -241,17 +241,9 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             dataclass_type = python_type
             value = cast(DataClassJsonMixin, dataclass_type).from_json(value)
         elif python_type == pd.DataFrame:
-            if is_remote:
-                ...
-                # assert create_upload_location_fn
-                # filename = "00000.parquet"
-                # md5, _ = script_mode.hash_file(value)
-                # df_remote_location = create_upload_location_fn(filename=filename, content_md5=md5)
-                # flyte_ctx = context_manager.FlyteContextManager.current_context()
-                # flyte_ctx.file_access.put_data(value, df_remote_location.signed_url)
-                # # value = StructuredDataset(uri=df_remote_location.native_url[: -len(filename)])
-                # value = pd.Data
-            else:
+            # the PandasToParquetDataProxyEncodingHandler handles converting the input value into a dataframe
+            # in the remote case
+            if not is_remote:
                 value = pd.read_parquet(value)
         else:
             raise ValueError(f"Unsupported type '{python_type}' for argument {argument}")
