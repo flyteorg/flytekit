@@ -16,7 +16,6 @@ from flytekit.core import context_manager
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals
-from flytekit.models.common import AuthRole
 from flytekit.models.types import StructuredDatasetType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
