@@ -85,9 +85,9 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
 
     # user/group info
     tar_info.uid = 0
-    tar_info.uname = ''
+    tar_info.uname = ""
     tar_info.gid = 0
-    tar_info.gname = ''
+    tar_info.gname = ""
 
     # stripping paxheaders may not be required
     # see https://stackoverflow.com/questions/34688392/paxheaders-in-tarball
@@ -96,8 +96,9 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     return tar_info
 
 
-def fast_register_single_script(wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable) -> (
-        _data_proxy_pb2.CreateUploadLocationResponse, str):
+def fast_register_single_script(
+    wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable
+) -> (_data_proxy_pb2.CreateUploadLocationResponse, str):
     _, mod_name, _, script_full_path = extract_task_module(wf_entity)
     # Find project root by moving up the folder hierarchy until you cannot find a __init__.py file.
     source_path = _find_project_root(script_full_path)

@@ -104,16 +104,16 @@ from flytekit.types.structured.structured_dataset import (
 )
 @click.pass_context
 def run(
-        click_ctx,
-        file_and_workflow,
-        is_remote,
-        project,
-        domain,
-        destination_dir,
-        image_config,
-        service_account,
-        wait_execution,
-        dump_snippet,
+    click_ctx,
+    file_and_workflow,
+    is_remote,
+    project,
+    domain,
+    destination_dir,
+    image_config,
+    service_account,
+    wait_execution,
+    dump_snippet,
 ):
     """
     Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
@@ -272,10 +272,10 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
         self._create_upload_fn = create_upload_fn
 
     def encode(
-            self,
-            ctx: context_manager.FlyteContext,
-            structured_dataset: StructuredDataset,
-            structured_dataset_type: StructuredDatasetType,
+        self,
+        ctx: context_manager.FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         local_path = structured_dataset.dataframe
 
