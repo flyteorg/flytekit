@@ -23,6 +23,9 @@ from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.translator import Options
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
+from flytekit.types.schema import FlyteSchema
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetEncoder,
@@ -104,16 +107,16 @@ from flytekit.types.structured.structured_dataset import (
 )
 @click.pass_context
 def run(
-    click_ctx,
-    file_and_workflow,
-    is_remote,
-    project,
-    domain,
-    destination_dir,
-    image_config,
-    service_account,
-    wait_execution,
-    dump_snippet,
+        click_ctx,
+        file_and_workflow,
+        is_remote,
+        project,
+        domain,
+        destination_dir,
+        image_config,
+        service_account,
+        wait_execution,
+        dump_snippet,
 ):
     """
     Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
@@ -205,7 +208,8 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
         value = click_ctx.args[i + 1]
 
         if argument not in wf_entity.interface.inputs:
-            raise FlyteValidationException(f"argument '{argument}' is not listed as a parameter of the workflow")
+            raise FlyteValidationException(
+                click.style(f"argument '{argument}' is not listed as a parameter of the workflow", fg="red"))
 
         python_type = wf_entity.python_interface.inputs[argument]
 
@@ -219,12 +223,15 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
             true_values = {"TRUE", "True", "true", "1"}
             bool_values = true_values.union({"FALSE", "False", "false", "0"})
             if value not in bool_values:
-                raise ValueError(f"bool type expected one of {bool_values}, found '{value}'")
+                raise ValueError(click.style(f"bool type expected one of {bool_values}, found '{value}'", fg="red"))
             value = value in true_values
         elif python_type == datetime:
             value = datetime.fromtimestamp(int(value)) if value.isnumeric() else datetime.fromisoformat(value)
         elif getattr(python_type, "__origin__", None) in {list, dict}:
             value = json.loads(value)
+        elif issubclass(python_type, (FlyteFile, FlyteSchema, StructuredDataset, FlyteDirectory)):
+            raise NotImplementedError(click.style(
+                "Flyte[File, Schema, Directory] & StructuredDataSet is not yet implemented in pyflyte run", fg="red"))
         elif is_dataclass(python_type):
             dataclass_type = python_type
             value = cast(DataClassJsonMixin, dataclass_type).from_json(value)
@@ -272,10 +279,10 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
         self._create_upload_fn = create_upload_fn
 
     def encode(
-        self,
-        ctx: context_manager.FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
+            self,
+            ctx: context_manager.FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         local_path = structured_dataset.dataframe
 
