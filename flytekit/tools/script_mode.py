@@ -68,7 +68,7 @@ def compress_single_script(absolute_project_path: str, destination: str, full_mo
             script_file_destination,
         )
         with tarfile.open(destination, "w:gz") as tar:
-            tar.add(os.path.join(tmp_dir, "code"), filter=tar_strip_file_attributes)
+            tar.add(os.path.join(tmp_dir, "code"), arcname="", filter=tar_strip_file_attributes)
 
 
 # Takes in a TarInfo and returns the modified TarInfo:

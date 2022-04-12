@@ -107,16 +107,16 @@ from flytekit.types.structured.structured_dataset import (
 )
 @click.pass_context
 def run(
-        click_ctx,
-        file_and_workflow,
-        is_remote,
-        project,
-        domain,
-        destination_dir,
-        image_config,
-        service_account,
-        wait_execution,
-        dump_snippet,
+    click_ctx,
+    file_and_workflow,
+    is_remote,
+    project,
+    domain,
+    destination_dir,
+    image_config,
+    service_account,
+    wait_execution,
+    dump_snippet,
 ):
     """
     Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
@@ -133,9 +133,8 @@ def run(
     wf_entity = _load_naive_entity(module, workflow_name)
 
     if is_remote:
-        config_obj = PlatformConfig.auto()
-        client = friendly.SynchronousFlyteClient(config_obj)
-        get_upload_url_fn = functools.partial(client.get_upload_signed_url, project=project, domain=domain)
+        remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
+        get_upload_url_fn = functools.partial(remote.client.get_upload_signed_url, project=project, domain=domain)
         inputs = _parse_workflow_inputs(
             click_ctx,
             wf_entity,
@@ -150,8 +149,6 @@ def run(
         StructuredDatasetTransformerEngine.register(
             PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
         )
-
-        remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
 
         wf = remote.register_script(
             wf_entity,
@@ -209,7 +206,8 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
 
         if argument not in wf_entity.interface.inputs:
             raise FlyteValidationException(
-                click.style(f"argument '{argument}' is not listed as a parameter of the workflow", fg="red"))
+                click.style(f"argument '{argument}' is not listed as a parameter of the workflow", fg="red")
+            )
 
         python_type = wf_entity.python_interface.inputs[argument]
 
@@ -230,8 +228,11 @@ def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Opti
         elif getattr(python_type, "__origin__", None) in {list, dict}:
             value = json.loads(value)
         elif issubclass(python_type, (FlyteFile, FlyteSchema, StructuredDataset, FlyteDirectory)):
-            raise NotImplementedError(click.style(
-                "Flyte[File, Schema, Directory] & StructuredDataSet is not yet implemented in pyflyte run", fg="red"))
+            raise NotImplementedError(
+                click.style(
+                    "Flyte[File, Schema, Directory] & StructuredDataSet is not yet implemented in pyflyte run", fg="red"
+                )
+            )
         elif is_dataclass(python_type):
             dataclass_type = python_type
             value = cast(DataClassJsonMixin, dataclass_type).from_json(value)
@@ -279,10 +280,10 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
         self._create_upload_fn = create_upload_fn
 
     def encode(
-            self,
-            ctx: context_manager.FlyteContext,
-            structured_dataset: StructuredDataset,
-            structured_dataset_type: StructuredDatasetType,
+        self,
+        ctx: context_manager.FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         local_path = structured_dataset.dataframe
 
