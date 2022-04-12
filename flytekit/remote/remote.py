@@ -55,7 +55,6 @@ from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.tools import script_mode
 from flytekit.tools.script_mode import fast_register_single_script
 from flytekit.tools.translator import FlyteLocalEntity, Options, get_serializable, get_serializable_launch_plan
 
@@ -502,23 +501,22 @@ class FlyteRemote(object):
         :return:
         """
         _, _, _, fname = tracker.extract_task_module(entity)
-        _, md5_hex = script_mode.hash_file(fname)
-        if version is None:
-            version = md5_hex
 
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
-        upload_location = fast_register_single_script(
-            version,
+        upload_location, md5_version = fast_register_single_script(
             entity,
             functools.partial(
                 self.client.get_upload_signed_url,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
-                filename=f"scriptmode-{version}.tar.gz",
+                filename="scriptmode.tar.gz",
             ),
         )
+
+        if version is None:
+            version = md5_version
 
         serialization_settings = SerializationSettings(
             project=project,

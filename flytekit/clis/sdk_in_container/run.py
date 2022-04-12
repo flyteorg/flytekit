@@ -15,7 +15,7 @@ from flytekit.configuration import Config, ImageConfig, PlatformConfig, Serializ
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.workflow import WorkflowBase
-from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteValidationException
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals
 from flytekit.models.common import AuthRole
 from flytekit.models.types import StructuredDatasetType
@@ -148,25 +148,15 @@ def run(
             PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
         )
 
-        _, version = script_mode.hash_file(filename)
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
 
-        try:
-            wf = remote.fetch_workflow(
-                project=project,
-                domain=domain,
-                name=wf_entity.name,
-                version=version,
-            )
-        except FlyteEntityNotExistException:
-            wf = remote.register_script(
-                wf_entity,
-                project=project,
-                domain=domain,
-                image_config=image_config,
-                destination_dir=destination_dir,
-                version=version,
-            )
+        wf = remote.register_script(
+            wf_entity,
+            project=project,
+            domain=domain,
+            image_config=image_config,
+            destination_dir=destination_dir,
+        )
 
         options = Options(AuthRole(kubernetes_service_account=service_account))
         execution = remote.execute(
