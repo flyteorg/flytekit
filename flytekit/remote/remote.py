@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
+from flytekit.configuration import Config
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -1375,11 +1376,12 @@ class FlyteRemote(object):
         :return:
         """
         protocol = "http" if self.config.platform.insecure else "https"
-        # We're going to hardcode the console endpoint while we figure out a solution to the problem of loading the
-        # service http endpoint from admin.
-        # N.B.: this assumes we are running single binary, which exposes port 30080 for console. The intent here is
+        endpoint = self.config.platform.endpoint
+        # N.B.: this assumes that in case we have an identical configuration as the sandbox default config we are running single binary. The intent here is
         # to ensure that the urls produced in the getting started guide point to the correct place.
-        return protocol + "://{localhost:30080}"
+        if self.config.platform == Config.for_sandbox().platform:
+            endpoint = 'localhost:30080'
+        return protocol + f"://{endpoint}"
 
     def generate_console_url(
         self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
