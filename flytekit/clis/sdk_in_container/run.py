@@ -10,8 +10,7 @@ import click
 import pandas as pd
 from dataclasses_json import DataClassJsonMixin
 
-from flytekit.clients import friendly
-from flytekit.configuration import Config, ImageConfig, PlatformConfig, SerializationSettings
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.workflow import WorkflowBase
@@ -150,15 +149,19 @@ def run(
             PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
         )
 
+        options = None
+        if service_account:
+            options = Options(AuthRole(kubernetes_service_account=service_account))
+
         wf = remote.register_script(
             wf_entity,
             project=project,
             domain=domain,
             image_config=image_config,
             destination_dir=destination_dir,
+            options=options,
         )
 
-        options = Options(AuthRole(kubernetes_service_account=service_account))
         execution = remote.execute(
             wf,
             inputs=inputs,

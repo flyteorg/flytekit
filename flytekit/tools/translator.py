@@ -1,7 +1,7 @@
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
@@ -10,6 +10,7 @@ from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
+from flytekit.core.map_task import MapPythonTask
 from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
@@ -121,27 +122,20 @@ def to_serializable_cases(
     return ret_cases
 
 
-def _fast_serialize_command_fn(
-    settings: SerializationSettings, task: PythonAutoContainerTask
-) -> Callable[[SerializationSettings], List[str]]:
-    default_command = task.get_default_command(settings)
-
-    def fn(settings: SerializationSettings) -> List[str]:
-        return [
-            "pyflyte-fast-execute",
-            "--additional-distribution",
-            settings.fast_serialization_settings.distribution_location
-            if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
-            else "{{ .remote_package_path }}",
-            "--dest-dir",
-            settings.fast_serialization_settings.destination_dir
-            if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
-            else "{{ .dest_dir }}",
-            "--",
-            *default_command,
-        ]
-
-    return fn
+def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[str]) -> List[str]:
+    return [
+        "pyflyte-fast-execute",
+        "--additional-distribution",
+        settings.fast_serialization_settings.distribution_location
+        if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
+        else "{{ .remote_package_path }}",
+        "--dest-dir",
+        settings.fast_serialization_settings.destination_dir
+        if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
+        else "{{ .dest_dir }}",
+        "--",
+        *cmd,
+    ]
 
 
 def get_serializable_task(
@@ -156,12 +150,13 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
-    if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
+    container = entity.get_container(settings)
+    if settings.should_fast_serialize() and isinstance(entity, (PythonAutoContainerTask, MapPythonTask)):
         # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,
         # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
         # parent class
-        entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
-    container = entity.get_container(settings)
+        container._args = prefix_with_fast_execute(settings, container.args)
+
     if container and isinstance(entity, PythonFunctionTask):
         if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
             container.add_env(key=SERIALIZED_CONTEXT_ENV_VAR, val=settings.prepare_for_transport())

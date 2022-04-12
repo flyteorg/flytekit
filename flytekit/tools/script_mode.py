@@ -112,7 +112,7 @@ def fast_register_single_script(
         md5, _ = hash_file(archive_fname)
         upload_location = create_upload_location_fn(content_md5=md5)
         flyte_ctx.file_access.put_data(archive_fname, upload_location.signed_url)
-        return upload_location, base64.b64encode(md5)
+        return upload_location, base64.urlsafe_b64encode(md5)
 
 
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
