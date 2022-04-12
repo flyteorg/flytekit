@@ -149,18 +149,19 @@ def run(
             PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
         )
 
-        options = None
-        if service_account:
-            options = Options(AuthRole(kubernetes_service_account=service_account))
-
         wf = remote.register_script(
             wf_entity,
             project=project,
             domain=domain,
             image_config=image_config,
             destination_dir=destination_dir,
-            options=options,
         )
+
+        options = None
+        if service_account:
+            # options are only passed for the execution. This is to prevent errors when registering a duplicate workflow
+            # It is assumed that the users expectations is to override the service account only for the execution
+            options = Options(AuthRole(kubernetes_service_account=service_account))
 
         execution = remote.execute(
             wf,
