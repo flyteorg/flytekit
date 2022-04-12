@@ -10,8 +10,7 @@ import click
 import pandas as pd
 from dataclasses_json import DataClassJsonMixin
 
-from flytekit.clients import friendly
-from flytekit.configuration import Config, ImageConfig, PlatformConfig, SerializationSettings
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.workflow import WorkflowBase
@@ -158,7 +157,12 @@ def run(
             destination_dir=destination_dir,
         )
 
-        options = Options(AuthRole(kubernetes_service_account=service_account))
+        options = None
+        if service_account:
+            # options are only passed for the execution. This is to prevent errors when registering a duplicate workflow
+            # It is assumed that the users expectations is to override the service account only for the execution
+            options = Options(AuthRole(kubernetes_service_account=service_account))
+
         execution = remote.execute(
             wf,
             inputs=inputs,
