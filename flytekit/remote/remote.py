@@ -511,7 +511,7 @@ class FlyteRemote(object):
                 self.client.get_upload_signed_url,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
-                filename=f"scriptmode.tar.gz",
+                filename="scriptmode.tar.gz",
             ),
         )
 
