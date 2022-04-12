@@ -68,7 +68,32 @@ def compress_single_script(absolute_project_path: str, destination: str, full_mo
             script_file_destination,
         )
         with tarfile.open(destination, "w:gz") as tar:
-            tar.add(os.path.join(tmp_dir, "code"), arcname="")
+            tar.add(os.path.join(tmp_dir, "code"), filter=tar_strip_file_attributes)
+
+
+# Takes in a TarInfo and returns the modified TarInfo:
+# https://docs.python.org/3/library/tarfile.html#tarinfo-objects
+# intented to be passed as a filter to tarfile.add
+# https://docs.python.org/3/library/tarfile.html#tarfile.TarFile.add
+def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
+    # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1970
+    # note that when extracting this tarfile, this time will be shown as the modified date
+    tar_info.mtime = 0
+
+    # file permissions, probably don't want to remove this, but for some use cases you could
+    tar_info.mode = 0
+
+    # user/group info
+    tar_info.uid = 0
+    tar_info.uname = ''
+    tar_info.gid = 0
+    tar_info.gname = ''
+
+    # stripping paxheaders may not be required
+    # see https://stackoverflow.com/questions/34688392/paxheaders-in-tarball
+    tar_info.pax_headers = {}
+
+    return tar_info
 
 
 def fast_register_single_script(wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable) -> (
