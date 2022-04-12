@@ -1369,7 +1369,20 @@ class FlyteRemote(object):
                 )
         return literal_models.LiteralMap({})
 
+    def generate_http_domain(self) -> str:
+        """
+        This should generate the domain where the HTTP endpoints for the Flyte backend are hosted. This should be
+        the domain that console is hosted on.
+
+        :return:
+        """
+        if self.client.public_client_config and self.client.public_client_config.service_http_endpoint:
+            return self.client.public_client_config.service_http_endpoint
+
+        protocol = "http" if self.config.platform.insecure else "https"
+        return protocol + f"://{self.config.platform.endpoint}"
+
     def generate_console_url(
         self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
     ):
-        return f"http://localhost:30081/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
+        return f"{self.generate_http_domain()}/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
