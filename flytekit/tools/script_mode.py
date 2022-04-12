@@ -1,4 +1,5 @@
 import base64
+import gzip
 import hashlib
 import os
 import shutil
@@ -67,8 +68,12 @@ def compress_single_script(absolute_project_path: str, destination: str, full_mo
             script_file,
             script_file_destination,
         )
-        with tarfile.open(destination, "w:gz") as tar:
+        tar_path = os.path.join(tmp_dir, "tmp.tar")
+        with tarfile.open(tar_path, "w") as tar:
             tar.add(os.path.join(tmp_dir, "code"), arcname="", filter=tar_strip_file_attributes)
+        with gzip.GzipFile(filename=destination, mode="wb", mtime=0) as gzipped:
+            with open(tar_path, "rb") as tar_file:
+                gzipped.write(tar_file.read())
 
 
 # Takes in a TarInfo and returns the modified TarInfo:
