@@ -16,9 +16,9 @@ RUN pip install gsutil
 RUN python3.8 -m venv ${VENV}
 RUN ${VENV}/bin/pip install wheel
 
-RUN ${VENV}/bin/pip install git+https://www.github.com/flyteorg/flytekit@sqlalchemy-plugin-fix
-RUN ${VENV}/bin/pip install sqlalchemy
+RUN ${VENV}/bin/pip install sqlalchemy psycopg2-binary
 RUN ${VENV}/bin/pip install flytekitplugins-sqlalchemy
+RUN ${VENV}/bin/pip install --force git+https://www.github.com/flyteorg/flytekit@sqlalchemy-plugin-fix
 
 # Copy over the helper script that the SDK relies on
 RUN cp ${VENV}/bin/flytekit_venv /usr/local/bin
