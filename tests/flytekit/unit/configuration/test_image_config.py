@@ -1,6 +1,5 @@
-from flytekit.configuration.default_images import PythonVersion
-from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration import ImageConfig
+from flytekit.configuration.default_images import DefaultImages, PythonVersion
 
 
 def test_def():
@@ -9,6 +8,5 @@ def test_def():
 
 
 def test_fds():
-    x =ImageConfig.auto_default_image()
+    x = ImageConfig.auto_default_image()
     print(x)
-
