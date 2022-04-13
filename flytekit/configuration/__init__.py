@@ -266,8 +266,8 @@ class ImageConfig(object):
         return cls.create_from(def_img, other_images)
 
     @classmethod
-    def auto_default_image(cls, flavor: str = DefaultImages.PYTHON_3_9) -> ImageConfig:
-        return cls.auto(img_name=DefaultImages.find_image_for(flavor))
+    def auto_default_image(cls) -> ImageConfig:
+        return cls.auto(img_name=DefaultImages.default_image())
 
 
 class AuthType(enum.Enum):
