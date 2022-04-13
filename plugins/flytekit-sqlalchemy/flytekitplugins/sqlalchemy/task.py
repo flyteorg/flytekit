@@ -6,12 +6,23 @@ from sqlalchemy import create_engine  # type: ignore
 
 from flytekit import current_context, kwtypes
 from flytekit.configuration import SerializationSettings
+from flytekit.configuration.default_images import DefaultImages, PythonVersion
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.models import task as task_models
 from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
+
+
+class SQLAlchemyDefaultImages(DefaultImages):
+    """Default images for the sqlalchemy flytekit plugin."""
+    _DEFAULT_IMAGE_PREFIXES = {
+        PythonVersion.PYTHON_3_7: "ghcr.io/flyteorg/flytekit:py3.7-sqlalchemy-",
+        PythonVersion.PYTHON_3_8: "ghcr.io/flyteorg/flytekit:py3.8-sqlalchemy-",
+        PythonVersion.PYTHON_3_9: "ghcr.io/flyteorg/flytekit:py3.9-sqlalchemy-",
+        PythonVersion.PYTHON_3_10: "ghcr.io/flyteorg/flytekit:py3.10-sqlalchemy-",
+    }
 
 
 @dataclass
@@ -72,7 +83,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         task_config: SQLAlchemyConfig,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
-        container_image: str = "ghcr.io/flyteorg/flytekit:sqlalchemy-75fc68cd2d0a71588359039f94daab09d68cac11",
+        container_image: str = SQLAlchemyDefaultImages.default_image(),
         **kwargs,
     ):
         output_schema = output_schema_type if output_schema_type else FlyteSchema

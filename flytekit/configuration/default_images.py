@@ -22,13 +22,13 @@ class DefaultImages(object):
         PythonVersion.PYTHON_3_10: "ghcr.io/flyteorg/flytekit:py3.10-",
     }
 
-    @staticmethod
-    def default_image() -> str:
-        return DefaultImages.find_image_for()
+    @classmethod
+    def default_image(cls) -> str:
+        return cls.find_image_for()
 
-    @staticmethod
+    @classmethod
     def find_image_for(
-        python_version: typing.Optional[PythonVersion] = None, flytekit_version: typing.Optional[str] = None
+        cls, python_version: typing.Optional[PythonVersion] = None, flytekit_version: typing.Optional[str] = None
     ) -> str:
         from flytekit import __version__
 
@@ -38,6 +38,6 @@ class DefaultImages(object):
             version_suffix = __version__
         if python_version is None:
             python_version = PythonVersion((sys.version_info.major, sys.version_info.minor))
-        return DefaultImages._DEFAULT_IMAGE_PREFIXES[python_version] + (
+        return cls._DEFAULT_IMAGE_PREFIXES[python_version] + (
             flytekit_version.replace("v", "") if flytekit_version else version_suffix
         )
