@@ -62,18 +62,36 @@ def test_task_metadata_interruptible_from_flyte_idl():
 
 
 def test_task_metadata_architecture_from_flyte_idl():
-    idl = task.Container()
-    obj = task.Task.from_flyte_idl(idl)
+    obj = task.Container(
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            parameterizers.LIST_OF_RESOURCES[0],
+            {"a": "b"},
+            {"d": "e"},
+        )
     assert obj.architecture is None
 
-    idl = task.Container()
-    idl.architecture = True
-    obj = task.Container.from_flyte_idl(idl)
+    obj = task.Container(
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            parameterizers.LIST_OF_RESOURCES[0],
+            {"a": "b"},
+            {"d": "e"},
+            architecture=True,
+        )
     assert obj.architecture is True
 
-    idl = task.Container()
-    idl.architecture = False
-    obj = task.Container.from_flyte_idl(idl)
+    obj = task.Container(
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            parameterizers.LIST_OF_RESOURCES[0],
+            {"a": "b"},
+            {"d": "e"},
+            architecture=False,
+        )
     assert obj.architecture is False
 
 
