@@ -1,4 +1,4 @@
-FROM python:3.8-slim-buster
+FROM python:3.10-slim-buster
 
 WORKDIR /app
 ENV VENV /opt/venv
@@ -18,7 +18,7 @@ ARG VERSION
 RUN python3.8 -m venv ${VENV}
 RUN ${VENV}/bin/pip install wheel
 
-RUN ${VENV}/bin/pip install sqlalchemy psycopg2-binary flytekitplugins-sqlalchemy==$VERSION flytekit==$VERSION
+RUN ${VENV}/bin/pip install sqlalchemy psycopg2 pymysql flytekitplugins-sqlalchemy==$VERSION flytekit==$VERSION
 
 # Copy over the helper script that the SDK relies on
 RUN cp ${VENV}/bin/flytekit_venv /usr/local/bin
