@@ -194,7 +194,7 @@ def test_ge_runtimebatchrequest_pandas_config():
 
     @task
     def my_task(pandas_df: GreatExpectationsType[FlyteSchema, ge_config]) -> int:
-        return len(pandas_df)
+        return len(pandas_df.open().all())
 
     @workflow
     def runtime_pandas_wf(df: pd.DataFrame):
@@ -238,7 +238,7 @@ def test_ge_schema_flyteschema():
             ),
         ]
     ) -> int:
-        return dataframe.shape[0]
+        return dataframe.open().all().shape[0]
 
     @workflow
     def valid_wf(dataframe: FlyteSchema) -> int:
@@ -263,7 +263,7 @@ def test_ge_schema_flyteschema_literal():
             ),
         ]
     ) -> int:
-        return dataframe.shape[0]
+        return dataframe.open().all().shape[0]
 
     @workflow
     def valid_wf() -> int:
