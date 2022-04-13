@@ -43,7 +43,8 @@ class ExecutableTemplateShimTask(object):
 
     @property
     def name(self) -> str:
-        return self._task_template.id.name
+        # The subclasses that inherit from this class should have _name defined
+        return self._name
 
     @property
     def task_template(self) -> _task_model.TaskTemplate:
