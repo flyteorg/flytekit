@@ -17,6 +17,7 @@ from flytekit.types.schema import FlyteSchema
 
 class SQLAlchemyDefaultImages(DefaultImages):
     """Default images for the sqlalchemy flytekit plugin."""
+
     _DEFAULT_IMAGE_PREFIXES = {
         PythonVersion.PYTHON_3_7: "ghcr.io/flyteorg/flytekit:py3.7-sqlalchemy-",
         PythonVersion.PYTHON_3_8: "ghcr.io/flyteorg/flytekit:py3.8-sqlalchemy-",

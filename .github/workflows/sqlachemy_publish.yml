@@ -29,10 +29,10 @@ jobs:
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: sqlalchemy-${{ github.sha }}
+          image_tag: py${{ matrix.python-version }}-sqlalchemy-latest,py${{ matrix.python-version }}-sqlalchemy-${{ github.sha }},py${{ matrix.python-version }}-sqlalchemy-${{ needs.deploy.outputs.version }}
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }} --build-arg=tag=ghcr.io/${{ github.repository_owner }}/flytekit:sqlalchemy-${{ github.sha }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }}"
           context: "./plugins/flytekit-sqlalchemy/"
           dockerfile: Dockerfile.py${{ matrix.python-version }}

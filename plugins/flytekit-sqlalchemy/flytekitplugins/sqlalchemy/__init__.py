@@ -1,1 +1,1 @@
-from .task import SQLAlchemyConfig, SQLAlchemyTask, SQLAlchemyDefaultImages
+from .task import SQLAlchemyConfig, SQLAlchemyDefaultImages, SQLAlchemyTask
