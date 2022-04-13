@@ -122,7 +122,7 @@ def to_serializable_cases(
     return ret_cases
 
 
-def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[str]) -> List[str]:
+def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List[str]:
     return [
         "pyflyte-fast-execute",
         "--additional-distribution",
@@ -134,8 +134,11 @@ def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[s
         if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
         else "{{ .dest_dir }}",
         "--",
-        *cmd,
     ]
+
+
+def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[str]) -> List[str]:
+    return get_command_prefix_for_fast_execute(settings) + cmd
 
 
 def _fast_serialize_command_fn(
@@ -164,6 +167,17 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
+
+    if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+        # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
+        # from the serialization context. This is passed through an environment variable, that is read from
+        # during dynamic serialization
+        b = settings.new_builder()
+        if not b.env:
+            b.env = {}
+        b.env[SERIALIZED_CONTEXT_ENV_VAR] = settings.prepare_for_transport()
+        settings = b.build()
+
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
     pod = entity.get_k8s_pod(settings)
@@ -181,13 +195,14 @@ def get_serializable_task(
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
         # the pod spec is a K8s library object, and we shouldn't be messing around with it in this file.
         elif pod:
-            entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
-            pod = entity.get_k8s_pod(settings)
-            entity.reset_command_fn()
+            if isinstance(entity, MapPythonTask):
+                entity.set_command_prefix(get_command_prefix_for_fast_execute(settings))
+                pod = entity.get_k8s_pod(settings)
+            else:
+                entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
+                pod = entity.get_k8s_pod(settings)
+                entity.reset_command_fn()
 
-    if container and isinstance(entity, PythonFunctionTask):
-        if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-            container.add_env(key=SERIALIZED_CONTEXT_ENV_VAR, val=settings.prepare_for_transport())
     tt = task_models.TaskTemplate(
         id=task_id,
         type=entity.task_type,

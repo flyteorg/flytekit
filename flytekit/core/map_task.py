@@ -4,6 +4,7 @@ a reference task as well as run-time parameters that limit execution concurrency
 """
 
 import os
+import typing
 from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
@@ -57,6 +58,7 @@ class MapPythonTask(PythonTask):
         _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
         name = f"{mod}.mapper_{f}_{instance}"
 
+        self._cmd_prefix = None
         self._run_task = python_function_task
         self._max_concurrency = concurrency
         self._min_success_ratio = min_success_ratio
@@ -93,7 +95,12 @@ class MapPythonTask(PythonTask):
             *self._run_task.task_resolver.loader_args(settings, self._run_task),
         ]
 
+        if self._cmd_prefix:
+            return self._cmd_prefix + container_args
         return container_args
+
+    def set_command_prefix(self, cmd: typing.List[str]):
+        self._cmd_prefix = cmd
 
     @contextmanager
     def prepare_target(self):
@@ -125,7 +132,7 @@ class MapPythonTask(PythonTask):
         return self._run_task.get_config(settings)
 
     @property
-    def run_task(self) -> PythonTask:
+    def run_task(self) -> PythonFunctionTask:
         return self._run_task
 
     def execute(self, **kwargs) -> Any:
