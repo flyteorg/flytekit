@@ -9,6 +9,7 @@ from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.configuration import SerializationSettings
+from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -53,7 +54,8 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
         instance = next(self._ids)
-        name = f"{python_function_task.task_function.__module__}.mapper_{python_function_task.task_function.__name__}_{instance}"
+        _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
+        name = f"{mod}.mapper_{f}_{instance}"
 
         self._run_task = python_function_task
         self._max_concurrency = concurrency

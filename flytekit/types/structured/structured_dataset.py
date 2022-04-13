@@ -434,8 +434,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # If the type signature has the StructuredDataset class, it will, or at least should, also be a
         # StructuredDataset instance.
-        if issubclass(python_type, StructuredDataset):
-            assert isinstance(python_val, StructuredDataset)
+        if issubclass(python_type, StructuredDataset) and isinstance(python_val, StructuredDataset):
             # There are three cases that we need to take care of here.
 
             # 1. A task returns a StructuredDataset that was just a passthrough input. If this happens

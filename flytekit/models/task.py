@@ -471,7 +471,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             container=Container.from_flyte_idl(pb2_object.container) if pb2_object.HasField("container") else None,
             task_type_version=pb2_object.task_type_version,
             security_context=_sec.SecurityContext.from_flyte_idl(pb2_object.security_context)
-            if pb2_object.security_context
+            if pb2_object.security_context and pb2_object.security_context.ByteSize() > 0
             else None,
             config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
             k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,

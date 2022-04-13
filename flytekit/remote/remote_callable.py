@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.promise import Promise, VoidPromise, create_and_link_node_from_remote, extract_obj_name
@@ -9,6 +9,14 @@ from flytekit.models.core.workflow import NodeMetadata
 
 
 class RemoteEntity(ABC):
+    def __init__(self, *args, **kwargs):
+
+        # In cases where we make a FlyteTask/Workflow/LaunchPlan from a locally created Python object (i.e. an @task
+        # or an @workflow decorated function), we actually have the Python interface, so
+        self._python_interface: Optional[Dict[str, Type]] = None
+
+        super().__init__(*args, **kwargs)
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -59,3 +67,7 @@ class RemoteEntity(ABC):
 
     def execute(self, **kwargs) -> Any:
         raise Exception("Remotely fetched entities cannot be run locally. You have to mock this out.")
+
+    @property
+    def python_interface(self) -> Optional[Dict[str, Type]]:
+        return self._python_interface

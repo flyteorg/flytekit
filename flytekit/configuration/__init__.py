@@ -90,6 +90,7 @@ from dataclasses_json import dataclass_json
 from docker_image import reference
 
 from flytekit.configuration import internal as _internal
+from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, set_if_exists
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
@@ -263,6 +264,10 @@ class ImageConfig(object):
         def_img = Image.look_up_image_info("default", default_image) if default_image else None
         other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in m.items()]
         return cls.create_from(def_img, other_images)
+
+    @classmethod
+    def auto_default_image(cls, flavor: str = DefaultImages.PYTHON_3_9) -> ImageConfig:
+        return cls.auto(img_name=DefaultImages.find_image_for(flavor))
 
 
 class AuthType(enum.Enum):
@@ -539,7 +544,7 @@ class Config(object):
         return Config(
             platform=PlatformConfig(insecure=True),
             data_config=DataConfig(
-                s3=S3Config(endpoint="localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
+                s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
             ),
         )
 
