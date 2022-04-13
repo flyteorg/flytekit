@@ -6,6 +6,9 @@ ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 ENV PYTHONPATH /app
 
+RUN apt-get update -y
+RUN apt-get install git -y
+
 RUN pip install awscli
 RUN pip install gsutil
 
@@ -13,7 +16,8 @@ RUN pip install gsutil
 RUN python3.8 -m venv ${VENV}
 RUN ${VENV}/bin/pip install wheel
 
-RUN ${VENV}/bin/pip install flytekit sqlalchemy
+RUN ${VENV}/bin/pip install git+https://www.github.com/flyteorg/flytekit@sqlalchemy-plugin-fix
+RUN ${VENV}/bin/pip install sqlalchemy
 RUN ${VENV}/bin/pip install flytekitplugins-sqlalchemy
 
 # Copy over the helper script that the SDK relies on
