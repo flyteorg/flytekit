@@ -1374,11 +1374,13 @@ class FlyteRemote(object):
 
         :return:
         """
-        if self.client.public_client_config and self.client.public_client_config.service_http_endpoint:
-            return self.client.public_client_config.service_http_endpoint
-
         protocol = "http" if self.config.platform.insecure else "https"
-        return protocol + f"://{self.config.platform.endpoint}"
+        endpoint = self.config.platform.endpoint
+        # N.B.: this assumes that in case we have an identical configuration as the sandbox default config we are running single binary. The intent here is
+        # to ensure that the urls produced in the getting started guide point to the correct place.
+        if self.config.platform == Config.for_sandbox().platform:
+            endpoint = "localhost:30080"
+        return protocol + f"://{endpoint}"
 
     def generate_console_url(
         self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
