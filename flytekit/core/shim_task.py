@@ -42,6 +42,10 @@ class ExecutableTemplateShimTask(object):
         super().__init__(*args, **kwargs)
 
     @property
+    def name(self) -> str:
+        return self._task_template.id.name
+
+    @property
     def task_template(self) -> _task_model.TaskTemplate:
         return self._task_template
 
