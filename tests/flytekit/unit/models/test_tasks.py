@@ -61,40 +61,6 @@ def test_task_metadata_interruptible_from_flyte_idl():
     assert obj.interruptible is False
 
 
-def test_task_metadata_architecture_from_flyte_idl():
-    obj = task.Container(
-            "my_image",
-            ["this", "is", "a", "cmd"],
-            ["this", "is", "an", "arg"],
-            parameterizers.LIST_OF_RESOURCES[0],
-            {"a": "b"},
-            {"d": "e"},
-        )
-    assert obj.architecture is None
-
-    obj = task.Container(
-            "my_image",
-            ["this", "is", "a", "cmd"],
-            ["this", "is", "an", "arg"],
-            parameterizers.LIST_OF_RESOURCES[0],
-            {"a": "b"},
-            {"d": "e"},
-            architecture=True,
-        )
-    assert obj.architecture is True
-
-    obj = task.Container(
-            "my_image",
-            ["this", "is", "a", "cmd"],
-            ["this", "is", "an", "arg"],
-            parameterizers.LIST_OF_RESOURCES[0],
-            {"a": "b"},
-            {"d": "e"},
-            architecture=False,
-        )
-    assert obj.architecture is False
-
-
 def test_task_metadata():
     obj = task.TaskMetadata(
         True,
@@ -240,8 +206,12 @@ def test_task(task_closure):
     assert obj == task.Task.from_flyte_idl(obj.to_flyte_idl())
 
 
-@pytest.mark.parametrize("resources", parameterizers.LIST_OF_RESOURCES)
-def test_container(resources):
+@pytest.mark.parametrize(
+    "in_tuple",
+    product(parameterizers.LIST_OF_RESOURCES, parameterizers.LIST_OF_ARCHITECTURES),
+)
+def test_container(in_tuple):
+    resources, architecture = in_tuple
     obj = task.Container(
         "my_image",
         ["this", "is", "a", "cmd"],
@@ -256,6 +226,7 @@ def test_container(resources):
     obj.resources == resources
     obj.env == {"a": "b"}
     obj.config == {"d": "e"}
+    obj.architecture == architecture
     assert obj == task.Container.from_flyte_idl(obj.to_flyte_idl())
 
 
