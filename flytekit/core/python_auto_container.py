@@ -10,7 +10,7 @@ from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
-from flytekit.core.tracker import TrackedInstance
+from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
@@ -195,19 +195,11 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         from flytekit.core.python_function_task import PythonFunctionTask
 
         if isinstance(task, PythonFunctionTask):
-            return [
-                "task-module",
-                task.task_function.__module__,
-                "task-name",
-                task.task_function.__name__,
-            ]
+            _, m, t, _ = extract_task_module(task.task_function)
+            return ["task-module", m, "task-name", t]
         if isinstance(task, TrackedInstance):
-            return [
-                "task-module",
-                task.instantiated_in,
-                "task-name",
-                task.lhs,
-            ]
+            _, m, t, _ = extract_task_module(task)
+            return ["task-module", m, "task-name", t]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:
         raise Exception("should not be needed")

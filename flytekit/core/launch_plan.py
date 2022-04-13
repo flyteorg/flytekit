@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from typing import Any, Callable, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
@@ -11,6 +12,7 @@ from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
+from flytekit.models import security
 from flytekit.models.core import workflow as _workflow_model
 
 
@@ -114,6 +116,7 @@ class LaunchPlan(object):
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
+        security_context: typing.Optional[security.SecurityContext] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -180,6 +183,7 @@ class LaunchPlan(object):
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
+        security_context: typing.Optional[security.SecurityContext] = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -189,6 +193,7 @@ class LaunchPlan(object):
         The resulting launch plan is also cached and if called again with the same name, the
         cached version is returned
 
+        :param security_context: Security context for the execution
         :param workflow: The Workflow to create a launch plan for.
         :param name: If you supply a name, keep it mind it needs to be unique. That is, project, domain, version, and
           this name form a primary key. If you do not supply a name, this function will assume you want the default
@@ -215,6 +220,7 @@ class LaunchPlan(object):
             or raw_output_data_config is not None
             or auth_role is not None
             or max_parallelism is not None
+            or security_context is not None
         ):
             raise ValueError(
                 "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
@@ -238,6 +244,7 @@ class LaunchPlan(object):
                 or annotations != cached_outputs["_annotations"]
                 or raw_output_data_config != cached_outputs["_raw_output_data_config"]
                 or max_parallelism != cached_outputs["_max_parallelism"]
+                or security_context != cached_outputs["_security_context"]
             ):
                 raise AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -262,6 +269,7 @@ class LaunchPlan(object):
                 raw_output_data_config,
                 auth_role,
                 max_parallelism,
+                security_context=security_context,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -280,6 +288,7 @@ class LaunchPlan(object):
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
+        security_context: typing.Optional[security.SecurityContext] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -297,6 +306,7 @@ class LaunchPlan(object):
         self._raw_output_data_config = raw_output_data_config
         self._auth_role = auth_role
         self._max_parallelism = max_parallelism
+        self._security_context = security_context
 
         FlyteEntities.entities.append(self)
 
@@ -312,6 +322,7 @@ class LaunchPlan(object):
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
+        security_context: typing.Optional[security.SecurityContext] = None,
     ) -> LaunchPlan:
         return LaunchPlan(
             name=name,
@@ -325,6 +336,7 @@ class LaunchPlan(object):
             raw_output_data_config=raw_output_data_config or self.raw_output_data_config,
             auth_role=auth_role or self._auth_role,
             max_parallelism=max_parallelism or self.max_parallelism,
+            security_context=security_context or self.security_context,
         )
 
     @property
@@ -378,6 +390,10 @@ class LaunchPlan(object):
     @property
     def max_parallelism(self) -> int:
         return self._max_parallelism
+
+    @property
+    def security_context(self) -> typing.Optional[security.SecurityContext]:
+        return self._security_context
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()

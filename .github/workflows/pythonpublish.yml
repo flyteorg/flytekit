@@ -52,13 +52,19 @@ jobs:
         uses: jakejarvis/wait-action@master
         with:
           time: '180s'
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
 
   build-and-push-docker-images:
     runs-on: ubuntu-latest
+    needs: deploy
     strategy:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
     steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: "0"
       - name: Build & Push Flytekit Python${{ matrix.python-version }} Docker Image to Github Registry
         uses: whoan/docker-build-with-cache-action@v5
         with:
@@ -66,10 +72,10 @@ jobs:
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
           image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: py${{ matrix.python-version }}-latest,py${{ matrix.python-version }}-${{ github.sha }},py${{ matrix.python-version }}-${{ steps.bump.outputs.version }}
+          image_tag: py${{ matrix.python-version }}-latest,py${{ matrix.python-version }}-${{ github.sha }},py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ steps.bump.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ steps.bump.outputs.version }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}"
           context: .
           dockerfile: Dockerfile.py${{ matrix.python-version }}

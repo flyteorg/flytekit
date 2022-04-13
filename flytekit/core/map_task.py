@@ -9,6 +9,7 @@ from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.configuration import SerializationSettings
+from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -53,7 +54,8 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
         instance = next(self._ids)
-        name = f"{python_function_task.task_function.__module__}.mapper_{python_function_task.task_function.__name__}_{instance}"
+        _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
+        name = f"{mod}.mapper_{f}_{instance}"
 
         self._run_task = python_function_task
         self._max_concurrency = concurrency
@@ -61,6 +63,8 @@ class MapPythonTask(PythonTask):
         self._array_task_interface = python_function_task.python_interface
         if "metadata" not in kwargs and python_function_task.metadata:
             kwargs["metadata"] = python_function_task.metadata
+        if "security_ctx" not in kwargs and python_function_task.security_context:
+            kwargs["security_ctx"] = python_function_task.security_context
         super().__init__(
             name=name,
             interface=collection_interface,

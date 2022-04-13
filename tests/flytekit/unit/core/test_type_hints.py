@@ -1328,7 +1328,7 @@ def test_wf_explicitly_returning_empty_task():
 def test_nested_dict():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.Dict[str, int]:
-        return {"value:": value ** 2}
+        return {"value:": value**2}
 
     @workflow
     def compute_square_wf(input_integer: int) -> typing.Dict[str, int]:
@@ -1342,7 +1342,7 @@ def test_nested_dict2():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.List[typing.Dict[str, int]]:
         return [
-            {"squared_value": value ** 2},
+            {"squared_value": value**2},
         ]
 
     @workflow
@@ -1503,7 +1503,7 @@ def test_guess_dict():
     input_map = {"a": {"k1": "v1", "k2": "2"}}
     guessed_types = {"a": pt}
     ctx = context_manager.FlyteContext.current_context()
-    lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, guessed_python_types=guessed_types)
+    lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, type_hints=guessed_types)
     assert isinstance(lm.literals["a"].scalar.generic, Struct)
 
     output_lm = t2.dispatch_execute(ctx, lm)
@@ -1600,7 +1600,10 @@ def test_error_messages():
     with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
         foo(a="hello", b=10)
 
-    with pytest.raises(TypeError, match="Failed to convert return value for var o0 for function test_type_hints.foo2"):
+    with pytest.raises(
+        TypeError,
+        match="Failed to convert return value for var o0 for " "function tests.flytekit.unit.core.test_type_hints.foo2",
+    ):
         foo2(a=10, b="hello")
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):

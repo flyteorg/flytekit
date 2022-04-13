@@ -90,8 +90,8 @@ def test_validate_image():
     ic = ImageConfig.validate_image(None, "image", (img3_cli, img4_cli))
     assert ic
     assert ic.default_image.full == img3
-    assert len(ic.images) == 1
-    assert ic.images[0].full == img4
+    assert len(ic.images) == 2
+    assert ic.images[1].full == img4
 
 
 def test_secrets_manager_default():

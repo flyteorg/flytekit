@@ -24,7 +24,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
-from flytekit.core.tracker import is_functools_wrapped_module_level, isnested, istestfunction
+from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
     WorkflowFailurePolicy,
@@ -115,9 +115,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
         self._native_interface = transform_function_to_interface(task_function, Docstring(callable_=task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
+        name, _, _, _ = extract_task_module(task_function)
         super().__init__(
             task_type=task_type,
-            name=f"{task_function.__module__}.{task_function.__name__}",
+            name=name,
             interface=mutated_interface,
             task_config=task_config,
             task_resolver=task_resolver,

@@ -6,7 +6,8 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
-from flytekit.remote.remote import FlyteRemote, Options
+from flytekit.remote.remote import FlyteRemote
+from flytekit.tools.translator import Options
 
 CLIENT_METHODS = {
     ResourceType.WORKFLOW: "list_workflows_paginated",
@@ -28,7 +29,7 @@ ENTITY_TYPE_TEXT = {
 
 
 @patch("flytekit.clients.friendly.SynchronousFlyteClient")
-def test_remote_fetch_workflow_execution(mock_client_manager):
+def test_remote_fetch_execution(mock_client_manager):
     admin_workflow_execution = Execution(
         id=WorkflowExecutionIdentifier("p1", "d1", "n1"),
         spec=MagicMock(),
@@ -40,7 +41,7 @@ def test_remote_fetch_workflow_execution(mock_client_manager):
 
     remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     remote._client = mock_client
-    flyte_workflow_execution = remote.fetch_workflow_execution(name="n1")
+    flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
 
 

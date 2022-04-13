@@ -286,7 +286,8 @@ def test_serialization_command1():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "test_serialization",  # when unit testing, t1.task_function.__module__ just gives this file
+        "tests.flytekit.unit.core.test_serialization",
+        # when unit testing, t1.task_function.__module__ just gives this file
         "task-name",
         "t1",
     ]
@@ -296,7 +297,7 @@ def test_serialization_types():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.List[typing.Dict[str, int]]:
         return [
-            {"squared_value": value ** 2},
+            {"squared_value": value**2},
         ]
 
     @workflow
@@ -366,11 +367,16 @@ def test_serialization_nested_subwf():
     assert wf_spec is not None
     assert len(wf_spec.sub_workflows) == 2
     subwf = {v.id.name: v for v in wf_spec.sub_workflows}
-    assert subwf.keys() == {"test_serialization.leaf_subwf", "test_serialization.middle_subwf"}
-    midwf = subwf["test_serialization.middle_subwf"]
+    assert subwf.keys() == {
+        "tests.flytekit.unit.core.test_serialization.leaf_subwf",
+        "tests.flytekit.unit.core.test_serialization.middle_subwf",
+    }
+    midwf = subwf["tests.flytekit.unit.core.test_serialization.middle_subwf"]
     assert len(midwf.nodes) == 1
     assert midwf.nodes[0].workflow_node is not None
-    assert midwf.nodes[0].workflow_node.sub_workflow_ref.name == "test_serialization.leaf_subwf"
+    assert (
+        midwf.nodes[0].workflow_node.sub_workflow_ref.name == "tests.flytekit.unit.core.test_serialization.leaf_subwf"
+    )
     assert wf_spec.template.nodes[1].id == "foo-node"
     assert wf_spec.template.outputs[2].binding.promise.node_id == "foo-node"
 

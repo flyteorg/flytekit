@@ -5,10 +5,16 @@ import configparser as _configparser
 import os
 import typing
 from dataclasses import dataclass
+from os import getenv
 from pathlib import Path
+
+import yaml
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
+
+# This is the env var that the flytectl sandbox instructions say to set
+FLYTECTL_CONFIG_ENV_VAR = "FLYTECTL_CONFIG"
 
 
 @dataclass
@@ -16,7 +22,7 @@ class LegacyConfigEntry(object):
     """
     Creates a record for the config entry. contains
     Args:
-        section: section the option should be found unddd
+        section: section the option should be found under
         option: the option str to lookup
         type_: Expected type of the value
     """
@@ -50,6 +56,33 @@ class LegacyConfigEntry(object):
         return None
 
 
+@dataclass
+class YamlConfigEntry(object):
+    """
+    Creates a record for the config entry. contains
+    Args:
+        switch: dot-delimited string that should match flytectl args. Leaving it as dot-delimited instead of a list
+          of strings because it's easier to maintain alignment with flytectl.
+        config_value_type: Expected type of the value
+    """
+
+    switch: str
+    config_value_type: typing.Type = str
+
+    def read_from_file(
+        self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
+    ) -> typing.Optional[typing.Any]:
+        if not cfg:
+            return None
+        try:
+            v = cfg.get(self)
+            if v:
+                return transform(v) if transform else v
+        except Exception:
+            ...
+        return None
+
+
 def bool_transformer(config_val: typing.Any):
     if type(config_val) is str:
         return True if config_val and not config_val.lower() in ["false", "0", "off", "no"] else False
@@ -61,10 +94,12 @@ def bool_transformer(config_val: typing.Any):
 class ConfigEntry(object):
     """
     A top level Config entry holder, that holds multiple different representations of the config.
-    Currently only legacy is supported, but more will be added soon
+    Legacy means the INI style config files. YAML support is for the flytectl config file, which is there by default
+    when flytectl starts a sandbox
     """
 
     legacy: LegacyConfigEntry
+    yaml_entry: typing.Optional[YamlConfigEntry] = None
     transform: typing.Optional[typing.Callable[[str], typing.Any]] = None
 
     legacy_default_transforms = {
@@ -79,14 +114,24 @@ class ConfigEntry(object):
     def read(self, cfg: typing.Optional[ConfigFile] = None) -> typing.Optional[typing.Any]:
         """
         Reads the config Entry from the various sources in the following order,
-         First try to read from environment, if not then try to read from the given config file
+        #. First try to read from the relevant environment variable,
+        #. If missing, then try to read from the legacy config file, if one was parsed.
+        #. If missing, then try to read from the yaml file.
+
+        The constructor for ConfigFile currently does not allow specification of both the ini and yaml style formats.
+
         :param cfg:
         :return:
         """
         from_env = self.legacy.read_from_env(self.transform)
-        if from_env is None:
+        if from_env is not None:
+            return from_env
+        if cfg and cfg.legacy_config:
             return self.legacy.read_from_file(cfg, self.transform)
-        return from_env
+        if cfg and cfg.yaml_config and self.yaml_entry:
+            return self.yaml_entry.read_from_file(cfg, self.transform)
+
+        return None
 
 
 class ConfigFile(object):
@@ -95,8 +140,22 @@ class ConfigFile(object):
         Load the config from this location
         """
         self._location = location
-        # TODO, we can choose legacy vs other config using the extension. For .yaml, we can use the new config parser
-        self._legacy_config = self._read_legacy_config(location)
+        if location.endswith("yaml"):
+            self._legacy_config = None
+            self._yaml_config = self._read_yaml_config(location)
+        else:
+            self._legacy_config = self._read_legacy_config(location)
+            self._yaml_config = None
+
+    @staticmethod
+    def _read_yaml_config(location: str) -> typing.Optional[typing.Dict[str, typing.Any]]:
+        with open(location, "r") as fh:
+            try:
+                yaml_contents = yaml.safe_load(fh)
+                return yaml_contents
+            except yaml.YAMLError as exc:
+                logger.warning(f"Error {exc} reading yaml config file at {location}, ignoring...")
+                return None
 
     def _read_legacy_config(self, location: str) -> _configparser.ConfigParser:
         c = _configparser.ConfigParser()
@@ -120,14 +179,31 @@ class ConfigFile(object):
 
         return self._legacy_config.get(c.section, c.option)
 
-    def get(self, c: typing.Union[LegacyConfigEntry]) -> typing.Any:
+    def _get_from_yaml(self, c: YamlConfigEntry) -> typing.Any:
+        keys = c.switch.split(".")  # flytectl switches are dot delimited
+        d = self.yaml_config
+        try:
+            for k in keys:
+                d = d[k]
+            return d
+        except KeyError:
+            logger.debug(f"Switch {c.switch} could not be found in yaml config")
+            return None
+
+    def get(self, c: typing.Union[LegacyConfigEntry, YamlConfigEntry]) -> typing.Any:
         if isinstance(c, LegacyConfigEntry):
             return self._get_from_legacy(c)
+        if isinstance(c, YamlConfigEntry) and self.yaml_config:
+            return self._get_from_yaml(c)
         raise NotImplementedError("Support for other config types besides .ini / .config files not yet supported")
 
     @property
     def legacy_config(self) -> _configparser.ConfigParser:
         return self._legacy_config
+
+    @property
+    def yaml_config(self) -> typing.Dict[str, Any]:
+        return self._yaml_config
 
 
 def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[ConfigFile]:
@@ -139,13 +215,24 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
         current_location_config = Path("flytekit.config")
         if current_location_config.exists():
             logger.info(f"Using configuration from Python process root {current_location_config.absolute()}")
-            return ConfigFile(current_location_config.absolute())
+            return ConfigFile(str(current_location_config.absolute()))
 
         # If not, see if there's a config in the user's home directory
         home_dir_config = Path(Path.home(), ".flyte", "config")  # _default_config_file_name in main.py
         if home_dir_config.exists():
             logger.info(f"Using configuration from home directory {home_dir_config.absolute()}")
-            return ConfigFile(home_dir_config.absolute())
+            return ConfigFile(str(home_dir_config.absolute()))
+
+        # If not, see if the env var that flytectl sandbox tells the user to set is set,
+        # or see if there's something in the default home directory location
+        flytectl_path = Path(Path.home(), ".flyte", "config.yaml")
+        flytectl_path_from_env = getenv(FLYTECTL_CONFIG_ENV_VAR, None)
+
+        if flytectl_path_from_env:
+            flytectl_path = Path(flytectl_path_from_env)
+        if flytectl_path.exists():
+            logger.info(f"Using flytectl/YAML config {flytectl_path.absolute()}")
+            return ConfigFile(str(flytectl_path.absolute()))
 
         # If not, then return None and let caller handle
         return None

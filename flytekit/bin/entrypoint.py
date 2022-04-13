@@ -2,6 +2,7 @@ import contextlib
 import datetime as _datetime
 import os
 import pathlib
+import subprocess
 import tempfile
 import traceback as _traceback
 from typing import List, Optional
@@ -498,7 +499,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    os.system(" ".join(cmd))
+    subprocess.run(cmd, check=True)
 
 
 @_pass_through.command("pyflyte-map-execute")

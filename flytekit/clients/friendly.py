@@ -1,3 +1,4 @@
+import datetime
 import typing
 
 from flyteidl.admin import common_pb2 as _common_pb2
@@ -11,6 +12,8 @@ from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
+from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
+from google.protobuf.duration_pb2 import Duration
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.models import common as _common
@@ -971,5 +974,33 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         return super(SynchronousFlyteClient, self).list_matchable_attributes(
             _matchable_resource_pb2.ListMatchableAttributesRequest(
                 resource_type=resource_type,
+            )
+        )
+
+    def get_upload_signed_url(
+        self, project: str, domain: str, content_md5: bytes, filename: str = None, expires_in: datetime.timedelta = None
+    ) -> _data_proxy_pb2.CreateUploadLocationResponse:
+        """
+        Get a signed url to be used during fast registration
+        :param str project: Project to create the upload location for
+        :param str domain: Domain to create the upload location for
+        :param bytes content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5
+            will also appear in the generated path.
+        :param str filename: [Optional] If provided this specifies a desired suffix for the generated location
+        :param datetime.timedelta expires_in: [Optional] If provided this defines a requested expiration duration for
+            the generated url
+        :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
+        """
+        expires_in_pb = None
+        if expires_in:
+            expires_in_pb = Duration()
+            expires_in_pb.FromTimedelta(expires_in)
+        return super(SynchronousFlyteClient, self).create_upload_location(
+            _data_proxy_pb2.CreateUploadLocationRequest(
+                project=project,
+                domain=domain,
+                content_md5=content_md5,
+                filename=filename,
+                expires_in=expires_in_pb,
             )
         )

@@ -3,13 +3,18 @@ from __future__ import annotations
 import base64 as _base64
 import subprocess
 import time
+import typing
 from typing import Optional
 
 import grpc
 import requests as _requests
+from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
+from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
+from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
+from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 
 from flytekit.clis.auth import credentials as _credentials_access
@@ -39,7 +44,7 @@ def _handle_rpc_error(retry=False):
                         if i == (max_retries - 1):
                             # Exit the loop and wrap the authentication error.
                             raise _user_exceptions.FlyteAuthenticationException(str(e))
-                        cli_logger.error(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
+                        cli_logger.debug(f"Unauthenticated RPC error {e}, refreshing credentials and retrying\n")
                         args[0].refresh_credentials()
                     elif e.code() == grpc.StatusCode.ALREADY_EXISTS:
                         # There are two cases that we should throw error immediately
@@ -55,7 +60,7 @@ def _handle_rpc_error(retry=False):
                             raise
                         else:
                             # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
-                            wait_time = min(200 * (2 ** i), max_wait_time)
+                            wait_time = min(200 * (2**i), max_wait_time)
                             cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                             time.sleep(wait_time / 1000)
 
@@ -92,6 +97,8 @@ class RawSynchronousFlyteClient(object):
         RawSynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))  # or
         SynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))
     """
+
+    _dataproxy_stub: DataProxyServiceStub
 
     def __init__(self, cfg: PlatformConfig, **kwargs):
         """
@@ -133,6 +140,7 @@ class RawSynchronousFlyteClient(object):
         except grpc.RpcError:
             cli_logger.debug("No OAuth2 Metadata found, skipping.")
             self._oauth2_metadata = None
+        self._dataproxy_stub = dataproxy_service.DataProxyServiceStub(self._channel)
 
         cli_logger.info(
             f"Flyte Client configured -> {self._cfg.endpoint} in {'insecure' if self._cfg.insecure else 'secure'} mode."
@@ -172,6 +180,7 @@ class RawSynchronousFlyteClient(object):
                 "Raw Flyte client attempting client credentials flow but no response from Admin detected. "
                 "Check your Admin server's .well-known endpoints to make sure they're working as expected."
             )
+
         client = _credentials_access.get_client(
             redirect_endpoint=self.public_client_config.redirect_uri,
             client_id=self.public_client_config.client_id,
@@ -179,16 +188,12 @@ class RawSynchronousFlyteClient(object):
             auth_endpoint=self.oauth2_metadata.authorization_endpoint,
             token_endpoint=self.oauth2_metadata.token_endpoint,
         )
+
         if client.has_valid_credentials and not self.check_access_token(client.credentials.access_token):
             # When Python starts up, if credentials have been stored in the keyring, then the AuthorizationClient
             # will have read them into its _credentials field, but it won't be in the RawSynchronousFlyteClient's
             # metadata field yet. Therefore, if there's a mismatch, copy it over.
             self.set_access_token(client.credentials.access_token, authorization_header_key)
-            # However, after copying over credentials from the AuthorizationClient, we have to clear it to avoid the
-            # scenario where the stored credentials in the keyring are expired. If that's the case, then we only try
-            # them once (because client here is a singleton), and the next time, we'll do one of the two other conditions
-            # below.
-            client.clear()
             return
         elif client.can_refresh_token:
             client.refresh_access_token()
@@ -723,12 +728,14 @@ class RawSynchronousFlyteClient(object):
     ####################################################################################################################
 
     @_handle_rpc_error(retry=True)
-    def list_projects(self, project_list_request):
+    def list_projects(self, project_list_request: typing.Optional[ProjectListRequest] = None):
         """
         This will return a list of the projects registered with the Flyte Admin Service
         :param flyteidl.admin.project_pb2.ProjectListRequest project_list_request:
         :rtype: flyteidl.admin.project_pb2.Projects
         """
+        if project_list_request is None:
+            project_list_request = ProjectListRequest()
         return self._stub.ListProjects(project_list_request, metadata=self._metadata)
 
     @_handle_rpc_error()
@@ -809,6 +816,22 @@ class RawSynchronousFlyteClient(object):
 
     # TODO: (P2) Implement the event endpoints in case there becomes a use-case for third-parties to submit events
     # through the client in Python.
+
+    ####################################################################################################################
+    #
+    #  Data proxy endpoints
+    #
+    ####################################################################################################################
+    @_handle_rpc_error(retry=True)
+    def create_upload_location(
+        self, create_upload_location_request: _dataproxy_pb2.CreateUploadLocationRequest
+    ) -> _dataproxy_pb2.CreateUploadLocationResponse:
+        """
+        Get a signed url to be used during fast registration
+        :param flyteidl.service.dataproxy_pb2.CreateUploadLocationRequest create_upload_location_request:
+        :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
+        """
+        return self._dataproxy_stub.CreateUploadLocation(create_upload_location_request, metadata=self._metadata)
 
 
 def get_token(token_endpoint, authorization_header, scope):
