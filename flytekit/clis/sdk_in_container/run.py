@@ -77,7 +77,7 @@ from flytekit.types.structured.structured_dataset import (
     multiple=True,
     type=click.UNPROCESSED,
     callback=ImageConfig.validate_image,
-    default=[DefaultImages._DEFAULT_IMAGES[DefaultImages.PYTHON_3_9]],
+    default=[DefaultImages.default_image],
     help="Image used to register and run.",
 )
 @click.option(
