@@ -24,3 +24,4 @@ markdown                    # deck
 plotly                      # deck
 pandas_profiling            # deck
 dolt_integrations           # dolt
+great-expectations          # greatexpectations

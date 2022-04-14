@@ -12,6 +12,7 @@ Plugin API reference
 * :ref:`FS Spec <fsspec>` - FS Spec API reference
 * :ref:`Deck standard <deck>` - Deck standard API reference
 * :ref:`Dolt standard <dolt>` - Dolt standard API reference
+* :ref:`Great expectations <greatexpectations>` - Great expectations API reference
 
 .. toctree::
    :maxdepth: 2
@@ -25,3 +26,4 @@ Plugin API reference
    FS Spec <fsspec>
    Deck standard <deck>
    Dolt standard <dolt>
+   Great expectations <greatexpectations>
