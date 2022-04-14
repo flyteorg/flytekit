@@ -7,7 +7,7 @@ Plugin API reference
 * :ref:`Athena <athena>` - AWS Athena plugin reference
 * :ref:`AWS Batch <awsbatch>` - AWS Batch plugin reference
 * :ref:`AWS Sagemaker <awssagemaker>` - AWS Sagemaker plugin reference
-* :ref:`Google Bigquery <bigquery>` - Google Bigquery plugin reference - Fails with import error google.cloud
+* :ref:`Google Bigquery <bigquery>` - Google Bigquery plugin reference
 * :ref:`FS Spec <fsspec>` - FS Spec API reference
 * :ref:`Deck standard <deck>` - Deck standard API reference
 * :ref:`Dolt standard <dolt>` - Dolt standard API reference
