@@ -156,8 +156,6 @@
         }
         div.setAttribute("link_index", index)
         div.setAttribute("id", "d" + index)
-        div.setAttribute("width", "800")
-        div.setAttribute("height", "400")
         const embed = document.createElement("embed");
         embed.setAttribute("src", path)
         embed.setAttribute("type", "text/html")
@@ -172,9 +170,9 @@
     let index = 1
     const fetchDeckMetadata = async (metadata) => {
         try {
-            Object.entries(metadata).forEach(([tabName, data]) => {
+            Object.entries(metadata).forEach(([tabName, path]) => {
                 createTab(tabName, index);
-                createDiv(data, index);
+                createDiv(path, index);
                 index++;
             });
         } catch (error) {
