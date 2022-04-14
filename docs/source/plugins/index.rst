@@ -18,6 +18,11 @@ Plugin API reference
 * :ref:`KF Pytorch <kfpytorch>` - KF Pytorch API reference
 * :ref:`Kf Tensorflow <kftensorflow>` - KF Tensorflow API reference
 * :ref:`Modin <modin>` - Modin API reference
+* :ref:`Pandera <pandera>` - Pandera API reference
+* :ref:`Papermill <papermill>` - Papermill API reference
+* :ref:`Snowflake <snowflake>` - Snowflake API reference
+* :ref:`Spark <spark>` - Spark API reference
+* :ref:`SQLAlchemy <sqlalchemy>` - SQLAlchemy API reference
 
 .. toctree::
    :maxdepth: 2
@@ -37,3 +42,8 @@ Plugin API reference
    KF Pytorch <kfpytorch>
    KF Tensorflow <kftensorflow>
    Modin <modin>
+   Pandera <pandera>
+   Papermill <papermill>
+   Snowflake <snowflake>
+   Spark <spark>
+   SQLAlchemy <sqlalchemy>
