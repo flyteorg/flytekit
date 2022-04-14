@@ -22,7 +22,7 @@ mkdir -p /opt/spark/work-dir
 touch /opt/spark/RELEASE
 
 # Fetch Spark Distribution
-wget https://archive.apache.org/dist/spark/spark-3.0.1/spark-3.0.1-bin-hadoop3.2.tgz -O spark-dist.tgz
+wget https://archive.apache.org/dist/spark/spark-3.2.1/spark-3.2.1-bin-hadoop3.2.tgz -O spark-dist.tgz
 echo 'e2d05efa1c657dd5180628a83ea36c97c00f972b4aee935b7affa2e1058b0279  spark-dist.tgz' | sha256sum --check
 mkdir -p spark-dist
 tar -xvf spark-dist.tgz -C spark-dist --strip-components 1
