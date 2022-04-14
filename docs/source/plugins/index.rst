@@ -11,6 +11,7 @@ Plugin API reference
 * :ref:`Kf Tensorflow <kftensorflow>` - KF Tensorflow API reference
 * :ref:`FS Spec <fsspec>` - FS Spec API reference
 * :ref:`Deck standard <deck>` - Deck standard API reference
+* :ref:`Dolt standard <dolt>` - Dolt standard API reference
 
 .. toctree::
    :maxdepth: 2
@@ -23,3 +24,4 @@ Plugin API reference
    KF Tensorflow <kftensorflow>
    FS Spec <fsspec>
    Deck standard <deck>
+   Dolt standard <dolt>
