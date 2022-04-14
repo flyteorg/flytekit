@@ -149,7 +149,7 @@
         element.appendChild(li);
     }
 
-    function createDiv(data, index) {
+    function createDiv(path, index) {
         const div = document.createElement("div");
         if (index === 1) {
             div.setAttribute("class", "active")
@@ -158,9 +158,14 @@
         div.setAttribute("id", "d" + index)
         div.setAttribute("width", "800")
         div.setAttribute("height", "400")
-        div.innerHTML = data
+        const embed = document.createElement("embed");
+        embed.setAttribute("src", path)
+        embed.setAttribute("type", "text/html")
+        embed.setAttribute("width", "1200")
+        embed.setAttribute("height", "600")
 
         const element = document.getElementById("flyte-frame-container");
+        div.appendChild(embed);
         element.appendChild(div);
     }
 

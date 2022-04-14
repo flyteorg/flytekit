@@ -1,9 +1,12 @@
 import html
 import os
+import pathlib
+import random
 from typing import Dict, Optional
+from uuid import UUID
 
-from IPython.display import HTML, IFrame, display
 from jinja2 import Environment, FileSystemLoader
+from IPython.display import HTML, IFrame, display
 
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 
@@ -53,6 +56,7 @@ class Deck:
 
     def __init__(self, name: str, html: Optional[str] = ""):
         self._name = name
+        # self.renderers = renderers if isinstance(renderers, list) else [renderers]
         self._html = html
         FlyteContextManager.current_context().user_space_params.decks.append(self)
 
@@ -89,22 +93,37 @@ def ipython_check() -> bool:
 def _output_deck(new_user_params: ExecutionParameters):
     deck_map: Dict[str, str] = {}
     decks = new_user_params.decks
+    ctx = FlyteContext.current_context()
+
+    # TODO: upload deck file to remote filesystems (s3, gcs)
+    print(pathlib.Path().resolve())
+    key = UUID(int=random.getrandbits(128)).hex
+    output_dir = os.path.join(pathlib.Path().resolve(), "jupyter", key)
+    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
+    # output_dir = ctx.file_access.get_random_local_directory()
+
     for deck in decks:
-        deck_map[deck.name] = deck.html
+        _deck_to_html_file(deck, deck_map, output_dir)
 
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, "html")
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template("template.html")
 
+    deck_path = os.path.join(output_dir, "deck.html")
+    with open(deck_path, "w") as f:
+        f.write(template.render(metadata=deck_map))
+
+    print(deck_path)
     if ipython_check():
-        iframe = f'<iframe srcdoc="{html.escape(template.render(metadata=deck_map))}" width=100% height=400></iframe> '
-        display(HTML(iframe))
-    else:
-        ctx = FlyteContext.current_context()
-        output_dir = ctx.file_access.get_random_remote_directory()
-        if not ctx.file_access.is_remote(output_dir):
-            os.makedirs(output_dir, exist_ok=True)
-        deck_path = os.path.join(output_dir, "deck.html")
-        with open(deck_path, "w") as f:
-            f.write(template.render(metadata=deck_map))
+        iframe = f'<iframe src="jupyter/df2356a9c47ea00cfb6bc8c56aa5e371/deck.html" width=100% height=400></iframe>'
+        # print(template.render(metadata=deck_map))
+        display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
+
+
+def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):
+    file_name = deck.name + ".html"
+    path = os.path.join(output_dir, file_name)
+    with open(path, "w") as output:
+        deck_map[deck.name] = os.path.relpath(path)
+        output.write(deck.html)
