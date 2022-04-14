@@ -8,9 +8,3 @@ AWS Athena Plugin API reference
    :no-members:
    :no-inherited-members:
    :no-special-members:
-
-.. toctree::
-    :caption: API reference
-    :glob:
-
-    generated/flytekitplugins.athena*

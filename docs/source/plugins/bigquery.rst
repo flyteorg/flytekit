@@ -4,7 +4,6 @@
 Google Bigquery Plugin API reference
 ###################################################
 
-
 .. automodule:: flytekitplugins.bigquery
    :no-members:
    :no-inherited-members:
