@@ -15,8 +15,16 @@
 import os
 import sys
 
+sys.path.insert(0, os.path.abspath("../../plugins/flytekit-aws-athena/"))
+sys.path.insert(0, os.path.abspath("../../plugins/flytekit-aws-batch/"))
+sys.path.insert(0, os.path.abspath("../../plugins/flytekit-aws-sagemaker/"))
+sys.path.insert(0, os.path.abspath("../../plugins/flytekit-bigquery/"))
+sys.path.insert(0, os.path.abspath("../../plugins/flytekit-data-fsspec/"))
+sys.path.insert(0, os.path.abspath("../../plugins/flytekit-kf-tensorflow/"))
 sys.path.insert(0, os.path.abspath("../../flytekit/"))
 sys.path.insert(0, os.path.abspath("../.."))
+
+print(sys.path)
 
 # -- Project information -----------------------------------------------------
 

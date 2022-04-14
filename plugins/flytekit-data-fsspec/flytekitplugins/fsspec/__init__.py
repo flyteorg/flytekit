@@ -1,3 +1,25 @@
+"""
+.. currentmodule:: flytekitplugins.fsspec
+
+This package contains things that are useful when extending Flytekit.
+
+.. autosummary::
+
+   ArrowToParquetEncodingHandler
+   FSSpecPersistence
+   PandasToParquetEncodingHandler
+   ParquetToArrowDecodingHandler
+   ParquetToPandasDecodingHandler
+"""
+
+__all__ = [
+    "ArrowToParquetEncodingHandler",
+    "FSSpecPersistence",
+    "PandasToParquetEncodingHandler",
+    "ParquetToArrowDecodingHandler",
+    "ParquetToPandasDecodingHandler"
+]
+
 import importlib
 
 from flytekit import StructuredDatasetTransformerEngine, logger
