@@ -46,7 +46,7 @@ class ExecutableTemplateShimTask(object):
         """Return the name of the underlying task."""
         if self._task_template is not None:
             return self._task_template.id.name
-        # if not access the subclass's name, with the class name as fall-back
+        # if not access the subclass's name, with a fall-back if it's not defined
         return getattr(self, "_name", "executable_template_shim_task")
 
     @property
