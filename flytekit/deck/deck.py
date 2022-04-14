@@ -5,8 +5,8 @@ import random
 from typing import Dict, Optional
 from uuid import UUID
 
-from jinja2 import Environment, FileSystemLoader
 from IPython.display import HTML, IFrame, display
+from jinja2 import Environment, FileSystemLoader
 
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 
@@ -74,7 +74,7 @@ class Deck:
         return self._html
 
 
-def ipython_check() -> bool:
+def _ipython_check() -> bool:
     """
     Check if interface is launching from iPython (not colab)
     :return is_ipython (bool): True or False
@@ -90,8 +90,8 @@ def ipython_check() -> bool:
     return is_ipython
 
 
-def get_output_dir() -> str:
-    if not ipython_check():
+def _get_output_dir() -> str:
+    if not _ipython_check():
         ctx = FlyteContext.current_context()
         return ctx.file_access.get_random_local_directory()
     key = UUID(int=random.getrandbits(128)).hex
@@ -110,12 +110,12 @@ def _output_deck(new_user_params: ExecutionParameters):
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template("template.html")
 
-    output_dir = get_output_dir()
+    output_dir = _get_output_dir()
 
     for deck in decks:
         _deck_to_html_file(deck, deck_map, output_dir)
 
-    if ipython_check():
+    if _ipython_check():
         display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
     else:
         deck_path = os.path.join(output_dir, "deck.html")
@@ -126,7 +126,7 @@ def _output_deck(new_user_params: ExecutionParameters):
 def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):
     file_name = deck.name + ".html"
     path = os.path.join(output_dir, file_name)
-    if ipython_check():
+    if _ipython_check():
         deck_map[deck.name] = os.path.relpath(path)
     else:
         deck_map[deck.name] = file_name
