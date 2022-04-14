@@ -15,22 +15,18 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-aws-athena/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-aws-batch/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-aws-sagemaker/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-bigquery/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-data-fsspec/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-deck-standard/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-dolt/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-greatexpectations/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-hive/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-k8s-pod/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-kf-mpi/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-kf-tensorflow/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-kf-pytorch/"))
-sys.path.insert(0, os.path.abspath("../../plugins/flytekit-modin/"))
-sys.path.insert(0, os.path.abspath("../../flytekit/"))
-sys.path.insert(0, os.path.abspath("../.."))
+flytekit_dir = os.path.abspath("../..")
+flytekit_src_dir = os.path.abspath(os.path.join(flytekit_dir, "flytekit"))
+plugins_dir = os.path.abspath(os.path.join(flytekit_dir, "plugins"))
+
+for possible_plugin_dir in os.listdir(plugins_dir):
+    dir_path = os.path.abspath((os.path.join(plugins_dir, possible_plugin_dir)))
+    plugin_path = os.path.abspath(os.path.join(dir_path, "flytekitplugins"))
+    if os.path.isdir(dir_path) and os.path.exists(plugin_path):
+        sys.path.insert(0, dir_path)
+
+sys.path.insert(0, flytekit_src_dir)
+sys.path.insert(0, flytekit_dir)
 
 print(sys.path)
 
