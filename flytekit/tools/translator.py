@@ -5,7 +5,6 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
-from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -172,11 +171,7 @@ def get_serializable_task(
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
         # during dynamic serialization
-        b = settings.new_builder()
-        if not b.env:
-            b.env = {}
-        b.env[SERIALIZED_CONTEXT_ENV_VAR] = settings.prepare_for_transport()
-        settings = b.build()
+        settings = settings.with_serialized_context()
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize

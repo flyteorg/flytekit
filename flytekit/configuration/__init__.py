@@ -84,6 +84,7 @@ import re
 import tempfile
 import typing
 from dataclasses import dataclass, field
+from io import BytesIO
 from typing import Dict, List, Optional
 
 from dataclasses_json import dataclass_json
@@ -101,6 +102,7 @@ DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 DEFAULT_IMAGE_NAME = "default"
 DEFAULT_IN_CONTAINER_SRC_PATH = "/root"
 _IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
+SERIALIZED_CONTEXT_ENV_VAR = "_F_SS_C"
 
 
 @dataclass_json
@@ -702,7 +704,7 @@ class SerializationSettings(object):
             domain=self.domain,
             version=self.version,
             image_config=self.image_config,
-            env=self.env,
+            env=self.env.copy() if self.env else None,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
@@ -714,10 +716,36 @@ class SerializationSettings(object):
         """
         return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
 
-    def prepare_for_transport(self) -> str:
+    def _has_serialized_context(self) -> bool:
+        return self.env and SERIALIZED_CONTEXT_ENV_VAR in self.env
+
+    @property
+    def serialized_context(self) -> str:
+        """
+        :return: returns the serialization context as a base64encoded, gzip compressed, json strinnn
+        """
+        if self._has_serialized_context():
+            return self.env[SERIALIZED_CONTEXT_ENV_VAR]
         json_str = self.to_json()
-        compressed_value = gzip.compress(json_str.encode("utf-8"))
-        return base64.b64encode(compressed_value).decode("utf-8")
+        buf = BytesIO()
+        with gzip.GzipFile(mode="wb", fileobj=buf, mtime=0) as f:
+            f.write(json_str.encode("utf-8"))
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+    def with_serialized_context(self) -> SerializationSettings:
+        """
+        Use this method to create a new SerializationSettings that has an environment variable set with the SerializedContext
+        This is useful in transporting SerializedContext to serialized and registered tasks.
+        The setting will be availabe in the `env` field with the key `SERIALIZED_CONTEXT_ENV_VAR`
+        :return: A newly constructed SerializationSettings, or self, if it already has the serializationSettings
+        """
+        if self._has_serialized_context():
+            return self
+        b = self.new_builder()
+        if not b.env:
+            b.env = {}
+        b.env[SERIALIZED_CONTEXT_ENV_VAR] = self.serialized_context
+        return b.build()
 
     @dataclass
     class Builder(object):

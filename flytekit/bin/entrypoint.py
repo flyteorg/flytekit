@@ -11,8 +11,12 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
-from flytekit.configuration import FastSerializationSettings, SerializationSettings, StatsConfig
-from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
+from flytekit.configuration import (
+    SERIALIZED_CONTEXT_ENV_VAR,
+    FastSerializationSettings,
+    SerializationSettings,
+    StatsConfig,
+)
 from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
