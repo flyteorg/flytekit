@@ -160,7 +160,7 @@ LIST_OF_CONTAINERS = [
     for resources in LIST_OF_RESOURCES
 ]
 
-LIST_OF_ARCHITECTURES = ["UNKNOWN", "ARM64", "AMD64", "ARMV6", "ARMv7"]
+LIST_OF_ARCHITECTURES = ["UNKNOWN", "ARM64", "AMD64", "ARM_V6", "ARM_V7"]
 
 LIST_OF_TASK_CLOSURES = [task.TaskClosure(task.CompiledTask(template)) for template in LIST_OF_TASK_TEMPLATES]
 
