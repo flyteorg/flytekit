@@ -84,6 +84,7 @@ import re
 import tempfile
 import typing
 from dataclasses import dataclass, field
+from io import BytesIO
 from typing import Dict, List, Optional
 
 from dataclasses_json import dataclass_json
@@ -726,8 +727,10 @@ class SerializationSettings(object):
         if self._has_serialized_context():
             return self.env[SERIALIZED_CONTEXT_ENV_VAR]
         json_str = self.to_json()
-        compressed_value = gzip.compress(json_str.encode("utf-8"), mtime=0)
-        return base64.b64encode(compressed_value).decode("utf-8")
+        buf = BytesIO()
+        with gzip.GzipFile(mode="wb", fileobj=buf, mtime=0) as f:
+            f.write(json_str.encode("utf-8"))
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
 
     def with_serialized_context(self) -> SerializationSettings:
         """
