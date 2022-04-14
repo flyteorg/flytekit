@@ -27,3 +27,8 @@ dolt_integrations           # dolt
 great-expectations          # greatexpectations
 kubernetes                  # k8s-pod
 modin                       # modin
+pandera                     # pandera
+papermill                   # papermill
+jupyter                     # papermill
+pyspark                     # spark
+sqlalchemy                  # sqlalchemy
