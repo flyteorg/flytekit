@@ -43,8 +43,11 @@ class ExecutableTemplateShimTask(object):
 
     @property
     def name(self) -> str:
-        # The subclasses that inherit from this class should have _name defined
-        return self._name
+        """Return the name of the underlying task."""
+        if self._task_template is not None:
+            return self._task_template.id.name
+        # if not access the subclass's name, with the class name as fall-back
+        return getattr(self, "_name", "executable_template_shim_task")
 
     @property
     def task_template(self) -> _task_model.TaskTemplate:
