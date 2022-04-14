@@ -17,7 +17,7 @@ __all__ = [
     "FSSpecPersistence",
     "PandasToParquetEncodingHandler",
     "ParquetToArrowDecodingHandler",
-    "ParquetToPandasDecodingHandler"
+    "ParquetToPandasDecodingHandler",
 ]
 
 import importlib
