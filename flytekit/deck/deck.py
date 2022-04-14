@@ -90,40 +90,47 @@ def ipython_check() -> bool:
     return is_ipython
 
 
+def get_output_dir() -> str:
+    if not ipython_check():
+        ctx = FlyteContext.current_context()
+        return ctx.file_access.get_random_local_directory()
+    key = UUID(int=random.getrandbits(128)).hex
+    # output_dir must be in the same directory as jupyter notebook
+    output_dir = os.path.join(pathlib.Path(), "jupyter", key)
+    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
 def _output_deck(new_user_params: ExecutionParameters):
     deck_map: Dict[str, str] = {}
     decks = new_user_params.decks
-    ctx = FlyteContext.current_context()
-
-    # TODO: upload deck file to remote filesystems (s3, gcs)
-    print(pathlib.Path().resolve())
-    key = UUID(int=random.getrandbits(128)).hex
-    output_dir = os.path.join(pathlib.Path().resolve(), "jupyter", key)
-    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
-    # output_dir = ctx.file_access.get_random_local_directory()
-
-    for deck in decks:
-        _deck_to_html_file(deck, deck_map, output_dir)
 
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, "html")
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template("template.html")
 
-    deck_path = os.path.join(output_dir, "deck.html")
-    with open(deck_path, "w") as f:
-        f.write(template.render(metadata=deck_map))
+    output_dir = get_output_dir()
 
-    print(deck_path)
+    for deck in decks:
+        _deck_to_html_file(deck, deck_map, output_dir)
+        deck_map[deck.name] = deck.html
+
     if ipython_check():
-        iframe = f'<iframe src="jupyter/df2356a9c47ea00cfb6bc8c56aa5e371/deck.html" width=100% height=400></iframe>'
-        # print(template.render(metadata=deck_map))
         display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
+    else:
+        deck_path = os.path.join(output_dir, "deck.html")
+        with open(deck_path, "w") as f:
+            f.write(template.render(metadata=deck_map))
 
 
 def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):
     file_name = deck.name + ".html"
     path = os.path.join(output_dir, file_name)
-    with open(path, "w") as output:
+    if ipython_check():
         deck_map[deck.name] = os.path.relpath(path)
+    else:
+        deck_map[deck.name] = file_name
+
+    with open(path, "w") as output:
         output.write(deck.html)
