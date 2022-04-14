@@ -56,7 +56,9 @@ css-html-js-minify==2.5.5
 cycler==0.11.0
     # via matplotlib
 dataclasses-json==0.5.7
-    # via flytekit
+    # via
+    #   dolt-integrations
+    #   flytekit
 decorator==5.1.1
     # via retry
 deprecated==1.2.13
@@ -71,6 +73,10 @@ docutils==0.17.1
     # via
     #   sphinx
     #   sphinx-panels
+dolt-integrations==0.1.5
+    # via -r doc-requirements.in
+doltcli==0.1.17
+    # via dolt-integrations
 flyteidl==0.24.17
     # via flytekit
 fonttools==4.32.0
@@ -210,6 +216,7 @@ packaging==21.3
     #   sphinx
 pandas==1.4.2
     # via
+    #   dolt-integrations
     #   flytekit
     #   pandas-profiling
     #   phik
