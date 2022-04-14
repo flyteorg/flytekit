@@ -114,7 +114,6 @@ def _output_deck(new_user_params: ExecutionParameters):
 
     for deck in decks:
         _deck_to_html_file(deck, deck_map, output_dir)
-        deck_map[deck.name] = deck.html
 
     if ipython_check():
         display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
