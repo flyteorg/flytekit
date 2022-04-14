@@ -167,13 +167,11 @@ def get_serializable_task(
         settings.version,
     )
 
-    print("I AM HERE======================================================")
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
         # during dynamic serialization
         settings = settings.with_serialized_context()
-        print(f"{settings.serialized_context}'")
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize

@@ -703,7 +703,7 @@ class SerializationSettings(object):
             domain=self.domain,
             version=self.version,
             image_config=self.image_config,
-            env=self.env.copy(),
+            env=self.env.copy() if self.env else None,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
