@@ -86,7 +86,7 @@ from flytekit.types.structured.structured_dataset import (
     "service_account",
     required=False,
     type=str,
-    default="default",
+    default="",
 )
 @click.option(
     "--wait-execution",
