@@ -13,6 +13,8 @@ Plugin API reference
 * :ref:`Deck standard <deck>` - Deck standard API reference
 * :ref:`Dolt standard <dolt>` - Dolt standard API reference
 * :ref:`Great expectations <greatexpectations>` - Great expectations API reference
+* :ref:`Hive <hive>` - Hive API reference
+* :ref:`Pod <pod>` - Pod API reference
 
 .. toctree::
    :maxdepth: 2
@@ -22,8 +24,10 @@ Plugin API reference
    AWS Batch <awsbatch>
    AWS Sagemaker <awssagemaker>
    Google Bigquery <bigquery>
-   KF Tensorflow <kftensorflow>
    FS Spec <fsspec>
    Deck standard <deck>
    Dolt standard <dolt>
    Great expectations <greatexpectations>
+   Hive <hive>
+   Pod <pod>
+   KF Tensorflow <kftensorflow>
