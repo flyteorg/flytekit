@@ -15,7 +15,8 @@ sphinxcontrib-yt
 grpcio
 cryptography
 
-# Packages needed for generating plugin documentation
+# Packages for Plugin docs
+# Package name              Plugin needing it
 botocore                    # fsspec
 fsspec                      # fsspec
 google-cloud                # bigquery
