@@ -14,3 +14,12 @@ sphinx-panels
 sphinxcontrib-yt
 grpcio
 cryptography
+
+# Packages needed for generating plugin documentation
+botocore                    # fsspec
+fsspec                      # fsspec
+google-cloud                # bigquery
+google-cloud-bigquery       # bigquery
+markdown                    # deck
+plotly                      # deck
+pandas_profiling            # deck
