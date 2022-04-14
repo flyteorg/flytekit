@@ -26,3 +26,4 @@ pandas_profiling            # deck
 dolt_integrations           # dolt
 great-expectations          # greatexpectations
 kubernetes                  # k8s-pod
+modin                       # modin

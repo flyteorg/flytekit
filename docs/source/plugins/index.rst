@@ -17,6 +17,7 @@ Plugin API reference
 * :ref:`KF MPI <kfmpi>` - KF MPI API reference
 * :ref:`KF Pytorch <kfpytorch>` - KF Pytorch API reference
 * :ref:`Kf Tensorflow <kftensorflow>` - KF Tensorflow API reference
+* :ref:`Modin <modin>` - Modin API reference
 
 .. toctree::
    :maxdepth: 2
@@ -35,3 +36,4 @@ Plugin API reference
    KF MPI <kfmpi>
    KF Pytorch <kfpytorch>
    KF Tensorflow <kftensorflow>
+   Modin <modin>

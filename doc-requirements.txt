@@ -104,7 +104,9 @@ flyteidl==0.24.17
 fonttools==4.32.0
     # via matplotlib
 fsspec==2022.3.0
-    # via -r doc-requirements.in
+    # via
+    #   -r doc-requirements.in
+    #   modin
 furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
 google-api-core[grpc]==2.7.2
@@ -234,6 +236,8 @@ missingno==0.5.1
     # via pandas-profiling
 mistune==2.0.2
     # via great-expectations
+modin==0.14.0
+    # via -r doc-requirements.in
 multimethod==1.8
     # via
     #   pandas-profiling
@@ -253,6 +257,7 @@ numpy==1.22.3
     #   imagehash
     #   matplotlib
     #   missingno
+    #   modin
     #   pandas
     #   pandas-profiling
     #   phik
@@ -268,13 +273,15 @@ packaging==21.3
     #   great-expectations
     #   marshmallow
     #   matplotlib
+    #   modin
     #   sphinx
-pandas==1.4.2
+pandas==1.4.1
     # via
     #   altair
     #   dolt-integrations
     #   flytekit
     #   great-expectations
+    #   modin
     #   pandas-profiling
     #   phik
     #   seaborn
