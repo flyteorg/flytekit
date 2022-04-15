@@ -22,6 +22,9 @@ from flytekit.configuration import AuthType, PlatformConfig
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
+from flytekit.core.utils import write_proto_to_file
+import hashlib
+
 
 _utf_8 = "utf-8"
 
@@ -37,7 +40,12 @@ def _handle_rpc_error(retry=False):
 
             for i in range(max_retries):
                 try:
-                    return fn(*args, **kwargs)
+                    resp = fn(*args, **kwargs)
+                    h = hashlib.md5()
+                    h.update(str(resp).encode())
+                    fname = fn.__name__ + h.hexdigest()+".pb"
+                    write_proto_to_file(resp, fname)
+                    return resp
                 except grpc.RpcError as e:
                     if e.code() == grpc.StatusCode.UNAUTHENTICATED:
                         # Always retry auth errors.
