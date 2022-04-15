@@ -18,7 +18,7 @@ from flytekit.models import security
 from flytekit.models.core import workflow as _workflow_model
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class LaunchPlan(object):
     """
     Launch Plans are one of the core constructs of Flyte. Please take a look at the discussion in the
@@ -74,6 +74,7 @@ class LaunchPlan(object):
        :dedent: 4
 
     """
+
     name: str
     workflow: _annotated_workflow.WorkflowBase
     parameters: _interface_models.ParameterMap
@@ -84,8 +85,8 @@ class LaunchPlan(object):
     raw_output_data_config: typing.Optional[_common_models.RawOutputDataConfig] = None
     max_parallelism: typing.Optional[int] = None
     security_context: typing.Optional[security.SecurityContext] = None
-    notifications: List[_common_models.Notification] = dataclasses.field(default_factory=list)
-    _saved_inputs: typing.Dict = dataclasses.field(default_factory=dict, init=False)
+    notifications: typing.List[_common_models.Notification] = dataclasses.field(default_factory=list, hash=False)
+    _saved_inputs: typing.Dict = dataclasses.field(default_factory=dict, init=False, hash=False)
 
     # The reason we cache is simply because users may get the default launch plan twice for a single Workflow. We
     # don't want to create two defaults, could be confusing.
@@ -151,7 +152,9 @@ class LaunchPlan(object):
 
         if auth_role:
             if security_context:
-                raise AssertionError("Auth-Role is deprecated. Only use Security Context. auth_role attribute can be ignored")
+                raise AssertionError(
+                    "Auth-Role is deprecated. Only use Security Context. auth_role attribute can be ignored"
+                )
             security_context = security.SecurityContext(
                 run_as=security.Identity(
                     iam_role=auth_role.assumable_iam_role,
@@ -252,9 +255,13 @@ class LaunchPlan(object):
             fixed_inputs = fixed_inputs or {}
             default_inputs.update(fixed_inputs)
 
-            print(default_inputs != cached_lp._saved_inputs)
-            print("Default Inputs", default_inputs, cached_lp._saved_inputs)
-            print(security_context != cached_lp.security_context)
+            if not security_context and auth_role:
+                security_context = security.SecurityContext(
+                    run_as=security.Identity(
+                        iam_role=auth_role.assumable_iam_role,
+                        k8s_service_account=auth_role.kubernetes_service_account,
+                    ),
+                )
 
             if (
                 workflow != cached_lp.workflow

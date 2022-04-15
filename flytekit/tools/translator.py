@@ -338,10 +338,10 @@ def get_serializable_launch_plan(
         fixed_inputs=entity.fixed_inputs,
         labels=options.labels or entity.labels or _common_models.Labels({}),
         annotations=options.annotations or entity.annotations or _common_models.Annotations({}),
-        auth_role=options.auth_role or entity._auth_role or _common_models.AuthRole(),
         raw_output_data_config=raw or entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
+        auth_role=None,
     )
 
     lp_id = _identifier_model.Identifier(

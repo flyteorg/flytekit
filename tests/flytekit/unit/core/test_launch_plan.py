@@ -5,6 +5,7 @@ import pytest
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 import flytekit.configuration
+from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import launch_plan, notification
 from flytekit.core.schedule import CronSchedule
@@ -106,6 +107,8 @@ def test_lp():
 
 
 def test_lp_each_parameter():
+    LaunchPlan.CACHE = {}
+
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
@@ -292,6 +295,7 @@ def test_lp_each_parameter():
 
 
 def test_lp_all_parameters():
+    LaunchPlan.CACHE = {}
     nt = typing.NamedTuple("OutputsBC", t1_int_output=int, c=str)
 
     @task
