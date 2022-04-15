@@ -1,11 +1,9 @@
-import html
 import os
 import pathlib
 import random
 from typing import Dict, Optional
 from uuid import UUID
 
-from IPython.display import HTML, IFrame, display
 from jinja2 import Environment, FileSystemLoader
 
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
@@ -116,7 +114,12 @@ def _output_deck(new_user_params: ExecutionParameters):
         _deck_to_html_file(deck, deck_map, output_dir)
 
     if _ipython_check():
-        display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
+        try:
+            from IPython.display import HTML, display
+
+            display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
+        except ImportError:
+            pass
     else:
         deck_path = os.path.join(output_dir, "deck.html")
         with open(deck_path, "w") as f:
