@@ -18,6 +18,7 @@ testdata = os.path.join(test_file_path, "testdata")
 test_csv = os.path.join(testdata, "test.csv")
 if os.name == "nt":
     script_sh = os.path.join(testdata, "script.exe")
+    script_sh_2 = None
 else:
     script_sh = os.path.join(testdata, "script.sh")
     script_sh_2 = os.path.join(testdata, "script_args_env.sh")
@@ -253,6 +254,8 @@ def test_shell_script():
 
 
 def test_portable_shell_task_with_args(capfd):
+    if script_sh_2 is None:
+        return
     pst = get_portable_shell_task()
     pst(
         script_file=script_sh_2,
@@ -265,6 +268,8 @@ def test_portable_shell_task_with_args(capfd):
 
 
 def test_shell_task_with_env(capfd):
+    if script_sh_2 is None:
+        return
     pst = get_portable_shell_task()
     pst(
         script_file=script_sh_2,
@@ -277,6 +282,8 @@ def test_shell_task_with_env(capfd):
 
 
 def test_shell_task_properly_restores_env_after_execution():
+    if script_sh_2 is None:
+        return
     env_as_dict = os.environ.copy()
     pst = get_portable_shell_task()
     pst(
