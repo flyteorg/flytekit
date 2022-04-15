@@ -8,6 +8,9 @@ from jinja2 import Environment, FileSystemLoader
 
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 
+OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
+DECK_FILE_NAME = "deck.html"
+
 
 class Deck:
     """
@@ -94,7 +97,7 @@ def _get_output_dir() -> str:
         return ctx.file_access.get_random_local_directory()
     key = UUID(int=random.getrandbits(128)).hex
     # output_dir must be in the same directory as jupyter notebook
-    output_dir = os.path.join(pathlib.Path(), "jupyter", key)
+    output_dir = os.path.join(pathlib.Path(), OUTPUT_DIR_JUPYTER_PREFIX, key)
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
     return output_dir
 
@@ -121,7 +124,7 @@ def _output_deck(new_user_params: ExecutionParameters):
         except ImportError:
             pass
     else:
-        deck_path = os.path.join(output_dir, "deck.html")
+        deck_path = os.path.join(output_dir, DECK_FILE_NAME)
         with open(deck_path, "w") as f:
             f.write(template.render(metadata=deck_map))
 

@@ -1,8 +1,9 @@
 import pandas as pd
+from mock import mock
 
 from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import TopFrameRenderer
-from flytekit.deck.deck import _output_deck
+from flytekit.deck.deck import OUTPUT_DIR_JUPYTER_PREFIX, _get_output_dir, _output_deck
 
 
 def test_deck():
@@ -25,3 +26,13 @@ def test_deck():
 
     t1(a=3)
     assert len(ctx.user_space_params.decks) == 2  # input, output decks
+
+
+@mock.patch("flytekit.deck.deck._ipython_check")
+def test_deck_in_jupyter(mock_ipython_check):
+    mock_ipython_check.return_value = True
+    assert OUTPUT_DIR_JUPYTER_PREFIX in _get_output_dir()
+
+    ctx = FlyteContextManager.current_context()
+    ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
+    _output_deck(ctx.user_space_params)
