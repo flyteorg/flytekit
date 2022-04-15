@@ -99,8 +99,3 @@ def test_run_remote_merge_sort():
     )
 
     assert exec.outputs["o0"] == [6, 9, 21, 41, 42, 71, 76, 89, 90, 94]
-
-
-@pytest.mark.sandbox_test
-def test_fetch_wf_wf_lp_pattern():
-    rr.fetch_workflow(name="core.control_flow.subworkflows.root_level_wf", version="JiepXcXB3SiEJ8pwYDy-7g==")
