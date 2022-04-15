@@ -2,18 +2,19 @@ import functools
 import importlib
 import json
 import os
-from dataclasses import is_dataclass
+from dataclasses import is_dataclass, dataclass
 from datetime import datetime
 from typing import Callable, Optional, cast
 
 import click
 import pandas as pd
+import typing
 from dataclasses_json import DataClassJsonMixin
 
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.workflow import WorkflowBase, PythonFunctionWorkflow
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
@@ -31,6 +32,28 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
+@dataclass
+class QualifiedWorkflowName:
+    module_name: str
+    workflow_name: str
+
+
+def get_module_and_workflow_name(ctx: typing.Any, param: str, value: str) -> QualifiedWorkflowName:
+    split_input = value.split(":")
+    if len(split_input) == 1:
+        filename = split_input[0]
+        workflows = _get_workflows_in_file(filename)
+        formatted_workflows = "\n".join(f"\t{workflow}" for workflow in workflows)
+        error_message = f"Pass a workflow \n: {formatted_workflows}"
+        raise click.UsageError(error_message)
+    if len(split_input) != 2:
+        raise FlyteValidationException(f"Input {value} must be in format '<file.py>:<worfklow>'")
+
+    filename, workflow_name = split_input
+    module = os.path.splitext(filename)[0].replace(os.path.sep, ".")
+    return QualifiedWorkflowName(module_name=module, workflow_name=workflow_name)
+
+
 @click.command(
     context_settings=dict(
         ignore_unknown_options=True,
@@ -39,6 +62,7 @@ from flytekit.types.structured.structured_dataset import (
 )
 @click.argument(
     "file_and_workflow",
+    callback=get_module_and_workflow_name,
 )
 @click.option(
     "--remote",
@@ -106,7 +130,7 @@ from flytekit.types.structured.structured_dataset import (
 @click.pass_context
 def run(
     click_ctx,
-    file_and_workflow,
+    file_and_workflow: QualifiedWorkflowName,
     is_remote,
     project,
     domain,
@@ -120,15 +144,9 @@ def run(
     Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
     or any interactive environment (e.g. Jupyter notebooks).
     """
-    split_input = file_and_workflow.split(":")
-    if len(split_input) != 2:
-        raise FlyteValidationException(f"Input {file_and_workflow} must be in format '<file.py>:<worfklow>'")
-
-    filename, workflow_name = split_input
-    module = os.path.splitext(filename)[0].replace(os.path.sep, ".")
 
     # Load code naively, i.e. without taking into account the fully qualified package name
-    wf_entity = _load_naive_entity(module, workflow_name)
+    wf_entity = _load_naive_entity(file_and_workflow.module_name, file_and_workflow.workflow_name)
 
     if is_remote:
         remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
@@ -203,6 +221,8 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
 
 def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Optional[Callable] = None, is_remote=False):
     args = {}
+    if len(args) % 2 != 0:
+        click.ClickException("Workflow inputs must always be of the form '--my_input my_value'")
     for i in range(0, len(click_ctx.args), 2):
         argument = click_ctx.args[i][2:].replace("-", "_")
         value = click_ctx.args[i + 1]
@@ -264,6 +284,26 @@ remote.sync(exec)
 print(exec.outputs)
     """
     )
+
+
+def _get_workflows_in_file(filename: str) -> typing.List[str]:
+    flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
+        SerializationSettings(None)
+    )
+    module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
+    with context_manager.FlyteContextManager.with_context(flyte_ctx):
+        with module_loader.add_sys_path(os.getcwd()):
+            importlib.import_module(module_name)
+
+    workflows = []
+    module = importlib.import_module(module_name)
+    for k in dir(module):
+        o = module.__dict__[k]
+        if isinstance(o, PythonFunctionWorkflow):
+            module_name_prefix = f"{module_name}."
+            workflows.append(f"{filename}:{o.name.lstrip(module_name_prefix)}")
+
+    return workflows
 
 
 PARQUET = "parquet"
