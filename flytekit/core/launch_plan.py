@@ -243,18 +243,16 @@ class LaunchPlan(object):
             notifications = notifications or []
             default_inputs = default_inputs or {}
             fixed_inputs = fixed_inputs or {}
-
-            print(workflow != cached_outputs["_workflow"])
-            print(schedule != cached_outputs["_schedule"])
-            print(notifications != cached_outputs["_notifications"])
-            print(default_inputs != cached_outputs["_saved_inputs"])
-            print(labels != cached_outputs["_labels"])
-            print(annotations != cached_outputs["_annotations"])
-            print(raw_output_data_config != cached_outputs["_raw_output_data_config"])
-            print(max_parallelism != cached_outputs["_max_parallelism"])
-            print(security_context != cached_outputs["_security_context"])
-
             default_inputs.update(fixed_inputs)
+
+            if auth_role and not security_context:
+                security_context = security.SecurityContext(
+                    run_as=security.Identity(
+                        iam_role=auth_role.assumable_iam_role,
+                        k8s_service_account=auth_role.kubernetes_service_account,
+                    ),
+                )
+
             if (
                 workflow != cached_outputs["_workflow"]
                 or schedule != cached_outputs["_schedule"]
