@@ -24,4 +24,4 @@ def test_deck():
         return str(a)
 
     t1(a=3)
-    assert len(ctx.user_space_params.decks) == 3  # input, output, default deck
+    assert len(ctx.user_space_params.decks) == 2  # input, output decks
