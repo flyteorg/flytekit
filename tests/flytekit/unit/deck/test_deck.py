@@ -1,6 +1,7 @@
 import pandas as pd
 
-from flytekit import Deck, FlyteContextManager
+import flytekit
+from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import TopFrameRenderer
 from flytekit.deck.deck import _output_deck
 
@@ -18,3 +19,10 @@ def test_deck():
     assert len(ctx.user_space_params.decks) == 2
 
     _output_deck(ctx.user_space_params)
+
+    @task()
+    def t1(a: int) -> str:
+        return str(a)
+
+    t1(a=3)
+    assert len(ctx.user_space_params.decks) == 3  # input, output, default deck
