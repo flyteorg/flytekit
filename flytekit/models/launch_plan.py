@@ -237,7 +237,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             fixed_inputs=self.fixed_inputs.to_flyte_idl(),
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
-            auth_role=self.auth_role.to_flyte_idl(),
+            auth_role=self.auth_role.to_flyte_idl() if self.auth_role else None,
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
