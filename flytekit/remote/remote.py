@@ -639,7 +639,7 @@ class FlyteRemote(object):
                     labels=options.labels,
                     annotations=options.annotations,
                     raw_output_data_config=options.raw_output_data_config,
-                    auth_role=options.auth_role,
+                    auth_role=None,
                     max_parallelism=options.max_parallelism,
                     security_context=options.security_context,
                 ),

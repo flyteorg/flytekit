@@ -58,8 +58,6 @@ class Options(object):
     in a Flyte backend, and also when registering launch plans.
 
     Args:
-        auth_role: Specifies the Kubernetes Service account,
-           IAM role etc to be used. If not specified defaults will be used.
         labels: Custom labels to be applied to the execution resource
         annotations: Custom annotations to be applied to the execution resource
         security_context: Indicates security context for permissions triggered with this launch plan
@@ -72,7 +70,6 @@ class Options(object):
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
 
-    auth_role: typing.Optional[common_models.AuthRole] = None
     labels: typing.Optional[common_models.Labels] = None
     annotations: typing.Optional[common_models.Annotations] = None
     raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
@@ -338,7 +335,7 @@ def get_serializable_launch_plan(
         fixed_inputs=entity.fixed_inputs,
         labels=options.labels or entity.labels or _common_models.Labels({}),
         annotations=options.annotations or entity.annotations or _common_models.Annotations({}),
-        auth_role=options.auth_role or entity._auth_role or _common_models.AuthRole(),
+        auth_role=None,
         raw_output_data_config=raw or entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
