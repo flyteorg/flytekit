@@ -1,10 +1,11 @@
 import functools
 import importlib
+import inspect
 import json
 import os
-from dataclasses import is_dataclass, dataclass
+from dataclasses import is_dataclass
 from datetime import datetime
-from typing import Callable, Optional, cast
+from typing import cast
 
 import click
 import pandas as pd
@@ -15,7 +16,6 @@ from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.workflow import WorkflowBase, PythonFunctionWorkflow
-from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.remote.executions import FlyteWorkflowExecution
@@ -31,181 +31,142 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
 )
 
-
-@dataclass
-class QualifiedWorkflowName:
-    module_name: str
-    workflow_name: str
+REMOTE_KEY = "remote"
 
 
-def get_module_and_workflow_name(ctx: typing.Any, param: str, value: str) -> QualifiedWorkflowName:
-    split_input = value.split(":")
-    if len(split_input) == 1:
-        filename = split_input[0]
-        workflows = _get_workflows_in_file(filename)
-        formatted_workflows = "\n".join(f"\t{workflow}" for workflow in workflows)
-        error_message = f"Pass a workflow \n: {formatted_workflows}"
-        raise click.UsageError(error_message)
-    if len(split_input) != 2:
-        raise FlyteValidationException(f"Input {value} must be in format '<file.py>:<worfklow>'")
+class JsonParamType(click.ParamType):
+    name = "json_param"
 
-    filename, workflow_name = split_input
-    module = os.path.splitext(filename)[0].replace(os.path.sep, ".")
-    return QualifiedWorkflowName(module_name=module, workflow_name=workflow_name)
+    def convert(self, value, param, ctx) -> typing.Union[typing.Dict, typing.List]:
+        if value is None:
+            return None
+        if isinstance(value, list) or isinstance(value, dict):
+            return value
+        return json.loads(value)
 
 
-@click.command(
-    context_settings=dict(
-        ignore_unknown_options=True,
-        allow_extra_args=True,
-    ),
-)
-@click.argument(
-    "file_and_workflow",
-    callback=get_module_and_workflow_name,
-)
-@click.option(
-    "--remote",
-    "is_remote",
-    required=False,
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "-p",
-    "--project",
-    required=False,
-    type=str,
-    default="flytesnacks",
-)
-@click.option(
-    "-d",
-    "--domain",
-    required=False,
-    type=str,
-    default="development",
-)
-@click.option(
-    "--destination-dir",
-    "destination_dir",
-    required=False,
-    type=str,
-    default="/root",
-    help="Directory inside the image where the tar file containing the code will be copied to",
-)
-@click.option(
-    "-i",
-    "--image",
-    "image_config",
-    required=False,
-    multiple=True,
-    type=click.UNPROCESSED,
-    callback=ImageConfig.validate_image,
-    default=[DefaultImages.default_image()],
-    help="Image used to register and run.",
-)
-@click.option(
-    "--service-account",
-    "service_account",
-    required=False,
-    type=str,
-    default="",
-)
-@click.option(
-    "--wait-execution",
-    "wait_execution",
-    required=False,
-    is_flag=True,
-    default=False,
-    help="Whether wait for the execution to finish",
-)
-@click.option(
-    "--dump-snippet",
-    "dump_snippet",
-    required=False,
-    is_flag=True,
-    default=False,
-    help="Whether dump a code snippet instructing how to load the workflow execution using flyteremote",
-)
-@click.pass_context
-def run_old(
-    click_ctx,
-    file_and_workflow: QualifiedWorkflowName,
-    is_remote,
-    project,
-    domain,
-    destination_dir,
-    image_config,
-    service_account,
-    wait_execution,
-    dump_snippet,
-):
+class DataframeType(click.ParamType):
+    name = "dataframe"
+
+    def convert(self, value, param, ctx):
+        if not ctx.obj[REMOTE_KEY]:
+            return pd.read_parquet(value)
+
+
+class DataclassType(click.ParamType):
+    name = "dataclass"
+
+    def __init__(self, dataclass_type, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._dataclass_type = dataclass_type
+
+    def convert(self, value, param, ctx):
+        return cast(DataClassJsonMixin, self._dataclass_type).from_json(value)
+
+
+def get_param_type_override(input_type: typing.Any) -> typing.Optional[click.ParamType]:
     """
-    Run_old command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
-    or any interactive environment (e.g. Jupyter notebooks).
+    This handles converting workflow input types to supported click parameters with callbacks to initialize
+    the input values correctly
     """
+    if input_type is datetime:
+        return click.DateTime()
+    if is_dataclass(input_type):
+        return DataclassType(input_type)
+    if input_type == pd.DataFrame:
+        return DataframeType()
+    if inspect.isclass(input_type):
+        if issubclass(input_type, (FlyteFile, FlyteSchema, StructuredDataset, FlyteDirectory)):
+            raise NotImplementedError(
+                click.style(
+                    "Flyte[File, Schema, Directory] & StructuredDataSet is not yet implemented in pyflyte run", fg="red"
+                )
+            )
 
-    # Load code naively, i.e. without taking into account the fully qualified package name
-    wf_entity = _load_naive_entity(file_and_workflow.module_name, file_and_workflow.workflow_name)
+    origin_type = typing.get_origin(input_type)
+    if origin_type in [dict, list]:
+        return JsonParamType()
 
-    if is_remote:
-        remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
-        get_upload_url_fn = functools.partial(remote.client.get_upload_signed_url, project=project, domain=domain)
-        inputs = _parse_workflow_inputs(
-            click_ctx,
-            wf_entity,
-            get_upload_url_fn,
-            is_remote=True,
-        )
+    # Filter through the union of types to see if any of them has a registered callback
+    if origin_type is typing.Union:
+        types = input_type.__args__
+        for t in types:
+            param = get_param_type_override(t)
+            if param is not None:
+                return param
 
-        # TODO: leave a comment explaining why we need to register twice
-        StructuredDatasetTransformerEngine.register(
-            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
-        )
-        StructuredDatasetTransformerEngine.register(
-            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
-        )
-
-        wf = remote.register_script(
-            wf_entity,
-            project=project,
-            domain=domain,
-            image_config=image_config,
-            destination_dir=destination_dir,
-        )
-
-        options = None
-        if service_account:
-            # options are only passed for the execution. This is to prevent errors when registering a duplicate workflow
-            # It is assumed that the users expectations is to override the service account only for the execution
-            options = Options.default_from(k8s_service_account=service_account)
-
-        execution = remote.execute(
-            wf,
-            inputs=inputs,
-            project=project,
-            domain=domain,
-            wait=wait_execution,
-            options=options,
-            type_hints=wf_entity.python_interface.inputs,
-        )
-
-        console_url = remote.generate_console_url(execution)
-        click.secho(f"Go to {console_url} to see execution in the console.")
-
-        if dump_snippet:
-            _dump_flyte_remote_snippet(execution, project, domain)
-    else:
-        inputs = _parse_workflow_inputs(
-            click_ctx,
-            wf_entity,
-            is_remote=False,
-        )
-        output = wf_entity(**inputs)
-        click.echo(output)
+    return None
 
 
-def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
+def set_is_remote(ctx: click.Context, param: str, value: str):
+    ctx.obj[REMOTE_KEY] = bool(value)
+
+
+def get_workflow_command_base_params() -> typing.List[click.Option]:
+    """
+    Return the set of base parameters added to every pyflyte run workflow subcommand.
+    """
+    return [
+        click.Option(
+            param_decls=["--remote"],
+            required=False,
+            is_flag=True,
+            default=False,
+            is_eager=True,
+            callback=set_is_remote,
+        ),
+        click.Option(
+            param_decls=["-p", "--project"],
+            required=False,
+            type=str,
+            default="flytesnacks",
+        ),
+        click.Option(
+            param_decls=["-d", "--domain"],
+            required=False,
+            type=str,
+            default="development",
+        ),
+        click.Option(
+            param_decls=["--destination-dir", "destination_dir"],
+            required=False,
+            type=str,
+            default="/root",
+            help="Directory inside the image where the tar file containing the code will be copied to",
+        ),
+        click.Option(
+            param_decls=["-i", "--image", "image_config"],
+            required=False,
+            multiple=True,
+            type=click.UNPROCESSED,
+            callback=ImageConfig.validate_image,
+            default=[DefaultImages.default_image()],
+            help="Image used to register and run.",
+        ),
+        click.Option(
+            param_decls=["--service-account", "service_account"],
+            required=False,
+            type=str,
+            default="",
+        ),
+        click.Option(
+            param_decls=["--wait-execution", "wait_execution"],
+            required=False,
+            is_flag=True,
+            default=False,
+            help="Whether wait for the execution to finish",
+        ),
+        click.Option(
+            param_decls=["--dump-snippet", "dump_snippet"],
+            required=False,
+            is_flag=True,
+            default=False,
+            help="Whether dump a code snippet instructing how to load the workflow execution using flyteremote",
+        ),
+    ]
+
+
+def load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
     """
     Load the workflow of a the script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
@@ -219,59 +180,7 @@ def _load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
     return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
 
 
-def _parse_workflow_inputs(click_ctx, wf_entity, create_upload_location_fn: Optional[Callable] = None, is_remote=False):
-    args = {}
-    if len(args) % 2 != 0:
-        click.ClickException("Workflow inputs must always be of the form '--my_input my_value'")
-    for i in range(0, len(click_ctx.args), 2):
-        argument = click_ctx.args[i][2:].replace("-", "_")
-        value = click_ctx.args[i + 1]
-
-        if argument not in wf_entity.interface.inputs:
-            raise FlyteValidationException(
-                click.style(f"argument '{argument}' is not listed as a parameter of the workflow", fg="red")
-            )
-
-        python_type = wf_entity.python_interface.inputs[argument]
-
-        if python_type == str:
-            value = value
-        elif python_type == int:
-            value = int(value)
-        elif python_type == float:
-            value = float(value)
-        elif python_type == bool:
-            true_values = {"TRUE", "True", "true", "1"}
-            bool_values = true_values.union({"FALSE", "False", "false", "0"})
-            if value not in bool_values:
-                raise ValueError(click.style(f"bool type expected one of {bool_values}, found '{value}'", fg="red"))
-            value = value in true_values
-        elif python_type == datetime:
-            value = datetime.fromtimestamp(int(value)) if value.isnumeric() else datetime.fromisoformat(value)
-        elif getattr(python_type, "__origin__", None) in {list, dict}:
-            value = json.loads(value)
-        elif issubclass(python_type, (FlyteFile, FlyteSchema, StructuredDataset, FlyteDirectory)):
-            raise NotImplementedError(
-                click.style(
-                    "Flyte[File, Schema, Directory] & StructuredDataSet is not yet implemented in pyflyte run", fg="red"
-                )
-            )
-        elif is_dataclass(python_type):
-            dataclass_type = python_type
-            value = cast(DataClassJsonMixin, dataclass_type).from_json(value)
-        elif python_type == pd.DataFrame:
-            # the PandasToParquetDataProxyEncodingHandler handles converting the input value into a dataframe
-            # in the remote case
-            if not is_remote:
-                value = pd.read_parquet(value)
-        else:
-            raise ValueError(f"Unsupported type '{python_type}' for argument {argument}")
-
-        args[argument] = value
-    return args
-
-
-def _dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
+def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
     click.secho(
         f"""
 In order to have programmatic access to the execution, use the following snippet:
@@ -286,13 +195,11 @@ print(exec.outputs)
     )
 
 
-def _get_workflows_in_file(filename: str) -> typing.List[str]:
+def get_workflows_in_file(filename: str) -> typing.List[str]:
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
         SerializationSettings(None)
     )
-    print(f"filename {filename}")
     module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
-    print(f"module name {module_name}")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
@@ -308,6 +215,109 @@ def _get_workflows_in_file(filename: str) -> typing.List[str]:
     return workflows
 
 
+def run(ctx: click.Context, filename: str, workflow_name: str, *args, **kwargs):
+    def _run(*args, **kwargs):
+        project, domain = kwargs.get("project"), kwargs.get("domain")
+        module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
+        wf_entity = load_naive_entity(module_name, workflow_name)
+        inputs = {}
+        for input_name, _ in wf_entity.python_interface.inputs.items():
+            inputs[input_name] = kwargs.get(input_name)
+
+        print(f"is remote? {ctx.obj[REMOTE_KEY]}")
+        if not ctx.obj[REMOTE_KEY]:
+            output = wf_entity(**inputs)
+            click.echo(output)
+            return
+
+        remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
+        get_upload_url_fn = functools.partial(remote.client.get_upload_signed_url, project=project, domain=domain)
+
+        # TODO: leave a comment explaining why we need to register twice
+        StructuredDatasetTransformerEngine.register(
+            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
+        )
+        StructuredDatasetTransformerEngine.register(
+            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
+        )
+
+        wf = remote.register_script(
+            wf_entity,
+            project=project,
+            domain=domain,
+            image_config=kwargs.get("image_config", None),
+            destination_dir=kwargs.get("destination_dir"),
+        )
+
+        options = None
+        service_account = kwargs.get("service_account")
+        if service_account is not None:
+            # options are only passed for the execution. This is to prevent errors when registering a duplicate workflow
+            # It is assumed that the users expectations is to override the service account only for the execution
+            options = Options.default_from(k8s_service_account=service_account)
+
+        execution = remote.execute(
+            wf,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            wait=kwargs.get("wait_execution"),
+            options=options,
+            type_hints=wf_entity.python_interface.inputs,
+        )
+
+        console_url = remote.generate_console_url(execution)
+        click.secho(f"Go to {console_url} to see execution in the console.")
+
+        if kwargs.get("dump_snippet"):
+            dump_flyte_remote_snippet(execution, project, domain)
+
+    return _run
+
+
+class WorkflowCommand(click.MultiCommand):
+    def __init__(self, filename: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._filename = filename
+
+    def list_commands(self, ctx):
+        workflows = get_workflows_in_file(self._filename)
+        return workflows
+
+    def get_command(self, ctx, workflow):
+        module = os.path.splitext(self._filename)[0].replace(os.path.sep, ".")
+        wf_entity = load_naive_entity(module, workflow)
+
+        params = get_workflow_command_base_params()
+        for input_name, input_type in wf_entity.python_interface.inputs.items():
+            # add remote flag
+            param_type = get_param_type_override(input_type)
+            if param_type is None:
+                param_type = input_type
+            _, default_value = wf_entity.python_interface.inputs_with_defaults.get(input_name)
+            params.append(
+                click.Option(
+                    param_decls=[f"--{input_name}"],
+                    type=param_type,
+                    is_flag=input_type == bool,
+                    default=default_value,
+                    show_default=True,
+                    # required=default_value is None,
+                )
+            )
+        cmd = click.Command(name=workflow, params=params, callback=run(ctx, self._filename, workflow))
+        return cmd
+
+
+class RunCommand(click.MultiCommand):
+    def list_commands(self, ctx):
+        rv = []
+        return rv
+
+    def get_command(self, ctx, filename):
+        return WorkflowCommand(filename, name=filename, help="foo")
+
+
 PARQUET = "parquet"
 
 
@@ -317,10 +327,10 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
         self._create_upload_fn = create_upload_fn
 
     def encode(
-        self,
-        ctx: context_manager.FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
+            self,
+            ctx: context_manager.FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         local_path = structured_dataset.dataframe
 
@@ -335,3 +345,11 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
             uri=df_remote_location.native_url[: -len(filename)],
             metadata=literals.StructuredDatasetMetadata(structured_dataset_type),
         )
+
+
+run_command = RunCommand(
+    name="run",
+    help="Run_old command, a.k.a. script mode. It allows for a a single script to be "
+         + "registered and run from the command line or any interactive environment "
+         + "(e.g. Jupyter notebooks).",
+)
