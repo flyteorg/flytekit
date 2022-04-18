@@ -128,7 +128,7 @@ def get_module_and_workflow_name(ctx: typing.Any, param: str, value: str) -> Qua
     help="Whether dump a code snippet instructing how to load the workflow execution using flyteremote",
 )
 @click.pass_context
-def run(
+def run_old(
     click_ctx,
     file_and_workflow: QualifiedWorkflowName,
     is_remote,
@@ -141,7 +141,7 @@ def run(
     dump_snippet,
 ):
     """
-    Run command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
+    Run_old command, a.k.a. script mode. It allows for a a single script to be registered and run from the command line
     or any interactive environment (e.g. Jupyter notebooks).
     """
 
@@ -290,7 +290,9 @@ def _get_workflows_in_file(filename: str) -> typing.List[str]:
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
         SerializationSettings(None)
     )
+    print(f"filename {filename}")
     module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
+    print(f"module name {module_name}")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
@@ -301,7 +303,7 @@ def _get_workflows_in_file(filename: str) -> typing.List[str]:
         o = module.__dict__[k]
         if isinstance(o, PythonFunctionWorkflow):
             module_name_prefix = f"{module_name}."
-            workflows.append(f"{filename}:{o.name.lstrip(module_name_prefix)}")
+            workflows.append(f"{o.name.lstrip(module_name_prefix)}")
 
     return workflows
 
