@@ -98,6 +98,8 @@ distro==1.6.0
     # via docker-compose
 docker[ssh]==5.0.3
     # via docker-compose
+docker-compose==1.29.2
+    # via pytest-docker
 docker-image-py==0.1.12
     # via
     #   -c requirements.txt
@@ -251,6 +253,9 @@ pyrsistent==0.18.0
 pytest==6.2.5
     # via
     #   -r dev-requirements.in
+pytest-docker==0.10.3
+    # via
+    #   -c requirements.in
 python-dateutil==2.8.1
     # via
     #   -c requirements.txt
