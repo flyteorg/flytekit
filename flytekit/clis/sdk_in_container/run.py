@@ -3,19 +3,19 @@ import importlib
 import inspect
 import json
 import os
+import typing
 from dataclasses import is_dataclass
 from datetime import datetime
 from typing import cast
 
 import click
 import pandas as pd
-import typing
 from dataclasses_json import DataClassJsonMixin
 
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
-from flytekit.core.workflow import WorkflowBase, PythonFunctionWorkflow
+from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.remote.executions import FlyteWorkflowExecution
@@ -37,7 +37,7 @@ REMOTE_KEY = "remote"
 class JsonParamType(click.ParamType):
     name = "json_param"
 
-    def convert(self, value, param, ctx) -> typing.Union[typing.Dict, typing.List]:
+    def convert(self, value, param, ctx) -> typing.Optional[typing.Union[typing.Dict, typing.List]]:
         if value is None:
             return None
         if isinstance(value, list) or isinstance(value, dict):
@@ -67,7 +67,7 @@ class DataclassType(click.ParamType):
 def get_param_type_override(input_type: typing.Any) -> typing.Optional[click.ParamType]:
     """
     This handles converting workflow input types to supported click parameters with callbacks to initialize
-    the input values correctly
+    the input values to their expected types.
     """
     if input_type is datetime:
         return click.DateTime()
@@ -114,18 +114,21 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             default=False,
             is_eager=True,
             callback=set_is_remote,
+            help="Whether to register and run the workflow on a Flyte deployment",
         ),
         click.Option(
             param_decls=["-p", "--project"],
             required=False,
             type=str,
             default="flytesnacks",
+            help="Project to register and run this workflow in",
         ),
         click.Option(
             param_decls=["-d", "--domain"],
             required=False,
             type=str,
             default="development",
+            help="Domain to register and run this workflow in",
         ),
         click.Option(
             param_decls=["--destination-dir", "destination_dir"],
@@ -148,6 +151,7 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             required=False,
             type=str,
             default="",
+            help="Service account used when executing this workflow",
         ),
         click.Option(
             param_decls=["--wait-execution", "wait_execution"],
@@ -196,6 +200,9 @@ print(exec.outputs)
 
 
 def get_workflows_in_file(filename: str) -> typing.List[str]:
+    """
+    Returns a list of flyte workflow names in a file.
+    """
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
         SerializationSettings(None)
     )
@@ -215,7 +222,11 @@ def get_workflows_in_file(filename: str) -> typing.List[str]:
     return workflows
 
 
-def run(ctx: click.Context, filename: str, workflow_name: str, *args, **kwargs):
+def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **kwargs):
+    """
+    Returns a function that is used as to implement WorkflowCommand and execute a flyte workflow.
+    """
+
     def _run(*args, **kwargs):
         project, domain = kwargs.get("project"), kwargs.get("domain")
         module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
@@ -224,7 +235,6 @@ def run(ctx: click.Context, filename: str, workflow_name: str, *args, **kwargs):
         for input_name, _ in wf_entity.python_interface.inputs.items():
             inputs[input_name] = kwargs.get(input_name)
 
-        print(f"is remote? {ctx.obj[REMOTE_KEY]}")
         if not ctx.obj[REMOTE_KEY]:
             output = wf_entity(**inputs)
             click.echo(output)
@@ -276,6 +286,10 @@ def run(ctx: click.Context, filename: str, workflow_name: str, *args, **kwargs):
 
 
 class WorkflowCommand(click.MultiCommand):
+    """
+    A click command for registering and executing flyte workflows.
+    """
+
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._filename = filename
@@ -305,17 +319,26 @@ class WorkflowCommand(click.MultiCommand):
                     # required=default_value is None,
                 )
             )
-        cmd = click.Command(name=workflow, params=params, callback=run(ctx, self._filename, workflow))
+        cmd = click.Command(
+            name=workflow,
+            params=params,
+            callback=run_command(ctx, self._filename, workflow),
+            help="Run a workflow using script mode",
+        )
         return cmd
 
 
 class RunCommand(click.MultiCommand):
+    """
+    A click command group for registering and executing flyte workflows in a file.
+    """
+
     def list_commands(self, ctx):
         rv = []
         return rv
 
     def get_command(self, ctx, filename):
-        return WorkflowCommand(filename, name=filename, help="foo")
+        return WorkflowCommand(filename, name=filename, help="Run a workflow in a file using script mode")
 
 
 PARQUET = "parquet"
@@ -327,10 +350,10 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
         self._create_upload_fn = create_upload_fn
 
     def encode(
-            self,
-            ctx: context_manager.FlyteContext,
-            structured_dataset: StructuredDataset,
-            structured_dataset_type: StructuredDatasetType,
+        self,
+        ctx: context_manager.FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         local_path = structured_dataset.dataframe
 
@@ -347,9 +370,9 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
         )
 
 
-run_command = RunCommand(
+run = RunCommand(
     name="run",
     help="Run_old command, a.k.a. script mode. It allows for a a single script to be "
-         + "registered and run from the command line or any interactive environment "
-         + "(e.g. Jupyter notebooks).",
+    + "registered and run from the command line or any interactive environment "
+    + "(e.g. Jupyter notebooks).",
 )
