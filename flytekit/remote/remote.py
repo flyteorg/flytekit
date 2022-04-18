@@ -231,12 +231,18 @@ class FlyteRemote(object):
         admin_workflow = self.client.get_workflow(workflow_id)
         compiled_wf = admin_workflow.closure.compiled_workflow
 
+        wf_templates = [compiled_wf.primary.template]
+        wf_templates.extend([swf.template for swf in compiled_wf.sub_workflows])
+
         node_launch_plans = {}
         # TODO: Inspect branch nodes for launch plans
-        for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
-            if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
-                x = self.client.get_launch_plan(node.workflow_node.launchplan_ref)
-                node_launch_plans[node.workflow_node.launchplan_ref] = x.spec
+        for wf_template in wf_templates:
+            for node in FlyteWorkflow.get_non_system_nodes(wf_template.nodes):
+                if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
+                    lp_ref = node.workflow_node.launchplan_ref
+                    if node.workflow_node.launchplan_ref not in node_launch_plans:
+                        admin_launch_plan = self.client.get_launch_plan(lp_ref)
+                        node_launch_plans[node.workflow_node.launchplan_ref] = admin_launch_plan.spec
 
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
