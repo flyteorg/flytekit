@@ -187,11 +187,11 @@ class ShellTask(PythonInstanceTask[T]):
     def make_export_string_from_env_dict(self, d: typing.Dict[str, str]) -> str:
         """
         Utility function to convert a dictionary of desired environment variable key: value pairs into a string of
-        `
+        ```
         export k1=v1
         export k2=v2
         ...
-        `
+        ```
         """
         items = []
         for k, v in d.items():
