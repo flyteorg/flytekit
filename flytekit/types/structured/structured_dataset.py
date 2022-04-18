@@ -478,7 +478,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 python_val,
                 df_type,
                 protocol,
-                sdt.format,
+                sdt.format or typing.cast(StructuredDataset, python_val).DEFAULT_FILE_FORMAT,
                 sdt,
             )
 
