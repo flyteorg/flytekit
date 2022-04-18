@@ -323,7 +323,7 @@ class WorkflowCommand(click.MultiCommand):
             name=workflow,
             params=params,
             callback=run_command(ctx, self._filename, workflow),
-            help="Run a workflow using script mode",
+            help=f"Run {module}.{workflow} in script mode",
         )
         return cmd
 
