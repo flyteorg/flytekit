@@ -224,7 +224,7 @@ def get_workflows_in_file(filename: str) -> typing.List[str]:
 
 def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **kwargs):
     """
-    Returns a function that is used as to implement WorkflowCommand and execute a flyte workflow.
+    Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
     """
 
     def _run(*args, **kwargs):
@@ -304,7 +304,6 @@ class WorkflowCommand(click.MultiCommand):
 
         params = get_workflow_command_base_params()
         for input_name, input_type in wf_entity.python_interface.inputs.items():
-            # add remote flag
             param_type = get_param_type_override(input_type)
             if param_type is None:
                 param_type = input_type
@@ -316,7 +315,7 @@ class WorkflowCommand(click.MultiCommand):
                     is_flag=input_type == bool,
                     default=default_value,
                     show_default=True,
-                    # required=default_value is None,
+                    required=default_value is None,
                 )
             )
         cmd = click.Command(
