@@ -3,13 +3,16 @@ from __future__ import annotations
 import base64 as _base64
 import subprocess
 import time
+import typing
 from typing import Optional
 
 import grpc
 import requests as _requests
+from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
+from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 from google.protobuf.json_format import MessageToJson as _MessageToJson
@@ -725,12 +728,14 @@ class RawSynchronousFlyteClient(object):
     ####################################################################################################################
 
     @_handle_rpc_error(retry=True)
-    def list_projects(self, project_list_request):
+    def list_projects(self, project_list_request: typing.Optional[ProjectListRequest] = None):
         """
         This will return a list of the projects registered with the Flyte Admin Service
         :param flyteidl.admin.project_pb2.ProjectListRequest project_list_request:
         :rtype: flyteidl.admin.project_pb2.Projects
         """
+        if project_list_request is None:
+            project_list_request = ProjectListRequest()
         return self._stub.ListProjects(project_list_request, metadata=self._metadata)
 
     @_handle_rpc_error()
@@ -817,14 +822,16 @@ class RawSynchronousFlyteClient(object):
     #  Data proxy endpoints
     #
     ####################################################################################################################
-    @_handle_rpc_error()
-    def create_upload_location(self, create_upload_location_request):
+    @_handle_rpc_error(retry=True)
+    def create_upload_location(
+        self, create_upload_location_request: _dataproxy_pb2.CreateUploadLocationRequest
+    ) -> _dataproxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
-        :param flyteidl.service.dataproxy_pb2.CreateUploadLocationRequest:
+        :param flyteidl.service.dataproxy_pb2.CreateUploadLocationRequest create_upload_location_request:
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
-        return self._dataproxy_stub.CreateUploadLocation(create_upload_location_request)
+        return self._dataproxy_stub.CreateUploadLocation(create_upload_location_request, metadata=self._metadata)
 
 
 def get_token(token_endpoint, authorization_header, scope):

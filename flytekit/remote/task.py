@@ -19,7 +19,6 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskT
             task_type_version=task_type_version,
             config=config,
         )
-        self._python_interface = None
         self._name = id.name
 
     @property
