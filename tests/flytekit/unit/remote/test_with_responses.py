@@ -31,7 +31,7 @@ def test_fetch_wf_wf_lp_pattern(mock_client):
     )
     root_wf = admin_workflow_models.Workflow.from_flyte_idl(root_wf)
 
-    mock_client.get_workflow.side_effect = [root_wf, None]
+    mock_client.get_workflow.return_value = root_wf
     mock_client.get_launch_plan.return_value = leaf_lp
     fwf = rr.fetch_workflow(name="core.control_flow.subworkflows.root_level_wf", version="JiepXcXB3SiEJ8pwYDy-7g==")
     assert len(fwf.sub_workflows) == 2
