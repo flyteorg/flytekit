@@ -3,6 +3,7 @@ import importlib
 import inspect
 import json
 import os
+import pathlib
 import typing
 from dataclasses import is_dataclass
 from datetime import datetime
@@ -15,6 +16,7 @@ from dataclasses_json import DataClassJsonMixin
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
@@ -32,6 +34,12 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 REMOTE_KEY = "remote"
+
+
+def remove_prefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix) :]
+    return text
 
 
 class JsonParamType(click.ParamType):
@@ -53,6 +61,21 @@ class DataframeType(click.ParamType):
             return pd.read_parquet(value)
 
 
+class StructuredDatasetParamType(click.ParamType):
+    name = "structured_dataset"
+
+    def __init__(self, input_type: typing.Type[StructuredDataset]):
+        self._sdt = TypeEngine.to_literal_type(input_type)
+
+    def convert(self, value, param, ctx) -> StructuredDataset:
+        p = pathlib.Path(value)
+        if not p.is_dir():
+            raise ValueError(f"Value {value} for {param} should be a one-level deep folder with ordered parquet files")
+        return StructuredDataset(
+            uri=value, metadata=literals.StructuredDatasetMetadata(structured_dataset_type=self._sdt)
+        )
+
+
 class DataclassType(click.ParamType):
     name = "dataclass"
 
@@ -71,16 +94,16 @@ def get_param_type_override(input_type: typing.Any) -> typing.Optional[click.Par
     """
     if input_type is datetime:
         return click.DateTime()
+    if issubclass(input_type, StructuredDataset):
+        return StructuredDatasetParamType(input_type)
     if is_dataclass(input_type):
         return DataclassType(input_type)
-    if input_type == pd.DataFrame:
+    if issubclass(input_type, pd.DataFrame):
         return DataframeType()
     if inspect.isclass(input_type):
-        if issubclass(input_type, (FlyteFile, FlyteSchema, StructuredDataset, FlyteDirectory)):
+        if issubclass(input_type, (FlyteFile, FlyteSchema, FlyteDirectory)):
             raise NotImplementedError(
-                click.style(
-                    "Flyte[File, Schema, Directory] & StructuredDataSet is not yet implemented in pyflyte run", fg="red"
-                )
+                click.style("Flyte[File, Schema, Directory] are not yet implemented in pyflyte run", fg="red")
             )
 
     origin_type = typing.get_origin(input_type)
@@ -223,7 +246,8 @@ def get_workflows_in_file(filename: str) -> typing.List[str]:
         o = module.__dict__[k]
         if isinstance(o, PythonFunctionWorkflow):
             module_name_prefix = f"{module_name}."
-            workflows.append(f"{o.name.lstrip(module_name_prefix)}")
+            wf_name_only = remove_prefix(o.name, module_name_prefix)
+            workflows.append(wf_name_only)
 
     return workflows
 
@@ -242,7 +266,6 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
             inputs[input_name] = kwargs.get(input_name)
 
         if not ctx.obj[REMOTE_KEY]:
-            print(f"inputs {inputs}")
             output = wf_entity(**inputs)
             click.echo(output)
             return
@@ -362,7 +385,7 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        local_path = structured_dataset.dataframe
+        local_path = structured_dataset.uri
 
         filename = "00000.parquet"
         md5, _ = script_mode.hash_file(local_path)
