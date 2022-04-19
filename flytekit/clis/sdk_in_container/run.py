@@ -50,7 +50,10 @@ class DataframeType(click.ParamType):
 
     def convert(self, value, param, ctx):
         if not ctx.obj[REMOTE_KEY]:
-            return pd.read_parquet(value)
+            return literals.StructuredDataset(
+                uri=value,
+                metadata=literals.StructuredDatasetMetadata(StructuredDatasetType(format=PARQUET)),
+            )
 
 
 class DataclassType(click.ParamType):
