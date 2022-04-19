@@ -1,12 +1,11 @@
 ###################
 Extend Type System
 ###################
-Flytekit ships with an extensible type system, which makes it easy for anyone to extend and add new types. Feel free to follow the pattern of the built-in types.
+Flytekit ships with an extensible type system, which makes it easy for anyone to extend and add new types.
+Feel free to follow the pattern of the structured types. StructuredDataset* are the preferred types for all
+extensions.
 
-
-.. toctree::
-   :maxdepth: 1
-
-   types.builtins.schema
-   types.builtins.file
-   types.builtins.directory
+.. automodule:: flytekit.types.structured
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:
