@@ -6,8 +6,8 @@ from uuid import UUID
 
 from jinja2 import Environment, FileSystemLoader
 
-from flytekit.loggers import logger
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.loggers import logger
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
