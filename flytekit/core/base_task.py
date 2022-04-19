@@ -531,10 +531,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             INPUT = "input"
             OUTPUT = "output"
 
-            print(self.metadata.retries)
-            print(self.interface)
-            print(self.python_interface.inputs)
-
             input_deck = Deck(INPUT)
             for k, v in native_inputs.items():
                 input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
