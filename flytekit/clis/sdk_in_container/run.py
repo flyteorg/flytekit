@@ -131,6 +131,12 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             help="Domain to register and run this workflow in",
         ),
         click.Option(
+            param_decls=["--name"],
+            required=False,
+            type=str,
+            help="Name to assign to this execution",
+        ),
+        click.Option(
             param_decls=["--destination-dir", "destination_dir"],
             required=False,
             type=str,
@@ -271,6 +277,7 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
             inputs=inputs,
             project=project,
             domain=domain,
+            name=kwargs.get("name"),
             wait=kwargs.get("wait_execution"),
             options=options,
             type_hints=wf_entity.python_interface.inputs,
@@ -372,6 +379,5 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
 run = RunCommand(
     name="run",
     help="Run_old command, a.k.a. script mode. It allows for a a single script to be "
-    + "registered and run from the command line or any interactive environment "
-    + "(e.g. Jupyter notebooks).",
+    + "registered and run from the command line (e.g. Jupyter notebooks).",
 )
