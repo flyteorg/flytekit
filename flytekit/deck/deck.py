@@ -6,6 +6,7 @@ from uuid import UUID
 
 from jinja2 import Environment, FileSystemLoader
 
+from flytekit.loggers import logger
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
@@ -102,7 +103,7 @@ def _get_output_dir() -> str:
     return output_dir
 
 
-def _output_deck(new_user_params: ExecutionParameters):
+def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     deck_map: Dict[str, str] = {}
     decks = new_user_params.decks
 
@@ -127,6 +128,7 @@ def _output_deck(new_user_params: ExecutionParameters):
         deck_path = os.path.join(output_dir, DECK_FILE_NAME)
         with open(deck_path, "w") as f:
             f.write(template.render(metadata=deck_map))
+        logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
 
 
 def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):

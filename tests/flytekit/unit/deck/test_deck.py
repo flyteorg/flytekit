@@ -18,7 +18,7 @@ def test_deck():
     assert deck.html is not None
     assert len(ctx.user_space_params.decks) == 2
 
-    _output_deck(ctx.user_space_params)
+    _output_deck("test_task", ctx.user_space_params)
 
     @task()
     def t1(a: int) -> str:
@@ -35,4 +35,4 @@ def test_deck_in_jupyter(mock_ipython_check):
 
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
-    _output_deck(ctx.user_space_params)
+    _output_deck("test_task", ctx.user_space_params)

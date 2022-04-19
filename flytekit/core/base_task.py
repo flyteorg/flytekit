@@ -540,7 +540,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
             if _internal.Deck.DISABLE_DECK.read() is not True and self.disable_deck is False:
-                _output_deck(new_user_params)
+                _output_deck(self.name.split(".")[-1], new_user_params)
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map
