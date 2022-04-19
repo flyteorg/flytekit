@@ -15,7 +15,6 @@ attrs==20.3.0
     # via
     #   -c requirements.txt
     #   jsonschema
-    #   pytest
 backports.entry-points-selectable==1.1.1
     # via virtualenv
 bcrypt==3.2.0
@@ -98,8 +97,6 @@ distro==1.6.0
     # via docker-compose
 docker[ssh]==5.0.3
     # via docker-compose
-docker-compose==1.29.2
-    # via pytest-docker
 docker-image-py==0.1.12
     # via
     #   -c requirements.txt
@@ -132,8 +129,6 @@ importlib-metadata==4.8.2
     # via
     #   -c requirements.txt
     #   keyring
-iniconfig==1.1.1
-    # via pytest
 jeepney==0.7.1
     # via
     #   -c requirements.txt
@@ -199,7 +194,6 @@ numpy==1.21.4
 packaging==21.2
     # via
     #   -c requirements.txt
-    #   pytest
 pandas==1.3.4
     # via
     #   -c requirements.txt
@@ -212,8 +206,6 @@ platformdirs==2.4.0
     # via
     #   -c requirements.txt
     #   virtualenv
-pluggy==1.0.0
-    # via pytest
 poyo==0.5.0
     # via
     #   -c requirements.txt
@@ -228,7 +220,6 @@ protobuf==3.19.1
 py==1.11.0
     # via
     #   -c requirements.txt
-    #   pytest
     #   retry
 pyarrow==6.0.0
     # via
@@ -250,12 +241,6 @@ pyrsistent==0.18.0
     # via
     #   -c requirements.txt
     #   jsonschema
-pytest==6.2.5
-    # via
-    #   -r dev-requirements.in
-pytest-docker==0.10.3
-    # via
-    #   -c requirements.in
 python-dateutil==2.8.1
     # via
     #   -c requirements.txt
@@ -343,7 +328,6 @@ toml==0.10.2
     # via
     #   mypy
     #   pre-commit
-    #   pytest
 tomli==1.2.2
     # via
     #   -c requirements.txt
