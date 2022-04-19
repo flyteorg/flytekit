@@ -14,6 +14,7 @@ from flytekit.configuration import internal as _internal_config
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_models
 
+
 input_types_supported = {
     _primitives.Integer,
     _primitives.Boolean,
