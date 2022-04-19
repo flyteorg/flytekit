@@ -48,12 +48,9 @@ class JsonParamType(click.ParamType):
 class DataframeType(click.ParamType):
     name = "dataframe"
 
-    def convert(self, value, param, ctx):
+    def convert(self, value, param, ctx) -> pd.DataFrame:
         if not ctx.obj[REMOTE_KEY]:
-            return literals.StructuredDataset(
-                uri=value,
-                metadata=literals.StructuredDatasetMetadata(StructuredDatasetType(format=PARQUET)),
-            )
+            return pd.read_parquet(value)
 
 
 class DataclassType(click.ParamType):
@@ -245,6 +242,7 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
             inputs[input_name] = kwargs.get(input_name)
 
         if not ctx.obj[REMOTE_KEY]:
+            print(f"inputs {inputs}")
             output = wf_entity(**inputs)
             click.echo(output)
             return
