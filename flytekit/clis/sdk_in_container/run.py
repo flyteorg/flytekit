@@ -69,6 +69,7 @@ class DataframeType(click.ParamType):
 
         # The value here should be a string containing a path to a parquet file. If not running locally, then we have
         # no need of reading the parquet file.
+        # This relies on the TypeEngine to trigger the remote encoder.
         return StructuredDataset(
             uri=value, metadata=literals.StructuredDatasetMetadata(structured_dataset_type=self._sdt)
         )
@@ -91,6 +92,8 @@ class StructuredDatasetParamType(click.ParamType):
         )
 
         # If we're running remotely, as part of the translation, we need to upload the file as well
+        # TODO: Figure out the best way to get the SD transformer engine to trigger the remote encoder similar to the
+        #   pd.DataFrame example.
         if ctx.obj[REMOTE_FLAG_KEY]:
             encoder = PandasToParquetDataProxyEncodingHandler(ctx.obj[DATA_PROXY_CALLBACK_KEY])
             f_ctx = FlyteContextManager.current_context()
