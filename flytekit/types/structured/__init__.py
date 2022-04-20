@@ -23,6 +23,7 @@ from .basic_dfs import (
     ParquetToArrowDecodingHandler,
     ParquetToPandasDecodingHandler,
 )
+
 from .structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
