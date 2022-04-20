@@ -290,8 +290,6 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
     """
 
     def _run(*args, **kwargs):
-        print(f"_run obj {ctx.obj}")
-        # print(f"kwargs: {kwargs}")
         run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
         project, domain = run_level_params.get("project"), run_level_params.get("domain")
         module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
