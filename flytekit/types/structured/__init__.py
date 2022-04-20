@@ -1,5 +1,5 @@
 """
-Flytekit structured schema
+Flytekit StructuredDataset
 ==========================================================
 .. currentmodule:: flytekit.types.structured
 
