@@ -20,7 +20,7 @@ bcrypt==3.2.0
     # via paramiko
 binaryornot==0.4.4
     # via cookiecutter
-black==22.3.0
+black==21.10b0
     # via papermill
 bleach==4.1.0
     # via nbconvert
