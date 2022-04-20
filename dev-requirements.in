@@ -3,6 +3,7 @@
 coverage[toml]
 joblib
 mock
+pytest
 mypy
 pre-commit
 codespell
