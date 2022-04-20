@@ -62,8 +62,6 @@ def _handle_rpc_error(retry=False):
                             wait_time = min(200 * (2**i), max_wait_time)
                             cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                             time.sleep(wait_time / 1000)
-                except Exception as ee:
-                    print(ee)
 
         return handler
 
