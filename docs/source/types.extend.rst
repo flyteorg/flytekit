@@ -8,6 +8,6 @@ Feel free to follow the pattern of the built-in types.
 .. toctree::
    :maxdepth: 1
 
-   types.structured
+   types.builtins.structureddataset
    types.builtins.file
    types.builtins.directory
