@@ -486,6 +486,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         fmt = self.DEFAULT_FORMATS[python_type]
         protocol = self.DEFAULT_PROTOCOLS[python_type]
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
+        # This is a condition we need to get pyflyte run working. When a users passes a dataframe as a parquet file to
+        # pyflyte run, we construct a Python StructuredDataset object
+        if isinstance(python_val, StructuredDataset):
+            return self.encode(ctx, python_val, python_type, protocol, fmt, sdt)
+
         sd = StructuredDataset(dataframe=python_val, metadata=meta)
         return self.encode(ctx, sd, python_type, protocol, fmt, sdt)
 

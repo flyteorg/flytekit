@@ -16,6 +16,7 @@ from dataclasses_json import DataClassJsonMixin
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
@@ -33,7 +34,10 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
 )
 
-REMOTE_KEY = "remote"
+REMOTE_FLAG_KEY = "remote"
+RUN_LEVEL_PARAMS_KEY = "run_level_params"
+FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
+DATA_PROXY_CALLBACK_KEY = "data_proxy"
 
 
 def remove_prefix(text, prefix):
@@ -56,24 +60,47 @@ class JsonParamType(click.ParamType):
 class DataframeType(click.ParamType):
     name = "dataframe"
 
-    def convert(self, value, param, ctx) -> pd.DataFrame:
-        if not ctx.obj[REMOTE_KEY]:
+    def __init__(self, input_type: typing.Type[StructuredDataset]):
+        self._sdt = TypeEngine.to_literal_type(input_type)
+
+    def convert(self, value, param, ctx) -> typing.Union[pd.DataFrame, str]:
+        if not ctx.obj[REMOTE_FLAG_KEY]:
             return pd.read_parquet(value)
+
+        # The value here should be a string containing a path to a parquet file. If not running locally, then we have
+        # no need of reading the parquet file.
+        return StructuredDataset(
+            uri=value, metadata=literals.StructuredDatasetMetadata(structured_dataset_type=self._sdt)
+        )
 
 
 class StructuredDatasetParamType(click.ParamType):
     name = "structured_dataset"
 
-    def __init__(self, input_type: typing.Type[StructuredDataset]):
+    def __init__(self, ctx: click.Context, input_type: typing.Type[StructuredDataset]):
+        self._remote = None
         self._sdt = TypeEngine.to_literal_type(input_type)
 
     def convert(self, value, param, ctx) -> StructuredDataset:
         p = pathlib.Path(value)
         if not p.is_dir():
             raise ValueError(f"Value {value} for {param} should be a one-level deep folder with ordered parquet files")
-        return StructuredDataset(
+
+        sd = StructuredDataset(
             uri=value, metadata=literals.StructuredDatasetMetadata(structured_dataset_type=self._sdt)
         )
+
+        # If we're running remotely, as part of the translation, we need to upload the file as well
+        if ctx.obj[REMOTE_FLAG_KEY]:
+            encoder = PandasToParquetDataProxyEncodingHandler(ctx.obj[DATA_PROXY_CALLBACK_KEY])
+            f_ctx = FlyteContextManager.current_context()
+            uploaded_sd = encoder.encode(f_ctx, sd, self._sdt.structured_dataset_type)
+            # The rest of the run process works with the Python SD object, not SD literals, so construct a new one
+            # that just points to the literal.
+            sd = StructuredDataset()
+            sd._literal_sd = uploaded_sd
+
+        return sd
 
 
 class DataclassType(click.ParamType):
@@ -87,19 +114,20 @@ class DataclassType(click.ParamType):
         return cast(DataClassJsonMixin, self._dataclass_type).from_json(value)
 
 
-def get_param_type_override(input_type: typing.Any) -> typing.Optional[click.ParamType]:
+def get_param_type_override(ctx: click.Context, input_type: typing.Any) -> typing.Optional[click.ParamType]:
     """
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
     if input_type is datetime:
         return click.DateTime()
+    # This needs to be above the dataclass check since StructuredDataset is also a dataclass
     if issubclass(input_type, StructuredDataset):
-        return StructuredDatasetParamType(input_type)
+        return StructuredDatasetParamType(ctx, input_type)
     if is_dataclass(input_type):
         return DataclassType(input_type)
     if issubclass(input_type, pd.DataFrame):
-        return DataframeType()
+        return DataframeType(input_type)
     if inspect.isclass(input_type):
         if issubclass(input_type, (FlyteFile, FlyteSchema, FlyteDirectory)):
             raise NotImplementedError(
@@ -122,7 +150,7 @@ def get_param_type_override(input_type: typing.Any) -> typing.Optional[click.Par
 
 
 def set_is_remote(ctx: click.Context, param: str, value: str):
-    ctx.obj[REMOTE_KEY] = bool(value)
+    ctx.obj[REMOTE_FLAG_KEY] = bool(value)
 
 
 def get_workflow_command_base_params() -> typing.List[click.Option]:
@@ -135,6 +163,7 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             required=False,
             is_flag=True,
             default=False,
+            expose_value=False,  # since we're handling in the callback, no need to expose this in params
             is_eager=True,
             callback=set_is_remote,
             help="Whether to register and run the workflow on a Flyte deployment",
@@ -258,39 +287,38 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
     """
 
     def _run(*args, **kwargs):
-        project, domain = kwargs.get("project"), kwargs.get("domain")
+        print(f"_run obj {ctx.obj}")
+        # print(f"kwargs: {kwargs}")
+        run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
+        project, domain = run_level_params.get("project"), run_level_params.get("domain")
         module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
         wf_entity = load_naive_entity(module_name, workflow_name)
         inputs = {}
         for input_name, _ in wf_entity.python_interface.inputs.items():
             inputs[input_name] = kwargs.get(input_name)
 
-        if not ctx.obj[REMOTE_KEY]:
+        if not ctx.obj[REMOTE_FLAG_KEY]:
             output = wf_entity(**inputs)
             click.echo(output)
             return
 
-        remote = FlyteRemote(Config.auto(), default_project=project, default_domain=domain)
-        get_upload_url_fn = functools.partial(remote.client.get_upload_signed_url, project=project, domain=domain)
+        remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+        get_upload_url_fn = ctx.obj[DATA_PROXY_CALLBACK_KEY]
 
-        # TODO: leave a comment explaining why we need to register twice
         StructuredDatasetTransformerEngine.register(
             PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
-        )
-        StructuredDatasetTransformerEngine.register(
-            PandasToParquetDataProxyEncodingHandler(get_upload_url_fn, kind=StructuredDataset), default_for_type=True
         )
 
         wf = remote.register_script(
             wf_entity,
             project=project,
             domain=domain,
-            image_config=kwargs.get("image_config", None),
-            destination_dir=kwargs.get("destination_dir"),
+            image_config=run_level_params.get("image_config", None),
+            destination_dir=run_level_params.get("destination_dir"),
         )
 
         options = None
-        service_account = kwargs.get("service_account")
+        service_account = run_level_params.get("service_account")
         if service_account is not None:
             # options are only passed for the execution. This is to prevent errors when registering a duplicate workflow
             # It is assumed that the users expectations is to override the service account only for the execution
@@ -301,8 +329,8 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
             inputs=inputs,
             project=project,
             domain=domain,
-            name=kwargs.get("name"),
-            wait=kwargs.get("wait_execution"),
+            name=run_level_params.get("name"),
+            wait=run_level_params.get("wait_execution"),
             options=options,
             type_hints=wf_entity.python_interface.inputs,
         )
@@ -310,7 +338,7 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
         console_url = remote.generate_console_url(execution)
         click.secho(f"Go to {console_url} to see execution in the console.")
 
-        if kwargs.get("dump_snippet"):
+        if run_level_params.get("dump_snippet"):
             dump_flyte_remote_snippet(execution, project, domain)
 
     return _run
@@ -318,7 +346,7 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
 
 class WorkflowCommand(click.MultiCommand):
     """
-    A click command for registering and executing flyte workflows.
+    click multicommand at the python file layer, subcommands should be all the workflows in the file.
     """
 
     def __init__(self, filename: str, *args, **kwargs):
@@ -333,9 +361,17 @@ class WorkflowCommand(click.MultiCommand):
         module = os.path.splitext(self._filename)[0].replace(os.path.sep, ".")
         wf_entity = load_naive_entity(module, workflow)
 
-        params = get_workflow_command_base_params()
+        # If this is a remote execution, which we should know at this point, then create the remote object
+        p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("project")
+        d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("domain")
+        r = FlyteRemote(Config.auto(), default_project=p, default_domain=d)
+        ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
+        ctx.obj[DATA_PROXY_CALLBACK_KEY] = functools.partial(r.client.get_upload_signed_url, project=p, domain=d)
+
+        # Add options for each of the workflow inputs
+        params = []
         for input_name, input_type in wf_entity.python_interface.inputs.items():
-            param_type = get_param_type_override(input_type)
+            param_type = get_param_type_override(ctx, input_type)
             if param_type is None:
                 param_type = input_type
             _, default_value = wf_entity.python_interface.inputs_with_defaults.get(input_name)
@@ -363,11 +399,16 @@ class RunCommand(click.MultiCommand):
     A click command group for registering and executing flyte workflows in a file.
     """
 
+    def __init__(self, *args, **kwargs):
+        params = get_workflow_command_base_params()
+        super().__init__(*args, params=params, **kwargs)
+
     def list_commands(self, ctx):
         rv = []
         return rv
 
     def get_command(self, ctx, filename):
+        ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
         return WorkflowCommand(filename, name=filename, help="Run a workflow in a file using script mode")
 
 
@@ -385,17 +426,27 @@ class PandasToParquetDataProxyEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        local_path = structured_dataset.uri
-
-        filename = "00000.parquet"
-        md5, _ = script_mode.hash_file(local_path)
-        df_remote_location = self._create_upload_fn(filename=filename, content_md5=md5)
+        local_path = pathlib.Path(structured_dataset.uri)
+        if local_path.is_file():
+            local_file_name = str(local_path.resolve())
+        elif local_path.is_dir():
+            files = list(local_path.iterdir())
+            if len(files) != 1:
+                raise ValueError(
+                    f"The data proxy encoder can only operate on folders containing one file currently, {len(files)} found in {local_path.name.resolve()}"
+                )
+            local_file_name = str(files[0].resolve())
+        else:
+            raise ValueError(f"Unknown path type {local_path}")
+        md5, _ = script_mode.hash_file(local_file_name)
+        remote_filename = "00000.parquet"
+        df_remote_location = self._create_upload_fn(filename=remote_filename, content_md5=md5)
         flyte_ctx = context_manager.FlyteContextManager.current_context()
-        flyte_ctx.file_access.put_data(local_path, df_remote_location.signed_url)
+        flyte_ctx.file_access.put_data(local_file_name, df_remote_location.signed_url)
 
         structured_dataset_type.format = PARQUET
         return literals.StructuredDataset(
-            uri=df_remote_location.native_url[: -len(filename)],
+            uri=df_remote_location.native_url[: -len(remote_filename)],
             metadata=literals.StructuredDatasetMetadata(structured_dataset_type),
         )
 
