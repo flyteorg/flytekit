@@ -30,3 +30,5 @@ docs/source/plugins/generated/
 .pytest_flyte
 htmlcov
 *.ipynb
+sdt
+test.py
