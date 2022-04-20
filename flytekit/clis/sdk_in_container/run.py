@@ -66,8 +66,9 @@ from flytekit.types.structured.structured_dataset import (
     "destination_dir",
     required=False,
     type=str,
-    default="/root",
-    help="Directory inside the image where the tar file containing the code will be copied to",
+    # Notice how the default value assumes that the working directory is set appropriately in the docker file.
+    default=".",
+    help="Directory inside the image where the tar file containing the code will be copied to.",
 )
 @click.option(
     "-i",
