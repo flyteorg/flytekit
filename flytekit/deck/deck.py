@@ -1,8 +1,5 @@
 import os
-import pathlib
-import random
 from typing import Dict, Optional
-from uuid import UUID
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -92,17 +89,6 @@ def _ipython_check() -> bool:
     return is_ipython
 
 
-def _get_output_dir() -> str:
-    if not _ipython_check():
-        ctx = FlyteContext.current_context()
-        return ctx.file_access.get_random_local_directory()
-    key = UUID(int=random.getrandbits(128)).hex
-    # output_dir must be in the same directory as jupyter notebook
-    output_dir = os.path.join(pathlib.Path(), OUTPUT_DIR_JUPYTER_PREFIX, key)
-    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
-    return output_dir
-
-
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     deck_map: Dict[str, str] = {}
     decks = new_user_params.decks
@@ -112,10 +98,8 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template("template.html")
 
-    output_dir = _get_output_dir()
-
     for deck in decks:
-        _deck_to_html_file(deck, deck_map, output_dir)
+        deck_map[deck.name] = deck.html
 
     if _ipython_check():
         try:
@@ -125,19 +109,8 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
         except ImportError:
             pass
     else:
+        output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
         deck_path = os.path.join(output_dir, DECK_FILE_NAME)
-        with open(deck_path, "w") as f:
+        with open(output_dir, "w") as f:
             f.write(template.render(metadata=deck_map))
         logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
-
-
-def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):
-    file_name = deck.name + ".html"
-    path = os.path.join(output_dir, file_name)
-    if _ipython_check():
-        deck_map[deck.name] = os.path.relpath(path)
-    else:
-        deck_map[deck.name] = file_name
-
-    with open(path, "w") as output:
-        output.write(deck.html)
