@@ -724,17 +724,18 @@ class FlyteContextManager(object):
         if not f:
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
-        flyte_context_Var.set(ctx)
-        return flyte_context_Var.get()
+        return ctx
 
     @staticmethod
     @contextmanager
     def with_context(b: FlyteContext.Builder) -> Generator[FlyteContext, None, None]:
+        old_ctx = FlyteContextManager.current_context()
         ctx = FlyteContextManager.push_context(b.build(), FlyteContextManager.get_origin_stackframe(limit=3))
+        flyte_context_Var.set(ctx)
         try:
-            yield ctx
+            yield flyte_context_Var.get()
         finally:
-            pass
+            flyte_context_Var.set(old_ctx)
 
     @staticmethod
     def initialize():
