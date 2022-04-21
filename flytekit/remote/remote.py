@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
+from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -120,17 +121,17 @@ class FlyteRemote(object):
         config: Config,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
-        file_access: typing.Optional[FileAccessProvider] = None,
+        data_upload_location: str = "s3://my-s3-bucket/data",
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
-        # todo: should we add a version? instead of having it in each command.
 
         :type kwargs: All arguments that can be passed to create the SynchronousFlyteClient. These are usually grpc
             parameters, if you want to customize credentials, ssl handling etc.
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
-        :param file_access: file access provider to use for offloading non-literal inputs/outputs.
+        :param data_upload_location: this is where all the default data will be uploaded when providing inputs.
+            The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
         """
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
@@ -141,9 +142,9 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
 
-        self._file_access = file_access or FileAccessProvider(
+        self._file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
-            raw_output_prefix="/tmp",
+            raw_output_prefix=data_upload_location,
             data_config=config.data_config,
         )
 
@@ -619,21 +620,30 @@ class FlyteRemote(object):
             notifications = NotificationList([])
 
         type_hints = type_hints or {}
-        literal_inputs = literal_models.LiteralMap(literals=inputs)
-        # with self.remote_context() as ctx:
-        #     input_flyte_type_map = entity.interface.inputs
-        #
-        #     for k, v in inputs.items():
-        #         if input_flyte_type_map.get(k) is None:
-        #             raise user_exceptions.FlyteValueException(
-        #                 k, f"The {entity.__class__.__name__} doesn't have this input key."
-        #             )
-        #         if k not in type_hints:
-        #             try:
-        #                 type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
-        #             except ValueError:
-        #                 remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
-        #     literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, type_hints)
+        literal_map = {}
+        with self.remote_context() as ctx:
+            input_flyte_type_map = entity.interface.inputs
+
+            for k, v in inputs.items():
+                if input_flyte_type_map.get(k) is None:
+                    raise user_exceptions.FlyteValueException(
+                        k, f"The {entity.__class__.__name__} doesn't have this input key."
+                    )
+                if isinstance(v, Literal):
+                    lit = v
+                else:
+                    if k not in type_hints:
+                        try:
+                            type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
+                        except ValueError:
+                            remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
+                    variable = entity.interface.inputs.get(k)
+                    hint = type_hints[k]
+                    lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
+                literal_map[k] = lit
+
+            literal_inputs = literal_models.LiteralMap(literals=literal_map)
+
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
