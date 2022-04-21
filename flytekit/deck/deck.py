@@ -109,7 +109,8 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
         except ImportError:
             pass
     else:
-        output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
+        ctx = FlyteContext.current_context()
+        output_dir = ctx.execution_state.engine_dir
         deck_path = os.path.join(output_dir, DECK_FILE_NAME)
         with open(deck_path, "w") as f:
             f.write(template.render(metadata=deck_map))
