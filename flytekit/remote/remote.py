@@ -609,20 +609,21 @@ class FlyteRemote(object):
             notifications = NotificationList([])
 
         type_hints = type_hints or {}
-        with self.remote_context() as ctx:
-            input_flyte_type_map = entity.interface.inputs
-
-            for k, v in inputs.items():
-                if input_flyte_type_map.get(k) is None:
-                    raise user_exceptions.FlyteValueException(
-                        k, f"The {entity.__class__.__name__} doesn't have this input key."
-                    )
-                if k not in type_hints:
-                    try:
-                        type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
-                    except ValueError:
-                        remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, type_hints)
+        literal_inputs = literal_models.LiteralMap(literals=inputs)
+        # with self.remote_context() as ctx:
+        #     input_flyte_type_map = entity.interface.inputs
+        #
+        #     for k, v in inputs.items():
+        #         if input_flyte_type_map.get(k) is None:
+        #             raise user_exceptions.FlyteValueException(
+        #                 k, f"The {entity.__class__.__name__} doesn't have this input key."
+        #             )
+        #         if k not in type_hints:
+        #             try:
+        #                 type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
+        #             except ValueError:
+        #                 remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
+        #     literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, type_hints)
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
