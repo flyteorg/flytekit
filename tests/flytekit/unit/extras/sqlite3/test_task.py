@@ -1,11 +1,11 @@
 import pandas
+import pytest
 
 from flytekit import kwtypes, task, workflow
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema
-import pytest
 
 EXAMPLE_DB = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
 
