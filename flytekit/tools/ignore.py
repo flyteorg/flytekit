@@ -55,7 +55,8 @@ class GitIgnore(Ignore):
 
     def _is_ignored(self, path: str) -> bool:
         if self.ignored:
-            if path in self.ignored:
+            # git-ls-files uses POSIX paths
+            if Path(path).as_posix() in self.ignored:
                 return True
             # Ignore empty directories
             if os.path.isdir(os.path.join(self.root, path)) and all(

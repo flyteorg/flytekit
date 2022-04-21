@@ -35,7 +35,7 @@ def flyte_project(tmp_path):
     }
 
     make_tree(tmp_path, tree)
-    subprocess.run(["git", "init", tmp_path])
+    subprocess.run(["git", "init", str(tmp_path)])
     return tmp_path
 
 

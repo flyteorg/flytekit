@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 from tarfile import TarInfo
@@ -31,7 +32,7 @@ def simple_gitignore(tmp_path):
     }
 
     make_tree(tmp_path, tree)
-    subprocess.run(["git", "init", tmp_path])
+    subprocess.run(["git", "init", str(tmp_path)])
     return tmp_path
 
 
@@ -52,7 +53,7 @@ def nested_gitignore(tmp_path):
     }
 
     make_tree(tmp_path, tree)
-    subprocess.run(["git", "init", tmp_path])
+    subprocess.run(["git", "init", str(tmp_path)])
     return tmp_path
 
 
@@ -97,7 +98,7 @@ def all_ignore(tmp_path):
     }
 
     make_tree(tmp_path, tree)
-    subprocess.run(["git", "init", tmp_path])
+    subprocess.run(["git", "init", str(tmp_path)])
     return tmp_path
 
 
@@ -114,7 +115,11 @@ def test_simple_gitignore(simple_gitignore):
 def test_not_subpath(simple_gitignore):
     """Test edge case that if path is not on root it cannot not be ignored"""
     gitignore = GitIgnore(simple_gitignore)
-    assert not gitignore.is_ignored("/whatever/test.foo")
+    if os.name == "nt":
+        # Relative paths can only be compared if files are in the same drive
+        assert not gitignore.is_ignored(str(Path(simple_gitignore.drive) / "whatever" / "test.foo"))
+    else:
+        assert not gitignore.is_ignored("/whatever/test.foo")
 
 
 def test_nested_gitignore(nested_gitignore):
