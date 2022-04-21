@@ -85,7 +85,6 @@ class ConditionalSection:
         """
         if self._last_case:
             # We have completed the conditional section, lets pop off the branch context
-            FlyteContextManager.pop_context()
             ctx = FlyteContextManager.current_context()
             # Question: This is commented out because we don't need it? Nodes created in the conditional
             #   compilation state are captured in the to_case_block? Always?
@@ -195,7 +194,6 @@ class LocalExecutedConditionalSection(ConditionalSection):
         ctx.execution_state.branch_complete()  # type: ignore
         if self._last_case and self._selected_case:
             # We have completed the conditional section, lets pop off the branch context
-            FlyteContextManager.pop_context()
             if self._selected_case.output_promise is None and self._selected_case.err is None:
                 raise AssertionError("Bad conditional statements, did not resolve in a promise")
             elif self._selected_case.output_promise is not None:
@@ -230,7 +228,6 @@ class SkippedConditionalSection(ConditionalSection):
         This should be invoked after every branch has been visited
         """
         if self._last_case:
-            FlyteContextManager.pop_context()
             curr = self.compute_output_vars()
             if curr is None:
                 return VoidPromise(self.name)

@@ -711,7 +711,7 @@ class FlyteContextManager(object):
         return ss[0]
 
     @staticmethod
-    def current_context() -> Optional[FlyteContext]:
+    def current_context() -> FlyteContext:
         try:
             flyte_context_Var.get()
         except LookupError:
@@ -725,7 +725,7 @@ class FlyteContextManager(object):
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
         flyte_context_Var.set(ctx)
-        return ctx
+        return flyte_context_Var.get()
 
     @staticmethod
     @contextmanager
@@ -734,7 +734,7 @@ class FlyteContextManager(object):
         try:
             yield ctx
         finally:
-            flyte_context_Var.set('')
+            pass
 
     @staticmethod
     def initialize():
