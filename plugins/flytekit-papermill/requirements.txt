@@ -69,7 +69,7 @@ entrypoints==0.3
     #   papermill
 flyteidl==0.21.8
     # via flytekit
-flytekit==0.24.0
+flytekit==0.26.0
     # via
     #   flytekitplugins-papermill
     #   flytekitplugins-spark
