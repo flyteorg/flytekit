@@ -5,7 +5,9 @@ but in Python object form.
 """
 from __future__ import annotations
 
+import base64
 import functools
+import hashlib
 import os
 import time
 import typing
@@ -515,7 +517,7 @@ class FlyteRemote(object):
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
-        upload_location, md5_version = fast_register_single_script(
+        upload_location, md5_bytes = fast_register_single_script(
             entity,
             functools.partial(
                 self.client.get_upload_signed_url,
@@ -524,9 +526,6 @@ class FlyteRemote(object):
                 filename="scriptmode.tar.gz",
             ),
         )
-
-        if version is None:
-            version = md5_version
 
         serialization_settings = SerializationSettings(
             project=project,
@@ -538,6 +537,17 @@ class FlyteRemote(object):
                 distribution_location=upload_location.native_url,
             ),
         )
+
+        if version is None:
+            # The md5 version that we send to S3/GCS has to match the file contents exactly,
+            # but we don't have to use it when registering with the Flyte backend.
+            # For that add the hash of the compilation settings to hash of file
+            from flytekit import __version__
+
+            h = hashlib.md5(md5_bytes)
+            h.update(bytes(serialization_settings.to_json(), "utf-8"))
+            h.update(bytes(__version__, "utf-8"))
+            version = base64.urlsafe_b64encode(h.digest())
 
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
@@ -633,6 +643,7 @@ class FlyteRemote(object):
                 literal_map[k] = lit
 
             literal_inputs = literal_models.LiteralMap(literals=literal_map)
+
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
