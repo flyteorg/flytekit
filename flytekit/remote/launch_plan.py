@@ -21,7 +21,6 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
 
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
-        self._python_interface = None
 
     @property
     def name(self) -> str:
@@ -48,6 +47,8 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
             annotations=model.annotations,
             auth_role=model.auth_role,
             raw_output_data_config=model.raw_output_data_config,
+            max_parallelism=model.max_parallelism,
+            security_context=model.security_context,
         )
         return lp
 
@@ -88,4 +89,4 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
         return "Launch Plan"
 
     def __repr__(self) -> str:
-        return f"FlyteLaunchPlan(ID: {self.id} Interface: {self.interface} WF ID: {self.workflow_id})"
+        return f"FlyteLaunchPlan(ID: {self.id} Interface: {self.interface}) - Spec {super().__repr__()})"

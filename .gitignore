@@ -26,6 +26,7 @@ dist
 .python-version
 _build/
 docs/source/generated/
+docs/source/plugins/generated/
 .pytest_flyte
 htmlcov
 *.ipynb

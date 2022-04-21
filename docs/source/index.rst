@@ -76,6 +76,7 @@ Expected output:
    remote
    testing
    extend
+   plugins/index
    tasks.extend
    types.extend
    data.extend

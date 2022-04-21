@@ -42,6 +42,14 @@ class ExecutableTemplateShimTask(object):
         super().__init__(*args, **kwargs)
 
     @property
+    def name(self) -> str:
+        """Return the name of the underlying task."""
+        if self._task_template is not None:
+            return self._task_template.id.name
+        # if not access the subclass's name
+        return self._name
+
+    @property
     def task_template(self) -> _task_model.TaskTemplate:
         return self._task_template
 

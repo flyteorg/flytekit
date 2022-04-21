@@ -434,8 +434,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # If the type signature has the StructuredDataset class, it will, or at least should, also be a
         # StructuredDataset instance.
-        if issubclass(python_type, StructuredDataset):
-            assert isinstance(python_val, StructuredDataset)
+        if issubclass(python_type, StructuredDataset) and isinstance(python_val, StructuredDataset):
             # There are three cases that we need to take care of here.
 
             # 1. A task returns a StructuredDataset that was just a passthrough input. If this happens
@@ -479,7 +478,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 python_val,
                 df_type,
                 protocol,
-                python_val.file_format,
+                sdt.format or typing.cast(StructuredDataset, python_val).DEFAULT_FILE_FORMAT,
                 sdt,
             )
 
@@ -620,6 +619,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 metadata=metad,
             )
             sd._literal_sd = lv.scalar.structured_dataset
+            sd.file_format = metad.structured_dataset_type.format
             return sd
 
         # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means

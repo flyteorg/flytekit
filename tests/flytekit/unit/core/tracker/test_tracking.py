@@ -74,7 +74,8 @@ def test_extract_task_module(test_input, expected):
     old = FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT
     FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT = "auto"
     try:
-        assert extract_task_module(test_input) == expected
+        # The last element is the full path of a local file, which is not stable across users / runs.
+        assert extract_task_module(test_input)[:-1] == expected
     except Exception:
         FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT = old
         raise

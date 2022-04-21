@@ -37,7 +37,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=0.24.10",
+        "flyteidl>=0.24.15",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<7.0.0",
@@ -56,7 +56,7 @@ setup(
         "keyring>=18.0.1",
         "requests>=2.18.4,<3.0.0",
         "responses>=0.10.7",
-        "sortedcontainers>=1.5.9<3.0.0",
+        "sortedcontainers>=1.5.9,<3.0.0",
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
@@ -71,7 +71,7 @@ setup(
         "diskcache>=5.2.1",
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
-        "numpy<=1.22.1; python_version < '3.8.0'",
+        "numpy<1.22.0; python_version < '3.8.0'",
     ],
     extras_require=extras_require,
     scripts=[

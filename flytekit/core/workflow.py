@@ -573,7 +573,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         default_metadata: Optional[WorkflowMetadataDefaults],
         docstring: Docstring = None,
     ):
-        name, _, _ = extract_task_module(workflow_function)
+        name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
         native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
 

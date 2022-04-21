@@ -4,6 +4,7 @@ from mock import MagicMock, patch
 from flytekit.configuration import Config
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
+from flytekit.models import security
 from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.remote.remote import FlyteRemote
@@ -29,7 +30,7 @@ ENTITY_TYPE_TEXT = {
 
 
 @patch("flytekit.clients.friendly.SynchronousFlyteClient")
-def test_remote_fetch_workflow_execution(mock_client_manager):
+def test_remote_fetch_execution(mock_client_manager):
     admin_workflow_execution = Execution(
         id=WorkflowExecutionIdentifier("p1", "d1", "n1"),
         spec=MagicMock(),
@@ -41,7 +42,7 @@ def test_remote_fetch_workflow_execution(mock_client_manager):
 
     remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     remote._client = mock_client
-    flyte_workflow_execution = remote.fetch_workflow_execution(name="n1")
+    flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
 
 
@@ -55,7 +56,7 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_wf_exec):
 
     def local_assertions(*args, **kwargs):
         execution_spec = args[3]
-        assert execution_spec.auth_role.kubernetes_service_account == "svc"
+        assert execution_spec.security_context.run_as.k8s_service_account == "svc"
         assert execution_spec.labels == common_models.Labels({"a": "my_label_value"})
         assert execution_spec.annotations == common_models.Annotations({"b": "my_annotation_value"})
 
@@ -65,7 +66,7 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_wf_exec):
     options = Options(
         labels=common_models.Labels({"a": "my_label_value"}),
         annotations=common_models.Annotations({"b": "my_annotation_value"}),
-        auth_role=common_models.AuthRole(kubernetes_service_account="svc"),
+        security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account="svc")),
     )
 
     remote._execute(
@@ -87,12 +88,12 @@ def test_underscore_execute_fall_back_remote_attributes(mock_wf_exec):
 
     options = Options(
         raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
-        auth_role=common_models.AuthRole(assumable_iam_role="iam:some:role"),
+        security_context=security.SecurityContext(run_as=security.Identity(iam_role="iam:some:role")),
     )
 
     def local_assertions(*args, **kwargs):
         execution_spec = args[3]
-        assert execution_spec.auth_role.assumable_iam_role == "iam:some:role"
+        assert execution_spec.security_context.run_as.iam_role == "iam:some:role"
         assert execution_spec.raw_output_data_config.output_location_prefix == "raw_output"
 
     mock_client.create_execution.side_effect = local_assertions
