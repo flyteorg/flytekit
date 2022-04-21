@@ -58,10 +58,8 @@ class DirParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-
         if FileAccessProvider.is_remote(value):
             return Directory(dir_path=value, local=False)
-
         p = pathlib.Path(value)
         if p.exists() and p.is_dir():
             files = list(p.iterdir())
