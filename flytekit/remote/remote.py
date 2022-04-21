@@ -542,6 +542,7 @@ class FlyteRemote(object):
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
             from flytekit import __version__
+
             h = hashlib.md5(md5_bytes)
             h.update(bytes(serialization_settings.to_json(), "utf-8"))
             h.update(bytes(__version__, "utf-8"))
