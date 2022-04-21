@@ -65,6 +65,10 @@ ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecu
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
 
 
+def int_to_bytes(number: int) -> bytes:
+    return number.to_bytes(length=(8 + (number + (number < 0)).bit_length()) // 8, byteorder="big", signed=True)
+
+
 @dataclass
 class ResolvedIdentifiers:
     project: str
@@ -541,7 +545,12 @@ class FlyteRemote(object):
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            h = hashlib.md5(md5_bytes + bytes(serialization_settings.to_json(), "utf-8"))
+            h = hashlib.md5(md5_bytes)
+            # h.update(bytes(serialization_settings.to_json(), "utf-8"))
+            print(f"Hash of IC {hash(serialization_settings.image_config)}")
+            print(f"Hash of SS {hash(serialization_settings)}")
+
+            h.update(int_to_bytes(hash(serialization_settings)))
             version = base64.urlsafe_b64encode(h.digest())
 
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)

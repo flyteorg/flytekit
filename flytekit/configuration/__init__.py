@@ -170,6 +170,15 @@ class ImageConfig(object):
     default_image: Optional[Image] = None
     images: Optional[List[Image]] = None
 
+    def __hash__(self) -> int:
+        # Don't accidentally hash None since that value changes over time.
+        default_hash = hash(self.default_image) if self.default_image else 0
+
+        for i in self.images:
+            print(f"Image {i} hash {hash(i)}")
+
+        return default_hash + sum([hash(i) for i in self.images])
+
     def find_image(self, name) -> Optional[Image]:
         """
         Return an image, by name, if it exists.
@@ -587,7 +596,7 @@ class EntrypointSettings(object):
 
 
 @dataclass_json
-@dataclass
+@dataclass(frozen=True)
 class FastSerializationSettings(object):
     """
     This object hold information about settings necessary to serialize an object so that it can be fast-registered.
@@ -602,7 +611,7 @@ class FastSerializationSettings(object):
 
 
 @dataclass_json
-@dataclass()
+@dataclass(frozen=True)
 class SerializationSettings(object):
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
@@ -637,9 +646,36 @@ class SerializationSettings(object):
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
 
-    def __post_init__(self):
-        if self.flytekit_virtualenv_root is None:
-            self.flytekit_virtualenv_root = self.venv_root_from_interpreter(self.python_interpreter)
+    def __init__(
+        self,
+        image_config: ImageConfig,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        version: typing.Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+        python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+        flytekit_virtualenv_root: Optional[str] = None,
+        fast_serialization_settings: Optional[FastSerializationSettings] = None,
+    ):
+        super().__init__()
+        object.__setattr__(self, "image_config", image_config)
+        object.__setattr__(self, "project", project)
+        object.__setattr__(self, "domain", domain)
+        object.__setattr__(self, "version", version)
+        object.__setattr__(self, "env", env)
+        object.__setattr__(self, "python_interpreter", python_interpreter)
+        object.__setattr__(self, "fast_serialization_settings", fast_serialization_settings)
+
+        if flytekit_virtualenv_root is None:
+            object.__setattr__(
+                self, "flytekit_virtualenv_root", SerializationSettings.venv_root_from_interpreter(python_interpreter)
+            )
+        else:
+            object.__setattr__(self, "flytekit_virtualenv_root", flytekit_virtualenv_root)
+
+    # def __post_init__(self):
+    #     if self.flytekit_virtualenv_root is None:
+    #         self.flytekit_virtualenv_root = self.venv_root_from_interpreter(self.python_interpreter)
 
     @property
     def entrypoint_settings(self) -> EntrypointSettings:
