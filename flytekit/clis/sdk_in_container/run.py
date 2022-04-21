@@ -5,7 +5,7 @@ import json
 import os
 import pathlib
 import typing
-from dataclasses import is_dataclass
+from dataclasses import is_dataclass, dataclass
 from datetime import datetime
 from typing import cast
 
@@ -22,6 +22,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.interface import Variable
+from flytekit.models.literals import Primitive
 from flytekit.models.types import StructuredDatasetType, LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
@@ -59,8 +60,41 @@ class JsonParamType(click.ParamType):
         return json.loads(value)
 
 
-class StructuredDatasetParamType(click.ParamType):
-    name = "structured_dataset"
+@dataclass
+class DefaultConverter(object):
+    click_type: click.ParamType
+    primitive_type: typing.Optional[str] = None
+    scalar_type: typing.Optional[str] = None
+    generic: bool = False
+
+    def convert(self, value: typing.Any, python_type_hint: typing.Optional[typing.Type] = None) -> Scalar:
+        if self.primitive_type:
+            return Scalar(
+                primitive=Primitive(**{self.primitive_type: value})
+            )
+        if self.scalar_type:
+            return Scalar(**{self.scalar_type: value})
+
+        if self.generic:
+            return Scalar(generic=cast(DataClassJsonMixin, python_type_hint).from_json(value).to_json())
+
+        raise NotImplementedError("Not implemented yet!")
+
+
+class FlyteLiteralConverter(object):
+    name = "literal_type"
+
+    SIMPLE_TYPE_CONVERTER: typing.Dict[SimpleType, DefaultConverter] = {
+        SimpleType.FLOAT: DefaultConverter(click.FLOAT, primitive_type="float_value"),
+        SimpleType.INTEGER: DefaultConverter(click.INT, primitive_type="integer"),
+        SimpleType.STRING: DefaultConverter(click.STRING, primitive_type="string_value"),
+        SimpleType.BOOLEAN: DefaultConverter(click.BOOL, primitive_type="boolean"),
+        SimpleType.DURATION: DefaultConverter(click.UNPROCESSED, primitive_type="duration"),
+        SimpleType.DATETIME: DefaultConverter(click.DateTime(), primitive_type="datetime"),
+        SimpleType.BINARY: DefaultConverter(click.STRING),
+        SimpleType.STRUCT: DefaultConverter(click.UNPROCESSED, generic=True),
+        SimpleType.ERROR: DefaultConverter(click.UNPROCESSED),
+    }
 
     def __init__(self, ctx: click.Context, flyte_ctx: FlyteContext, literal_type: LiteralType, python_type: typing.Type,
                  get_upload_url_fn: typing.Callable):
@@ -69,8 +103,26 @@ class StructuredDatasetParamType(click.ParamType):
         self._python_type = python_type
         self._create_upload_fn = get_upload_url_fn
         self._flyte_ctx = flyte_ctx
+        self._click_type = click.UNPROCESSED
 
-    def convert(self, value, param, ctx) -> typing.Union[Literal, typing.Any]:
+        if self._literal_type.simple:
+            self._converter = self.SIMPLE_TYPE_CONVERTER[self._literal_type.simple]
+            self._click_type = self._converter.click_type
+
+        if self._literal_type.enum_type:
+            self._converter = self.SIMPLE_TYPE_CONVERTER[SimpleType.STRING]
+            self._click_type = click.Choice(self._literal_type.enum_type.values)
+
+    @property
+    def click_type(self) -> click.ParamType:
+        return self._click_type
+
+    def is_bool(self) -> bool:
+        if self._literal_type.simple:
+            return self._literal_type.simple == SimpleType.BOOLEAN
+        return False
+
+    def convert_to_structured_dataset(self, value, param, ctx) -> typing.Union[Literal, typing.Any]:
         uri = value
         local_path = pathlib.Path(uri)
         if local_path.is_file():
@@ -102,114 +154,46 @@ class StructuredDatasetParamType(click.ParamType):
             ),
         )
 
+        return lit
+
+    def convert_to_literal(self, ctx, param, value) -> Literal:
+        if self._literal_type.structured_dataset_type:
+            return self.convert_to_structured_dataset(value, param, ctx)
+
+        if self._literal_type.collection_type:
+            pass
+
+        if self._literal_type.simple or self._literal_type.enum_type:
+            return Literal(
+                scalar=self._converter.convert(value, self._python_type)
+            )
+
+    def convert(self, ctx, param, value) -> typing.Union[Literal, typing.Any]:
+        lit = self.convert_to_literal(ctx, param, value)
         if not self._remote:
             return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
-
         return lit
 
 
-class DataclassType(click.ParamType):
-    name = "dataclass"
-
-    def __init__(self, dataclass_type, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._dataclass_type = dataclass_type
-
-    def convert(self, value, param, ctx):
-        return cast(DataClassJsonMixin, self._dataclass_type).from_json(value)
-
-
-def get_param_type_override(ctx: click.Context, input_type: typing.Any) -> typing.Optional[click.ParamType]:
-    """
-    This handles converting workflow input types to supported click parameters with callbacks to initialize
-    the input values to their expected types.
-    """
-    if input_type is datetime:
-        return click.DateTime()
-    # This needs to be above the dataclass check since StructuredDataset is also a dataclass
-    if issubclass(input_type, StructuredDataset):
-        return StructuredDatasetParamType(ctx, input_type)
-    if is_dataclass(input_type):
-        return DataclassType(input_type)
-    if issubclass(input_type, pd.DataFrame):
-        return DataframeType(input_type)
-    if inspect.isclass(input_type):
-        if issubclass(input_type, (FlyteFile, FlyteSchema, FlyteDirectory)):
-            raise NotImplementedError(
-                click.style("Flyte[File, Schema, Directory] are not yet implemented in pyflyte run", fg="red")
-            )
-
-    origin_type = typing.get_origin(input_type)
-    if origin_type in [dict, list]:
-        return JsonParamType()
-
-    # Filter through the union of types to see if any of them has a registered callback
-    if origin_type is typing.Union:
-        types = input_type.__args__
-        for t in types:
-            param = get_param_type_override(t)
-            if param is not None:
-                return param
-
-    return None
-
-
-
-def to_click_type(ctx: click.Context, flyte_ctx: FlyteContext, literal_type: LiteralType, python_type: typing.Type,
-                  get_upload_url_fn: typing.Callable) -> typing.Tuple[
-    click.ParamType, typing.Optional[typing.Callable[[click.Context, click.Parameter, typing.Any], typing.Any]]]:
-    if literal_type.structured_dataset_type:
-        return StructuredDatasetParamType(ctx, flyte_ctx, literal_type=literal_type, python_type=python_type,
-                                          get_upload_url_fn=get_upload_url_fn), None
-    if literal_type.enum_type:
-        return click.Choice(literal_type.enum_type.values),
-
-    if literal_type.simple:
-        if literal_type.simple
-
-
 def to_click_option(ctx: click.Context, flyte_ctx: FlyteContext, input_name: str, literal_var: Variable,
-                    input_val: typing.Tuple[typing.Type, typing.Any],
+                    python_type: typing.Type, default_val: typing.Any,
                     get_upload_url_fn: typing.Callable) -> click.Option:
     """
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
-    input_type = input_val[0]
-    if literal_var.type.structured_dataset_type:
-        click_type = StructuredDatasetParamType(ctx, flyte_ctx, literal_type=literal_var.type, python_type=input_type,
-                                                get_upload_url_fn=get_upload_url_fn)
-    elif input_type is datetime:
-        click_type = click.DateTime()
-    elif is_dataclass(input_type):
-        click_type = DataclassType(input_type)
-    elif inspect.isclass(input_type):
-        if issubclass(input_type, (FlyteFile, FlyteSchema, FlyteDirectory)):
-            raise NotImplementedError(
-                click.style("Flyte[File, Schema, Directory] are not yet implemented in pyflyte run", fg="red")
-            )
+    literal_converter = FlyteLiteralConverter(ctx, flyte_ctx, literal_type=literal_var.type, python_type=python_type,
+                     get_upload_url_fn=get_upload_url_fn)
 
-    else:
-        origin_type = typing.get_origin(input_type)
-        if origin_type in [dict, list]:
-            click_type = JsonParamType()
-        # Filter through the union of types to see if any of them has a registered callback
-        if origin_type is typing.Union:
-            types = input_type.__args__
-            for t in types:
-                param = get_param_type_override(t)
-                if param is not None:
-                    return param
-
-    default_val = input_val[1]
     return click.Option(
         param_decls=[f"--{input_name}"],
-        type=click_type,
-        is_flag=input_type == bool,
+        type=literal_converter.click_type,
+        is_flag=literal_converter.is_bool(),
         default=default_val,
         show_default=True,
         required=default_val is None,
         help=literal_var.description,
+        callback=literal_converter.convert,
     )
 
 
@@ -435,7 +419,8 @@ class WorkflowCommand(click.MultiCommand):
         params = []
         for input_name, input_type_val in wf_entity.python_interface.inputs_with_defaults.items():
             literal_var = wf_entity.interface.inputs.get(input_name)
-            params.append(to_click_option(ctx, flyte_ctx, input_name, literal_var, input_type_val, get_upload_url_fn))
+            python_type, default_val = input_type_val
+            params.append(to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn))
         cmd = click.Command(
             name=workflow,
             params=params,
