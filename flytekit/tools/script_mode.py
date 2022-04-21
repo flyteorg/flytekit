@@ -1,4 +1,3 @@
-import base64
 import gzip
 import hashlib
 import os
