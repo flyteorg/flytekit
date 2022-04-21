@@ -541,7 +541,10 @@ class FlyteRemote(object):
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            h = hashlib.md5(md5_bytes + bytes(serialization_settings.to_json(), "utf-8"))
+            from flytekit import __version__
+            h = hashlib.md5(md5_bytes)
+            h.update(bytes(serialization_settings.to_json(), "utf-8"))
+            h.update(bytes(__version__, "utf-8"))
             version = base64.urlsafe_b64encode(h.digest())
 
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
