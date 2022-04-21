@@ -12,11 +12,12 @@ import click
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 
-from flytekit import BlobType, Literal, Scalar
+from flytekit import BlobType, Literal, Scalar, DataPersistence
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
@@ -57,7 +58,8 @@ class DirParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        # TODO check protocol and handle if local or remote
+        if FileAccessProvider.is_remote(value):
+            return Directory(dir_path=value, local=False)
         p = pathlib.Path(value)
         if p.exists() and p.is_dir():
             files = list(p.iterdir())
@@ -71,7 +73,7 @@ class DirParamType(click.ParamType):
 
 @dataclass
 class FileParam(object):
-    filepath: pathlib.Path
+    filepath: str
     local: bool = True
 
 
@@ -81,10 +83,11 @@ class FileParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        # TODO check protocol and handle if local or remote
+        if FileAccessProvider.is_remote(value):
+            return FileParam(filepath=value)
         p = pathlib.Path(value)
         if p.exists() and p.is_file():
-            return FileParam(filepath=p.resolve())
+            return FileParam(filepath=str(p.resolve()))
         raise click.BadParameter(f"parameter should be a valid file path")
 
 
@@ -219,11 +222,12 @@ class FlyteLiteralConverter(object):
         if isinstance(value, Directory):
             uri = self.get_uri_for_dir(value)
         else:
-            uri = str(value.filepath)
+            uri = value.filepath
             if self._remote and value.local:
+                fp = pathlib.Path(value.filepath)
                 md5, _ = script_mode.hash_file(value.filepath)
-                df_remote_location = self._create_upload_fn(filename=value.filepath.name, content_md5=md5)
-                self._flyte_ctx.file_access.put_data(value.filepath, df_remote_location.signed_url)
+                df_remote_location = self._create_upload_fn(filename=fp.name, content_md5=md5)
+                self._flyte_ctx.file_access.put_data(fp, df_remote_location.signed_url)
                 uri = df_remote_location.native_url
 
         lit = Literal(
@@ -294,6 +298,9 @@ def to_click_option(
     literal_converter = FlyteLiteralConverter(
         ctx, flyte_ctx, literal_type=literal_var.type, python_type=python_type, get_upload_url_fn=get_upload_url_fn
     )
+
+    if literal_converter.is_bool() and not default_val:
+        default_val = False
 
     return click.Option(
         param_decls=[f"--{input_name}"],
