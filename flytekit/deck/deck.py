@@ -111,6 +111,6 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     else:
         output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
         deck_path = os.path.join(output_dir, DECK_FILE_NAME)
-        with open(output_dir, "w") as f:
+        with open(deck_path, "w") as f:
             f.write(template.render(metadata=deck_map))
         logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")

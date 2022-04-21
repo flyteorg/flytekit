@@ -3,7 +3,7 @@ from mock import mock
 
 from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import TopFrameRenderer
-from flytekit.deck.deck import OUTPUT_DIR_JUPYTER_PREFIX, _get_output_dir, _output_deck
+from flytekit.deck.deck import OUTPUT_DIR_JUPYTER_PREFIX, _output_deck
 
 
 def test_deck():
@@ -31,7 +31,6 @@ def test_deck():
 @mock.patch("flytekit.deck.deck._ipython_check")
 def test_deck_in_jupyter(mock_ipython_check):
     mock_ipython_check.return_value = True
-    assert OUTPUT_DIR_JUPYTER_PREFIX in _get_output_dir()
 
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
