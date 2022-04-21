@@ -73,7 +73,7 @@ flytekit==0.26.0
     # via
     #   flytekitplugins-papermill
     #   flytekitplugins-spark
-flytekitplugins-spark==0.24.0
+flytekitplugins-spark==0.26.0
     # via
     #   -r requirements.in
     #   flytekitplugins-papermill
