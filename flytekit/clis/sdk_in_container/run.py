@@ -4,6 +4,7 @@ import inspect
 import json
 import os
 import pathlib
+from google.protobuf import struct_pb2 as struct
 import typing
 from dataclasses import is_dataclass, dataclass
 from datetime import datetime
@@ -12,6 +13,7 @@ from typing import cast
 import click
 import pandas as pd
 from dataclasses_json import DataClassJsonMixin
+from google.protobuf import json_format
 
 from flytekit import Literal, Scalar
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -76,7 +78,7 @@ class DefaultConverter(object):
             return Scalar(**{self.scalar_type: value})
 
         if self.generic:
-            return Scalar(generic=cast(DataClassJsonMixin, python_type_hint).from_json(value).to_json())
+            return Scalar(generic=json_format.Parse(cast(DataClassJsonMixin, python_type_hint).from_json(value).to_json(), struct.Struct()))
 
         raise NotImplementedError("Not implemented yet!")
 
