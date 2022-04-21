@@ -715,7 +715,7 @@ class FlyteContextManager(object):
         try:
             flyte_context_Var.get()
         except LookupError:
-            # we will lose the default flyte context in the new thread. Therefore, reinitialize the context when running in the thread.
+            # we will lost the default flyte context in the new thread. Therefore, reinitialize the context when running in the thread.
             FlyteContextManager.initialize()
         return flyte_context_Var.get()
 
