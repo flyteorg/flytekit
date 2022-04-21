@@ -36,7 +36,7 @@ from flytekit.core.data_persistence import FileAccessProvider, default_local_fil
 from flytekit.core.node import Node
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
-from flytekit.loggers import logger, user_space_logger
+from flytekit.loggers import user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -724,6 +724,7 @@ class FlyteContextManager(object):
         if not f:
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
+        flyte_context_Var.set(ctx)
         return ctx
 
     @staticmethod
@@ -731,9 +732,8 @@ class FlyteContextManager(object):
     def with_context(b: FlyteContext.Builder) -> Generator[FlyteContext, None, None]:
         old_ctx = FlyteContextManager.current_context()
         ctx = FlyteContextManager.push_context(b.build(), FlyteContextManager.get_origin_stackframe(limit=3))
-        flyte_context_Var.set(ctx)
         try:
-            yield flyte_context_Var.get()
+            yield ctx
         finally:
             flyte_context_Var.set(old_ctx)
 

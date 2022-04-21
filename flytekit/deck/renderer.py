@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import pandas
 from typing_extensions import Protocol, runtime_checkable

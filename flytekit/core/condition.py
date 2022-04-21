@@ -4,7 +4,7 @@ import datetime
 import typing
 from typing import Optional, Tuple, Union, cast
 
-from flytekit.core.context_manager import ExecutionState, FlyteContextManager
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager, flyte_context_Var
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     ComparisonExpression,
@@ -55,9 +55,9 @@ class ConditionalSection:
         self._cases: typing.List[Case] = []
         self._last_case = False
         self._condition = Condition(self)
-        ctx = FlyteContextManager.current_context()
+        self.old_ctx = FlyteContextManager.current_context()
         # A new conditional section has been started, so lets push the context
-        FlyteContextManager.push_context(ctx.enter_conditional_section().build())
+        FlyteContextManager.push_context(self.old_ctx.enter_conditional_section().build())
 
     @property
     def name(self) -> str:
@@ -84,7 +84,8 @@ class ConditionalSection:
         If so then return the promise, else return the condition
         """
         if self._last_case:
-            # We have completed the conditional section, lets pop off the branch context
+            # We have completed the conditional section, lets restore to origin the branch context
+            flyte_context_Var.set(self.old_ctx)
             ctx = FlyteContextManager.current_context()
             # Question: This is commented out because we don't need it? Nodes created in the conditional
             #   compilation state are captured in the to_case_block? Always?
@@ -193,7 +194,8 @@ class LocalExecutedConditionalSection(ConditionalSection):
         # Let us mark the execution state as complete
         ctx.execution_state.branch_complete()  # type: ignore
         if self._last_case and self._selected_case:
-            # We have completed the conditional section, lets pop off the branch context
+            # We have completed the conditional section, lets restore to origin the branch context
+            flyte_context_Var.set(self.old_ctx)
             if self._selected_case.output_promise is None and self._selected_case.err is None:
                 raise AssertionError("Bad conditional statements, did not resolve in a promise")
             elif self._selected_case.output_promise is not None:
@@ -228,6 +230,7 @@ class SkippedConditionalSection(ConditionalSection):
         This should be invoked after every branch has been visited
         """
         if self._last_case:
+            flyte_context_Var.set(self.old_ctx)
             curr = self.compute_output_vars()
             if curr is None:
                 return VoidPromise(self.name)
