@@ -21,6 +21,7 @@ import tempfile
 import traceback
 import typing
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -42,6 +43,7 @@ from flytekit.models.core import identifier as _identifier
 
 # Enables static type checking https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING
 
+flyte_context_Var = ContextVar("")
 
 if typing.TYPE_CHECKING:
     from flytekit.core.base_task import TaskResolverMixin
@@ -701,8 +703,6 @@ class FlyteContextManager(object):
         FlyteContextManager.pop_context()
     """
 
-    _OBJS: typing.List[FlyteContext] = []
-
     @staticmethod
     def get_origin_stackframe(limit=2) -> traceback.FrameSummary:
         ss = traceback.extract_stack(limit=limit + 1)
@@ -712,61 +712,29 @@ class FlyteContextManager(object):
 
     @staticmethod
     def current_context() -> Optional[FlyteContext]:
-        if FlyteContextManager._OBJS:
-            return FlyteContextManager._OBJS[-1]
-        return None
+        try:
+            flyte_context_Var.get()
+        except LookupError:
+            # we will lose the default flyte context in the new thread. Therefore, reinitialize the context when running in the thread.
+            FlyteContextManager.initialize()
+        return flyte_context_Var.get()
 
     @staticmethod
     def push_context(ctx: FlyteContext, f: Optional[traceback.FrameSummary] = None) -> FlyteContext:
         if not f:
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
-        FlyteContextManager._OBJS.append(ctx)
-        t = "\t"
-        logger.debug(
-            f"{t * ctx.level}[{len(FlyteContextManager._OBJS)}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
-        )
-        return ctx
-
-    @staticmethod
-    def pop_context() -> FlyteContext:
-        ctx = FlyteContextManager._OBJS.pop()
-        t = "\t"
-        logger.debug(
-            f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
-        )
-        if len(FlyteContextManager._OBJS) == 0:
-            raise AssertionError(f"Illegal Context state! Popped, {ctx}")
+        flyte_context_Var.set(ctx)
         return ctx
 
     @staticmethod
     @contextmanager
     def with_context(b: FlyteContext.Builder) -> Generator[FlyteContext, None, None]:
         ctx = FlyteContextManager.push_context(b.build(), FlyteContextManager.get_origin_stackframe(limit=3))
-        l = FlyteContextManager.size()
         try:
             yield ctx
         finally:
-            # NOTE: Why? Do we have a loop here to ensure that we are popping all context up to the previously recorded
-            # length? This is because it is possible that a conditional context may have leaked. Because of the syntax
-            # of conditionals, if a conditional section fails to evaluate / compile, the context is not removed from the
-            # stack. This is because context managers cannot be used in the conditional section.
-            #   conditional().if_(...)......
-            # Ideally we should have made conditional like so
-            # with conditional() as c
-            #      c.if_().....
-            # the reason why we did not do that, was because, of the brevity and the assignment of outputs. Also, nested
-            # conditionals using the context manager syntax is not easy to follow. So we wanted to optimize for the user
-            # ergonomics
-            # Also we know that top level construct like workflow and tasks always use context managers and that
-            # context manager mutations are single threaded, hence we can safely cleanup leaks in this section
-            # Also this is only in the error cases!
-            while FlyteContextManager.size() >= l:
-                FlyteContextManager.pop_context()
-
-    @staticmethod
-    def size() -> int:
-        return len(FlyteContextManager._OBJS)
+            flyte_context_Var.set('')
 
     @staticmethod
     def initialize():
@@ -798,7 +766,7 @@ class FlyteContextManager(object):
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()
         default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
-        FlyteContextManager._OBJS = [default_context]
+        flyte_context_Var.set(default_context)
 
 
 class FlyteEntities(object):

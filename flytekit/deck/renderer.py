@@ -18,7 +18,7 @@ class TopFrameRenderer:
     Render a DataFrame as an HTML table.
     """
 
-    def __init__(self, max_rows: Optional[int] = None):
+    def __init__(self, max_rows: int = 5):
         self._max_rows = max_rows
 
     def to_html(self, df: pandas.DataFrame) -> str:
