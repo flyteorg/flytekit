@@ -11,7 +11,6 @@ from flytekit import kwtypes, task, workflow
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
-
 superset_cols = kwtypes(name=str, age=int)
 subset_cols = kwtypes(age=int)
 

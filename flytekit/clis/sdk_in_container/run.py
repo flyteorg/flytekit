@@ -12,7 +12,7 @@ import click
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 
-from flytekit import BlobType, Literal, Scalar, DataPersistence
+from flytekit import BlobType, Literal, Scalar
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
@@ -68,7 +68,7 @@ class DirParamType(click.ParamType):
                     f"Currently only directories containing one file are supported, found [{len(files)}] files found in {p.resolve()}"
                 )
             return Directory(dir_path=value, local_file=files[0].resolve())
-        raise click.BadParameter(f"parameter should be a valid directory path")
+        raise click.BadParameter(f"parameter should be a valid directory path, {value}")
 
 
 @dataclass
@@ -88,7 +88,7 @@ class FileParamType(click.ParamType):
         p = pathlib.Path(value)
         if p.exists() and p.is_file():
             return FileParam(filepath=str(p.resolve()))
-        raise click.BadParameter(f"parameter should be a valid file path")
+        raise click.BadParameter(f"parameter should be a valid file path, {value}")
 
 
 class DurationParamType(click.ParamType):
@@ -260,7 +260,7 @@ class FlyteLiteralConverter(object):
             return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
 
         if self._literal_type.union_type:
-            raise NotImplementedError(f"Union type is not yet implemented for pyflyte run")
+            raise NotImplementedError("Union type is not yet implemented for pyflyte run")
 
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
