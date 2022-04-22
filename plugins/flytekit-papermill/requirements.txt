@@ -16,11 +16,11 @@ attrs==21.4.0
     # via jsonschema
 backcall==0.2.0
     # via ipython
-beautifulsoup4==4.10.0
+beautifulsoup4==4.11.1
     # via nbconvert
 binaryornot==0.4.4
     # via cookiecutter
-bleach==4.1.0
+bleach==5.0.0
     # via nbconvert
 certifi==2021.10.8
     # via requests
@@ -30,8 +30,6 @@ chardet==4.0.0
     # via binaryornot
 charset-normalizer==2.0.12
     # via requests
-checksumdir==1.2.0
-    # via flytekit
 click==8.1.2
     # via
     #   cookiecutter
@@ -59,6 +57,8 @@ deprecated==1.2.13
     # via flytekit
 diskcache==5.4.0
     # via flytekit
+docker==5.0.3
+    # via flytekit
 docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.13
@@ -72,19 +72,25 @@ executing==0.8.3
     # via stack-data
 fastjsonschema==2.15.3
     # via nbformat
-flyteidl==0.24.13
+flyteidl==0.24.21
     # via flytekit
-flytekit==0.31.0
+flytekit==1.0.0b3
     # via flytekitplugins-papermill
 googleapis-common-protos==1.56.0
-    # via flyteidl
+    # via
+    #   flyteidl
+    #   grpcio-status
 grpcio==1.44.0
+    # via
+    #   flytekit
+    #   grpcio-status
+grpcio-status==1.44.0
     # via flytekit
 idna==3.3
     # via requests
 importlib-metadata==4.11.3
     # via keyring
-ipykernel==6.12.1
+ipykernel==6.13.0
     # via flytekitplugins-papermill
 ipython==8.2.0
     # via ipykernel
@@ -103,16 +109,16 @@ jinja2-time==0.2.0
     # via cookiecutter
 jsonschema==4.4.0
     # via nbformat
-jupyter-client==7.2.1
+jupyter-client==7.2.2
     # via
     #   ipykernel
     #   nbclient
-jupyter-core==4.9.2
+jupyter-core==4.10.0
     # via
     #   jupyter-client
     #   nbconvert
     #   nbformat
-jupyterlab-pygments==0.1.2
+jupyterlab-pygments==0.2.2
     # via nbconvert
 keyring==23.5.0
     # via flytekit
@@ -139,11 +145,11 @@ mypy-extensions==0.4.3
     # via typing-inspect
 natsort==8.1.0
     # via flytekit
-nbclient==0.5.13
+nbclient==0.6.0
     # via
     #   nbconvert
     #   papermill
-nbconvert==6.4.5
+nbconvert==6.5.0
     # via flytekitplugins-papermill
 nbformat==5.3.0
     # via
@@ -161,9 +167,9 @@ numpy==1.22.3
     #   pyarrow
 packaging==21.3
     # via
-    #   bleach
     #   ipykernel
     #   marshmallow
+    #   nbconvert
 pandas==1.4.2
     # via flytekit
 pandocfilters==1.5.0
@@ -180,11 +186,12 @@ poyo==0.5.0
     # via cookiecutter
 prompt-toolkit==3.0.29
     # via ipython
-protobuf==3.20.0
+protobuf==3.20.1
     # via
     #   flyteidl
     #   flytekit
     #   googleapis-common-protos
+    #   grpcio-status
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
     # via flyteidl
@@ -203,9 +210,8 @@ pycparser==2.21
 pygments==2.11.2
     # via
     #   ipython
-    #   jupyterlab-pygments
     #   nbconvert
-pyparsing==3.0.7
+pyparsing==3.0.8
     # via packaging
 pyrsistent==0.18.1
     # via jsonschema
@@ -227,7 +233,9 @@ pytz==2022.1
     #   flytekit
     #   pandas
 pyyaml==6.0
-    # via papermill
+    # via
+    #   flytekit
+    #   papermill
 pyzmq==22.3.0
     # via jupyter-client
 regex==2022.3.15
@@ -235,6 +243,7 @@ regex==2022.3.15
 requests==2.27.1
     # via
     #   cookiecutter
+    #   docker
     #   flytekit
     #   papermill
     #   responses
@@ -242,7 +251,7 @@ responses==0.20.0
     # via flytekit
 retry==0.9.2
     # via flytekit
-secretstorage==3.3.1
+secretstorage==3.3.2
     # via keyring
 six==1.16.0
     # via
@@ -253,7 +262,7 @@ six==1.16.0
     #   python-dateutil
 sortedcontainers==2.4.0
     # via flytekit
-soupsieve==2.3.1
+soupsieve==2.3.2.post1
     # via beautifulsoup4
 stack-data==0.2.0
     # via ipython
@@ -261,12 +270,12 @@ statsd==3.3.0
     # via flytekit
 tenacity==8.0.1
     # via papermill
-testpath==0.6.0
-    # via nbconvert
 text-unidecode==1.3
     # via python-slugify
 textwrap3==0.9.2
     # via ansiwrap
+tinycss2==1.1.1
+    # via nbconvert
 tornado==6.1
     # via
     #   ipykernel
@@ -283,7 +292,7 @@ traitlets==5.1.1
     #   nbclient
     #   nbconvert
     #   nbformat
-typing-extensions==4.1.1
+typing-extensions==4.2.0
     # via
     #   flytekit
     #   typing-inspect
@@ -297,7 +306,11 @@ urllib3==1.26.9
 wcwidth==0.2.5
     # via prompt-toolkit
 webencodings==0.5.1
-    # via bleach
+    # via
+    #   bleach
+    #   tinycss2
+websocket-client==1.3.2
+    # via docker
 wheel==0.37.1
     # via flytekit
 wrapt==1.14.0
