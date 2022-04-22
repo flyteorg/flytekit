@@ -1,4 +1,4 @@
-.[all]
+.
 -e file:.#egg=flytekit
 
 git+https://github.com/flyteorg/furo@main
