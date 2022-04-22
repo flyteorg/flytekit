@@ -486,6 +486,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         fmt = self.DEFAULT_FORMATS[python_type]
         protocol = self.DEFAULT_PROTOCOLS[python_type]
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
+
         sd = StructuredDataset(dataframe=python_val, metadata=meta)
         return self.encode(ctx, sd, python_type, protocol, fmt, sdt)
 

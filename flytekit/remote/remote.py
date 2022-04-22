@@ -5,7 +5,9 @@ but in Python object form.
 """
 from __future__ import annotations
 
+import base64
 import functools
+import hashlib
 import os
 import time
 import typing
@@ -16,6 +18,7 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
+from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -118,17 +121,17 @@ class FlyteRemote(object):
         config: Config,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
-        file_access: typing.Optional[FileAccessProvider] = None,
+        data_upload_location: str = "s3://my-s3-bucket/data",
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
-        # todo: should we add a version? instead of having it in each command.
 
         :type kwargs: All arguments that can be passed to create the SynchronousFlyteClient. These are usually grpc
             parameters, if you want to customize credentials, ssl handling etc.
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
-        :param file_access: file access provider to use for offloading non-literal inputs/outputs.
+        :param data_upload_location: this is where all the default data will be uploaded when providing inputs.
+            The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
         """
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
@@ -139,9 +142,9 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
 
-        self._file_access = file_access or FileAccessProvider(
+        self._file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
-            raw_output_prefix="/tmp",
+            raw_output_prefix=data_upload_location,
             data_config=config.data_config,
         )
 
@@ -514,7 +517,7 @@ class FlyteRemote(object):
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
-        upload_location, md5_version = fast_register_single_script(
+        upload_location, md5_bytes = fast_register_single_script(
             entity,
             functools.partial(
                 self.client.get_upload_signed_url,
@@ -523,9 +526,6 @@ class FlyteRemote(object):
                 filename="scriptmode.tar.gz",
             ),
         )
-
-        if version is None:
-            version = md5_version
 
         serialization_settings = SerializationSettings(
             project=project,
@@ -537,6 +537,17 @@ class FlyteRemote(object):
                 distribution_location=upload_location.native_url,
             ),
         )
+
+        if version is None:
+            # The md5 version that we send to S3/GCS has to match the file contents exactly,
+            # but we don't have to use it when registering with the Flyte backend.
+            # For that add the hash of the compilation settings to hash of file
+            from flytekit import __version__
+
+            h = hashlib.md5(md5_bytes)
+            h.update(bytes(serialization_settings.to_json(), "utf-8"))
+            h.update(bytes(__version__, "utf-8"))
+            version = base64.urlsafe_b64encode(h.digest())
 
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
@@ -609,6 +620,7 @@ class FlyteRemote(object):
             notifications = NotificationList([])
 
         type_hints = type_hints or {}
+        literal_map = {}
         with self.remote_context() as ctx:
             input_flyte_type_map = entity.interface.inputs
 
@@ -617,12 +629,21 @@ class FlyteRemote(object):
                     raise user_exceptions.FlyteValueException(
                         k, f"The {entity.__class__.__name__} doesn't have this input key."
                     )
-                if k not in type_hints:
-                    try:
-                        type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
-                    except ValueError:
-                        remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, type_hints)
+                if isinstance(v, Literal):
+                    lit = v
+                else:
+                    if k not in type_hints:
+                        try:
+                            type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
+                        except ValueError:
+                            remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
+                    variable = entity.interface.inputs.get(k)
+                    hint = type_hints[k]
+                    lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
+                literal_map[k] = lit
+
+            literal_inputs = literal_models.LiteralMap(literals=literal_map)
+
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
