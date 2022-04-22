@@ -517,7 +517,13 @@ class WorkflowCommand(click.MultiCommand):
         return workflows
 
     def get_command(self, ctx, workflow):
-        module = os.path.splitext(self._filename)[0].replace(os.path.sep, ".")
+        rel_path = os.path.relpath(self._filename)
+        if rel_path.startswith(".."):
+            raise ValueError(
+                f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
+            )
+
+        module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
         wf_entity = load_naive_entity(module, workflow)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
