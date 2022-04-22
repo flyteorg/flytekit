@@ -15,7 +15,7 @@ from pytimeparse import parse
 from flytekit import BlobType, Literal, Scalar
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.core import context_manager
+from flytekit.core import context_manager, tracker
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
@@ -439,14 +439,13 @@ def get_workflows_in_file(filename: str) -> typing.List[str]:
     for k in dir(module):
         o = module.__dict__[k]
         if isinstance(o, PythonFunctionWorkflow):
-            module_name_prefix = f"{module_name}."
-            wf_name_only = remove_prefix(o.name, module_name_prefix)
-            workflows.append(wf_name_only)
+            _, _, fn, _ = tracker.extract_task_module(o)
+            workflows.append(fn)
 
     return workflows
 
 
-def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **kwargs):
+def run_command(ctx: click.Context, wf_entity: PythonFunctionWorkflow):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
     """
@@ -454,8 +453,6 @@ def run_command(ctx: click.Context, filename: str, workflow_name: str, *args, **
     def _run(*args, **kwargs):
         run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
         project, domain = run_level_params.get("project"), run_level_params.get("domain")
-        module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
-        wf_entity = load_naive_entity(module_name, workflow_name)
         inputs = {}
         for input_name, _ in wf_entity.python_interface.inputs.items():
             inputs[input_name] = kwargs.get(input_name)
@@ -543,7 +540,7 @@ class WorkflowCommand(click.MultiCommand):
         cmd = click.Command(
             name=workflow,
             params=params,
-            callback=run_command(ctx, self._filename, workflow),
+            callback=run_command(ctx, wf_entity),
             help=f"Run {module}.{workflow} in script mode",
         )
         return cmd
@@ -559,8 +556,7 @@ class RunCommand(click.MultiCommand):
         super().__init__(*args, params=params, **kwargs)
 
     def list_commands(self, ctx):
-        rv = []
-        return rv
+        return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
 
     def get_command(self, ctx, filename):
         ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params

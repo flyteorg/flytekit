@@ -3,6 +3,13 @@ from click.testing import CliRunner
 from flytekit.clis.sdk_in_container import pyflyte
 
 
+def test_pyflyte_run_wf():
+    runner = CliRunner()
+    result = runner.invoke(pyflyte.main, ["run", "workflow.py", "my_wf"], catch_exceptions=False)
+
+    assert result.exit_code == 0
+
+
 def test_pyflyte_run_cli():
     runner = CliRunner()
     result = runner.invoke(
