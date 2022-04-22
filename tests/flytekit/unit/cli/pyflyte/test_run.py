@@ -19,7 +19,7 @@ def test_pyflyte_run_cli():
         pyflyte.main,
         [
             "run",
-            "workflow.py",
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py"),
             "my_wf",
             "--a",
             "1",
