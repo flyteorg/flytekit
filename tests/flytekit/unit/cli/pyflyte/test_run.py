@@ -15,11 +15,12 @@ def test_pyflyte_run_wf():
 
 def test_pyflyte_run_cli():
     runner = CliRunner()
+    dir_name = os.path.dirname(os.path.realpath(__file__))
     result = runner.invoke(
         pyflyte.main,
         [
             "run",
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py"),
+            os.path.join(dir_name, "workflow.py"),
             "my_wf",
             "--a",
             "1",
@@ -34,7 +35,7 @@ def test_pyflyte_run_cli():
             "--f",
             '{"x":1.0, "y":2.0}',
             "--g",
-            "testdata/df.parquet",
+            os.path.join(dir_name, "testdata/df.parquet"),
             "--i",
             "2020-05-01",
             "--j",
@@ -42,9 +43,9 @@ def test_pyflyte_run_cli():
             "--k",
             "RED",
             "--remote",
-            "testdata",
+            os.path.join(dir_name, "testdata"),
             "--image",
-            "testdata",
+            os.path.join(dir_name, "testdata"),
             "--h",
         ],
         catch_exceptions=False,
