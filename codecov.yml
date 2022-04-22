@@ -5,3 +5,11 @@ ignore:
   - "flytekit/extend/__init__.py"
   - "flytekit/testing/__init__.py"
   - "tests/*"
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true

@@ -291,7 +291,7 @@ def test_serialization_types():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.List[typing.Dict[str, int]]:
         return [
-            {"squared_value": value ** 2},
+            {"squared_value": value**2},
         ]
 
     @workflow
