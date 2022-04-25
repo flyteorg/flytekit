@@ -114,9 +114,9 @@ class LaunchPlan(object):
         labels: _common_models.Labels = None,
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        auth_role: _common_models.AuthRole = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -144,6 +144,17 @@ class LaunchPlan(object):
         )
         fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)
 
+        if auth_role:
+            if security_context:
+                raise ValueError("Use of AuthRole is deprecated. You cannot specify both AuthRole and SecurityContext")
+
+            security_context = security.SecurityContext(
+                run_as=security.Identity(
+                    iam_role=auth_role.assumable_iam_role,
+                    k8s_service_account=auth_role.kubernetes_service_account,
+                ),
+            )
+
         lp = cls(
             name=name,
             workflow=workflow,
@@ -154,8 +165,8 @@ class LaunchPlan(object):
             labels=labels,
             annotations=annotations,
             raw_output_data_config=raw_output_data_config,
-            auth_role=auth_role,
             max_parallelism=max_parallelism,
+            security_context=security_context,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -181,9 +192,9 @@ class LaunchPlan(object):
         labels: _common_models.Labels = None,
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        auth_role: _common_models.AuthRole = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -232,13 +243,20 @@ class LaunchPlan(object):
             notifications = notifications or []
             default_inputs = default_inputs or {}
             fixed_inputs = fixed_inputs or {}
-
             default_inputs.update(fixed_inputs)
+
+            if auth_role and not security_context:
+                security_context = security.SecurityContext(
+                    run_as=security.Identity(
+                        iam_role=auth_role.assumable_iam_role,
+                        k8s_service_account=auth_role.kubernetes_service_account,
+                    ),
+                )
+
             if (
                 workflow != cached_outputs["_workflow"]
                 or schedule != cached_outputs["_schedule"]
                 or notifications != cached_outputs["_notifications"]
-                or auth_role != cached_outputs["_auth_role"]
                 or default_inputs != cached_outputs["_saved_inputs"]
                 or labels != cached_outputs["_labels"]
                 or annotations != cached_outputs["_annotations"]
@@ -267,8 +285,8 @@ class LaunchPlan(object):
                 labels,
                 annotations,
                 raw_output_data_config,
-                auth_role,
                 max_parallelism,
+                auth_role=auth_role,
                 security_context=security_context,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
@@ -286,7 +304,6 @@ class LaunchPlan(object):
         labels: _common_models.Labels = None,
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
         security_context: typing.Optional[security.SecurityContext] = None,
     ):
@@ -304,7 +321,6 @@ class LaunchPlan(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
-        self._auth_role = auth_role
         self._max_parallelism = max_parallelism
         self._security_context = security_context
 

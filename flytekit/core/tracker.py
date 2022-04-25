@@ -237,7 +237,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         name = f.__name__.split(".")[-1]
 
     if mod_name == "__main__":
-        return name, "", name, mod.__file__
+        return name, "", name, os.path.abspath(inspect.getfile(f))
 
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (
@@ -247,4 +247,4 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         # We only replace the mod_name if it is more specific, else we already have a fully resolved path
         if len(new_mod_name) > len(mod_name):
             mod_name = new_mod_name
-    return f"{mod_name}.{name}", mod_name, name, mod.__file__
+    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(f))

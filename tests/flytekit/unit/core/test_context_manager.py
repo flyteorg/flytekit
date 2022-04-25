@@ -3,7 +3,14 @@ import os
 import py
 import pytest
 
-from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SecretsConfig, SerializationSettings
+from flytekit.configuration import (
+    SERIALIZED_CONTEXT_ENV_VAR,
+    FastSerializationSettings,
+    Image,
+    ImageConfig,
+    SecretsConfig,
+    SerializationSettings,
+)
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, SecretsManager
 
 
@@ -189,7 +196,11 @@ def test_serialization_settings_transport():
         ),
     )
 
-    tp = serialization_settings.prepare_for_transport()
+    tp = serialization_settings.serialized_context
+    with_serialized = serialization_settings.with_serialized_context()
+    assert serialization_settings.env == {"hello": "blah"}
+    assert with_serialized.env
+    assert with_serialized.env[SERIALIZED_CONTEXT_ENV_VAR] == tp
     ss = SerializationSettings.from_transport(tp)
     assert ss is not None
     assert ss == serialization_settings

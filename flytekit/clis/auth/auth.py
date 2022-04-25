@@ -190,10 +190,6 @@ class AuthorizationClient(object):
     def has_valid_credentials(self) -> bool:
         return self._credentials is not None
 
-    @property
-    def can_refresh_token(self) -> bool:
-        return self._refresh_token is not None
-
     def start_authorization_flow(self):
         # In the absence of globally-set token values, initiate the token request flow
         ctx = _mp_get_context("fork")
@@ -292,7 +288,7 @@ class AuthorizationClient(object):
 
             _keyring.delete_password(_keyring_service_name, _keyring_access_token_storage_key)
             _keyring.delete_password(_keyring_service_name, _keyring_refresh_token_storage_key)
-            return
+            raise ValueError(f"Non-200 returned from refresh token endpoint {resp.status_code}")
         self._initialize_credentials(resp)
 
     @property

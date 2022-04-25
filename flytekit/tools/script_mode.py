@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 import os
 import shutil
@@ -6,12 +7,14 @@ import tempfile
 import typing
 from pathlib import Path
 
+from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
+
 from flytekit.core import context_manager
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.workflow import WorkflowBase
 
 
-def compress_single_script(absolute_project_path: str, destination: str, version: str, full_module_name: str):
+def compress_single_script(absolute_project_path: str, destination: str, full_module_name: str):
     """
     Compresses the single script while maintaining the folder structure for that file.
 
@@ -64,32 +67,63 @@ def compress_single_script(absolute_project_path: str, destination: str, version
             script_file,
             script_file_destination,
         )
-        with tarfile.open(destination, "w:gz") as tar:
-            tar.add(os.path.join(tmp_dir, "code"), arcname="")
+        tar_path = os.path.join(tmp_dir, "tmp.tar")
+        with tarfile.open(tar_path, "w") as tar:
+            tar.add(os.path.join(tmp_dir, "code"), arcname="", filter=tar_strip_file_attributes)
+        with gzip.GzipFile(filename=destination, mode="wb", mtime=0) as gzipped:
+            with open(tar_path, "rb") as tar_file:
+                gzipped.write(tar_file.read())
 
 
-def fast_register_single_script(version: str, wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable):
+# Takes in a TarInfo and returns the modified TarInfo:
+# https://docs.python.org/3/library/tarfile.html#tarinfo-objects
+# intented to be passed as a filter to tarfile.add
+# https://docs.python.org/3/library/tarfile.html#tarfile.TarFile.add
+def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
+    # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1970
+    # note that when extracting this tarfile, this time will be shown as the modified date
+    tar_info.mtime = 0
+
+    # file permissions, probably don't want to remove this, but for some use cases you could
+    tar_info.mode = 0
+
+    # user/group info
+    tar_info.uid = 0
+    tar_info.uname = ""
+    tar_info.gid = 0
+    tar_info.gname = ""
+
+    # stripping paxheaders may not be required
+    # see https://stackoverflow.com/questions/34688392/paxheaders-in-tarball
+    tar_info.pax_headers = {}
+
+    return tar_info
+
+
+def fast_register_single_script(
+    wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable
+) -> (_data_proxy_pb2.CreateUploadLocationResponse, bytes):
     _, mod_name, _, script_full_path = extract_task_module(wf_entity)
     # Find project root by moving up the folder hierarchy until you cannot find a __init__.py file.
     source_path = _find_project_root(script_full_path)
 
     # Open a temp directory and dump the contents of the digest.
     with tempfile.TemporaryDirectory() as tmp_dir:
-        archive_fname = os.path.join(tmp_dir, f"{version}.tar.gz")
-        compress_single_script(source_path, archive_fname, version, mod_name)
+        archive_fname = os.path.join(tmp_dir, "script_mode.tar.gz")
+        compress_single_script(source_path, archive_fname, mod_name)
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         md5, _ = hash_file(archive_fname)
         upload_location = create_upload_location_fn(content_md5=md5)
         flyte_ctx.file_access.put_data(archive_fname, upload_location.signed_url)
-        return upload_location
+
+        return upload_location, md5
 
 
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
     """
     Hash a file and produce a digest to be used as a version
     """
-    # TODO: take file_path as an initial parameter to ensure that moving the file will produce a different version.
     h = hashlib.md5()
 
     with open(file_path, "rb") as file:

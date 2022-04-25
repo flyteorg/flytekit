@@ -2,6 +2,7 @@ import contextlib
 import datetime as _datetime
 import os
 import pathlib
+import subprocess
 import tempfile
 import traceback as _traceback
 from typing import List, Optional
@@ -10,8 +11,12 @@ import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
-from flytekit.configuration import FastSerializationSettings, SerializationSettings, StatsConfig
-from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
+from flytekit.configuration import (
+    SERIALIZED_CONTEXT_ENV_VAR,
+    FastSerializationSettings,
+    SerializationSettings,
+    StatsConfig,
+)
 from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
@@ -498,7 +503,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    os.system(" ".join(cmd))
+    subprocess.run(cmd, check=True)
 
 
 @_pass_through.command("pyflyte-map-execute")

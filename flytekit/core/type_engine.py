@@ -10,6 +10,7 @@ import mimetypes
 import textwrap
 import typing
 from abc import ABC, abstractmethod
+from functools import lru_cache
 from typing import Dict, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -481,6 +482,11 @@ class DataclassTransformer(TypeTransformer[object]):
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
+    # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
+    # command needs to call guess_python_type to get the TypeEngine-derived dataclass. Without caching here, separate
+    # calls to guess_python_type would result in a logically equivalent (but new) dataclass, which
+    # TypeEngine.assert_type would not be happy about.
+    @lru_cache(typed=True)
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.simple == SimpleType.STRUCT:
             if literal_type.metadata is not None and DEFINITIONS in literal_type.metadata:

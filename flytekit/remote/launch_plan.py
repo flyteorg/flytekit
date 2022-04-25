@@ -21,7 +21,6 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
 
         # The interface is not set explicitly unless fetched in an engine context
         self._interface = None
-        self._python_interface = None
 
     @property
     def name(self) -> str:

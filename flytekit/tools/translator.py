@@ -5,11 +5,11 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
-from flytekit.core import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
+from flytekit.core.map_task import MapPythonTask
 from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
@@ -58,8 +58,6 @@ class Options(object):
     in a Flyte backend, and also when registering launch plans.
 
     Args:
-        auth_role: Specifies the Kubernetes Service account,
-           IAM role etc to be used. If not specified defaults will be used.
         labels: Custom labels to be applied to the execution resource
         annotations: Custom annotations to be applied to the execution resource
         security_context: Indicates security context for permissions triggered with this launch plan
@@ -72,7 +70,6 @@ class Options(object):
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
 
-    auth_role: typing.Optional[common_models.AuthRole] = None
     labels: typing.Optional[common_models.Labels] = None
     annotations: typing.Optional[common_models.Annotations] = None
     raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
@@ -121,25 +118,35 @@ def to_serializable_cases(
     return ret_cases
 
 
+def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List[str]:
+    return [
+        "pyflyte-fast-execute",
+        "--additional-distribution",
+        settings.fast_serialization_settings.distribution_location
+        if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
+        else "{{ .remote_package_path }}",
+        "--dest-dir",
+        settings.fast_serialization_settings.destination_dir
+        if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
+        else "{{ .dest_dir }}",
+        "--",
+    ]
+
+
+def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[str]) -> List[str]:
+    return get_command_prefix_for_fast_execute(settings) + cmd
+
+
 def _fast_serialize_command_fn(
     settings: SerializationSettings, task: PythonAutoContainerTask
 ) -> Callable[[SerializationSettings], List[str]]:
+    """
+    This function is only applicable for Pod tasks.
+    """
     default_command = task.get_default_command(settings)
 
     def fn(settings: SerializationSettings) -> List[str]:
-        return [
-            "pyflyte-fast-execute",
-            "--additional-distribution",
-            settings.fast_serialization_settings.distribution_location
-            if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
-            else "{{ .remote_package_path }}",
-            "--dest-dir",
-            settings.fast_serialization_settings.destination_dir
-            if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
-            else "{{ .dest_dir }}",
-            "--",
-            *default_command,
-        ]
+        return prefix_with_fast_execute(settings, default_command)
 
     return fn
 
@@ -156,15 +163,38 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
-    if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
-        # For fast registration, we'll need to muck with the command, but only for certain kinds of tasks. Specifically,
-        # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
-        # parent class
-        entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
+
+    if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+        # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
+        # from the serialization context. This is passed through an environment variable, that is read from
+        # during dynamic serialization
+        settings = settings.with_serialized_context()
+
     container = entity.get_container(settings)
-    if container and isinstance(entity, PythonFunctionTask):
-        if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-            container.add_env(key=SERIALIZED_CONTEXT_ENV_VAR, val=settings.prepare_for_transport())
+    # This pod will be incorrect when doing fast serialize
+    pod = entity.get_k8s_pod(settings)
+
+    if settings.should_fast_serialize():
+        # This handles container tasks.
+        if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask)):
+            # For fast registration, we'll need to muck with the command, but on
+            # ly for certain kinds of tasks. Specifically,
+            # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
+            # parent class
+            container._args = prefix_with_fast_execute(settings, container.args)
+
+        # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
+        # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
+        # the pod spec is a K8s library object, and we shouldn't be messing around with it in this file.
+        elif pod:
+            if isinstance(entity, MapPythonTask):
+                entity.set_command_prefix(get_command_prefix_for_fast_execute(settings))
+                pod = entity.get_k8s_pod(settings)
+            else:
+                entity.set_command_fn(_fast_serialize_command_fn(settings, entity))
+                pod = entity.get_k8s_pod(settings)
+                entity.reset_command_fn()
+
     tt = task_models.TaskTemplate(
         id=task_id,
         type=entity.task_type,
@@ -175,7 +205,7 @@ def get_serializable_task(
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
         config=entity.get_config(settings),
-        k8s_pod=entity.get_k8s_pod(settings),
+        k8s_pod=pod,
         sql=entity.get_sql(settings),
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
@@ -305,7 +335,7 @@ def get_serializable_launch_plan(
         fixed_inputs=entity.fixed_inputs,
         labels=options.labels or entity.labels or _common_models.Labels({}),
         annotations=options.annotations or entity.annotations or _common_models.Annotations({}),
-        auth_role=options.auth_role or entity._auth_role or _common_models.AuthRole(),
+        auth_role=None,
         raw_output_data_config=raw or entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
