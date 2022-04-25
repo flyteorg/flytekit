@@ -22,7 +22,6 @@ simple implementation that ships with the core.
 
 """
 
-import datetime
 import os
 import pathlib
 import re
