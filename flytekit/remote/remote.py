@@ -110,11 +110,6 @@ class FlyteRemote(object):
 
     The term 'remote' is synonymous with 'backend' or 'deployment' and refers to a hosted instance of the
     Flyte platform, which comes with a Flyte Admin server on some known URI.
-
-    .. warning::
-
-        This feature is in beta.
-
     """
 
     def __init__(
