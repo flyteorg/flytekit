@@ -59,7 +59,7 @@ def test_imperative():
 
     assert wb(in1="hello") == "hello world"
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wb)
+    wf_spec = get_serializable(OrderedDict(), wb, serialization_settings)
     assert len(wf_spec.template.nodes) == 2
     assert wf_spec.template.nodes[0].task_node is not None
     assert len(wf_spec.template.outputs) == 1
@@ -82,14 +82,14 @@ def test_imperative():
 
     # Create launch plan from wf, that can also be serialized.
     lp = LaunchPlan.create("test_wb", wb)
-    lp_model = get_serializable(OrderedDict(), serialization_settings, lp)
+    lp_model = get_serializable(OrderedDict(), lp, serialization_settings)
     assert lp_model.spec.workflow_id.name == "my_workflow"
 
     wb2 = ImperativeWorkflow(name="parent.imperative")
     p_in1 = wb2.add_workflow_input("p_in1", str)
     p_node0 = wb2.add_subwf(wb, in1=p_in1)
     wb2.add_workflow_output("parent_wf_output", p_node0.from_n0t1, str)
-    wb2_spec = get_serializable(OrderedDict(), serialization_settings, wb2)
+    wb2_spec = get_serializable(OrderedDict(), wb2, serialization_settings)
     assert len(wb2_spec.template.nodes) == 1
     assert len(wb2_spec.template.interface.inputs) == 1
     assert wb2_spec.template.interface.inputs["p_in1"].type.simple is not None
@@ -102,7 +102,7 @@ def test_imperative():
     p_in1 = wb3.add_workflow_input("p_in1", str)
     p_node0 = wb3.add_launch_plan(lp, in1=p_in1)
     wb3.add_workflow_output("parent_wf_output", p_node0.from_n0t1, str)
-    wb3_spec = get_serializable(OrderedDict(), serialization_settings, wb3)
+    wb3_spec = get_serializable(OrderedDict(), wb3, serialization_settings)
     assert len(wb3_spec.template.nodes) == 1
     assert len(wb3_spec.template.interface.inputs) == 1
     assert wb3_spec.template.interface.inputs["p_in1"].type.simple is not None
@@ -174,7 +174,7 @@ def test_imperative_wf_list_input():
 
     assert wb(in1=[5, 6, 7]) == 24
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wb)
+    wf_spec = get_serializable(OrderedDict(), wb, serialization_settings)
     assert len(wf_spec.template.nodes) == 2
     assert wf_spec.template.nodes[0].task_node is not None
 
@@ -190,7 +190,7 @@ def test_imperative_scalar_bindings():
 
     assert wb() == {"a": 7, "b": 11}
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wb)
+    wf_spec = get_serializable(OrderedDict(), wb, serialization_settings)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].task_node is not None
 
@@ -365,7 +365,7 @@ def test_nonfunction_task_and_df_input():
     )
     wb.add_workflow_output("output_from_t3", node_t2.outputs["o0"], python_type=pd.DataFrame)
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wb)
+    wf_spec = get_serializable(OrderedDict(), wb, serialization_settings)
     assert len(wf_spec.template.nodes) == 3
 
     assert len(wf_spec.template.interface.inputs) == 1

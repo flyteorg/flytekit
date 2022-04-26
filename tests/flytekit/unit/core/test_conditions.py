@@ -123,7 +123,7 @@ def test_condition_tuple_branches():
     assert x == 5
     assert y == 1
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, math_ops)
+    wf_spec = get_serializable(OrderedDict(), math_ops, serialization_settings)
     assert len(wf_spec.template.nodes) == 1
     assert (
         wf_spec.template.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name
@@ -241,7 +241,7 @@ def test_subworkflow_condition_serialization():
         (if_elif_else_branching, [fmt.format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
         (nested_branching, [fmt.format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
     ]:
-        wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+        wf_spec = get_serializable(OrderedDict(), wf, serialization_settings)
         subworkflows = wf_spec.sub_workflows
 
         for sub_wf in subworkflows:
@@ -348,7 +348,7 @@ def test_nested_condition():
             .fail("The input must be between 0 and 10")
         )
 
-    srz_wf = get_serializable(OrderedDict(), serialization_settings, multiplier_2)
+    srz_wf = get_serializable(OrderedDict(), multiplier_2, serialization_settings)
     assert len(srz_wf.template.nodes) == 1
     fractions_branch = srz_wf.template.nodes[0]
     assert isinstance(fractions_branch, Node)
@@ -402,7 +402,7 @@ def test_nested_condition_2():
             .then(double(n=my_input))
         )
 
-    srz_wf = get_serializable(OrderedDict(), serialization_settings, multiplier_2)
+    srz_wf = get_serializable(OrderedDict(), multiplier_2, serialization_settings)
     assert len(srz_wf.template.nodes) == 1
     fractions_branch = srz_wf.template.nodes[0]
     assert isinstance(fractions_branch, Node)

@@ -150,3 +150,5 @@ def test_passing_of_kwargs(mock_client):
     FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args)
     assert mock_client.called
     assert mock_client.call_args[1] == additional_args
+
+

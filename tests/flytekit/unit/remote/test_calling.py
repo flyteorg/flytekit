@@ -46,7 +46,7 @@ def sub_wf(a: int, b: str) -> (int, str):
     return x, d
 
 
-t1_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+t1_spec = get_serializable(OrderedDict(), t1, serialization_settings)
 ft = FlyteTask.promote_from_model(t1_spec.template)
 
 
@@ -61,7 +61,7 @@ def test_fetched_task():
 
     # Should have one task template
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, wf)
+    wf_spec = get_serializable(serialized, wf, serialization_settings)
     vals = [v for v in serialized.values()]
     tts = [f for f in filter(lambda x: isinstance(x, TaskTemplate), vals)]
     assert len(tts) == 1
@@ -80,7 +80,7 @@ def test_misnamed():
 def test_calling_lp():
     sub_wf_lp = LaunchPlan.get_or_create(sub_wf)
     serialized = OrderedDict()
-    lp_model = get_serializable(serialized, serialization_settings, sub_wf_lp)
+    lp_model = get_serializable(serialized, sub_wf_lp, serialization_settings)
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
     for wf_id, spec in wf_specs.items():
         break
@@ -95,7 +95,7 @@ def test_calling_lp():
     def wf2(a: int) -> typing.Tuple[int, str]:
         return remote_lp(a=a, b="hello")
 
-    wf_spec = get_serializable(serialized, serialization_settings, wf2)
+    wf_spec = get_serializable(serialized, wf2, serialization_settings)
     print(wf_spec.template.nodes[0].workflow_node.launchplan_ref)
     assert wf_spec.template.nodes[0].workflow_node.launchplan_ref == lp_model.id
 
@@ -143,7 +143,7 @@ def test_dynamic():
 def test_calling_wf():
     # No way to fetch from Admin in unit tests so we serialize and then promote back
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, sub_wf)
+    wf_spec = get_serializable(serialized, sub_wf, serialization_settings)
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
     fwf = FlyteWorkflow.promote_from_model(wf_spec.template, tasks=task_templates)
 
@@ -154,7 +154,7 @@ def test_calling_wf():
 
     # No way to fetch from Admin in unit tests so we serialize and then promote back
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, parent_1)
+    wf_spec = get_serializable(serialized, parent_1, serialization_settings)
     # Get task_specs from the second one, merge with the first one. Admin normally would be the one to do this.
     task_templates_p1, wf_specs, lp_specs = gather_dependent_entities(serialized)
     for k, v in task_templates.items():
@@ -172,6 +172,6 @@ def test_calling_wf():
         return z, y
 
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, parent_2)
+    wf_spec = get_serializable(serialized, parent_2, serialization_settings)
     # Make sure both were picked up.
     assert len(wf_spec.sub_workflows) == 2

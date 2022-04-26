@@ -59,7 +59,7 @@ def test_nested():
     def t1(a: int) -> List[List[Foo]]:
         return [[Foo(number=a)]]
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    task_spec = get_serializable(OrderedDict(), t1, serialization_settings)
     assert (
         task_spec.template.interface.outputs["o0"].type.collection_type.collection_type.blob.format
         is FlytePickleTransformer.PYTHON_PICKLE_FORMAT
@@ -75,7 +75,7 @@ def test_nested2():
     def t1(a: int) -> List[Dict[str, Foo]]:
         return [{"a": Foo(number=a)}]
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    task_spec = get_serializable(OrderedDict(), t1, serialization_settings)
     assert (
         task_spec.template.interface.outputs["o0"].type.collection_type.map_value_type.blob.format
         is FlytePickleTransformer.PYTHON_PICKLE_FORMAT

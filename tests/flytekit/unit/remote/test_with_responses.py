@@ -35,3 +35,9 @@ def test_fetch_wf_wf_lp_pattern(mock_client):
     mock_client.get_launch_plan.return_value = leaf_lp
     fwf = rr.fetch_workflow(name="core.control_flow.subworkflows.root_level_wf", version="JiepXcXB3SiEJ8pwYDy-7g==")
     assert len(fwf.sub_workflows) == 2
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_fetch_wf_wf_lp_pattern(mock_client):
+    ...
+

@@ -19,7 +19,7 @@ def test_sql_command():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    srz_t = get_serializable(OrderedDict(), serialization_settings, not_tk)
+    srz_t = get_serializable(OrderedDict(), not_tk, serialization_settings)
     assert srz_t.template.container.args[-5:] == [
         "--resolver",
         "flytekit.core.python_customized_container_task.default_task_template_resolver",

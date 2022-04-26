@@ -24,21 +24,21 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 
 def test_references():
     rlp = ReferenceLaunchPlan("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    lp_model = get_serializable(OrderedDict(), serialization_settings, rlp)
+    lp_model = get_serializable(OrderedDict(), rlp, serialization_settings)
     assert isinstance(lp_model, ReferenceSpec)
     assert isinstance(lp_model.template, ReferenceTemplate)
     assert lp_model.template.id == rlp.reference.id
     assert lp_model.template.resource_type == identifier_models.ResourceType.LAUNCH_PLAN
 
     rt = ReferenceTask("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    task_spec = get_serializable(OrderedDict(), serialization_settings, rt)
+    task_spec = get_serializable(OrderedDict(), rt, serialization_settings)
     assert isinstance(task_spec, ReferenceSpec)
     assert isinstance(task_spec.template, ReferenceTemplate)
     assert task_spec.template.id == rt.reference.id
     assert task_spec.template.resource_type == identifier_models.ResourceType.TASK
 
     rw = ReferenceWorkflow("media", "stg", "some.name", "cafe", inputs=kwtypes(in1=str), outputs=kwtypes())
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, rw)
+    wf_spec = get_serializable(OrderedDict(), rw, serialization_settings)
     assert isinstance(wf_spec, ReferenceSpec)
     assert isinstance(wf_spec.template, ReferenceTemplate)
     assert wf_spec.template.id == rw.reference.id
@@ -60,7 +60,7 @@ def test_basics():
         d = t2(a=y, b=b)
         return x, d
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    wf_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert len(wf_spec.template.interface.inputs) == 2
     assert len(wf_spec.template.interface.outputs) == 2
     assert len(wf_spec.template.nodes) == 2
@@ -72,14 +72,14 @@ def test_basics():
         .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
         .build()
     )
-    task_spec = get_serializable(OrderedDict(), ssettings, t1)
+    task_spec = get_serializable(OrderedDict(), t1, ssettings)
     assert "pyflyte-execute" in task_spec.template.container.args
 
     lp = LaunchPlan.create(
         "testlp",
         my_wf,
     )
-    lp_model = get_serializable(OrderedDict(), serialization_settings, lp)
+    lp_model = get_serializable(OrderedDict(), lp, serialization_settings)
     assert lp_model.id.name == "testlp"
 
 
@@ -97,7 +97,7 @@ def test_fast():
         .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
         .build()
     )
-    task_spec = get_serializable(OrderedDict(), ssettings, t1)
+    task_spec = get_serializable(OrderedDict(), t1, ssettings)
     assert "pyflyte-fast-execute" in task_spec.template.container.args
 
 
@@ -122,7 +122,7 @@ def test_container():
         .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
         .build()
     )
-    task_spec = get_serializable(OrderedDict(), ssettings, t2)
+    task_spec = get_serializable(OrderedDict(), t2, ssettings)
     assert "pyflyte" not in task_spec.template.container.args
 
 
@@ -154,7 +154,7 @@ def test_launch_plan_with_fixed_input():
         .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
         .build()
     )
-    task_spec = get_serializable(OrderedDict(), settings, morning_greeter_caller)
+    task_spec = get_serializable(OrderedDict(), morning_greeter_caller, settings)
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1
     assert len(task_spec.template.nodes) == 1

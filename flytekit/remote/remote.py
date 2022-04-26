@@ -346,11 +346,11 @@ class FlyteRemote(object):
     # Register Entities #
     #####################
 
-    def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
+    def _resolve_identifier(self, t: int, name: str, version: str, ss: typing.Optional[SerializationSettings] = None) -> Identifier:
         ident = Identifier(
             resource_type=t,
-            project=ss.project or self.default_project,
-            domain=ss.domain or self.default_domain,
+            project=ss.project or self.default_project if ss else self.default_project,
+            domain=ss.domain or self.default_domain if ss else self.default_domain,
             name=name,
             version=version or ss.version,
         )
@@ -364,8 +364,8 @@ class FlyteRemote(object):
     def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
-        settings: SerializationSettings,
         version: str,
+        settings: typing.Optional[SerializationSettings] = None,
         options: typing.Optional[Options] = None,
     ) -> Identifier:
         """
@@ -373,7 +373,7 @@ class FlyteRemote(object):
         :return: Identifier of the registered entity
         """
         m = OrderedDict()
-        _ = get_serializable(m, settings=settings, entity=entity, options=options)
+        _ = get_serializable(m, entity=entity, settings=settings, options=options)
         ident = None
         for entity, cp_entity in m.items():
             if isinstance(entity, RemoteEntity):
@@ -447,7 +447,7 @@ class FlyteRemote(object):
     def register_workflow(
         self,
         entity: WorkflowBase,
-        serialization_settings: SerializationSettings,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
@@ -462,11 +462,13 @@ class FlyteRemote(object):
         :return:
         """
         ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        b = serialization_settings.new_builder()
-        b.project = ident.project
-        b.domain = ident.domain
-        b.version = ident.version
-        ident = self._serialize_and_register(entity, b.build(), version, options)
+        if serialization_settings:
+            b = serialization_settings.new_builder()
+            b.project = ident.project
+            b.domain = ident.domain
+            b.version = ident.version
+            serialization_settings = b.build()
+        ident = self._serialize_and_register(entity, serialization_settings, version, options)
         if default_launch_plan:
             default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
             self.register_launch_plan(

@@ -379,7 +379,7 @@ def test_lp_nodes():
         return t, w
 
     all_entities = OrderedDict()
-    wf_spec = get_serializable(all_entities, serialization_settings, my_wf)
+    wf_spec = get_serializable(all_entities, my_wf, serialization_settings)
     assert wf_spec.template.nodes[1].workflow_node is not None
     assert (
         wf_spec.template.nodes[1].workflow_node.launchplan_ref.resource_type

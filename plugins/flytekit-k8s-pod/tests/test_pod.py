@@ -290,7 +290,7 @@ def test_pod_task_serialized():
         env={"FOO": "baz"},
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    serialized = get_serializable(OrderedDict(), ssettings, simple_pod_task)
+    serialized = get_serializable(OrderedDict(), simple_pod_task, ssettings)
     assert serialized.template.task_type_version == 2
     assert serialized.template.config["primary_container_name"] == "an undefined container"
     assert serialized.template.k8s_pod.metadata.labels == {"label": "foo"}
@@ -364,7 +364,7 @@ def test_fast_pod_task_serialization():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
         fast_serialization_settings=FastSerializationSettings(enabled=True),
     )
-    serialized = get_serializable(OrderedDict(), serialization_settings, simple_pod_task)
+    serialized = get_serializable(OrderedDict(), simple_pod_task, serialization_settings)
 
     assert serialized.template.k8s_pod.pod_spec["containers"][0]["args"] == [
         "pyflyte-fast-execute",

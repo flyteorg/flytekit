@@ -194,9 +194,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # See comment on reference entity checking a bit down below in this function.
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
-            workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
-                model_entities, ctx.serialization_settings, wf
-            )
+            workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(model_entities, wf,
+                                                                                 ctx.serialization_settings)
 
             # If no nodes were produced, let's just return the strict outputs
             if len(workflow_spec.template.nodes) == 0:

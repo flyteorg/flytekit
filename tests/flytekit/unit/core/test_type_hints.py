@@ -875,12 +875,12 @@ def test_lp_serialize():
         image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
         env={},
     )
-    lp_model = get_serializable(OrderedDict(), serialization_settings, lp)
+    lp_model = get_serializable(OrderedDict(), lp, serialization_settings)
     assert len(lp_model.spec.default_inputs.parameters) == 1
     assert lp_model.spec.default_inputs.parameters["a"].required
     assert len(lp_model.spec.fixed_inputs.literals) == 0
 
-    lp_model = get_serializable(OrderedDict(), serialization_settings, lp_with_defaults)
+    lp_model = get_serializable(OrderedDict(), lp_with_defaults, serialization_settings)
     assert len(lp_model.spec.default_inputs.parameters) == 1
     assert not lp_model.spec.default_inputs.parameters["a"].required
     assert lp_model.spec.default_inputs.parameters["a"].default == _literal_models.Literal(
@@ -1262,7 +1262,7 @@ def test_environment():
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_new_compilation_state()
     ):
-        task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+        task_spec = get_serializable(OrderedDict(), t1, serialization_settings)
         assert task_spec.template.container.env == {"FOO": "foofoo", "BAR": "bar", "BAZ": "baz"}
 
 
@@ -1295,7 +1295,7 @@ def test_resources():
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_new_compilation_state()
     ):
-        task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+        task_spec = get_serializable(OrderedDict(), t1, serialization_settings)
         assert task_spec.template.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "1"),
@@ -1306,7 +1306,7 @@ def test_resources():
             _resource_models.ResourceEntry(_resource_models.ResourceName.MEMORY, "400M"),
         ]
 
-        task_spec2 = get_serializable(OrderedDict(), serialization_settings, t2)
+        task_spec2 = get_serializable(OrderedDict(), t2, serialization_settings)
         assert task_spec2.template.container.resources.requests == [
             _resource_models.ResourceEntry(_resource_models.ResourceName.CPU, "3")
         ]
@@ -1494,7 +1494,7 @@ def test_guess_dict():
     def t2(a: dict) -> str:
         return ", ".join([f"K: {k} V: {v}" for k, v in a.items()])
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    task_spec = get_serializable(OrderedDict(), t2, serialization_settings)
     assert task_spec.template.interface.inputs["a"].type.simple == SimpleType.STRUCT
 
     pt = TypeEngine.guess_python_type(task_spec.template.interface.inputs["a"].type)
@@ -1519,7 +1519,7 @@ def test_guess_dict2():
             strs.append(", ".join([f"K: {k} V: {v}" for k, v in input_dict.items()]))
         return " ".join(strs)
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    task_spec = get_serializable(OrderedDict(), t2, serialization_settings)
     assert task_spec.template.interface.inputs["a"].type.collection_type.simple == SimpleType.STRUCT
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.inputs)
     assert pt_map == {"a": typing.List[dict]}
@@ -1530,7 +1530,7 @@ def test_guess_dict3():
     def t2() -> dict:
         return {"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}}
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    task_spec = get_serializable(OrderedDict(), t2, serialization_settings)
 
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert pt_map["o0"] is dict
@@ -1561,7 +1561,7 @@ def test_guess_dict4():
     def t1() -> Foo:
         return Foo(x=1, y="foo", z={"hello": "world"})
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    task_spec = get_serializable(OrderedDict(), t1, serialization_settings)
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert dataclasses.is_dataclass(pt_map["o0"])
 
@@ -1575,7 +1575,7 @@ def test_guess_dict4():
     def t2() -> Bar:
         return Bar(x=1, y={"hello": "world"}, z=Foo(x=1, y="foo", z={"hello": "world"}))
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
+    task_spec = get_serializable(OrderedDict(), t2, serialization_settings)
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert dataclasses.is_dataclass(pt_map["o0"])
 
