@@ -375,7 +375,16 @@ class FlyteRemote(object):
         m = OrderedDict()
         # Create dummy serialization settings for now.
         # TODO: Clean this up by using lazy usage of serialization settings in translator.py
-        serialization_settings = settings if settings else SerializationSettings(ImageConfig.auto_default_image())
+        serialization_settings = (
+            settings
+            if settings
+            else SerializationSettings(
+                ImageConfig.auto_default_image(),
+                project=self.default_project,
+                domain=self.default_domain,
+                version=version,
+            )
+        )
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None
@@ -383,11 +392,22 @@ class FlyteRemote(object):
             if isinstance(entity, RemoteEntity):
                 remote_logger.debug(f"Skipping registration of remote entity: {entity.name}")
                 continue
-
-            if not settings:
+            if isinstance(
+                cp_entity,
+                (
+                    workflow_model.Node,
+                    workflow_model.WorkflowNode,
+                    workflow_model.BranchNode,
+                    workflow_model.TaskNode,
+                ),
+            ):
+                remote_logger.debug("Ignoring nodes for registration.")
+                continue
+            if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and not settings:
                 raise user_exceptions.FlyteValueException(
                     settings,
-                    f"No serialization settings set, but workflow contains entities that need to be registered.",
+                    f"No serialization settings set, but workflow contains entities that need to be "
+                    f"registered. Type: {type(entity)} {entity.name}",
                 )
             try:
                 if isinstance(cp_entity, task_models.TaskSpec):
@@ -403,7 +423,11 @@ class FlyteRemote(object):
                     # to the orderedDict, but we do not.
                     default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
                     lp_entity = get_serializable_launch_plan(
-                        OrderedDict(), settings, default_lp, recurse_downstream=False, options=options
+                        OrderedDict(),
+                        settings or serialization_settings,
+                        default_lp,
+                        recurse_downstream=False,
+                        options=options,
                     )
                     self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
                 elif isinstance(cp_entity, launch_plan_models.LaunchPlan):
@@ -412,16 +436,6 @@ class FlyteRemote(object):
                 elif isinstance(cp_entity, ReferenceSpec):
                     remote_logger.debug(f"Skipping registration of Reference entity, name: {entity.name}")
                     continue
-                elif isinstance(
-                    cp_entity,
-                    (
-                        workflow_model.Node,
-                        workflow_model.WorkflowNode,
-                        workflow_model.BranchNode,
-                        workflow_model.TaskNode,
-                    ),
-                ):
-                    remote_logger.debug("Ignoring nodes for registration.")
                 else:
                     raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
             except FlyteEntityAlreadyExistsException:
