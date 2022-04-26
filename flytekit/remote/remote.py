@@ -56,6 +56,7 @@ from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, F
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
+from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.script_mode import fast_register_single_script
@@ -380,17 +381,15 @@ class FlyteRemote(object):
         _ = get_serializable(m, settings=settings, entity=entity, options=options)
         ident = None
         for entity, cp_entity in m.items():
+            if isinstance(entity, RemoteEntity):
+                remote_logger.debug(f"Skipping registration of remote entity: {entity.name}")
+                continue
+
             try:
                 if isinstance(cp_entity, task_models.TaskSpec):
-                    if isinstance(entity, FlyteTask):
-                        remote_logger.debug(f"Skipping registration of Task (remote task), name: {entity.name}")
-                        continue
                     ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
                     self.client.create_task(task_identifer=ident, task_spec=cp_entity)
                 elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
-                    if isinstance(entity, FlyteWorkflow):
-                        remote_logger.debug(f"Skipping registration of Workflow (remote workflow), name: {entity.name}")
-                        continue
                     ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
                     try:
                         self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
@@ -404,11 +403,6 @@ class FlyteRemote(object):
                     )
                     self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
                 elif isinstance(cp_entity, launch_plan_models.LaunchPlan):
-                    if isinstance(entity, FlyteLaunchPlan):
-                        remote_logger.debug(
-                            f"Skipping registration of LaunchPlan (remote launchplan), name: {entity.name}"
-                        )
-                        continue
                     ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, settings)
                     self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
                 elif isinstance(cp_entity, ReferenceSpec):
