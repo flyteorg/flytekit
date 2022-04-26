@@ -387,7 +387,7 @@ class FlyteRemote(object):
             if not settings:
                 raise user_exceptions.FlyteValueException(
                     settings,
-                    f"No serialization settings set, but workflow " "contains entities that need to be registered.",
+                    f"No serialization settings set, but workflow contains entities that need to be registered.",
                 )
             try:
                 if isinstance(cp_entity, task_models.TaskSpec):
