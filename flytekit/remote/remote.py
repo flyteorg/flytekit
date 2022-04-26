@@ -403,7 +403,12 @@ class FlyteRemote(object):
             ):
                 remote_logger.debug("Ignoring nodes for registration.")
                 continue
+            elif isinstance(cp_entity, ReferenceSpec):
+                remote_logger.debug(f"Skipping registration of Reference entity, name: {entity.name}")
+                continue
+
             if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and not settings:
+                # Only in the case of workflows can we use the dummy serialization settings.
                 raise user_exceptions.FlyteValueException(
                     settings,
                     f"No serialization settings set, but workflow contains entities that need to be "
@@ -433,9 +438,6 @@ class FlyteRemote(object):
                 elif isinstance(cp_entity, launch_plan_models.LaunchPlan):
                     ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, settings)
                     self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
-                elif isinstance(cp_entity, ReferenceSpec):
-                    remote_logger.debug(f"Skipping registration of Reference entity, name: {entity.name}")
-                    continue
                 else:
                     raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
             except FlyteEntityAlreadyExistsException:
