@@ -349,8 +349,8 @@ class FlyteRemote(object):
     def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
         ident = Identifier(
             resource_type=t,
-            project=ss.project or self.default_project,
-            domain=ss.domain or self.default_domain,
+            project=ss.project or self.default_project if ss else self.default_project,
+            domain=ss.domain or self.default_domain if ss else self.default_domain,
             name=name,
             version=version or ss.version,
         )
@@ -364,7 +364,7 @@ class FlyteRemote(object):
     def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
-        settings: SerializationSettings,
+        settings: typing.Optional[SerializationSettings],
         version: str,
         options: typing.Optional[Options] = None,
     ) -> Identifier:
@@ -373,13 +373,22 @@ class FlyteRemote(object):
         :return: Identifier of the registered entity
         """
         m = OrderedDict()
-        _ = get_serializable(m, settings=settings, entity=entity, options=options)
+        # Create dummy serialization settings for now.
+        # TODO: Clean this up by using lazy usage of serialization settings in translator.py
+        serialization_settings = settings if settings else SerializationSettings(ImageConfig.auto_default_image())
+        _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
+
         ident = None
         for entity, cp_entity in m.items():
             if isinstance(entity, RemoteEntity):
                 remote_logger.debug(f"Skipping registration of remote entity: {entity.name}")
                 continue
 
+            if not settings:
+                raise user_exceptions.FlyteValueException(
+                    settings,
+                    f"No serialization settings set, but workflow " "contains entities that need to be registered.",
+                )
             try:
                 if isinstance(cp_entity, task_models.TaskSpec):
                     ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
@@ -447,7 +456,7 @@ class FlyteRemote(object):
     def register_workflow(
         self,
         entity: WorkflowBase,
-        serialization_settings: SerializationSettings,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
@@ -462,11 +471,13 @@ class FlyteRemote(object):
         :return:
         """
         ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        b = serialization_settings.new_builder()
-        b.project = ident.project
-        b.domain = ident.domain
-        b.version = ident.version
-        ident = self._serialize_and_register(entity, b.build(), version, options)
+        if serialization_settings:
+            b = serialization_settings.new_builder()
+            b.project = ident.project
+            b.domain = ident.domain
+            b.version = ident.version
+            serialization_settings = b.build()
+        ident = self._serialize_and_register(entity, serialization_settings, version, options)
         if default_launch_plan:
             default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
             self.register_launch_plan(
