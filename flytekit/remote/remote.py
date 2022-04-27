@@ -56,6 +56,7 @@ from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, F
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
+from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.script_mode import fast_register_single_script
@@ -109,11 +110,6 @@ class FlyteRemote(object):
 
     The term 'remote' is synonymous with 'backend' or 'deployment' and refers to a hosted instance of the
     Flyte platform, which comes with a Flyte Admin server on some known URI.
-
-    .. warning::
-
-        This feature is in beta.
-
     """
 
     def __init__(
@@ -353,8 +349,8 @@ class FlyteRemote(object):
     def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
         ident = Identifier(
             resource_type=t,
-            project=ss.project or self.default_project,
-            domain=ss.domain or self.default_domain,
+            project=ss.project or self.default_project if ss else self.default_project,
+            domain=ss.domain or self.default_domain if ss else self.default_domain,
             name=name,
             version=version or ss.version,
         )
@@ -368,7 +364,7 @@ class FlyteRemote(object):
     def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
-        settings: SerializationSettings,
+        settings: typing.Optional[SerializationSettings],
         version: str,
         options: typing.Optional[Options] = None,
     ) -> Identifier:
@@ -377,20 +373,52 @@ class FlyteRemote(object):
         :return: Identifier of the registered entity
         """
         m = OrderedDict()
-        _ = get_serializable(m, settings=settings, entity=entity, options=options)
+        # Create dummy serialization settings for now.
+        # TODO: Clean this up by using lazy usage of serialization settings in translator.py
+        serialization_settings = (
+            settings
+            if settings
+            else SerializationSettings(
+                ImageConfig.auto_default_image(),
+                project=self.default_project,
+                domain=self.default_domain,
+                version=version,
+            )
+        )
+        _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
+
         ident = None
         for entity, cp_entity in m.items():
+            if isinstance(entity, RemoteEntity):
+                remote_logger.debug(f"Skipping registration of remote entity: {entity.name}")
+                continue
+            if isinstance(
+                cp_entity,
+                (
+                    workflow_model.Node,
+                    workflow_model.WorkflowNode,
+                    workflow_model.BranchNode,
+                    workflow_model.TaskNode,
+                ),
+            ):
+                remote_logger.debug("Ignoring nodes for registration.")
+                continue
+            elif isinstance(cp_entity, ReferenceSpec):
+                remote_logger.debug(f"Skipping registration of Reference entity, name: {entity.name}")
+                continue
+
+            if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and not settings:
+                # Only in the case of workflows can we use the dummy serialization settings.
+                raise user_exceptions.FlyteValueException(
+                    settings,
+                    f"No serialization settings set, but workflow contains entities that need to be "
+                    f"registered. Type: {type(entity)} {entity.name}",
+                )
             try:
                 if isinstance(cp_entity, task_models.TaskSpec):
-                    if isinstance(entity, FlyteTask):
-                        remote_logger.debug(f"Skipping registration of Task (remote task), name: {entity.name}")
-                        continue
                     ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
                     self.client.create_task(task_identifer=ident, task_spec=cp_entity)
                 elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
-                    if isinstance(entity, FlyteWorkflow):
-                        remote_logger.debug(f"Skipping registration of Workflow (remote workflow), name: {entity.name}")
-                        continue
                     ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
                     try:
                         self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
@@ -400,30 +428,16 @@ class FlyteRemote(object):
                     # to the orderedDict, but we do not.
                     default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
                     lp_entity = get_serializable_launch_plan(
-                        OrderedDict(), settings, default_lp, recurse_downstream=False, options=options
+                        OrderedDict(),
+                        settings or serialization_settings,
+                        default_lp,
+                        recurse_downstream=False,
+                        options=options,
                     )
                     self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
                 elif isinstance(cp_entity, launch_plan_models.LaunchPlan):
-                    if isinstance(entity, FlyteLaunchPlan):
-                        remote_logger.debug(
-                            f"Skipping registration of LaunchPlan (remote launchplan), name: {entity.name}"
-                        )
-                        continue
                     ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, settings)
                     self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
-                elif isinstance(cp_entity, ReferenceSpec):
-                    remote_logger.debug(f"Skipping registration of Reference entity, name: {entity.name}")
-                    continue
-                elif isinstance(
-                    cp_entity,
-                    (
-                        workflow_model.Node,
-                        workflow_model.WorkflowNode,
-                        workflow_model.BranchNode,
-                        workflow_model.TaskNode,
-                    ),
-                ):
-                    remote_logger.debug("Ignoring nodes for registration.")
                 else:
                     raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
             except FlyteEntityAlreadyExistsException:
@@ -458,7 +472,7 @@ class FlyteRemote(object):
     def register_workflow(
         self,
         entity: WorkflowBase,
-        serialization_settings: SerializationSettings,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
@@ -473,11 +487,13 @@ class FlyteRemote(object):
         :return:
         """
         ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        b = serialization_settings.new_builder()
-        b.project = ident.project
-        b.domain = ident.domain
-        b.version = ident.version
-        ident = self._serialize_and_register(entity, b.build(), version, options)
+        if serialization_settings:
+            b = serialization_settings.new_builder()
+            b.project = ident.project
+            b.domain = ident.domain
+            b.version = ident.version
+            serialization_settings = b.build()
+        ident = self._serialize_and_register(entity, serialization_settings, version, options)
         if default_launch_plan:
             default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
             self.register_launch_plan(
