@@ -9,7 +9,7 @@ from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import kwtypes
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask, get_portable_shell_task
+from flytekit.extras.tasks.shell import OutputLocation, ShellTask, get_raw_shell_task
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -256,7 +256,7 @@ def test_shell_script():
 def test_portable_shell_task_with_args(capfd):
     if script_sh_2 is None:
         return
-    pst = get_portable_shell_task()
+    pst = get_raw_shell_task()
     pst(
         script_file=script_sh_2,
         script_args="first_arg second_arg",
@@ -270,7 +270,7 @@ def test_portable_shell_task_with_args(capfd):
 def test_shell_task_with_env(capfd):
     if script_sh_2 is None:
         return
-    pst = get_portable_shell_task()
+    pst = get_raw_shell_task()
     pst(
         script_file=script_sh_2,
         env={"A": "AAAA", "B": "BBBB"},
@@ -285,7 +285,7 @@ def test_shell_task_properly_restores_env_after_execution():
     if script_sh_2 is None:
         return
     env_as_dict = os.environ.copy()
-    pst = get_portable_shell_task()
+    pst = get_raw_shell_task()
     pst(
         script_file=script_sh_2,
         env={"A": "AAAA", "B": "BBBB"},
