@@ -332,6 +332,14 @@ class Promise(object):
     def __hash__(self):
         return hash(id(self))
 
+    def __rshift__(self, other: Promise):
+        if not self.is_ready:
+            self.ref.node.runs_before(other.ref.node)
+
+    def __lshift__(self, other: Promise):
+        if not self.is_ready:
+            other.ref.node.runs_before(self.ref.node)
+
     def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
             return Promise(var=new_var, val=self.val)

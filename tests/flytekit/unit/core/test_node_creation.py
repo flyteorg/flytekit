@@ -172,6 +172,31 @@ def test_runs_before():
     my_wf(a=5, b="hello")
 
 
+def test_promise_chaining():
+    @task
+    def task_a(x: int) -> int:
+        return x
+
+    @task
+    def task_b(x: int) -> int:
+        return x
+
+    @task
+    def task_c(x: int) -> int:
+        return x
+
+    @workflow
+    def wf(x: int) -> int:
+        a = task_a(x=x)
+        b = task_b(x=x)
+        c = task_c(x=x)
+        a >> b
+        c << b
+        return a
+
+    wf(x=3)
+
+
 def test_resource_request_override():
     @task
     def t1(a: str) -> str:
