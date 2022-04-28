@@ -44,3 +44,11 @@ def test_not_version(mock_sys):
     # Python version 2 not in enum
     with pytest.raises(ValueError):
         DefaultImages.default_image()
+
+
+def test_image_create():
+    with pytest.raises(ValueError):
+        ImageConfig.create_from("ghcr.io/im/g:latest")
+
+    ic = ImageConfig.from_images("ghcr.io/im/g:latest")
+    assert ic.default_image.fqn == "ghcr.io/im/g"
