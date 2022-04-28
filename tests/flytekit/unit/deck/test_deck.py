@@ -3,7 +3,7 @@ from mock import mock
 
 from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import TopFrameRenderer
-from flytekit.deck.deck import OUTPUT_DIR_JUPYTER_PREFIX, _output_deck
+from flytekit.deck.deck import _output_deck
 
 
 def test_deck():

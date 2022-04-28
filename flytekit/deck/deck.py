@@ -102,12 +102,9 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
         deck_map[deck.name] = deck.html
 
     if _ipython_check():
-        try:
-            from IPython.display import HTML, display
+        from IPython.display import HTML, display
 
-            display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
-        except ImportError:
-            pass
+        display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
     else:
         output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
         deck_path = os.path.join(output_dir, DECK_FILE_NAME)
