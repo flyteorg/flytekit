@@ -10,7 +10,7 @@ import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
-from flytekit.core.data_persistence import FileAccessProvider, tmp_dir_prefix
+from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
@@ -422,7 +422,7 @@ def test_flyte_file_in_dyn():
     @task
     def t2(ff: FlyteFile) -> os.PathLike:
         assert ff.remote_source == "s3://somewhere"
-        assert tmp_dir_prefix in ff.path
+        assert flyte_tmp_dir in ff.path
 
         return ff.path
 
@@ -432,4 +432,4 @@ def test_flyte_file_in_dyn():
         dyn(fs=n1)
         return t2(ff=n1)
 
-    assert tmp_dir_prefix in wf(path="s3://somewhere").path
+    assert flyte_tmp_dir in wf(path="s3://somewhere").path

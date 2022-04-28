@@ -54,7 +54,6 @@ def _handle_rpc_error(retry=False):
                     elif e.code() == grpc.StatusCode.NOT_FOUND:
                         raise _user_exceptions.FlyteEntityNotExistException(e)
                     else:
-                        print(e)
                         # No more retries if retry=False or max_retries reached.
                         if (retry is False) or i == (max_retries - 1):
                             raise
@@ -195,9 +194,10 @@ class RawSynchronousFlyteClient(object):
             # metadata field yet. Therefore, if there's a mismatch, copy it over.
             self.set_access_token(client.credentials.access_token, authorization_header_key)
             return
-        elif client.can_refresh_token:
+
+        try:
             client.refresh_access_token()
-        else:
+        except ValueError:
             client.start_authorization_flow()
 
         self.set_access_token(client.credentials.access_token, authorization_header_key)

@@ -478,7 +478,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 python_val,
                 df_type,
                 protocol,
-                python_val.file_format,
+                sdt.format or typing.cast(StructuredDataset, python_val).DEFAULT_FILE_FORMAT,
                 sdt,
             )
 
@@ -486,6 +486,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         fmt = self.DEFAULT_FORMATS[python_type]
         protocol = self.DEFAULT_PROTOCOLS[python_type]
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
+
         sd = StructuredDataset(dataframe=python_val, metadata=meta)
         return self.encode(ctx, sd, python_type, protocol, fmt, sdt)
 
@@ -619,6 +620,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 metadata=metad,
             )
             sd._literal_sd = lv.scalar.structured_dataset
+            sd.file_format = metad.structured_dataset_type.format
             return sd
 
         # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means
