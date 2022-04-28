@@ -1,3 +1,19 @@
+"""
+Flytekit StructuredDataset
+==========================================================
+.. currentmodule:: flytekit.types.structured
+
+.. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+
+   StructuredDataset
+   StructuredDatasetEncoder
+   StructuredDatasetDecoder
+   StructuredDatasetTransformerEngine
+"""
+
+
 from flytekit.configuration.internal import LocalSDK
 from flytekit.loggers import logger
 
@@ -6,6 +22,12 @@ from .basic_dfs import (
     PandasToParquetEncodingHandler,
     ParquetToArrowDecodingHandler,
     ParquetToPandasDecodingHandler,
+)
+from .structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetDecoder,
+    StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
 )
 
 try:

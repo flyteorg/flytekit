@@ -22,10 +22,10 @@ simple implementation that ships with the core.
 
 """
 
-import datetime
 import os
 import pathlib
 import re
+import tempfile
 import typing
 from abc import abstractmethod
 from distutils import dir_util
@@ -451,11 +451,9 @@ class FileAccessProvider(object):
 DataPersistencePlugins.register_plugin("file://", DiskPersistence)
 DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
-tmp_dir_prefix = f"{os.sep}tmp{os.sep}flyte"
-
-tmp_dir = os.path.join(tmp_dir_prefix, datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
 default_local_file_access_provider = FileAccessProvider(
-    local_sandbox_dir=os.path.join(tmp_dir, "sandbox"),
-    raw_output_prefix=os.path.join(tmp_dir, "raw"),
+    local_sandbox_dir=os.path.join(flyte_tmp_dir, "sandbox"),
+    raw_output_prefix=os.path.join(flyte_tmp_dir, "raw"),
     data_config=DataConfig.auto(),
 )

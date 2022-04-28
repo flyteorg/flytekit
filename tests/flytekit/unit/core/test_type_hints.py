@@ -25,7 +25,7 @@ from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.context_manager import ExecutionState
-from flytekit.core.data_persistence import FileAccessProvider, tmp_dir_prefix
+from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
 from flytekit.core.hash import HashMethod
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
@@ -59,7 +59,7 @@ def test_default_wf_params_works():
     def my_task(a: int):
         wf_params = flytekit.current_context()
         assert wf_params.execution_id == "ex:local:local:local"
-        assert tmp_dir_prefix in wf_params.raw_output_prefix
+        assert flyte_tmp_dir in wf_params.raw_output_prefix
 
     my_task(a=3)
     assert context_manager.FlyteContextManager.size() == 1
@@ -389,9 +389,9 @@ def test_flyte_file_in_dataclass():
         assert fs.a.remote_source == "s3://somewhere"
         assert fs.b.a.remote_source == "s3://somewhere"
         assert fs.b.b.remote_source == "s3://somewhere"
-        assert tmp_dir_prefix in fs.a.path
-        assert tmp_dir_prefix in fs.b.a.path
-        assert tmp_dir_prefix in fs.b.b.path
+        assert flyte_tmp_dir in fs.a.path
+        assert flyte_tmp_dir in fs.b.a.path
+        assert flyte_tmp_dir in fs.b.b.path
 
         return fs.a.path
 
@@ -405,8 +405,8 @@ def test_flyte_file_in_dataclass():
         dyn(fs=n1)
         return t2(fs=n1), t3(fs=n1)
 
-    assert tmp_dir_prefix in wf(path="s3://somewhere")[0].path
-    assert tmp_dir_prefix in wf(path="s3://somewhere")[1].path
+    assert flyte_tmp_dir in wf(path="s3://somewhere")[0].path
+    assert flyte_tmp_dir in wf(path="s3://somewhere")[1].path
     assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
 
 
@@ -438,7 +438,7 @@ def test_flyte_directory_in_dataclass():
         n1 = t1(path=path)
         return t2(fs=n1)
 
-    assert tmp_dir_prefix in wf(path="s3://somewhere").path
+    assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
 
 def test_structured_dataset_in_dataclass():

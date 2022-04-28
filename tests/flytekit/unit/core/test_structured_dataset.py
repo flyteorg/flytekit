@@ -18,9 +18,10 @@ except ImportError:
 import pandas as pd
 import pyarrow as pa
 
-from flytekit import kwtypes
+from flytekit import kwtypes, task
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
+    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -330,3 +331,47 @@ def test_to_python_value_without_incoming_columns():
     subset_pd_type = Annotated[pd.DataFrame, kwtypes(age=int)]
     sub_df = fdt.to_python_value(ctx, lit, subset_pd_type)
     assert sub_df.shape[1] == 1
+
+
+def test_format_correct():
+    class TempEncoder(StructuredDatasetEncoder):
+        def __init__(self):
+            super().__init__(pd.DataFrame, S3, "avro")
+
+        def encode(
+            self,
+            ctx: FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
+        ) -> literals.StructuredDataset:
+            return literals.StructuredDataset(
+                uri="/tmp/avro", metadata=StructuredDatasetMetadata(structured_dataset_type)
+            )
+
+    ctx = FlyteContextManager.current_context()
+    df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+    annotated_sd_type = Annotated[StructuredDataset, "avro", kwtypes(name=str, age=int)]
+    df_literal_type = TypeEngine.to_literal_type(annotated_sd_type)
+    assert df_literal_type.structured_dataset_type is not None
+    assert len(df_literal_type.structured_dataset_type.columns) == 2
+    assert df_literal_type.structured_dataset_type.columns[0].name == "name"
+    assert df_literal_type.structured_dataset_type.columns[0].literal_type.simple is not None
+    assert df_literal_type.structured_dataset_type.columns[1].name == "age"
+    assert df_literal_type.structured_dataset_type.columns[1].literal_type.simple is not None
+    assert df_literal_type.structured_dataset_type.format == "avro"
+
+    sd = annotated_sd_type(df)
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
+
+    StructuredDatasetTransformerEngine.register(TempEncoder(), default_for_type=False)
+    sd2 = annotated_sd_type(df)
+    sd_literal = TypeEngine.to_literal(ctx, sd2, python_type=annotated_sd_type, expected=df_literal_type)
+    assert sd_literal.scalar.structured_dataset.metadata.structured_dataset_type.format == "avro"
+
+    @task
+    def t1() -> Annotated[StructuredDataset, "avro"]:
+        return StructuredDataset(dataframe=df)
+
+    assert t1().file_format == "avro"

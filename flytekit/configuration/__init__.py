@@ -428,7 +428,7 @@ class S3Config(object):
         """
         Automatically configure
         :param config_file:
-        :return: Configr
+        :return: Config
         """
         config_file = get_config_file(config_file)
         kwargs = {}

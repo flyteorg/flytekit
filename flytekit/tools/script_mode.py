@@ -1,4 +1,3 @@
-import base64
 import gzip
 import hashlib
 import os
@@ -103,7 +102,7 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
 
 def fast_register_single_script(
     wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable
-) -> (_data_proxy_pb2.CreateUploadLocationResponse, str):
+) -> (_data_proxy_pb2.CreateUploadLocationResponse, bytes):
     _, mod_name, _, script_full_path = extract_task_module(wf_entity)
     # Find project root by moving up the folder hierarchy until you cannot find a __init__.py file.
     source_path = _find_project_root(script_full_path)
@@ -117,14 +116,14 @@ def fast_register_single_script(
         md5, _ = hash_file(archive_fname)
         upload_location = create_upload_location_fn(content_md5=md5)
         flyte_ctx.file_access.put_data(archive_fname, upload_location.signed_url)
-        return upload_location, base64.urlsafe_b64encode(md5)
+
+        return upload_location, md5
 
 
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
     """
     Hash a file and produce a digest to be used as a version
     """
-    # TODO: take file_path as an initial parameter to ensure that moving the file will produce a different version.
     h = hashlib.md5()
 
     with open(file_path, "rb") as file:

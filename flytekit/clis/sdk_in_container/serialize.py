@@ -1,6 +1,5 @@
 import os
 import sys
-import tarfile as _tarfile
 import typing
 from enum import Enum as _Enum
 
@@ -10,8 +9,7 @@ from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.exceptions.scopes import system_entry_point
-from flytekit.tools.fast_registration import compute_digest as _compute_digest
-from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
+from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.repo import serialize_to_folder
 
 CTX_IMAGE = "image"
@@ -165,13 +163,9 @@ def fast_workflows(ctx, folder=None):
         click.echo(f"Writing output to {folder}")
 
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
-    digest = _compute_digest(source_dir)
-    folder = folder if folder else ""
-    archive_fname = os.path.join(folder, f"{digest}.tar.gz")
-    click.echo(f"Writing compressed archive to {archive_fname}")
     # Write using gzip
-    with _tarfile.open(archive_fname, "w:gz") as tar:
-        tar.add(source_dir, arcname="", filter=_filter_tar_file_fn)
+    archive_fname = fast_package(source_dir, folder)
+    click.echo(f"Wrote compressed archive to {archive_fname}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
