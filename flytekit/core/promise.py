@@ -664,6 +664,13 @@ class VoidPromise(object):
     def ref(self) -> NodeOutput:
         return self._ref
 
+    @property
+    def val(self):
+        """
+        The output of VoidPromise is always None
+        """
+        return None
+
     def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
         if self.ref:
             self.ref.node.runs_before(other.ref.node)
