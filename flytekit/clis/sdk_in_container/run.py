@@ -571,6 +571,6 @@ class RunCommand(click.MultiCommand):
 
 run = RunCommand(
     name="run",
-    help="Run_old command, a.k.a. script mode. It allows for a a single script to be "
+    help="Run command, a.k.a. script mode. It allows for a a single script to be "
     + "registered and run from the command line (e.g. Jupyter notebooks).",
 )
