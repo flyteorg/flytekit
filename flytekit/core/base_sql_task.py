@@ -57,7 +57,7 @@ class SQLTask(PythonTask[T]):
     def interpolate_query(cls, query_template, **kwargs) -> Any:
         """
         This function will fill in the query template with the provided kwargs and return the interpolated query.
-        Please note that when SQL tasks run in Flyte, this step is done by the
+        Please note that when SQL tasks run in Flyte, this step is done by the task executor.
         """
         modified_query = query_template
         matched = set()
