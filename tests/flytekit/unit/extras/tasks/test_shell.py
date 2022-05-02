@@ -1,6 +1,7 @@
 import datetime
 import os
 import tempfile
+import typing
 from dataclasses import dataclass
 from subprocess import CalledProcessError
 
@@ -9,7 +10,7 @@ from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import kwtypes
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask, get_raw_shell_task
+from flytekit.extras.tasks.shell import OutputLocation, ShellTask, get_raw_shell_task, _RawShellTask
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -253,7 +254,7 @@ def test_shell_script():
     t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
-def test_portable_shell_task_with_args(capfd):
+def test_raw_shell_task_with_args(capfd):
     if script_sh_2 is None:
         return
     pst = get_raw_shell_task()
@@ -267,7 +268,7 @@ def test_portable_shell_task_with_args(capfd):
     assert "second_arg" in cap.out
 
 
-def test_shell_task_with_env(capfd):
+def test_raw_shell_task_with_env(capfd):
     if script_sh_2 is None:
         return
     pst = get_raw_shell_task()
@@ -281,7 +282,7 @@ def test_shell_task_with_env(capfd):
     assert "BBBB" in cap.out
 
 
-def test_shell_task_properly_restores_env_after_execution():
+def test_raw_shell_task_properly_restores_env_after_execution():
     if script_sh_2 is None:
         return
     env_as_dict = os.environ.copy()
@@ -293,3 +294,37 @@ def test_shell_task_properly_restores_env_after_execution():
     )
     env_as_dict_after = os.environ.copy()
     assert env_as_dict == env_as_dict_after
+
+
+def test_raw_shell_task_instantiation(capfd):
+    pst = _RawShellTask(
+        name="test",
+        debug=True,
+        inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
+        output_locs=[
+            OutputLocation(
+                var="out",
+                var_type=FlyteDirectory,
+                location="{ctx.working_directory}",
+            )
+        ],
+        script="""
+#!/bin/bash
+
+set -uex
+
+cd {ctx.working_directory}
+
+{inputs.export_env}
+
+bash {inputs.script_file} {inputs.script_args}
+"""
+    )
+    pst(
+        script_file=script_sh_2,
+        script_args="first_arg second_arg",
+        env={}
+    )
+    cap = capfd.readouterr()
+    assert "first_arg" in cap.out
+    assert "second_arg" in cap.out
