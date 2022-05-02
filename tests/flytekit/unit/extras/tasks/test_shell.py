@@ -297,6 +297,8 @@ def test_raw_shell_task_properly_restores_env_after_execution():
 
 
 def test_raw_shell_task_instantiation(capfd):
+    if script_sh_2 is None:
+        return
     pst = _RawShellTask(
         name="test",
         debug=True,
