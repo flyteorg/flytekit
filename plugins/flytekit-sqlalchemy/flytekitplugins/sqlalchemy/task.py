@@ -70,10 +70,9 @@ class SQLAlchemyConfig(object):
 class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
     """
     Makes it possible to run client side SQLAlchemy queries that optionally return a FlyteSchema object
-
-    TODO: How should we use pre-built containers for running portable tasks like this. Should this always be a
-          referenced task type?
     """
+
+    # TODO: How should we use pre-built containers for running portable tasks like this? Should this always be a referenced task type?
 
     _SQLALCHEMY_TASK_TYPE = "sqlalchemy"
 

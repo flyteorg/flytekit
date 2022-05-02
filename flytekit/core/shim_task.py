@@ -63,7 +63,7 @@ class ExecutableTemplateShimTask(object):
 
     def execute(self, **kwargs) -> Any:
         """
-        Send things off to the executor instead of running here.
+        Rather than running here, send everything to the executor.
         """
         return self.executor.execute_from_model(self.task_template, **kwargs)
 
@@ -83,8 +83,8 @@ class ExecutableTemplateShimTask(object):
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
-        This function is mostly copied from the base PythonTask, but differs in that we have to infer the Python
-        interface before executing. Also, we refer to ``self.task_template`` rather than just ``self`` like in task
+        This function is largely similar to the base PythonTask, with the exception that we have to infer the Python
+        interface before executing. Also, we refer to ``self.task_template`` rather than just ``self`` similar to task
         classes that derive from the base ``PythonTask``.
         """
         # Invoked before the task is executed
