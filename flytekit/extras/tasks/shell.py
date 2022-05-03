@@ -377,5 +377,5 @@ cd {ctx.working_directory}
 {inputs.export_env}
 
 bash {inputs.script_file} {inputs.script_args}
-"""
+""",
     )

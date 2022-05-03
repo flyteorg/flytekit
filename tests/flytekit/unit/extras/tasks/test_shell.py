@@ -10,7 +10,7 @@ from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import kwtypes
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask, get_raw_shell_task, _RawShellTask
+from flytekit.extras.tasks.shell import OutputLocation, ShellTask, _RawShellTask, get_raw_shell_task
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -258,11 +258,7 @@ def test_raw_shell_task_with_args(capfd):
     if script_sh_2 is None:
         return
     pst = get_raw_shell_task()
-    pst(
-        script_file=script_sh_2,
-        script_args="first_arg second_arg",
-        env={}
-    )
+    pst(script_file=script_sh_2, script_args="first_arg second_arg", env={})
     cap = capfd.readouterr()
     assert "first_arg" in cap.out
     assert "second_arg" in cap.out
@@ -272,11 +268,7 @@ def test_raw_shell_task_with_env(capfd):
     if script_sh_2 is None:
         return
     pst = get_raw_shell_task()
-    pst(
-        script_file=script_sh_2,
-        env={"A": "AAAA", "B": "BBBB"},
-        script_args=""
-    )
+    pst(script_file=script_sh_2, env={"A": "AAAA", "B": "BBBB"}, script_args="")
     cap = capfd.readouterr()
     assert "AAAA" in cap.out
     assert "BBBB" in cap.out
@@ -287,11 +279,7 @@ def test_raw_shell_task_properly_restores_env_after_execution():
         return
     env_as_dict = os.environ.copy()
     pst = get_raw_shell_task()
-    pst(
-        script_file=script_sh_2,
-        env={"A": "AAAA", "B": "BBBB"},
-        script_args=""
-    )
+    pst(script_file=script_sh_2, env={"A": "AAAA", "B": "BBBB"}, script_args="")
     env_as_dict_after = os.environ.copy()
     assert env_as_dict == env_as_dict_after
 
@@ -320,13 +308,9 @@ cd {ctx.working_directory}
 {inputs.export_env}
 
 bash {inputs.script_file} {inputs.script_args}
-"""
+""",
     )
-    pst(
-        script_file=script_sh_2,
-        script_args="first_arg second_arg",
-        env={}
-    )
+    pst(script_file=script_sh_2, script_args="first_arg second_arg", env={})
     cap = capfd.readouterr()
     assert "first_arg" in cap.out
     assert "second_arg" in cap.out
