@@ -353,11 +353,10 @@ class RawShellTask(ShellTask):
 # The raw_shell_task is an instance of RawShellTask and wraps a 'pure' shell script
 # This utility function allows for the specification of env variables, arguments, and the actual script within the
 # workflow definition rather than at `RawShellTask` instantiation
-def get_raw_shell_task(name) -> RawShellTask:
-    _name = name if name else "raw_shell_task_instance"
+def get_raw_shell_task(name: str) -> RawShellTask:
 
     return RawShellTask(
-        name=_name,
+        name=name,
         debug=True,
         inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
         output_locs=[
