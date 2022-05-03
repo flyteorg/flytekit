@@ -382,6 +382,10 @@ def test_nested_condition():
 
 
 def test_nested_condition_2():
+    @task
+    def t1() -> float:
+        return 3.0
+
     @workflow
     def multiplier_2(my_input: float) -> float:
         return (
@@ -390,7 +394,7 @@ def test_nested_condition_2():
             .then(
                 conditional("inner_fractions")
                 .if_(my_input < 0.5)
-                .then(double(n=my_input))
+                .then(double(n=t1()))
                 .elif_((my_input > 0.5) & (my_input < 0.7))
                 .then(square(n=my_input))
                 .else_()
@@ -415,9 +419,11 @@ def test_nested_condition_2():
     inner_fractions_node = if_else_b.case.then_node
     assert inner_fractions_node.id == "n0"
     assert inner_fractions_node.branch_node.if_else.case.then_node.task_node is not None
-    assert inner_fractions_node.branch_node.if_else.case.then_node.id == "n0"
+    assert inner_fractions_node.branch_node.if_else.case.then_node.id == "n1"
+    assert inner_fractions_node.branch_node.if_else.case.then_node.inputs[0].binding.promise.node_id == "n0"
+    assert inner_fractions_node.branch_node.if_else.case.then_node.upstream_node_ids[0] == "n0"
     assert len(inner_fractions_node.branch_node.if_else.other) == 1
-    assert inner_fractions_node.branch_node.if_else.other[0].then_node.id == "n1"
+    assert inner_fractions_node.branch_node.if_else.other[0].then_node.id == "n2"
 
     # Ensure other cases exist
     assert len(if_else_b.other) == 1
@@ -428,7 +434,7 @@ def test_nested_condition_2():
         multiplier_2(my_input=0.7)
 
     res = multiplier_2(my_input=0.3)
-    assert res == 0.6
+    assert res == 6.0
 
     res = multiplier_2(my_input=5.0)
     assert res == 25

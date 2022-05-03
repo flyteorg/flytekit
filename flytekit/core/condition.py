@@ -107,11 +107,16 @@ class ConditionalSection:
                 upstream_nodes=list(upstream_nodes),  # type: ignore
                 flyte_entity=node,
             )
+            for case in self.cases:
+                if case.output_promise is not None and case.output_promise.ref is not None:
+                    for node in case._output_promise.ref.node.upstream_nodes:
+                        node.runs_before(n)
+
             FlyteContextManager.current_context().compilation_state.add_node(n)  # type: ignore
             return self._compute_outputs(n)
         return self._condition
 
-    def if_(self, expr: bool) -> Case:
+    def if_(self, expr: typing.Any) -> Case:
         return self._condition._if(expr)
 
     def compute_output_vars(self) -> typing.Optional[typing.List[str]]:
@@ -283,9 +288,7 @@ class Case(object):
         return self._err
 
     # TODO this is complicated. We do not want this to run
-    def then(
-        self, p: Union[Promise, Tuple[Promise]]
-    ) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
+    def then(self, p: typing.Any) -> typing.Any:
         self._output_promise = p
         # We can always mark branch as completed
         return self._cs.end_branch()
