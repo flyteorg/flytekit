@@ -239,7 +239,7 @@ class ShellTask(PythonInstanceTask[T]):
         return self._config_task_instance.post_execute(user_params, rval)
 
 
-class _RawShellTask(ShellTask):
+class RawShellTask(ShellTask):
     """ """
 
     def __init__(
@@ -254,7 +254,7 @@ class _RawShellTask(ShellTask):
         **kwargs,
     ):
         """
-        The `_RawShellTask` is a minimal extension of the existing `ShellTask`. It's purpose is to support wrapping a
+        The `RawShellTask` is a minimal extension of the existing `ShellTask`. It's purpose is to support wrapping a
         "raw" or "pure" shell script which needs to be executed with some environment variables set, and some arguments,
         which may not be known until execution time.
 
@@ -350,13 +350,13 @@ class _RawShellTask(ShellTask):
         return None
 
 
-# The raw_shell_task is an instance of _RawShellTask and wraps a 'pure' shell script
+# The raw_shell_task is an instance of RawShellTask and wraps a 'pure' shell script
 # This utility function allows for the specification of env variables, arguments, and the actual script within the
-# workflow definition rather than at `_RawShellTask` instantiation
-def get_raw_shell_task(name: str = None) -> _RawShellTask:
+# workflow definition rather than at `RawShellTask` instantiation
+def get_raw_shell_task(name) -> RawShellTask:
     _name = name if name else "raw_shell_task_instance"
 
-    return _RawShellTask(
+    return RawShellTask(
         name=_name,
         debug=True,
         inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),

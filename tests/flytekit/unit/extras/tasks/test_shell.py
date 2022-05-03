@@ -10,7 +10,7 @@ from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import kwtypes
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask, _RawShellTask, get_raw_shell_task
+from flytekit.extras.tasks.shell import OutputLocation, ShellTask, RawShellTask, get_raw_shell_task
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -287,7 +287,7 @@ def test_raw_shell_task_properly_restores_env_after_execution():
 def test_raw_shell_task_instantiation(capfd):
     if script_sh_2 is None:
         return
-    pst = _RawShellTask(
+    pst = RawShellTask(
         name="test",
         debug=True,
         inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
