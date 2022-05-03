@@ -169,3 +169,19 @@ def test_wf1_with_lp_node():
         return x, y, u, v
 
     assert my_wf2() == (44, "world-44", "world-5", "world-7")
+
+
+def test_optional_input():
+    @task()
+    def t1(b: typing.Optional[int]) -> str:
+        return str(b)
+
+    @task()
+    def t2(c: str) -> str:
+        return c
+
+    @workflow
+    def wf(a: typing.Optional[int]) -> str:
+        return t2(c=t1())
+
+    assert wf() == str(None)

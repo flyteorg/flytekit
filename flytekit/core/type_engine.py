@@ -31,6 +31,7 @@ from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
+from flytekit.models import literals
 from flytekit.models import types as _type_models
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
@@ -737,6 +738,11 @@ class TypeEngine(typing.Generic[T]):
         """
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
         """
+        # Assign default literal value (void) if python type is an optional type
+        for k, v in python_types.items():
+            if k not in lm.literals and typing.get_origin(v) is typing.Union and type(None) in typing.get_args(v):
+                lm.literals[k] = Literal(scalar=literals.Scalar(none_type=literals.Void()))
+
         if len(lm.literals) != len(python_types):
             raise ValueError(
                 f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"

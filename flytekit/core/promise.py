@@ -23,6 +23,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
+from flytekit.models.types import SimpleType
 
 
 def translate_inputs_to_literals(
@@ -871,7 +872,13 @@ def create_and_link_node(
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
-            raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+            is_optional = False
+            for variant in var.type.union_type.variants:
+                if variant.simple == SimpleType.NONE:
+                    kwargs[k] = None
+                    is_optional = True
+            if not is_optional:
+                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
