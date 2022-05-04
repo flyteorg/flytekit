@@ -740,7 +740,7 @@ class TypeEngine(typing.Generic[T]):
         """
         # Assign default literal value (void) if python type is an optional type
         for k, v in python_types.items():
-            if k not in lm.literals and get_origin(v) is typing.Union and type(None) in typing.get_args(v):
+            if k not in lm.literals and get_origin(v) is typing.Union and type(None) in get_args(v):
                 lm.literals[k] = Literal(scalar=literals.Scalar(none_type=literals.Void()))
 
         if len(lm.literals) != len(python_types):
