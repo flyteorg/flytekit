@@ -10,7 +10,7 @@ from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import kwtypes
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask, RawShellTask, get_raw_shell_task
+from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
