@@ -245,7 +245,7 @@ class WorkflowBase(object):
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
         for k, v in self.interface.inputs.items():
-            if k not in kwargs:
+            if k not in kwargs and v.type.union_type:
                 for variant in v.type.union_type.variants:
                     if variant.simple == SimpleType.NONE:
                         kwargs[k] = None

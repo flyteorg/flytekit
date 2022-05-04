@@ -283,6 +283,7 @@ def _get_client(host: str, insecure: bool) -> _friendly_client.SynchronousFlyteC
 
 _PROJECT_FLAGS = ["-p", "--project"]
 _DOMAIN_FLAGS = ["-d", "--domain"]
+_LAUNCH_PLAN_FLAGS = ["-d", "--launch-plan"]
 _NAME_FLAGS = ["-n", "--name"]
 _VERSION_FLAGS = ["-v", "--version"]
 _HOST_FLAGS = ["-h", "--host"]
@@ -312,6 +313,13 @@ _optional_name_option = _click.option(
     type=str,
     default=None,
     help="[Optional] The name to query.",
+)
+_optional_launch_plan_option = _click.option(
+    *_LAUNCH_PLAN_FLAGS,
+    required=False,
+    type=str,
+    default=None,
+    help="[Optional] The launch plan name to query.",
 )
 _principal_option = _click.option(*_PRINCIPAL_FLAGS, required=True, help="Your team name, or your name")
 _optional_principal_option = _click.option(
@@ -1936,9 +1944,10 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
 @_insecure_option
 @_project_option
 @_domain_option
+@_optional_launch_plan_option
 @_optional_name_option
 @_click.option("--attributes", type=(str, str), multiple=True)
-def update_cluster_resource_attributes(host, insecure, project, domain, name, attributes):
+def update_cluster_resource_attributes(host, insecure, project, domain, launch_plan, name, attributes):
     """
     Sets matchable cluster resource attributes for a project, domain and optionally, workflow name.
     The attribute names should match the templatized values you use to configure these resource
@@ -1956,7 +1965,7 @@ def update_cluster_resource_attributes(host, insecure, project, domain, name, at
     matching_attributes = _MatchingAttributes(cluster_resource_attributes=cluster_resource_attributes)
 
     if name is not None:
-        client.update_workflow_attributes(project, domain, name, matching_attributes)
+        client.update_workflow_attributes(project, domain, name, launch_plan, matching_attributes)
         _click.echo(
             "Successfully updated cluster resource attributes for project: {}, domain: {}, and workflow: {}".format(
                 project, domain, name
@@ -1974,9 +1983,10 @@ def update_cluster_resource_attributes(host, insecure, project, domain, name, at
 @_insecure_option
 @_project_option
 @_domain_option
+@_optional_launch_plan_option
 @_optional_name_option
 @_click.option("--tags", multiple=True, help="Tag(s) to be applied.")
-def update_execution_queue_attributes(host, insecure, project, domain, name, tags):
+def update_execution_queue_attributes(host, insecure, project, domain, launch_plan, name, tags):
     """
     Tags used for assigning execution queues for tasks belonging to a project, domain and optionally, workflow name.
 
@@ -1990,10 +2000,10 @@ def update_execution_queue_attributes(host, insecure, project, domain, name, tag
     matching_attributes = _MatchingAttributes(execution_queue_attributes=execution_queue_attributes)
 
     if name is not None:
-        client.update_workflow_attributes(project, domain, name, matching_attributes)
+        client.update_workflow_attributes(project, domain, name, launch_plan, matching_attributes)
         _click.echo(
-            "Successfully updated execution queue attributes for project: {}, domain: {}, and workflow: {}".format(
-                project, domain, name
+            "Successfully updated execution queue attributes for project: {}, domain: {}, workflow: {}, and launch plan: {}".format(
+                project, domain, name, launch_plan
             )
         )
     else:
@@ -2008,9 +2018,10 @@ def update_execution_queue_attributes(host, insecure, project, domain, name, tag
 @_insecure_option
 @_project_option
 @_domain_option
+@_optional_launch_plan_option
 @_optional_name_option
 @_click.option("--value", help="Cluster label for which to schedule matching executions")
-def update_execution_cluster_label(host, insecure, project, domain, name, value):
+def update_execution_cluster_label(host, insecure, project, domain, launch_plan, name, value):
     """
     Label value to determine where an execution's task will be run for tasks belonging to a project, domain and
         optionally, workflow name.
@@ -2024,10 +2035,10 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
     matching_attributes = _MatchingAttributes(execution_cluster_label=execution_cluster_label)
 
     if name is not None:
-        client.update_workflow_attributes(project, domain, name, matching_attributes)
+        client.update_workflow_attributes(project, domain, name, launch_plan, matching_attributes)
         _click.echo(
-            "Successfully updated execution cluster label for project: {}, domain: {}, and workflow: {}".format(
-                project, domain, name
+            "Successfully updated execution cluster label for project: {}, domain: {}, workflow: {}, and launch plan: {}".format(
+                project, domain, name, launch_plan
             )
         )
     else:
@@ -2042,13 +2053,16 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
 @_insecure_option
 @_project_option
 @_domain_option
+@_optional_launch_plan_option
 @_optional_name_option
 @_click.option("--task-type", help="Task type for which to apply plugin implementation overrides")
 @_click.option("--plugin-id", multiple=True, help="Plugin id(s) to be used in place of the default for the task type.")
 @_click.option(
     "--missing-plugin-behavior", help="Behavior when no specified plugin_id has an associated handler.", default="FAIL"
 )
-def update_plugin_override(host, insecure, project, domain, name, task_type, plugin_id, missing_plugin_behavior):
+def update_plugin_override(
+    host, insecure, project, domain, launch_plan, name, task_type, plugin_id, missing_plugin_behavior
+):
     """
     Plugin ids designating non-default plugin handlers to be used for tasks of a certain type.
 
@@ -2064,10 +2078,10 @@ def update_plugin_override(host, insecure, project, domain, name, task_type, plu
     matching_attributes = _MatchingAttributes(plugin_overrides=_PluginOverrides(overrides=[plugin_override]))
 
     if name is not None:
-        client.update_workflow_attributes(project, domain, name, matching_attributes)
+        client.update_workflow_attributes(project, domain, name, launch_plan, matching_attributes)
         _click.echo(
-            "Successfully updated plugin override for project: {}, domain: {}, and workflow: {}".format(
-                project, domain, name
+            "Successfully updated plugin override for project: {}, domain: {}, workflow: {}, and launch plan: {}".format(
+                project, domain, name, launch_plan
             )
         )
     else:

@@ -911,7 +911,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def update_workflow_attributes(self, project, domain, workflow, matching_attributes):
+    def update_workflow_attributes(self, project, domain, workflow, launch_plan, matching_attributes):
         """
         Sets custom attributes for a project, domain, and workflow combination.
         :param Text project:
@@ -926,6 +926,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     project=project,
                     domain=domain,
                     workflow=workflow,
+                    launch_plan=launch_plan,
                     matching_attributes=matching_attributes.to_flyte_idl(),
                 )
             )

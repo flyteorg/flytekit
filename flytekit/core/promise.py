@@ -873,10 +873,11 @@ def create_and_link_node(
         var = typed_interface.inputs[k]
         if k not in kwargs:
             is_optional = False
-            for variant in var.type.union_type.variants:
-                if variant.simple == SimpleType.NONE:
-                    kwargs[k] = None
-                    is_optional = True
+            if var.type.union_type:
+                for variant in var.type.union_type.variants:
+                    if variant.simple == SimpleType.NONE:
+                        kwargs[k] = None
+                        is_optional = True
             if not is_optional:
                 raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
         v = kwargs[k]
