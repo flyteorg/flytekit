@@ -43,7 +43,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
     ):
         """
         :param name: unique name for the task, usually the function's module and name.
-        :param task_config: Configuration object for Task. Should be a unique type for that specific Task
+        :param task_config: Configuration object for Task. Should be a unique type for that specific Task.
         :param task_type: String task type to be associated with this Task
         :param container_image: String FQN for the image.
         :param requests: custom resource request settings.

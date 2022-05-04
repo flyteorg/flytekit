@@ -218,7 +218,11 @@ class ImageConfig(object):
         return ImageConfig.create_from(default_image=default_image, other_images=images)
 
     @classmethod
-    def create_from(cls, default_image: Image, other_images: typing.Optional[typing.List[Image]] = None) -> ImageConfig:
+    def create_from(
+        cls, default_image: Optional[Image], other_images: typing.Optional[typing.List[Image]] = None
+    ) -> ImageConfig:
+        if default_image and not isinstance(default_image, Image):
+            raise ValueError(f"Default image should be of type Image or None not {type(default_image)}")
         all_images = [default_image] if default_image else []
         if other_images:
             all_images.extend(other_images)
@@ -263,6 +267,7 @@ class ImageConfig(object):
 
         :return:
         """
+        m = m or {}
         def_img = Image.look_up_image_info("default", default_image) if default_image else None
         other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in m.items()]
         return cls.create_from(def_img, other_images)
