@@ -336,10 +336,6 @@ class Promise(object):
         if not self.is_ready:
             self.ref.node.runs_before(other.ref.node)
 
-    def __lshift__(self, other: typing.Union[Promise, VoidPromise]):
-        if not self.is_ready:
-            other.ref.node.runs_before(self.ref.node)
-
     def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
             return Promise(var=new_var, val=self.val)
@@ -667,10 +663,6 @@ class VoidPromise(object):
     def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
         if self.ref:
             self.ref.node.runs_before(other.ref.node)
-
-    def __lshift__(self, other: typing.Union[Promise, VoidPromise]):
-        if self.ref:
-            other.ref.node.runs_before(self.ref.node)
 
     @property
     def task_name(self):
