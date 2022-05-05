@@ -289,7 +289,6 @@ def get_serializable_workflow(
         nodes=upstream_node_models,
         outputs=entity.output_bindings,
     )
-
     return admin_workflow_models.WorkflowSpec(template=wf_t, sub_workflows=list(set(sub_wfs)))
 
 

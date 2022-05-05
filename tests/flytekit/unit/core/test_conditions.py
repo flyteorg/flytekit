@@ -266,6 +266,22 @@ def test_subworkflow_condition():
     assert branching(x=3) == 5
 
 
+def test_no_output_condition():
+    @task
+    def t():
+        ...
+
+    @workflow
+    def wf1():
+        t()
+
+    @workflow
+    def branching(x: int):
+        return conditional("test").if_(x == 2).then(t()).else_().then(wf1())
+
+    assert branching(x=2) is None
+
+
 def test_subworkflow_condition_named_tuple():
     nt = typing.NamedTuple("SampleNamedTuple", b=int, c=str)
 
