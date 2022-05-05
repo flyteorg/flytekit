@@ -785,7 +785,7 @@ class FlyteContextManager(object):
         # are already acquainted with
         default_context = FlyteContext(file_access=default_local_file_access_provider)
         default_user_space_params = ExecutionParameters(
-            execution_id=str(WorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
+            execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
             execution_date=_datetime.datetime.utcnow(),
             stats=mock_stats.MockStats(),
             logging=user_space_logger,

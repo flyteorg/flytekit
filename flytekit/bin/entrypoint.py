@@ -195,7 +195,7 @@ def setup_execution(
     """
     exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
     exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
-    exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_NAME", "_F_NM")
+    exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_ID", "_F_NM")
     exe_wf = get_one_of("FLYTE_INTERNAL_EXECUTION_WORKFLOW", "_F_WF")
     exe_lp = get_one_of("FLYTE_INTERNAL_EXECUTION_LAUNCHPLAN", "_F_LP")
 
