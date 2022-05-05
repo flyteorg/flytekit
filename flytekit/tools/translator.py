@@ -572,8 +572,6 @@ def get_serializable(
 
     elif isinstance(entity, PythonTask):
         cp_entity = get_serializable_task(entity_mapping, settings, entity)
-        if "use_setup" in entity.name:
-            import ipdb; ipdb.set_trace()
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
