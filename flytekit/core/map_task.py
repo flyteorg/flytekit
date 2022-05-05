@@ -242,14 +242,14 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_succes
 
     **Map Task Plugins**
 
-    As part of Flyte plugins, there are two plugins to run map tasks:
+    There are two plugins to run maptasks that ship as part of flyteplugins:
 
-    1. `K8s array <https://docs.flyte.org/en/latest/deployment/plugin_setup/k8s>`_
+    1. K8s Array
     2. `AWS batch <https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html>`_
 
-    Enabling a plugin is controlled in **Plugin Configuration** at `values-sandbox.yaml <https://github.com/flyteorg/flyte/blob/10cee9f139824512b6c5be1667d321bdbc8835fa/charts/flyte/values-sandbox.yaml#L152-L162>`_.
+    Enabling a plugin is controlled in the plugin configuration at `values-sandbox.yaml <https://github.com/flyteorg/flyte/blob/10cee9f139824512b6c5be1667d321bdbc8835fa/charts/flyte/values-sandbox.yaml#L152-L162>`_.
 
-    **K8s array**
+    **K8s Array**
 
     By default, the plugin configuration uses the ``K8s array`` plugin. This executes array tasks by launching a pod for every instance in the array. It’s simple to use.
 
@@ -257,10 +257,7 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_succes
 
     Learn more about ``AWS batch`` setup configuration `here <https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html#deployment-plugin-setup-aws-array>`_.
 
-    **Your plugin**
-
-    You can also implement your plugin that handles that task type and configure the system to use it instead.
-    ``K8s array`` and ``AWS batch`` are the names of these two plugins. If you change the config, flyte will attempt to use that one to launch array jobs.
+    A custom plugin can also be implemented to handle the task type.
 
     :param task_function: This argument is implicitly passed and represents the repeatable function
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
