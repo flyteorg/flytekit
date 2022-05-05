@@ -216,7 +216,7 @@ class ExecutionParameters(object):
         return self._execution_date
 
     @property
-    def execution_id(self) -> str:
+    def execution_id(self) -> _identifier.WorkflowExecutionIdentifier:
         """
         This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
         task executions in a workflow or sub-workflow execution.
