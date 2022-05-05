@@ -251,7 +251,7 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_succes
 
     **K8s Array**
 
-    By default, the plugin configuration uses the ``K8s array`` plugin. This executes array tasks by launching a pod for every instance in the array. It’s simple to use.
+    By default, the map task uses the ``K8s Array`` plugin. It executes array tasks by launching a pod for every instance in the array. It’s simple to use, has a straightforward implementation, and works out of the box.
 
     **AWS batch**
 
