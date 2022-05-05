@@ -240,6 +240,25 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_succes
     such as :py:class:`flytekit.TaskMetadata` and ``with_overrides`` are applied to individual instances
     of the mapped task.
 
+    **Map Task Plugins**
+
+    There are two plugins to run maptasks that ship as part of flyteplugins:
+
+    1. K8s Array
+    2. `AWS batch <https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html>`_
+
+    Enabling a plugin is controlled in the plugin configuration at `values-sandbox.yaml <https://github.com/flyteorg/flyte/blob/10cee9f139824512b6c5be1667d321bdbc8835fa/charts/flyte/values-sandbox.yaml#L152-L162>`_.
+
+    **K8s Array**
+
+    By default, the map task uses the ``K8s Array`` plugin. It executes array tasks by launching a pod for every instance in the array. It’s simple to use, has a straightforward implementation, and works out of the box.
+
+    **AWS batch**
+
+    Learn more about ``AWS batch`` setup configuration `here <https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html#deployment-plugin-setup-aws-array>`_.
+
+    A custom plugin can also be implemented to handle the task type.
+
     :param task_function: This argument is implicitly passed and represents the repeatable function
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
