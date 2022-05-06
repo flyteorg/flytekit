@@ -1,8 +1,5 @@
 import importlib
 
-from flytekit import task
-from flytekit.core.tracker import extract_task_module
-
 
 def test_dont_use_wrapper_location():
     m = importlib.import_module("tests.flytekit.unit.core.functools.decorator_usage")
