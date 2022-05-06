@@ -216,7 +216,7 @@ class ExecutionParameters(object):
         return self._execution_date
 
     @property
-    def execution_id(self) -> str:
+    def execution_id(self) -> _identifier.WorkflowExecutionIdentifier:
         """
         This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
         task executions in a workflow or sub-workflow execution.
@@ -785,7 +785,7 @@ class FlyteContextManager(object):
         # are already acquainted with
         default_context = FlyteContext(file_access=default_local_file_access_provider)
         default_user_space_params = ExecutionParameters(
-            execution_id=str(WorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
+            execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
             execution_date=_datetime.datetime.utcnow(),
             stats=mock_stats.MockStats(),
             logging=user_space_logger,
