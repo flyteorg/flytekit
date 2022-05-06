@@ -96,11 +96,6 @@ def get_registrable_entities(
             f"Multiple definitions of the following tasks were found: {duplicate_task_names}"
         )
 
-    # from flytekit.models.task import TaskSpec
-    # for xx in entities_to_be_serialized:
-    #     if isinstance(xx, TaskSpec) and "use_setup" in xx.template.id.name:
-    #         import ipdb; ipdb.set_trace()
-
     return [v.to_flyte_idl() for v in entities_to_be_serialized]
 
 
