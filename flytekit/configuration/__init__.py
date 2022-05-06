@@ -93,6 +93,7 @@ from docker_image import reference
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, set_if_exists
+from flytekit.loggers import logger
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -351,7 +352,7 @@ class PlatformConfig(object):
         )
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret",
-            read_file_contents_if_exists(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
+            read_file_if_exists(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
         )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
@@ -363,15 +364,13 @@ class PlatformConfig(object):
         return PlatformConfig(endpoint=endpoint, insecure=insecure)
 
 
-def read_file_contents_if_exists(filename: Optional[str], encoding=None) -> Optional[str]:
-    if not filename:
+def read_file_if_exists(filename: Optional[str], encoding=None) -> Optional[str]:
+    if not filename or len(filename) == 0:
         return None
 
-    try:
-        with open(filename, encoding=encoding) as fp:
-            return fp.readline()
-    except OSError:
-        return None
+    logger.debug(f"Reading client secret from [{filename}].")
+    with open(filename, encoding=encoding) as fp:
+        return fp.readline()
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
