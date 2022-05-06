@@ -43,6 +43,7 @@ def main(ctx, pkgs=None, config=None):
     """
     ctx.obj = dict()
 
+    # Handle package management - get from config if not specified on the command line
     pkgs = pkgs or []
     if config:
         ctx.obj[CTX_CONFIG_FILE] = config
