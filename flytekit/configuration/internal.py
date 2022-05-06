@@ -78,6 +78,13 @@ class Credentials(object):
     secret as a file is impossible.
     """
 
+    CLIENT_CREDENTIALS_SECRET_LOCATION = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret_location"),
+                                                     YamlConfigEntry("admin.clientSecretLocation"))
+    """
+    Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+    password from a mounted file.
+    """
+
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
 
     AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"))

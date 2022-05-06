@@ -219,7 +219,7 @@ class ImageConfig(object):
 
     @classmethod
     def create_from(
-        cls, default_image: Optional[Image], other_images: typing.Optional[typing.List[Image]] = None
+            cls, default_image: Optional[Image], other_images: typing.Optional[typing.List[Image]] = None
     ) -> ImageConfig:
         if default_image and not isinstance(default_image, Image):
             raise ValueError(f"Default image should be of type Image or None not {type(default_image)}")
@@ -310,14 +310,14 @@ class PlatformConfig(object):
     auth_mode: AuthType = AuthType.STANDARD
 
     def with_parameters(
-        self,
-        endpoint: str = "localhost:30081",
-        insecure: bool = False,
-        command: typing.Optional[typing.List[str]] = None,
-        client_id: typing.Optional[str] = None,
-        client_credentials_secret: typing.Optional[str] = None,
-        scopes: List[str] = None,
-        auth_mode: AuthType = AuthType.STANDARD,
+            self,
+            endpoint: str = "localhost:30081",
+            insecure: bool = False,
+            command: typing.Optional[typing.List[str]] = None,
+            client_id: typing.Optional[str] = None,
+            client_credentials_secret: typing.Optional[str] = None,
+            scopes: List[str] = None,
+            auth_mode: AuthType = AuthType.STANDARD,
     ) -> PlatformConfig:
         return PlatformConfig(
             endpoint=endpoint,
@@ -344,6 +344,10 @@ class PlatformConfig(object):
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
         )
+        kwargs = set_if_exists(
+            kwargs, "client_credentials_secret",
+            read_secret_from_location(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
+        )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
@@ -352,6 +356,14 @@ class PlatformConfig(object):
     @classmethod
     def for_endpoint(cls, endpoint: str, insecure: bool = False) -> PlatformConfig:
         return PlatformConfig(endpoint=endpoint, insecure=insecure)
+
+
+def read_secret_from_location(filename: str, encoding=None) -> Optional[str]:
+    try:
+        with open(filename, encoding=encoding) as fp:
+            return fp.readline()
+    except OSError:
+        return None
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -505,12 +517,12 @@ class Config(object):
     local_sandbox_path: str = tempfile.mkdtemp(prefix="flyte")
 
     def with_params(
-        self,
-        platform: PlatformConfig = None,
-        secrets: SecretsConfig = None,
-        stats: StatsConfig = None,
-        data_config: DataConfig = None,
-        local_sandbox_path: str = None,
+            self,
+            platform: PlatformConfig = None,
+            secrets: SecretsConfig = None,
+            stats: StatsConfig = None,
+            data_config: DataConfig = None,
+            local_sandbox_path: str = None,
     ) -> Config:
         return Config(
             platform=platform or self.platform,
@@ -557,11 +569,11 @@ class Config(object):
 
     @classmethod
     def for_endpoint(
-        cls,
-        endpoint: str,
-        insecure: bool = False,
-        data_config: typing.Optional[DataConfig] = None,
-        config_file: typing.Union[str, ConfigFile] = None,
+            cls,
+            endpoint: str,
+            insecure: bool = False,
+            data_config: typing.Optional[DataConfig] = None,
+            config_file: typing.Union[str, ConfigFile] = None,
     ) -> Config:
         """
         Creates an automatic config for the given endpoint and uses the config_file or environment variable for default.
@@ -663,12 +675,12 @@ class SerializationSettings(object):
 
     @classmethod
     def for_image(
-        cls,
-        image: str,
-        version: str,
-        project: str = "",
-        domain: str = "",
-        python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+            cls,
+            image: str,
+            version: str,
+            project: str = "",
+            domain: str = "",
+            python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     ) -> SerializationSettings:
         img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
         return SerializationSettings(
