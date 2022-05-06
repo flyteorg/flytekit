@@ -42,11 +42,7 @@ def main(ctx, pkgs=None, config=None):
     Entrypoint for all the user commands.
     """
     ctx.obj = dict()
-    # import importlib
-    # importlib.import_module("core.flyte_basics.hello_world")
-    #
-    # raise Exception("jfkdlsa")
-    # Handle package management - get from config if not specified on the command line
+
     pkgs = pkgs or []
     if config:
         ctx.obj[CTX_CONFIG_FILE] = config
