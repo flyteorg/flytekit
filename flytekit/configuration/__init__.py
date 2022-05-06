@@ -282,6 +282,11 @@ class AuthType(enum.Enum):
     BASIC = "basic"
     CLIENT_CREDENTIALS = "client_credentials"
     EXTERNAL_PROCESS = "external_process"
+    # The following values are copied from flyteidl's admin client to align the two code bases on the same enum values.
+    # The enum values above will continue to work.
+    CLIENTSECRET = "ClientSecret"
+    PKCE = "Pkce"
+    EXTERNALCOMMAND = "ExternalCommand"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -346,7 +351,7 @@ class PlatformConfig(object):
         )
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret",
-            read_secret_from_location(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
+            read_file_contents_if_exists(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
         )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
@@ -358,7 +363,10 @@ class PlatformConfig(object):
         return PlatformConfig(endpoint=endpoint, insecure=insecure)
 
 
-def read_secret_from_location(filename: str, encoding=None) -> Optional[str]:
+def read_file_contents_if_exists(filename: Optional[str], encoding=None) -> Optional[str]:
+    if not filename:
+        return None
+
     try:
         with open(filename, encoding=encoding) as fp:
             return fp.readline()

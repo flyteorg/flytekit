@@ -59,7 +59,7 @@ def _handle_rpc_error(retry=False):
                             raise
                         else:
                             # Retry: Start with 200ms wait-time and exponentially back-off up to 1 second.
-                            wait_time = min(200 * (2**i), max_wait_time)
+                            wait_time = min(200 * (2 ** i), max_wait_time)
                             cli_logger.error(f"Non-auth RPC error {e}, sleeping {wait_time}ms and retrying")
                             time.sleep(wait_time / 1000)
 
@@ -265,11 +265,11 @@ class RawSynchronousFlyteClient(object):
                 cli_logger.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
                 cfg_auth = AuthType.STANDARD
 
-        if cfg_auth == AuthType.STANDARD:
+        if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
             return self._refresh_credentials_standard()
-        elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS:
+        elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
             return self._refresh_credentials_basic()
-        elif cfg_auth == AuthType.EXTERNAL_PROCESS:
+        elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
             return self._refresh_credentials_from_command()
         else:
             raise ValueError(
@@ -824,7 +824,7 @@ class RawSynchronousFlyteClient(object):
     ####################################################################################################################
     @_handle_rpc_error(retry=True)
     def create_upload_location(
-        self, create_upload_location_request: _dataproxy_pb2.CreateUploadLocationRequest
+            self, create_upload_location_request: _dataproxy_pb2.CreateUploadLocationRequest
     ) -> _dataproxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
