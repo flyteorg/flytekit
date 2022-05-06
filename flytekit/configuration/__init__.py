@@ -92,8 +92,7 @@ from docker_image import reference
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, set_if_exists
-from flytekit.loggers import logger
+from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, set_if_exists, read_file_if_exists
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -362,15 +361,6 @@ class PlatformConfig(object):
     @classmethod
     def for_endpoint(cls, endpoint: str, insecure: bool = False) -> PlatformConfig:
         return PlatformConfig(endpoint=endpoint, insecure=insecure)
-
-
-def read_file_if_exists(filename: Optional[str], encoding=None) -> Optional[str]:
-    if not filename or len(filename) == 0:
-        return None
-
-    logger.debug(f"Reading client secret from [{filename}].")
-    with open(filename, encoding=encoding) as fp:
-        return fp.readline()
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)

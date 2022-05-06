@@ -44,7 +44,7 @@ class LegacyConfigEntry(object):
         return transform(v) if transform else v
 
     def read_from_file(
-        self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
+            self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
     ) -> typing.Optional[typing.Any]:
         if not cfg:
             return None
@@ -70,7 +70,7 @@ class YamlConfigEntry(object):
     config_value_type: typing.Type = str
 
     def read_from_file(
-        self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
+            self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
     ) -> typing.Optional[typing.Any]:
         if not cfg:
             return None
@@ -253,3 +253,19 @@ def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
     if v:
         d[k] = v
     return d
+
+
+def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing.Optional[str]:
+    """
+    Reads the contents of the file if passed a path. Otherwise, returns None.
+
+    :param filename: The file path to load
+    :param encoding: The encoding to use when reading the file.
+    :return: The contents of the file as a string or None.
+    """
+    if not filename or len(filename) == 0:
+        return None
+
+    logger.debug(f"Reading client secret from [{filename}].")
+    with open(filename, encoding=encoding) as fp:
+        return fp.readline()
