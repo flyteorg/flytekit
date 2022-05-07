@@ -742,9 +742,11 @@ class FlyteContextManager(object):
     @staticmethod
     @contextmanager
     def with_context(b: FlyteContext.Builder) -> Generator[FlyteContext, None, None]:
+        print("in with context!!!!!!!!!!!!!")
         ctx = FlyteContextManager.push_context(b.build(), FlyteContextManager.get_origin_stackframe(limit=3))
         l = FlyteContextManager.size()
         try:
+            print("yielding!!!!!!!!!!!!!")
             yield ctx
         finally:
             # NOTE: Why? Do we have a loop here to ensure that we are popping all context up to the previously recorded
@@ -761,6 +763,7 @@ class FlyteContextManager(object):
             # Also we know that top level construct like workflow and tasks always use context managers and that
             # context manager mutations are single threaded, hence we can safely cleanup leaks in this section
             # Also this is only in the error cases!
+            print("in finally cleaning up!!!!!!!!!!!!")
             while FlyteContextManager.size() >= l:
                 FlyteContextManager.pop_context()
 

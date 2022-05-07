@@ -293,6 +293,14 @@ class FileAccessProvider(object):
     This is the class that is available through the FlyteContext and can be used for persisting data to the remote
     durable store.
     """
+    INSTANCE = 0
+
+    @classmethod
+    def update(cls) -> int:
+        old = cls.INSTANCE
+        cls.INSTANCE += 1
+        print(f"Creating FileAccessProvider instance {old} cls ID: {id(cls)}")
+        return old
 
     def __init__(
         self,
@@ -317,6 +325,8 @@ class FileAccessProvider(object):
         )
         self._raw_output_prefix = raw_output_prefix
         self._data_config = data_config if data_config else DataConfig.auto()
+
+        self._counter = FileAccessProvider.update()
 
     @property
     def data_config(self) -> DataConfig:
@@ -416,6 +426,7 @@ class FileAccessProvider(object):
         :param Text local_path:
         :param bool is_multipart:
         """
+        print(f"Calling get_data from instance {self._counter} config: {self.data_config}")
         try:
             with PerformanceTimer(f"Copying ({remote_path} -> {local_path})"):
                 pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)

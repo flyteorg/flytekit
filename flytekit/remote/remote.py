@@ -145,7 +145,7 @@ class FlyteRemote(object):
         )
 
         # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.with_context(
+        FlyteContextManager.push_context(
             FlyteContextManager.current_context().with_file_access(self._file_access).build()
         )
 

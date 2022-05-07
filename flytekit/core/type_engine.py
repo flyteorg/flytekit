@@ -1535,6 +1535,9 @@ class LiteralsResolver(collections.UserDict):
                         raise e
                 else:
                     ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
+        ctx = FlyteContext.current_context()
+        print(f"Context id {id(ctx)}")
+
         val = TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
         self._native_values[attr] = val
         return val
