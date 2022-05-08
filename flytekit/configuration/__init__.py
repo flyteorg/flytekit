@@ -533,10 +533,11 @@ class Config(object):
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
         """
-        Automatically constructs the Config Object. The order of precendence is as follows
+        Automatically constructs the Config Object. The order of precedence is as follows
           1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
           2. If not found in environment then values ar read from the config file
           3. If not found in the file, then the default values are used.
+
         :param config_file: file path to read the config from, if not specified default locations are searched
         :return: Config
         """
