@@ -32,4 +32,4 @@ def test_client_secret_parsing_from_location():
     cfg = Config.auto(
         config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/creds_secret_location.yaml")
     )
-    assert cfg.platform.client_credentials_secret == "hello"
+    assert cfg.platform.client_credentials_secret == "hello\n"
