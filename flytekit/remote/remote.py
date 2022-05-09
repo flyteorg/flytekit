@@ -24,7 +24,7 @@ from flytekit.clients.helpers import iterate_node_executions, iterate_task_execu
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, context_manager, tracker, utils
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContextManager, FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask

@@ -293,6 +293,7 @@ class FileAccessProvider(object):
     This is the class that is available through the FlyteContext and can be used for persisting data to the remote
     durable store.
     """
+
     INSTANCE = 0
 
     @classmethod

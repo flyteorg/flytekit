@@ -1441,8 +1441,10 @@ class LiteralsResolver(collections.UserDict):
     """
 
     def __init__(
-        self, literals: typing.Dict[str, Literal], variable_map: Optional[Dict[str, _interface_models.Variable]] = None,
-            ctx: Optional[FlyteContext] = None,
+        self,
+        literals: typing.Dict[str, Literal],
+        variable_map: Optional[Dict[str, _interface_models.Variable]] = None,
+        ctx: Optional[FlyteContext] = None,
     ):
         """
         :param literals: A Python map of strings to Flyte Literal models.
