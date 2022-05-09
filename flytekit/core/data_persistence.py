@@ -299,7 +299,7 @@ class FileAccessProvider(object):
     def update(cls) -> int:
         old = cls.INSTANCE
         cls.INSTANCE += 1
-        print(f"Creating FileAccessProvider instance {old} cls ID: {id(cls)}")
+        # print(f"Creating FileAccessProvider instance {old} cls ID: {id(cls)}")
         return old
 
     def __init__(
