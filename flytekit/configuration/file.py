@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import configparser as _configparser
 import os
+import pathlib
 import typing
 from dataclasses import dataclass
 from os import getenv
@@ -263,9 +264,9 @@ def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing
     :param encoding: The encoding to use when reading the file.
     :return: The contents of the file as a string or None.
     """
-    if not filename or len(filename) == 0:
+    if not filename:
         return None
 
     logger.debug(f"Reading client secret from [{filename}].")
-    with open(filename, encoding=encoding) as fp:
+    with open(pathlib.Path(filename), encoding=encoding) as fp:
         return fp.readline()
