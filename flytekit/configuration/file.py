@@ -268,6 +268,6 @@ def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing
         return None
 
     filename = pathlib.Path(filename)
-    logger.debug(f"Reading file contents from [{filename}] with current directory [{os.curdir}].")
+    logger.debug(f"Reading file contents from [{filename}] with current directory [{os.getcwd()}].")
     with open(filename, encoding=encoding) as fp:
         return fp.readline()
