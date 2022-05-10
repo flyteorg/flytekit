@@ -1,6 +1,6 @@
 import os
 
-from flytekit.configuration import Config, get_config_file
+from flytekit.configuration import Config, get_config_file, read_file_if_exists
 from flytekit.configuration.internal import Credentials, Images
 
 
@@ -33,3 +33,18 @@ def test_client_secret_parsing_from_location():
         config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/creds_secret_location.yaml")
     )
     assert cfg.platform.client_credentials_secret == "hello\n"
+
+
+def test_read_file_if_exists():
+    # Test reading full path of this file.
+    first_line_of_this_file = read_file_if_exists(filename=__file__)
+    assert "import os" in first_line_of_this_file  # first line of this file.
+
+    assert read_file_if_exists(None) is None
+    assert read_file_if_exists("") is None
+
+
+def test_command():
+    cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
+    res = Credentials.COMMAND.read(cfg)
+    assert res == ["aws", "sso", "get-token"]
