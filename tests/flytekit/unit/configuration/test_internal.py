@@ -25,7 +25,7 @@ def test_client_secret_location():
         os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/creds_secret_location.yaml")
     )
     secret_location = Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(cfg)
-    assert secret_location == "./configs/fake_secret"
+    assert secret_location == "./flytekit/union/configuration/configs/fake_secret"
 
 
 def test_client_secret_parsing_from_location():
