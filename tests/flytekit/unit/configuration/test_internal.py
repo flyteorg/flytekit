@@ -1,6 +1,6 @@
 import os
 
-from flytekit.configuration import Config, get_config_file, read_file_if_exists
+from flytekit.configuration import get_config_file, read_file_if_exists
 from flytekit.configuration.internal import Credentials, Images
 
 
@@ -26,13 +26,6 @@ def test_client_secret_location():
     )
     secret_location = Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(cfg)
     assert secret_location == "../tests/flytekit/unit/configuration/configs/fake_secret"
-
-
-def test_client_secret_parsing_from_location():
-    cfg = Config.auto(
-        config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/creds_secret_location.yaml")
-    )
-    assert cfg.platform.client_credentials_secret == "hello\n"
 
 
 def test_read_file_if_exists():
