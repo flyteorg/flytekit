@@ -16,6 +16,7 @@ from flytekit import BlobType, Literal, Scalar
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager, tracker
+from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
@@ -393,7 +394,7 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
     ]
 
 
-def load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
+def load_naive_entity(module_name: str, entity_name: str) -> typing.Union[WorkflowBase, PythonTask]:
     """
     Load the workflow of a the script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
@@ -404,7 +405,7 @@ def load_naive_entity(module_name: str, workflow_name: str) -> WorkflowBase:
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
-    return module_loader.load_object_from_module(f"{module_name}.{workflow_name}")
+    return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
 
 
 def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
@@ -422,9 +423,9 @@ print(exec.outputs)
     )
 
 
-def get_workflows_in_file(filename: str) -> typing.List[str]:
+def get_entities_in_file(filename: str) -> typing.Tuple[typing.List[str], typing.List[str]]:
     """
-    Returns a list of flyte workflow names in a file.
+    Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
         SerializationSettings(None)
@@ -435,17 +436,21 @@ def get_workflows_in_file(filename: str) -> typing.List[str]:
             importlib.import_module(module_name)
 
     workflows = []
+    tasks = []
     module = importlib.import_module(module_name)
     for k in dir(module):
         o = module.__dict__[k]
         if isinstance(o, PythonFunctionWorkflow):
             _, _, fn, _ = tracker.extract_task_module(o)
             workflows.append(fn)
+        elif isinstance(o, PythonTask):
+            _, _, fn, _ = tracker.extract_task_module(o)
+            tasks.append(fn)
 
-    return workflows
+    return workflows, tasks
 
 
-def run_command(ctx: click.Context, wf_entity: PythonFunctionWorkflow):
+def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
     """
@@ -454,11 +459,11 @@ def run_command(ctx: click.Context, wf_entity: PythonFunctionWorkflow):
         run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
         project, domain = run_level_params.get("project"), run_level_params.get("domain")
         inputs = {}
-        for input_name, _ in wf_entity.python_interface.inputs.items():
+        for input_name, _ in entity.python_interface.inputs.items():
             inputs[input_name] = kwargs.get(input_name)
 
         if not ctx.obj[REMOTE_FLAG_KEY]:
-            output = wf_entity(**inputs)
+            output = entity(**inputs)
             click.echo(output)
             return
 
@@ -468,8 +473,8 @@ def run_command(ctx: click.Context, wf_entity: PythonFunctionWorkflow):
         #     PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
         # )
 
-        wf = remote.register_script(
-            wf_entity,
+        remote_entity = remote.register_script(
+            entity,
             project=project,
             domain=domain,
             image_config=run_level_params.get("image_config", None),
@@ -484,14 +489,14 @@ def run_command(ctx: click.Context, wf_entity: PythonFunctionWorkflow):
             options = Options.default_from(k8s_service_account=service_account)
 
         execution = remote.execute(
-            wf,
+            remote_entity,
             inputs=inputs,
             project=project,
             domain=domain,
             name=run_level_params.get("name"),
             wait=run_level_params.get("wait_execution"),
             options=options,
-            type_hints=wf_entity.python_interface.inputs,
+            type_hints=entity.python_interface.inputs,
         )
 
         console_url = remote.generate_console_url(execution)
@@ -513,10 +518,11 @@ class WorkflowCommand(click.MultiCommand):
         self._filename = filename
 
     def list_commands(self, ctx):
-        workflows = get_workflows_in_file(self._filename)
+        workflows, tasks = get_entities_in_file(self._filename)
+        workflows.extend(tasks)
         return workflows
 
-    def get_command(self, ctx, workflow):
+    def get_command(self, ctx, exe_entity):
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(
@@ -524,7 +530,7 @@ class WorkflowCommand(click.MultiCommand):
             )
 
         module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
-        wf_entity = load_naive_entity(module, workflow)
+        entity = load_naive_entity(module, exe_entity)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
         p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("project")
@@ -537,24 +543,24 @@ class WorkflowCommand(click.MultiCommand):
 
         # Add options for each of the workflow inputs
         params = []
-        for input_name, input_type_val in wf_entity.python_interface.inputs_with_defaults.items():
-            literal_var = wf_entity.interface.inputs.get(input_name)
+        for input_name, input_type_val in entity.python_interface.inputs_with_defaults.items():
+            literal_var = entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
             params.append(
                 to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn)
             )
         cmd = click.Command(
-            name=workflow,
+            name=exe_entity,
             params=params,
-            callback=run_command(ctx, wf_entity),
-            help=f"Run {module}.{workflow} in script mode",
+            callback=run_command(ctx, entity),
+            help=f"Run {module}.{exe_entity} in script mode",
         )
         return cmd
 
 
 class RunCommand(click.MultiCommand):
     """
-    A click command group for registering and executing flyte workflows in a file.
+    A click command group for registering and executing flyte workflows & tasks in a file.
     """
 
     def __init__(self, *args, **kwargs):
@@ -566,11 +572,11 @@ class RunCommand(click.MultiCommand):
 
     def get_command(self, ctx, filename):
         ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
-        return WorkflowCommand(filename, name=filename, help="Run a workflow in a file using script mode")
+        return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
 
 
 run = RunCommand(
     name="run",
-    help="Run_old command, a.k.a. script mode. It allows for a a single script to be "
-    + "registered and run from the command line (e.g. Jupyter notebooks).",
+    help="Run command: This command can execute either a workflow or a task from the commandline, for "
+    "fully self-contained scripts. Tasks and workflows cannot be imported from other files currently.",
 )

@@ -507,7 +507,7 @@ class FlyteRemote(object):
 
     def register_script(
         self,
-        entity: WorkflowBase,
+        entity: typing.Union[WorkflowBase, PythonTask],
         image_config: typing.Optional[ImageConfig] = None,
         version: typing.Optional[str] = None,
         project: typing.Optional[str] = None,
@@ -515,7 +515,7 @@ class FlyteRemote(object):
         destination_dir: str = ".",
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
-    ) -> FlyteWorkflow:
+    ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
         :param destination_dir:
@@ -523,7 +523,7 @@ class FlyteRemote(object):
         :param project:
         :param image_config:
         :param version: version for the entity to be registered as
-        :param entity: The workflow to be registered
+        :param entity: The workflow to be registered or the task to be registered
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
@@ -565,6 +565,8 @@ class FlyteRemote(object):
             h.update(bytes(__version__, "utf-8"))
             version = base64.urlsafe_b64encode(h.digest())
 
+        if isinstance(entity, PythonTask):
+            return self.register_task(entity, serialization_settings, version)
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
     def register_launch_plan(
