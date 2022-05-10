@@ -96,7 +96,8 @@ def test_interface():
         "my_df": interface_models.Variable(type=df_literal_type, description=""),
     }
 
-    lr = LiteralsResolver(lm, variable_map=variable_map)
+    lr = LiteralsResolver(lm, variable_map=variable_map, ctx=ctx)
+    assert lr._ctx is ctx
 
     with pytest.raises(ValueError):
         lr["not"]  # noqa
