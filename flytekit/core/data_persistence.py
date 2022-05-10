@@ -294,8 +294,6 @@ class FileAccessProvider(object):
     durable store.
     """
 
-    INSTANCE = 0
-
     def __init__(
         self,
         local_sandbox_dir: Union[str, os.PathLike],
