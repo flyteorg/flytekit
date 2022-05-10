@@ -24,7 +24,7 @@ from flytekit.clients.helpers import iterate_node_executions, iterate_task_execu
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, context_manager, tracker, utils
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
@@ -145,9 +145,14 @@ class FlyteRemote(object):
         )
 
         # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.push_context(
-            FlyteContextManager.current_context().with_file_access(self._file_access).build()
-        )
+        # FlyteContextManager.push_context(
+        #     FlyteContextManager.current_context().with_file_access(self._file_access).build()
+        # )
+        self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+
+    @property
+    def context(self) -> FlyteContext:
+        return self._ctx
 
     @property
     def client(self) -> SynchronousFlyteClient:
@@ -1380,11 +1385,11 @@ class FlyteRemote(object):
         """Helper for assigning synced inputs and outputs to an execution object."""
         with self.remote_context():
             input_literal_map = self._get_input_literal_map(execution_data)
-            execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs)
+            execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs, self.context)
 
             if execution.is_done and not execution.error:
                 output_literal_map = self._get_output_literal_map(execution_data)
-                execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs)
+                execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs, self.context)
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
