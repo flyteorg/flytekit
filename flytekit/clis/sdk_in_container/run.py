@@ -13,6 +13,7 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 
 from flytekit import BlobType, Literal, Scalar
+from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_DOMAIN, CTX_PROJECT
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager, tracker
@@ -20,6 +21,7 @@ from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
+from flytekit.loggers import cli_logger
 from flytekit.models import literals
 from flytekit.models.interface import Variable
 from flytekit.models.literals import Blob, BlobMetadata, Primitive
@@ -527,9 +529,14 @@ class WorkflowCommand(click.MultiCommand):
         wf_entity = load_naive_entity(module, workflow)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
-        p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("project")
-        d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("domain")
-        r = FlyteRemote(Config.auto(), default_project=p, default_domain=d)
+        p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
+        d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
+        cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
+        cfg_obj = Config.auto(cfg_file_location)
+        cli_logger.info(
+            f"Run is using config object {cfg_obj}" + (f" with file {cfg_file_location}" if cfg_file_location else "")
+        )
+        r = FlyteRemote(cfg_obj, default_project=p, default_domain=d)
         ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
         get_upload_url_fn = functools.partial(r.client.get_upload_signed_url, project=p, domain=d)
 
