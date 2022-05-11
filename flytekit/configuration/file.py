@@ -237,6 +237,7 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
         # If not, then return None and let caller handle
         return None
     if isinstance(c, str):
+        logger.debug(f"Using specified config file at {c}")
         return ConfigFile(c)
     return c
 
