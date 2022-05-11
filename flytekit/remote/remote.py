@@ -428,7 +428,7 @@ class FlyteRemote(object):
                         remote_logger.info(f"{entity.name} already exists")
                     # Let us also create a default launch-plan, ideally the default launchplan should be added
                     # to the orderedDict, but we do not.
-                    default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+                    default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
                     lp_entity = get_serializable_launch_plan(
                         OrderedDict(),
                         settings or serialization_settings,
@@ -497,7 +497,7 @@ class FlyteRemote(object):
             serialization_settings = b.build()
         ident = self._serialize_and_register(entity, serialization_settings, version, options)
         if default_launch_plan:
-            default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
                 default_lp, version=ident.version, project=ident.project, domain=ident.domain, options=options
             )
@@ -1006,7 +1006,7 @@ class FlyteRemote(object):
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             remote_logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
-            default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
                 default_lp,
                 project=resolved_identifiers.project,
