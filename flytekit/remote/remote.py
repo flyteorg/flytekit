@@ -1001,7 +1001,6 @@ class FlyteRemote(object):
                 raise ValueError("Need image config since we are registering")
             self.register_workflow(entity, ss, version=version, options=options)
 
-        ctx = context_manager.FlyteContext.current_context()
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
