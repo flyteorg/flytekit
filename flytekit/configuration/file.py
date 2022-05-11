@@ -45,7 +45,7 @@ class LegacyConfigEntry(object):
         return transform(v) if transform else v
 
     def read_from_file(
-        self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
+            self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
     ) -> typing.Optional[typing.Any]:
         if not cfg:
             return None
@@ -71,7 +71,7 @@ class YamlConfigEntry(object):
     config_value_type: typing.Type = str
 
     def read_from_file(
-        self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
+            self, cfg: ConfigFile, transform: typing.Optional[typing.Callable] = None
     ) -> typing.Optional[typing.Any]:
         if not cfg:
             return None
@@ -269,5 +269,4 @@ def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing
 
     filename = pathlib.Path(filename)
     logger.debug(f"Reading file contents from [{filename}] with current directory [{os.getcwd()}].")
-    with open(filename, encoding=encoding) as fp:
-        return fp.readline()
+    return filename.read_text(encoding=encoding)
