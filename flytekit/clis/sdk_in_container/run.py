@@ -423,14 +423,29 @@ print(exec.outputs)
     )
 
 
-def get_entities_in_file(filename: str) -> typing.Tuple[typing.List[str], typing.List[str]]:
+class Entities(typing.NamedTuple):
+    """
+    NamedTuple to group all entities in a file
+    """
+
+    workflows: typing.List[str]
+    tasks: typing.List[str]
+
+    def all(self) -> typing.List[str]:
+        e = []
+        e.extend(self.workflows)
+        e.extend(self.tasks)
+        return e
+
+
+def get_entities_in_file(filename: str) -> Entities:
     """
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
         SerializationSettings(None)
     )
-    module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
+    module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
@@ -447,7 +462,7 @@ def get_entities_in_file(filename: str) -> typing.Tuple[typing.List[str], typing
             _, _, fn, _ = tracker.extract_task_module(o)
             tasks.append(fn)
 
-    return workflows, tasks
+    return Entities(workflows, tasks)
 
 
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
@@ -518,9 +533,8 @@ class WorkflowCommand(click.MultiCommand):
         self._filename = filename
 
     def list_commands(self, ctx):
-        workflows, tasks = get_entities_in_file(self._filename)
-        workflows.extend(tasks)
-        return workflows
+        entities = get_entities_in_file(self._filename)
+        return entities.all()
 
     def get_command(self, ctx, exe_entity):
         rel_path = os.path.relpath(self._filename)
