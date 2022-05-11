@@ -528,8 +528,6 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
-        _, _, _, fname = tracker.extract_task_module(entity)
-
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 

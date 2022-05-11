@@ -469,10 +469,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
 
-        # StructuredDatasetTransformerEngine.register(
-        #     PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
-        # )
-
         remote_entity = remote.register_script(
             entity,
             project=project,
@@ -522,7 +518,17 @@ class WorkflowCommand(click.MultiCommand):
         workflows.extend(tasks)
         return workflows
 
-    def get_command(self, ctx, exe_entity):
+    def get_command(self, ctx: click.Context, exe_entity: str) -> click.Command:
+        """
+        This command uses the filename with which this command was created, and the string name of the entity passed
+          after the Python filename on the command line, to load the Python object, and then return the Command that
+          click should run.
+        :param ctx: The click Context object.
+        :param exe_entity: string of the flyte entity provided by the user. Should be the name of a workflow, or task
+          function.
+        :return:
+        """
+        import ipdb; ipdb.set_trace()
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(
@@ -549,6 +555,14 @@ class WorkflowCommand(click.MultiCommand):
             params.append(
                 to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn)
             )
+
+        """
+        Load all the objects in click, whether in one file or in a bunch of files.
+        Call a function in FlyteRemote to upload something to somewhere.
+          Do we need to consider when to upload something?
+        Pass all the objects over to flyteremote for registration.
+        """
+
         cmd = click.Command(
             name=exe_entity,
             params=params,
