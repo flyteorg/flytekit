@@ -17,12 +17,11 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
-
 from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.core import constants, context_manager, tracker, utils
+from flytekit.core import constants, tracker, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
