@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import configparser as _configparser
 import os
+import pathlib
 import typing
 from dataclasses import dataclass
 from os import getenv
@@ -254,3 +255,19 @@ def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
     if v:
         d[k] = v
     return d
+
+
+def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing.Optional[str]:
+    """
+    Reads the contents of the file if passed a path. Otherwise, returns None.
+
+    :param filename: The file path to load
+    :param encoding: The encoding to use when reading the file.
+    :return: The contents of the file as a string or None.
+    """
+    if not filename:
+        return None
+
+    filename = pathlib.Path(filename)
+    logger.debug(f"Reading file contents from [{filename}] with current directory [{os.getcwd()}].")
+    return filename.read_text(encoding=encoding)

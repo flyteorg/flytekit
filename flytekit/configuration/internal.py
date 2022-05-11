@@ -60,7 +60,7 @@ class GCP(object):
 
 class Credentials(object):
     SECTION = "credentials"
-    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command"), None, list)
+    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command", list), YamlConfigEntry("admin.command", list))
     """
     This command is executed to return a token using an external process.
     """
@@ -78,15 +78,23 @@ class Credentials(object):
     secret as a file is impossible.
     """
 
+    CLIENT_CREDENTIALS_SECRET_LOCATION = ConfigEntry(
+        LegacyConfigEntry(SECTION, "client_secret_location"), YamlConfigEntry("admin.clientSecretLocation")
+    )
+    """
+    Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+    password from a mounted file.
+    """
+
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
 
-    AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"))
+    AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"), YamlConfigEntry("admin.authType"))
     """
     The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
-    - 'standard' This uses the pkce-enhanced authorization code flow by opening a browser window to initiate credentials
-            access.
-    - 'basic' or 'client_credentials' This uses cert-based auth in which the end user enters a client id and a client
-            secret and public key encryption is used to facilitate authentication.
+    - 'standard' or 'Pkce': This uses the pkce-enhanced authorization code flow by opening a browser window to initiate
+            credentials access.
+    - 'basic', 'client_credentials' or 'clientSecret': This uses symmetric key auth in which the end user enters a
+            client id and a client secret and public key encryption is used to facilitate authentication.
     - None: No auth will be attempted.
     """
 
