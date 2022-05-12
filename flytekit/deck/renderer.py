@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 import pandas
 from typing_extensions import Protocol, runtime_checkable
@@ -18,7 +18,7 @@ class TopFrameRenderer:
     Render a DataFrame as an HTML table.
     """
 
-    def __init__(self, max_rows: int = 5):
+    def __init__(self, max_rows: Optional[int] = None):
         self._max_rows = max_rows
 
     def to_html(self, df: pandas.DataFrame) -> str:

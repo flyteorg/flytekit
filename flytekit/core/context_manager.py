@@ -715,7 +715,7 @@ class FlyteContextManager(object):
         try:
             flyte_context_Var.get()
         except LookupError:
-            # we will lost the default flyte context in the new thread. Therefore, reinitialize the context when running in the thread.
+            # we will lost the default flyte context in the new thread. Therefore, reinitialize the context when running in the new thread.
             FlyteContextManager.initialize()
         return flyte_context_Var.get()[-1]
 
@@ -724,7 +724,9 @@ class FlyteContextManager(object):
         if not f:
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
-        flyte_context_Var.get().append(ctx)
+        context_list = flyte_context_Var.get()
+        context_list.append(ctx)
+        flyte_context_Var.set(context_list)
         t = "\t"
         logger.debug(
             f"{t * ctx.level}[{len(flyte_context_Var.get())}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
@@ -771,9 +773,7 @@ class FlyteContextManager(object):
 
     @staticmethod
     def size() -> int:
-        a = flyte_context_Var.get()
-        print("sdfsdfsdfsdf", type(a))
-        return len(a)
+        return len(flyte_context_Var.get())
 
     @staticmethod
     def initialize():

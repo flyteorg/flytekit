@@ -125,8 +125,6 @@ class ConditionalSection:
             if c.output_promise is None and c.err is None:
                 # One node returns a void output and no error, we will default to None return
                 return None
-            if isinstance(c.output_promise, VoidPromise):
-                return None
             if c.output_promise is not None:
                 var = []
                 if isinstance(c.output_promise, tuple):
@@ -149,8 +147,8 @@ class ConditionalSection:
 
     def _compute_outputs(self, n: Node) -> Optional[Union[Promise, Tuple[Promise], VoidPromise]]:
         curr = self.compute_output_vars()
-        if curr is None or len(curr) == 0:
-            return VoidPromise(n.id, NodeOutput(node=n, var="placeholder"))
+        if curr is None:
+            return VoidPromise(n.id)
         promises = [Promise(var=x, val=NodeOutput(node=n, var=x)) for x in curr]
         # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)

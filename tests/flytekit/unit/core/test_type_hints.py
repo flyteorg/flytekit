@@ -329,7 +329,7 @@ def test_wf1_with_sql():
     with task_mock(sql) as mock:
         mock.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
         assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
-        assert context_manager.FlyteContextManager.size() == 1
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_sql_with_patch():
@@ -583,7 +583,7 @@ def test_wf1_with_dynamic():
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
 
-        assert context_manager.FlyteContextManager.size() == 1
+    assert context_manager.FlyteContextManager.size() == 1
 
 
 def test_wf1_with_fast_dynamic():
