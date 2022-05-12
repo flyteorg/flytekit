@@ -36,7 +36,7 @@ from flytekit.core.data_persistence import FileAccessProvider, default_local_fil
 from flytekit.core.node import Node
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
-from flytekit.loggers import user_space_logger
+from flytekit.loggers import logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -717,25 +717,63 @@ class FlyteContextManager(object):
         except LookupError:
             # we will lost the default flyte context in the new thread. Therefore, reinitialize the context when running in the thread.
             FlyteContextManager.initialize()
-        return flyte_context_Var.get()
+        return flyte_context_Var.get()[-1]
 
     @staticmethod
     def push_context(ctx: FlyteContext, f: Optional[traceback.FrameSummary] = None) -> FlyteContext:
         if not f:
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
-        flyte_context_Var.set(ctx)
+        flyte_context_Var.get().append(ctx)
+        t = "\t"
+        logger.debug(
+            f"{t * ctx.level}[{len(flyte_context_Var.get())}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+        )
+        return ctx
+
+    @staticmethod
+    def pop_context() -> FlyteContext:
+        context_list = flyte_context_Var.get()
+        ctx = context_list.pop()
+        flyte_context_Var.set(context_list)
+        t = "\t"
+        logger.debug(
+            f"{t * ctx.level}[{len(flyte_context_Var.get()) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+        )
+        if len(flyte_context_Var.get()) == 0:
+            raise AssertionError(f"Illegal Context state! Popped, {ctx}")
         return ctx
 
     @staticmethod
     @contextmanager
     def with_context(b: FlyteContext.Builder) -> Generator[FlyteContext, None, None]:
-        old_ctx = FlyteContextManager.current_context()
         ctx = FlyteContextManager.push_context(b.build(), FlyteContextManager.get_origin_stackframe(limit=3))
+        l = FlyteContextManager.size()
         try:
             yield ctx
         finally:
-            flyte_context_Var.set(old_ctx)
+            # NOTE: Why? Do we have a loop here to ensure that we are popping all context up to the previously recorded
+            # length? This is because it is possible that a conditional context may have leaked. Because of the syntax
+            # of conditionals, if a conditional section fails to evaluate / compile, the context is not removed from the
+            # stack. This is because context managers cannot be used in the conditional section.
+            #   conditional().if_(...)......
+            # Ideally we should have made conditional like so
+            # with conditional() as c
+            #      c.if_().....
+            # the reason why we did not do that, was because, of the brevity and the assignment of outputs. Also, nested
+            # conditionals using the context manager syntax is not easy to follow. So we wanted to optimize for the user
+            # ergonomics
+            # Also we know that top level construct like workflow and tasks always use context managers and that
+            # context manager mutations are single threaded, hence we can safely cleanup leaks in this section
+            # Also this is only in the error cases!
+            while FlyteContextManager.size() >= l:
+                FlyteContextManager.pop_context()
+
+    @staticmethod
+    def size() -> int:
+        a = flyte_context_Var.get()
+        print("sdfsdfsdfsdf", type(a))
+        return len(a)
 
     @staticmethod
     def initialize():
@@ -767,7 +805,7 @@ class FlyteContextManager(object):
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()
         default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
-        flyte_context_Var.set(default_context)
+        flyte_context_Var.set([default_context])
 
 
 class FlyteEntities(object):

@@ -61,6 +61,8 @@ def test_wf1_with_fast_dynamic():
                 "--dest-dir /User/flyte/workflows"
             )
 
+        assert context_manager.FlyteContextManager.size() == 1
+
 
 def test_dynamic_local():
     @task
