@@ -3,7 +3,7 @@ import os
 import mock
 
 from flytekit.configuration import get_config_file, read_file_if_exists
-from flytekit.configuration.internal import Credentials, Images
+from flytekit.configuration.internal import AWS, Credentials, Images
 
 
 def test_load_images():
@@ -46,8 +46,17 @@ def test_command():
 
 
 @mock.patch("flytekit.configuration.file.os")
-def test_command3(mocked):
+def test_command_2(mocked):
     mocked.environ.get.return_value = "a,b,c"
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
     res = Credentials.COMMAND.read(cfg)
     assert res == ["a", "b", "c"]
+
+
+@mock.patch("flytekit.configuration.file.os")
+def test_some_int(mocked):
+    mocked.environ.get.side_effect = "5"
+    cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
+    res = AWS.RETRIES.read(cfg)
+    assert type(res) is int
+    assert res == 5
