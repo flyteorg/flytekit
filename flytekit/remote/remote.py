@@ -22,9 +22,9 @@ from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.core import constants, context_manager, tracker, utils
+from flytekit.core import constants, tracker, utils
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
@@ -144,10 +144,12 @@ class FlyteRemote(object):
             data_config=config.data_config,
         )
 
-        # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.with_context(
-            FlyteContextManager.current_context().with_file_access(self._file_access).build()
-        )
+        # Save the file access object locally, build a context for it and save that as well.
+        self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+
+    @property
+    def context(self) -> FlyteContext:
+        return self._ctx
 
     @property
     def client(self) -> SynchronousFlyteClient:
@@ -426,7 +428,7 @@ class FlyteRemote(object):
                         remote_logger.info(f"{entity.name} already exists")
                     # Let us also create a default launch-plan, ideally the default launchplan should be added
                     # to the orderedDict, but we do not.
-                    default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+                    default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
                     lp_entity = get_serializable_launch_plan(
                         OrderedDict(),
                         settings or serialization_settings,
@@ -495,7 +497,7 @@ class FlyteRemote(object):
             serialization_settings = b.build()
         ident = self._serialize_and_register(entity, serialization_settings, version, options)
         if default_launch_plan:
-            default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
                 default_lp, version=ident.version, project=ident.project, domain=ident.domain, options=options
             )
@@ -999,12 +1001,11 @@ class FlyteRemote(object):
                 raise ValueError("Need image config since we are registering")
             self.register_workflow(entity, ss, version=version, options=options)
 
-        ctx = context_manager.FlyteContext.current_context()
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             remote_logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
-            default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
                 default_lp,
                 project=resolved_identifiers.project,
@@ -1378,13 +1379,12 @@ class FlyteRemote(object):
         interface: TypedInterface,
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
-        with self.remote_context():
-            input_literal_map = self._get_input_literal_map(execution_data)
-            execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs)
+        input_literal_map = self._get_input_literal_map(execution_data)
+        execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs, self.context)
 
-            if execution.is_done and not execution.error:
-                output_literal_map = self._get_output_literal_map(execution_data)
-                execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs)
+        if execution.is_done and not execution.error:
+            output_literal_map = self._get_output_literal_map(execution_data)
+            execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs, self.context)
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
