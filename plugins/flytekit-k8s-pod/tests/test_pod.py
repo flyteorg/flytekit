@@ -453,4 +453,4 @@ def test_fast():
             assert dynamic_job_spec.tasks[0].k8s_pod.pod_spec["containers"][0]["resources"]["limits"]["cpu"] == "124M"
             assert dynamic_job_spec.tasks[0].k8s_pod.pod_spec["containers"][0]["resources"]["requests"]["gpu"] == "1"
 
-        assert context_manager.FlyteContextManager.size() == 1
+    assert context_manager.FlyteContextManager.size() == 1
