@@ -43,7 +43,7 @@ from flytekit.models.core import identifier as _identifier
 
 # Enables static type checking https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING
 
-flyte_context_Var = ContextVar("")
+flyte_context_Var: ContextVar[typing.List[FlyteContext]] = ContextVar("", default=[])
 
 if typing.TYPE_CHECKING:
     from flytekit.core.base_task import TaskResolverMixin
@@ -712,9 +712,7 @@ class FlyteContextManager(object):
 
     @staticmethod
     def current_context() -> FlyteContext:
-        try:
-            flyte_context_Var.get()
-        except LookupError:
+        if not flyte_context_Var.get():
             # we will lost the default flyte context in the new thread. Therefore, reinitialize the context when running in the new thread.
             FlyteContextManager.initialize()
         return flyte_context_Var.get()[-1]
