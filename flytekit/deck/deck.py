@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Optional
+from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 

@@ -1,6 +1,7 @@
 import pandas as pd
 from mock import mock
 
+import flytekit
 from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import TopFrameRenderer
 from flytekit.deck.deck import _output_deck
@@ -35,3 +36,11 @@ def test_deck_in_jupyter(mock_ipython_check):
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
     _output_deck("test_task", ctx.user_space_params)
+
+    @task()
+    def t1(a: int) -> str:
+        return str(a)
+
+    with flytekit.new_context() as ctx:
+        t1(a=3)
+        ctx.display_deck()
