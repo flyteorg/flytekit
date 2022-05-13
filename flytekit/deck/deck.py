@@ -89,25 +89,28 @@ def _ipython_check() -> bool:
     return is_ipython
 
 
-def _output_deck(task_name: str, new_user_params: ExecutionParameters):
-    deck_map: Dict[str, str] = {}
-    decks = new_user_params.decks
-
-    root = os.path.dirname(os.path.abspath(__file__))
-    templates_dir = os.path.join(root, "html")
-    env = Environment(loader=FileSystemLoader(templates_dir))
-    template = env.get_template("template.html")
-
-    for deck in decks:
-        deck_map[deck.name] = deck.html
-
+def _display_deck(new_user_params: ExecutionParameters):
+    """
+    Display flyte deck in jupyter notebook
+    """
     if _ipython_check():
         from IPython.display import HTML, display
 
+        deck_map = {deck.name: deck.html for deck in new_user_params.decks}
         display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
-    else:
-        output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
-        deck_path = os.path.join(output_dir, DECK_FILE_NAME)
-        with open(deck_path, "w") as f:
-            f.write(template.render(metadata=deck_map))
-        logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
+
+
+def _output_deck(task_name: str, new_user_params: ExecutionParameters):
+    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
+
+    output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
+    deck_path = os.path.join(output_dir, DECK_FILE_NAME)
+    with open(deck_path, "w") as f:
+        f.write(template.render(metadata=deck_map))
+    logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
+
+
+root = os.path.dirname(os.path.abspath(__file__))
+templates_dir = os.path.join(root, "html")
+env = Environment(loader=FileSystemLoader(templates_dir))
+template = env.get_template("template.html")

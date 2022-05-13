@@ -989,6 +989,7 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
             )
         ) as child_ctx:
+            cast(FlyteContext, child_ctx).user_space_params._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
 
         expected_outputs = len(cast(SupportsNodeCreation, entity).python_interface.outputs)
