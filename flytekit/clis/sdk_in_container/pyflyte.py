@@ -51,8 +51,8 @@ def main(ctx, pkgs=None, config=None):
     """
     ctx.obj = dict()
 
-    # Handle package management - get from config if not specified on the command line
-    pkgs = pkgs or []
+    # Handle package management - get from the command line, the environment variables, then the config file.
+    pkgs = pkgs or LocalSDK.WORKFLOW_PACKAGES.read() or []
     if config:
         ctx.obj[CTX_CONFIG_FILE] = config
         cfg = configuration.ConfigFile(config)
