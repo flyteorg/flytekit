@@ -80,6 +80,7 @@ import datetime
 import enum
 import gzip
 import os
+import pathlib
 import re
 import tempfile
 import typing
@@ -92,7 +93,7 @@ from docker_image import reference
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, set_if_exists
+from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -282,6 +283,11 @@ class AuthType(enum.Enum):
     BASIC = "basic"
     CLIENT_CREDENTIALS = "client_credentials"
     EXTERNAL_PROCESS = "external_process"
+    # The following values are copied from flyteidl's admin client to align the two code bases on the same enum values.
+    # The enum values above will continue to work.
+    CLIENTSECRET = "ClientSecret"
+    PKCE = "Pkce"
+    EXTERNALCOMMAND = "ExternalCommand"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -343,6 +349,12 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
+        )
+
+        kwargs = set_if_exists(
+            kwargs,
+            "client_credentials_secret",
+            read_file_if_exists(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
         )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
@@ -523,10 +535,11 @@ class Config(object):
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
         """
-        Automatically constructs the Config Object. The order of precendence is as follows
+        Automatically constructs the Config Object. The order of precedence is as follows
           1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
           2. If not found in environment then values ar read from the config file
           3. If not found in the file, then the default values are used.
+
         :param config_file: file path to read the config from, if not specified default locations are searched
         :return: Config
         """

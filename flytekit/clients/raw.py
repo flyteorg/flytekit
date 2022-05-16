@@ -265,11 +265,11 @@ class RawSynchronousFlyteClient(object):
                 cli_logger.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
                 cfg_auth = AuthType.STANDARD
 
-        if cfg_auth == AuthType.STANDARD:
+        if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
             return self._refresh_credentials_standard()
-        elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS:
+        elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
             return self._refresh_credentials_basic()
-        elif cfg_auth == AuthType.EXTERNAL_PROCESS:
+        elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
             return self._refresh_credentials_from_command()
         else:
             raise ValueError(

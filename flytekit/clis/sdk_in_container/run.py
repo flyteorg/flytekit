@@ -13,6 +13,7 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 
 from flytekit import BlobType, Literal, Scalar
+from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_DOMAIN, CTX_PROJECT
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager, tracker
@@ -21,6 +22,7 @@ from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
+from flytekit.loggers import cli_logger
 from flytekit.models import literals
 from flytekit.models.interface import Variable
 from flytekit.models.literals import Blob, BlobMetadata, Primitive
@@ -423,14 +425,29 @@ print(exec.outputs)
     )
 
 
-def get_entities_in_file(filename: str) -> typing.Tuple[typing.List[str], typing.List[str]]:
+class Entities(typing.NamedTuple):
+    """
+    NamedTuple to group all entities in a file
+    """
+
+    workflows: typing.List[str]
+    tasks: typing.List[str]
+
+    def all(self) -> typing.List[str]:
+        e = []
+        e.extend(self.workflows)
+        e.extend(self.tasks)
+        return e
+
+
+def get_entities_in_file(filename: str) -> Entities:
     """
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
         SerializationSettings(None)
     )
-    module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
+    module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
@@ -447,7 +464,7 @@ def get_entities_in_file(filename: str) -> typing.Tuple[typing.List[str], typing
             _, _, fn, _ = tracker.extract_task_module(o)
             tasks.append(fn)
 
-    return workflows, tasks
+    return Entities(workflows, tasks)
 
 
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
@@ -468,6 +485,10 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             return
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+
+        # StructuredDatasetTransformerEngine.register(
+        #     PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
+        # )
 
         remote_entity = remote.register_script(
             entity,
@@ -514,21 +535,10 @@ class WorkflowCommand(click.MultiCommand):
         self._filename = filename
 
     def list_commands(self, ctx):
-        workflows, tasks = get_entities_in_file(self._filename)
-        workflows.extend(tasks)
-        return workflows
+        entities = get_entities_in_file(self._filename)
+        return entities.all()
 
-    def get_command(self, ctx: click.Context, exe_entity: str) -> click.Command:
-        """
-        This command uses the filename with which this command was created, and the string name of the entity passed
-          after the Python filename on the command line, to load the Python object, and then return the Command that
-          click should run.
-        :param ctx: The click Context object.
-        :param exe_entity: string of the flyte entity provided by the user. Should be the name of a workflow, or task
-          function.
-        :return:
-        """
-        import ipdb; ipdb.set_trace()
+    def get_command(self, ctx, exe_entity):
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(
@@ -539,9 +549,14 @@ class WorkflowCommand(click.MultiCommand):
         entity = load_naive_entity(module, exe_entity)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
-        p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("project")
-        d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("domain")
-        r = FlyteRemote(Config.auto(), default_project=p, default_domain=d)
+        p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
+        d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
+        cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
+        cfg_obj = Config.auto(cfg_file_location)
+        cli_logger.info(
+            f"Run is using config object {cfg_obj}" + (f" with file {cfg_file_location}" if cfg_file_location else "")
+        )
+        r = FlyteRemote(cfg_obj, default_project=p, default_domain=d)
         ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
         get_upload_url_fn = functools.partial(r.client.get_upload_signed_url, project=p, domain=d)
 
@@ -555,14 +570,6 @@ class WorkflowCommand(click.MultiCommand):
             params.append(
                 to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn)
             )
-
-        """
-        Load all the objects in click, whether in one file or in a bunch of files.
-        Call a function in FlyteRemote to upload something to somewhere.
-          Do we need to consider when to upload something?
-        Pass all the objects over to flyteremote for registration.
-        """
-
         cmd = click.Command(
             name=exe_entity,
             params=params,
