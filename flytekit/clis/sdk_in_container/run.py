@@ -486,10 +486,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
 
-        # StructuredDatasetTransformerEngine.register(
-        #     PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
-        # )
-
         remote_entity = remote.register_script(
             entity,
             project=project,
@@ -539,6 +535,16 @@ class WorkflowCommand(click.MultiCommand):
         return entities.all()
 
     def get_command(self, ctx, exe_entity):
+        """
+        This command uses the filename with which this command was created, and the string name of the entity passed
+          after the Python filename on the command line, to load the Python object, and then return the Command that
+          click should run.
+        :param ctx: The click Context object.
+        :param exe_entity: string of the flyte entity provided by the user. Should be the name of a workflow, or task
+          function.
+        :return:
+        """
+
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(
