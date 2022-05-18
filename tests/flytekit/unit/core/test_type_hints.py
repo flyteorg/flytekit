@@ -80,7 +80,7 @@ def test_forwardref_namedtuple_output():
     # This test case tests typing.NamedTuple outputs for cases where eg.
     # from __future__ import annotations is enabled, such that all type hints become ForwardRef
     @task
-    def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=typing.ForwardRef('int'), c=typing.ForwardRef('str')):
+    def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=typing.ForwardRef("int"), c=typing.ForwardRef("str")):
         ctx = flytekit.current_context()
         assert str(ctx.execution_id) == "ex:local:local:local"
         return a + 2, "hello world"
