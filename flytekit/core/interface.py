@@ -386,7 +386,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
         bases = return_annotation.__bases__  # type: ignore
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
-            return return_annotation.__annotations__
+            return dict(typing.get_type_hints(return_annotation))
 
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3
