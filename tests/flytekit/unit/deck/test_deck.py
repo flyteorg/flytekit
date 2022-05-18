@@ -43,4 +43,4 @@ def test_deck_in_jupyter(mock_ipython_check):
 
     with flytekit.new_context() as ctx:
         t1(a=3)
-        ctx.display_deck()
+        ctx.get_deck()

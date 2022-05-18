@@ -89,24 +89,19 @@ def _ipython_check() -> bool:
     return is_ipython
 
 
-def _display_deck(new_user_params: ExecutionParameters):
+def _get_deck(new_user_params: ExecutionParameters):
     """
-    Display flyte deck in jupyter notebook
+    Get flyte deck html string
     """
-    if _ipython_check():
-        from IPython.display import HTML, display
-
-        deck_map = {deck.name: deck.html for deck in new_user_params.decks}
-        display(HTML(template.render(metadata=deck_map)), metadata=dict(isolated=True))
+    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
+    return template.render(metadata=deck_map)
 
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
-    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
-
     output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
     deck_path = os.path.join(output_dir, DECK_FILE_NAME)
     with open(deck_path, "w") as f:
-        f.write(template.render(metadata=deck_map))
+        f.write(_get_deck(new_user_params))
     logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
 
 
