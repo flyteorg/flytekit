@@ -1447,7 +1447,10 @@ class LiteralsResolver(collections.UserDict):
     """
 
     def __init__(
-        self, literals: typing.Dict[str, Literal], variable_map: Optional[Dict[str, _interface_models.Variable]] = None
+        self,
+        literals: typing.Dict[str, Literal],
+        variable_map: Optional[Dict[str, _interface_models.Variable]] = None,
+        ctx: Optional[FlyteContext] = None,
     ):
         """
         :param literals: A Python map of strings to Flyte Literal models.
@@ -1463,6 +1466,7 @@ class LiteralsResolver(collections.UserDict):
         self._variable_map = variable_map
         self._native_values = {}
         self._type_hints = {}
+        self._ctx = ctx
 
     def __str__(self) -> str:
         if len(self._literals) == len(self._native_values):
@@ -1541,7 +1545,7 @@ class LiteralsResolver(collections.UserDict):
                         raise e
                 else:
                     ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
-        val = TypeEngine.to_python_value(FlyteContext.current_context(), self._literals[attr], as_type)
+        val = TypeEngine.to_python_value(self._ctx or FlyteContext.current_context(), self._literals[attr], as_type)
         self._native_values[attr] = val
         return val
 

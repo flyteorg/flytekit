@@ -109,3 +109,8 @@ def test_package():
         )
         assert result.exit_code == 1
         assert result.output is not None
+
+
+def test_pkgs():
+    pp = pyflyte.validate_package(None, None, ["a.b", "a.c,b.a", "cc.a"])
+    assert pp == ["a.b", "a.c", "b.a", "cc.a"]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import configparser as _configparser
 import os
+import pathlib
 import typing
 from dataclasses import dataclass
 from os import getenv
@@ -90,6 +91,22 @@ def bool_transformer(config_val: typing.Any):
         return config_val
 
 
+def comma_list_transformer(config_val: typing.Any):
+    if type(config_val) is str:
+        return config_val.split(",")
+    else:
+        return config_val
+
+
+def int_transformer(config_val: typing.Any):
+    if type(config_val) is str:
+        try:
+            return int(config_val)
+        except ValueError:
+            logger.warning(f"Couldn't convert configuration setting {config_val} into {int}, leaving as is.")
+    return config_val
+
+
 @dataclass
 class ConfigEntry(object):
     """
@@ -104,6 +121,8 @@ class ConfigEntry(object):
 
     legacy_default_transforms = {
         bool: bool_transformer,
+        list: comma_list_transformer,
+        int: int_transformer,
     }
 
     def __post_init__(self):
@@ -237,6 +256,7 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
         # If not, then return None and let caller handle
         return None
     if isinstance(c, str):
+        logger.debug(f"Using specified config file at {c}")
         return ConfigFile(c)
     return c
 
@@ -253,3 +273,19 @@ def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
     if v:
         d[k] = v
     return d
+
+
+def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing.Optional[str]:
+    """
+    Reads the contents of the file if passed a path. Otherwise, returns None.
+
+    :param filename: The file path to load
+    :param encoding: The encoding to use when reading the file.
+    :return: The contents of the file as a string or None.
+    """
+    if not filename:
+        return None
+
+    filename = pathlib.Path(filename)
+    logger.debug(f"Reading file contents from [{filename}] with current directory [{os.getcwd()}].")
+    return filename.read_text(encoding=encoding)

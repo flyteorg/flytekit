@@ -333,6 +333,10 @@ class Promise(object):
     def __hash__(self):
         return hash(id(self))
 
+    def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
+        if not self.is_ready:
+            self.ref.node.runs_before(other.ref.node)
+
     def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
             return Promise(var=new_var, val=self.val)
@@ -643,8 +647,9 @@ class VoidPromise(object):
     VoidPromise cannot be interacted with and does not allow comparisons or any operations
     """
 
-    def __init__(self, task_name: str):
+    def __init__(self, task_name: str, ref: typing.Optional[NodeOutput] = None):
         self._task_name = task_name
+        self._ref = ref
 
     def runs_before(self, *args, **kwargs):
         """
@@ -652,8 +657,13 @@ class VoidPromise(object):
         where a task returns nothing.
         """
 
-    def __rshift__(self, *args, **kwargs):
-        ...  # See runs_before
+    @property
+    def ref(self) -> NodeOutput:
+        return self._ref
+
+    def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
+        if self.ref:
+            self.ref.node.runs_before(other.ref.node)
 
     @property
     def task_name(self):
@@ -928,7 +938,7 @@ def create_and_link_node(
     ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
-        return VoidPromise(entity.name)
+        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
 
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []

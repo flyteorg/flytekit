@@ -3,11 +3,14 @@ import os
 from click.testing import CliRunner
 
 from flytekit.clis.sdk_in_container import pyflyte
+from flytekit.clis.sdk_in_container.run import get_entities_in_file
+
+WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
 
 
 def test_pyflyte_run_wf():
     runner = CliRunner()
-    module_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
+    module_path = WORKFLOW_FILE
     result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
 
     assert result.exit_code == 0
@@ -52,3 +55,10 @@ def test_pyflyte_run_cli():
     )
     print(result.stdout)
     assert result.exit_code == 0
+
+
+def test_get_entities_in_file():
+    e = get_entities_in_file(WORKFLOW_FILE)
+    assert e.workflows == ["my_wf"]
+    assert e.tasks == ["get_subset_df", "print_all", "show_sd"]
+    assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd"]

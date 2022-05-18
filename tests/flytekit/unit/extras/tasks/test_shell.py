@@ -1,6 +1,7 @@
 import datetime
 import os
 import tempfile
+import typing
 from dataclasses import dataclass
 from subprocess import CalledProcessError
 
@@ -9,7 +10,7 @@ from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import kwtypes
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask
+from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -18,8 +19,10 @@ testdata = os.path.join(test_file_path, "testdata")
 test_csv = os.path.join(testdata, "test.csv")
 if os.name == "nt":
     script_sh = os.path.join(testdata, "script.exe")
+    script_sh_2 = None
 else:
     script_sh = os.path.join(testdata, "script.sh")
+    script_sh_2 = os.path.join(testdata, "script_args_env.sh")
 
 
 def test_shell_task_no_io():
@@ -249,3 +252,65 @@ def test_shell_script():
 
     assert t.script_file == script_sh
     t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+
+
+def test_raw_shell_task_with_args(capfd):
+    if script_sh_2 is None:
+        return
+    pst = get_raw_shell_task(name="test")
+    pst(script_file=script_sh_2, script_args="first_arg second_arg", env={})
+    cap = capfd.readouterr()
+    assert "first_arg" in cap.out
+    assert "second_arg" in cap.out
+
+
+def test_raw_shell_task_with_env(capfd):
+    if script_sh_2 is None:
+        return
+    pst = get_raw_shell_task(name="test")
+    pst(script_file=script_sh_2, env={"A": "AAAA", "B": "BBBB"}, script_args="")
+    cap = capfd.readouterr()
+    assert "AAAA" in cap.out
+    assert "BBBB" in cap.out
+
+
+def test_raw_shell_task_properly_restores_env_after_execution():
+    if script_sh_2 is None:
+        return
+    env_as_dict = os.environ.copy()
+    pst = get_raw_shell_task(name="test")
+    pst(script_file=script_sh_2, env={"A": "AAAA", "B": "BBBB"}, script_args="")
+    env_as_dict_after = os.environ.copy()
+    assert env_as_dict == env_as_dict_after
+
+
+def test_raw_shell_task_instantiation(capfd):
+    if script_sh_2 is None:
+        return
+    pst = RawShellTask(
+        name="test",
+        debug=True,
+        inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
+        output_locs=[
+            OutputLocation(
+                var="out",
+                var_type=FlyteDirectory,
+                location="{ctx.working_directory}",
+            )
+        ],
+        script="""
+#!/bin/bash
+
+set -uex
+
+cd {ctx.working_directory}
+
+{inputs.export_env}
+
+bash {inputs.script_file} {inputs.script_args}
+""",
+    )
+    pst(script_file=script_sh_2, script_args="first_arg second_arg", env={})
+    cap = capfd.readouterr()
+    assert "first_arg" in cap.out
+    assert "second_arg" in cap.out

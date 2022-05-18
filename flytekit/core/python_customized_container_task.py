@@ -71,7 +71,7 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         :param container_image: This is the external container image the task should run at platform-run-time.
         :param executor: This is an executor which will actually provide the business logic.
         :param task_resolver: Custom resolver - if you don't make one, use the default task template resolver.
-        :param task_type: String task type to be associated with this Task
+        :param task_type: String task type to be associated with this Task.
         :param requests: custom resource request settings.
         :param limits: custom resource limit settings.
         :param environment: Environment variables you want the task to have when run.
