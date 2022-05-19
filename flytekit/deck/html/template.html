@@ -5,53 +5,8 @@
     <title>User Content</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        /* http://meyerweb.com/eric/tools/css/reset/
-           v2.0 | 20110126
-           License: none (public domain)
-        */
-        html, body, div, span, applet, object, iframe,
-        h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-        a, abbr, acronym, address, big, cite, code,
-        del, dfn, em, img, ins, kbd, q, s, samp,
-        small, strike, strong, sub, sup, tt, var,
-        b, u, i, center,
-        dl, dt, dd, ol, ul, li,
-        fieldset, form, label, legend,
-        table, caption, tbody, tfoot, thead, tr, th, td,
-        article, aside, canvas, details, embed,
-        figure, figcaption, footer, header, hgroup,
-        menu, nav, output, ruby, section, summary,
-        time, mark, audio, video {
-            margin: 0;
-            padding: 0;
-            border: 0;
-            font-size: 100%;
-            font: inherit;
-            vertical-align: baseline;
-        }
-
-        /* HTML5 display-role reset for older browsers */
-        article, aside, details, figcaption, figure,
-        footer, header, hgroup, menu, nav, section {
-            display: block;
-        }
-
-        body {
-            line-height: 1;
-        }
-
         ol, ul {
             list-style: none;
-        }
-
-        blockquote, q {
-            quotes: none;
-        }
-
-        blockquote:before, blockquote:after,
-        q:before, q:after {
-            content: '';
-            content: none;
         }
 
         table {
@@ -96,12 +51,18 @@
 </head>
 
 <body>
-<nav id="flyte-frame-nav">
-    <ul id="flyte-frame-tabs">
-    </ul>
-</nav>
-<div id="flyte-frame-container">
-</div>
+    <nav id="flyte-frame-nav">
+        <ul id="flyte-frame-tabs">
+            {% for key, value in metadata.items() %}
+                <li onclick="handleLinkClick(this)">{{key}}</li>
+            {% endfor %}
+        </ul>
+    </nav>
+    <div id="flyte-frame-container">
+        {% for key, value in metadata.items() %}
+            <div>{{value}}</div>
+        {% endfor %}
+    </div>
 </body>
 <script>
     const setTabs = index => {
@@ -135,50 +96,15 @@
         setLinkIndex(linkIndex)
     }
 
-    function createTab(text, index) {
-        const li = document.createElement("li");
-        const node = document.createTextNode(text);
-        li.appendChild(node);
-        if (index === 1) {
-            li.setAttribute("class", "active")
+    const tabs = document.getElementById('flyte-frame-tabs');
+    const containers = document.getElementById('flyte-frame-container');
+    for(var i = 0; i < tabs.children.length; i++) {
+        if (i === 0) {
+            tabs.children[i].classList.add('active')
+            containers.children[i].classList.add('active')
         }
-        li.setAttribute("link_index", index)
-        li.setAttribute("onclick", "handleLinkClick(this)")
-
-        const element = document.getElementById("flyte-frame-tabs");
-        element.appendChild(li);
+        tabs.children[i].setAttribute("link_index", i+1)
+        containers.children[i].setAttribute("link_index", i+1)
     }
-
-    function createDiv(path, index) {
-        const div = document.createElement("div");
-        if (index === 1) {
-            div.setAttribute("class", "active")
-        }
-        div.setAttribute("link_index", index)
-        div.setAttribute("id", "d" + index)
-        const embed = document.createElement("embed");
-        embed.setAttribute("src", path)
-        embed.setAttribute("type", "text/html")
-        embed.setAttribute("width", "1200")
-        embed.setAttribute("height", "600")
-
-        const element = document.getElementById("flyte-frame-container");
-        div.appendChild(embed);
-        element.appendChild(div);
-    }
-
-    let index = 1
-    const fetchDeckMetadata = async (metadata) => {
-        try {
-            Object.entries(metadata).forEach(([fileName, path]) => {
-                createTab(fileName, index);
-                createDiv(path, index);
-                index++;
-            });
-        } catch (error) {
-            console.log(error);
-        }
-    };
-    fetchDeckMetadata({{metadata}});
 </script>
 </html>

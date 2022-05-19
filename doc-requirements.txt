@@ -195,7 +195,7 @@ ipykernel==6.13.0
     #   jupyter-console
     #   notebook
     #   qtconsole
-ipython==8.2.0
+ipython==7.30.1
     # via
     #   great-expectations
     #   ipykernel
