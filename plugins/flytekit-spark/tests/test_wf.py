@@ -4,7 +4,7 @@ from flytekitplugins.spark.task import Spark
 
 import flytekit
 from flytekit import kwtypes, task, workflow
-from flytekit.types.schema import FlyteSchema
+
 
 try:
     from typing import Annotated
