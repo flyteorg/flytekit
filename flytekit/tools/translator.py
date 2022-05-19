@@ -289,7 +289,9 @@ def get_serializable_workflow(
         nodes=upstream_node_models,
         outputs=entity.output_bindings,
     )
-    return admin_workflow_models.WorkflowSpec(template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string()))
+    return admin_workflow_models.WorkflowSpec(
+        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string())
+    )
 
 
 def get_serializable_launch_plan(
