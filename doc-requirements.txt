@@ -400,7 +400,7 @@ phik==0.12.2
     # via pandas-profiling
 pickleshare==0.7.5
     # via ipython
-pillow==9.1.0
+pillow==9.1.1
     # via
     #   imagehash
     #   matplotlib
