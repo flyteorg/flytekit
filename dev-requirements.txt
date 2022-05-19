@@ -8,14 +8,10 @@
     # via
     #   -c requirements.txt
     #   pytest-flyte
-appnope==0.1.3
-    # via ipython
 arrow==1.2.2
     # via
     #   -c requirements.txt
     #   jinja2-time
-asttokens==2.0.5
-    # via stack-data
 attrs==20.3.0
     # via
     #   -c requirements.txt
@@ -55,29 +51,31 @@ click==8.1.2
     # via
     #   -c requirements.txt
     #   cookiecutter
-    #   flytekit
+    #   sanitized-package
 cloudpickle==2.0.0
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 codespell==2.1.0
     # via -r dev-requirements.in
 cookiecutter==1.7.3
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 coverage[toml]==6.3.2
     # via -r dev-requirements.in
 croniter==1.3.4
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 cryptography==37.0.1
-    # via paramiko
+    # via
+    #   paramiko
+    #   secretstorage
 dataclasses-json==0.5.7
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 decorator==5.1.1
     # via
     #   -c requirements.txt
@@ -86,11 +84,11 @@ decorator==5.1.1
 deprecated==1.2.13
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 diskcache==5.4.0
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 distlib==0.3.4
     # via virtualenv
 distro==1.7.0
@@ -99,7 +97,7 @@ docker[ssh]==5.0.3
     # via
     #   -c requirements.txt
     #   docker-compose
-    #   flytekit
+    #   sanitized-package
 docker-compose==1.29.2
     # via
     #   pytest-docker
@@ -107,7 +105,7 @@ docker-compose==1.29.2
 docker-image-py==0.1.12
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 dockerpty==0.4.1
     # via docker-compose
 docopt==0.6.2
@@ -115,15 +113,13 @@ docopt==0.6.2
 docstring-parser==0.14
     # via
     #   -c requirements.txt
-    #   flytekit
-executing==0.8.3
-    # via stack-data
+    #   sanitized-package
 filelock==3.6.0
     # via virtualenv
 flyteidl==1.0.0.post1
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 google-api-core[grpc]==2.7.2
     # via
     #   google-cloud-bigquery
@@ -154,15 +150,15 @@ googleapis-common-protos==1.56.0
 grpcio==1.44.0
     # via
     #   -c requirements.txt
-    #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
     #   grpcio-status
+    #   sanitized-package
 grpcio-status==1.44.0
     # via
     #   -c requirements.txt
-    #   flytekit
     #   google-api-core
+    #   sanitized-package
 identify==2.5.0
     # via pre-commit
 idna==3.3
@@ -175,10 +171,14 @@ importlib-metadata==4.11.3
     #   keyring
 iniconfig==1.1.1
     # via pytest
-ipython==7.30.1
+ipython==7.31.1
     # via -r dev-requirements.in
 jedi==0.18.1
     # via ipython
+jeepney==0.8.0
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.1.1
     # via
     #   -c requirements.txt
@@ -198,7 +198,7 @@ jsonschema==3.2.0
 keyring==23.5.0
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 markupsafe==2.1.1
     # via
     #   -c requirements.txt
@@ -216,7 +216,7 @@ marshmallow-enum==1.5.1
 marshmallow-jsonschema==0.13.0
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 matplotlib-inline==0.1.3
     # via ipython
 mock==4.0.3
@@ -231,7 +231,7 @@ mypy-extensions==0.4.3
 natsort==8.1.0
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 nodeenv==1.6.0
     # via pre-commit
 numpy==1.21.6
@@ -248,7 +248,7 @@ packaging==21.3
 pandas==1.3.5
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 paramiko==2.10.4
     # via docker
 parso==0.8.3
@@ -277,21 +277,19 @@ protobuf==3.20.1
     # via
     #   -c requirements.txt
     #   flyteidl
-    #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
     #   googleapis-common-protos
     #   grpcio-status
     #   proto-plus
     #   protoc-gen-swagger
+    #   sanitized-package
 protoc-gen-swagger==0.1.0
     # via
     #   -c requirements.txt
     #   flyteidl
 ptyprocess==0.7.0
     # via pexpect
-pure-eval==0.2.2
-    # via stack-data
 py==1.11.0
     # via
     #   -c requirements.txt
@@ -300,8 +298,8 @@ py==1.11.0
 pyarrow==6.0.1
     # via
     #   -c requirements.txt
-    #   flytekit
     #   google-cloud-bigquery
+    #   sanitized-package
 pyasn1==0.4.8
     # via
     #   pyasn1-modules
@@ -336,15 +334,15 @@ python-dateutil==2.8.2
     #   -c requirements.txt
     #   arrow
     #   croniter
-    #   flytekit
     #   google-cloud-bigquery
     #   pandas
+    #   sanitized-package
 python-dotenv==0.20.0
     # via docker-compose
 python-json-logger==2.0.2
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 python-slugify==6.1.1
     # via
     #   -c requirements.txt
@@ -352,18 +350,18 @@ python-slugify==6.1.1
 pytimeparse==1.1.8
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 pytz==2022.1
     # via
     #   -c requirements.txt
-    #   flytekit
     #   pandas
+    #   sanitized-package
 pyyaml==5.4.1
     # via
     #   -c requirements.txt
     #   docker-compose
-    #   flytekit
     #   pre-commit
+    #   sanitized-package
 regex==2022.4.24
     # via
     #   -c requirements.txt
@@ -374,24 +372,25 @@ requests==2.27.1
     #   cookiecutter
     #   docker
     #   docker-compose
-    #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
     #   responses
+    #   sanitized-package
 responses==0.20.0
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 retry==0.9.2
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 rsa==4.8
     # via google-auth
+secretstorage==3.3.2
+    # via keyring
 six==1.16.0
     # via
     #   -c requirements.txt
-    #   asttokens
     #   bcrypt
     #   cookiecutter
     #   dockerpty
@@ -405,13 +404,11 @@ six==1.16.0
 sortedcontainers==2.4.0
     # via
     #   -c requirements.txt
-    #   flytekit
-stack-data==0.2.0
-    # via ipython
+    #   sanitized-package
 statsd==3.3.0
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 text-unidecode==1.3
     # via
     #   -c requirements.txt
@@ -432,8 +429,8 @@ traitlets==5.1.1
 typing-extensions==4.2.0
     # via
     #   -c requirements.txt
-    #   flytekit
     #   mypy
+    #   sanitized-package
     #   typing-inspect
 typing-inspect==0.7.1
     # via
@@ -442,9 +439,9 @@ typing-inspect==0.7.1
 urllib3==1.26.9
     # via
     #   -c requirements.txt
-    #   flytekit
     #   requests
     #   responses
+    #   sanitized-package
 virtualenv==20.14.1
     # via pre-commit
 wcwidth==0.2.5
@@ -457,12 +454,12 @@ websocket-client==0.59.0
 wheel==0.37.1
     # via
     #   -c requirements.txt
-    #   flytekit
+    #   sanitized-package
 wrapt==1.14.0
     # via
     #   -c requirements.txt
     #   deprecated
-    #   flytekit
+    #   sanitized-package
 zipp==3.8.0
     # via
     #   -c requirements.txt
