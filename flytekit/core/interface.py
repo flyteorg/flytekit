@@ -7,12 +7,15 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
+from typing_extensions import get_args, get_origin
+
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
+from flytekit.models.literals import Void
 from flytekit.types.pickle import FlytePickle
 
 T = typing.TypeVar("T")
@@ -182,11 +185,17 @@ def transform_inputs_to_parameters(
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
-        required = _default is None
-        default_lv = None
-        if _default is not None:
-            default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
-        params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
+        if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
+            from flytekit import Literal, Scalar
+
+            literal = Literal(scalar=Scalar(none_type=Void()))
+            params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
+        else:
+            required = _default is None
+            default_lv = None
+            if _default is not None:
+                default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
+            params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
     return _interface_models.ParameterMap(params)
 
 
