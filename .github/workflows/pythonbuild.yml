@@ -46,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           make setup${{ matrix.spark-version-suffix }}
-          pip install coverage
+          pip install coverage[toml]
           pip freeze
       - name: Test with coverage
         run: |
