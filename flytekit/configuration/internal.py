@@ -19,7 +19,7 @@ class Images(object):
         :returns a dictionary of name: image<fqn+version> Version is optional
         """
         images: typing.Dict[str, str] = {}
-        if cfg is None:
+        if cfg is None or not cfg.legacy_config:
             return images
         try:
             image_names = cfg.legacy_config.options("images")
