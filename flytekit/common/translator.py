@@ -185,7 +185,9 @@ def get_serializable_workflow(
         outputs=entity.output_bindings,
     )
 
-    return admin_workflow_models.WorkflowSpec(template=wf_t, sub_workflows=list(set(sub_wfs)))
+    return admin_workflow_models.WorkflowSpec(
+        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string())
+    )
 
 
 def get_serializable_launch_plan(
