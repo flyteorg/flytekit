@@ -46,6 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           make setup${{ matrix.spark-version-suffix }}
+          # Coverage is not installed by default on Windows machines in the GitHub workflow
           pip install coverage[toml]
           pip freeze
       - name: Test with coverage
