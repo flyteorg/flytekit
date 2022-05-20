@@ -262,7 +262,7 @@ pytest==6.2.5
     #   pytest-flyte
 pytest-docker==0.10.3
     # via pytest-flyte
-pytest-flyte @ git+git://github.com/flyteorg/pytest-flyte@main
+pytest-flyte @ git+https://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
     # via -r dev-requirements.in
 python-dateutil==2.8.1
     # via
