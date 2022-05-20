@@ -1288,7 +1288,7 @@ def test_wf_explicitly_returning_empty_task():
 def test_nested_dict():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.Dict[str, int]:
-        return {"value:": value ** 2}
+        return {"value:": value**2}
 
     @workflow
     def compute_square_wf(input_integer: int) -> typing.Dict[str, int]:
@@ -1302,7 +1302,7 @@ def test_nested_dict2():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.List[typing.Dict[str, int]]:
         return [
-            {"squared_value": value ** 2},
+            {"squared_value": value**2},
         ]
 
     @workflow

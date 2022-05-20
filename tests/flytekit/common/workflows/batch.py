@@ -104,14 +104,14 @@ def print_every_time(wf_params, ints_to_print, strings_to_print):
     print(
         "Expected String values: {}".format(
             [
-                u"I'm the first result",
-                u"hello 0",
-                u"I'm after each sub-task result",
-                u"hello 1",
-                u"I'm after each sub-task result",
-                u"hello 2",
-                u"I'm after each sub-task result",
-                u"I'm the last result",
+                "I'm the first result",
+                "hello 0",
+                "I'm after each sub-task result",
+                "hello 1",
+                "I'm after each sub-task result",
+                "hello 2",
+                "I'm after each sub-task result",
+                "I'm the last result",
             ]
         )
     )
