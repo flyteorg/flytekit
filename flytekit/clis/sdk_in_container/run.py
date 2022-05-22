@@ -401,6 +401,7 @@ def load_naive_entity(module_name: str, entity_name: str) -> typing.Union[Workfl
     Load the workflow of a the script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
     """
+    # Todo: Why do we need a dummy SerializationSettings?
     flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
         SerializationSettings(None)
     )
@@ -444,9 +445,10 @@ def get_entities_in_file(filename: str) -> Entities:
     """
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
-    flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
-        SerializationSettings(None)
-    )
+    # flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
+    #     SerializationSettings(None)
+    # )
+    flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder().build()
     module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
@@ -473,6 +475,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     """
 
     def _run(*args, **kwargs):
+        # By the time we get to this function, all the loading has already happened
+
         run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
         project, domain = run_level_params.get("project"), run_level_params.get("domain")
         inputs = {}
@@ -485,6 +489,12 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             return
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+
+        # script_mode.create_zip
+        # remote.upload_file
+        # filter entities to only those within the folder or file specified.
+        # remote.register_entities
+        # pick out the main entity we were interested in and execute
 
         remote_entity = remote.register_script(
             entity,

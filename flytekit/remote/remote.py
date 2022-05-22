@@ -4,7 +4,7 @@ with a Flyte backend in an interactive and programmatic way. This of this experi
 but in Python object form.
 """
 from __future__ import annotations
-
+import pathlib
 import base64
 import functools
 import hashlib
@@ -506,6 +506,19 @@ class FlyteRemote(object):
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
+
+    def _upload_file(self, path: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None) -> str:
+        """
+        Function will use remote's client to hash and then upload the file using Admin's data proxy service.
+
+        :param path: Must be a single file
+        :param project: Project to upload under, if not supplied will use the remote's default
+        :param domain: Domain to upload under, if not specified will use the remote's default
+        :return: The uploaded location.
+        """
+
+    def register_entities(self):
+        ...
 
     def register_script(
         self,

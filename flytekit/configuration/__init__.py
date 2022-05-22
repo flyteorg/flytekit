@@ -241,6 +241,7 @@ class ImageConfig(object):
             raise ValueError("Either an image or a config with a default image should be provided")
 
         default_img = Image.look_up_image_info("default", img_name) if img_name else None
+        # import ipdb; ipdb.set_trace()
 
         other_images = []
         if config_file:
