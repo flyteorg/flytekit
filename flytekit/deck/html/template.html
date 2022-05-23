@@ -21,13 +21,21 @@
 
         #flyte-frame-tabs {
             display: flex;
+            width: 100%;
+            justify-content: center;
+            margin-block: 0;
+            padding-inline-start: 0;
         }
 
         #flyte-frame-tabs li {
             cursor: pointer;
-            flex: auto;
-            padding: 2rem;
-            margin: 0 1rem;
+            padding: 10px 10px;
+            margin: 0;
+            margin-right: 10px;
+        }
+
+        #flyte-frame-tabs li:last-child {
+            margin-right: 0;
         }
 
         #flyte-frame-tabs li.active {
@@ -44,7 +52,7 @@
 
         #flyte-frame-container > div.active {
             display: block;
-            padding: 1rem 4rem;
+            padding: 2rem 4rem;
         }
     </style>
 
