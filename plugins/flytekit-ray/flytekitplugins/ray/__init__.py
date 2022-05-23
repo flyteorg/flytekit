@@ -10,4 +10,4 @@ This package contains things that are useful when extending Flytekit.
    AWSBatchConfig
 """
 
-from .task import AWSBatchConfig
+from .task import RayClientConfig, RayConfig, RayJobSubmissionConfig

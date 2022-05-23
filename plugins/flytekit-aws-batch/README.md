@@ -5,5 +5,5 @@ Flyte backend can be connected with AWS batch. Once enabled, it allows you to ru
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-awsbatch
+pip install flytekitplugins-ray
 ```
