@@ -24,7 +24,7 @@ def test_workflow_with_whylogs():
         df = make_data()
         return profile(df=df)
 
-    profile: DatasetProfileView = wf()
+    profile = wf()
     keys = list(profile.get_columns().keys())
     # Sanity check that stuff is still in there
     assert keys == ['Letters', 'Num']
