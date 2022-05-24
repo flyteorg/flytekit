@@ -48,7 +48,7 @@ docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.12
     # via flytekit
-flyteidl==0.21.8
+flyteidl==0.21.11
     # via flytekit
 flytekit==0.24.0
     # via flytekitplugins-pod

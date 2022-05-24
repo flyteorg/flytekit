@@ -40,7 +40,7 @@ def print_every_time(workflow_parameters, value_to_print, date_triggered):
 def f(_):
     x = random.random() * 2 - 1
     y = random.random() * 2 - 1
-    return 1 if x ** 2 + y ** 2 <= 1 else 0
+    return 1 if x**2 + y**2 <= 1 else 0
 
 
 @workflow_class

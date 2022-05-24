@@ -34,7 +34,7 @@ def hello_spark(workflow_parameters, spark_context, partitions, out):
 def f(_):
     x = random.random() * 2 - 1
     y = random.random() * 2 - 1
-    return 1 if x ** 2 + y ** 2 <= 1 else 0
+    return 1 if x**2 + y**2 <= 1 else 0
 
 
 @workflow_class
