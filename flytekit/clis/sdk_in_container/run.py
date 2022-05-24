@@ -443,10 +443,7 @@ def get_entities_in_file(filename: str) -> Entities:
     """
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
-    # flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
-    #     SerializationSettings(None)
-    # )
-    flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder().build()
+    flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder()
     module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):

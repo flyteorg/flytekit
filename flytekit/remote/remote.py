@@ -536,9 +536,6 @@ class FlyteRemote(object):
 
         return md5_bytes, upload_location.native_url
 
-    def register_entities(self):
-        ...
-
     @staticmethod
     def _version_from_hash(
         md5_bytes: bytes,

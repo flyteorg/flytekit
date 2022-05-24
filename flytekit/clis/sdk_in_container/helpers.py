@@ -8,8 +8,9 @@ from flytekit.remote.remote import FlyteRemote
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 
 
-def get_and_save_remote_with_click_context(ctx: click.Context, project: str, domain: str,
-                                           save: bool = True) -> FlyteRemote:
+def get_and_save_remote_with_click_context(
+    ctx: click.Context, project: str, domain: str, save: bool = True
+) -> FlyteRemote:
     """
     NB: This function will by default mutate the click Context.obj dictionary, adding a remote key with value
         of the created FlyteRemote object.

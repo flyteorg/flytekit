@@ -180,13 +180,6 @@ def find_common_root(
     return project_root
 
 
-"""
-flyteidl.admin.task_pb2.TaskSpec
-flyteidl.admin.workflow_pb2.WorkflowSpec
-flyteidl.admin.launch_plan_pb2.LaunchPlan
-"""
-
-
 def load_packages_and_modules(
     ss: SerializationSettings,
     project_root: Path,

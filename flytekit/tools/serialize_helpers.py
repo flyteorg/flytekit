@@ -20,9 +20,6 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.translator import Options, get_serializable
 
-RegistrableModels = typing.Union[
-    task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec
-]
 RegistrableEntity = typing.Union[_idl_admin_TaskSpec, _idl_admin_LaunchPlan, _idl_admin_WorkflowSpec]
 
 
@@ -79,7 +76,7 @@ def get_registrable_entities(
 
             if isinstance(entity, WorkflowBase):
                 lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
+                get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp, options)
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))

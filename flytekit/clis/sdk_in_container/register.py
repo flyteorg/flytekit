@@ -157,5 +157,5 @@ def register(
         version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
         cli_logger.warning(f"Computed version is {version}")
 
-    # Register using
+    # Register using repo code
     repo_register(registerable_entities, project, domain, version, remote.client)
