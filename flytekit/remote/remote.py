@@ -23,7 +23,7 @@ from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.core import constants, tracker, utils
+from flytekit.core import constants, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -521,7 +521,8 @@ class FlyteRemote(object):
         """
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
-        md5_bytes, _ = hash_file(to_upload)
+        md5_bytes, str_digest = hash_file(to_upload)
+        remote_logger.debug(f"Text hash of file to upload is {str_digest}")
 
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
