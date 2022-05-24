@@ -45,5 +45,6 @@ class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
     def to_html(self, ctx: FlyteContext, python_val: DatasetProfileView, expected_python_type: Type[DatasetProfileView]) -> str:
         return str(python_val.to_pandas().to_html())
 
-
+print('before transformer')
 TypeEngine.register(WhylogsDatasetProfileTransformer())
+print('after transformer')
