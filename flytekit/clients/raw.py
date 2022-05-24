@@ -4,8 +4,10 @@ import base64 as _base64
 import subprocess
 import time
 import typing
+import ssl
 from typing import Optional
 
+import OpenSSL
 import grpc
 import requests as _requests
 from flyteidl.admin.project_pb2 import ProjectListRequest
@@ -110,6 +112,21 @@ class RawSynchronousFlyteClient(object):
         self._cfg = cfg
         if cfg.insecure:
             self._channel = grpc.insecure_channel(cfg.endpoint, **kwargs)
+        elif cfg.insecure_skip_verify:
+            # Get the certificate from the endpoint at port 443
+            cert = ssl.get_server_certificate((cfg.endpoint, 443))
+            x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM,
+                                                   cert)
+            cn = x509.get_subject().CN
+            credentials = grpc.ssl_channel_credentials(str.encode(cert))
+            options = kwargs.get("options", [])
+            options.append(("grpc.ssl_target_name_override", cn))
+            self._channel = grpc.secure_channel(
+                target=cfg.endpoint,
+                credentials=credentials,
+                options=options,
+                compression=kwargs.get("compression", None)
+            )
         else:
             if "credentials" not in kwargs:
                 credentials = grpc.ssl_channel_credentials(
