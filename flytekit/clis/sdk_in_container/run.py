@@ -13,8 +13,9 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 
 from flytekit import BlobType, Literal, Scalar
-from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_DOMAIN, CTX_PROJECT
-from flytekit.configuration import Config, ImageConfig, SerializationSettings
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
+from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager, tracker
 from flytekit.core.base_task import PythonTask
@@ -22,19 +23,16 @@ from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
-from flytekit.loggers import cli_logger
 from flytekit.models import literals
 from flytekit.models.interface import Variable
 from flytekit.models.literals import Blob, BlobMetadata, Primitive
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
-from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.translator import Options
 
 REMOTE_FLAG_KEY = "remote"
 RUN_LEVEL_PARAMS_KEY = "run_level_params"
-FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 DATA_PROXY_CALLBACK_KEY = "data_proxy"
 
 
@@ -490,12 +488,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
 
-        # script_mode.create_zip
-        # remote.upload_file
-        # filter entities to only those within the folder or file specified.
-        # remote.register_entities
-        # pick out the main entity we were interested in and execute
-
         remote_entity = remote.register_script(
             entity,
             project=project,
@@ -567,13 +559,7 @@ class WorkflowCommand(click.MultiCommand):
         # If this is a remote execution, which we should know at this point, then create the remote object
         p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
         d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
-        cfg_obj = Config.auto(cfg_file_location)
-        cli_logger.info(
-            f"Run is using config object {cfg_obj}" + (f" with file {cfg_file_location}" if cfg_file_location else "")
-        )
-        r = FlyteRemote(cfg_obj, default_project=p, default_domain=d)
-        ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
+        r = get_and_save_remote_with_click_context(ctx, p, d)
         get_upload_url_fn = functools.partial(r.client.get_upload_signed_url, project=p, domain=d)
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()

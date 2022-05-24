@@ -1,17 +1,37 @@
 import os
+import pathlib
+import typing
 
 import click
+
 from flytekit.clis.sdk_in_container import constants
-from flytekit.configuration import (
-    FastSerializationSettings,
-    ImageConfig,
-    SerializationSettings,
-)
+from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.tools.module_loader import load_packages_and_modules
+from flytekit.loggers import cli_logger
+from flytekit.tools.fast_registration import fast_package
+from flytekit.tools.repo import find_common_root, load_packages_and_modules
+from flytekit.tools.repo import register as repo_register
+from flytekit.tools.translator import Options
 
 
 @click.command("register")
+@click.option(
+    "-p",
+    "--project",
+    required=False,
+    type=str,
+    default="flytesnacks",
+    help="Project to register and run this workflow in",
+)
+@click.option(
+    "-d",
+    "--domain",
+    required=False,
+    type=str,
+    default="development",
+    help="Domain to register and run this workflow in",
+)
 @click.option(
     "-i",
     "--image",
@@ -28,29 +48,12 @@ from flytekit.tools.module_loader import load_packages_and_modules
     "there can only be one --image option with no name.",
 )
 @click.option(
-    "-s",
-    "--source",
-    required=False,
-    type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
-    default=".",
-    help="Optional directory to add to Python package search path, defaults to current directory",
-)
-@click.option(
     "-o",
     "--output",
     required=False,
-    type=click.Path(dir_okay=False, writable=True, resolve_path=True, allow_dash=True),
-    default="flyte-package.tgz",
-    help="Where to write the output zip file containing the protobuf definitions",
-)
-@click.option(
-    "-f",
-    "--force",
-    is_flag=True,
-    default=False,
-    required=False,
-    help="This flag enables overriding existing output files. If not specified, package will exit with an error,"
-    " in case an output file already exists.",
+    type=click.Path(dir_okay=True, file_okay=False, writable=True, resolve_path=True),
+    default=".",
+    help="Directory to write the output zip file containing the protobuf definitions",
 )
 @click.option(
     "-d",
@@ -60,10 +63,41 @@ from flytekit.tools.module_loader import load_packages_and_modules
     default="/root",
     help="Directory inside the image where the tar file containing the code will be copied to",
 )
+@click.option(
+    "--service-account",
+    required=False,
+    type=str,
+    default="",
+    help="Service account used when creating launch plans",
+)
+@click.option(
+    "--raw-data-prefix",
+    required=False,
+    type=str,
+    default="",
+    help="Raw output data prefix when creating launch plans, where offloaded data will be stored",
+)
+@click.option(
+    "-v",
+    "--version",
+    required=False,
+    type=str,
+    help="Service account used when creating launch plans",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
-# todo: add all other runtime options since this also does registration
 @click.pass_context
-def register(ctx, image_config, source, output, force, destination_dir, package_or_module):
+def register(
+    ctx: click.Context,
+    project: str,
+    domain: str,
+    image_config: ImageConfig,
+    output: str,
+    destination_dir: str,
+    service_account: str,
+    raw_data_prefix: str,
+    version: typing.Optional[str],
+    package_or_module: typing.Tuple[str],
+):
     """
     This command produces a Flyte backend registrable package of all entities in Flyte.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -71,39 +105,57 @@ def register(ctx, image_config, source, output, force, destination_dir, package_
         object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
         This serialization step will set the name of the tasks to the fully qualified name of the task function.
     """
-    if os.path.exists(output) and not force:
-        raise click.BadParameter(click.style(f"Output file {output} already exists, specify -f to override.", fg="red"))
-
-    # Rely on default Python interpreter for now
-    serialization_settings = SerializationSettings(
-        image_config=image_config,
-        fast_serialization_settings=FastSerializationSettings(
-            enabled=True,
-            destination_dir=destination_dir,
-        ),
-    )
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
         print("No pkgs")
+    if pkgs:
+        raise ValueError("to do, please implement")
 
-    print(f"Image config {image_config}")
-    print(f"Source {source}")
-    print(f"Destination dir {destination_dir}")
-    print(f"Package arg {package_or_module} {len(package_or_module)}")
-    print(__package__)
-    print(os.getcwd())
+    cli_logger.warning(
+        f"Running pyflyte register from {os.getcwd()} "
+        f"with images {image_config} "
+        f"and image destinationfolder {destination_dir} "
+        f"on {len(package_or_module)} package(s) {package_or_module}"
+    )
 
-    # import pkgutil
-    # pkgutil.walk_packages()
+    # Create and save FlyteRemote,
+    remote = get_and_save_remote_with_click_context(ctx, project, domain)
 
-    """
-    """
-    # Load all the entities
-    load_packages_and_modules(list(package_or_module))
-
-    # Todo: Filter out entities not in the given list (in case it imports some other crazy thing)
-
+    # Todo: add switch for non-fast - skip the zipping and uploading and no fastserializationsettings
     # Create a zip file containing all the entries.
+    detected_root = find_common_root(package_or_module)
+    cli_logger.warning(f"Using {detected_root} as root folder for project")
+    zip_file = fast_package(detected_root, output)
 
-    #
+    # Upload zip file to Admin using FlyteRemote.
+    md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
+    cli_logger.warning(f"Uploaded zip {zip_file} to {native_url}")
+
+    # Create serialization settings
+    # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
+    serialization_settings = SerializationSettings(
+        project=project,
+        domain=domain,
+        image_config=image_config,
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=True,
+            destination_dir=destination_dir,
+            distribution_location=native_url,
+        ),
+    )
+
+    options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
+
+    # Load all the entities
+    registerable_entities = load_packages_and_modules(
+        serialization_settings, detected_root, list(package_or_module), options
+    )
+    cli_logger.warning(f"Found and serialized {len(registerable_entities)} entities")
+
+    if not version:
+        version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
+        cli_logger.warning(f"Computed version is {version}")
+
+    # Register using
+    repo_register(registerable_entities, project, domain, version, remote.client)

@@ -20,9 +20,10 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.translator import Options, get_serializable
 
-RegistrableEntity = typing.Union[
+RegistrableModels = typing.Union[
     task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec
 ]
+RegistrableEntity = typing.Union[_idl_admin_TaskSpec, _idl_admin_LaunchPlan, _idl_admin_WorkflowSpec]
 
 
 def _determine_text_chars(length):
@@ -114,7 +115,6 @@ def persist_registrable_entities(entities: typing.List[RegistrableEntity], folde
     """
     zero_padded_length = _determine_text_chars(len(entities))
     for i, entity in enumerate(entities):
-        name = ""
         fname_index = str(i).zfill(zero_padded_length)
         if isinstance(entity, _idl_admin_TaskSpec):
             name = entity.template.id.name

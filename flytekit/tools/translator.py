@@ -322,8 +322,6 @@ def get_serializable_launch_plan(
     if not options:
         options = Options()
 
-    raw = None
-
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
@@ -335,7 +333,7 @@ def get_serializable_launch_plan(
         labels=options.labels or entity.labels or _common_models.Labels({}),
         annotations=options.annotations or entity.annotations or _common_models.Annotations({}),
         auth_role=None,
-        raw_output_data_config=raw or entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
+        raw_output_data_config=entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
     )

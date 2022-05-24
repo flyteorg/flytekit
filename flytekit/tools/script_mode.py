@@ -100,20 +100,6 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     return tar_info
 
 
-def create_zip(root: Path,
-               target_path: Path) -> Path:
-    """
-    From root to target path, create folders with just an __init__.py file. From target_path onwards down, copy
-    everything into the zip. If target_path is a file, then just that file is copied. If it is a directory, then it's
-    copied recursively.
-
-    :param root: The starting point. In the cookbook examples, this would be like core/. Use the _find_project_root
-      function to help.
-    :param target_path:
-    :return:
-    """
-
-
 def fast_register_single_script(
     wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable
 ) -> (_data_proxy_pb2.CreateUploadLocationResponse, bytes):
