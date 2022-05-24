@@ -43,7 +43,7 @@ jobs:
       run: |
         FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit
     - name: Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v1.5.2
       with:
         fail_ci_if_error: true # optional (default = false)
 
