@@ -114,7 +114,7 @@ class RawSynchronousFlyteClient(object):
             self._channel = grpc.insecure_channel(cfg.endpoint, **kwargs)
         elif cfg.insecure_skip_verify:
             # Get port from endpoint or use 443
-            endpoint_parts = cfg.endpoint.split(":", 1)
+            endpoint_parts = cfg.endpoint.rsplit(":", 1)
             if len(endpoint_parts) == 2 and endpoint_parts[1].isdigit():
                 server_address = tuple(endpoint_parts)
             else:
