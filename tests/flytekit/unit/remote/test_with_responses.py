@@ -1,13 +1,21 @@
 import os
+import typing
+from collections import OrderedDict
 
 import mock
-from flyteidl.admin import launch_plan_pb2, workflow_pb2, task_pb2
+from flyteidl.admin import launch_plan_pb2, task_pb2, workflow_pb2
 
-from flytekit.configuration import Config
+import flytekit.configuration
+from flytekit.configuration import Config, ImageConfig
+from flytekit.configuration.default_images import DefaultImages
+from flytekit.core.node_creation import create_node
 from flytekit.core.utils import load_proto_from_file
-from flytekit.models import launch_plan as launch_plan_models, task as task_models
+from flytekit.core.workflow import workflow
+from flytekit.models import launch_plan as launch_plan_models
+from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.remote.remote import FlyteRemote
+from flytekit.tools.translator import get_serializable
 
 rr = FlyteRemote(
     Config.for_sandbox(),
@@ -48,3 +56,29 @@ def test_task(mock_client):
     ft = rr.fetch_task(name="merge_sort_remotely", version="tst")
     assert len(ft.interface.inputs) == 2
     assert len(ft.interface.outputs) == 1
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_normal_task(mock_client):
+    merge_sort_remotely = load_proto_from_file(
+        task_pb2.Task,
+        os.path.join(responses_dir, "admin.task_pb2.Task.pb"),
+    )
+    admin_task = task_models.Task.from_flyte_idl(merge_sort_remotely)
+    mock_client.get_task.return_value = admin_task
+    ft = rr.fetch_task(name="merge_sort_remotely", version="tst")
+
+    @workflow
+    def my_wf(numbers: typing.List[int], run_local_at_count: int) -> typing.List[int]:
+        t1_node = create_node(ft, numbers=numbers, run_local_at_count=run_local_at_count)
+        return t1_node.o0
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert wf_spec.template.nodes[0].task_node.name == "merge_sort_remotely"
