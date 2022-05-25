@@ -114,11 +114,13 @@ class RawSynchronousFlyteClient(object):
             self._channel = grpc.insecure_channel(cfg.endpoint, **kwargs)
         elif cfg.insecure_skip_verify:
             # Get port from endpoint or use 443
-            try:
-                port = int(cfg.endpoint.rsplit(":", 1)[1])
-            except (IndexError, ValueError):
-                port = 443
-            cert = ssl.get_server_certificate((cfg.endpoint, port))
+            endpoint_parts = cfg.endpoint.split(":", 1)
+            if len(endpoint_parts) == 2 and endpoint_parts[1].isdigit():
+                server_address = tuple(endpoint_parts)
+            else:
+                server_address = (cfg.endpoint, "443")
+
+            cert = ssl.get_server_certificate(server_address)
             x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
             cn = x509.get_subject().CN
             credentials = grpc.ssl_channel_credentials(str.encode(cert))
