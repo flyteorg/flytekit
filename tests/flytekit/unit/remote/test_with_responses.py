@@ -81,4 +81,4 @@ def test_normal_task(mock_client):
         image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
-    assert wf_spec.template.nodes[0].task_node.name == "merge_sort_remotely"
+    assert wf_spec.template.nodes[0].task_node.reference_id.name == "merge_sort_remotely"
