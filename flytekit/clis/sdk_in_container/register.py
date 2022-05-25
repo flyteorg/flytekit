@@ -99,11 +99,14 @@ def register(
     package_or_module: typing.Tuple[str],
 ):
     """
-    This command produces a Flyte backend registrable package of all entities in Flyte.
-    For tasks, one pb file is produced for each task, representing one TaskTemplate object.
-    For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object.  The closure
-        object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
-        This serialization step will set the name of the tasks to the fully qualified name of the task function.
+    This command is similar to package but instead of producing a zip file, all your Flyte entities are compiled,
+    and then sent to the backend specified by your config file. Think of this as combining the pyflyte package
+    and the flytectl register step in one command. This is why you see switches you'd normally use with flytectl
+    like service account here.
+
+    Note that this command runs "fast" register by default. Future work to come to add a non-fast version.
+    This means that a zip is created from the detected root of the packages given, and uploaded. Just like with
+    pyflyte run, tasks registered from this command will download and unzip that code package before running.
     """
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]

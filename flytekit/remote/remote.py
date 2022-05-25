@@ -524,13 +524,14 @@ class FlyteRemote(object):
         md5_bytes, str_digest = hash_file(to_upload)
         remote_logger.debug(f"Text hash of file to upload is {str_digest}")
 
+        c = self.client
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
             filename=to_upload.name,
         )
-        self._ctx.file_access.put_data(to_upload, upload_location.signed_url)
+        self._ctx.file_access.put_data(str(to_upload), upload_location.signed_url)
         remote_logger.warning(
             f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
         )
