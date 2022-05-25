@@ -3,7 +3,7 @@
 *.pyt
 *.pytc
 *.egg-info
-.*.swp
+.*.sw*
 .DS_Store
 venv/
 .venv/
@@ -26,6 +26,8 @@ dist
 .python-version
 _build/
 docs/source/generated/
+docs/source/plugins/generated/
 .pytest_flyte
 htmlcov
+*.ipynb
 *dat
