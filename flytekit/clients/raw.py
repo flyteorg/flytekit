@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import base64 as _base64
+import ssl
 import subprocess
 import time
 import typing
-import ssl
 from typing import Optional
 
-import OpenSSL
 import grpc
+import OpenSSL
 import requests as _requests
 from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.service import admin_pb2_grpc as _admin_service
@@ -113,10 +113,13 @@ class RawSynchronousFlyteClient(object):
         if cfg.insecure:
             self._channel = grpc.insecure_channel(cfg.endpoint, **kwargs)
         elif cfg.insecure_skip_verify:
-            # Get the certificate from the endpoint at port 443
-            cert = ssl.get_server_certificate((cfg.endpoint, 443))
-            x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM,
-                                                   cert)
+            # Get port from endpoint or use 443
+            try:
+                port = int(cfg.endpoint.rsplit(":", 1))[1]
+            except (IndexError, ValueError):
+                port = 443
+            cert = ssl.get_server_certificate((cfg.endpoint, port))
+            x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
             cn = x509.get_subject().CN
             credentials = grpc.ssl_channel_credentials(str.encode(cert))
             options = kwargs.get("options", [])
@@ -125,7 +128,7 @@ class RawSynchronousFlyteClient(object):
                 target=cfg.endpoint,
                 credentials=credentials,
                 options=options,
-                compression=kwargs.get("compression", None)
+                compression=kwargs.get("compression", None),
             )
         else:
             if "credentials" not in kwargs:
