@@ -30,6 +30,7 @@ from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
+from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
 
 REMOTE_FLAG_KEY = "remote"
@@ -396,7 +397,7 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
     ]
 
 
-def load_naive_entity(module_name: str, entity_name: str) -> typing.Union[WorkflowBase, PythonTask]:
+def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
     """
     Load the workflow of a the script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
@@ -405,7 +406,7 @@ def load_naive_entity(module_name: str, entity_name: str) -> typing.Union[Workfl
         SerializationSettings(None)
     )
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
-        with module_loader.add_sys_path(os.getcwd()):
+        with module_loader.add_sys_path(project_root):
             importlib.import_module(module_name)
     return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
 
@@ -486,10 +487,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
 
-        # StructuredDatasetTransformerEngine.register(
-        #     PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
-        # )
-
         remote_entity = remote.register_script(
             entity,
             project=project,
@@ -545,8 +542,10 @@ class WorkflowCommand(click.MultiCommand):
                 f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
             )
 
+        project_root = _find_project_root(self._filename)
+        rel_path = pathlib.PurePath(pathlib.Path(self._filename).resolve()).relative_to(pathlib.PurePath(project_root))
         module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
-        entity = load_naive_entity(module, exe_entity)
+        entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
         p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)

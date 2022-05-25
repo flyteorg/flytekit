@@ -14,7 +14,7 @@ from flytekit.core.tracker import extract_task_module
 from flytekit.core.workflow import WorkflowBase
 
 
-def compress_single_script(absolute_project_path: str, destination: str, full_module_name: str):
+def compress_single_script(source_path: str, destination: str, full_module_name: str):
     """
     Compresses the single script while maintaining the folder structure for that file.
 
@@ -42,7 +42,6 @@ def compress_single_script(absolute_project_path: str, destination: str, full_mo
     Note how `another_example.py` and `yet_another_example.py` were not copied to the destination.
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
-        source_path = os.path.join(absolute_project_path)
         destination_path = os.path.join(tmp_dir, "code")
         # This is the script relative path to the root of the project
         script_relative_path = Path()
@@ -55,7 +54,7 @@ def compress_single_script(absolute_project_path: str, destination: str, full_mo
             destination_path = os.path.join(destination_path, p)
             script_relative_path = Path(script_relative_path, p)
             init_file = Path(os.path.join(source_path, "__init__.py"))
-            if init_file.exists:
+            if init_file.exists():
                 shutil.copy(init_file, Path(os.path.join(tmp_dir, "code", script_relative_path, "__init__.py")))
 
         # Ensure destination path exists to cover the case of a single file and no modules.
@@ -142,7 +141,7 @@ def _find_project_root(source_path) -> Path:
     Traverse from current working directory until it can no longer find __init__.py files
     """
     # Start from the directory right above source_path
-    path = Path(source_path).parents[0]
+    path = Path(source_path).parents[0].resolve()
     while os.path.exists(os.path.join(path, "__init__.py")):
         path = path.parent
     return path
