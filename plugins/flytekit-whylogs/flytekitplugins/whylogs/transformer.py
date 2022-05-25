@@ -39,7 +39,6 @@ class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
         ctx.file_access.download(lv.scalar.blob.uri, local_dir)
         return DatasetProfileView.read(local_dir)
 
-    # TODO where is this visible from?
     # TODO how can I test this out locally? Do I need to build a wheel of flytekit and use it from a real project?
     def to_html(self, ctx: FlyteContext, python_val: DatasetProfileView, expected_python_type: Type[DatasetProfileView]) -> str:
         return str(python_val.to_pandas().to_html())
