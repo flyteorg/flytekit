@@ -111,7 +111,7 @@ def register(
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
-        print("No pkgs")
+        cli_logger.debug("No pkgs")
     if pkgs:
         raise ValueError("to do, please implement")
 

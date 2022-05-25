@@ -1,7 +1,8 @@
 import os
-import tempfile
 import pathlib
+import tempfile
 
+import mock
 import pytest
 
 import flytekit.configuration
@@ -9,7 +10,10 @@ from flytekit.configuration import DefaultImages, ImageConfig
 from flytekit.tools.repo import find_common_root, load_packages_and_modules
 
 
-def test_module_loading():
+# Mock out the entities so the load function doesn't try to load everything
+@mock.patch("flytekit.core.context_manager.FlyteEntities")
+def test_module_loading(mock_entities):
+    mock_entities.entities.copy.return_value = []
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Create directories
         top_level = os.path.join(tmp_dir, "top")
