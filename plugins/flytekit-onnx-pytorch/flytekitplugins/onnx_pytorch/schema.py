@@ -1,18 +1,18 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Dict, List, Tuple, Type, Union
 
-import joblib
 import torch
 from dataclasses_json import dataclass_json
+from typing_extensions import Annotated, get_args, get_origin
 
-import flytekit
 from flytekit import FlyteContext
-from flytekit.extend import TypeEngine, TypeTransformer
-from flytekit.models.literals import Literal
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types.file import JoblibSerializedFile
-from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.file import FlyteFile
 
 
 @dataclass_json
@@ -30,72 +30,105 @@ class PyTorch2ONNXConfig:
     custom_opsets: Dict[str, int] = field(default_factory=dict)
 
 
+@dataclass_json
+@dataclass
 class PyTorch2ONNX:
-    @classmethod
-    def config(cls) -> PyTorch2ONNXConfig:
-        return PyTorch2ONNXConfig(args=torch.Tensor([1]))
+    model: Union[torch.nn.Module, torch.jit.ScriptModule, torch.jit.ScriptFunction] = field(default=None)
 
-    def __class_getitem__(cls, config: PyTorch2ONNXConfig) -> Any:
-        class _PyTorch2ONNXTypeClass(PyTorch2ONNX):
-            __origin__ = PyTorch2ONNX
+    def __init__(self, model: Union[torch.nn.Module, torch.jit.ScriptModule, torch.jit.ScriptFunction]):
+        self._model = model
 
-            @classmethod
-            def config(cls) -> PyTorch2ONNXConfig:
-                return config
+    @property
+    def model(self) -> Type[Any]:
+        return self._model
 
-        return _PyTorch2ONNXTypeClass
+
+def extract_config(t: Type[PyTorch2ONNX]) -> Tuple[Type[PyTorch2ONNX], PyTorch2ONNXConfig]:
+    config = None
+    if get_origin(t) is Annotated:
+        base_type, config = get_args(t)
+        if isinstance(config, PyTorch2ONNXConfig):
+            return base_type, config
+        else:
+            raise TypeTransformerFailedError(f"{t}'s config isn't of type PyTorch2ONNXConfig")
+    return t, config
+
+
+def to_onnx(ctx, model, config):
+    local_path = ctx.file_access.get_random_local_path()
+
+    torch.onnx.export(
+        model,
+        args=config.args,
+        export_params=config.export_params,
+        verbose=config.verbose,
+        opset_version=config.opset_version,
+        do_constant_folding=config.do_constant_folding,
+        dynamic_axes=config.dynamic_axes,
+        keep_initializers_as_inputs=config.keep_initializers_as_inputs,
+        custom_opsets=config.custom_opsets,
+        f=local_path,
+    )
+
+    return local_path
 
 
 class PyTorch2ONNXTransformer(TypeTransformer[PyTorch2ONNX]):
+    ONNX_FORMAT = "onnx"
+
     def __init__(self):
         super().__init__(name="PyTorch ONNX Transformer", t=PyTorch2ONNX)
 
-    @staticmethod
-    def get_config(t: Type[PyTorch2ONNX]) -> PyTorch2ONNXConfig:
-        return t.config()
-
     def get_literal_type(self, t: Type[PyTorch2ONNX]) -> LiteralType:
-        return FlyteFilePathTransformer().get_literal_type(JoblibSerializedFile)
+        return LiteralType(blob=BlobType(format=self.ONNX_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE))
 
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: JoblibSerializedFile,
+        python_val: PyTorch2ONNX,
         python_type: Type[PyTorch2ONNX],
         expected: LiteralType,
     ) -> Literal:
-        return FlyteFilePathTransformer().to_literal(ctx, python_val, JoblibSerializedFile, expected)
+        python_type, config = extract_config(python_type)
+        remote_path = ctx.file_access.get_random_remote_path()
+
+        if config:
+            local_path = to_onnx(ctx, python_val.model, config)
+            ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+        else:
+            raise TypeTransformerFailedError(f"{python_type}'s config is None")
+
+        return Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    uri=remote_path,
+                    metadata=BlobMetadata(
+                        type=BlobType(format=self.ONNX_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE)
+                    ),
+                )
+            )
+        )
 
     def to_python_value(
         self,
         ctx: FlyteContext,
         lv: Literal,
-        expected_python_type: Type[PyTorch2ONNX],
-    ) -> PyTorch2ONNX:
-        if not (lv.scalar.blob.uri and lv.scalar.blob.metadata.type.format == "joblib"):
-            raise AssertionError("Can only validate a literal JoblibSerializedFile")
+        expected_python_type: Type[FlyteFile],
+    ) -> FlyteFile:
+        if not lv.scalar.blob.uri:
+            raise TypeTransformerFailedError(f"ONNX isn't of the expected type {expected_python_type}")
 
-        config = PyTorch2ONNXTransformer.get_config(expected_python_type)
+        return FlyteFile[self.ONNX_FORMAT](path=lv.scalar.blob.uri)
 
-        onnx_fname = Path(flytekit.current_context().working_directory) / "pytorch_model.onnx"
+    def guess_python_type(self, literal_type: LiteralType) -> Type[PyTorch2ONNX]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == self.ONNX_FORMAT
+        ):
+            return PyTorch2ONNX
 
-        torch.onnx.export(
-            joblib.load(lv.scalar.blob.uri),
-            args=config.args,
-            export_params=config.export_params,
-            verbose=config.verbose,
-            opset_version=config.opset_version,
-            do_constant_folding=config.do_constant_folding,
-            dynamic_axes=config.dynamic_axes,
-            keep_initializers_as_inputs=config.keep_initializers_as_inputs,
-            custom_opsets=config.custom_opsets,
-            f=onnx_fname,
-        )
-
-        PyTorch2ONNX.onnx = FlyteFile(path=str(onnx_fname))
-        PyTorch2ONNX.model = lv.scalar.blob.uri
-
-        return PyTorch2ONNX
+        raise TypeTransformerFailedError(f"Transformer {self} cannot reverse {literal_type}")
 
 
 TypeEngine.register(PyTorch2ONNXTransformer())

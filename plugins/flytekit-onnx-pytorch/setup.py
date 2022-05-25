@@ -4,7 +4,7 @@ PLUGIN_NAME = "onnx_pytorch"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.25.0,<1.0.0", "onnx>=1.10.2", "torch>=1.10.1"]
+plugin_requires = ["flytekit>=1.0.0b0,<1.2.0", "onnx>=1.10.2", "torch>=1.10.1"]
 
 __version__ = "0.0.0+develop"
 

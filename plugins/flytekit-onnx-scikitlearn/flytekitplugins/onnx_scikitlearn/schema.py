@@ -1,21 +1,21 @@
+from __future__ import annotations
+
 import inspect
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass, field
 from typing import Any, List, Tuple, Type
 
-import joblib
-import skl2onnx
 import skl2onnx.common.data_types
 from dataclasses_json import dataclass_json
 from skl2onnx import convert_sklearn
+from sklearn.base import BaseEstimator
+from typing_extensions import Annotated, get_args, get_origin
 
-import flytekit
 from flytekit import FlyteContext
-from flytekit.extend import TypeEngine, TypeTransformer
-from flytekit.models.literals import Literal
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types.file import JoblibSerializedFile
-from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from flytekit.types.file.file import FlyteFile
 
 
 @dataclass_json
@@ -30,80 +30,116 @@ class ScikitLearn2ONNXConfig:
 
     def __post_init__(self):
         validate_initial_types = [
-            True for item in self.initial_types if item in inspect.getmembers("skl2onnx.common.data_types")
+            True for item in self.initial_types if item in inspect.getmembers(skl2onnx.common.data_types)
         ]
         if not all(validate_initial_types):
             raise ValueError("All types in initial_types must be in skl2onnx.common.data_types")
 
         if self.final_types:
             validate_final_types = [
-                True for item in self.final_types if item in inspect.getmembers("skl2onnx.common.data_types")
+                True for item in self.final_types if item in inspect.getmembers(skl2onnx.common.data_types)
             ]
             if not all(validate_final_types):
                 raise ValueError("All types in final_types must be in skl2onnx.common.data_types")
 
 
 class ScikitLearn2ONNX:
-    @classmethod
-    def config(cls) -> ScikitLearn2ONNXConfig:
-        return ScikitLearn2ONNXConfig(initial_types=[("float_input", skl2onnx.common.data_types.FloatTensorType)])
+    model: BaseEstimator = field(default=None)
 
-    def __class_getitem__(cls, config: ScikitLearn2ONNXConfig) -> Any:
-        class _ScikitLearn2ONNXTypeClass(ScikitLearn2ONNX):
-            __origin__ = ScikitLearn2ONNX
+    def __init__(self, model: BaseEstimator):
+        self._model = model
 
-            @classmethod
-            def config(cls) -> ScikitLearn2ONNXConfig:
-                return config
+    @property
+    def model(self) -> Type[Any]:
+        return self._model
 
-        return _ScikitLearn2ONNXTypeClass
+
+def extract_config(t: Type[ScikitLearn2ONNX]) -> Tuple[Type[ScikitLearn2ONNX], ScikitLearn2ONNXConfig]:
+    config = None
+    if get_origin(t) is Annotated:
+        base_type, config = get_args(t)
+        if isinstance(config, ScikitLearn2ONNXConfig):
+            return base_type, config
+        else:
+            raise TypeTransformerFailedError(f"{t}'s config isn't of type ScikitLearn2ONNXConfig")
+    return t, config
+
+
+def to_onnx(ctx, model, config):
+    local_path = ctx.file_access.get_random_local_path()
+
+    onx = convert_sklearn(
+        model,
+        initial_types=config.initial_types,
+        name=config.name,
+        doc_string=config.doc_string,
+        target_opset=config.target_opset,
+        verbose=config.verbose,
+        final_types=config.final_types,
+    )
+
+    with open(local_path, "wb") as f:
+        f.write(onx.SerializeToString())
+
+    return local_path
 
 
 class ScikitLearn2ONNXTransformer(TypeTransformer[ScikitLearn2ONNX]):
+    ONNX_FORMAT = "onnx"
+
     def __init__(self):
         super().__init__(name="ScikitLearn ONNX Transformer", t=ScikitLearn2ONNX)
 
-    @staticmethod
-    def get_config(t: Type[ScikitLearn2ONNX]) -> ScikitLearn2ONNXConfig:
-        return t.config()
-
     def get_literal_type(self, t: Type[ScikitLearn2ONNX]) -> LiteralType:
-        return FlyteFilePathTransformer().get_literal_type(JoblibSerializedFile)
+        return LiteralType(blob=BlobType(format=self.ONNX_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE))
 
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: JoblibSerializedFile,
+        python_val: ScikitLearn2ONNX,
         python_type: Type[ScikitLearn2ONNX],
         expected: LiteralType,
     ) -> Literal:
-        return FlyteFilePathTransformer().to_literal(ctx, python_val, JoblibSerializedFile, expected)
+        python_type, config = extract_config(python_type)
+        remote_path = ctx.file_access.get_random_remote_path()
+
+        if config:
+            local_path = to_onnx(ctx, python_val.model, config)
+            ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+        else:
+            raise TypeTransformerFailedError(f"{python_type}'s config is None")
+
+        return Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    uri=remote_path,
+                    metadata=BlobMetadata(
+                        type=BlobType(format=self.ONNX_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE)
+                    ),
+                )
+            )
+        )
 
     def to_python_value(
         self,
         ctx: FlyteContext,
         lv: Literal,
-        expected_python_type: Type[ScikitLearn2ONNX],
-    ) -> ScikitLearn2ONNX:
-        if not (lv.scalar.blob.uri and lv.scalar.blob.metadata.type.format == "joblib"):
-            raise AssertionError("Can only validate a literal JoblibSerializedFile")
+        expected_python_type: Type[FlyteFile],
+    ) -> FlyteFile:
+        if not lv.scalar.blob.uri:
+            raise TypeTransformerFailedError(f"ONNX isn't of the expected type {expected_python_type}")
 
-        config = ScikitLearn2ONNXTransformer.get_config(expected_python_type).to_dict()
+        return FlyteFile[self.ONNX_FORMAT](path=lv.scalar.blob.uri)
 
-        onx = convert_sklearn(
-            joblib.load(lv.scalar.blob.uri),
-            **config,
-        )
+    def guess_python_type(self, literal_type: LiteralType) -> Type[ScikitLearn2ONNX]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == self.ONNX_FORMAT
+        ):
+            return ScikitLearn2ONNX
 
-        onnx_fname = Path(flytekit.current_context().working_directory) / "scikitlearn_model.onnx"
-
-        with open(onnx_fname, "wb") as f:
-            f.write(onx.SerializeToString())
-
-        ScikitLearn2ONNX.onnx = FlyteFile(path=str(onnx_fname))
-        ScikitLearn2ONNX.model = lv.scalar.blob.uri
-
-        return ScikitLearn2ONNX
+        raise TypeTransformerFailedError(f"Transformer {self} cannot reverse {literal_type}")
 
 
 TypeEngine.register(ScikitLearn2ONNXTransformer())

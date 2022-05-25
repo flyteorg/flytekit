@@ -1,7 +1,7 @@
 # Some standard imports
 from pathlib import Path
+from typing import Annotated, TypeVar
 
-import joblib
 import numpy as np
 import onnxruntime
 import torch.nn.init as init
@@ -14,7 +14,8 @@ from torch import nn
 
 import flytekit
 from flytekit import task, workflow
-from flytekit.types.file import JoblibSerializedFile, JPEGImageFile
+from flytekit.types.file import JPEGImageFile
+from flytekit.types.file.file import FlyteFile
 
 
 class SuperResolutionNet(nn.Module):
@@ -44,9 +45,20 @@ class SuperResolutionNet(nn.Module):
         init.orthogonal_(self.conv4.weight)
 
 
-def test_pytorch_model():
+def test_onnx_generation():
     @task
-    def train() -> JoblibSerializedFile:
+    def train() -> Annotated[
+        PyTorch2ONNX,
+        PyTorch2ONNXConfig(
+            args=torch.randn(1, 1, 224, 224, requires_grad=True),
+            export_params=True,  # store the trained parameter weights inside
+            opset_version=10,  # the ONNX version to export the model to
+            do_constant_folding=True,  # whether to execute constant folding for optimization
+            input_names=["input"],  # the model's input names
+            output_names=["output"],  # the model's output names
+            dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},  # variable length axes
+        ),
+    ]:
         # Create the super-resolution model by using the above model definition.
         torch_model = SuperResolutionNet(upscale_factor=3)
 
@@ -59,25 +71,11 @@ def test_pytorch_model():
             map_location = None
         torch_model.load_state_dict(model_zoo.load_url(model_url, map_location=map_location))
 
-        jbfile = "model.joblib.dat"
-        joblib.dump(torch_model, jbfile)
-        return jbfile
+        return PyTorch2ONNX(model=torch_model)
 
     @task
-    def onnx_predict(
-        model: PyTorch2ONNX[
-            PyTorch2ONNXConfig(
-                args=torch.randn(1, 1, 224, 224, requires_grad=True),
-                export_params=True,  # store the trained parameter weights inside
-                opset_version=10,  # the ONNX version to export the model to
-                do_constant_folding=True,  # whether to execute constant folding for optimization
-                input_names=["input"],  # the model's input names
-                output_names=["output"],  # the model's output names
-                dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},  # variable length axes
-            )
-        ]
-    ) -> JPEGImageFile:
-        ort_session = onnxruntime.InferenceSession(model.onnx.download())
+    def onnx_predict(model_file: FlyteFile[TypeVar("onnx")]) -> JPEGImageFile:
+        ort_session = onnxruntime.InferenceSession(model_file.download())
 
         img = Image.open("cat.jpg")
 
@@ -121,6 +119,6 @@ def test_pytorch_model():
     @workflow
     def wf() -> JPEGImageFile:
         model = train()
-        return onnx_predict(model=model)
+        return onnx_predict(model_file=model)
 
     print(wf())

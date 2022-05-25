@@ -4,7 +4,7 @@ PLUGIN_NAME = "onnx_tensorflow"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.25.0,<1.0.0", "tf2onnx>=1.9.3", "tensorflow>=2.7.0"]
+plugin_requires = ["flytekit>=1.0.0b0,<1.2.0", "tf2onnx>=1.9.3", "tensorflow>=2.7.0"]
 
 __version__ = "0.0.0+develop"
 
