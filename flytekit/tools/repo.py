@@ -130,19 +130,19 @@ def register(
                 ident, task_spec = hydrate_registration_parameters(
                     identifier_pb2.TASK, project, domain, version, admin_entity
                 )
-                logger.warning(f"Creating task {ident}")
+                logger.debug(f"Creating task {ident}")
                 super(SynchronousFlyteClient, client).create_task(TaskCreateRequest(id=ident, spec=task_spec))
             elif isinstance(admin_entity, _idl_admin_WorkflowSpec):
                 ident, wf_spec = hydrate_registration_parameters(
                     identifier_pb2.WORKFLOW, project, domain, version, admin_entity
                 )
-                logger.warning(f"Creating workflow {ident}")
+                logger.debug(f"Creating workflow {ident}")
                 super(SynchronousFlyteClient, client).create_workflow(WorkflowCreateRequest(id=ident, spec=wf_spec))
             elif isinstance(admin_entity, _idl_admin_LaunchPlan):
                 ident, admin_lp = hydrate_registration_parameters(
                     identifier_pb2.LAUNCH_PLAN, project, domain, version, admin_entity
                 )
-                logger.warning(f"Creating launch plan {ident}")
+                logger.debug(f"Creating launch plan {ident}")
                 super(SynchronousFlyteClient, client).create_launch_plan(
                     LaunchPlanCreateRequest(id=ident, spec=admin_lp.spec)
                 )
@@ -175,7 +175,7 @@ def find_common_root(
             if project_root != root:
                 raise ValueError(f"Specified module {pm} has root {root} but {project_root} already specified")
 
-    logger.warning(f"Common root folder detected as {str(project_root)}")
+    logger.debug(f"Common root folder detected as {str(project_root)}")
 
     return project_root
 
@@ -210,7 +210,7 @@ def load_packages_and_modules(
         # from a file. See pydoc.importfile for inspiration
         dot_delineated = os.path.splitext(rel_path_from_root)[0].replace(os.path.sep, ".")  # noqa
 
-        logger.warning(
+        logger.debug(
             f"User specified arg {pm} has {str(rel_path_from_root)} relative path loading it as {dot_delineated}"
         )
         pkgs_and_modules.append(dot_delineated)

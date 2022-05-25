@@ -115,7 +115,7 @@ def register(
     if pkgs:
         raise ValueError("to do, please implement")
 
-    cli_logger.warning(
+    cli_logger.debug(
         f"Running pyflyte register from {os.getcwd()} "
         f"with images {image_config} "
         f"and image destinationfolder {destination_dir} "
@@ -128,12 +128,12 @@ def register(
     # Todo: add switch for non-fast - skip the zipping and uploading and no fastserializationsettings
     # Create a zip file containing all the entries.
     detected_root = find_common_root(package_or_module)
-    cli_logger.warning(f"Using {detected_root} as root folder for project")
+    cli_logger.debug(f"Using {detected_root} as root folder for project")
     zip_file = fast_package(detected_root, output)
 
     # Upload zip file to Admin using FlyteRemote.
     md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
-    cli_logger.warning(f"Uploaded zip {zip_file} to {native_url}")
+    cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
 
     # Create serialization settings
     # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
@@ -154,11 +154,11 @@ def register(
     registerable_entities = load_packages_and_modules(
         serialization_settings, detected_root, list(package_or_module), options
     )
-    cli_logger.warning(f"Found and serialized {len(registerable_entities)} entities")
+    cli_logger.info(f"Found and serialized {len(registerable_entities)} entities")
 
     if not version:
         version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
-        cli_logger.warning(f"Computed version is {version}")
+        cli_logger.info(f"Computed version is {version}")
 
     # Register using repo code
     repo_register(registerable_entities, project, domain, version, remote.client)
