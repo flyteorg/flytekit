@@ -35,6 +35,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         retries=1,
         timeout=None,
         deprecated=None,
+        cache_serializable=False,
     ):
         """
         :param Text statement: Presto query specification
@@ -49,6 +50,7 @@ class SdkPrestoTask(_base_task.SdkTask):
         :param datetime.timedelta timeout:
         :param Text deprecated: This string can be used to mark the task as deprecated.  Consumers of the task will
             receive deprecation warnings.
+        :param bool cache_serializable:
         """
 
         # Set as class fields which are used down below to configure implicit
@@ -66,6 +68,7 @@ class SdkPrestoTask(_base_task.SdkTask):
             interruptible,
             discovery_version,
             deprecated,
+            cache_serializable,
         )
 
         presto_query = _presto_models.PrestoQuery(

@@ -1,4 +1,5 @@
 """Script used for testing local execution of functool.wraps-wrapped tasks"""
+from __future__ import annotations
 
 import os
 from functools import wraps

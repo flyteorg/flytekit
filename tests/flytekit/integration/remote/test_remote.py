@@ -86,7 +86,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
     poll_interval = datetime.timedelta(seconds=1)
     time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
 
-    execution = remote.sync_workflow_execution(execution)
+    execution = remote.sync_workflow_execution(execution, sync_nodes=True)
     while datetime.datetime.utcnow() < time_to_give_up:
 
         if execution.is_complete:
@@ -98,7 +98,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
             execution.outputs
 
         time.sleep(poll_interval.total_seconds())
-        execution = remote.sync_workflow_execution(execution)
+        execution = remote.sync_workflow_execution(execution, sync_nodes=True)
 
         if execution.node_executions:
             assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEEDED
@@ -164,6 +164,8 @@ def test_fetch_execute_task(flyteclient, flyte_workflows_register):
     execution = remote.execute(flyte_task, {"a": 10}, wait=True)
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
+    assert execution.raw_inputs.get("a", int) == 10
+    assert execution.raw_outputs.get("c", str) == "world"
 
 
 @pytest.mark.skip(reason="flyte_workflows_register does not work")

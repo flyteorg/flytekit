@@ -386,6 +386,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         discoverable,
         timeout,
         environment,
+        cache_serializable,
         custom,
     ):
         """
@@ -406,6 +407,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         :param bool discoverable:
         :param datetime.timedelta timeout:
         :param dict[Text, Text] environment:
+        :param bool cache_serializable:
         :param dict[Text, T] custom:
         """
         # Circular dependency
@@ -426,6 +428,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                 interruptible,
                 discovery_version,
                 deprecated,
+                cache_serializable,
             ),
             # TODO: If we end up using SdkRunnableTask for the new code, make sure this is set correctly.
             _interface.TypedInterface({}, {}),

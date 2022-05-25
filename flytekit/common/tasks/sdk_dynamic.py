@@ -321,6 +321,7 @@ class SdkDynamicTask(
         allowed_failure_ratio,
         max_concurrency,
         environment,
+        cache_serializable,
         custom,
     ):
         """
@@ -343,6 +344,7 @@ class SdkDynamicTask(
         :param float allowed_failure_ratio:
         :param int max_concurrency:
         :param dict[Text, Text] environment:
+        :param bool cache_serializable:
         :param dict[Text, T] custom:
         """
         _sdk_runnable.SdkRunnableTask.__init__(
@@ -365,6 +367,7 @@ class SdkDynamicTask(
             discoverable,
             timeout,
             environment,
+            cache_serializable,
             custom,
         )
 

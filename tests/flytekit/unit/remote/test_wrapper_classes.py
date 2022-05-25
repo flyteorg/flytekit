@@ -68,9 +68,6 @@ def test_wf_promote_subwf_lps():
     assert list(fwf.interface.inputs.keys()) == ["b"]
     assert len(fwf.nodes) == 1
     assert len(fwf.flyte_nodes) == 1
-    flyte_subwfs = fwf.get_sub_workflows()
-    assert len(flyte_subwfs) == 1
-    assert fwf.nodes[0].workflow_node.sub_workflow_ref == flyte_subwfs[0].id
 
     # Test another subwf that calls a launch plan instead of the sub_wf directly
     @workflow
@@ -88,8 +85,6 @@ def test_wf_promote_subwf_lps():
     assert list(fwf.interface.inputs.keys()) == ["b"]
     assert len(fwf.nodes) == 1
     assert len(fwf.flyte_nodes) == 1
-    flyte_subwfs = fwf.get_sub_workflows()
-    assert len(flyte_subwfs) == 0
     # The resource type will be different, so just check the name
     assert fwf.nodes[0].workflow_node.launchplan_ref.name == list(lp_specs.values())[0].workflow_id.name
 

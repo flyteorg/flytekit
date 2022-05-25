@@ -68,19 +68,17 @@ def _fast_serialize_command_fn(
 ) -> Callable[[SerializationSettings], List[str]]:
     default_command = task.get_default_command(settings)
 
-    dest_dir = (
-        settings.fast_serialization_settings.destination_dir if settings.fast_serialization_settings is not None else ""
-    )
-    if dest_dir is None or dest_dir == "":
-        dest_dir = "{{ .dest_dir }}"
-
     def fn(settings: SerializationSettings) -> List[str]:
         return [
             "pyflyte-fast-execute",
             "--additional-distribution",
-            "{{ .remote_package_path }}",
+            settings.fast_serialization_settings.distribution_location
+            if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
+            else "{{ .remote_package_path }}",
             "--dest-dir",
-            dest_dir,
+            settings.fast_serialization_settings.destination_dir
+            if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
+            else "{{ .dest_dir }}",
             "--",
             *default_command,
         ]

@@ -37,6 +37,7 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
         discoverable,
         timeout,
         environment,
+        cache_serializable,
         pod_spec=None,
         primary_container_name=None,
         annotations=None,
@@ -74,6 +75,7 @@ class SdkSidecarTask(_sdk_runnable.SdkRunnableTask, metaclass=_sdk_bases.Extende
             discoverable,
             timeout,
             environment,
+            cache_serializable,
             custom=None,
         )
 
@@ -183,6 +185,7 @@ class SdkDynamicSidecarTask(
         allowed_failure_ratio,
         max_concurrency,
         environment,
+        cache_serializable,
         pod_spec=None,
         primary_container_name=None,
         annotations=None,
@@ -208,6 +211,7 @@ class SdkDynamicSidecarTask(
         :param float allowed_failure_ratio:
         :param int max_concurrency:
         :param dict[Text, Text] environment:
+        :param bool cache_serializable:
         :param generated_pb2.PodSpec pod_spec:
         :param Text primary_container_name:
         :param dict[Text, Text] annotations:
@@ -235,6 +239,7 @@ class SdkDynamicSidecarTask(
             discoverable,
             timeout,
             environment,
+            cache_serializable,
             pod_spec=pod_spec,
             primary_container_name=primary_container_name,
             annotations=annotations,

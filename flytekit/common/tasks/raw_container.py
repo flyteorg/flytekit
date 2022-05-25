@@ -134,6 +134,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
         discovery_version: str = None,
         retries: int = 1,
         timeout: _datetime.timedelta = None,
+        cache_serializable: bool = False,
     ):
         """
         :param inputs:
@@ -155,6 +156,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
         :param discovery_version:
         :param retries:
         :param timeout:
+        :param cache_serializable:
         :param input_data_dir: This is the directory where data will be downloaded to
         :param output_data_dir: This is the directory where data will be uploaded from
         :param metadata_format: Format in which the metadata will be available for the script
@@ -183,6 +185,7 @@ class SdkRawContainerTask(_base_task.SdkTask):
             interruptible,
             discovery_version,
             None,
+            cache_serializable,
         )
 
         # The interface is defined using the inputs and outputs

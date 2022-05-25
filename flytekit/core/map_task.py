@@ -58,6 +58,8 @@ class MapPythonTask(PythonTask):
         self._max_concurrency = concurrency
         self._min_success_ratio = min_success_ratio
         self._array_task_interface = python_function_task.python_interface
+        if "metadata" not in kwargs and python_function_task.metadata:
+            kwargs["metadata"] = python_function_task.metadata
         super().__init__(
             name=name,
             interface=collection_interface,
@@ -205,7 +207,7 @@ class MapPythonTask(PythonTask):
 
 def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):
     """
-    Use a map task for parallelizable tasks that are run across a List of an input type. A map task can be composed of
+    Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.
 
     Invoke a map task with arguments using the :py:class:`list` version of the expected input.
@@ -218,8 +220,8 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_suc
        :language: python
        :dedent: 4
 
-    At run time, the underlying map task will be run for every value in the input collection. Task-specific attributes
-    such as :py:class:`flytekit.TaskMetadata` and :py:class:`flytekit.Resources` are applied to individual instances
+    At run time, the underlying map task will be run for every value in the input collection. Attributes
+    such as :py:class:`flytekit.TaskMetadata` and ``with_overrides`` are applied to individual instances
     of the mapped task.
 
     :param task_function: This argument is implicitly passed and represents the repeatable function
@@ -228,6 +230,7 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_suc
         all inputs are processed.
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
+
     """
     if not isinstance(task_function, PythonFunctionTask):
         raise ValueError(

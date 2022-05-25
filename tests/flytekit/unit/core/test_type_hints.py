@@ -6,6 +6,7 @@ import random
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from enum import Enum
 
 import pandas
 import pytest
@@ -31,6 +32,8 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.types.directory import FlyteDirectory, TensorboardLogs
+from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 serialization_settings = context_manager.SerializationSettings(
@@ -347,6 +350,87 @@ def test_wf1_with_sql_with_patch():
     assert context_manager.FlyteContextManager.size() == 1
 
 
+def test_flyte_file_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class InnerFileStruct(object):
+        a: FlyteFile
+        b: PNGImageFile
+
+    @dataclass_json
+    @dataclass
+    class FileStruct(object):
+        a: FlyteFile
+        b: InnerFileStruct
+
+    @task
+    def t1(path: str) -> FileStruct:
+        file = FlyteFile(path)
+        fs = FileStruct(a=file, b=InnerFileStruct(a=file, b=PNGImageFile(path)))
+        return fs
+
+    @dynamic
+    def dyn(fs: FileStruct):
+        t2(fs=fs)
+        t3(fs=fs)
+
+    @task
+    def t2(fs: FileStruct) -> os.PathLike:
+        assert fs.a.remote_source == "s3://somewhere"
+        assert fs.b.a.remote_source == "s3://somewhere"
+        assert fs.b.b.remote_source == "s3://somewhere"
+        assert "/tmp/flyte/" in fs.a.path
+        assert "/tmp/flyte/" in fs.b.a.path
+        assert "/tmp/flyte/" in fs.b.b.path
+
+        return fs.a.path
+
+    @task
+    def t3(fs: FileStruct) -> FlyteFile:
+        return fs.a
+
+    @workflow
+    def wf(path: str) -> (os.PathLike, FlyteFile):
+        n1 = t1(path=path)
+        dyn(fs=n1)
+        return t2(fs=n1), t3(fs=n1)
+
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[0].path
+    assert "/tmp/flyte/" in wf(path="s3://somewhere")[1].path
+    assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
+
+
+def test_flyte_directory_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class InnerFileStruct(object):
+        a: FlyteDirectory
+        b: TensorboardLogs
+
+    @dataclass_json
+    @dataclass
+    class FileStruct(object):
+        a: FlyteDirectory
+        b: InnerFileStruct
+
+    @task
+    def t1(path: str) -> FileStruct:
+        dir = FlyteDirectory(path)
+        fs = FileStruct(a=dir, b=InnerFileStruct(a=dir, b=TensorboardLogs(path)))
+        return fs
+
+    @task
+    def t2(fs: FileStruct) -> os.PathLike:
+        return fs.a.path
+
+    @workflow
+    def wf(path: str) -> os.PathLike:
+        n1 = t1(path=path)
+        return t2(fs=n1)
+
+    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+
+
 def test_wf1_with_map():
     @task
     def t1(a: int) -> int:
@@ -503,7 +587,9 @@ def test_wf1_with_fast_dynamic():
                 )
             )
         ) as ctx:
-            dynamic_job_spec = my_subwf.compile_into_workflow(ctx, my_subwf._task_function, a=5)
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+
+            dynamic_job_spec = my_subwf.dispatch_execute(ctx, input_literal_map)
             assert len(dynamic_job_spec._nodes) == 5
             assert len(dynamic_job_spec.tasks) == 1
             args = " ".join(dynamic_job_spec.tasks[0].container.args)
@@ -1063,6 +1149,58 @@ def test_dataclass_more():
     wf(x=10, y=20)
 
 
+def test_enum_in_dataclass():
+    class Color(Enum):
+        RED = "red"
+        GREEN = "green"
+        BLUE = "blue"
+
+    @dataclass_json
+    @dataclass
+    class Datum(object):
+        x: int
+        y: Color
+
+    @task
+    def t1(x: int) -> Datum:
+        return Datum(x=x, y=Color.RED)
+
+    @workflow
+    def wf(x: int) -> Datum:
+        return t1(x=x)
+
+    assert wf(x=10) == Datum(10, Color.RED)
+
+
+def test_flyte_schema_dataclass():
+    TestSchema = FlyteSchema[kwtypes(some_str=str)]
+
+    @dataclass_json
+    @dataclass
+    class InnerResult:
+        number: int
+        schema: TestSchema
+
+    @dataclass_json
+    @dataclass
+    class Result:
+        result: InnerResult
+        schema: TestSchema
+
+    schema = TestSchema()
+
+    @task
+    def t1(x: int) -> Result:
+
+        return Result(result=InnerResult(number=x, schema=schema), schema=schema)
+
+    @workflow
+    def wf(x: int) -> Result:
+        return t1(x=x)
+
+    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
+
+
 def test_environment():
     @task(environment={"FOO": "foofoo", "BAZ": "baz"})
     def t1(a: int) -> str:
@@ -1376,7 +1514,7 @@ def test_guess_dict4():
     @dataclass
     class Bar(object):
         x: int
-        y: str
+        y: dict
         z: Foo
 
     @task
@@ -1395,14 +1533,14 @@ def test_guess_dict4():
 
     @task
     def t2() -> Bar:
-        return Bar(x=1, y="bar", z=Foo(x=1, y="foo", z={"hello": "world"}))
+        return Bar(x=1, y={"hello": "world"}, z=Foo(x=1, y="foo", z={"hello": "world"}))
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
     pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": "bar", "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
+    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 
