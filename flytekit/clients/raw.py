@@ -115,7 +115,7 @@ class RawSynchronousFlyteClient(object):
         elif cfg.insecure_skip_verify:
             # Get port from endpoint or use 443
             try:
-                port = int(cfg.endpoint.rsplit(":", 1))[1]
+                port = int(cfg.endpoint.rsplit(":", 1)[1])
             except (IndexError, ValueError):
                 port = 443
             cert = ssl.get_server_certificate((cfg.endpoint, port))
