@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import typing
 from typing import Any
@@ -11,8 +10,9 @@ from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
 from flytekit import FlyteContext, PythonInstanceTask
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
+from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
+from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file import HTMLPage, PythonNotebook
 
@@ -200,7 +200,7 @@ class NotebookTask(PythonInstanceTask[T]):
         For Spark, the notebooks today need to use the new_session or just getOrCreate session and get a handle to the
         singleton
         """
-        logging.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
+        logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         # Execute Notebook via Papermill.
         pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs)  # type: ignore
 

@@ -4,7 +4,7 @@ PLUGIN_NAME = "fsspec"
 
 microlib_name = f"flytekitplugins-data-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.21.3,<1.0.0", "fsspec>=2021.7.0"]
+plugin_requires = ["flytekit>=1.1.0b0,<1.2.0", "fsspec>=2021.7.0", "botocore>=1.7.48"]
 
 __version__ = "0.0.0+develop"
 
@@ -20,6 +20,11 @@ setup(
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
+    extras_require={
+        # https://github.com/fsspec/filesystem_spec/blob/master/setup.py#L36
+        "aws": ["s3fs>=2021.7.0"],
+        "gcp": ["gcsfs>=2021.7.0"],
+    },
     license="apache2",
     python_requires=">=3.7",
     classifiers=[
@@ -28,6 +33,8 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

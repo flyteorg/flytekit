@@ -14,231 +14,345 @@
 from __future__ import annotations
 
 import datetime as _datetime
-import logging
 import logging as _logging
 import os
 import pathlib
-import re
+import tempfile
 import traceback
 import typing
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Generator, List, Optional, Union
 
-from docker_image import reference
-
+import flytekit
 from flytekit.clients import friendly as friendly_client  # noqa
-from flytekit.common.core.identifier import WorkflowExecutionIdentifier as _SdkWorkflowExecutionIdentifier
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.configuration import images, internal
-from flytekit.configuration import sdk as _sdk_config
+from flytekit.configuration import Config, SecretsConfig, SerializationSettings
+from flytekit.core import mock_stats, utils
+from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
-from flytekit.engines.unit import mock_stats as _mock_stats
+from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
+from flytekit.interfaces.stats import taggable
+from flytekit.loggers import logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
 
 # Enables static type checking https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING
+
+flyte_context_Var: ContextVar[typing.List[FlyteContext]] = ContextVar("", default=[])
+
 if typing.TYPE_CHECKING:
     from flytekit.core.base_task import TaskResolverMixin
 
-_DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
+
+# Identifier fields use placeholders for registration-time substitution.
+# Additional fields, such as auth and the raw output data prefix have more complex structures
+# and can be optional so they are not serialized with placeholders.
+
+# During out of container serialize the absolute path of the flytekit virtualenv at serialization time won't match the
+# in-container value at execution time. The following default value is used to provide the in-container virtualenv path
+# but can be optionally overridden at serialization time based on the installation of your flytekit virtualenv.
 
 
-@dataclass(init=True, repr=True, eq=True, frozen=True)
-class Image(object):
+class ExecutionParameters(object):
     """
-    Image is a structured wrapper for task container images used in object serialization.
+    This is a run-time user-centric context object that is accessible to every @task method. It can be accessed using
 
-    Attributes:
-        name (str): A user-provided name to identify this image.
-        fqn (str): Fully qualified image name. This consists of
-            #. a registry location
-            #. a username
-            #. a repository name
-            For example: `hostname/username/reponame`
-        tag (str): Optional tag used to specify which version of an image to pull
-    """
+    .. code-block:: python
 
-    name: str
-    fqn: str
-    tag: str
+        flytekit.current_context()
 
-    @property
-    def full(self) -> str:
-        """ "
-        Return the full image name with tag.
-        """
-        return f"{self.fqn}:{self.tag}"
+    This object provides the following
+    * a statsd handler
+    * a logging handler
+    * the execution ID as an :py:class:`flytekit.models.core.identifier.WorkflowExecutionIdentifier` object
+    * a working directory for the user to write arbitrary files to
 
-
-@dataclass(init=True, repr=True, eq=True, frozen=True)
-class ImageConfig(object):
-    """
-    ImageConfig holds available images which can be used at registration time. A default image can be specified
-    along with optional additional images. Each image in the config must have a unique name.
-
-    Attributes:
-        default_image (str): The default image to be used as a container for task serialization.
-        images (List[Image]): Optional, additional images which can be used in task container definitions.
+    Please do not confuse this object with the :py:class:`flytekit.FlyteContext` object.
     """
 
-    default_image: Optional[Image] = None
-    images: Optional[List[Image]] = None
-
-    def find_image(self, name) -> Optional[Image]:
-        """
-        Return an image, by name, if it exists.
-        """
-        lookup_images = self.images + [self.default_image] if self.images else [self.default_image]
-        for i in lookup_images:
-            if i.name == name:
-                return i
-        return None
-
-
-_IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
-
-
-def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image:
-    """
-    Looks up the image tag from environment variable (should be set from the Dockerfile).
-        FLYTE_INTERNAL_IMAGE should be the environment variable.
-
-    This function is used when registering tasks/workflows with Admin.
-    When using the canonical Python-based development cycle, the version that is used to register workflows
-    and tasks with Admin should be the version of the image itself, which should ideally be something unique
-    like the sha of the latest commit.
-
-    :param optional_tag:
-    :param name:
-    :param Text tag: e.g. somedocker.com/myimage:someversion123
-    :rtype: Text
-    """
-    ref = reference.Reference.parse(tag)
-    if not optional_tag and ref["tag"] is None:
-        raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
-    else:
-        return Image(name=name, fqn=ref["name"], tag=ref["tag"])
-
-
-def get_image_config(img_name: Optional[str] = None) -> ImageConfig:
-    image_name = img_name if img_name else internal.IMAGE.get()
-    default_img = look_up_image_info("default", image_name) if image_name is not None and image_name != "" else None
-    other_images = [look_up_image_info(k, tag=v, optional_tag=True) for k, v in images.get_specified_images().items()]
-    other_images.append(default_img)
-    return ImageConfig(default_image=default_img, images=other_images)
-
-
-@dataclass
-class EntrypointSettings(object):
-    """
-    This object carries information about the command, path and version of the entrypoint program that will be invoked
-    to execute tasks at runtime.
-    """
-
-    path: Optional[str] = None
-    command: Optional[str] = None
-    version: int = 0
-
-
-@dataclass
-class FastSerializationSettings(object):
-    """
-    This object hold information about settings necessary to serialize an object so that it can be fast-registered.
-    """
-
-    enabled: bool = False
-    destination_dir: Optional[str] = None
-
-
-@dataclass(frozen=True)
-class SerializationSettings(object):
-    """
-    These settings are provided while serializing a workflow and task, before registration. This is required to get
-    runtime information at serialization time, as well as some defaults.
-
-    Attributes:
-        project (str): The project (if any) with which to register entities under.
-        domain (str): The domain (if any) with which to register entities under.
-        version (str): The version (if any) with which to register entities under.
-        image_config (ImageConfig): The image config used to define task container images.
-        env (Optional[Dict[str, str]]): Environment variables injected into task container definitions.
-        flytekit_virtualenv_root (Optional[str]):  During out of container serialize the absolute path of the flytekit
-            virtualenv at serialization time won't match the in-container value at execution time. This optional value
-            is used to provide the in-container virtualenv path
-        python_interpreter (Optional[str]): The python executable to use. This is used for spark tasks in out of
-            container execution.
-        entrypoint_settings (Optional[EntrypointSettings]): Information about the command, path and version of the
-            entrypoint program.
-        fast_serialization_settings (Optional[FastSerializationSettings]): If the code is being serialized so that it
-            can be fast registered (and thus omit building a Docker image) this object contains additional parameters
-            for serialization.
-    """
-
-    project: str
-    domain: str
-    version: str
-    image_config: ImageConfig
-    env: Optional[Dict[str, str]] = None
-    flytekit_virtualenv_root: Optional[str] = None
-    python_interpreter: Optional[str] = None
-    entrypoint_settings: Optional[EntrypointSettings] = None
-    fast_serialization_settings: Optional[FastSerializationSettings] = None
-
-    @dataclass
+    @dataclass(init=False)
     class Builder(object):
-        project: str
-        domain: str
-        version: str
-        image_config: ImageConfig
-        env: Optional[Dict[str, str]] = None
-        flytekit_virtualenv_root: Optional[str] = None
-        python_interpreter: Optional[str] = None
-        entrypoint_settings: Optional[EntrypointSettings] = None
-        fast_serialization_settings: Optional[FastSerializationSettings] = None
+        stats: taggable.TaggableStats
+        execution_date: datetime
+        logging: _logging.Logger
+        execution_id: str
+        attrs: typing.Dict[str, typing.Any]
+        working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
+        checkpoint: typing.Optional[Checkpoint]
+        decks: List[flytekit.Deck]
+        raw_output_prefix: str
 
-        def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
-            self.fast_serialization_settings = fss
+        def __init__(self, current: typing.Optional[ExecutionParameters] = None):
+            self.stats = current.stats if current else None
+            self.execution_date = current.execution_date if current else None
+            self.working_dir = current.working_directory if current else None
+            self.execution_id = current.execution_id if current else None
+            self.logging = current.logging if current else None
+            self.checkpoint = current._checkpoint if current else None
+            self.decks = current._decks if current else []
+            self.attrs = current._attrs if current else {}
+            self.raw_output_prefix = current.raw_output_prefix if current else None
+
+        def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
+            self.attrs[key] = v
             return self
 
-        def build(self) -> SerializationSettings:
-            return SerializationSettings(
-                project=self.project,
-                domain=self.domain,
-                version=self.version,
-                image_config=self.image_config,
-                env=self.env,
-                flytekit_virtualenv_root=self.flytekit_virtualenv_root,
-                python_interpreter=self.python_interpreter,
-                entrypoint_settings=self.entrypoint_settings,
-                fast_serialization_settings=self.fast_serialization_settings,
+        def build(self) -> ExecutionParameters:
+            if not isinstance(self.working_dir, utils.AutoDeletingTempDir):
+                pathlib.Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+            return ExecutionParameters(
+                execution_date=self.execution_date,
+                stats=self.stats,
+                tmp_dir=self.working_dir,
+                execution_id=self.execution_id,
+                logging=self.logging,
+                checkpoint=self.checkpoint,
+                decks=self.decks,
+                raw_output_prefix=self.raw_output_prefix,
+                **self.attrs,
             )
 
-    def new_builder(self) -> Builder:
+    @staticmethod
+    def new_builder(current: ExecutionParameters = None) -> Builder:
+        return ExecutionParameters.Builder(current=current)
+
+    def with_task_sandbox(self) -> Builder:
+        prefix = self.working_directory
+        if isinstance(self.working_directory, utils.AutoDeletingTempDir):
+            prefix = self.working_directory.name
+        task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)
+        p = pathlib.Path(task_sandbox_dir)
+        cp_dir = p.joinpath("__cp")
+        cp_dir.mkdir(exist_ok=True)
+        cp = SyncCheckpoint(checkpoint_dest=str(cp_dir))
+        b = self.new_builder(self)
+        b.checkpoint = cp
+        b.working_dir = task_sandbox_dir
+        return b
+
+    def builder(self) -> Builder:
+        return ExecutionParameters.Builder(current=self)
+
+    def __init__(
+        self,
+        execution_date,
+        tmp_dir,
+        stats,
+        execution_id,
+        logging,
+        raw_output_prefix,
+        checkpoint=None,
+        decks=None,
+        **kwargs,
+    ):
         """
-        Creates a ``SerializationSettings.Builder`` that copies the existing serialization settings parameters and
-        allows for customization.
+        Args:
+            execution_date: Date when the execution is running
+            tmp_dir: temporary directory for the execution
+            stats: handle to emit stats
+            execution_id: Identifier for the execution
+            logging: handle to logging
+            checkpoint: Checkpoint Handle to the configured checkpoint system
         """
-        return SerializationSettings.Builder(
-            project=self.project,
-            domain=self.domain,
-            version=self.version,
-            image_config=self.image_config,
-            env=self.env,
-            flytekit_virtualenv_root=self.flytekit_virtualenv_root,
-            python_interpreter=self.python_interpreter,
-            entrypoint_settings=self.entrypoint_settings,
-            fast_serialization_settings=self.fast_serialization_settings,
+        if decks is None:
+            decks = []
+        self._stats = stats
+        self._execution_date = execution_date
+        self._working_directory = tmp_dir
+        self._execution_id = execution_id
+        self._logging = logging
+        self._raw_output_prefix = raw_output_prefix
+        # AutoDeletingTempDir's should be used with a with block, which creates upon entry
+        self._attrs = kwargs
+        # It is safe to recreate the Secrets Manager
+        self._secrets_manager = SecretsManager()
+        self._checkpoint = checkpoint
+        self._decks = decks
+
+    @property
+    def stats(self) -> taggable.TaggableStats:
+        """
+        A handle to a special statsd object that provides usefully tagged stats.
+        TODO: Usage examples and better comments
+        """
+        return self._stats
+
+    @property
+    def logging(self) -> _logging.Logger:
+        """
+        A handle to a useful logging object.
+        TODO: Usage examples
+        """
+        return self._logging
+
+    @property
+    def raw_output_prefix(self) -> str:
+        return self._raw_output_prefix
+
+    @property
+    def working_directory(self) -> utils.AutoDeletingTempDir:
+        """
+        A handle to a special working directory for easily producing temporary files.
+
+        TODO: Usage examples
+        TODO: This does not always return a AutoDeletingTempDir
+        """
+        return self._working_directory
+
+    @property
+    def execution_date(self) -> datetime:
+        """
+        This is a datetime representing the time at which a workflow was started.  This is consistent across all tasks
+        executed in a workflow or sub-workflow.
+
+        .. note::
+
+            Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
+            in debugging.
+        """
+        return self._execution_date
+
+    @property
+    def execution_id(self) -> _identifier.WorkflowExecutionIdentifier:
+        """
+        This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
+        task executions in a workflow or sub-workflow execution.
+
+        .. note::
+
+            Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
+            on output data to link back to the workflow run that created it.
+        """
+        return self._execution_id
+
+    @property
+    def secrets(self) -> SecretsManager:
+        return self._secrets_manager
+
+    @property
+    def checkpoint(self) -> Checkpoint:
+        if self._checkpoint is None:
+            raise NotImplementedError("Checkpointing is not available, please check the version of the platform.")
+        return self._checkpoint
+
+    @property
+    def decks(self) -> typing.List:
+        """
+        A list of decks of the tasks, and it will be rendered to a html at the end of the task execution.
+        """
+        return self._decks
+
+    @property
+    def default_deck(self) -> "Deck":
+        from flytekit import Deck
+
+        return Deck("default")
+
+    def __getattr__(self, attr_name: str) -> typing.Any:
+        """
+        This houses certain task specific context. For example in Spark, it houses the SparkSession, etc
+        """
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return self._attrs[attr_name]
+        raise AssertionError(f"{attr_name} not available as a parameter in Flyte context - are you in right task-type?")
+
+    def has_attr(self, attr_name: str) -> bool:
+        attr_name = attr_name.upper()
+        if self._attrs and attr_name in self._attrs:
+            return True
+        return False
+
+    def get(self, key: str) -> typing.Any:
+        """
+        Returns task specific context if present else raise an error. The returned context will match the key
+        """
+        return self.__getattr__(attr_name=key)
+
+
+class SecretsManager(object):
+    """
+    This provides a secrets resolution logic at runtime.
+    The resolution order is
+      - Try env var first. The env var should have the configuration.SECRETS_ENV_PREFIX. The env var will be all upper
+         cased
+      - If not then try the file where the name matches lower case
+        ``configuration.SECRETS_DEFAULT_DIR/<group>/configuration.SECRETS_FILE_PREFIX<key>``
+
+    All configuration values can always be overridden by injecting an environment variable
+    """
+
+    class _GroupSecrets(object):
+        """
+        This is a dummy class whose sole purpose is to support "attribute" style lookup for secrets
+        """
+
+        def __init__(self, group: str, sm: typing.Any):
+            self._group = group
+            self._sm = sm
+
+        def __getattr__(self, item: str) -> str:
+            """
+            Returns the secret that matches "group"."key"
+            the key, here is the item
+            """
+            return self._sm.get(self._group, item)
+
+    def __init__(self, secrets_cfg: typing.Optional[SecretsConfig] = None):
+        if secrets_cfg is None:
+            secrets_cfg = SecretsConfig.auto()
+        self._base_dir = secrets_cfg.default_dir.strip()
+        self._file_prefix = secrets_cfg.file_prefix.strip()
+        self._env_prefix = secrets_cfg.env_prefix.strip()
+
+    def __getattr__(self, item: str) -> _GroupSecrets:
+        """
+        returns a new _GroupSecrets objects, that allows all keys within this group to be looked up like attributes
+        """
+        return self._GroupSecrets(item, self)
+
+    def get(self, group: str, key: str) -> str:
+        """
+        Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
+        """
+        self.check_group_key(group, key)
+        env_var = self.get_secrets_env_var(group, key)
+        fpath = self.get_secrets_file(group, key)
+        v = os.environ.get(env_var)
+        if v is not None:
+            return v
+        if os.path.exists(fpath):
+            with open(fpath, "r") as f:
+                return f.read().strip()
+        raise ValueError(
+            f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
-    def should_fast_serialize(self) -> bool:
+    def get_secrets_env_var(self, group: str, key: str) -> str:
         """
-        Whether or not the serialization settings specify that entities should be serialized for fast registration.
+        Returns a string that matches the ENV Variable to look for the secrets
         """
-        return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
+        self.check_group_key(group, key)
+        return f"{self._env_prefix}{group.upper()}_{key.upper()}"
+
+    def get_secrets_file(self, group: str, key: str) -> str:
+        """
+        Returns a path that matches the file to look for the secrets
+        """
+        self.check_group_key(group, key)
+        return os.path.join(self._base_dir, group.lower(), f"{self._file_prefix}{key.lower()}")
+
+    @staticmethod
+    def check_group_key(group: str, key: str):
+        if group is None or group == "":
+            raise ValueError("secrets group is a mandatory field.")
+        if key is None or key == "":
+            raise ValueError("secrets key is a mandatory field.")
 
 
 @dataclass(frozen=True)
@@ -311,8 +425,6 @@ class ExecutionState(object):
         working_dir (os.PathLike): Specifies the remote, external directory where inputs, outputs and other protobufs
             are uploaded
         engine_dir (os.PathLike):
-        additional_context Optional[Dict[Any, Any]]: Free form dictionary used to store additional values, for example
-            those used for dynamic, fast registration.
         branch_eval_mode Optional[BranchEvalMode]: Used to determine whether a branch node should execute.
         user_space_params Optional[ExecutionParameters]: Provides run-time, user-centric context such as a statsd
             handler, a logging handler, the current execution id and a working directory.
@@ -342,7 +454,6 @@ class ExecutionState(object):
     mode: Optional[ExecutionState.Mode]
     working_dir: os.PathLike
     engine_dir: Optional[Union[os.PathLike, str]]
-    additional_context: Optional[Dict[Any, Any]]
     branch_eval_mode: Optional[BranchEvalMode]
     user_space_params: Optional[ExecutionParameters]
 
@@ -351,7 +462,6 @@ class ExecutionState(object):
         working_dir: os.PathLike,
         mode: Optional[ExecutionState.Mode] = None,
         engine_dir: Optional[Union[os.PathLike, str]] = None,
-        additional_context: Optional[Dict[Any, Any]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
     ):
@@ -361,7 +471,6 @@ class ExecutionState(object):
         self.mode = mode
         self.engine_dir = engine_dir if engine_dir else os.path.join(self.working_dir, "engine_dir")
         pathlib.Path(self.engine_dir).mkdir(parents=True, exist_ok=True)
-        self.additional_context = additional_context
         self.branch_eval_mode = branch_eval_mode
         self.user_space_params = user_space_params
 
@@ -384,24 +493,16 @@ class ExecutionState(object):
         working_dir: Optional[os.PathLike] = None,
         mode: Optional[Mode] = None,
         engine_dir: Optional[os.PathLike] = None,
-        additional_context: Optional[Dict[Any, Any]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
     ) -> ExecutionState:
         """
         Produces a copy of the current execution state and overrides the copy's parameters with passed parameter values.
         """
-        if self.additional_context:
-            if additional_context:
-                additional_context = {**self.additional_context, **additional_context}
-            else:
-                additional_context = self.additional_context
-
         return ExecutionState(
             working_dir=working_dir if working_dir else self.working_dir,
             mode=mode if mode else self.mode,
             engine_dir=engine_dir if engine_dir else self.engine_dir,
-            additional_context=additional_context,
             branch_eval_mode=branch_eval_mode if branch_eval_mode else self.branch_eval_mode,
             user_space_params=user_space_params if user_space_params else self.user_space_params,
         )
@@ -500,6 +601,11 @@ class FlyteContext(object):
         with :py:func:`flytekit.current_context`
         """
         return FlyteContextManager.current_context()
+
+    def get_deck(self):
+        from flytekit.deck.deck import _get_deck
+
+        _get_deck(self.execution_state.user_space_params)
 
     @dataclass
     class Builder(object):
@@ -602,8 +708,6 @@ class FlyteContextManager(object):
         FlyteContextManager.pop_context()
     """
 
-    _OBJS: typing.List[FlyteContext] = []
-
     @staticmethod
     def get_origin_stackframe(limit=2) -> traceback.FrameSummary:
         ss = traceback.extract_stack(limit=limit + 1)
@@ -612,31 +716,36 @@ class FlyteContextManager(object):
         return ss[0]
 
     @staticmethod
-    def current_context() -> Optional[FlyteContext]:
-        if FlyteContextManager._OBJS:
-            return FlyteContextManager._OBJS[-1]
-        return None
+    def current_context() -> FlyteContext:
+        if not flyte_context_Var.get():
+            # we will lost the default flyte context in the new thread. Therefore, reinitialize the context when running in the new thread.
+            FlyteContextManager.initialize()
+        return flyte_context_Var.get()[-1]
 
     @staticmethod
     def push_context(ctx: FlyteContext, f: Optional[traceback.FrameSummary] = None) -> FlyteContext:
         if not f:
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
-        FlyteContextManager._OBJS.append(ctx)
+        context_list = flyte_context_Var.get()
+        context_list.append(ctx)
+        flyte_context_Var.set(context_list)
         t = "\t"
-        logging.debug(
-            f"{t * ctx.level}[{len(FlyteContextManager._OBJS)}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+        logger.debug(
+            f"{t * ctx.level}[{len(flyte_context_Var.get())}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
         return ctx
 
     @staticmethod
     def pop_context() -> FlyteContext:
-        ctx = FlyteContextManager._OBJS.pop()
+        context_list = flyte_context_Var.get()
+        ctx = context_list.pop()
+        flyte_context_Var.set(context_list)
         t = "\t"
-        logging.debug(
-            f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+        logger.debug(
+            f"{t * ctx.level}[{len(flyte_context_Var.get()) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
-        if len(FlyteContextManager._OBJS) == 0:
+        if len(flyte_context_Var.get()) == 0:
             raise AssertionError(f"Illegal Context state! Popped, {ctx}")
         return ctx
 
@@ -667,7 +776,7 @@ class FlyteContextManager(object):
 
     @staticmethod
     def size() -> int:
-        return len(FlyteContextManager._OBJS)
+        return len(flyte_context_Var.get())
 
     @staticmethod
     def initialize():
@@ -677,25 +786,29 @@ class FlyteContextManager(object):
         # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
         default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
 
+        cfg = Config.auto()
         # Ensure a local directory is available for users to work with.
-        user_space_path = os.path.join(_sdk_config.LOCAL_SANDBOX.get(), "user_space")
+        user_space_path = os.path.join(cfg.local_sandbox_path, "user_space")
         pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
-        default_user_space_params = ExecutionParameters(
-            execution_id=str(_SdkWorkflowExecutionIdentifier.promote_from_model(default_execution_id)),
-            execution_date=_datetime.datetime.utcnow(),
-            stats=_mock_stats.MockStats(),
-            logging=_logging,
-            tmp_dir=user_space_path,
-        )
         default_context = FlyteContext(file_access=default_local_file_access_provider)
+        default_user_space_params = ExecutionParameters(
+            execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
+            execution_date=_datetime.datetime.utcnow(),
+            stats=mock_stats.MockStats(),
+            logging=user_space_logger,
+            tmp_dir=user_space_path,
+            raw_output_prefix=default_context.file_access._raw_output_prefix,
+            decks=[],
+        )
+
         default_context = default_context.with_execution_state(
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()
         default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
-        FlyteContextManager._OBJS = [default_context]
+        flyte_context_Var.set([default_context])
 
 
 class FlyteEntities(object):

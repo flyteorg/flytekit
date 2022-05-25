@@ -15,12 +15,24 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../flytekit/"))
-sys.path.insert(0, os.path.abspath("../.."))
+flytekit_dir = os.path.abspath("../..")
+flytekit_src_dir = os.path.abspath(os.path.join(flytekit_dir, "flytekit"))
+plugins_dir = os.path.abspath(os.path.join(flytekit_dir, "plugins"))
+
+for possible_plugin_dir in os.listdir(plugins_dir):
+    dir_path = os.path.abspath((os.path.join(plugins_dir, possible_plugin_dir)))
+    plugin_path = os.path.abspath(os.path.join(dir_path, "flytekitplugins"))
+    if os.path.isdir(dir_path) and os.path.exists(plugin_path):
+        sys.path.insert(0, dir_path)
+
+sys.path.insert(0, flytekit_src_dir)
+sys.path.insert(0, flytekit_dir)
+
+print(sys.path)
 
 # -- Project information -----------------------------------------------------
 
-project = "Flyte Cookbook [Python]"
+project = "Flytekit"
 copyright = "2021, Flyte"
 author = "Flyte"
 
@@ -47,6 +59,7 @@ extensions = [
     "sphinx-prompt",
     "sphinx_copybutton",
     "sphinx_fontawesome",
+    "sphinx_panels",
     "sphinxcontrib.yt",
 ]
 
@@ -90,7 +103,7 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 html_theme = "furo"
-html_title = "Flyte Docs"
+html_title = "Flyte"
 
 html_theme_options = {
     "light_css_variables": {
@@ -126,6 +139,7 @@ html_static_path = []
 # to template names.
 #
 html_logo = "flyte_circle_gradient_1_4x4.png"
+html_favicon = "flyte_circle_gradient_1_4x4.png"
 
 pygments_style = "tango"
 pygments_dark_style = "native"

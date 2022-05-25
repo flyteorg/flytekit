@@ -3,15 +3,14 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
-import logging as _logging
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
-from flytekit.common.exceptions.user import FlyteValidationException
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.types.pickle import FlytePickle
@@ -258,7 +257,7 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
         else:
             TypeEngine.get_transformer(t)
     except ValueError:
-        _logging.warning(
+        logger.warning(
             f"Unsupported Type {t} found, Flyte will default to use PickleFile as the transport. "
             f"Pickle can only be used to send objects between the exact same version of Python, "
             f"and we strongly recommend to use python type that flyte support."
@@ -267,7 +266,7 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
     return t
 
 
-def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring] = None) -> Interface:
+def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -275,7 +274,11 @@ def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring]
     For now the fancy object, maybe in the future a dumb object.
 
     """
-    type_hints = typing.get_type_hints(fn)
+    try:
+        # include_extras can only be used in python >= 3.9
+        type_hints = typing.get_type_hints(fn, include_extras=True)
+    except TypeError:
+        type_hints = typing.get_type_hints(fn)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 
@@ -383,7 +386,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
         bases = return_annotation.__bases__  # type: ignore
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
-            return return_annotation.__annotations__
+            return dict(typing.get_type_hints(return_annotation))
 
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3

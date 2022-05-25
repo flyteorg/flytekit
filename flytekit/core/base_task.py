@@ -21,10 +21,11 @@ import collections
 import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities, SerializationSettings
+from flytekit.configuration import SerializationSettings
+from flytekit.configuration import internal as _internal
+from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
@@ -38,6 +39,7 @@ from flytekit.core.promise import (
 )
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
+from flytekit.deck.deck import Deck
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -48,7 +50,7 @@ from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
 
-def kwtypes(**kwargs) -> Dict[str, Type]:
+def kwtypes(**kwargs) -> OrderedDict[str, Type]:
     """
     This is a small helper function to convert the keyword arguments to an OrderedDict of types.
 
@@ -228,7 +230,6 @@ class Task(object):
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
-
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
@@ -258,6 +259,9 @@ class Task(object):
             else:
                 logger.info("Cache hit")
         else:
+            es = ctx.execution_state
+            b = es.user_space_params.with_task_sandbox()
+            ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
             outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
 
@@ -282,13 +286,13 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
         """
         Returns the container definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
+    def get_k8s_pod(self, settings: SerializationSettings) -> Optional[_task_model.K8sPod]:
         """
         Returns the kubernetes pod definition (if any) that is used to run the task on hosted Flyte.
         """
@@ -300,13 +304,13 @@ class Task(object):
         """
         return None
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         """
         Return additional plugin-specific custom data (if any) as a serializable dictionary.
         """
         return None
 
-    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         """
         Returns the task config as a serializable dictionary. This task config consists of metadata about the custom
         defined for this task.
@@ -361,6 +365,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
+        disable_deck: bool = False,
         **kwargs,
     ):
         """
@@ -374,6 +379,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 signature of the task
             environment (Optional[Dict[str, str]]): Any environment variables that should be supplied during the
                 execution of the task. Supplied as a dictionary of key/value pairs
+            disable_deck (bool): If true, this task will not output deck html file
         """
         super().__init__(
             task_type=task_type,
@@ -384,6 +390,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
+        self._disable_deck = disable_deck
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
@@ -454,10 +461,12 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
+        from flytekit.deck.deck import _output_deck
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))  # type: ignore
+            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
+            # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
@@ -472,7 +481,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 logger.exception(f"Exception when executing {e}")
                 raise e
 
-            logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+            logger.debug("Task executed successfully in user level")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
             native_outputs = self.post_execute(new_user_params, native_outputs)
@@ -518,6 +527,20 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
                     ) from e
 
+            INPUT = "input"
+            OUTPUT = "output"
+
+            input_deck = Deck(INPUT)
+            for k, v in native_inputs.items():
+                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+
+            output_deck = Deck(OUTPUT)
+            for k, v in native_outputs_as_map.items():
+                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+
+            if _internal.Deck.DISABLE_DECK.read() is not True and self.disable_deck is False:
+                _output_deck(self.name.split(".")[-1], new_user_params)
+
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map
@@ -557,6 +580,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         Any environment variables that supplied during the execution of the task.
         """
         return self._environment
+
+    @property
+    def disable_deck(self) -> bool:
+        """
+        If true, this task will not output deck html file
+        """
+        return self._disable_deck
 
 
 class TaskResolverMixin(object):

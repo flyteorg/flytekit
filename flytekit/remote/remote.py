@@ -5,55 +5,44 @@ but in Python object form.
 """
 from __future__ import annotations
 
-import logging
+import base64
+import functools
+import hashlib
 import os
 import time
 import typing
 import uuid
 from collections import OrderedDict
-from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
-import grpc
 from flyteidl.core import literals_pb2 as literals_pb2
 
+from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.common import utils as common_utils
-from flytekit.common.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
-from flytekit.configuration import internal
-from flytekit.configuration import platform as platform_config
-from flytekit.configuration import sdk as sdk_config
-from flytekit.configuration import set_flyte_config_file
-from flytekit.core import context_manager
-from flytekit.core.interface import Interface
-from flytekit.loggers import remote_logger
-from flytekit.models import filters as filter_models
-from flytekit.models.admin import common as admin_common_models
-
-try:
-    from functools import singledispatchmethod
-except ImportError:
-    from singledispatchmethod import singledispatchmethod
-
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.clis.flyte_cli.main import _detect_default_config_file
-from flytekit.clis.sdk_in_container import serialize
-from flytekit.common import constants
-from flytekit.common.exceptions import user as user_exceptions
-from flytekit.common.translator import FlyteControlPlaneEntity, FlyteLocalEntity, get_serializable
-from flytekit.configuration import auth as auth_config
-from flytekit.configuration.internal import DOMAIN, PROJECT
+from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.core import constants, tracker, utils
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings, get_image_config
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.python_auto_container import PythonAutoContainerTask
+from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
+from flytekit.exceptions import user as user_exceptions
+from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
+from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
+from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
+from flytekit.models import task as task_models
+from flytekit.models.admin import common as admin_common_models
+from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
+from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.execution import (
@@ -64,10 +53,14 @@ from flytekit.models.execution import (
     WorkflowExecutionGetDataResponse,
 )
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
+from flytekit.remote.interface import TypedInterface
 from flytekit.remote.launch_plan import FlyteLaunchPlan
 from flytekit.remote.nodes import FlyteNode
+from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
+from flytekit.tools.script_mode import fast_register_single_script
+from flytekit.tools.translator import FlyteLocalEntity, Options, get_serializable, get_serializable_launch_plan
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -117,138 +110,46 @@ class FlyteRemote(object):
 
     The term 'remote' is synonymous with 'backend' or 'deployment' and refers to a hosted instance of the
     Flyte platform, which comes with a Flyte Admin server on some known URI.
-
-    .. warning::
-
-        This feature is in beta.
-
     """
-
-    @classmethod
-    def from_config(
-        cls,
-        default_project: typing.Optional[str] = None,
-        default_domain: typing.Optional[str] = None,
-        config_file_path: typing.Optional[str] = None,
-        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
-        venv_root: typing.Optional[str] = None,
-    ) -> FlyteRemote:
-        """Create a FlyteRemote object using flyte configuration variables and/or environment variable overrides.
-
-        :param default_project: default project to use when fetching or executing flyte entities.
-        :param default_domain: default domain to use when fetching or executing flyte entities.
-        :param config_file_path: config file to use when connecting to flyte admin. we will use '~/.flyte/config' by default.
-        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned by :func:`grpc.ssl_channel_credentials`
-        """
-
-        if config_file_path is None:
-            _detect_default_config_file()
-        else:
-            set_flyte_config_file(config_file_path)
-
-        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
-            sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
-        )
-
-        file_access = FileAccessProvider(
-            local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
-            raw_output_prefix=raw_output_data_prefix,
-        )
-
-        venv_root = venv_root or serialize._DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
-        entrypoint = context_manager.EntrypointSettings(
-            path=os.path.join(venv_root, serialize._DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
-        )
-
-        return cls(
-            flyte_admin_url=platform_config.URL.get(),
-            insecure=platform_config.INSECURE.get(),
-            default_project=default_project or PROJECT.get() or None,
-            default_domain=default_domain or DOMAIN.get() or None,
-            file_access=file_access,
-            auth_role=common_models.AuthRole(
-                assumable_iam_role=auth_config.ASSUMABLE_IAM_ROLE.get(),
-                kubernetes_service_account=auth_config.KUBERNETES_SERVICE_ACCOUNT.get(),
-            ),
-            notifications=None,
-            labels=None,
-            annotations=None,
-            image_config=get_image_config(),
-            raw_output_data_config=(
-                common_models.RawOutputDataConfig(raw_output_data_prefix) if raw_output_data_prefix else None
-            ),
-            grpc_credentials=grpc_credentials,
-            entrypoint_settings=entrypoint,
-        )
 
     def __init__(
         self,
-        flyte_admin_url: str,
-        insecure: bool,
+        config: Config,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
-        file_access: typing.Optional[FileAccessProvider] = None,
-        auth_role: typing.Optional[common_models.AuthRole] = None,
-        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
-        labels: typing.Optional[common_models.Labels] = None,
-        annotations: typing.Optional[common_models.Annotations] = None,
-        image_config: typing.Optional[ImageConfig] = None,
-        raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
-        grpc_credentials: typing.Optional[grpc.ChannelCredentials] = None,
-        entrypoint_settings: typing.Optional[context_manager.EntrypointSettings] = None,
+        data_upload_location: str = "s3://my-s3-bucket/data",
+        **kwargs,
     ):
         """Initialize a FlyteRemote object.
 
-        :param flyte_admin_url: url pointing to the remote backend.
-        :param insecure: whether or not the enable SSL.
+        :type kwargs: All arguments that can be passed to create the SynchronousFlyteClient. These are usually grpc
+            parameters, if you want to customize credentials, ssl handling etc.
         :param default_project: default project to use when fetching or executing flyte entities.
         :param default_domain: default domain to use when fetching or executing flyte entities.
-        :param file_access: file access provider to use for offloading non-literal inputs/outputs.
-        :param auth_role: auth role config
-        :param notifications: notification config
-        :param labels: label config
-        :param annotations: annotation config
-        :param image_config: image config
-        :param raw_output_data_config: location for offloaded data, e.g. in S3
-        :param grpc_credentials: gRPC channel credentials for connecting to flyte admin as returned
-          by :func:`grpc.ssl_channel_credentials`
-        :param entrypoint_settings: EntrypointSettings object for use with Spark tasks. If supplied, this will be
-          used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
-          inside the container.
+        :param data_upload_location: this is where all the default data will be uploaded when providing inputs.
+            The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
         """
-        remote_logger.warning("This feature is still in beta. Its interface and UX is subject to change.")
-        if flyte_admin_url is None:
-            raise user_exceptions.FlyteAssertion("Cannot find flyte admin url in config file.")
+        if config is None or config.platform is None or config.platform.endpoint is None:
+            raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
-        self._client = SynchronousFlyteClient(flyte_admin_url, insecure=insecure, credentials=grpc_credentials)
+        self._client = SynchronousFlyteClient(config.platform, **kwargs)
+        self._config = config
         # read config files, env vars, host, ssl options for admin client
-        self._flyte_admin_url = flyte_admin_url
-        self._insecure = insecure
         self._default_project = default_project
         self._default_domain = default_domain
-        self._image_config = image_config
-        self._auth_role = auth_role
-        self._notifications = notifications
-        self._labels = labels
-        self._annotations = annotations
-        self._raw_output_data_config = raw_output_data_config
-        # Not exposing this as a property for now.
-        self._entrypoint_settings = entrypoint_settings
 
-        raw_output_data_prefix = auth_config.RAW_OUTPUT_DATA_PREFIX.get() or os.path.join(
-            sdk_config.LOCAL_SANDBOX.get(), "control_plane_raw"
-        )
-        self._file_access = file_access or FileAccessProvider(
-            local_sandbox_dir=os.path.join(sdk_config.LOCAL_SANDBOX.get(), "control_plane_metadata"),
-            raw_output_prefix=raw_output_data_prefix,
-        )
-        # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.with_context(
-            FlyteContextManager.current_context().with_file_access(self._file_access).build()
+        self._file_access = FileAccessProvider(
+            local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
+            raw_output_prefix=data_upload_location,
+            data_config=config.data_config,
         )
 
-        # TODO: Reconsider whether we want this. Probably best to not cache.
-        self._serialized_entity_cache = OrderedDict()
+        # Save the file access object locally, build a context for it and save that as well.
+        self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+
+    @property
+    def context(self) -> FlyteContext:
+        return self._ctx
 
     @property
     def client(self) -> SynchronousFlyteClient:
@@ -266,92 +167,20 @@ class FlyteRemote(object):
         return self._default_domain
 
     @property
-    def image_config(self) -> ImageConfig:
+    def config(self) -> Config:
         """Image config."""
-        return self._image_config
+        return self._config
 
     @property
     def file_access(self) -> FileAccessProvider:
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
 
-    @property
-    def auth_role(self):
-        """Auth role config."""
-        return self._auth_role
-
-    @property
-    def notifications(self):
-        """Notification config."""
-        return self._notifications
-
-    @property
-    def labels(self):
-        """Label config."""
-        return self._labels
-
-    @property
-    def annotations(self):
-        """Annotation config."""
-        return self._annotations
-
-    @property
-    def raw_output_data_config(self):
-        """Location for offloaded data, e.g. in S3"""
-        return self._raw_output_data_config
-
-    @property
-    def version(self) -> str:
-        """Get a randomly generated version string."""
-        return uuid.uuid4().hex[:30] + str(int(time.time()))
-
     def remote_context(self):
         """Context manager with remote-specific configuration."""
         return FlyteContextManager.with_context(
             FlyteContextManager.current_context().with_file_access(self.file_access)
         )
-
-    def with_overrides(
-        self,
-        default_project: typing.Optional[str] = None,
-        default_domain: typing.Optional[str] = None,
-        flyte_admin_url: typing.Optional[str] = None,
-        insecure: typing.Optional[bool] = None,
-        file_access: typing.Optional[FileAccessProvider] = None,
-        auth_role: typing.Optional[common_models.AuthRole] = None,
-        notifications: typing.Optional[typing.List[common_models.Notification]] = None,
-        labels: typing.Optional[common_models.Labels] = None,
-        annotations: typing.Optional[common_models.Annotations] = None,
-        image_config: typing.Optional[ImageConfig] = None,
-        raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None,
-    ):
-        """Create a copy of the remote object, overriding the specified attributes."""
-        new_remote = deepcopy(self)
-        if default_project:
-            new_remote._default_project = default_project
-        if default_domain:
-            new_remote._default_domain = default_domain
-        if flyte_admin_url:
-            new_remote._flyte_admin_url = flyte_admin_url
-            new_remote._client = SynchronousFlyteClient(flyte_admin_url, self._insecure)
-        if insecure:
-            new_remote._insecure = insecure
-            new_remote._client = SynchronousFlyteClient(self._flyte_admin_url, insecure)
-        if file_access:
-            new_remote._file_access = file_access
-        if auth_role:
-            new_remote._auth_role = auth_role
-        if notifications:
-            new_remote._notifications = notifications
-        if labels:
-            new_remote._labels = labels
-        if annotations:
-            new_remote._annotations = annotations
-        if image_config:
-            new_remote._image_config = image_config
-        if raw_output_data_config:
-            new_remote._raw_output_data_config = raw_output_data_config
-        return new_remote
 
     def fetch_task(self, project: str = None, domain: str = None, name: str = None, version: str = None) -> FlyteTask:
         """Fetch a task entity from flyte admin.
@@ -403,13 +232,18 @@ class FlyteRemote(object):
         admin_workflow = self.client.get_workflow(workflow_id)
         compiled_wf = admin_workflow.closure.compiled_workflow
 
+        wf_templates = [compiled_wf.primary.template]
+        wf_templates.extend([swf.template for swf in compiled_wf.sub_workflows])
+
         node_launch_plans = {}
         # TODO: Inspect branch nodes for launch plans
-        for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
-            if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
-                node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
-                    node.workflow_node.launchplan_ref
-                ).spec
+        for wf_template in wf_templates:
+            for node in FlyteWorkflow.get_non_system_nodes(wf_template.nodes):
+                if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
+                    lp_ref = node.workflow_node.launchplan_ref
+                    if node.workflow_node.launchplan_ref not in node_launch_plans:
+                        admin_launch_plan = self.client.get_launch_plan(lp_ref)
+                        node_launch_plans[node.workflow_node.launchplan_ref] = admin_launch_plan.spec
 
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
@@ -442,15 +276,11 @@ class FlyteRemote(object):
         wf_id = flyte_launch_plan.workflow_id
         workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
         flyte_launch_plan._interface = workflow.interface
-        flyte_launch_plan.guessed_python_interface = Interface(
-            inputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.inputs),
-            outputs=TypeEngine.guess_python_types(flyte_launch_plan.interface.outputs),
-        )
+        flyte_launch_plan._flyte_workflow = workflow
+
         return flyte_launch_plan
 
-    def fetch_workflow_execution(
-        self, project: str = None, domain: str = None, name: str = None
-    ) -> FlyteWorkflowExecution:
+    def fetch_execution(self, project: str = None, domain: str = None, name: str = None) -> FlyteWorkflowExecution:
         """Fetch a workflow execution entity from flyte admin.
 
         :param project: fetch entity from this project. If None, uses the default_project attribute.
@@ -462,7 +292,7 @@ class FlyteRemote(object):
         """
         if name is None:
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
-        return FlyteWorkflowExecution.promote_from_model(
+        execution = FlyteWorkflowExecution.promote_from_model(
             self.client.get_execution(
                 WorkflowExecutionIdentifier(
                     project or self.default_project,
@@ -471,6 +301,7 @@ class FlyteRemote(object):
                 )
             )
         )
+        return self.sync_execution(execution)
 
     ######################
     #  Listing Entities  #
@@ -513,195 +344,277 @@ class FlyteRemote(object):
         )
         return [FlyteTask.promote_from_model(t.closure.compiled_task.template) for t in t_models]
 
-    ######################
-    # Serialize Entities #
-    ######################
-
-    @singledispatchmethod
-    def _serialize(
-        self,
-        entity: FlyteLocalEntity,
-        project: str = None,
-        domain: str = None,
-        version: str = None,
-        **kwargs,
-    ) -> FlyteControlPlaneEntity:
-        """Serialize an entity for registration."""
-        # TODO: Revisit cache
-        return get_serializable(
-            self._serialized_entity_cache,
-            SerializationSettings(
-                project or self.default_project,
-                domain or self.default_domain,
-                version or self.version,
-                self.image_config,
-                # https://github.com/flyteorg/flyte/issues/1359
-                env={internal.IMAGE.env_var: self.image_config.default_image.full},
-                entrypoint_settings=self._entrypoint_settings,
-            ),
-            entity=entity,
-        )
-
     #####################
     # Register Entities #
     #####################
 
-    @singledispatchmethod
-    def register(
+    def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
+        ident = Identifier(
+            resource_type=t,
+            project=ss.project or self.default_project if ss else self.default_project,
+            domain=ss.domain or self.default_domain if ss else self.default_domain,
+            name=name,
+            version=version or ss.version,
+        )
+        if not ident.project or not ident.domain or not ident.name or not ident.version:
+            raise ValueError(
+                f"To register a new {ident.resource_type}, (project, domain, name, version) required, "
+                f"received ({ident.project}, {ident.domain}, {ident.name}, {ident.version})."
+            )
+        return ident
+
+    def _serialize_and_register(
         self,
-        entity: typing.Union[PythonTask, WorkflowBase, LaunchPlan],
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
-    ) -> typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan]:
-        """Register an entity to flyte admin.
-
-        :param entity: entity to register.
-        :param project: register entity into this project. If None, uses ``default_project`` attribute
-        :param domain: register entity into this domain. If None, uses ``default_domain`` attribute
-        :param name: register entity with this name. If None, uses ``entity.name``
-        :param version: register entity with this version. If None, uses auto-generated version.
+        entity: FlyteLocalEntity,
+        settings: typing.Optional[SerializationSettings],
+        version: str,
+        options: typing.Optional[Options] = None,
+    ) -> Identifier:
         """
-        raise NotImplementedError(f"entity type {type(entity)} not recognized for registration")
-
-    @register.register
-    def _(
-        self, entity: PythonTask, project: str = None, domain: str = None, name: str = None, version: str = None
-    ) -> FlyteTask:
-        """Register an @task-decorated function or TaskTemplate task to flyte admin."""
-        resolved_identifiers = asdict(self._resolve_identifier_kwargs(entity, project, domain, name, version))
-        self.client.create_task(
-            Identifier(ResourceType.TASK, **resolved_identifiers),
-            task_spec=self._serialize(entity, **resolved_identifiers),
-        )
-        return self.fetch_task(**resolved_identifiers)
-
-    @register.register
-    def _(
-        self, entity: WorkflowBase, project: str = None, domain: str = None, name: str = None, version: str = None
-    ) -> FlyteWorkflow:
-        """Register an @workflow-decorated function to flyte admin."""
-        resolved_identifiers = asdict(self._resolve_identifier_kwargs(entity, project, domain, name, version))
-        self.client.create_workflow(
-            Identifier(ResourceType.WORKFLOW, **resolved_identifiers),
-            workflow_spec=self._serialize(entity, **resolved_identifiers),
-        )
-        return self.fetch_workflow(**resolved_identifiers)
-
-    @register.register
-    def _(
-        self, entity: LaunchPlan, project: str = None, domain: str = None, name: str = None, version: str = None
-    ) -> FlyteLaunchPlan:
-        """Register a LaunchPlan object to flyte admin."""
-        # See _get_patch_launch_plan_fn for what we need to patch. These are the elements of a launch plan
-        # that are not set at serialization time and are filled in either by flyte-cli register files or flytectl.
-        resolved_identifiers = asdict(self._resolve_identifier_kwargs(entity, project, domain, name, version))
-        serialized_lp: launch_plan_models.LaunchPlan = self._serialize(entity, **resolved_identifiers)
-        if self.auth_role:
-            serialized_lp.spec._auth_role = common_models.AuthRole(
-                self.auth_role.assumable_iam_role, self.auth_role.kubernetes_service_account
+        This method serializes and register the given Flyte entity
+        :return: Identifier of the registered entity
+        """
+        m = OrderedDict()
+        # Create dummy serialization settings for now.
+        # TODO: Clean this up by using lazy usage of serialization settings in translator.py
+        serialization_settings = (
+            settings
+            if settings
+            else SerializationSettings(
+                ImageConfig.auto_default_image(),
+                project=self.default_project,
+                domain=self.default_domain,
+                version=version,
             )
-        if self.raw_output_data_config:
-            serialized_lp.spec._raw_output_data_config = common_models.RawOutputDataConfig(
-                self.raw_output_data_config.output_location_prefix
-            )
-
-        # Patch in labels and annotations
-        if self.labels:
-            for k, v in self.labels.values.items():
-                serialized_lp.spec._labels.values[k] = v
-
-        if self.annotations:
-            for k, v in self.annotations.values.items():
-                serialized_lp.spec._annotations.values[k] = v
-
-        self.client.create_launch_plan(
-            Identifier(ResourceType.LAUNCH_PLAN, **resolved_identifiers),
-            launch_plan_spec=serialized_lp.spec,
         )
-        return self.fetch_launch_plan(**resolved_identifiers)
+        _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
-    def _register_entity_if_not_exists(self, entity: WorkflowBase, resolved_identifiers_dict: dict):
-        # Try to register all the entity in WorkflowBase including LaunchPlan, PythonTask, or subworkflow.
-        node_identifiers_dict = deepcopy(resolved_identifiers_dict)
-        for node in entity.nodes:
+        ident = None
+        for entity, cp_entity in m.items():
+            if isinstance(entity, RemoteEntity):
+                remote_logger.debug(f"Skipping registration of remote entity: {entity.name}")
+                continue
+            if isinstance(
+                cp_entity,
+                (
+                    workflow_model.Node,
+                    workflow_model.WorkflowNode,
+                    workflow_model.BranchNode,
+                    workflow_model.TaskNode,
+                ),
+            ):
+                remote_logger.debug("Ignoring nodes for registration.")
+                continue
+            elif isinstance(cp_entity, ReferenceSpec):
+                remote_logger.debug(f"Skipping registration of Reference entity, name: {entity.name}")
+                continue
+
+            if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and not settings:
+                # Only in the case of workflows can we use the dummy serialization settings.
+                raise user_exceptions.FlyteValueException(
+                    settings,
+                    f"No serialization settings set, but workflow contains entities that need to be "
+                    f"registered. Type: {type(entity)} {entity.name}",
+                )
             try:
-                node_identifiers_dict["name"] = node.flyte_entity.name
-                if isinstance(node.flyte_entity, WorkflowBase):
-                    self._register_entity_if_not_exists(node.flyte_entity, node_identifiers_dict)
-                    self.register(node.flyte_entity, **node_identifiers_dict)
-                elif isinstance(node.flyte_entity, PythonTask) or isinstance(node.flyte_entity, LaunchPlan):
-                    self.register(node.flyte_entity, **node_identifiers_dict)
+                if isinstance(cp_entity, task_models.TaskSpec):
+                    ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
+                    self.client.create_task(task_identifer=ident, task_spec=cp_entity)
+                elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
+                    ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
+                    try:
+                        self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
+                    except FlyteEntityAlreadyExistsException:
+                        remote_logger.info(f"{entity.name} already exists")
+                    # Let us also create a default launch-plan, ideally the default launchplan should be added
+                    # to the orderedDict, but we do not.
+                    default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
+                    lp_entity = get_serializable_launch_plan(
+                        OrderedDict(),
+                        settings or serialization_settings,
+                        default_lp,
+                        recurse_downstream=False,
+                        options=options,
+                    )
+                    self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
+                elif isinstance(cp_entity, launch_plan_models.LaunchPlan):
+                    ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, settings)
+                    self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
                 else:
-                    raise NotImplementedError(f"We don't support registering this kind of entity: {node.flyte_entity}")
+                    raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
             except FlyteEntityAlreadyExistsException:
-                logging.info(f"{entity.name} already exists")
+                remote_logger.info(f"{entity.name} already exists")
             except Exception as e:
-                logging.info(f"Failed to register entity {entity.name} with error {e}")
+                remote_logger.info(f"Failed to register entity {entity.name} with error {e}")
+                raise
+        return ident
+
+    def register_task(
+        self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
+    ) -> FlyteTask:
+        """
+        Register a qualified task (PythonTask) with Remote
+        For any conflicting parameters method arguments are regarded as overrides
+
+        :param entity: PythonTask can be either @task or a instance of a Task class
+        :param serialization_settings:  Settings that will be used to override various serialization parameters.
+        :param version: version that will be used to register. If not specified will default to using the serialization settings default
+        :return:
+        """
+        ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        ft = self.fetch_task(
+            ident.project,
+            ident.domain,
+            ident.name,
+            ident.version,
+        )
+        ft._python_interface = entity.python_interface
+        return ft
+
+    def register_workflow(
+        self,
+        entity: WorkflowBase,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
+        version: typing.Optional[str] = None,
+        default_launch_plan: typing.Optional[bool] = True,
+        options: typing.Optional[Options] = None,
+    ) -> FlyteWorkflow:
+        """
+        Use this method to register a workflow.
+        :param version: version for the entity to be registered as
+        :param entity: The workflow to be registered
+        :param serialization_settings: The serialization settings to be used
+        :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
+        :param options: Additional execution options that can be configured for the default launchplan
+        :return:
+        """
+        ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
+        if serialization_settings:
+            b = serialization_settings.new_builder()
+            b.project = ident.project
+            b.domain = ident.domain
+            b.version = ident.version
+            serialization_settings = b.build()
+        ident = self._serialize_and_register(entity, serialization_settings, version, options)
+        if default_launch_plan:
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
+            self.register_launch_plan(
+                default_lp, version=ident.version, project=ident.project, domain=ident.domain, options=options
+            )
+            remote_logger.debug("Created default launch plan for Workflow")
+
+        fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
+        fwf._python_interface = entity.python_interface
+        return fwf
+
+    def register_script(
+        self,
+        entity: typing.Union[WorkflowBase, PythonTask],
+        image_config: typing.Optional[ImageConfig] = None,
+        version: typing.Optional[str] = None,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        destination_dir: str = ".",
+        default_launch_plan: typing.Optional[bool] = True,
+        options: typing.Optional[Options] = None,
+    ) -> typing.Union[FlyteWorkflow, FlyteTask]:
+        """
+        Use this method to register a workflow via script mode.
+        :param destination_dir:
+        :param domain:
+        :param project:
+        :param image_config:
+        :param version: version for the entity to be registered as
+        :param entity: The workflow to be registered or the task to be registered
+        :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
+        :param options: Additional execution options that can be configured for the default launchplan
+        :return:
+        """
+        _, _, _, fname = tracker.extract_task_module(entity)
+
+        if image_config is None:
+            image_config = ImageConfig.auto_default_image()
+
+        upload_location, md5_bytes = fast_register_single_script(
+            entity,
+            functools.partial(
+                self.client.get_upload_signed_url,
+                project=project or self.default_project,
+                domain=domain or self.default_domain,
+                filename="scriptmode.tar.gz",
+            ),
+        )
+
+        serialization_settings = SerializationSettings(
+            project=project,
+            domain=domain,
+            image_config=image_config,
+            fast_serialization_settings=FastSerializationSettings(
+                enabled=True,
+                destination_dir=destination_dir,
+                distribution_location=upload_location.native_url,
+            ),
+        )
+
+        if version is None:
+            # The md5 version that we send to S3/GCS has to match the file contents exactly,
+            # but we don't have to use it when registering with the Flyte backend.
+            # For that add the hash of the compilation settings to hash of file
+            from flytekit import __version__
+
+            h = hashlib.md5(md5_bytes)
+            h.update(bytes(serialization_settings.to_json(), "utf-8"))
+            h.update(bytes(__version__, "utf-8"))
+            version = base64.urlsafe_b64encode(h.digest())
+
+        if isinstance(entity, PythonTask):
+            return self.register_task(entity, serialization_settings, version)
+        return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+
+    def register_launch_plan(
+        self,
+        entity: LaunchPlan,
+        version: str,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
+    ) -> FlyteLaunchPlan:
+        """
+        Register a given launchplan, possibly applying overrides from the provided options.
+        :param entity: Launchplan to be registered
+        :param version:
+        :param project: Optionally provide a project, if not already provided in flyteremote constructor or a separate one
+        :param domain: Optionally provide a domain, if not already provided in FlyteRemote constructor or a separate one
+        :param options:
+        :return:
+        """
+        ss = SerializationSettings(image_config=ImageConfig(), project=project, domain=domain, version=version)
+
+        ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
+        m = OrderedDict()
+        idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)
+        try:
+            self.client.create_launch_plan(ident, idl_lp.spec)
+        except FlyteEntityAlreadyExistsException:
+            remote_logger.debug("Launchplan already exists, ignoring")
+        flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
+        flp._python_interface = entity.python_interface
+        return flp
 
     ####################
     # Execute Entities #
     ####################
 
-    def _resolve_identifier_kwargs(
-        self,
-        entity,
-        project: typing.Optional[str],
-        domain: typing.Optional[str],
-        name: typing.Optional[str],
-        version: typing.Optional[str],
-    ) -> ResolvedIdentifiers:
-        """
-        Resolves the identifier attributes based on user input, falling back on the default project/domain and
-        auto-generated version, and ultimately the entity project/domain if entity is a remote flyte entity.
-        """
-        error_msg = (
-            "entity {entity} of type {entity_type} is not associated with a {arg_name}. Please specify the {arg_name} "
-            "argument when invoking the FlyteRemote.execute method or a default_{arg_name} value when initializig the "
-            "FlyteRemote object."
-        )
-
-        if project:
-            resolved_project, msg_project = project, "execute-method"
-        elif self.default_project:
-            resolved_project, msg_project = self.default_project, "remote"
-        elif hasattr(entity, "id"):
-            resolved_project, msg_project = entity.id.project, "entity"
-        else:
-            raise TypeError(error_msg.format(entity=entity, entity_type=type(entity), arg_name="project"))
-
-        if domain:
-            resolved_domain, msg_domain = domain, "execute-method"
-        elif self.default_domain:
-            resolved_domain, msg_domain = self.default_domain, "remote"
-        elif hasattr(entity, "id"):
-            resolved_domain, msg_domain = entity.id.domain, "entity"
-        else:
-            raise TypeError(error_msg.format(entity=entity, entity_type=type(entity), arg_name="domain"))
-
-        remote_logger.debug(
-            f"Using {msg_project}-supplied value for project and {msg_domain}-supplied value for domain."
-        )
-
-        return ResolvedIdentifiers(
-            resolved_project,
-            resolved_domain,
-            name or entity.name,
-            version or self.version,
-        )
-
     def _execute(
         self,
         entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
-        project: str,
-        domain: str,
-        execution_name: typing.Optional[str] = None,
+        project: str = None,
+        domain: str = None,
+        execution_name: str = None,
+        options: typing.Optional[Options] = None,
         wait: bool = False,
-        labels: typing.Optional[common_models.Labels] = None,
-        annotations: typing.Optional[common_models.Annotations] = None,
-        auth_role: typing.Optional[common_models.AuthRole] = None,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -711,58 +624,113 @@ class FlyteRemote(object):
         :param domain: domain on which to execute the entity referenced by flyte_id
         :param execution_name: name of the execution
         :param wait: if True, waits for execution to complete
+        :param type_hints: map of python types to inputs so that the TypeEngine knows how to convert the input values
+          into Flyte Literals.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
-        disable_all = self.notifications == []
-        if disable_all:
-            notifications = None
+        if not options:
+            options = Options()
+        if options.disable_notifications is not None:
+            if options.disable_notifications:
+                notifications = None
+            else:
+                notifications = NotificationList(options.notifications)
         else:
-            notifications = NotificationList(self.notifications or [])
-            disable_all = None
+            notifications = NotificationList([])
 
+        type_hints = type_hints or {}
+        literal_map = {}
         with self.remote_context() as ctx:
-            input_python_types = entity.guessed_python_interface.inputs
-            expected_input = entity.interface.inputs
+            input_flyte_type_map = entity.interface.inputs
+
             for k, v in inputs.items():
-                if expected_input.get(k) is None:
+                if input_flyte_type_map.get(k) is None:
                     raise user_exceptions.FlyteValueException(
                         k, f"The {entity.__class__.__name__} doesn't have this input key."
                     )
-            literal_inputs = TypeEngine.dict_to_literal_map(ctx, inputs, input_python_types)
+                if isinstance(v, Literal):
+                    lit = v
+                else:
+                    if k not in type_hints:
+                        try:
+                            type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
+                        except ValueError:
+                            remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
+                    variable = entity.interface.inputs.get(k)
+                    hint = type_hints[k]
+                    lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
+                literal_map[k] = lit
+
+            literal_inputs = literal_models.LiteralMap(literals=literal_map)
+
         try:
-            # TODO: re-consider how this works. Currently, this will only execute the flyte entity referenced by
+            # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
             # and domain, which is specified in the first two arguments of client.create_execution. This is useful
             # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
             # different project "B". For now, this method doesn't support this use case.
             exec_id = self.client.create_execution(
-                project,
-                domain,
+                project or self.default_project,
+                domain or self.default_domain,
                 execution_name,
                 ExecutionSpec(
                     entity.id,
                     ExecutionMetadata(
                         ExecutionMetadata.ExecutionMode.MANUAL,
-                        "placeholder",  # TODO: get principle
+                        "placeholder",  # Admin replaces this from oidc token if auth is enabled.
                         0,
                     ),
                     notifications=notifications,
-                    disable_all=disable_all,
-                    labels=labels or self.labels,
-                    annotations=annotations or self.annotations,
-                    auth_role=auth_role or self.auth_role,
+                    disable_all=options.disable_notifications,
+                    labels=options.labels,
+                    annotations=options.annotations,
+                    raw_output_data_config=options.raw_output_data_config,
+                    auth_role=None,
+                    max_parallelism=options.max_parallelism,
+                    security_context=options.security_context,
                 ),
                 literal_inputs,
             )
         except user_exceptions.FlyteEntityAlreadyExistsException:
-            exec_id = WorkflowExecutionIdentifier(flyte_id.project, flyte_id.domain, execution_name)
+            remote_logger.warning(
+                f"Execution with Execution ID {execution_name} already exists. "
+                f"Assuming this is the same execution, returning!"
+            )
+            exec_id = WorkflowExecutionIdentifier(
+                project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+            )
         execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+
         if wait:
             return self.wait(execution)
         return execution
 
-    @singledispatchmethod
+    def _resolve_identifier_kwargs(
+        self,
+        entity: typing.Any,
+        project: str,
+        domain: str,
+        name: str,
+        version: str,
+    ) -> ResolvedIdentifiers:
+        """
+        Resolves the identifier attributes based on user input, falling back on the default project/domain and
+        auto-generated version, and ultimately the entity project/domain if entity is a remote flyte entity.
+        """
+        ident = ResolvedIdentifiers(
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            name=name or entity.name,
+            version=version,
+        )
+        if not (ident.project and ident.domain and ident.name):
+            raise ValueError(
+                f"Cannot launch an execution with missing project/domain/name {ident} for entity type {type(entity)}."
+                f" Specify them in the execute method or when intializing FlyteRemote"
+            )
+        return ident
+
     def execute(
         self,
         entity: typing.Union[FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan],
@@ -772,9 +740,13 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
+        image_config: typing.Optional[ImageConfig] = None,
+        options: typing.Optional[Options] = None,
         wait: bool = False,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
-        """Execute a task, workflow, or launchplan.
+        """
+        Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
 
         This method supports:
         - ``Flyte{Task, Workflow, LaunchPlan}`` remote module objects.
@@ -782,6 +754,13 @@ class FlyteRemote(object):
         - ``@workflow``-decorated functions.
         - ``LaunchPlan`` objects.
 
+        For local entities, this code will attempt to find the entity first, and if missing, will compile and register
+        the object.
+
+        Not all arguments are relevant in all circumstances. For example, there's no reason to use the serialization
+        settings for entities that have already been registered on Admin.
+
+        :param options:
         :param entity: entity to execute
         :param inputs: dictionary mapping argument names to values
         :param project: execute entity in this project. If entity doesn't exist in the project, register the entity
@@ -791,93 +770,141 @@ class FlyteRemote(object):
         :param name: execute entity using this name. If not None, use this value instead of ``entity.name``
         :param version: execute entity using this version. If None, uses auto-generated value.
         :param execution_name: name of the execution. If None, uses auto-generated value.
+        :param image_config:
         :param wait: if True, waits for execution to complete
+        :param type_hints: Python types to be passed to the TypeEngine so that it knows how to properly convert the
+          input values for the execution into Flyte literals. If missing, will default to first guessing the type
+          using the type engine, and then to ``type(v)``. Providing the correct Python types is particularly important
+          if the inputs are containers like lists or maps, or if the Python type is one of the more complex Flyte
+          provided classes (like a StructuredDataset that's annotated with columns).
 
         .. note:
 
             The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
+        if entity.python_interface:
+            type_hints = type_hints or entity.python_interface.inputs
+        if isinstance(entity, FlyteTask) or isinstance(entity, FlyteLaunchPlan):
+            return self.execute_remote_task_lp(
+                entity=entity,
+                inputs=inputs,
+                project=project,
+                domain=domain,
+                execution_name=execution_name,
+                options=options,
+                wait=wait,
+                type_hints=type_hints,
+            )
+        if isinstance(entity, FlyteWorkflow):
+            return self.execute_remote_wf(
+                entity=entity,
+                inputs=inputs,
+                project=project,
+                domain=domain,
+                execution_name=execution_name,
+                options=options,
+                wait=wait,
+                type_hints=type_hints,
+            )
+        if isinstance(entity, PythonTask):
+            return self.execute_local_task(
+                entity=entity,
+                inputs=inputs,
+                project=project,
+                domain=domain,
+                name=name,
+                version=version,
+                execution_name=execution_name,
+                image_config=image_config,
+                wait=wait,
+            )
+        if isinstance(entity, WorkflowBase):
+            return self.execute_local_workflow(
+                entity=entity,
+                inputs=inputs,
+                project=project,
+                domain=domain,
+                name=name,
+                version=version,
+                execution_name=execution_name,
+                image_config=image_config,
+                options=options,
+                wait=wait,
+            )
+        if isinstance(entity, LaunchPlan):
+            return self.execute_local_launch_plan(
+                entity=entity,
+                inputs=inputs,
+                version=version,
+                project=project,
+                domain=domain,
+                execution_name=execution_name,
+                options=options,
+                wait=wait,
+            )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
     # Flyte Remote Entities
     # ---------------------
 
-    @execute.register(FlyteTask)
-    @execute.register(FlyteLaunchPlan)
-    def _(
+    def execute_remote_task_lp(
         self,
         entity: typing.Union[FlyteTask, FlyteLaunchPlan],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
-        name: str = None,
-        version: str = None,
         execution_name: str = None,
+        options: typing.Optional[Options] = None,
         wait: bool = False,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
         NOTE: the name and version arguments are currently not used and only there consistency in the function signature
         """
-        if name or version:
-            remote_logger.warning(f"The 'name' and 'version' arguments are ignored for entities of type {type(entity)}")
-        resolved_identifiers = self._resolve_identifier_kwargs(
-            entity, project, domain, entity.id.name, entity.id.version
-        )
         return self._execute(
             entity,
             inputs,
-            project=resolved_identifiers.project,
-            domain=resolved_identifiers.domain,
+            project=project,
+            domain=domain,
             execution_name=execution_name,
             wait=wait,
-            labels=entity.labels if isinstance(entity, FlyteLaunchPlan) and entity.labels.values else None,
-            annotations=entity.annotations
-            if isinstance(entity, FlyteLaunchPlan) and entity.annotations.values
-            else None,
-            auth_role=entity.auth_role
-            if isinstance(entity, FlyteLaunchPlan)
-            and (entity.auth_role.assumable_iam_role or entity.auth_role.kubernetes_service_account)
-            else None,
+            options=options,
+            type_hints=type_hints,
         )
 
-    @execute.register
-    def _(
+    def execute_remote_wf(
         self,
         entity: FlyteWorkflow,
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
-        name: str = None,
-        version: str = None,
         execution_name: str = None,
+        options: typing.Optional[Options] = None,
         wait: bool = False,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
         NOTE: the name and version arguments are currently not used and only there consistency in the function signature
         """
-        if name or version:
-            remote_logger.warning(f"The 'name' and 'version' arguments are ignored for entities of type {type(entity)}")
-        resolved_identifiers = self._resolve_identifier_kwargs(
-            entity, project, domain, entity.id.name, entity.id.version
-        )
         launch_plan = self.fetch_launch_plan(entity.id.project, entity.id.domain, entity.id.name, entity.id.version)
-        return self.execute(
+        return self.execute_remote_task_lp(
             launch_plan,
             inputs,
-            project=resolved_identifiers.project,
-            domain=resolved_identifiers.domain,
+            project=project,
+            domain=domain,
             execution_name=execution_name,
+            options=options,
             wait=wait,
+            type_hints=type_hints,
         )
 
     # Flytekit Entities
     # -----------------
 
-    @execute.register
-    def _(
+    def execute_local_task(
         self,
         entity: PythonTask,
         inputs: typing.Dict[str, typing.Any],
@@ -886,16 +913,40 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
+        image_config: typing.Optional[ImageConfig] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
-        """Execute an @task-decorated function or TaskTemplate task."""
+        """
+        Execute an @task-decorated function or TaskTemplate task.
+
+        :param entity:
+        :param inputs:
+          register the task, which requires compiling the task, before running it.
+        :param project:
+        :param domain:
+        :param name:
+        :param version:
+        :param execution_name:
+        :param image_config:
+        :param wait:
+        :return:
+        """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
-        except Exception:
-            flyte_task: FlyteTask = self.register(entity, **resolved_identifiers_dict)
-        flyte_task.guessed_python_interface = entity.python_interface
+        except FlyteEntityNotExistException:
+            if isinstance(entity, PythonAutoContainerTask):
+                if not image_config:
+                    raise ValueError(f"PythonTask {entity.name} not already registered, but image_config missing")
+            ss = SerializationSettings(
+                image_config=image_config,
+                project=project or self.default_project,
+                domain=domain or self._default_domain,
+                version=version,
+            )
+            flyte_task: FlyteTask = self.register_task(entity, ss)
+
         return self.execute(
             flyte_task,
             inputs,
@@ -903,10 +954,10 @@ class FlyteRemote(object):
             domain=resolved_identifiers.domain,
             execution_name=execution_name,
             wait=wait,
+            type_hints=entity.python_interface.inputs,
         )
 
-    @execute.register
-    def _(
+    def execute_local_workflow(
         self,
         entity: WorkflowBase,
         inputs: typing.Dict[str, typing.Any],
@@ -915,64 +966,114 @@ class FlyteRemote(object):
         name: str = None,
         version: str = None,
         execution_name: str = None,
+        image_config: typing.Optional[ImageConfig] = None,
+        options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
-        """Execute an @workflow-decorated function."""
+        """
+        Execute an @workflow decorated function.
+        :param entity:
+        :param inputs:
+        :param project:
+        :param domain:
+        :param name:
+        :param version:
+        :param execution_name:
+        :param image_config:
+        :param options:
+        :param wait:
+        :return:
+        """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
 
-        try:
-            flyte_workflow: FlyteWorkflow = self.fetch_workflow(**resolved_identifiers_dict)
-        except FlyteEntityNotExistException:
-            logging.info("Try to register FlyteWorkflow because it wasn't found in Flyte Admin!")
-            self._register_entity_if_not_exists(entity, resolved_identifiers_dict)
-            flyte_workflow: FlyteWorkflow = self.register(entity, **resolved_identifiers_dict)
-        flyte_workflow.guessed_python_interface = entity.python_interface
-
-        ctx = context_manager.FlyteContext.current_context()
-        try:
-            self.fetch_launch_plan(**resolved_identifiers_dict)
-        except FlyteEntityNotExistException:
-            logging.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
-            default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-            self.register(default_lp, **resolved_identifiers_dict)
-
-        return self.execute(
-            flyte_workflow,
-            inputs,
+        ss = SerializationSettings(
+            image_config=image_config,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
+            version=resolved_identifiers.version,
+        )
+        try:
+            # Just fetch to see if it already exists
+            # todo: Add logic to check that the fetched workflow is functionally equivalent.
+            self.fetch_workflow(**resolved_identifiers_dict)
+        except FlyteEntityNotExistException:
+            remote_logger.info("Registering workflow because it wasn't found in Flyte Admin.")
+            if not image_config:
+                raise ValueError("Need image config since we are registering")
+            self.register_workflow(entity, ss, version=version, options=options)
+
+        try:
+            flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
+        except FlyteEntityNotExistException:
+            remote_logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
+            self.register_launch_plan(
+                default_lp,
+                project=resolved_identifiers.project,
+                domain=resolved_identifiers.domain,
+                version=version,
+                options=options,
+            )
+            flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
+
+        return self.execute(
+            flyte_lp,
+            inputs,
+            project=project,
+            domain=domain,
             execution_name=execution_name,
             wait=wait,
+            options=options,
+            type_hints=entity.python_interface.inputs,
         )
 
-    @execute.register
-    def _(
+    def execute_local_launch_plan(
         self,
         entity: LaunchPlan,
         inputs: typing.Dict[str, typing.Any],
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
-        execution_name: str = None,
+        version: str,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        execution_name: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
         wait: bool = False,
     ) -> FlyteWorkflowExecution:
-        """Execute a LaunchPlan object."""
-        resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
-        resolved_identifiers_dict = asdict(resolved_identifiers)
+        """
+
+        :param entity: The locally defined launch plan object
+        :param inputs: Inputs to be passed into the execution as a dict with Python native values.
+        :param version: The version to look up/register the launch plan (if not already exists)
+        :param project: The same as version, but will default to the Remote object's project
+        :param domain: The same as version, but will default to the Remote object's domain
+        :param execution_name: If specified, will be used as the execution name instead of randomly generating.
+        :param options:
+        :param wait:
+        :return:
+        """
         try:
-            flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
-        except Exception:
-            flyte_launchplan: FlyteLaunchPlan = self.register(entity, **resolved_identifiers_dict)
-        flyte_launchplan.guessed_python_interface = entity.python_interface
-        return self.execute(
+            flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(
+                project=project,
+                domain=domain,
+                name=entity.name,
+                version=version,
+            )
+        except FlyteEntityNotExistException:
+            flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
+                entity,
+                version=version,
+                project=project,
+                domain=domain,
+            )
+        return self.execute_remote_task_lp(
             flyte_launchplan,
             inputs,
-            project=resolved_identifiers.project,
-            domain=resolved_identifiers.domain,
+            project=project,
+            domain=domain,
             execution_name=execution_name,
+            options=options,
             wait=wait,
+            type_hints=entity.python_interface.inputs,
         )
 
     ###################################
@@ -997,8 +1098,8 @@ class FlyteRemote(object):
         time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
 
         while datetime.utcnow() < time_to_give_up:
-            execution = self.sync_workflow_execution(execution, sync_nodes=sync_nodes)
-            if execution.is_complete:
+            execution = self.sync_execution(execution, sync_nodes=sync_nodes)
+            if execution.is_done:
                 return execution
             time.sleep(poll_interval.total_seconds())
 
@@ -1027,9 +1128,9 @@ class FlyteRemote(object):
         """
         if not isinstance(execution, FlyteWorkflowExecution):
             raise ValueError(f"remote.sync should only be called on workflow executions, got {type(execution)}")
-        return self.sync_workflow_execution(execution, entity_definition, sync_nodes)
+        return self.sync_execution(execution, entity_definition, sync_nodes)
 
-    def sync_workflow_execution(
+    def sync_execution(
         self,
         execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
@@ -1042,18 +1143,20 @@ class FlyteRemote(object):
             raise ValueError("Entity definition arguments aren't supported when syncing workflow executions")
 
         # Update closure, and then data, because we don't want the execution to finish between when we get the data,
-        # and then for the closure to have is_complete to be true.
+        # and then for the closure to have is_done to be true.
         execution._closure = self.client.get_execution(execution.id).closure
         execution_data = self.client.get_execution_data(execution.id)
         lp_id = execution.spec.launch_plan
+        underlying_node_executions = []
         if sync_nodes:
             underlying_node_executions = [
                 FlyteNodeExecution.promote_from_model(n) for n in iterate_node_executions(self.client, execution.id)
             ]
 
+        # This condition is only true for single-task executions
         if execution.spec.launch_plan.resource_type == ResourceType.TASK:
-            # This condition is only true for single-task executions
             flyte_entity = self.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            node_interface = flyte_entity.interface
             if sync_nodes:
                 # Need to construct the mapping. There should've been returned exactly three nodes, a start,
                 # an end, and a task node.
@@ -1079,23 +1182,25 @@ class FlyteRemote(object):
                     if len(task_node_exec) >= 1
                     else {}  # This is for the case where node executions haven't appeared yet
                 )
+        # This is the default case, an execution of a normal workflow through a launch plan
         else:
-            # This is the default case, an execution of a normal workflow through a launch plan
-            wf_id = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version).workflow_id
-            flyte_entity = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
-            execution._flyte_workflow = flyte_entity
-            node_mapping = flyte_entity._node_map
+            fetched_lp = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+            node_interface = fetched_lp.flyte_workflow.interface
+            execution._flyte_workflow = fetched_lp.flyte_workflow
+            node_mapping = fetched_lp.flyte_workflow._node_map
 
         # update node executions (if requested), and inputs/outputs
         if sync_nodes:
             node_execs = {}
             for n in underlying_node_executions:
-                node_execs[n.id.node_id] = self.sync_node_execution(n, node_mapping)
+                node_execs[n.id.node_id] = self.sync_node_execution(n, node_mapping)  # noqa
             execution._node_executions = node_execs
-        return self._assign_inputs_and_outputs(execution, execution_data, flyte_entity.interface)
+        return self._assign_inputs_and_outputs(execution, execution_data, node_interface)
 
     def sync_node_execution(
-        self, execution: FlyteNodeExecution, node_mapping: typing.Dict[str, FlyteNode]
+        self,
+        execution: FlyteNodeExecution,
+        node_mapping: typing.Dict[str, FlyteNode],
     ) -> FlyteNodeExecution:
         """
         Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
@@ -1151,11 +1256,11 @@ class FlyteRemote(object):
             launched_exec_id = execution.closure.workflow_node_metadata.execution_id
             # This is a recursive call, basically going through the same process that brought us here in the first
             # place, but on the launched execution.
-            launched_exec = self.fetch_workflow_execution(
+            launched_exec = self.fetch_execution(
                 project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
             )
-            self.sync_workflow_execution(launched_exec)
-            if launched_exec.is_complete:
+            self.sync_execution(launched_exec)
+            if launched_exec.is_done:
                 # The synced underlying execution should've had these populated.
                 execution._inputs = launched_exec.inputs
                 execution._outputs = launched_exec.outputs
@@ -1202,13 +1307,9 @@ class FlyteRemote(object):
                     for t in iterate_task_executions(self.client, execution.id)
                 ]
                 execution._interface = dynamic_flyte_wf.interface
-            else:
-                # If it does not, then it should be a static subworkflow
-                if not isinstance(execution._node.flyte_entity, FlyteWorkflow):
-                    remote_logger.error(
-                        f"NE {execution} entity should be a workflow, {type(execution._node)}, {execution._node}"
-                    )
-                    raise Exception(f"Node entity has type {type(execution._node)}")
+
+            # Handle the case where it's a static subworkflow
+            elif isinstance(execution._node.flyte_entity, FlyteWorkflow):
                 sub_flyte_workflow = execution._node.flyte_entity
                 sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
                 execution._underlying_node_executions = [
@@ -1216,6 +1317,17 @@ class FlyteRemote(object):
                     for cne in child_node_executions
                 ]
                 execution._interface = sub_flyte_workflow.interface
+
+            # Handle the case where it's a branch node
+            elif execution._node.branch_node is not None:
+                remote_logger.info(
+                    "Skipping branch node execution for now - branch nodes will "
+                    "not have inputs and outputs filled in"
+                )
+                return execution
+            else:
+                remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
+                raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
         # This is the plain ol' task execution case
         else:
@@ -1240,7 +1352,6 @@ class FlyteRemote(object):
         if entity_definition is not None:
             raise ValueError("Entity definition arguments aren't supported when syncing task executions")
 
-        # sync closure and inputs/outputs
         execution._closure = self.client.get_task_execution(execution.id).closure
         execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
@@ -1267,25 +1378,15 @@ class FlyteRemote(object):
         self,
         execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
         execution_data,
-        interface,
+        interface: TypedInterface,
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
-        with self.remote_context() as ctx:
-            input_literal_map = self._get_input_literal_map(execution_data)
-            execution._raw_inputs = LiteralsResolver(input_literal_map.literals)
-            execution._inputs = TypeEngine.literal_map_to_kwargs(
-                ctx=ctx,
-                lm=input_literal_map,
-                python_types=TypeEngine.guess_python_types(interface.inputs),
-            )
-            if execution.is_complete and not execution.error:
-                output_literal_map = self._get_output_literal_map(execution_data)
-                execution._raw_outputs = LiteralsResolver(output_literal_map.literals)
-                execution._outputs = TypeEngine.literal_map_to_kwargs(
-                    ctx=ctx,
-                    lm=output_literal_map,
-                    python_types=TypeEngine.guess_python_types(interface.outputs),
-                )
+        input_literal_map = self._get_input_literal_map(execution_data)
+        execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs, self.context)
+
+        if execution.is_done and not execution.error:
+            output_literal_map = self._get_output_literal_map(execution_data)
+            execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs, self.context)
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
@@ -1297,7 +1398,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
                 ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 
@@ -1310,6 +1411,26 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
                 ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    common_utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
+
+    def generate_http_domain(self) -> str:
+        """
+        This should generate the domain where the HTTP endpoints for the Flyte backend are hosted. This should be
+        the domain that console is hosted on.
+
+        :return:
+        """
+        protocol = "http" if self.config.platform.insecure else "https"
+        endpoint = self.config.platform.endpoint
+        # N.B.: this assumes that in case we have an identical configuration as the sandbox default config we are running single binary. The intent here is
+        # to ensure that the urls produced in the getting started guide point to the correct place.
+        if self.config.platform == Config.for_sandbox().platform:
+            endpoint = "localhost:30080"
+        return protocol + f"://{endpoint}"
+
+    def generate_console_url(
+        self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+    ):
+        return f"{self.generate_http_domain()}/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"

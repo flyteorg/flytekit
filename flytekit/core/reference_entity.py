@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
-from flytekit.common.exceptions import user as _user_exceptions
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.promise import (
@@ -14,6 +13,7 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -119,7 +119,7 @@ class ReferenceEntity(object):
         except Exception as e:
             logger.exception(f"Exception when executing {e}")
             raise e
-        logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+        logger.debug("Task executed successfully in user level")
 
         expected_output_names = list(self.python_interface.outputs.keys())
         if len(expected_output_names) == 1:

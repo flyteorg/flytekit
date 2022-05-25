@@ -4,16 +4,19 @@ a reference task as well as run-time parameters that limit execution concurrency
 """
 
 import os
+import typing
 from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
-from flytekit.common.constants import SdkTaskType
-from flytekit.common.exceptions import scopes as exception_scopes
+from flytekit.configuration import SerializationSettings
+from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, SerializationSettings
+from flytekit.core.constants import SdkTaskType
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql
@@ -52,14 +55,18 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
         instance = next(self._ids)
-        name = f"{python_function_task._task_function.__module__}.mapper_{python_function_task._task_function.__name__}_{instance}"
+        _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
+        name = f"{mod}.mapper_{f}_{instance}"
 
+        self._cmd_prefix = None
         self._run_task = python_function_task
         self._max_concurrency = concurrency
         self._min_success_ratio = min_success_ratio
         self._array_task_interface = python_function_task.python_interface
         if "metadata" not in kwargs and python_function_task.metadata:
             kwargs["metadata"] = python_function_task.metadata
+        if "security_ctx" not in kwargs and python_function_task.security_context:
+            kwargs["security_ctx"] = python_function_task.security_context
         super().__init__(
             name=name,
             interface=collection_interface,
@@ -78,13 +85,22 @@ class MapPythonTask(PythonTask):
             "{{.outputPrefix}}",
             "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
+            "--checkpoint-path",
+            "{{.checkpointOutputPrefix}}",
+            "--prev-checkpoint",
+            "{{.prevCheckpointPrefix}}",
             "--resolver",
             self._run_task.task_resolver.location,
             "--",
             *self._run_task.task_resolver.loader_args(settings, self._run_task),
         ]
 
+        if self._cmd_prefix:
+            return self._cmd_prefix + container_args
         return container_args
+
+    def set_command_prefix(self, cmd: typing.List[str]):
+        self._cmd_prefix = cmd
 
     @contextmanager
     def prepare_target(self):
@@ -116,7 +132,7 @@ class MapPythonTask(PythonTask):
         return self._run_task.get_config(settings)
 
     @property
-    def run_task(self) -> PythonTask:
+    def run_task(self) -> PythonFunctionTask:
         return self._run_task
 
     def execute(self, **kwargs) -> Any:
@@ -205,9 +221,9 @@ class MapPythonTask(PythonTask):
         return outputs
 
 
-def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_success_ratio: float = None, **kwargs):
+def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_success_ratio: float = 1.0, **kwargs):
     """
-    Use a map task for parallelizable tasks that are run across a List of an input type. A map task can be composed of
+    Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.
 
     Invoke a map task with arguments using the :py:class:`list` version of the expected input.
@@ -220,16 +236,36 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = None, min_suc
        :language: python
        :dedent: 4
 
-    At run time, the underlying map task will be run for every value in the input collection. Task-specific attributes
-    such as :py:class:`flytekit.TaskMetadata` and :py:class:`flytekit.Resources` are applied to individual instances
+    At run time, the underlying map task will be run for every value in the input collection. Attributes
+    such as :py:class:`flytekit.TaskMetadata` and ``with_overrides`` are applied to individual instances
     of the mapped task.
+
+    **Map Task Plugins**
+
+    There are two plugins to run maptasks that ship as part of flyteplugins:
+
+    1. K8s Array
+    2. `AWS batch <https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html>`_
+
+    Enabling a plugin is controlled in the plugin configuration at `values-sandbox.yaml <https://github.com/flyteorg/flyte/blob/10cee9f139824512b6c5be1667d321bdbc8835fa/charts/flyte/values-sandbox.yaml#L152-L162>`_.
+
+    **K8s Array**
+
+    By default, the map task uses the ``K8s Array`` plugin. It executes array tasks by launching a pod for every instance in the array. It’s simple to use, has a straightforward implementation, and works out of the box.
+
+    **AWS batch**
+
+    Learn more about ``AWS batch`` setup configuration `here <https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html#deployment-plugin-setup-aws-array>`_.
+
+    A custom plugin can also be implemented to handle the task type.
 
     :param task_function: This argument is implicitly passed and represents the repeatable function
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
-        all inputs are processed.
+        all inputs are processed. If left unspecified, this means unbounded concurrency.
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
+
     """
     if not isinstance(task_function, PythonFunctionTask):
         raise ValueError(

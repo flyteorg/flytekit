@@ -1,10 +1,6 @@
 from datetime import timedelta
 from itertools import product
 
-from six.moves import range
-
-from flytekit.common.types.impl import blobs as _blob_impl
-from flytekit.common.types.impl import schema as _schema_impl
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
@@ -53,6 +49,14 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
         blob=_core_types.BlobType(
             format="csv",
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
+        )
+    ),
+    types.LiteralType(
+        union_type=types.UnionType(
+            variants=[
+                types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+                types.LiteralType(simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")),
+            ]
         )
     ),
 ]
@@ -176,71 +180,43 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
     (literals.Scalar(none_type=literals.Void()), None),
     (
         literals.Scalar(
-            blob=literals.Blob(
-                literals.BlobMetadata(_core_types.BlobType("csv", _core_types.BlobType.BlobDimensionality.SINGLE)),
-                "s3://some/where",
-            )
-        ),
-        _blob_impl.Blob("s3://some/where", format="csv"),
-    ),
-    (
-        literals.Scalar(
-            blob=literals.Blob(
-                literals.BlobMetadata(_core_types.BlobType("", _core_types.BlobType.BlobDimensionality.SINGLE)),
-                "s3://some/where",
-            )
-        ),
-        _blob_impl.Blob("s3://some/where"),
-    ),
-    (
-        literals.Scalar(
-            blob=literals.Blob(
-                literals.BlobMetadata(_core_types.BlobType("csv", _core_types.BlobType.BlobDimensionality.MULTIPART)),
-                "s3://some/where/",
-            )
-        ),
-        _blob_impl.MultiPartBlob("s3://some/where/", format="csv"),
-    ),
-    (
-        literals.Scalar(
-            blob=literals.Blob(
-                literals.BlobMetadata(_core_types.BlobType("", _core_types.BlobType.BlobDimensionality.MULTIPART)),
-                "s3://some/where/",
-            )
-        ),
-        _blob_impl.MultiPartBlob("s3://some/where/"),
-    ),
-    (
-        literals.Scalar(
-            schema=literals.Schema(
-                "s3://some/where/",
-                types.SchemaType(
-                    [
-                        types.SchemaType.SchemaColumn("a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-                        types.SchemaType.SchemaColumn("b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
-                        types.SchemaType.SchemaColumn("c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-                        types.SchemaType.SchemaColumn("d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-                        types.SchemaType.SchemaColumn("e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-                        types.SchemaType.SchemaColumn("f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-                    ]
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=10))),
+                stored_type=types.LiteralType(
+                    simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")
                 ),
             )
         ),
-        _schema_impl.Schema(
-            "s3://some/where/",
-            _schema_impl.SchemaType.promote_from_model(
-                types.SchemaType(
-                    [
-                        types.SchemaType.SchemaColumn("a", types.SchemaType.SchemaColumn.SchemaColumnType.INTEGER),
-                        types.SchemaType.SchemaColumn("b", types.SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN),
-                        types.SchemaType.SchemaColumn("c", types.SchemaType.SchemaColumn.SchemaColumnType.DATETIME),
-                        types.SchemaType.SchemaColumn("d", types.SchemaType.SchemaColumn.SchemaColumnType.DURATION),
-                        types.SchemaType.SchemaColumn("e", types.SchemaType.SchemaColumn.SchemaColumnType.FLOAT),
-                        types.SchemaType.SchemaColumn("f", types.SchemaType.SchemaColumn.SchemaColumnType.STRING),
-                    ]
-                )
-            ),
+        10,
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=10))),
+                stored_type=types.LiteralType(
+                    simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")
+                ),
+            )
         ),
+        10,
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="test"))),
+                stored_type=types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+            )
+        ),
+        "test",
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="test"))),
+                stored_type=types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+            )
+        ),
+        "test",
     ),
 ]
 

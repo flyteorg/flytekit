@@ -19,19 +19,19 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
-from flytekit.common.exceptions import scopes as exception_scopes
 from flytekit.core.base_task import Task, TaskResolverMixin
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
-from flytekit.core.tracker import is_functools_wrapped_module_level, isnested, istestfunction
+from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
     WorkflowFailurePolicy,
     WorkflowMetadata,
     WorkflowMetadataDefaults,
 )
+from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -115,9 +115,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
         self._native_interface = transform_function_to_interface(task_function, Docstring(callable_=task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
+        name, _, _, _ = extract_task_module(task_function)
         super().__init__(
             task_type=task_type,
-            name=f"{task_function.__module__}.{task_function.__name__}",
+            name=name,
             interface=mutated_interface,
             task_config=task_config,
             task_resolver=task_resolver,
@@ -178,7 +179,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
         with FlyteContextManager.with_context(ctx.with_compilation_state(cs)):
             # TODO: Resolve circular import
-            from flytekit.common.translator import get_serializable
+            from flytekit.tools.translator import get_serializable
 
             workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
             defaults = WorkflowMetadataDefaults(
@@ -210,7 +211,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             for entity, model in model_entities.items():
                 # We only care about gathering tasks here. Launch plans are handled by
                 # propeller. Subworkflows should already be in the workflow spec.
-                if not isinstance(entity, Task):
+                if not isinstance(entity, Task) and not isinstance(entity, task_models.TaskTemplate):
+                    continue
+
+                # Handle FlyteTask
+                if isinstance(entity, task_models.TaskTemplate):
+                    tts.append(entity)
                     continue
 
                 # We are currently not supporting reference tasks since these will
@@ -227,29 +233,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 # Store the valid task template so that we can pass it to the
                 # DynamicJobSpec later
                 tts.append(model.template)
-
-            if ctx.serialization_settings.should_fast_serialize():
-                if (
-                    not ctx.execution_state
-                    or not ctx.execution_state.additional_context
-                    or not ctx.execution_state.additional_context.get("dynamic_addl_distro")
-                ):
-                    raise AssertionError(
-                        "Compilation for a dynamic workflow called in fast execution mode but no additional code "
-                        "distribution could be retrieved"
-                    )
-                logger.warn(f"ctx.execution_state.additional_context {ctx.execution_state.additional_context}")
-                for task_template in tts:
-                    sanitized_args = []
-                    for arg in task_template.container.args:
-                        if arg == "{{ .remote_package_path }}":
-                            sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_addl_distro"))
-                        elif arg == "{{ .dest_dir }}":
-                            sanitized_args.append(ctx.execution_state.additional_context.get("dynamic_dest_dir", "."))
-                        else:
-                            sanitized_args.append(arg)
-                    del task_template.container.args[:]
-                    task_template.container.args.extend(sanitized_args)
 
             dj_spec = _dynamic_job.DynamicJobSpec(
                 min_successes=len(workflow_spec.template.nodes),
@@ -282,18 +265,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 return exception_scopes.user_entry_point(task_function)(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            is_fast_execution = bool(
-                ctx.execution_state
-                and ctx.execution_state.additional_context
-                and ctx.execution_state.additional_context.get("dynamic_addl_distro")
-            )
-            if is_fast_execution:
-                ctx = ctx.with_serialization_settings(
-                    ctx.serialization_settings.new_builder()
-                    .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
-                    .build()
-                )
-
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:

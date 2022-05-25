@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from flytekit.common import constants as _constants
-from flytekit.common.exceptions import user as _user_exceptions
-from flytekit.common.mixins import hash as _hash_mixin
-from flytekit.core.interface import Interface
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core import constants as _constants
+from flytekit.core import hash as _hash_mixin
+from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import task as _task_models
 from flytekit.models.core import compiler as compiler_models
@@ -14,21 +12,22 @@ from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.remote import interface as _interfaces
 from flytekit.remote import nodes as _nodes
+from flytekit.remote.remote_callable import RemoteEntity
 
 
-class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowTemplate):
+class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, _workflow_models.WorkflowTemplate):
     """A class encapsulating a remote Flyte workflow."""
 
     def __init__(
         self,
+        id: id_models.Identifier,
         nodes: List[_nodes.FlyteNode],
         interface,
         output_bindings,
-        id: id_models.Identifier,
         metadata,
         metadata_defaults,
         subworkflows: Optional[Dict[id_models.Identifier, _workflow_models.WorkflowTemplate]] = None,
-        tasks: Optional[Dict[id_models.Identifier, _task_models.TaskSpec]] = None,
+        tasks: Optional[Dict[id_models.Identifier, _task_models.TaskTemplate]] = None,
         launch_plans: Optional[Dict[id_models.Identifier, launch_plan_models.LaunchPlanSpec]] = None,
         compiled_closure: Optional[compiler_models.CompiledWorkflowClosure] = None,
     ):
@@ -50,19 +49,22 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             outputs=output_bindings,
         )
         self._flyte_nodes = nodes
-        self._python_interface = None
 
         # Optional things that we save for ease of access when promoting from a model or CompiledWorkflowClosure
         self._subworkflows = subworkflows
         self._tasks = tasks
         self._launch_plans = launch_plans
         self._compiled_closure = compiled_closure
-
         self._node_map = None
+        self._name = id.name
 
     @property
-    def interface(self) -> _interfaces.TypedInterface:
-        return super(FlyteWorkflow, self).interface
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def sub_workflows(self) -> Optional[Dict[id_models.Identifier, _workflow_models.WorkflowTemplate]]:
+        return self._subworkflows
 
     @property
     def entity_type_text(self) -> str:
@@ -75,16 +77,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
     @property
     def flyte_nodes(self) -> List[_nodes.FlyteNode]:
         return self._flyte_nodes
-
-    @property
-    def guessed_python_interface(self) -> Optional[Interface]:
-        return self._python_interface
-
-    @guessed_python_interface.setter
-    def guessed_python_interface(self, value):
-        if self._python_interface is not None:
-            return
-        self._python_interface = value
 
     @classmethod
     def get_non_system_nodes(cls, nodes: List[_workflow_models.Node]) -> List[_workflow_models.Node]:
@@ -115,8 +107,8 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
 
         # No inputs/outputs specified, see the constructor for more information on the overrides.
         wf = cls(
-            nodes=list(node_map.values()),
             id=base_model.id,
+            nodes=list(node_map.values()),
             metadata=base_model.metadata,
             metadata_defaults=base_model.metadata_defaults,
             interface=_interfaces.TypedInterface.promote_from_model(base_model.interface),
@@ -126,11 +118,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
             launch_plans=node_launch_plans,
         )
 
-        if wf.interface is not None:
-            wf.guessed_python_interface = Interface(
-                inputs=TypeEngine.guess_python_types(wf.interface.inputs),
-                outputs=TypeEngine.guess_python_types(wf.interface.outputs),
-            )
         wf._node_map = node_map
 
         return wf
@@ -160,6 +147,3 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, _workflow_models.WorkflowT
         )
         flyte_wf._compiled_closure = closure
         return flyte_wf
-
-    def __call__(self, *args, **input_map):
-        raise NotImplementedError

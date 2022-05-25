@@ -22,9 +22,10 @@ simple implementation that ships with the core.
 
 """
 
-import datetime
 import os
 import pathlib
+import re
+import tempfile
 import typing
 from abc import abstractmethod
 from distutils import dir_util
@@ -32,8 +33,9 @@ from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
 
-from flytekit.common.exceptions.user import FlyteAssertion
-from flytekit.common.utils import PerformanceTimer
+from flytekit.configuration import DataConfig
+from flytekit.core.utils import PerformanceTimer
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -135,13 +137,22 @@ class DataPersistencePlugins(object):
 
         cls._PLUGINS[protocol] = plugin
 
+    @staticmethod
+    def get_protocol(url: str):
+        # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
+        parts = re.split(r"(\:\:|\://)", url, 1)
+        if len(parts) > 1:
+            return parts[0]
+        logger.info("Setting protocol to file")
+        return "file"
+
     @classmethod
     def find_plugin(cls, path: str) -> typing.Type[DataPersistence]:
         """
         Returns a plugin for the given protocol, else raise a TypeError
         """
         for k, p in cls._PLUGINS.items():
-            if path.startswith(k):
+            if cls.get_protocol(path) == k.replace("://", "") or path.startswith(k):
                 return p
         raise TypeError(f"No plugin found for matching protocol of path {path}")
 
@@ -283,7 +294,12 @@ class FileAccessProvider(object):
     durable store.
     """
 
-    def __init__(self, local_sandbox_dir: Union[str, os.PathLike], raw_output_prefix: str):
+    def __init__(
+        self,
+        local_sandbox_dir: Union[str, os.PathLike],
+        raw_output_prefix: str,
+        data_config: typing.Optional[DataConfig] = None,
+    ):
         """
         Args:
             local_sandbox_dir: A local temporary working directory, that should be used to store data
@@ -296,8 +312,15 @@ class FileAccessProvider(object):
         self._local_sandbox_dir.mkdir(parents=True, exist_ok=True)
         self._local = DiskPersistence(default_prefix=local_sandbox_dir_appended)
 
-        self._default_remote = DataPersistencePlugins.find_plugin(raw_output_prefix)(default_prefix=raw_output_prefix)
+        self._default_remote = DataPersistencePlugins.find_plugin(raw_output_prefix)(
+            default_prefix=raw_output_prefix, data_config=data_config
+        )
         self._raw_output_prefix = raw_output_prefix
+        self._data_config = data_config if data_config else DataConfig.auto()
+
+    @property
+    def data_config(self) -> DataConfig:
+        return self._data_config
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
@@ -395,7 +418,11 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer(f"Copying ({remote_path} -> {local_path})"):
-                DataPersistencePlugins.find_plugin(remote_path)().get(remote_path, local_path, recursive=is_multipart)
+                pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
+                data_persistence_plugin = DataPersistencePlugins.find_plugin(remote_path)
+                data_persistence_plugin(data_config=self.data_config).get(
+                    remote_path, local_path, recursive=is_multipart
+                )
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
@@ -413,7 +440,9 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer(f"Writing ({local_path} -> {remote_path})"):
-                DataPersistencePlugins.find_plugin(remote_path)().put(local_path, remote_path, recursive=is_multipart)
+                DataPersistencePlugins.find_plugin(remote_path)(data_config=self.data_config).put(
+                    local_path, remote_path, recursive=is_multipart
+                )
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
@@ -424,8 +453,9 @@ class FileAccessProvider(object):
 DataPersistencePlugins.register_plugin("file://", DiskPersistence)
 DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
-# TODO make this use tmpdir
-tmp_dir = os.path.join("/tmp/flyte", datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
 default_local_file_access_provider = FileAccessProvider(
-    local_sandbox_dir=os.path.join(tmp_dir, "sandbox"), raw_output_prefix=os.path.join(tmp_dir, "raw")
+    local_sandbox_dir=os.path.join(flyte_tmp_dir, "sandbox"),
+    raw_output_prefix=os.path.join(flyte_tmp_dir, "raw"),
+    data_config=DataConfig.auto(),
 )

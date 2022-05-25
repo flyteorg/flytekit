@@ -1,7 +1,6 @@
 import abc as _abc
 import json as _json
 
-import six as _six
 from flyteidl.admin import common_pb2 as _common_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -58,7 +57,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         :rtype: Text
         """
-        return _six.text_type(self.to_flyte_idl())
+        return str(self.to_flyte_idl())
 
     def verbose_string(self):
         """
@@ -333,7 +332,7 @@ class Labels(FlyteIdlEntity):
         """
         :rtype: dict[Text, Text]
         """
-        return _common_pb2.Labels(values={k: v for k, v in _six.iteritems(self.values)})
+        return _common_pb2.Labels(values={k: v for k, v in self.values.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -341,7 +340,7 @@ class Labels(FlyteIdlEntity):
         :param flyteidl.admin.common_pb2.Labels pb2_object:
         :rtype: Labels
         """
-        return cls({k: v for k, v in _six.iteritems(pb2_object.values)})
+        return cls({k: v for k, v in pb2_object.values.items()})
 
 
 class Annotations(FlyteIdlEntity):
@@ -361,7 +360,7 @@ class Annotations(FlyteIdlEntity):
         """
         :rtype: _common_pb2.Annotations
         """
-        return _common_pb2.Annotations(values={k: v for k, v in _six.iteritems(self.values)})
+        return _common_pb2.Annotations(values={k: v for k, v in self.values.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -369,7 +368,7 @@ class Annotations(FlyteIdlEntity):
         :param flyteidl.admin.common_pb2.Annotations pb2_object:
         :rtype: Annotations
         """
-        return cls({k: v for k, v in _six.iteritems(pb2_object.values)})
+        return cls({k: v for k, v in pb2_object.values.items()})
 
 
 class UrlBlob(FlyteIdlEntity):

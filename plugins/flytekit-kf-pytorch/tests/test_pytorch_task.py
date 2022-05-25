@@ -1,7 +1,7 @@
 from flytekitplugins.kfpytorch.task import PyTorch
 
 from flytekit import Resources, task
-from flytekit.extend import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 
 
 def test_pytorch_task():

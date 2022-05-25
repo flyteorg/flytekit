@@ -1,7 +1,7 @@
-import logging as _logging
 from typing import Dict
 
-from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.exceptions import system as _system_exceptions
+from flytekit.loggers import remote_logger
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as id_models
@@ -9,7 +9,9 @@ from flytekit.models.core import workflow as _workflow_model
 
 
 class FlyteTaskNode(_workflow_model.TaskNode):
-    """A class encapsulating a task that a Flyte node needs to execute."""
+    """
+    A class encapsulating a task that a Flyte node needs to execute.
+    """
 
     def __init__(self, flyte_task: "flytekit.remote.task.FlyteTask"):
         self._flyte_task = flyte_task
@@ -17,7 +19,9 @@ class FlyteTaskNode(_workflow_model.TaskNode):
 
     @property
     def reference_id(self) -> id_models.Identifier:
-        """A globally unique identifier for the task."""
+        """
+        A globally unique identifier for the task.
+        """
         return self._flyte_task.id
 
     @property
@@ -41,7 +45,7 @@ class FlyteTaskNode(_workflow_model.TaskNode):
 
         if base_model.reference_id in tasks:
             task = tasks[base_model.reference_id]
-            _logging.info(f"Found existing task template for {task.id}, will not retrieve from Admin")
+            remote_logger.debug(f"Found existing task template for {task.id}, will not retrieve from Admin")
             flyte_task = FlyteTask.promote_from_model(task)
             return cls(flyte_task)
 
@@ -124,3 +128,36 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         raise _system_exceptions.FlyteSystemException(
             "Bad workflow node model, neither subworkflow nor launchplan specified."
         )
+
+
+class FlyteBranchNode(_workflow_model.BranchNode):
+    def __init__(self, if_else: _workflow_model.IfElseBlock):
+        super().__init__(if_else)
+
+    @classmethod
+    def promote_from_model(
+        cls,
+        base_model: _workflow_model.BranchNode,
+        sub_workflows: Dict[id_models.Identifier, _workflow_model.WorkflowTemplate],
+        node_launch_plans: Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec],
+        tasks: Dict[id_models.Identifier, _task_model.TaskTemplate],
+    ) -> "FlyteBranchNode":
+
+        from flytekit.remote.nodes import FlyteNode
+
+        block = base_model.if_else
+
+        else_node = None
+        if block.else_node:
+            else_node = FlyteNode.promote_from_model(block.else_node, sub_workflows, node_launch_plans, tasks)
+
+        block.case._then_node = FlyteNode.promote_from_model(
+            block.case.then_node, sub_workflows, node_launch_plans, tasks
+        )
+
+        for o in block.other:
+            o._then_node = FlyteNode.promote_from_model(o.then_node, sub_workflows, node_launch_plans, tasks)
+
+        new_if_else_block = _workflow_model.IfElseBlock(block.case, block.other, else_node, block.error)
+
+        return cls(new_if_else_block)

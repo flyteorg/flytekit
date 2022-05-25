@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import importlib
 import re
+from abc import ABC
 from typing import Callable, Dict, List, Optional, TypeVar
 
-from flytekit.common.tasks.raw_container import _get_container_definition
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
-from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
-from flytekit.core.tracker import TrackedInstance
+from flytekit.core.tracker import TrackedInstance, extract_task_module
+from flytekit.core.utils import _get_container_definition
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
@@ -17,7 +19,7 @@ from flytekit.models.security import Secret, SecurityContext
 T = TypeVar("T")
 
 
-class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
+class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
     """
     A Python AutoContainer task should be used as the base for all extensions that want the user's code to be in the
     container and the container information to be automatically captured.
@@ -41,7 +43,7 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
     ):
         """
         :param name: unique name for the task, usually the function's module and name.
-        :param task_config: Configuration object for Task. Should be a unique type for that specific Task
+        :param task_config: Configuration object for Task. Should be a unique type for that specific Task.
         :param task_type: String task type to be associated with this Task
         :param container_image: String FQN for the image.
         :param requests: custom resource request settings.
@@ -119,6 +121,10 @@ class PythonAutoContainerTask(PythonTask[T], metaclass=FlyteTrackedABC):
             "{{.outputPrefix}}",
             "--raw-output-data-prefix",
             "{{.rawOutputDataPrefix}}",
+            "--checkpoint-path",
+            "{{.checkpointOutputPrefix}}",
+            "--prev-checkpoint",
+            "{{.prevCheckpointPrefix}}",
             "--resolver",
             self.task_resolver.location,
             "--",
@@ -189,19 +195,11 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         from flytekit.core.python_function_task import PythonFunctionTask
 
         if isinstance(task, PythonFunctionTask):
-            return [
-                "task-module",
-                task.task_function.__module__,
-                "task-name",
-                task.task_function.__name__,
-            ]
+            _, m, t, _ = extract_task_module(task.task_function)
+            return ["task-module", m, "task-name", t]
         if isinstance(task, TrackedInstance):
-            return [
-                "task-module",
-                task.instantiated_in,
-                "task-name",
-                task.lhs,
-            ]
+            _, m, t, _ = extract_task_module(task)
+            return ["task-module", m, "task-name", t]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:
         raise Exception("should not be needed")

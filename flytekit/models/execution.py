@@ -7,6 +7,7 @@ import pytz as _pytz
 
 from flytekit.models import common as _common_models
 from flytekit.models import literals as _literals_models
+from flytekit.models import security
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.node_execution import DynamicWorkflowNodeMetadata
@@ -82,7 +83,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         labels=None,
         annotations=None,
         auth_role=None,
+        raw_output_data_config=None,
         max_parallelism=None,
+        security_context: typing.Optional[security.SecurityContext] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -92,6 +95,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param flytekit.models.common.Labels labels: Labels to apply to the execution.
         :param flytekit.models.common.Annotations annotations: Annotations to apply to the execution
         :param flytekit.models.common.AuthRole auth_role: The authorization method with which to execute the workflow.
+        :param raw_output_data_config: Optional location of offloaded data for things like S3, etc.
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
@@ -104,7 +108,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._labels = labels or _common_models.Labels({})
         self._annotations = annotations or _common_models.Annotations({})
         self._auth_role = auth_role or _common_models.AuthRole()
+        self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
+        self._security_context = security_context
 
     @property
     def launch_plan(self):
@@ -157,8 +163,19 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return self._auth_role
 
     @property
+    def raw_output_data_config(self):
+        """
+        :rtype: flytekit.models.common.RawOutputDataConfig
+        """
+        return self._raw_output_data_config
+
+    @property
     def max_parallelism(self) -> int:
         return self._max_parallelism
+
+    @property
+    def security_context(self) -> typing.Optional[security.SecurityContext]:
+        return self._security_context
 
     def to_flyte_idl(self):
         """
@@ -172,7 +189,11 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self._auth_role.to_flyte_idl() if self.auth_role else None,
+            raw_output_data_config=self._raw_output_data_config.to_flyte_idl()
+            if self._raw_output_data_config
+            else None,
             max_parallelism=self.max_parallelism,
+            security_context=self.security_context.to_flyte_idl() if self.security_context else None,
         )
 
     @classmethod
@@ -189,7 +210,13 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             labels=_common_models.Labels.from_flyte_idl(p.labels),
             annotations=_common_models.Annotations.from_flyte_idl(p.annotations),
             auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role),
+            raw_output_data_config=_common_models.RawOutputDataConfig.from_flyte_idl(p.raw_output_data_config)
+            if p.HasField("raw_output_data_config")
+            else None,
             max_parallelism=p.max_parallelism,
+            security_context=security.SecurityContext.from_flyte_idl(p.security_context)
+            if p.security_context
+            else None,
         )
 
 
@@ -293,15 +320,17 @@ class Execution(_common_models.FlyteIdlEntity):
 
 
 class ExecutionClosure(_common_models.FlyteIdlEntity):
-    def __init__(self, phase, started_at, error=None, outputs=None):
+    def __init__(self, phase, started_at, duration, error=None, outputs=None):
         """
         :param int phase: From the flytekit.models.core.execution.WorkflowExecutionPhase enum
         :param datetime.datetime started_at:
+        :param datetime.timedelta duration: Duration for which the execution has been running.
         :param flytekit.models.core.execution.ExecutionError error:
         :param LiteralMapBlob outputs:
         """
         self._phase = phase
         self._started_at = started_at
+        self._duration = duration
         self._error = error
         self._outputs = outputs
 
@@ -328,6 +357,13 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         return self._started_at
 
     @property
+    def duration(self):
+        """
+        :rtype: datetime.timedelta
+        """
+        return self._duration
+
+    @property
     def outputs(self):
         """
         :rtype: LiteralMapBlob
@@ -344,6 +380,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None,
         )
         obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        obj.duration.FromTimedelta(self.duration)
         return obj
 
     @classmethod
@@ -363,6 +400,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             outputs=outputs,
             phase=pb2_object.phase,
             started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
+            duration=pb2_object.duration.ToTimedelta(),
         )
 
 

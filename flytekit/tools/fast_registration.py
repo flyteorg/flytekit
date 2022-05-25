@@ -1,46 +1,79 @@
-import os as _os
+from __future__ import annotations
+
+import hashlib
+import os
+import posixpath
 import subprocess as _subprocess
-import tarfile as _tarfile
-import tempfile as _tempfile
-from pathlib import Path as _Path
+import tarfile
+from typing import Optional
 
-import checksumdir
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
-from flytekit.interfaces.data import data_proxy as _data_proxy
-from flytekit.interfaces.data.data_proxy import Data as _Data
+FAST_PREFIX = "fast"
+FAST_FILEENDING = ".tar.gz"
 
-_tmp_versions_dir = "tmp/versions"
+file_access = FlyteContextManager.current_context().file_access
 
 
-def compute_digest(source_dir: _os.PathLike) -> str:
+def fast_package(source: os.PathLike, output_dir: os.PathLike) -> os.PathLike:
     """
-    Walks the entirety of the source dir to compute a deterministic hex digest of the dir contents.
-    :param _os.PathLike source_dir:
+    Takes a source directory and packages everything not covered by common ignores into a tarball
+    named after a hexdigest of the included files.
+    :param os.PathLike source:
+    :param os.PathLike output_dir:
+    :return os.PathLike:
+    """
+    ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, StandardIgnore])
+    digest = compute_digest(source, ignore.is_ignored)
+    archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
+
+    if output_dir:
+        archive_fname = os.path.join(output_dir, archive_fname)
+
+    with tarfile.open(archive_fname, "w:gz") as tar:
+        tar.add(source, arcname="", filter=ignore.tar_filter)
+
+    return archive_fname
+
+
+def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> str:
+    """
+    Walks the entirety of the source dir to compute a deterministic md5 hex digest of the dir contents.
+    :param os.PathLike source:
+    :param Ignore ignore:
     :return Text:
     """
-    return f"fast{checksumdir.dirhash(source_dir, 'md5', include_paths=True)}"
+    hasher = hashlib.md5()
+    for root, _, files in os.walk(source, topdown=True):
+
+        files.sort()
+
+        for fname in files:
+            abspath = os.path.join(root, fname)
+            relpath = os.path.relpath(abspath, source)
+            if filter:
+                if filter(relpath):
+                    continue
+
+            _filehash_update(abspath, hasher)
+            _pathhash_update(relpath, hasher)
+
+    return hasher.hexdigest()
 
 
-def _write_marker(marker: _os.PathLike):
-    try:
-        open(marker, "x")
-    except FileExistsError:
-        pass
+def _filehash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
+    blocksize = 65536
+    with open(path, "rb") as f:
+        bytes = f.read(blocksize)
+        while bytes:
+            hasher.update(bytes)
+            bytes = f.read(blocksize)
 
 
-def filter_tar_file_fn(tarinfo: _tarfile.TarInfo) -> _tarfile.TarInfo:
-    """
-    Excludes designated file types from tar archive
-    :param _tarfile.TarInfo tarinfo:
-    :return _tarfile.TarInfo:
-    """
-    if tarinfo.name.endswith(".pyc"):
-        return None
-    if tarinfo.name.startswith(".cache"):
-        return None
-    if "__pycache__" in tarinfo.name:
-        return None
-    return tarinfo
+def _pathhash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
+    path_list = path.split(os.sep)
+    hasher.update("".join(path_list).encode("utf-8"))
 
 
 def get_additional_distribution_loc(remote_location: str, identifier: str) -> str:
@@ -49,63 +82,23 @@ def get_additional_distribution_loc(remote_location: str, identifier: str) -> st
     :param Text identifier:
     :return Text:
     """
-    return _os.path.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
-
-
-def upload_package(source_dir: _os.PathLike, identifier: str, remote_location: str, dry_run=False) -> str:
-    """
-    Uploads the contents of the source dir as a tar package to a destination specified by the unique identifier and
-    remote_location.
-    :param _os.PathLike source_dir:
-    :param Text identifier:
-    :param Text remote_location:
-    :param bool dry_run:
-    :return Text:
-    """
-    tmp_versions_dir = _os.path.join(_os.getcwd(), _tmp_versions_dir)
-    _os.makedirs(tmp_versions_dir, exist_ok=True)
-    marker = _Path(_os.path.join(tmp_versions_dir, identifier))
-    full_remote_path = get_additional_distribution_loc(remote_location, identifier)
-    if _os.path.exists(marker):
-        print("Local marker for identifier {} already exists, skipping upload".format(identifier))
-        return full_remote_path
-
-    if _Data.data_exists(full_remote_path):
-        print("Remote file {} already exists, skipping upload".format(full_remote_path))
-        _write_marker(marker)
-        return full_remote_path
-
-    with _tempfile.NamedTemporaryFile() as fp:
-        # Write using gzip
-        with _tarfile.open(fp.name, "w:gz") as tar:
-            tar.add(source_dir, arcname="", filter=filter_tar_file_fn)
-        if dry_run:
-            print("Would upload {} to {}".format(fp.name, full_remote_path))
-        else:
-            _Data.put_data(fp.name, full_remote_path)
-            print("Uploaded {} to {}".format(fp.name, full_remote_path))
-
-    # Finally, touch the marker file so we have a flag in the future to avoid re-uploading the package dir as an
-    # optimization
-    _write_marker(marker)
-    return full_remote_path
+    return posixpath.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
 
 
 def download_distribution(additional_distribution: str, destination: str):
     """
     Downloads a remote code distribution and overwrites any local files.
     :param Text additional_distribution:
-    :param _os.PathLike destination:
+    :param os.PathLike destination:
     """
-    _data_proxy.Data.get_data(additional_distribution, destination)
-    tarfile_name = _os.path.basename(additional_distribution)
-    file_suffix = _Path(tarfile_name).suffixes
-    if len(file_suffix) != 2 or file_suffix[0] != ".tar" or file_suffix[1] != ".gz":
+    file_access.get_data(additional_distribution, destination)
+    tarfile_name = os.path.basename(additional_distribution)
+    if not tarfile_name.endswith(".tar.gz"):
         raise ValueError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.
     result = _subprocess.run(
-        ["tar", "-xvf", _os.path.join(destination, tarfile_name), "-C", destination],
+        ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
         stdout=_subprocess.PIPE,
     )
     result.check_returncode()

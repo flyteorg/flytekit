@@ -1,15 +1,16 @@
 import datetime
-import logging
 import os
-import re
+import string
 import subprocess
 import typing
 from dataclasses import dataclass
 
+import flytekit
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.task import TaskPlugins
+from flytekit.loggers import logger
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 
@@ -30,46 +31,6 @@ class OutputLocation:
     location: typing.Union[os.PathLike, str]
 
 
-def _stringify(v: typing.Any) -> str:
-    """
-    Special cased return for the given value. Given the type returns the string version for the type.
-    Handles FlyteFile and FlyteDirectory specially. Downloads and returns the downloaded filepath
-    """
-    if isinstance(v, FlyteFile):
-        v.download()
-        return v.path
-    if isinstance(v, FlyteDirectory):
-        v.download()
-        return v.path
-    if isinstance(v, datetime.datetime):
-        return v.isoformat()
-    return str(v)
-
-
-def _interpolate(tmpl: str, regex: re.Pattern, validate_all_match: bool = True, **kwargs) -> str:
-    """
-    Substitutes all templates that match the supplied regex
-    with the given inputs and returns the substituted string. The result is non destructive towards the given string.
-    """
-    modified = tmpl
-    matched = set()
-    for match in regex.finditer(tmpl):
-        expr = match.groups()[0]
-        var = match.groups()[1]
-        if var not in kwargs:
-            raise ValueError(f"Variable {var} in Query (part of {expr}) not found in inputs {kwargs.keys()}")
-        matched.add(var)
-        val = kwargs[var]
-        # str conversion should be deliberate, with right conversion for each type
-        modified = modified.replace(expr, _stringify(val))
-
-    if validate_all_match:
-        if len(matched) < len(kwargs.keys()):
-            diff = set(kwargs.keys()).difference(matched)
-            raise ValueError(f"Extra Inputs have no matches in script template - missing {diff}")
-    return modified
-
-
 def _dummy_task_func():
     """
     A Fake function to satisfy the inner PythonTask requirements
@@ -77,14 +38,67 @@ def _dummy_task_func():
     return None
 
 
+class AttrDict(dict):
+    """
+    Convert a dictionary to an attribute style lookup. Do not use this in regular places, this is used for
+    namespacing inputs and outputs
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+
+class _PythonFStringInterpolizer:
+    """A class for interpolating scripts that use python string.format syntax"""
+
+    class _Formatter(string.Formatter):
+        def format_field(self, value, format_spec):
+            """
+            Special cased return for the given value. Given the type returns the string version for
+            the type. Handles FlyteFile and FlyteDirectory specially.
+            Downloads and returns the downloaded filepath.
+            """
+            if isinstance(value, FlyteFile):
+                value.download()
+                return value.path
+            if isinstance(value, FlyteDirectory):
+                value.download()
+                return value.path
+            if isinstance(value, datetime.datetime):
+                return value.isoformat()
+            return super().format_field(value, format_spec)
+
+    def interpolate(
+        self,
+        tmpl: str,
+        inputs: typing.Optional[typing.Dict[str, str]] = None,
+        outputs: typing.Optional[typing.Dict[str, str]] = None,
+    ) -> str:
+        """
+        Interpolate python formatted string templates with variables from the input and output
+        argument dicts. The result is non destructive towards the given template string.
+        """
+        inputs = inputs or {}
+        outputs = outputs or {}
+        inputs = AttrDict(inputs)
+        outputs = AttrDict(outputs)
+        consolidated_args = {
+            "inputs": inputs,
+            "outputs": outputs,
+            "ctx": flytekit.current_context(),
+        }
+        try:
+            return self._Formatter().format(tmpl, **consolidated_args)
+        except KeyError as e:
+            raise ValueError(f"Variable {e} in Query not found in inputs {consolidated_args.keys()}")
+
+
 T = typing.TypeVar("T")
 
 
 class ShellTask(PythonInstanceTask[T]):
     """ """
-
-    _INPUT_REGEX = re.compile(r"({{\s*.inputs.(\w+)\s*}})", re.IGNORECASE)
-    _OUTPUT_REGEX = re.compile(r"({{\s*.outputs.(\w+)\s*}})", re.IGNORECASE)
 
     def __init__(
         self,
@@ -136,6 +150,7 @@ class ShellTask(PythonInstanceTask[T]):
         self._script_file = script_file
         self._debug = debug
         self._output_locs = output_locs if output_locs else []
+        self._interpolizer = _PythonFStringInterpolizer()
         outputs = self._validate_output_locs()
         super().__init__(
             name,
@@ -176,7 +191,7 @@ class ShellTask(PythonInstanceTask[T]):
         """
         Executes the given script by substituting the inputs and outputs and extracts the outputs from the filesystem
         """
-        logging.info(f"Running shell script as type {self.task_type}")
+        logger.info(f"Running shell script as type {self.task_type}")
         if self.script_file:
             with open(self.script_file) as f:
                 self._script = f.read()
@@ -184,12 +199,12 @@ class ShellTask(PythonInstanceTask[T]):
         outputs: typing.Dict[str, str] = {}
         if self._output_locs:
             for v in self._output_locs:
-                outputs[v.var] = _interpolate(v.location, self._INPUT_REGEX, validate_all_match=False, **kwargs)
+                outputs[v.var] = self._interpolizer.interpolate(v.location, inputs=kwargs)
 
-        gen_script = _interpolate(self._script, self._INPUT_REGEX, **kwargs)
-        # For outputs it is not necessary that all outputs are used in the script, some are implicit outputs
-        # for example gcc main.c will generate a.out automatically
-        gen_script = _interpolate(gen_script, self._OUTPUT_REGEX, validate_all_match=False, **outputs)
+        if os.name == "nt":
+            self._script = self._script.lstrip().rstrip().replace("\n", "&&")
+
+        gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
         if self._debug:
             print("\n==============================================\n")
             print(gen_script)
@@ -198,9 +213,9 @@ class ShellTask(PythonInstanceTask[T]):
         try:
             subprocess.check_call(gen_script, shell=True)
         except subprocess.CalledProcessError as e:
-            files = os.listdir("./")
+            files = os.listdir(".")
             fstr = "\n-".join(files)
-            logging.error(
+            logger.error(
                 f"Failed to Execute Script, return-code {e.returncode} \n"
                 f"StdErr: {e.stderr}\n"
                 f"StdOut: {e.stdout}\n"
@@ -222,3 +237,144 @@ class ShellTask(PythonInstanceTask[T]):
 
     def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
         return self._config_task_instance.post_execute(user_params, rval)
+
+
+class RawShellTask(ShellTask):
+    """ """
+
+    def __init__(
+        self,
+        name: str,
+        debug: bool = False,
+        script: typing.Optional[str] = None,
+        script_file: typing.Optional[str] = None,
+        task_config: T = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        output_locs: typing.Optional[typing.List[OutputLocation]] = None,
+        **kwargs,
+    ):
+        """
+        The `RawShellTask` is a minimal extension of the existing `ShellTask`. It's purpose is to support wrapping a
+        "raw" or "pure" shell script which needs to be executed with some environment variables set, and some arguments,
+        which may not be known until execution time.
+
+        This class is not meant to be instantiated into tasks by users, but used with the factory function
+        `get_raw_shell_task()`. An instance of this class will be returned with either user-specified or default
+        template. The template itself will export the desired environment variables, and subsequently execute the
+        desired "raw" script with the specified arguments.
+
+        .. note::
+            This means that within your workflow, you can dynamically control the env variables, arguments, and even the
+            actual script you want to run.
+
+        .. note::
+            The downside is that a dynamic workflow will be required. The "raw" script passed in at execution time must
+            be at the specified location.
+
+        These args are forwarded directly to the parent `ShellTask` constructor as behavior does not diverge
+        """
+        super().__init__(
+            name=name,
+            debug=debug,
+            script=script,
+            script_file=script_file,
+            task_config=task_config,
+            inputs=inputs,
+            output_locs=output_locs,
+            **kwargs,
+        )
+
+    def make_export_string_from_env_dict(self, d: typing.Dict[str, str]) -> str:
+        """
+        Utility function to convert a dictionary of desired environment variable key: value pairs into a string of
+        ```
+        export k1=v1
+        export k2=v2
+        ...
+        ```
+        """
+        items = []
+        for k, v in d.items():
+            items.append(f"export {k}={v}")
+        return "\n".join(items)
+
+    def execute(self, **kwargs) -> typing.Any:
+        """
+        Executes the given script by substituting the inputs and outputs and extracts the outputs from the filesystem
+        """
+        logger.info(f"Running shell script as type {self.task_type}")
+        if self.script_file:
+            with open(self.script_file) as f:
+                self._script = f.read()
+
+        outputs: typing.Dict[str, str] = {}
+        if self._output_locs:
+            for v in self._output_locs:
+                outputs[v.var] = self._interpolizer.interpolate(v.location, inputs=kwargs)
+
+        if os.name == "nt":
+            self._script = self._script.lstrip().rstrip().replace("\n", "&&")
+
+        if "env" in kwargs and isinstance(kwargs["env"], dict):
+            kwargs["export_env"] = self.make_export_string_from_env_dict(kwargs["env"])
+
+        gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
+        if self._debug:
+            print("\n==============================================\n")
+            print(gen_script)
+            print("\n==============================================\n")
+
+        try:
+            subprocess.check_call(gen_script, shell=True)
+        except subprocess.CalledProcessError as e:
+            files = os.listdir(".")
+            fstr = "\n-".join(files)
+            logger.error(
+                f"Failed to Execute Script, return-code {e.returncode} \n"
+                f"StdErr: {e.stderr}\n"
+                f"StdOut: {e.stdout}\n"
+                f" Current directory contents: .\n-{fstr}"
+            )
+            raise
+
+        final_outputs = []
+        for v in self._output_locs:
+            if issubclass(v.var_type, FlyteFile):
+                final_outputs.append(FlyteFile(outputs[v.var]))
+            if issubclass(v.var_type, FlyteDirectory):
+                final_outputs.append(FlyteDirectory(outputs[v.var]))
+        if len(final_outputs) == 1:
+            return final_outputs[0]
+        if len(final_outputs) > 1:
+            return tuple(final_outputs)
+        return None
+
+
+# The raw_shell_task is an instance of RawShellTask and wraps a 'pure' shell script
+# This utility function allows for the specification of env variables, arguments, and the actual script within the
+# workflow definition rather than at `RawShellTask` instantiation
+def get_raw_shell_task(name: str) -> RawShellTask:
+
+    return RawShellTask(
+        name=name,
+        debug=True,
+        inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
+        output_locs=[
+            OutputLocation(
+                var="out",
+                var_type=FlyteDirectory,
+                location="{ctx.working_directory}",
+            )
+        ],
+        script="""
+#!/bin/bash
+
+set -uex
+
+cd {ctx.working_directory}
+
+{inputs.export_env}
+
+bash {inputs.script_file} {inputs.script_args}
+""",
+    )

@@ -30,11 +30,13 @@ child_loggers = {
     "cli": logger.getChild("cli"),
     "remote": logger.getChild("remote"),
     "entrypoint": logger.getChild("entrypoint"),
+    "user_space": logger.getChild("user_space"),
 }
 auth_logger = child_loggers["auth"]
 cli_logger = child_loggers["cli"]
 remote_logger = child_loggers["remote"]
 entrypoint_logger = child_loggers["entrypoint"]
+user_space_logger = child_loggers["user_space"]
 
 # create console handler
 ch = logging.StreamHandler()
@@ -49,7 +51,6 @@ if level_from_env is not None:
 else:
     ch.setLevel(logging.WARNING)
 
-# Consider this API to be beta
 for log_name, child_logger in child_loggers.items():
     env_var = f"{LOGGING_ENV_VAR}_{log_name.upper()}"
     level_from_env = os.getenv(env_var)

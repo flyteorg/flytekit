@@ -1,10 +1,15 @@
-import pandas
+import pandas as pd
 import pyspark
 from flytekitplugins.spark.task import Spark
 
 import flytekit
 from flytekit import kwtypes, task, workflow
 from flytekit.types.schema import FlyteSchema
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 
 def test_wf1_with_spark():
@@ -33,7 +38,7 @@ def test_spark_dataframe_input():
 
     @task
     def my_dataset() -> my_schema:
-        return pandas.DataFrame(data={"name": ["Alice"], "age": [5]})
+        return pd.DataFrame(data={"name": ["Alice"], "age": [5]})
 
     @task(task_config=Spark())
     def my_spark(df: pyspark.sql.DataFrame) -> my_schema:
@@ -53,6 +58,33 @@ def test_spark_dataframe_input():
     assert df2 is not None
 
 
+def test_fs_sd_compatibility():
+    my_schema = FlyteSchema[kwtypes(name=str, age=int)]
+
+    @task
+    def my_dataset() -> pd.DataFrame:
+        return pd.DataFrame(data={"name": ["Alice"], "age": [5]})
+
+    @task(task_config=Spark())
+    def my_spark(df: pyspark.sql.DataFrame) -> my_schema:
+        session = flytekit.current_context().spark_session
+        new_df = session.createDataFrame([("Bob", 10)], my_schema.column_names())
+        return df.union(new_df)
+
+    @task(task_config=Spark())
+    def read_spark_df(df: pyspark.sql.DataFrame) -> int:
+        return df.count()
+
+    @workflow
+    def my_wf() -> int:
+        df = my_dataset()
+        fs = my_spark(df=df)
+        return read_spark_df(df=fs)
+
+    res = my_wf()
+    assert res == 2
+
+
 def test_spark_dataframe_return():
     my_schema = FlyteSchema[kwtypes(name=str, age=int)]
 
@@ -60,7 +92,6 @@ def test_spark_dataframe_return():
     def my_spark(a: int) -> my_schema:
         session = flytekit.current_context().spark_session
         df = session.createDataFrame([("Alice", a)], my_schema.column_names())
-        print(type(df))
         return df
 
     @workflow
@@ -68,9 +99,23 @@ def test_spark_dataframe_return():
         return my_spark(a=a)
 
     x = my_wf(a=5)
-    reader = x.open(pandas.DataFrame)
+    reader = x.open(pd.DataFrame)
     df2 = reader.all()
-    result_df = df2.reset_index(drop=True) == pandas.DataFrame(data={"name": ["Alice"], "age": [5]}).reset_index(
-        drop=True
-    )
+    result_df = df2.reset_index(drop=True) == pd.DataFrame(data={"name": ["Alice"], "age": [5]}).reset_index(drop=True)
     assert result_df.all().all()
+
+
+def test_read_spark_subset_columns():
+    @task
+    def t1() -> pd.DataFrame:
+        return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    @task(task_config=Spark())
+    def t2(df: Annotated[pyspark.sql.DataFrame, kwtypes(Name=str)]) -> int:
+        return len(df.columns)
+
+    @workflow()
+    def wf() -> int:
+        return t2(df=t1())
+
+    assert wf() == 1

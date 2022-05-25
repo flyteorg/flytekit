@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 import shutil
 from dataclasses import dataclass
@@ -15,6 +14,7 @@ from great_expectations.exceptions import ValidationError
 from flytekit import PythonInstanceTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
+from flytekit.loggers import logger
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
@@ -103,57 +103,22 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             **kwargs,
         )
 
-    def _flyte_file(self, dataset) -> str:
+    def _flyte_file(self, dataset: FlyteFile) -> str:
         if not self._local_file_path:
             raise ValueError("local_file_path is missing!")
 
-        # str and remote
-        if issubclass(type(dataset), str) and FlyteContext.current_context().file_access.is_remote(dataset):
-            # download the file into local_file_path
-            if os.path.isdir(self._local_file_path):
-                local_path = os.path.join(self._local_file_path, os.path.basename(dataset))
-            else:
-                local_path = self._local_file_path
+        shutil.copy(dataset, self._local_file_path)
+        return os.path.basename(dataset)
 
-            FlyteContext.current_context().file_access.get_data(
-                remote_path=dataset,
-                local_path=local_path,
-            )
-        # _SpecificFormatClass
-        elif not issubclass(type(dataset), str) and dataset.remote_source:
-            shutil.copy(dataset, self._local_file_path)
-        else:
-            raise ValueError("Local FlyteFiles are not supported; use the string datatype instead")
-
-        dataset = os.path.basename(dataset)
-
-        return dataset
-
-    def _flyte_schema(self, dataset) -> str:
+    def _flyte_schema(self, dataset: FlyteSchema) -> str:
         if not self._local_file_path:
             raise ValueError("local_file_path is missing!")
 
-        # FlyteSchema
-        if type(dataset) is FlyteSchema:
-            # copy parquet file to user-given directory
-            FlyteContext.current_context().file_access.get_data(
-                dataset.remote_path, self._local_file_path, is_multipart=True
-            )
-
-        # DataFrame (Pandas, Spark, etc.)
-        else:
-            if not os.path.exists(self._local_file_path):
-                os.makedirs(self._local_file_path, exist_ok=True)
-
-            schema = FlyteSchema(
-                local_path=self._local_file_path,
-            )
-            writer = schema.open(type(dataset))
-            writer.write(dataset)
-
-        dataset = os.path.basename(self._local_file_path)
-
-        return dataset
+        # copy parquet file to user-given directory
+        FlyteContext.current_context().file_access.get_data(
+            dataset.remote_path, self._local_file_path, is_multipart=True
+        )
+        return os.path.basename(self._local_file_path)
 
     def execute(self, **kwargs) -> Any:
         context = ge.data_context.DataContext(self._context_root_dir)  # type: ignore
@@ -231,26 +196,16 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                 }
             )
 
-        checkpoint_config = {
-            "class_name": "SimpleCheckpoint",
-            "validations": [
-                {
-                    "batch_request": final_batch_request,
-                    "expectation_suite_name": self._expectation_suite_name,
-                }
-            ],
-        }
-
         if self._checkpoint_params:
             checkpoint = SimpleCheckpoint(
                 f"_tmp_checkpoint_{self._expectation_suite_name}",
                 context,
-                **checkpoint_config,
                 **self._checkpoint_params,
             )
         else:
             checkpoint = SimpleCheckpoint(
-                f"_tmp_checkpoint_{self._expectation_suite_name}", context, **checkpoint_config
+                f"_tmp_checkpoint_{self._expectation_suite_name}",
+                context,
             )
 
         # identify every run uniquely
@@ -261,7 +216,15 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             }
         )
 
-        checkpoint_result = checkpoint.run(run_id=run_id)
+        checkpoint_result = checkpoint.run(
+            run_id=run_id,
+            validations=[
+                {
+                    "batch_request": final_batch_request,
+                    "expectation_suite_name": self._expectation_suite_name,
+                }
+            ],
+        )
         final_result = convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
 
         result_string = ""
@@ -278,6 +241,6 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             # raise a Great Expectations' exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        logging.info("Validation succeeded!")
+        logger.info("Validation succeeded!")
 
         return final_result

@@ -1,10 +1,14 @@
+import importlib
 import importlib as _importlib
 import inspect
 import inspect as _inspect
-import logging as _logging
-from typing import Callable
+import os
+import typing
+from typing import Callable, Tuple, Union
 
-from flytekit.common.exceptions import system as _system_exceptions
+from flytekit.configuration.feature_flags import FeatureFlags
+from flytekit.exceptions import system as _system_exceptions
+from flytekit.loggers import logger
 
 
 class InstanceTrackingMeta(type):
@@ -21,7 +25,7 @@ class InstanceTrackingMeta(type):
     def _find_instance_module():
         frame = _inspect.currentframe()
         while frame:
-            if frame.f_code.co_name == "<module>":
+            if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 return frame.f_globals["__name__"]
             frame = frame.f_back
         return None
@@ -55,7 +59,8 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
 
     @property
     def location(self) -> str:
-        return f"{self.instantiated_in}.{self.lhs}"
+        n, _, _, _ = extract_task_module(self)
+        return n
 
     @property
     def lhs(self):
@@ -70,12 +75,12 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         if self._instantiated_in is None or self._instantiated_in == "":
             raise _system_exceptions.FlyteSystemException(f"Object {self} does not have an _instantiated in")
 
-        _logging.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
+        logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
         m = _importlib.import_module(self._instantiated_in)
         for k in dir(m):
             try:
                 if getattr(m, k) is self:
-                    _logging.debug(f"Found LHS for {self}, {k}")
+                    logger.debug(f"Found LHS for {self}, {k}")
                     self._lhs = k
                     return k
             except ValueError as err:
@@ -84,10 +89,10 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                 #   a.any() or a.all()
                 # Since dataframes aren't registrable entities to begin with we swallow any errors they raise and
                 # continue looping through m.
-                _logging.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
+                logger.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
                 pass
 
-        _logging.error(f"Could not find LHS for {self} in {self._instantiated_in}")
+        logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
         raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
 
 
@@ -163,3 +168,83 @@ def istestfunction(func) -> bool:
             mod_name = mod_name.split(".")[-1]
         return mod_name.startswith("test_")
     return False
+
+
+class _ModuleSanitizer(object):
+    """
+    Sanitizes and finds the absolute module path irrespective of the import location.
+    """
+
+    def __init__(self):
+        self._module_cache = {}
+
+    def _resolve_abs_module_name(self, path: str, package_root: str) -> str:
+        """
+        Recursively finds the root python package under-which basename exists
+        """
+        # If we have already computed the module for this directory - return
+        if path in self._module_cache:
+            return self._module_cache[path]
+
+        basename = os.path.basename(path)
+        dirname = os.path.dirname(path)
+
+        # Let us remove any extensions like .py
+        basename = os.path.splitext(basename)[0]
+
+        if dirname == package_root:
+            return basename
+
+        # If we have reached a directory with no __init__, ignore
+        if "__init__.py" not in os.listdir(dirname):
+            return basename
+
+        # Now recurse down such that we can extract the absolute module path
+        mod_name = self._resolve_abs_module_name(dirname, package_root)
+        final_mod_name = f"{mod_name}.{basename}" if mod_name else basename
+        self._module_cache[path] = final_mod_name
+        return final_mod_name
+
+    def get_absolute_module_name(self, path: str, package_root: typing.Optional[str] = None) -> str:
+        """
+        Returns the absolute module path for a given python file path. This assumes that every module correctly contains
+        a __init__.py file. Absence of this file, indicates the root.
+        """
+        return self._resolve_abs_module_name(path, package_root)
+
+
+_mod_sanitizer = _ModuleSanitizer()
+
+
+def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, str, str]:
+    """
+    Returns the task-name, absolute module and the string name of the callable.
+    :param f: A task or any other callable
+    :return: [name to use: str, module_name: str, function_name: str, full_path: str]
+    """
+
+    if isinstance(f, TrackedInstance):
+        mod = importlib.import_module(f.instantiated_in)
+        mod_name = mod.__name__
+        name = f.lhs
+        # We cannot get the sourcefile for an instance, so we replace it with the module
+        f = mod
+    else:
+        mod = inspect.getmodule(f)
+        if mod is None:
+            raise AssertionError(f"Unable to determine module of {f}")
+        mod_name = mod.__name__
+        name = f.__name__.split(".")[-1]
+
+    if mod_name == "__main__":
+        return name, "", name, os.path.abspath(inspect.getfile(f))
+
+    if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
+        package_root = (
+            FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto" else None
+        )
+        new_mod_name = _mod_sanitizer.get_absolute_module_name(inspect.getabsfile(mod), package_root)
+        # We only replace the mod_name if it is more specific, else we already have a fully resolved path
+        if len(new_mod_name) > len(mod_name):
+            mod_name = new_mod_name
+    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))

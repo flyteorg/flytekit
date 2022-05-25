@@ -1,10 +1,11 @@
 import os
+import posixpath
 import typing
 from shutil import which as shell_which
 
-from flytekit.common.exceptions.user import FlyteUserException
-from flytekit.configuration import gcp
+from flytekit.configuration import DataConfig, GCSConfig
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.tools import subprocess
 
 
@@ -14,7 +15,7 @@ def _update_cmd_config_and_execute(cmd):
 
 
 def _amend_path(path):
-    return os.path.join(path, "*") if not path.endswith("*") else path
+    return posixpath.join(path, "*") if not path.endswith("*") else path
 
 
 class GCSPersistence(DataPersistence):
@@ -32,8 +33,9 @@ class GCSPersistence(DataPersistence):
     _GS_UTIL_CLI = "gsutil"
     PROTOCOL = "gs://"
 
-    def __init__(self, default_prefix: typing.Optional[str] = None):
+    def __init__(self, default_prefix: typing.Optional[str] = None, data_config: typing.Optional[DataConfig] = None):
         super(GCSPersistence, self).__init__(name="gcs-gsutil", default_prefix=default_prefix)
+        self.gcs_cfg = data_config.gcs if data_config else GCSConfig.auto()
 
     @staticmethod
     def _check_binary():
@@ -43,8 +45,7 @@ class GCSPersistence(DataPersistence):
         if not shell_which(GCSPersistence._GS_UTIL_CLI):
             raise FlyteUserException("gsutil (gcloud cli) not found! Please install using `pip install gsutil`.")
 
-    @staticmethod
-    def _maybe_with_gsutil_parallelism(*gsutil_args):
+    def _maybe_with_gsutil_parallelism(self, *gsutil_args):
         """
         Check if we should run `gsutil` with the `-m` flag that enables
         parallelism via multiple threads/processes. Additional tweaking of
@@ -52,7 +53,7 @@ class GCSPersistence(DataPersistence):
         https://cloud.google.com/storage/docs/boto-gsutil
         """
         cmd = [GCSPersistence._GS_UTIL_CLI]
-        if gcp.GSUTIL_PARALLELISM.get():
+        if self.gcs_cfg.gsutil_parallelism:
             cmd.append("-m")
         cmd.extend(gsutil_args)
 

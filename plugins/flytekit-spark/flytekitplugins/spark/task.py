@@ -7,11 +7,11 @@ from google.protobuf.json_format import MessageToDict
 from pyspark.sql import SparkSession
 
 from flytekit import FlyteContextManager, PythonFunctionTask
-from flytekit.common.tasks.sdk_runnable import ExecutionParameters
-from flytekit.extend import ExecutionState, SerializationSettings, TaskPlugins
-from flytekit.sdk.spark_types import SparkType
+from flytekit.configuration import SerializationSettings
+from flytekit.core.context_manager import ExecutionParameters
+from flytekit.extend import ExecutionState, TaskPlugins
 
-from .models import SparkJob
+from .models import SparkJob, SparkType
 
 
 @dataclass
@@ -95,7 +95,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
-            application_file="local://" + settings.entrypoint_settings.path if settings.entrypoint_settings else "",
+            application_file="local://" + settings.entrypoint_settings.path,
             executor_path=settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,
@@ -107,10 +107,11 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
         ctx = FlyteContextManager.current_context()
         sess_builder = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}")
-        if not (ctx.execution_state and ctx.execution_state.Mode == ExecutionState.Mode.TASK_EXECUTION):
+        if not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION):
             # If either of above cases is not true, then we are in local execution of this task
             # Add system spark-conf for local/notebook based execution.
             spark_conf = _pyspark.SparkConf()
+            spark_conf.set("spark.driver.bindAddress", "127.0.0.1")
             for k, v in self.task_config.spark_conf.items():
                 spark_conf.set(k, v)
             # In local execution, propagate PYTHONPATH to executors too. This makes the spark

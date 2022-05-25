@@ -7,14 +7,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from flytekit.common.exceptions.user import FlyteAssertion
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.core.context_manager import ExecutionState, FlyteContextManager, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
@@ -173,7 +175,7 @@ def test_dont_convert_remotes():
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",

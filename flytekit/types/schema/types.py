@@ -10,21 +10,21 @@ from pathlib import Path
 from typing import Type
 
 import numpy as _np
+import pandas
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.plugins import pandas
 
 T = typing.TypeVar("T")
 
 
 class SchemaFormat(Enum):
     """
-    Represents the the schema storage format (at rest).
+    Represents the schema storage format (at rest).
     Currently only parquet is supported
     """
 
@@ -264,7 +264,7 @@ class FlyteSchema(object):
         self, dataframe_fmt: type = pandas.DataFrame, override_mode: SchemaOpenMode = None
     ) -> typing.Union[SchemaReader, SchemaWriter]:
         """
-        Will return a reader or writer depending on the mode of the object when created. This mode can be
+        Returns a reader or writer depending on the mode of the object when created. This mode can be
         overridden, but will depend on whether the override can be performed. For example, if the Object was
         created in a read-mode a "write mode" override is not allowed.
         if the object was created in write-mode, a read is allowed.
@@ -368,19 +368,31 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             local_path=ctx.file_access.get_random_local_directory(),
             remote_path=ctx.file_access.get_random_remote_directory(),
         )
+        try:
+            h = SchemaEngine.get_handler(type(python_val))
+        except ValueError as e:
+            raise TypeTransformerFailedError(
+                f"DataFrames of type {type(python_val)} are not supported currently"
+            ) from e
         writer = schema.open(type(python_val))
         writer.write(python_val)
-        h = SchemaEngine.get_handler(type(python_val))
         if not h.handles_remote_io:
             ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
-        if not (lv and lv.scalar and lv.scalar.schema):
-            raise AssertionError("Can only convert a literal schema to a FlyteSchema")
-
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)
+
+        if lv and lv.scalar and lv.scalar.structured_dataset:
+            return expected_python_type(
+                local_path=ctx.file_access.get_random_local_directory(),
+                remote_path=lv.scalar.structured_dataset.uri,
+                downloader=downloader,
+                supported_mode=SchemaOpenMode.READ,
+            )
+        if not (lv and lv.scalar and lv.scalar.schema):
+            raise AssertionError("Can only convert a literal schema to a FlyteSchema")
 
         return expected_python_type(
             local_path=ctx.file_access.get_random_local_directory(),

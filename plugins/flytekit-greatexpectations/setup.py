@@ -4,7 +4,7 @@ PLUGIN_NAME = "great_expectations"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.21.0,<1.0.0", "great-expectations>=0.13.30", "sqlalchemy>=1.4.23"]
+plugin_requires = ["flytekit>=1.1.0b0,<1.2.0", "great-expectations>=0.13.30", "sqlalchemy>=1.4.23"]
 
 __version__ = "0.0.0+develop"
 
@@ -25,6 +25,8 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

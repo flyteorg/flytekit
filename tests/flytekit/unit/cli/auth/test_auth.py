@@ -1,12 +1,8 @@
+import http.server as _BaseHTTPServer
 import re
 from multiprocessing import Queue as _Queue
 
 from flytekit.clis.auth import auth as _auth
-
-try:  # Python 3
-    import http.server as _BaseHTTPServer
-except ImportError:  # Python 2
-    import BaseHTTPServer as _BaseHTTPServer
 
 
 def test_generate_code_verifier():

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Generic, Type, TypeVar, Union
 
-from flytekit import ExecutionParameters, FlyteContext, FlyteContextManager, logger
+from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
+from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
@@ -41,6 +42,14 @@ class ExecutableTemplateShimTask(object):
         super().__init__(*args, **kwargs)
 
     @property
+    def name(self) -> str:
+        """Return the name of the underlying task."""
+        if self._task_template is not None:
+            return self._task_template.id.name
+        # if not access the subclass's name
+        return self._name
+
+    @property
     def task_template(self) -> _task_model.TaskTemplate:
         return self._task_template
 
@@ -54,7 +63,7 @@ class ExecutableTemplateShimTask(object):
 
     def execute(self, **kwargs) -> Any:
         """
-        Send things off to the executor instead of running here.
+        Rather than running here, send everything to the executor.
         """
         return self.executor.execute_from_model(self.task_template, **kwargs)
 
@@ -74,8 +83,8 @@ class ExecutableTemplateShimTask(object):
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
-        This function is mostly copied from the base PythonTask, but differs in that we have to infer the Python
-        interface before executing. Also, we refer to ``self.task_template`` rather than just ``self`` like in task
+        This function is largely similar to the base PythonTask, with the exception that we have to infer the Python
+        interface before executing. Also, we refer to ``self.task_template`` rather than just ``self`` similar to task
         classes that derive from the base ``PythonTask``.
         """
         # Invoked before the task is executed
@@ -97,7 +106,7 @@ class ExecutableTemplateShimTask(object):
                 logger.exception(f"Exception when executing {e}")
                 raise e
 
-            logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+            logger.debug("Task executed successfully in user level")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
             native_outputs = self.post_execute(new_user_params, native_outputs)

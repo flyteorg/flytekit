@@ -154,20 +154,22 @@ Common Flyte IDL Objects
 """
 
 import sys
+from typing import Generator
 
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
     from importlib.metadata import entry_points
 
-import flytekit.plugins  # This will be deprecated, these are the old plugins, the new plugins live in plugins/
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
+from flytekit.core.checkpointer import Checkpoint
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack
@@ -179,6 +181,7 @@ from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
+from flytekit.deck import Deck
 from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
 from flytekit.models.common import Annotations, AuthRole, Labels
@@ -187,6 +190,12 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, schema
+from flytekit.types.structured.structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetFormat,
+    StructuredDatasetTransformerEngine,
+    StructuredDatasetType,
+)
 
 __version__ = "0.0.0+develop"
 
@@ -205,6 +214,10 @@ def current_context() -> ExecutionParameters:
     There are some special params, that should be available
     """
     return FlyteContextManager.current_context().execution_state.user_space_params
+
+
+def new_context() -> Generator[FlyteContext, None, None]:
+    return FlyteContextManager.with_context(FlyteContextManager.current_context().new_builder())
 
 
 def load_implicit_plugins():
