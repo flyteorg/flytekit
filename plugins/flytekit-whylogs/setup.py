@@ -5,7 +5,7 @@ PLUGIN_NAME = "whylogs"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 # TODO add additional requirements. This has to be updated when whylogs v1 is published and probably blocks a push now.
-plugin_requires = ["whylogs @ file:///home/anthony/workspace/flytekit/whylogs-1.0.0rc0-py3-none-any.whl"]
+plugin_requires = ["whylogs==1.0.0rc1"]
 
 __version__ = "0.0.0+develop"
 
