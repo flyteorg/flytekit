@@ -267,7 +267,10 @@ class FlyteLiteralConverter(object):
 
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
-                o = cast(DataClassJsonMixin, self._python_type).from_json(value)
+                if type(value) != self._python_type:
+                    o = cast(DataClassJsonMixin, self._python_type).from_json(value)
+                else:
+                    o = value
                 return TypeEngine.to_literal(self._flyte_ctx, o, self._python_type, self._literal_type)
             return Literal(scalar=self._converter.convert(value, self._python_type))
 
