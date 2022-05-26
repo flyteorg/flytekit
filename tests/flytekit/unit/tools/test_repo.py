@@ -26,28 +26,20 @@ def test_module_loading(mock_entities):
         os.makedirs(middle_level_2)
 
         # Create init files
-        with open(os.path.join(top_level, "__init__.py"), "w"):
-            pass
-        with open(os.path.join(top_level, "a.py"), "w"):
-            pass
-        with open(os.path.join(middle_level, "__init__.py"), "w"):
-            pass
-        with open(os.path.join(middle_level, "a.py"), "w"):
-            pass
-        with open(os.path.join(bottom_level, "__init__.py"), "w"):
-            pass
-        with open(os.path.join(bottom_level, "a.py"), "w"):
-            pass
-        with open(os.path.join(middle_level_2, "__init__.py"), "w"):
-            pass
+        pathlib.Path(os.path.join(top_level, "__init__.py")).touch()
+        pathlib.Path(os.path.join(top_level, "a.py")).touch()
+        pathlib.Path(os.path.join(middle_level, "__init__.py")).touch()
+        pathlib.Path(os.path.join(middle_level, "a.py")).touch()
+        pathlib.Path(os.path.join(bottom_level, "__init__.py")).touch()
+        pathlib.Path(os.path.join(bottom_level, "a.py")).touch()
+        pathlib.Path(os.path.join(middle_level_2, "__init__.py")).touch()
 
         # Because they have different roots
         with pytest.raises(ValueError):
             find_common_root([middle_level_2, bottom_level])
 
         # But now add one more init file
-        with open(os.path.join(top_level_2, "__init__.py"), "w"):
-            pass
+        pathlib.Path(os.path.join(top_level_2, "__init__.py")).touch()
 
         # Now it should pass
         root = find_common_root([middle_level_2, bottom_level])

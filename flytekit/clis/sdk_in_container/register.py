@@ -14,8 +14,22 @@ from flytekit.tools.repo import find_common_root, load_packages_and_modules
 from flytekit.tools.repo import register as repo_register
 from flytekit.tools.translator import Options
 
+_register_help = """
+This command is similar to package but instead of producing a zip file, all your Flyte entities are compiled,
+and then sent to the backend specified by your config file. Think of this as combining the pyflyte package
+and the flytectl register step in one command. This is why you see switches you'd normally use with flytectl
+like service account here.
 
-@click.command("register")
+Note: This command runs "fast" register by default. Future work to come to add a non-fast version.
+This means that a zip is created from the detected root of the packages given, and uploaded. Just like with
+pyflyte run, tasks registered from this command will download and unzip that code package before running.
+
+Note: This command only works on regular Python packages, not namespace packages. When determining
+      the root of your project, it finds the first folder that does not have an __init__.py file.   
+"""
+
+
+@click.command("register", help=_register_help)
 @click.option(
     "-p",
     "--project",
@@ -99,21 +113,13 @@ def register(
     package_or_module: typing.Tuple[str],
 ):
     """
-    This command is similar to package but instead of producing a zip file, all your Flyte entities are compiled,
-    and then sent to the backend specified by your config file. Think of this as combining the pyflyte package
-    and the flytectl register step in one command. This is why you see switches you'd normally use with flytectl
-    like service account here.
-
-    Note that this command runs "fast" register by default. Future work to come to add a non-fast version.
-    This means that a zip is created from the detected root of the packages given, and uploaded. Just like with
-    pyflyte run, tasks registered from this command will download and unzip that code package before running.
+    see help
     """
-
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
         cli_logger.debug("No pkgs")
     if pkgs:
-        raise ValueError("to do, please implement")
+        raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
     cli_logger.debug(
         f"Running pyflyte register from {os.getcwd()} "

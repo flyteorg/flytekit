@@ -595,8 +595,16 @@ class RunCommand(click.MultiCommand):
         return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
 
 
+_run_help = """
+This command can execute either a workflow or a task from the commandline, for fully self-contained scripts.
+Tasks and workflows cannot be imported from other files currently. Please use `pyflyte package` or
+`pyflyte register` to handle those and then launch from the Flyte UI or `flytectl`
+
+Note: This command only works on regular Python packages, not namespace packages. When determining
+      the root of your project, it finds the first folder that does not have an __init__.py file.   
+"""
+
 run = RunCommand(
     name="run",
-    help="Run command: This command can execute either a workflow or a task from the commandline, for "
-    "fully self-contained scripts. Tasks and workflows cannot be imported from other files currently.",
+    help=_run_help,
 )

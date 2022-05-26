@@ -524,7 +524,6 @@ class FlyteRemote(object):
         md5_bytes, str_digest = hash_file(to_upload)
         remote_logger.debug(f"Text hash of file to upload is {str_digest}")
 
-        c = self.client
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
             domain=domain or self.default_domain,
