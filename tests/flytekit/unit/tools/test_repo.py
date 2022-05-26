@@ -9,11 +9,21 @@ import flytekit.configuration
 from flytekit.configuration import DefaultImages, ImageConfig
 from flytekit.tools.repo import find_common_root, load_packages_and_modules
 
+task_text = """
+from flytekit import task
+@task
+def t1(a: int):
+    ...
+"""
+
 
 # Mock out the entities so the load function doesn't try to load everything
 @mock.patch("flytekit.core.context_manager.FlyteEntities")
-def test_module_loading(mock_entities):
-    mock_entities.entities.copy.return_value = []
+@mock.patch("flytekit.core.base_task.FlyteEntities")
+def test_module_loading(mock_entities, mock_entities_2):
+    entities = []
+    mock_entities.entities = entities
+    mock_entities_2.entities = entities
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Create directories
         top_level = os.path.join(tmp_dir, "top")
@@ -32,6 +42,8 @@ def test_module_loading(mock_entities):
         pathlib.Path(os.path.join(middle_level, "a.py")).touch()
         pathlib.Path(os.path.join(bottom_level, "__init__.py")).touch()
         pathlib.Path(os.path.join(bottom_level, "a.py")).touch()
+        with open(os.path.join(bottom_level, "a.py"), "w") as fh:
+            fh.write(task_text)
         pathlib.Path(os.path.join(middle_level_2, "__init__.py")).touch()
 
         # Because they have different roots
@@ -55,4 +67,5 @@ def test_module_loading(mock_entities):
         )
 
         # Not a good test but at least try to load
-        load_packages_and_modules(serialization_settings, pathlib.Path(root), [bottom_level])
+        x = load_packages_and_modules(serialization_settings, pathlib.Path(root), [bottom_level])
+        assert len(x) == 1
