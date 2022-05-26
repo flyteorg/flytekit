@@ -65,7 +65,7 @@ cookiecutter==1.7.3
     # via
     #   -c requirements.txt
     #   flytekit
-coverage[toml]==6.3.3
+coverage[toml]==6.4
     # via -r dev-requirements.in
 croniter==1.3.5
     # via
@@ -124,7 +124,7 @@ flyteidl==1.0.1
     # via
     #   -c requirements.txt
     #   flytekit
-google-api-core[grpc]==2.8.0
+google-api-core[grpc]==2.8.1
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
@@ -145,20 +145,20 @@ google-crc32c==1.3.0
     # via google-resumable-media
 google-resumable-media==2.3.3
     # via google-cloud-bigquery
-googleapis-common-protos==1.56.1
+googleapis-common-protos==1.56.2
     # via
     #   -c requirements.txt
     #   flyteidl
     #   google-api-core
     #   grpcio-status
-grpcio==1.46.1
+grpcio==1.46.3
     # via
     #   -c requirements.txt
     #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
     #   grpcio-status
-grpcio-status==1.46.1
+grpcio-status==1.46.3
     # via
     #   -c requirements.txt
     #   flytekit
@@ -169,7 +169,7 @@ idna==3.3
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.11.3
+importlib-metadata==4.11.4
     # via
     #   -c requirements.txt
     #   click
@@ -206,7 +206,7 @@ jsonschema==3.2.0
     # via
     #   -c requirements.txt
     #   docker-compose
-keyring==23.5.0
+keyring==23.5.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -232,7 +232,7 @@ matplotlib-inline==0.1.3
     # via ipython
 mock==4.0.3
     # via -r dev-requirements.in
-mypy==0.950
+mypy==0.960
     # via -r dev-requirements.in
 mypy-extensions==0.4.3
     # via
@@ -281,7 +281,7 @@ pre-commit==2.19.0
     # via -r dev-requirements.in
 prompt-toolkit==3.0.29
     # via ipython
-proto-plus==1.20.4
+proto-plus==1.20.5
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
@@ -390,7 +390,7 @@ requests==2.27.1
     #   google-api-core
     #   google-cloud-bigquery
     #   responses
-responses==0.20.0
+responses==0.21.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -445,7 +445,7 @@ traitlets==5.2.1.post0
     # via
     #   ipython
     #   matplotlib-inline
-typed-ast==1.5.3
+typed-ast==1.5.4
     # via mypy
 typing-extensions==4.2.0
     # via
@@ -454,6 +454,7 @@ typing-extensions==4.2.0
     #   flytekit
     #   importlib-metadata
     #   mypy
+    #   responses
     #   typing-inspect
 typing-inspect==0.7.1
     # via

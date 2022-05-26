@@ -46,23 +46,23 @@ docstring-parser==0.14.1
     # via flytekit
 flyteidl==1.0.1
     # via flytekit
-flytekit==1.0.2
+flytekit==1.0.3
     # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
 fonttools==4.33.3
     # via matplotlib
-googleapis-common-protos==1.56.1
+googleapis-common-protos==1.56.2
     # via
     #   flyteidl
     #   grpcio-status
-grpcio==1.46.1
+grpcio==1.46.3
     # via
     #   flytekit
     #   grpcio-status
-grpcio-status==1.46.1
+grpcio-status==1.46.3
     # via flytekit
 idna==3.3
     # via requests
-importlib-metadata==4.11.3
+importlib-metadata==4.11.4
     # via
     #   click
     #   keyring
@@ -78,7 +78,7 @@ jinja2-time==0.2.0
     # via cookiecutter
 joblib==1.1.0
     # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
-keyring==23.5.0
+keyring==23.5.1
     # via flytekit
 kiwisolver==1.4.2
     # via matplotlib
@@ -164,7 +164,7 @@ requests==2.27.1
     #   docker
     #   flytekit
     #   responses
-responses==0.20.0
+responses==0.21.0
     # via flytekit
 retry==0.9.2
     # via flytekit
@@ -189,6 +189,7 @@ typing-extensions==4.2.0
     #   flytekit
     #   importlib-metadata
     #   kiwisolver
+    #   responses
     #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json
