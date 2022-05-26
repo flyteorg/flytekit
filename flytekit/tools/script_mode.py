@@ -138,10 +138,14 @@ def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
 
 def _find_project_root(source_path) -> Path:
     """
-    Traverse from current working directory until it can no longer find __init__.py files
+    Find the root of the project.
+    The root of the project is considered to be the first ancestor from source_path that does
+    not contain a __init__.py file.
+
+    N.B.: This assumption only holds for regular packages (as opposed to namespace packages)
     """
     # Start from the directory right above source_path
-    path = Path(source_path).parents[0].resolve()
+    path = Path(source_path).parent.resolve()
     while os.path.exists(os.path.join(path, "__init__.py")):
         path = path.parent
     return path

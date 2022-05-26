@@ -529,7 +529,7 @@ class WorkflowCommand(click.MultiCommand):
 
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._filename = filename
+        self._filename = pathlib.Path(filename).resolve()
 
     def list_commands(self, ctx):
         entities = get_entities_in_file(self._filename)
@@ -543,7 +543,10 @@ class WorkflowCommand(click.MultiCommand):
             )
 
         project_root = _find_project_root(self._filename)
-        rel_path = pathlib.PurePath(pathlib.Path(self._filename).resolve()).relative_to(pathlib.PurePath(project_root))
+        # Find the relative path for the filename relative to the root of the project.
+        # N.B.: by construction project_root will necessarily be an ancestor of the filename passed in as
+        # a parameter.
+        rel_path = self._filename.relative_to(project_root)
         module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
         entity = load_naive_entity(module, exe_entity, project_root)
 
