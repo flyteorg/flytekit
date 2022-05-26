@@ -12,7 +12,7 @@ from flytekit.configuration import (
     SecretsConfig,
     SerializationSettings,
 )
-from flytekit.core import mock_stats, utils
+from flytekit.core import mock_stats
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, SecretsManager
 from flytekit.models.core import identifier as id_models
 
