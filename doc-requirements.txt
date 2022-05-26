@@ -42,7 +42,7 @@ binaryornot==0.4.4
     # via cookiecutter
 bleach==5.0.0
     # via nbconvert
-botocore==1.26.7
+botocore==1.26.8
     # via -r doc-requirements.in
 cachetools==5.1.0
     # via google-auth

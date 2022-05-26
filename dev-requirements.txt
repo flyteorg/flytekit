@@ -233,7 +233,7 @@ matplotlib-inline==0.1.3
     # via ipython
 mock==4.0.3
     # via -r dev-requirements.in
-mypy==0.950
+mypy==0.960
     # via -r dev-requirements.in
 mypy-extensions==0.4.3
     # via
@@ -395,7 +395,7 @@ requests==2.27.1
     #   google-api-core
     #   google-cloud-bigquery
     #   responses
-responses==0.20.0
+responses==0.21.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -459,6 +459,7 @@ typing-extensions==4.2.0
     #   flytekit
     #   importlib-metadata
     #   mypy
+    #   responses
     #   typing-inspect
 typing-inspect==0.7.1
     # via
