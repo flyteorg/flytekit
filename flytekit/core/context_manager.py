@@ -21,6 +21,7 @@ import tempfile
 import traceback
 import typing
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -42,6 +43,7 @@ from flytekit.models.core import identifier as _identifier
 
 # Enables static type checking https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING
 
+flyte_context_Var: ContextVar[typing.List[FlyteContext]] = ContextVar("", default=[])
 
 if typing.TYPE_CHECKING:
     from flytekit.core.base_task import TaskResolverMixin
@@ -600,6 +602,11 @@ class FlyteContext(object):
         """
         return FlyteContextManager.current_context()
 
+    def get_deck(self):
+        from flytekit.deck.deck import _get_deck
+
+        _get_deck(self.execution_state.user_space_params)
+
     @dataclass
     class Builder(object):
         file_access: FileAccessProvider
@@ -701,8 +708,6 @@ class FlyteContextManager(object):
         FlyteContextManager.pop_context()
     """
 
-    _OBJS: typing.List[FlyteContext] = []
-
     @staticmethod
     def get_origin_stackframe(limit=2) -> traceback.FrameSummary:
         ss = traceback.extract_stack(limit=limit + 1)
@@ -711,31 +716,36 @@ class FlyteContextManager(object):
         return ss[0]
 
     @staticmethod
-    def current_context() -> Optional[FlyteContext]:
-        if FlyteContextManager._OBJS:
-            return FlyteContextManager._OBJS[-1]
-        return None
+    def current_context() -> FlyteContext:
+        if not flyte_context_Var.get():
+            # we will lost the default flyte context in the new thread. Therefore, reinitialize the context when running in the new thread.
+            FlyteContextManager.initialize()
+        return flyte_context_Var.get()[-1]
 
     @staticmethod
     def push_context(ctx: FlyteContext, f: Optional[traceback.FrameSummary] = None) -> FlyteContext:
         if not f:
             f = FlyteContextManager.get_origin_stackframe(limit=2)
         ctx.set_stackframe(f)
-        FlyteContextManager._OBJS.append(ctx)
+        context_list = flyte_context_Var.get()
+        context_list.append(ctx)
+        flyte_context_Var.set(context_list)
         t = "\t"
         logger.debug(
-            f"{t * ctx.level}[{len(FlyteContextManager._OBJS)}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+            f"{t * ctx.level}[{len(flyte_context_Var.get())}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
         return ctx
 
     @staticmethod
     def pop_context() -> FlyteContext:
-        ctx = FlyteContextManager._OBJS.pop()
+        context_list = flyte_context_Var.get()
+        ctx = context_list.pop()
+        flyte_context_Var.set(context_list)
         t = "\t"
         logger.debug(
-            f"{t * ctx.level}[{len(FlyteContextManager._OBJS) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
+            f"{t * ctx.level}[{len(flyte_context_Var.get()) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
-        if len(FlyteContextManager._OBJS) == 0:
+        if len(flyte_context_Var.get()) == 0:
             raise AssertionError(f"Illegal Context state! Popped, {ctx}")
         return ctx
 
@@ -766,7 +776,7 @@ class FlyteContextManager(object):
 
     @staticmethod
     def size() -> int:
-        return len(FlyteContextManager._OBJS)
+        return len(flyte_context_Var.get())
 
     @staticmethod
     def initialize():
@@ -798,7 +808,7 @@ class FlyteContextManager(object):
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()
         default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
-        FlyteContextManager._OBJS = [default_context]
+        flyte_context_Var.set([default_context])
 
 
 class FlyteEntities(object):

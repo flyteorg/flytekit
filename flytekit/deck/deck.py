@@ -1,9 +1,13 @@
 import os
-from typing import Dict, Optional
+from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.loggers import logger
+
+OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
+DECK_FILE_NAME = "deck.html"
 
 
 class Deck:
@@ -69,30 +73,39 @@ class Deck:
         return self._html
 
 
+def _ipython_check() -> bool:
+    """
+    Check if interface is launching from iPython (not colab)
+    :return is_ipython (bool): True or False
+    """
+    is_ipython = False
+    try:  # Check if running interactively using ipython.
+        from IPython import get_ipython
+
+        if get_ipython() is not None:
+            is_ipython = True
+    except (ImportError, NameError):
+        pass
+    return is_ipython
+
+
+def _get_deck(new_user_params: ExecutionParameters):
+    """
+    Get flyte deck html string
+    """
+    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
+    return template.render(metadata=deck_map)
+
+
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
-    deck_map: Dict[str, str] = {}
-    decks = new_user_params.decks
-    ctx = FlyteContext.current_context()
-
-    # TODO: upload deck file to remote filesystems (s3, gcs)
-    output_dir = ctx.file_access.get_random_local_directory()
-
-    for deck in decks:
-        _deck_to_html_file(deck, deck_map, output_dir)
-
-    root = os.path.dirname(os.path.abspath(__file__))
-    templates_dir = os.path.join(root, "html")
-    env = Environment(loader=FileSystemLoader(templates_dir))
-    template = env.get_template("template.html")
-
-    deck_path = os.path.join(output_dir, "deck.html")
+    output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
+    deck_path = os.path.join(output_dir, DECK_FILE_NAME)
     with open(deck_path, "w") as f:
-        f.write(template.render(metadata=deck_map))
+        f.write(_get_deck(new_user_params))
+    logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
 
 
-def _deck_to_html_file(deck: Deck, deck_map: Dict[str, str], output_dir: str):
-    file_name = deck.name + ".html"
-    path = os.path.join(output_dir, file_name)
-    with open(path, "w") as output:
-        deck_map[deck.name] = file_name
-        output.write(deck.html)
+root = os.path.dirname(os.path.abspath(__file__))
+templates_dir = os.path.join(root, "html")
+env = Environment(loader=FileSystemLoader(templates_dir))
+template = env.get_template("template.html")

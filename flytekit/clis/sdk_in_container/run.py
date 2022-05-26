@@ -15,7 +15,7 @@ from pytimeparse import parse
 from flytekit import BlobType, Literal, Scalar
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
 from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
-from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager, tracker
 from flytekit.core.base_task import PythonTask
@@ -29,6 +29,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Primitive
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
+from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
 
 REMOTE_FLAG_KEY = "remote"
@@ -394,14 +395,14 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
     ]
 
 
-def load_naive_entity(module_name: str, entity_name: str) -> typing.Union[WorkflowBase, PythonTask]:
+def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
     """
     Load the workflow of a the script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
     """
     flyte_ctx_builder = context_manager.FlyteContextManager.current_context().new_builder()
     with context_manager.FlyteContextManager.with_context(flyte_ctx_builder):
-        with module_loader.add_sys_path(os.getcwd()):
+        with module_loader.add_sys_path(project_root):
             importlib.import_module(module_name)
     return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
 
@@ -524,7 +525,7 @@ class WorkflowCommand(click.MultiCommand):
 
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._filename = filename
+        self._filename = pathlib.Path(filename).resolve()
 
     def list_commands(self, ctx):
         entities = get_entities_in_file(self._filename)
@@ -547,8 +548,13 @@ class WorkflowCommand(click.MultiCommand):
                 f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
             )
 
+        project_root = _find_project_root(self._filename)
+        # Find the relative path for the filename relative to the root of the project.
+        # N.B.: by construction project_root will necessarily be an ancestor of the filename passed in as
+        # a parameter.
+        rel_path = self._filename.relative_to(project_root)
         module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
-        entity = load_naive_entity(module, exe_entity)
+        entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
         p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)

@@ -154,6 +154,7 @@ Common Flyte IDL Objects
 """
 
 import sys
+from typing import Generator
 
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
@@ -213,6 +214,10 @@ def current_context() -> ExecutionParameters:
     There are some special params, that should be available
     """
     return FlyteContextManager.current_context().execution_state.user_space_params
+
+
+def new_context() -> Generator[FlyteContext, None, None]:
+    return FlyteContextManager.with_context(FlyteContextManager.current_context().new_builder())
 
 
 def load_implicit_plugins():
