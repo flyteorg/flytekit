@@ -66,6 +66,5 @@ def test_module_loading(mock_entities, mock_entities_2):
             image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
         )
 
-        # Not a good test but at least try to load
         x = load_packages_and_modules(serialization_settings, pathlib.Path(root), [bottom_level])
         assert len(x) == 1
