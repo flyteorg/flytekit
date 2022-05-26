@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 import typing
 
 import click
@@ -160,6 +161,9 @@ def register(
     registerable_entities = load_packages_and_modules(
         serialization_settings, detected_root, list(package_or_module), options
     )
+    if len(registerable_entities) == 0:
+        click.secho("No Flyte entities were detected. Aborting!", fg="red")
+        sys.exit(1)
     cli_logger.info(f"Found and serialized {len(registerable_entities)} entities")
 
     if not version:
