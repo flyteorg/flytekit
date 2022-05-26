@@ -292,7 +292,6 @@ class LaunchPlan(object):
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
 
-    # TODO: Add QoS after it's done
     def __init__(
         self,
         name: str,
@@ -358,6 +357,10 @@ class LaunchPlan(object):
     @property
     def python_interface(self) -> Interface:
         return self.workflow.python_interface
+
+    @property
+    def interface(self) -> _interface_models.TypedInterface:
+        return self.workflow.interface
 
     @property
     def name(self) -> str:
