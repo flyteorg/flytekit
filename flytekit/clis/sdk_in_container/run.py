@@ -604,7 +604,7 @@ Tasks and workflows cannot be imported from other files currently. Please use `p
 `pyflyte register` to handle those and then launch from the Flyte UI or `flytectl`
 
 Note: This command only works on regular Python packages, not namespace packages. When determining
-      the root of your project, it finds the first folder that does not have an __init__.py file.   
+      the root of your project, it finds the first folder that does not have an __init__.py file.
 """
 
 run = RunCommand(

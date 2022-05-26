@@ -26,7 +26,7 @@ This means that a zip is created from the detected root of the packages given, a
 pyflyte run, tasks registered from this command will download and unzip that code package before running.
 
 Note: This command only works on regular Python packages, not namespace packages. When determining
-      the root of your project, it finds the first folder that does not have an __init__.py file.   
+      the root of your project, it finds the first folder that does not have an __init__.py file.
 """
 
 
