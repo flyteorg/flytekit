@@ -62,3 +62,19 @@ def test_get_entities_in_file():
     assert e.workflows == ["my_wf"]
     assert e.tasks == ["get_subset_df", "print_all", "show_sd"]
     assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd"]
+
+
+def test_dataclasses_default_arguments():
+    runner = CliRunner()
+    dir_name = os.path.dirname(os.path.realpath(__file__))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(dir_name, "dataclasses_default_arguments", "wf.py"),
+            "wf",
+        ],
+        catch_exceptions=False,
+    )
+    print(result.stdout)
+    assert result.exit_code == 0
