@@ -523,7 +523,6 @@ class FlyteContext(object):
 
     file_access: FileAccessProvider
     level: int = 0
-    flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
     compilation_state: Optional[CompilationState] = None
     execution_state: Optional[ExecutionState] = None
     serialization_settings: Optional[SerializationSettings] = None
@@ -549,7 +548,6 @@ class FlyteContext(object):
         return FlyteContext.Builder(
             level=self.level,
             file_access=self.file_access,
-            flyte_client=self.flyte_client,
             serialization_settings=self.serialization_settings,
             compilation_state=self.compilation_state,
             execution_state=self.execution_state,
@@ -613,7 +611,6 @@ class FlyteContext(object):
         level: int = 0
         compilation_state: Optional[CompilationState] = None
         execution_state: Optional[ExecutionState] = None
-        flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
 
@@ -623,7 +620,6 @@ class FlyteContext(object):
                 file_access=self.file_access,
                 compilation_state=self.compilation_state,
                 execution_state=self.execution_state,
-                flyte_client=self.flyte_client,
                 serialization_settings=self.serialization_settings,
                 in_a_condition=self.in_a_condition,
             )

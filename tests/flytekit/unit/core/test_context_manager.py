@@ -19,21 +19,6 @@ class SampleTestClass(object):
         self.value = value
 
 
-def test_levels():
-    ctx = FlyteContextManager.current_context()
-    b = ctx.new_builder()
-    b.flyte_client = SampleTestClass(value=1)
-    with FlyteContextManager.with_context(b) as outer:
-        assert outer.flyte_client.value == 1
-        b = outer.new_builder()
-        b.flyte_client = SampleTestClass(value=2)
-        with FlyteContextManager.with_context(b) as ctx:
-            assert ctx.flyte_client.value == 2
-
-        with FlyteContextManager.with_context(outer.with_new_compilation_state()) as ctx:
-            assert ctx.flyte_client.value == 1
-
-
 def test_default():
     ctx = FlyteContext.current_context()
     assert ctx.file_access is not None

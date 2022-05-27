@@ -10,6 +10,7 @@ import functools
 import hashlib
 import os
 import pathlib
+import tempfile
 import time
 import typing
 import uuid
@@ -17,6 +18,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import cloudpickle
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit import Literal
@@ -24,12 +26,13 @@ from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
+from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as user_exceptions
@@ -119,6 +122,7 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         data_upload_location: str = "s3://my-s3-bucket/data",
+        use_cloud_pickle: bool = False,
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -147,6 +151,10 @@ class FlyteRemote(object):
 
         # Save the file access object locally, build a context for it and save that as well.
         self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+
+        self._pickle_resolver = None
+        if use_cloud_pickle:
+            self._pickle_resolver = RemoteCloudPickleResolver(remote=self)
 
     @property
     def context(self) -> FlyteContext:
@@ -462,7 +470,23 @@ class FlyteRemote(object):
         :param version: version that will be used to register. If not specified will default to using the serialization settings default
         :return:
         """
+        """
+        Alternatives to doing the dance with the resolver here are:
+          * Using the `hydrate_registration_parameters` pattern right before sending off to Admin to replace
+            the resolver and args (though at that point we're working with TaskSpecs and not PythonAutoContainerTasks)
+          * Somehow replacing the default task resolver so that it gets picked up in the task's
+            constructor when it gets created.
+          * Maybe we can add a task resolver into the FlyteContext as well and check for that in the constructor.
+          * Any other ideas?
+        """
+        old_resolver = None
+        if entity.__module__ == "__main__" and self._pickle_resolver and hasattr(entity, "_task_resolver"):
+            remote_logger.warning(f"Using cloud pickle resolver for {entity.name}")
+            old_resolver = entity._task_resolver
+            entity._task_resolver = self._pickle_resolver
         ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        if old_resolver:
+            entity._task_resolver = old_resolver
         ft = self.fetch_task(
             ident.project,
             ident.domain,
@@ -1487,3 +1511,50 @@ class FlyteRemote(object):
         self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
     ):
         return f"{self.generate_http_domain()}/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
+
+
+class RemoteCloudPickleResolver(TrackedInstance, TaskResolverMixin):
+    """ """
+
+    def __init__(self, *args, remote: typing.Optional[FlyteRemote] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._remote = remote
+
+    def name(self) -> str:
+        return "cloud pickling task resolver"
+
+    def load_task(self, loader_args: typing.List[str]) -> PythonAutoContainerTask:
+        # Download the pickle
+        pickle_file = tempfile.NamedTemporaryFile(delete=False)
+        ctx = FlyteContextManager.current_context()
+
+        ctx.file_access.get_data(loader_args[0], pickle_file.name)
+        with open(pickle_file.name, "rb") as fh:
+            pickled_bytes = fh.read()
+
+        remote_logger.info(f"Downloaded and loaded {len(pickled_bytes)} bytes from {loader_args[0]}")
+        return cloudpickle.loads(pickled_bytes)
+
+    def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> typing.List[str]:
+        if not self._remote:
+            raise ValueError(f"Cannot retrieve loader args without a FlyteRemote object.")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            t_bytes = cloudpickle.dumps(t)
+            task_fname = os.path.join(tmp_dir, "task.pickle")
+            with open(task_fname, "wb") as fh:
+                fh.write(t_bytes)
+
+            # Todo: zip this in the future, but then have to deal with unzipping
+            r = self._remote
+            _, native_url = r._upload_file(
+                pathlib.Path(task_fname), settings.project or r.default_project, settings.domain or r.default_domain
+            )
+            remote_logger.info(f"Wrote pickled {t.name} to {native_url} from temp {task_fname}")
+            return [native_url]
+
+    def get_all_tasks(self) -> typing.List[PythonAutoContainerTask]:
+        pass
+
+
+default_remote_cloud_pickle_resolver = RemoteCloudPickleResolver()
