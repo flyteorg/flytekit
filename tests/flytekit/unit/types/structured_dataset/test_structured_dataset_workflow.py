@@ -1,6 +1,8 @@
 import os
 import typing
 
+import pytest
+
 try:
     from typing import Annotated
 except ImportError:
@@ -69,42 +71,42 @@ StructuredDatasetTransformerEngine.register(MockBQEncodingHandlers(), False, Tru
 StructuredDatasetTransformerEngine.register(MockBQDecodingHandlers(), False, True)
 
 
-class NumpyEncodingHandlers(StructuredDatasetEncoder):
-    def encode(
-        self,
-        ctx: FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
-    ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
-        df = typing.cast(np.ndarray, structured_dataset.dataframe)
-        name = ["col" + str(i) for i in range(len(df))]
-        table = pa.Table.from_arrays(df, name)
-        local_dir = ctx.file_access.get_random_local_directory()
-        local_path = os.path.join(local_dir, f"{0:05}")
-        pq.write_table(table, local_path)
-        ctx.file_access.upload_directory(local_dir, path)
-        structured_dataset_type.format = PARQUET
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+@pytest.fixture(autouse=True)
+def numpy_type():
+    class NumpyEncodingHandlers(StructuredDatasetEncoder):
+        def encode(
+            self,
+            ctx: FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
+        ) -> literals.StructuredDataset:
+            path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+            df = typing.cast(np.ndarray, structured_dataset.dataframe)
+            name = ["col" + str(i) for i in range(len(df))]
+            table = pa.Table.from_arrays(df, name)
+            local_dir = ctx.file_access.get_random_local_directory()
+            local_path = os.path.join(local_dir, f"{0:05}")
+            pq.write_table(table, local_path)
+            ctx.file_access.upload_directory(local_dir, path)
+            structured_dataset_type.format = PARQUET
+            return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
+    class NumpyDecodingHandlers(StructuredDatasetDecoder):
+        def decode(
+            self,
+            ctx: FlyteContext,
+            flyte_value: literals.StructuredDataset,
+            current_task_metadata: StructuredDatasetMetadata,
+        ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
+            path = flyte_value.uri
+            local_dir = ctx.file_access.get_random_local_directory()
+            ctx.file_access.get_data(path, local_dir, is_multipart=True)
+            table = pq.read_table(local_dir)
+            return table.to_pandas().to_numpy()
 
-class NumpyDecodingHandlers(StructuredDatasetDecoder):
-    def decode(
-        self,
-        ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
-        current_task_metadata: StructuredDatasetMetadata,
-    ) -> typing.Union[DF, typing.Generator[DF, None, None]]:
-        path = flyte_value.uri
-        local_dir = ctx.file_access.get_random_local_directory()
-        ctx.file_access.get_data(path, local_dir, is_multipart=True)
-        table = pq.read_table(local_dir)
-        return table.to_pandas().to_numpy()
-
-
-for protocol in [LOCAL, S3]:
-    StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
-    StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
+    for protocol in [LOCAL, S3]:
+        StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
+        StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
 
 
 @task
