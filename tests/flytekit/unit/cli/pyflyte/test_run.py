@@ -1,5 +1,7 @@
 import os
+import pathlib
 
+import pytest
 from click.testing import CliRunner
 
 from flytekit.clis.sdk_in_container import pyflyte
@@ -62,6 +64,36 @@ def test_get_entities_in_file():
     assert e.workflows == ["my_wf"]
     assert e.tasks == ["get_subset_df", "print_all", "show_sd"]
     assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd"]
+
+
+@pytest.mark.parametrize(
+    "working_dir, wf_path",
+    [
+        (pathlib.Path("test_nested_wf"), os.path.join("a", "b", "c", "d", "wf.py")),
+        (pathlib.Path("test_nested_wf", "a"), os.path.join("b", "c", "d", "wf.py")),
+        (pathlib.Path("test_nested_wf", "a", "b"), os.path.join("c", "d", "wf.py")),
+        (pathlib.Path("test_nested_wf", "a", "b", "c"), os.path.join("d", "wf.py")),
+        (pathlib.Path("test_nested_wf", "a", "b", "c", "d"), os.path.join("wf.py")),
+    ],
+)
+def test_nested_workflow(working_dir, wf_path, monkeypatch: pytest.MonkeyPatch):
+    runner = CliRunner()
+    base_path = os.path.dirname(os.path.realpath(__file__))
+    # Change working directory without side-effects (i.e. just for this test)
+    monkeypatch.chdir(os.path.join(base_path, working_dir))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            wf_path,
+            "wf_id",
+            "--m",
+            "wow",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.stdout.strip() == "wow"
+    assert result.exit_code == 0
 
 
 def test_dataclasses_default_arguments():

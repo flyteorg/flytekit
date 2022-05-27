@@ -297,6 +297,7 @@ class PlatformConfig(object):
 
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
+    :param insecure_skip_verify: Wether to skip SSL certificate verification
     :param command: This command is executed to return a token using an external process.
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -309,6 +310,7 @@ class PlatformConfig(object):
 
     endpoint: str = "localhost:30081"
     insecure: bool = False
+    insecure_skip_verify: bool = False
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
@@ -319,6 +321,7 @@ class PlatformConfig(object):
         self,
         endpoint: str = "localhost:30081",
         insecure: bool = False,
+        insecure_skip_verify: bool = False,
         command: typing.Optional[typing.List[str]] = None,
         client_id: typing.Optional[str] = None,
         client_credentials_secret: typing.Optional[str] = None,
@@ -328,6 +331,7 @@ class PlatformConfig(object):
         return PlatformConfig(
             endpoint=endpoint,
             insecure=insecure,
+            insecure_skip_verify=insecure_skip_verify,
             command=command,
             client_id=client_id,
             client_credentials_secret=client_credentials_secret,
@@ -345,6 +349,9 @@ class PlatformConfig(object):
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "insecure", _internal.Platform.INSECURE.read(config_file))
+        kwargs = set_if_exists(
+            kwargs, "insecure_skip_verify", _internal.Platform.INSECURE_SKIP_VERIFY.read(config_file)
+        )
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
