@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 import py
 import pytest
@@ -11,7 +12,9 @@ from flytekit.configuration import (
     SecretsConfig,
     SerializationSettings,
 )
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager, SecretsManager
+from flytekit.core import mock_stats
+from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, SecretsManager
+from flytekit.models.core import identifier as id_models
 
 
 class SampleTestClass(object):
@@ -205,3 +208,18 @@ def test_serialization_settings_transport():
     assert ss is not None
     assert ss == serialization_settings
     assert len(tp) == 376
+
+
+def test_exec_params():
+    ep = ExecutionParameters(
+        execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
+        task_id=id_models.Identifier(id_models.ResourceType.TASK, "local", "local", "local", "local"),
+        execution_date=datetime.utcnow(),
+        stats=mock_stats.MockStats(),
+        logging=None,
+        tmp_dir="/tmp",
+        raw_output_prefix="",
+        decks=[],
+    )
+
+    assert ep.task_id.name == "local"
