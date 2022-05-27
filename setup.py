@@ -48,6 +48,7 @@ setup(
         "python-dateutil>=2.1",
         "grpcio>=1.43.0,!=1.45.0,<2.0",
         "grpcio-status>=1.43,!=1.45.0",
+        "pyopenssl",
         "protobuf>=3.6.1,<4",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
