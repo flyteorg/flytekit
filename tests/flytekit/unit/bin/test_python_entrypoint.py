@@ -299,3 +299,22 @@ def test_normalize_inputs():
     assert normalize_inputs("/raw", "/cp1", '""') == ("/raw", "/cp1", None)
     assert normalize_inputs("/raw", "/cp1", "") == ("/raw", "/cp1", None)
     assert normalize_inputs("/raw", "/cp1", "/prev") == ("/raw", "/cp1", "/prev")
+
+
+@mock.patch("flytekit.bin.entrypoint.os")
+def test_env_reading(mock_os):
+    mock_env = {
+        "FLYTE_INTERNAL_EXECUTION_PROJECT": "exec_proj",
+        "FLYTE_INTERNAL_EXECUTION_DOMAIN": "exec_dom",
+        "FLYTE_INTERNAL_EXECUTION_ID": "exec_name",
+        "FLYTE_INTERNAL_TASK_PROJECT": "task_proj",
+        "FLYTE_INTERNAL_TASK_DOMAIN": "task_dom",
+        "FLYTE_INTERNAL_TASK_NAME": "task_name",
+        "FLYTE_INTERNAL_TASK_VERSION": "task_ver",
+    }
+    mock_os.environ = mock_env
+
+    with setup_execution("qwerty") as ctx:
+        assert ctx.execution_state.user_space_params.task_id.name == "task_name"
+        assert ctx.execution_state.user_space_params.task_id.version == "task_ver"
+        assert ctx.execution_state.user_space_params.execution_id.name == "exec_name"
