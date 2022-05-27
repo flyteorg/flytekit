@@ -94,3 +94,19 @@ def test_nested_workflow(working_dir, wf_path, monkeypatch: pytest.MonkeyPatch):
     )
     assert result.stdout.strip() == "wow"
     assert result.exit_code == 0
+
+
+def test_dataclasses_default_arguments():
+    runner = CliRunner()
+    dir_name = os.path.dirname(os.path.realpath(__file__))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(dir_name, "dataclasses_default_arguments", "wf.py"),
+            "wf",
+        ],
+        catch_exceptions=False,
+    )
+    print(result.stdout)
+    assert result.exit_code == 0
