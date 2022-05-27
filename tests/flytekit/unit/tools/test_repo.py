@@ -55,7 +55,7 @@ def test_module_loading(mock_entities, mock_entities_2):
 
         # Now it should pass
         root = find_common_root([middle_level_2, bottom_level])
-        assert str(root) == tmp_dir
+        assert pathlib.Path(root).resolve() == pathlib.Path(tmp_dir).resolve()
 
         # Now load them
         serialization_settings = flytekit.configuration.SerializationSettings(

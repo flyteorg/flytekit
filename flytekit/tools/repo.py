@@ -204,7 +204,7 @@ def load_packages_and_modules(
 
     pkgs_and_modules = []
     for pm in pkgs_or_mods:
-        p = Path(pm)
+        p = Path(pm).resolve()
         rel_path_from_root = p.relative_to(project_root)
         # One day we should learn how to do this right. This is not the right way to load a python module
         # from a file. See pydoc.importfile for inspiration
