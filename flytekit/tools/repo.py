@@ -1,18 +1,26 @@
+import os
 import tarfile
 import tempfile
 import typing
+from pathlib import Path
 
 import click
+from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
+from flyteidl.admin.launch_plan_pb2 import LaunchPlanCreateRequest
+from flyteidl.admin.task_pb2 import TaskCreateRequest
+from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
+from flyteidl.admin.workflow_pb2 import WorkflowCreateRequest
+from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
+from flyteidl.core import identifier_pb2
 
-from flytekit import FlyteContextManager, logger
 from flytekit.clients.friendly import SynchronousFlyteClient
+from flytekit.clis.helpers import hydrate_registration_parameters
 from flytekit.configuration import SerializationSettings
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.exceptions.user import FlyteEntityAlreadyExistsException
-from flytekit.models import launch_plan as launch_plan_models
-from flytekit.models import task as task_models
-from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.core.identifier import Identifier, ResourceType
+from flytekit.loggers import logger
 from flytekit.tools import fast_registration, module_loader
+from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import RegistrableEntity, get_registrable_entities, persist_registrable_entities
 from flytekit.tools.translator import Options
 
@@ -113,41 +121,100 @@ def register(
     domain: str,
     version: str,
     client: SynchronousFlyteClient,
-    source: str = ".",
-    fast: bool = False,
 ):
-    if fast:
-        # TODO handle fast
-        raise AssertionError("Fast not handled yet!")
-    for entity, cp_entity in registrable_entities:
+    # The incoming registrable entities are already in base protobuf form, not model form, so we use the
+    # raw client's methods instead of the friendly client's methods by calling super
+    for admin_entity in registrable_entities:
         try:
-            if isinstance(cp_entity, task_models.TaskSpec):
-                ident = Identifier(
-                    resource_type=ResourceType.TASK, project=project, domain=domain, name=entity.name, version=version
+            if isinstance(admin_entity, _idl_admin_TaskSpec):
+                ident, task_spec = hydrate_registration_parameters(
+                    identifier_pb2.TASK, project, domain, version, admin_entity
                 )
-                client.create_task(task_identifer=ident, task_spec=cp_entity)
-            elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
-                ident = Identifier(
-                    resource_type=ResourceType.WORKFLOW,
-                    project=project,
-                    domain=domain,
-                    name=entity.name,
-                    version=version,
+                logger.debug(f"Creating task {ident}")
+                super(SynchronousFlyteClient, client).create_task(TaskCreateRequest(id=ident, spec=task_spec))
+            elif isinstance(admin_entity, _idl_admin_WorkflowSpec):
+                ident, wf_spec = hydrate_registration_parameters(
+                    identifier_pb2.WORKFLOW, project, domain, version, admin_entity
                 )
-                client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
-            elif isinstance(cp_entity, launch_plan_models.LaunchPlanSpec):
-                ident = Identifier(
-                    resource_type=ResourceType.LAUNCH_PLAN,
-                    project=project,
-                    domain=domain,
-                    name=entity.name,
-                    version=version,
+                logger.debug(f"Creating workflow {ident}")
+                super(SynchronousFlyteClient, client).create_workflow(WorkflowCreateRequest(id=ident, spec=wf_spec))
+            elif isinstance(admin_entity, _idl_admin_LaunchPlan):
+                ident, admin_lp = hydrate_registration_parameters(
+                    identifier_pb2.LAUNCH_PLAN, project, domain, version, admin_entity
                 )
-                client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity)
+                logger.debug(f"Creating launch plan {ident}")
+                super(SynchronousFlyteClient, client).create_launch_plan(
+                    LaunchPlanCreateRequest(id=ident, spec=admin_lp.spec)
+                )
             else:
-                raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
+                raise AssertionError(f"Unknown entity of type {type(admin_entity)}")
         except FlyteEntityAlreadyExistsException:
-            logger.info(f"{entity.name} already exists")
+            logger.info(f"{admin_entity} already exists")
         except Exception as e:
-            logger.info(f"Failed to register entity {entity.name} with error {e}")
+            logger.info(f"Failed to register entity {admin_entity} with error {e}")
             raise e
+
+
+def find_common_root(
+    pkgs_or_mods: typing.Union[typing.Tuple[str], typing.List[str]],
+) -> Path:
+    """
+    Given an arbitrary list of folders and files, this function will use the script mode function to walk up
+    the filesystem to find the first folder without an init file. If all the folders and files resolve to
+    the same root folder, then that Path is returned. Otherwise an error is raised.
+
+    :param pkgs_or_mods:
+    :return: The common detected root path, the output of _find_project_root
+    """
+    project_root = None
+    for pm in pkgs_or_mods:
+        root = _find_project_root(pm)
+        if project_root is None:
+            project_root = root
+        else:
+            if project_root != root:
+                raise ValueError(f"Specified module {pm} has root {root} but {project_root} already specified")
+
+    logger.debug(f"Common root folder detected as {str(project_root)}")
+
+    return project_root
+
+
+def load_packages_and_modules(
+    ss: SerializationSettings,
+    project_root: Path,
+    pkgs_or_mods: typing.List[str],
+    options: typing.Optional[Options] = None,
+) -> typing.List[RegistrableEntity]:
+    """
+    The project root is added as the first entry to sys.path, and then all the specified packages and modules
+    given are loaded with all submodules. The reason for prepending the entry is to ensure that the name that
+    the various modules are loaded under are the fully-resolved name.
+
+    For example, using flytesnacks cookbook, if you are in core/ and you call this function with
+    ``flyte_basics/hello_world.py control_flow/``, the ``hello_world`` module would be loaded
+    as ``core.flyte_basics.hello_world`` even though you're already in the core/ folder.
+
+    :param ss:
+    :param project_root:
+    :param pkgs_or_mods:
+    :param options:
+    :return: The common detected root path, the output of _find_project_root
+    """
+
+    pkgs_and_modules = []
+    for pm in pkgs_or_mods:
+        p = Path(pm).resolve()
+        rel_path_from_root = p.relative_to(project_root)
+        # One day we should learn how to do this right. This is not the right way to load a python module
+        # from a file. See pydoc.importfile for inspiration
+        dot_delineated = os.path.splitext(rel_path_from_root)[0].replace(os.path.sep, ".")  # noqa
+
+        logger.debug(
+            f"User specified arg {pm} has {str(rel_path_from_root)} relative path loading it as {dot_delineated}"
+        )
+        pkgs_and_modules.append(dot_delineated)
+
+    registrable_entities = serialize(pkgs_and_modules, ss, str(project_root), options)
+
+    return registrable_entities
