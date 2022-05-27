@@ -72,19 +72,19 @@ flyteidl==1.0.1
     # via flytekit
 flytekit==1.1.0b1
     # via flytekitplugins-papermill
-googleapis-common-protos==1.56.1
+googleapis-common-protos==1.56.2
     # via
     #   flyteidl
     #   grpcio-status
-grpcio==1.46.1
+grpcio==1.46.3
     # via
     #   flytekit
     #   grpcio-status
-grpcio-status==1.46.1
+grpcio-status==1.46.3
     # via flytekit
 idna==3.3
     # via requests
-importlib-metadata==4.11.3
+importlib-metadata==4.11.4
     # via
     #   click
     #   jsonschema
@@ -121,7 +121,7 @@ jupyter-core==4.10.0
     #   nbformat
 jupyterlab-pygments==0.2.2
     # via nbconvert
-keyring==23.5.0
+keyring==23.5.1
     # via flytekit
 markupsafe==2.1.1
     # via
@@ -197,7 +197,7 @@ protobuf==3.20.1
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
     # via flyteidl
-psutil==5.9.0
+psutil==5.9.1
     # via ipykernel
 ptyprocess==0.7.0
     # via pexpect
@@ -247,7 +247,7 @@ requests==2.27.1
     #   flytekit
     #   papermill
     #   responses
-responses==0.20.0
+responses==0.21.0
     # via flytekit
 retry==0.9.2
     # via flytekit
@@ -297,6 +297,7 @@ typing-extensions==4.2.0
     #   flytekit
     #   importlib-metadata
     #   jsonschema
+    #   responses
     #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json

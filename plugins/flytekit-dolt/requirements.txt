@@ -54,19 +54,19 @@ flyteidl==1.0.1
     # via flytekit
 flytekit==1.1.0b1
     # via flytekitplugins-dolt
-googleapis-common-protos==1.56.1
+googleapis-common-protos==1.56.2
     # via
     #   flyteidl
     #   grpcio-status
-grpcio==1.46.1
+grpcio==1.46.3
     # via
     #   flytekit
     #   grpcio-status
-grpcio-status==1.46.1
+grpcio-status==1.46.3
     # via flytekit
 idna==3.3
     # via requests
-importlib-metadata==4.11.3
+importlib-metadata==4.11.4
     # via
     #   click
     #   keyring
@@ -80,7 +80,7 @@ jinja2==3.1.2
     #   jinja2-time
 jinja2-time==0.2.0
     # via cookiecutter
-keyring==23.5.0
+keyring==23.5.1
     # via flytekit
 markupsafe==2.1.1
     # via jinja2
@@ -153,7 +153,7 @@ requests==2.27.1
     #   docker
     #   flytekit
     #   responses
-responses==0.20.0
+responses==0.21.0
     # via flytekit
 retry==0.9.2
     # via flytekit
@@ -177,6 +177,7 @@ typing-extensions==4.2.0
     #   arrow
     #   flytekit
     #   importlib-metadata
+    #   responses
     #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json
