@@ -851,7 +851,7 @@ class Container(_common.FlyteIdlEntity):
         resources,
         env,
         config,
-        architecture: typing.Optional(int) = 0,
+        architecture: typing.Optional[int] = 0,
         data_loading_config=None,
     ):
         """
