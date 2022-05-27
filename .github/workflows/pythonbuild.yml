@@ -51,7 +51,7 @@ jobs:
         run: |
           coverage run -m pytest tests/flytekit/unit -m "not sandbox_test"
       - name: Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v1.5.2
         with:
           fail_ci_if_error: true # optional (default = false)
 
@@ -104,7 +104,7 @@ jobs:
         run: |
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install -e .
+          pip install -r requirements.txt
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
           pip freeze
