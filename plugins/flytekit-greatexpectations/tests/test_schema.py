@@ -6,7 +6,7 @@ import typing
 import pandas as pd
 import pytest
 from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectationsFlyteConfig, GreatExpectationsType
-from great_expectations.exceptions import ValidationError
+from great_expectations.exceptions import InvalidBatchRequestError, ValidationError
 
 from flytekit import task, workflow
 from flytekit.types.file import CSVFile
@@ -144,7 +144,7 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
         my_task(directory="my_assets")
 
     # Capture IndexError
-    with pytest.raises(IndexError):
+    with pytest.raises(InvalidBatchRequestError):
         my_wf()
 
 
