@@ -253,4 +253,4 @@ def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> st
 # fqn will access the fully qualified name of the image (e.g. registry/imagename:version -> registry/imagename)
 # version will access the version part of the image (e.g. registry/imagename:version -> version)
 # With empty attribute, it'll access the full image path (e.g. registry/imagename:version -> registry/imagename:version)
-_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z]+))(?:\.([a-zA-Z]+))?\s*}})", re.IGNORECASE)
+_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z0-9_]+))(?:\.([a-zA-Z0-9_]+))?\s*}})", re.IGNORECASE)
