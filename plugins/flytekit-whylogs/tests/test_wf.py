@@ -1,12 +1,9 @@
 from typing import List
-import numpy as np
 import pandas as pd
 import whylogs as ylog
-# TODO Loads the type transformer implicitly, but should I have to?
-from flytekitplugins.whylogs import WhylogsDatasetProfileTransformer
 from whylogs.core import DatasetProfileView
 
-from whylogs.core.constraints import Constraints, ConstraintsBuilder, MetricsSelector, MetricConstraint
+from whylogs.core.constraints import ConstraintsBuilder, MetricsSelector, MetricConstraint
 
 
 from flytekit import task, workflow
@@ -61,4 +58,3 @@ def test_constraints():
     except Exception:
         # Should have an error because constraints are violated
         assert True
-
