@@ -37,5 +37,21 @@ if the data in the workflow doesn't conform to some configured constraints, like
 min/max values on features, data types on features, etc.
 
 ```python
-# TODO add constraint example once we release our constraint feature in 1.0.0
+@task
+def validate_data(profile: DatasetProfileView):
+    column = profile.get_column("my_column")
+    print(column.to_summary_dict()) # To see available things you can validate against
+    builder = ConstraintsBuilder(profile)
+    numConstraint = MetricConstraint(
+        name='numbers between 0 and 4 only',
+        condition=lambda x: x.min > 0 and x.max < 4,
+        metric_selector=MetricsSelector(metric_name='distribution', column_name='my_column'))
+    builder.add_constraint(numConstraint)
+    constraint = builder.build()
+    valid = constraint.validate()
+
+    if(not valid):
+        raise Exception("Invalid data found")
 ```
+
+See our [constraint notebook](https://github.com/whylabs/whylogs/blob/1.0.x/python/examples/basic/MetricConstraints.ipynb) for more examples.
