@@ -1,4 +1,5 @@
 import pandas
+import pytest
 
 from flytekit import kwtypes, task, workflow
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
@@ -26,6 +27,7 @@ def test_task_static():
     assert df is not None
 
 
+@pytest.mark.skip(reason="DB no longer donwloads properly")
 def test_task_schema():
     # sqlite3_start
     DB_LOCATION = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
@@ -47,6 +49,7 @@ def test_task_schema():
     assert df is not None
 
 
+@pytest.mark.skip(reason="DB no longer donwloads properly")
 def test_workflow():
     @task
     def my_task(df: pandas.DataFrame) -> int:
@@ -69,6 +72,7 @@ def test_workflow():
     assert wf(limit=5) == 5
 
 
+@pytest.mark.skip(reason="DB no longer donwloads properly")
 def test_task_serialization():
     sql_task = SQLite3Task(
         "test",

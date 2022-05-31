@@ -843,7 +843,17 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
 
 
 class Container(_common.FlyteIdlEntity):
-    def __init__(self, image, command, args, resources, env, config, data_loading_config=None):
+    def __init__(
+        self,
+        image,
+        command,
+        args,
+        resources,
+        env,
+        config,
+        architecture: typing.Optional[int] = 0,
+        data_loading_config=None,
+    ):
         """
         This defines a container target.  It will execute the appropriate command line on the appropriate image with
         the given configurations.
@@ -854,10 +864,12 @@ class Container(_common.FlyteIdlEntity):
         :param Resources resources: A definition of requisite compute resources.
         :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
         :param dict[Text, Text] config: A definition of configuration key-value pairs.
+        :param architecture: Architecture supported by this container's image.
         :type DataLoadingConfig data_loading_config: object
         """
         self._data_loading_config = data_loading_config
         self._image = image
+        self._architecture = architecture
         self._command = command
         self._args = args
         self._resources = resources
@@ -871,6 +883,14 @@ class Container(_common.FlyteIdlEntity):
         :rtype: Text
         """
         return self._image
+
+    @property
+    def architecture(self) -> int:
+        """
+        Architecures supported by the container's image.
+        :rtype: int
+        """
+        return self._architecture
 
     @property
     def command(self):
@@ -929,6 +949,7 @@ class Container(_common.FlyteIdlEntity):
             image=self.image,
             command=self.command,
             args=self.args,
+            architecture=self.architecture,
             resources=self.resources.to_flyte_idl(),
             env=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.env)],
             config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in _six.iteritems(self.config)],
@@ -943,6 +964,7 @@ class Container(_common.FlyteIdlEntity):
         """
         return cls(
             image=pb2_object.image,
+            architecture=pb2_object.architecture,
             command=pb2_object.command,
             args=pb2_object.args,
             resources=Resources.from_flyte_idl(pb2_object.resources),

@@ -255,8 +255,9 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
         resources,
         env,
         config,
+        architecture,
     ):
-        super(SdkRunnableContainer, self).__init__("", command, args, resources, env or {}, config)
+        super(SdkRunnableContainer, self).__init__("", command, args, resources, env or {}, config, architecture)
 
     @property
     def args(self):
@@ -271,6 +272,13 @@ class SdkRunnableContainer(_task_models.Container, metaclass=_sdk_bases.Extended
         :rtype: Text
         """
         return _internal_config.IMAGE.get()
+
+    @property
+    def architecture(self):
+        """
+        :rtype: Text
+        """
+        return self._architecture
 
     @property
     def env(self):
@@ -366,6 +374,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         retries,
         interruptible,
         deprecated,
+        architecture,
         storage_request,
         cpu_request,
         gpu_request,
@@ -434,6 +443,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
                 gpu_limit=gpu_limit,
                 memory_limit=memory_limit,
                 environment=environment,
+                architecture=architecture,
             ),
         )
         self.id._name = "{}.{}".format(self.task_module, self.task_function_name)
@@ -651,6 +661,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
         memory_limit=None,
         environment=None,
         cls=None,
+        architecture=None,
     ):
         """
         :param Text storage_request:
@@ -696,6 +707,7 @@ class SdkRunnableTask(_base_task.SdkTask, metaclass=_sdk_bases.ExtendedSdkType):
             resources=resources,
             env=environment,
             config={},
+            architecture=architecture,
         )
 
     def _validate_inputs(self, inputs):
