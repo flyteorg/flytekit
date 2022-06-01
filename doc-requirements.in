@@ -33,3 +33,4 @@ papermill                   # papermill
 jupyter                     # papermill
 pyspark                     # spark
 sqlalchemy                  # sqlalchemy
+torch                       # pytorch

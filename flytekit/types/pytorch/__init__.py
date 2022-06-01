@@ -7,9 +7,7 @@ Flytekit PyTorch
    :template: custom.rst
    :toctree: generated/
 
-    PyTorchTensorTransformer
     PyTorchStateDict
-    PyTorchModuleTransformer
 """
 from flytekit.loggers import logger
 

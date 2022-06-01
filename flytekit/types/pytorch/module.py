@@ -31,7 +31,7 @@ class PyTorchStateDict(object):
 
 class PyTorchModuleTransformer(TypeTransformer[PyTorchStateDict]):
     """
-    TypeTransformer that supports serializing and deserializing PyTorch modules' state_dicts.
+    TypeTransformer that supports serializing and deserializing PyTorch modules' `state_dict`s.
     """
 
     PYTORCH_STATEDICT_FORMAT = "PyTorchStateDict"
