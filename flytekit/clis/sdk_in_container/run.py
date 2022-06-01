@@ -256,7 +256,7 @@ class FlyteLiteralConverter(object):
 
         if self._literal_type.collection_type or self._literal_type.map_value_type:
             # TODO Does not support nested flytefile, flyteschema types
-            v = json.loads(value)
+            v = json.loads(value) if isinstance(value, str) else value
             if self._literal_type.collection_type and not isinstance(v, list):
                 raise click.BadParameter(f"Expected json list '[...]', parsed value is {type(v)}")
             if self._literal_type.map_value_type and not isinstance(v, dict):
