@@ -105,6 +105,9 @@ class Platform(object):
         LegacyConfigEntry(SECTION, "url"), YamlConfigEntry("admin.endpoint"), lambda x: x.replace("dns:///", "")
     )
     INSECURE = ConfigEntry(LegacyConfigEntry(SECTION, "insecure", bool), YamlConfigEntry("admin.insecure", bool))
+    INSECURE_SKIP_VERIFY = ConfigEntry(
+        LegacyConfigEntry(SECTION, "insecure_skip_verify", bool), YamlConfigEntry("admin.insecureSkipVerify", bool)
+    )
 
 
 class LocalSDK(object):
