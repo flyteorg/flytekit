@@ -1,6 +1,6 @@
 """
 Flytekit Numpy
-==============
+=======================================
 .. currentmodule:: flytekit.types.numpy
 
 .. autosummary::
