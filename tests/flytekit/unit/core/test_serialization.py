@@ -250,6 +250,10 @@ def test_serialization_images():
     def t5(a: int) -> int:
         return a
 
+    @task(container_image="{{.image.xyz_123.fqn}}:{{.image.xyz_123.version}}")
+    def t6(a: int) -> int:
+        return a
+
     os.environ["FLYTE_INTERNAL_IMAGE"] = "docker.io/default:version"
     imgs = ImageConfig.auto(
         config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
@@ -273,6 +277,9 @@ def test_serialization_images():
 
     t5_spec = get_serializable(OrderedDict(), rs, t5)
     assert t5_spec.template.container.image == "docker.io/org/myimage:latest"
+
+    t5_spec = get_serializable(OrderedDict(), rs, t6)
+    assert t5_spec.template.container.image == "docker.io/xyz_123:v1"
 
 
 def test_serialization_command1():
