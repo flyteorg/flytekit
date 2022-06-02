@@ -68,7 +68,7 @@ cloudpickle==2.1.0
     # via flytekit
 colorama==0.4.4
     # via great-expectations
-cookiecutter==1.7.3
+cookiecutter==2.1.1
     # via flytekit
 croniter==1.3.5
     # via flytekit
