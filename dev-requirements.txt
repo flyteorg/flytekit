@@ -61,7 +61,7 @@ cloudpickle==2.1.0
     #   flytekit
 codespell==2.1.0
     # via -r dev-requirements.in
-cookiecutter==1.7.3
+cookiecutter==2.1.1
     # via
     #   -c requirements.txt
     #   flytekit
