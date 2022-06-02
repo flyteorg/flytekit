@@ -281,6 +281,7 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):
+        print(kwargs)
         return flyte_entity_call_handler(self, *args, **kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
