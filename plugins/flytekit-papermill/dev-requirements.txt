@@ -20,7 +20,7 @@ click==7.1.2
     #   flytekit
 cloudpickle==2.0.0
     # via flytekit
-cookiecutter==1.7.3
+cookiecutter==2.1.1
     # via flytekit
 croniter==1.2.0
     # via flytekit
