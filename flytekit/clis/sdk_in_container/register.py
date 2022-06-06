@@ -97,7 +97,7 @@ Note: This command only works on regular Python packages, not namespace packages
     "--version",
     required=False,
     type=str,
-    help="Service account used when creating launch plans",
+    help="Version the package or module is registered with",
 )
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
