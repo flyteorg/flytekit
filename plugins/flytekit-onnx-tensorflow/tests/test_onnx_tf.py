@@ -1,3 +1,5 @@
+import urllib
+from io import BytesIO
 from typing import Annotated, NamedTuple, TypeVar
 
 import numpy as np
@@ -11,12 +13,16 @@ from flytekit import task, workflow
 from flytekit.types.file.file import FlyteFile
 
 
-def test_tf_simple():
+def test_tf_onnx():
     @task
     def load_test_img() -> np.ndarray:
-        img_path = "ade20k.jpg"
-
-        img = image.load_img(img_path, target_size=(224, 224))
+        with urllib.request.urlopen(
+            "https://raw.githubusercontent.com/flyteorg/static-resources/main/flytekit/onnx/ade20k.jpg"
+        ) as url:
+            img = image.load_img(
+                BytesIO(url.read()),
+                target_size=(224, 224),
+            )
 
         x = image.img_to_array(img)
         x = np.expand_dims(x, axis=0)

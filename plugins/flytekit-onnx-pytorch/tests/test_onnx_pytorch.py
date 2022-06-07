@@ -4,6 +4,7 @@ from typing import Annotated, TypeVar
 
 import numpy as np
 import onnxruntime
+import requests
 import torch.nn.init as init
 import torch.onnx
 import torch.utils.model_zoo as model_zoo
@@ -26,7 +27,7 @@ class SuperResolutionNet(nn.Module):
         self.conv1 = nn.Conv2d(1, 64, (5, 5), (1, 1), (2, 2))
         self.conv2 = nn.Conv2d(64, 64, (3, 3), (1, 1), (1, 1))
         self.conv3 = nn.Conv2d(64, 32, (3, 3), (1, 1), (1, 1))
-        self.conv4 = nn.Conv2d(32, upscale_factor ** 2, (3, 3), (1, 1), (1, 1))
+        self.conv4 = nn.Conv2d(32, upscale_factor**2, (3, 3), (1, 1), (1, 1))
         self.pixel_shuffle = nn.PixelShuffle(upscale_factor)
 
         self._initialize_weights()
@@ -45,7 +46,7 @@ class SuperResolutionNet(nn.Module):
         init.orthogonal_(self.conv4.weight)
 
 
-def test_onnx_generation():
+def test_onnx_pytorch():
     @task
     def train() -> Annotated[
         PyTorch2ONNX,
@@ -77,7 +78,11 @@ def test_onnx_generation():
     def onnx_predict(model_file: FlyteFile[TypeVar("onnx")]) -> JPEGImageFile:
         ort_session = onnxruntime.InferenceSession(model_file.download())
 
-        img = Image.open("cat.jpg")
+        img = Image.open(
+            requests.get(
+                "https://raw.githubusercontent.com/flyteorg/static-resources/main/flytekit/onnx/cat.jpg", stream=True
+            ).raw
+        )
 
         resize = transforms.Resize([224, 224])
         img = resize(img)

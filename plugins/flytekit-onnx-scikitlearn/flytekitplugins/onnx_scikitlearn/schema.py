@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field
-from typing import Any, List, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import skl2onnx.common.data_types
 from dataclasses_json import dataclass_json
@@ -22,11 +22,19 @@ from flytekit.types.file.file import FlyteFile
 @dataclass
 class ScikitLearn2ONNXConfig:
     initial_types: List[Tuple[str, Type]]
-    name: str = None
+    name: Optional[str] = None
     doc_string: str = ""
-    target_opset: int = None
+    target_opset: Optional[int] = None
+    custom_conversion_functions: Dict[Callable[..., Any], Callable[..., None]] = field(default_factory=dict)
+    custom_shape_calculators: Dict[Callable[..., Any], Callable[..., None]] = field(default_factory=dict)
+    custom_parsers: Dict[Callable[..., Any], Callable[..., None]] = field(default_factory=dict)
+    options: Dict[Any, Any] = field(default_factory=dict)
+    intermediate: bool = False
+    naming: Union[str, Callable[..., Any]] = None
+    white_op: Optional[Set[str]] = None
+    black_op: Optional[Set[str]] = None
     verbose: int = 0
-    final_types: List[Tuple[str, Type]] = None
+    final_types: Optional[List[Tuple[str, Type]]] = None
 
     def __post_init__(self):
         validate_initial_types = [
@@ -43,15 +51,10 @@ class ScikitLearn2ONNXConfig:
                 raise ValueError("All types in final_types must be in skl2onnx.common.data_types")
 
 
+@dataclass_json
+@dataclass
 class ScikitLearn2ONNX:
     model: BaseEstimator = field(default=None)
-
-    def __init__(self, model: BaseEstimator):
-        self._model = model
-
-    @property
-    def model(self) -> Type[Any]:
-        return self._model
 
 
 def extract_config(t: Type[ScikitLearn2ONNX]) -> Tuple[Type[ScikitLearn2ONNX], ScikitLearn2ONNXConfig]:
@@ -68,15 +71,7 @@ def extract_config(t: Type[ScikitLearn2ONNX]) -> Tuple[Type[ScikitLearn2ONNX], S
 def to_onnx(ctx, model, config):
     local_path = ctx.file_access.get_random_local_path()
 
-    onx = convert_sklearn(
-        model,
-        initial_types=config.initial_types,
-        name=config.name,
-        doc_string=config.doc_string,
-        target_opset=config.target_opset,
-        verbose=config.verbose,
-        final_types=config.final_types,
-    )
+    onx = convert_sklearn(model, **config)
 
     with open(local_path, "wb") as f:
         f.write(onx.SerializeToString())
@@ -104,7 +99,7 @@ class ScikitLearn2ONNXTransformer(TypeTransformer[ScikitLearn2ONNX]):
         remote_path = ctx.file_access.get_random_remote_path()
 
         if config:
-            local_path = to_onnx(ctx, python_val.model, config)
+            local_path = to_onnx(ctx, python_val.model, config.__dict__.copy())
             ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
         else:
             raise TypeTransformerFailedError(f"{python_type}'s config is None")

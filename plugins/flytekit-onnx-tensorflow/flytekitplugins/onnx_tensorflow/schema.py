@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 import tensorflow as tf
@@ -19,18 +19,21 @@ from flytekit.types.file import FlyteFile
 @dataclass
 class TensorFlow2ONNXConfig:
     input_signature: Union[tf.TensorSpec, np.ndarray]
-    opset: int = 13
+    custom_ops: Optional[Dict[str, Any]] = None
+    target: Optional[List[Any]] = None
+    custom_op_handlers: Optional[Dict[Any, Tuple]] = None
+    custom_rewriter: Optional[List[Any]] = None
+    opset: Optional[int] = None
+    extra_opset: Optional[List[int]] = None
+    shape_override: Optional[Dict[str, List[Any]]] = None
+    inputs_as_nchw: Optional[List[str]] = None
+    large_model: bool = False
 
 
+@dataclass_json
+@dataclass
 class TensorFlow2ONNX:
     model: tf.keras = field(default=None)
-
-    def __init__(self, model: tf.keras):
-        self._model = model
-
-    @property
-    def model(self) -> Type[Any]:
-        return self._model
 
 
 def extract_config(t: Type[TensorFlow2ONNX]) -> Tuple[Type[TensorFlow2ONNX], TensorFlow2ONNXConfig]:
@@ -47,9 +50,7 @@ def extract_config(t: Type[TensorFlow2ONNX]) -> Tuple[Type[TensorFlow2ONNX], Ten
 def to_onnx(ctx, model, config):
     local_path = ctx.file_access.get_random_local_path()
 
-    tf2onnx.convert.from_keras(
-        model, input_signature=config.input_signature, opset=config.opset, output_path=local_path
-    )
+    tf2onnx.convert.from_keras(model, **config, output_path=local_path)
 
     return local_path
 
@@ -74,7 +75,7 @@ class TensorFlow2ONNXTransformer(TypeTransformer[TensorFlow2ONNX]):
         remote_path = ctx.file_access.get_random_remote_path()
 
         if config:
-            local_path = to_onnx(ctx, python_val.model, config)
+            local_path = to_onnx(ctx, python_val.model, config.__dict__.copy())
             ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
         else:
             raise TypeTransformerFailedError(f"{python_type}'s config is None")

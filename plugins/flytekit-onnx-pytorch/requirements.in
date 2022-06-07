@@ -2,4 +2,4 @@
 -e file:.#egg=flytekitplugins-onnx_pytorch
 onnxruntime
 pillow
-torchvision
+torchvision>=0.12.0
