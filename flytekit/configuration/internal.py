@@ -19,7 +19,7 @@ class Images(object):
         :returns a dictionary of name: image<fqn+version> Version is optional
         """
         images: typing.Dict[str, str] = {}
-        if cfg is None:
+        if cfg is None or not cfg.legacy_config:
             return images
         try:
             image_names = cfg.legacy_config.options("images")
@@ -105,6 +105,9 @@ class Platform(object):
         LegacyConfigEntry(SECTION, "url"), YamlConfigEntry("admin.endpoint"), lambda x: x.replace("dns:///", "")
     )
     INSECURE = ConfigEntry(LegacyConfigEntry(SECTION, "insecure", bool), YamlConfigEntry("admin.insecure", bool))
+    INSECURE_SKIP_VERIFY = ConfigEntry(
+        LegacyConfigEntry(SECTION, "insecure_skip_verify", bool), YamlConfigEntry("admin.insecureSkipVerify", bool)
+    )
 
 
 class LocalSDK(object):

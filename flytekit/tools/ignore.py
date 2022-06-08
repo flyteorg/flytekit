@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from fnmatch import fnmatch
 from pathlib import Path
 from shutil import which
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Type
 
 from docker.utils.build import PatternMatcher
 
@@ -105,7 +105,7 @@ class IgnoreGroup(Ignore):
     """Groups multiple Ignores and checks a path against them. A file is ignored if any
     Ignore considers it ignored."""
 
-    def __init__(self, root: str, ignores: List[Ignore]):
+    def __init__(self, root: str, ignores: List[Type[Ignore]]):
         super().__init__(root)
         self.ignores = [ignore(root) for ignore in ignores]
 

@@ -466,7 +466,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         new_user_params = self.pre_execute(ctx.user_space_params)
         from flytekit.deck.deck import _output_deck
 
-        new_user_params._decks = [ctx.user_space_params.default_deck]
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
@@ -542,11 +541,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             for k, v in native_outputs_as_map.items():
                 output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
-            new_user_params.decks.append(input_deck)
-            new_user_params.decks.append(output_deck)
-
             if _internal.Deck.DISABLE_DECK.read() is not True and self.disable_deck is False:
                 _output_deck(self.name.split(".")[-1], new_user_params)
+
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map

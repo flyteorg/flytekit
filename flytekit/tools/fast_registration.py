@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import os
 import posixpath
 import subprocess as _subprocess
 import tarfile
+import tempfile
 from typing import Optional
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
@@ -31,8 +34,13 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike) -> os.PathLike:
     if output_dir:
         archive_fname = os.path.join(output_dir, archive_fname)
 
-    with tarfile.open(archive_fname, "w:gz") as tar:
-        tar.add(source, arcname="", filter=ignore.tar_filter)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tar_path = os.path.join(tmp_dir, "tmp.tar")
+        with tarfile.open(tar_path, "w") as tar:
+            tar.add(source, arcname="", filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)))
+        with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
+            with open(tar_path, "rb") as tar_file:
+                gzipped.write(tar_file.read())
 
     return archive_fname
 

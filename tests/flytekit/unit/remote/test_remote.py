@@ -1,7 +1,12 @@
+import os
+import pathlib
+import tempfile
+
 import pytest
 from mock import MagicMock, patch
 
-from flytekit.configuration import Config
+import flytekit.configuration
+from flytekit.configuration import Config, DefaultImages, ImageConfig
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models import security
@@ -150,3 +155,41 @@ def test_passing_of_kwargs(mock_client):
     FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args)
     assert mock_client.called
     assert mock_client.call_args[1] == additional_args
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_more_stuff(mock_client):
+    r = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+
+    # Can't upload a folder
+    with pytest.raises(ValueError):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            r._upload_file(pathlib.Path(tmp_dir))
+
+    # Test that this copies the file.
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        mm = MagicMock()
+        mm.signed_url = os.path.join(tmp_dir, "tmp_file")
+        mock_client.return_value.get_upload_signed_url.return_value = mm
+
+        r._upload_file(pathlib.Path(__file__))
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+
+    # gives a thing
+    computed_v = r._version_from_hash(b"", serialization_settings)
+    assert len(computed_v) > 0
+
+    # gives the same thing
+    computed_v2 = r._version_from_hash(b"", serialization_settings)
+    assert computed_v2 == computed_v2
+
+    # should give a different thing
+    computed_v3 = r._version_from_hash(b"", serialization_settings, "hi")
+    assert computed_v2 != computed_v3
