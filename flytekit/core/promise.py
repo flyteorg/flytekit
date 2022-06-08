@@ -5,7 +5,7 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-from typing_extensions import Protocol
+from typing_extensions import Protocol, get_args, get_origin
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
@@ -122,6 +122,9 @@ def translate_inputs_to_literals(
         t = native_types[k]
         result[k] = extract_value(ctx, v, t, var.type)
 
+    for k, v in native_types.items():
+        if k not in result and get_origin(v) is typing.Union and type(None) in get_args(v):
+            result[k] = extract_value(ctx, None, native_types[k], flyte_interface_types[k].type)
     return result
 
 
@@ -886,10 +889,14 @@ def create_and_link_node(
             if var.type.union_type:
                 for variant in var.type.union_type.variants:
                     if variant.simple == SimpleType.NONE:
+                        val, _default = interface.inputs_with_defaults[k]
+                        if _default is not None:
+                            raise ValueError(
+                                f"The default value for the optional type must be None, but got {_default}"
+                            )
+                        kwargs[k] = None
                         is_optional = True
-            if is_optional:
-                continue
-            else:
+            if not is_optional:
                 raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
