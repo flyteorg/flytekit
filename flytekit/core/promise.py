@@ -886,6 +886,9 @@ def create_and_link_node(
             if var.type.union_type:
                 for variant in var.type.union_type.variants:
                     if variant.simple == SimpleType.NONE:
+                        val, _default = interface.inputs_with_defaults[k]
+                        if _default is not None:
+                            raise ValueError(f"The default value for the optional type must be None, but got {_default}")
                         kwargs[k] = None
                         is_optional = True
             if not is_optional:

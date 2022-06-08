@@ -739,15 +739,16 @@ class TypeEngine(typing.Generic[T]):
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
         """
         # Assign default literal value (void) if python type is an optional type
+        expected_input_len = len(python_types)
         for k, v in python_types.items():
             if k not in lm.literals and get_origin(v) is typing.Union and type(None) in get_args(v):
-                lm.literals[k] = Literal(scalar=literals.Scalar(none_type=literals.Void()))
+                expected_input_len -= 1
 
-        if len(lm.literals) != len(python_types):
+        if len(lm.literals) != expected_input_len:
             raise ValueError(
-                f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
+                f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {expected_input_len}"
             )
-        return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
+        return {k: TypeEngine.to_python_value(ctx, lm.literals[k], python_types[k]) for k, v in lm.literals.items()}
 
     @classmethod
     def dict_to_literal_map(
