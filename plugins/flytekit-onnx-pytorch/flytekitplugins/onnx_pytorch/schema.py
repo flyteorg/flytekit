@@ -106,7 +106,7 @@ class PyTorch2ONNXTransformer(TypeTransformer[PyTorch2ONNX]):
         expected_python_type: Type[FlyteFile],
     ) -> FlyteFile:
         if not (lv.scalar.blob.uri and lv.scalar.blob.metadata.format == self.ONNX_FORMAT):
-            raise TypeTransformerFailedError(f"ONNX isn't of the expected type {expected_python_type}")
+            raise TypeTransformerFailedError(f"ONNX format isn't of the expected type {expected_python_type}")
 
         return FlyteFile[self.ONNX_FORMAT](path=lv.scalar.blob.uri)
 

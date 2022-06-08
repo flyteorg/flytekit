@@ -59,7 +59,7 @@ class TensorFlow2ONNXTransformer(TypeTransformer[TensorFlow2ONNX]):
     ONNX_FORMAT = "onnx"
 
     def __init__(self):
-        super().__init__(name="TensorFlow ONNX Transformer", t=TensorFlow2ONNX)
+        super().__init__(name="TensorFlow ONNX", t=TensorFlow2ONNX)
 
     def get_literal_type(self, t: Type[TensorFlow2ONNX]) -> LiteralType:
         return LiteralType(blob=BlobType(format=self.ONNX_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE))
@@ -72,9 +72,9 @@ class TensorFlow2ONNXTransformer(TypeTransformer[TensorFlow2ONNX]):
         expected: LiteralType,
     ) -> Literal:
         python_type, config = extract_config(python_type)
-        remote_path = ctx.file_access.get_random_remote_path()
 
         if config:
+            remote_path = ctx.file_access.get_random_remote_path()
             local_path = to_onnx(ctx, python_val.model, config.__dict__.copy())
             ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
         else:
@@ -98,7 +98,7 @@ class TensorFlow2ONNXTransformer(TypeTransformer[TensorFlow2ONNX]):
         expected_python_type: Type[FlyteFile],
     ) -> FlyteFile:
         if not lv.scalar.blob.uri:
-            raise TypeTransformerFailedError(f"ONNX isn't of the expected type {expected_python_type}")
+            raise TypeTransformerFailedError(f"ONNX format isn't of the expected type {expected_python_type}")
 
         return FlyteFile[self.ONNX_FORMAT](path=lv.scalar.blob.uri)
 
