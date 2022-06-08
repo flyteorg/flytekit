@@ -122,9 +122,6 @@ def translate_inputs_to_literals(
         t = native_types[k]
         result[k] = extract_value(ctx, v, t, var.type)
 
-    for k, v in native_types.items():
-        if k not in result and get_origin(v) is typing.Union and type(None) in get_args(v):
-            result[k] = extract_value(ctx, None, native_types[k], flyte_interface_types[k].type)
     return result
 
 
