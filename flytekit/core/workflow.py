@@ -39,7 +39,6 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.types import SimpleType
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -248,6 +247,7 @@ class WorkflowBase(object):
             if not isinstance(v, Promise):
                 t = self.python_interface.inputs[k]
                 kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
+
         # The output of this will always be a combination of Python native values and Promises containing Flyte
         # Literals.
         function_outputs = self.execute(**kwargs)
