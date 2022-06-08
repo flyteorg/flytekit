@@ -891,10 +891,11 @@ def create_and_link_node(
                             raise ValueError(
                                 f"The default value for the optional type must be None, but got {_default}"
                             )
-                        kwargs[k] = None
                         is_optional = True
             if not is_optional:
                 raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+            else:
+                continue
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
