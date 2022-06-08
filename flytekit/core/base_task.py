@@ -236,9 +236,7 @@ class Task(object):
             flyte_interface_types=self.interface.inputs,  # type: ignore
             native_types=self.get_input_types(),
         )
-        print("kwargs", kwargs)
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
-        print("input_literal_map", input_literal_map)
 
         # if metadata.cache is set, check memoized version
         if self.metadata.cache:
@@ -283,7 +281,6 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs):
-        print(kwargs)
         return flyte_entity_call_handler(self, *args, **kwargs)
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):

@@ -187,6 +187,7 @@ def transform_inputs_to_parameters(
         val, _default = inputs_with_def[k]
         if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
             from flytekit import Literal, Scalar
+
             literal = Literal(scalar=Scalar(none_type=Void()))
             params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
         else:
