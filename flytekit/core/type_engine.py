@@ -356,8 +356,10 @@ class DataclassTransformer(TypeTransformer[object]):
                 return python_type(path=lv.scalar.blob.uri)
             elif issubclass(python_type, StructuredDataset):
                 return python_type(uri=lv.scalar.structured_dataset.uri)
+            else:
+                return python_val
         else:
-            for _, v in enumerate(dataclasses.fields(python_type)):
+            for v in dataclasses.fields(python_type):
                 val = python_val.__getattribute__(v.name)
                 field_type = v.type
                 python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
