@@ -539,6 +539,8 @@ def test_flyte_file_in_dataclass():
         a: JPEGImageFile
         b: typing.List[FlyteFile]
         c: typing.Dict[str, FlyteFile]
+        d: typing.List[FlyteFile]
+        e: typing.Dict[str, FlyteFile]
 
     @dataclass_json
     @dataclass
@@ -546,8 +548,14 @@ def test_flyte_file_in_dataclass():
         a: FlyteFile
         b: TestInnerFileStruct
 
-    f = FlyteFile("s3://tmp/file")
-    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f], c={"hello": f}))
+    remote_path = "s3://tmp/file"
+    f1 = FlyteFile(remote_path)
+    f2 = FlyteFile("/tmp/file")
+    f2._remote_source = remote_path
+    o = TestFileStruct(
+        a=f1,
+        b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+    )
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -563,6 +571,10 @@ def test_flyte_file_in_dataclass():
     assert o.b.a.path == ot.b.a.remote_source
     assert o.b.b[0].path == ot.b.b[0].remote_source
     assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+    assert ot.b.d[0].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.d[0].path)
+    assert ot.b.e["hello"].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
 
 
 def test_flyte_directory_in_dataclass():

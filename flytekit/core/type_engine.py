@@ -319,7 +319,7 @@ class DataclassTransformer(TypeTransformer[object]):
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
 
-    def _serialize_flyte_type(self, python_val: T, python_type: Type[T]):
+    def _serialize_flyte_type(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
         """
@@ -328,42 +328,52 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.schema.types import FlyteSchema
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
-        for f in dataclasses.fields(python_type):
-            v = python_val.__getattribute__(f.name)
-            field_type = f.type
-            if inspect.isclass(field_type) and (
-                issubclass(field_type, FlyteSchema)
-                or issubclass(field_type, FlyteFile)
-                or issubclass(field_type, FlyteDirectory)
-                or issubclass(field_type, StructuredDataset)
-            ):
-                lv = TypeEngine.to_literal(FlyteContext.current_context(), v, field_type, None)
-                # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
-                # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
-                # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
-                # so that dataclass_json can always get a remote path.
-                # In other words, the file transformer has special code that handles the fact that if remote_source is
-                # set, then the real uri in the literal should be the remote source, not the path (which may be an
-                # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
-                # as determined by the transformer.
-                if issubclass(field_type, FlyteFile) or issubclass(field_type, FlyteDirectory):
-                    python_val.__setattr__(f.name, field_type(path=lv.scalar.blob.uri))
-                elif issubclass(field_type, StructuredDataset):
-                    python_val.__setattr__(
-                        f.name,
-                        field_type(
-                            uri=lv.scalar.structured_dataset.uri,
-                        ),
-                    )
+        if hasattr(python_type, "__origin__") and python_type.__origin__ is list:
+            return [self._serialize_flyte_type(v, python_type.__args__[0]) for v in python_val]
 
-            elif dataclasses.is_dataclass(field_type):
-                self._serialize_flyte_type(v, field_type)
+        if hasattr(python_type, "__origin__") and python_type.__origin__ is dict:
+            return {k: self._serialize_flyte_type(v, python_type.__args__[1]) for k, v in python_val.items()}
+
+        if not dataclasses.is_dataclass(python_type):
+            return python_type
+
+        if inspect.isclass(python_type) and (
+            issubclass(python_type, FlyteSchema)
+            or issubclass(python_type, FlyteFile)
+            or issubclass(python_type, FlyteDirectory)
+            or issubclass(python_type, StructuredDataset)
+        ):
+            lv = TypeEngine.to_literal(FlyteContext.current_context(), python_val, python_type, None)
+            # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
+            # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
+            # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
+            # so that dataclass_json can always get a remote path.
+            # In other words, the file transformer has special code that handles the fact that if remote_source is
+            # set, then the real uri in the literal should be the remote source, not the path (which may be an
+            # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
+            # as determined by the transformer.
+            if issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory):
+                return python_type(path=lv.scalar.blob.uri)
+            elif issubclass(python_type, StructuredDataset):
+                return python_type(uri=lv.scalar.structured_dataset.uri)
+        else:
+            for _, v in enumerate(dataclasses.fields(python_type)):
+                val = python_val.__getattribute__(v.name)
+                field_type = v.type
+                python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
+            return python_val
 
     def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> T:
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
         from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+
+        if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is list:
+            return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]
+
+        if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is dict:
+            return {k: self._deserialize_flyte_type(v, expected_python_type.__args__[1]) for k, v in python_val.items()}
 
         if not dataclasses.is_dataclass(expected_python_type):
             return python_val
