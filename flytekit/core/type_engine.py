@@ -335,7 +335,7 @@ class DataclassTransformer(TypeTransformer[object]):
             return {k: self._serialize_flyte_type(v, python_type.__args__[1]) for k, v in python_val.items()}
 
         if not dataclasses.is_dataclass(python_type):
-            return python_type
+            return python_val
 
         if inspect.isclass(python_type) and (
             issubclass(python_type, FlyteSchema)
