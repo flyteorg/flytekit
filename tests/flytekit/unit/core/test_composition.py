@@ -1,5 +1,7 @@
 import typing
 
+import pytest
+
 from flytekit.core import launch_plan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
@@ -186,3 +188,13 @@ def test_optional_input():
         return t2(c=a)
 
     assert wf() is None
+
+    @task()
+    def t3(c: typing.Optional[int] = 3) -> typing.Optional[int]:
+        ...
+
+    with pytest.raises(ValueError, match="The default value for the optional type must be None, but got 3"):
+
+        @workflow
+        def wf():
+            return t3()
