@@ -5,7 +5,7 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-from typing_extensions import Protocol, get_args, get_origin
+from typing_extensions import Protocol
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
