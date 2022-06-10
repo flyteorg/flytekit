@@ -174,16 +174,15 @@ def test_wf1_with_lp_node():
 def test_optional_input():
     @task()
     def t1(b: typing.Optional[int] = None) -> typing.Optional[int]:
-        print(b)
         ...
 
     @task()
     def t2(c: typing.Optional[int] = None) -> typing.Optional[int]:
-        print(c)
         ...
 
     @workflow
     def wf(a: typing.Optional[int] = 1) -> typing.Optional[int]:
-        return t2(c=t1(b=a))
+        t1()
+        return t2(c=a)
 
     assert wf() is None
