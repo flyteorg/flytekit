@@ -50,7 +50,14 @@ class PolarsSchemaWriter(LocalIOSchemaWriter[pl.DataFrame]):
         if len(dfs) > 1:
             raise AssertionError("Only a single polars.DataFrame can be written per variable currently")
         if self._fmt == SchemaFormat.PARQUET:
-            dfs[0].write_parquet(self.to_path + "/00000")
+            out_path = self.to_path + "/00000"
+            df = dfs[0]
+
+            # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
+            if hasattr(df, "write_parquet"):
+                df.write_parquet(out_path)
+            else:
+                df.to_parquet(out_path)
             return
         raise AssertionError("Only Parquet type files are supported for polars dataframe currently")
 
