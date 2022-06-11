@@ -1,5 +1,5 @@
-from flytekitplugins.polars import schema  # noqa F401
 import polars as pl
+from flytekitplugins.polars import schema  # noqa F401
 
 from flytekit import task, workflow
 
