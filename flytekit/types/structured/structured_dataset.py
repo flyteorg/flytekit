@@ -19,6 +19,8 @@ import pyarrow as pa
 
 if importlib.util.find_spec("pyspark") is not None:
     import pyspark
+if importlib.util.find_spec("polars") is not None:
+    import polars as pl
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
@@ -647,6 +649,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return pd.DataFrame(df).describe().to_html()
         elif importlib.util.find_spec("pyspark") is not None and isinstance(df, pyspark.sql.DataFrame):
             return pd.DataFrame(df.schema, columns=["StructField"]).to_html()
+        elif importlib.util.find_spec("polars") is not None and isinstance(df, pl.DataFrame):
+            return df.to_pandas().describe().to_html()
         else:
             raise NotImplementedError("Conversion to html string should be implemented")
 

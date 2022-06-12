@@ -7,7 +7,8 @@ This package contains things that are useful when extending Flytekit.
    :template: custom.rst
    :toctree: generated/
 
-   PolarsDataFrameTransformer
+   PolarsDataFrameToParquetEncodingHandler
+   ParquetToPolarsDataFrameDecodingHandler
 """
 
-from .schema import PolarsDataFrameTransformer
+from .sd_transformers import PolarsDataFrameToParquetEncodingHandler, ParquetToPolarsDataFrameDecodingHandler
