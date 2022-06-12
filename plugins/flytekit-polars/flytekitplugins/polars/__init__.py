@@ -11,4 +11,4 @@ This package contains things that are useful when extending Flytekit.
    ParquetToPolarsDataFrameDecodingHandler
 """
 
-from .sd_transformers import PolarsDataFrameToParquetEncodingHandler, ParquetToPolarsDataFrameDecodingHandler
+from .sd_transformers import ParquetToPolarsDataFrameDecodingHandler, PolarsDataFrameToParquetEncodingHandler

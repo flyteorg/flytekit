@@ -7,10 +7,10 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    PARQUET,
-    LOCAL,
-    S3,
     GCS,
+    LOCAL,
+    PARQUET,
+    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
