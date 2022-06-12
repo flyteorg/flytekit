@@ -10,6 +10,7 @@ from flytekit.types.structured.structured_dataset import (
     PARQUET,
     LOCAL,
     S3,
+    GCS,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -29,7 +30,7 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         df = typing.cast(pl.DataFrame, structured_dataset.dataframe)
 
-        local_dir = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_local_directory()
+        local_dir = ctx.file_access.get_random_local_directory()
         local_path = f"{local_dir}/00000"
 
         # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
@@ -37,7 +38,7 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
             df.write_parquet(local_path)
         else:
             df.to_parquet(local_path)
-        remote_dir = ctx.file_access.get_random_remote_directory()
+        remote_dir = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         ctx.file_access.upload_directory(local_dir, remote_dir)
         return literals.StructuredDataset(uri=remote_dir, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
@@ -68,3 +69,5 @@ for protocol in [LOCAL, S3]:
     StructuredDatasetTransformerEngine.register(
         ParquetToPolarsDataFrameDecodingHandler(protocol), default_for_type=True
     )
+StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler(GCS), default_for_type=False)
+StructuredDatasetTransformerEngine.register(ParquetToPolarsDataFrameDecodingHandler(GCS), default_for_type=False)
