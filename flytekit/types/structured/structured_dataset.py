@@ -650,7 +650,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         elif importlib.util.find_spec("pyspark") is not None and isinstance(df, pyspark.sql.DataFrame):
             return pd.DataFrame(df.schema, columns=["StructField"]).to_html()
         elif importlib.util.find_spec("polars") is not None and isinstance(df, pl.DataFrame):
-            return df.to_pandas().describe().to_html()
+            describe_df = df.describe()
+            return pd.DataFrame(describe_df.transpose(), columns=describe_df.columns).to_html(index=False)
         else:
             raise NotImplementedError("Conversion to html string should be implemented")
 
