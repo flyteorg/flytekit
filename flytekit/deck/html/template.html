@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>User Content</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700%7COpen+Sans:400,700" rel="stylesheet">
     <style>
         ol, ul {
             list-style: none;
@@ -21,17 +22,34 @@
 
         #flyte-frame-tabs {
             display: flex;
+            width: 100%;
+            justify-content: center;
+            margin-block: 0;
+            padding-inline-start: 0;
         }
 
         #flyte-frame-tabs li {
             cursor: pointer;
-            flex: auto;
-            padding: 2rem;
-            margin: 0 1rem;
+            padding: 8px;
+            margin: 0;
+            margin-right: 12px;
+            font-size: 14px;
+            line-height: 20px;
+            font-weight: 700;
+            font-style: normal;
+            font-family: Open Sans, helvetica, arial, sans-serif;
+            color: #666666;
+            width: 126px;
+            text-align: center;
+        }
+
+        #flyte-frame-tabs li:last-child {
+            margin-right: 0;
         }
 
         #flyte-frame-tabs li.active {
-            border-bottom: 3px solid rgb(163, 26, 255);
+            border-bottom: 4px solid rgb(163, 26, 255);
+            color: #333333;
         }
 
         #flyte-frame-container {
@@ -44,12 +62,11 @@
 
         #flyte-frame-container > div.active {
             display: block;
-            padding: 1rem 4rem;
+            padding: 2rem 4rem;
         }
     </style>
 
 </head>
-
 <body>
     <nav id="flyte-frame-nav">
         <ul id="flyte-frame-tabs">
