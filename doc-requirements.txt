@@ -18,7 +18,7 @@ argon2-cffi-bindings==21.2.0
     # via argon2-cffi
 arrow==1.2.2
     # via jinja2-time
-astroid==2.11.5
+astroid==2.11.6
     # via sphinx-autoapi
 attrs==21.4.0
     # via
@@ -191,7 +191,7 @@ importlib-metadata==4.11.4
     #   sqlalchemy
 importlib-resources==5.7.1
     # via jsonschema
-ipykernel==6.13.1
+ipykernel==6.14.0
     # via
     #   ipywidgets
     #   jupyter
@@ -269,7 +269,7 @@ jupyterlab-widgets==1.1.0
     # via ipywidgets
 keyring==23.6.0
     # via flytekit
-kiwisolver==1.4.2
+kiwisolver==1.4.3
     # via matplotlib
 kubernetes==23.6.0
     # via -r doc-requirements.in
