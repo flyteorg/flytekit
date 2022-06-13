@@ -7,14 +7,14 @@ Flytekit PyTorch
    :template: custom.rst
    :toctree: generated/
 
-    PyTorchStateDict
+    PyTorchCheckpoint
 """
 from flytekit.loggers import logger
 
 try:
-    from .module import PyTorchModuleTransformer, PyTorchStateDict
-    from .tensor import PyTorchTensorTransformer
+    from .checkpoint import PyTorchCheckpoint, PyTorchCheckpointTransformer
+    from .native import PyTorchModuleTransformer, PyTorchTensorTransformer
 except ImportError:
     logger.info(
-        "We won't register PyTorchTensorTransformer and PyTorchModuleTransformer because torch is not installed."
+        "We won't register PyTorchCheckpointTransformer, PyTorchTensorTransformer, and PyTorchModuleTransformer because torch is not installed."
     )

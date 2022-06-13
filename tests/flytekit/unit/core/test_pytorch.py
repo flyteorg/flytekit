@@ -11,7 +11,12 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
-from flytekit.types.pytorch import PyTorchModuleTransformer, PyTorchStateDict, PyTorchTensorTransformer
+from flytekit.types.pytorch import (
+    PyTorchCheckpoint,
+    PyTorchCheckpointTransformer,
+    PyTorchModuleTransformer,
+    PyTorchTensorTransformer,
+)
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -27,7 +32,8 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     "transformer,python_type,format",
     [
         (PyTorchTensorTransformer(), torch.Tensor, PyTorchTensorTransformer.PYTORCH_TENSOR_FORMAT),
-        (PyTorchModuleTransformer(), PyTorchStateDict, PyTorchModuleTransformer.PYTORCH_STATEDICT_FORMAT),
+        (PyTorchModuleTransformer(), torch.nn.Module, PyTorchModuleTransformer.PYTORCH_MODULE_FORMAT),
+        (PyTorchCheckpointTransformer(), PyTorchCheckpoint, PyTorchCheckpointTransformer.PYTORCH_CHECKPOINT_FORMAT),
     ],
 )
 def test_get_literal_type(transformer, python_type, format):
@@ -47,9 +53,19 @@ def test_get_literal_type(transformer, python_type, format):
         ),
         (
             PyTorchModuleTransformer(),
-            PyTorchStateDict,
-            PyTorchModuleTransformer.PYTORCH_STATEDICT_FORMAT,
-            PyTorchStateDict(module=torch.nn.Linear(2, 2)),
+            torch.nn.Module,
+            PyTorchModuleTransformer.PYTORCH_MODULE_FORMAT,
+            torch.nn.Linear(2, 2),
+        ),
+        (
+            PyTorchCheckpointTransformer(),
+            PyTorchCheckpoint,
+            PyTorchCheckpointTransformer.PYTORCH_CHECKPOINT_FORMAT,
+            PyTorchCheckpoint(
+                module=torch.nn.Linear(2, 2),
+                hyperparameters={"epochs": 10, "batch_size": 32},
+                optimizer=torch.optim.Adam(torch.nn.Linear(2, 2).parameters()),
+            ),
         ),
     ],
 )
@@ -71,8 +87,13 @@ def test_to_python_value_and_literal(transformer, python_type, format, python_va
     output = tf.to_python_value(ctx, lv, python_type)
     if isinstance(python_val, torch.Tensor):
         assert torch.equal(output, python_val)
+    elif isinstance(python_val, torch.nn.Module):
+        for p1, p2 in zip(output.parameters(), python_val.parameters()):
+            if p1.data.ne(p2.data).sum() > 0:
+                assert False
+        assert True
     else:
-        assert isinstance(output, OrderedDict)
+        assert isinstance(output, dict)
 
 
 def test_example_tensor():
@@ -86,10 +107,24 @@ def test_example_tensor():
 
 def test_example_module():
     @task
-    def t1() -> PyTorchStateDict:
+    def t1() -> torch.nn.Module:
         return torch.nn.BatchNorm1d(3, track_running_stats=True)
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    assert task_spec.template.interface.outputs["o0"].type.blob.format is PyTorchModuleTransformer.PYTORCH_MODULE_FORMAT
+
+
+def test_example_checkpoint():
+    @task
+    def t1() -> PyTorchCheckpoint:
+        return PyTorchCheckpoint(
+            module=torch.nn.Linear(2, 2),
+            hyperparameters={"epochs": 10, "batch_size": 32},
+            optimizer=torch.optim.Adam(torch.nn.Linear(2, 2).parameters()),
+        )
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
     assert (
-        task_spec.template.interface.outputs["o0"].type.blob.format is PyTorchModuleTransformer.PYTORCH_STATEDICT_FORMAT
+        task_spec.template.interface.outputs["o0"].type.blob.format
+        is PyTorchCheckpointTransformer.PYTORCH_CHECKPOINT_FORMAT
     )
