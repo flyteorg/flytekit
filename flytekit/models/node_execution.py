@@ -195,7 +195,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         return cls(
             phase=p.phase,
             output_uri=p.output_uri if p.HasField("output_uri") else None,
-            deck_uri=p.deck_uri if p.HasField("output_uri") else None,
+            deck_uri=p.deck_uri,
             error=_core_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
             started_at=p.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
             duration=p.duration.ToTimedelta(),
