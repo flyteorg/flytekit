@@ -123,7 +123,7 @@ entrypoints==0.4
     #   papermill
 fastjsonschema==2.15.3
     # via nbformat
-flyteidl==1.0.1
+flyteidl==1.1.6
     # via flytekit
 fonttools==4.33.3
     # via matplotlib
