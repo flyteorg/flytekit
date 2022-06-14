@@ -260,6 +260,8 @@ class FlyteLiteralConverter(object):
                 self._create_upload_fn,
             )
             try:
+                # Here we use click converter to convert the input in command line to native python type,
+                # and then use flyte converter to convert it to literal.
                 python_val = converter._click_type.convert(value, param, ctx)
                 literal = converter.convert_to_literal(ctx, param, python_val)
                 self._python_type = python_type

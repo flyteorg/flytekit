@@ -84,8 +84,8 @@ def test_union_type(input):
 def test_get_entities_in_file():
     e = get_entities_in_file(WORKFLOW_FILE)
     assert e.workflows == ["my_wf"]
-    assert e.tasks == ["get_subset_df", "print_all", "show_sd"]
-    assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd"]
+    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "test_union"]
+    assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd", "test_union"]
 
 
 @pytest.mark.parametrize(

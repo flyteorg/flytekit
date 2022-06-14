@@ -69,11 +69,12 @@ def translate_inputs_to_literals(
 
         if isinstance(input_val, list):
             lt = flyte_literal_type
-            for i in range(len(flyte_literal_type.union_type.variants)):
-                variant = flyte_literal_type.union_type.variants[i]
-                if variant.collection_type:
-                    lt = variant
-                    val_type = get_args(val_type)[i]
+            if flyte_literal_type.union_type:
+                for i in range(len(flyte_literal_type.union_type.variants)):
+                    variant = flyte_literal_type.union_type.variants[i]
+                    if variant.collection_type:
+                        lt = variant
+                        val_type = get_args(val_type)[i]
             if lt.collection_type is None:
                 raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
             try:
@@ -86,14 +87,15 @@ def translate_inputs_to_literals(
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
             lt = flyte_literal_type
-            for i in range(len(flyte_literal_type.union_type.variants)):
-                variant = flyte_literal_type.union_type.variants[i]
-                if variant.map_value_type:
-                    lt = variant
-                    val_type = get_args(val_type)[i]
-                if variant.simple == _type_models.SimpleType.STRUCT:
-                    lt = variant
-                    val_type = get_args(val_type)[i]
+            if flyte_literal_type.union_type:
+                for i in range(len(flyte_literal_type.union_type.variants)):
+                    variant = flyte_literal_type.union_type.variants[i]
+                    if variant.map_value_type:
+                        lt = variant
+                        val_type = get_args(val_type)[i]
+                    if variant.simple == _type_models.SimpleType.STRUCT:
+                        lt = variant
+                        val_type = get_args(val_type)[i]
             if lt.map_value_type is None and lt.simple != _type_models.SimpleType.STRUCT:
                 raise TypeError(f"Not a map type {lt} but got a map {input_val}")
             k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
