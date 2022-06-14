@@ -2,6 +2,7 @@ import datetime
 import functools
 import importlib
 import json
+import logging
 import os
 import pathlib
 import typing
@@ -11,6 +12,7 @@ from typing import cast
 import click
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
+from typing_extensions import get_args
 
 from flytekit import BlobType, Literal, Scalar
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
@@ -243,6 +245,29 @@ class FlyteLiteralConverter(object):
 
         return lit
 
+    def convert_to_union(
+        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
+    ) -> Literal:
+        lt = self._literal_type
+        for i in range(len(self._literal_type.union_type.variants)):
+            variant = self._literal_type.union_type.variants[i]
+            python_type = get_args(self._python_type)[i]
+            converter = FlyteLiteralConverter(
+                ctx,
+                self._flyte_ctx,
+                variant,
+                python_type,
+                self._create_upload_fn,
+            )
+            try:
+                python_val = converter._click_type.convert(value, param, ctx)
+                literal = converter.convert_to_literal(ctx, param, python_val)
+                self._python_type = python_type
+                return literal
+            except Exception or AttributeError:
+                logging.debug(f"Failed to convert python type {python_type} to literal type {variant}")
+        raise ValueError(f"Failed to convert literal type {lt} to python type {self._python_type}")
+
     def convert_to_literal(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
     ) -> Literal:
@@ -262,7 +287,7 @@ class FlyteLiteralConverter(object):
             return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
 
         if self._literal_type.union_type:
-            raise NotImplementedError("Union type is not yet implemented for pyflyte run")
+            return self.convert_to_union(ctx, param, value)
 
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:

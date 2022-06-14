@@ -8,6 +8,7 @@ from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import get_entities_in_file
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
+DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 
 
 def test_pyflyte_run_wf():
@@ -20,12 +21,11 @@ def test_pyflyte_run_wf():
 
 def test_pyflyte_run_cli():
     runner = CliRunner()
-    dir_name = os.path.dirname(os.path.realpath(__file__))
     result = runner.invoke(
         pyflyte.main,
         [
             "run",
-            os.path.join(dir_name, "workflow.py"),
+            WORKFLOW_FILE,
             "my_wf",
             "--a",
             "1",
@@ -40,7 +40,7 @@ def test_pyflyte_run_cli():
             "--f",
             '{"x":1.0, "y":2.0}',
             "--g",
-            os.path.join(dir_name, "testdata/df.parquet"),
+            os.path.join(DIR_NAME, "testdata/df.parquet"),
             "--i",
             "2020-05-01",
             "--j",
@@ -48,10 +48,32 @@ def test_pyflyte_run_cli():
             "--k",
             "RED",
             "--remote",
-            os.path.join(dir_name, "testdata"),
+            os.path.join(DIR_NAME, "testdata"),
             "--image",
-            os.path.join(dir_name, "testdata"),
+            os.path.join(DIR_NAME, "testdata"),
             "--h",
+        ],
+        catch_exceptions=False,
+    )
+    print(result.stdout)
+    assert result.exit_code == 0
+
+
+@pytest.mark.parametrize(
+    "input",
+    ["1", os.path.join(DIR_NAME, "testdata/df.parquet"), "[1,2,3]", '{"i":1,"a":["h","e"]}', "2020-05-01", "RED"],
+)
+def test_union_type(input):
+    runner = CliRunner()
+    dir_name = os.path.dirname(os.path.realpath(__file__))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(dir_name, "workflow.py"),
+            "test_union",
+            "--a",
+            input,
         ],
         catch_exceptions=False,
     )

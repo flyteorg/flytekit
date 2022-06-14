@@ -58,6 +58,11 @@ def print_all(
     print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}")
 
 
+@task
+def test_union(a: typing.Union[int, FlyteFile, typing.List[int], MyDataclass, datetime.datetime, Color]):
+    print(a)
+
+
 @workflow
 def my_wf(
     a: int,
