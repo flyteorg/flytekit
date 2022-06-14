@@ -317,28 +317,6 @@ class PlatformConfig(object):
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
 
-    def with_parameters(
-        self,
-        endpoint: str = "localhost:30081",
-        insecure: bool = False,
-        insecure_skip_verify: bool = False,
-        command: typing.Optional[typing.List[str]] = None,
-        client_id: typing.Optional[str] = None,
-        client_credentials_secret: typing.Optional[str] = None,
-        scopes: List[str] = None,
-        auth_mode: AuthType = AuthType.STANDARD,
-    ) -> PlatformConfig:
-        return PlatformConfig(
-            endpoint=endpoint,
-            insecure=insecure,
-            insecure_skip_verify=insecure_skip_verify,
-            command=command,
-            client_id=client_id,
-            client_credentials_secret=client_credentials_secret,
-            scopes=scopes if scopes else [],
-            auth_mode=auth_mode,
-        )
-
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
         """

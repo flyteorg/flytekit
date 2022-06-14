@@ -4,6 +4,7 @@ import os
 import os as _os
 import stat as _stat
 import sys as _sys
+from dataclasses import replace
 from typing import Callable, Dict, List, Tuple, Union
 
 import click as _click
@@ -276,7 +277,7 @@ def _get_client(host: str, insecure: bool) -> _friendly_client.SynchronousFlyteC
     if parent_ctx.obj["cacert"]:
         kwargs["root_certificates"] = parent_ctx.obj["cacert"]
     cfg = parent_ctx.obj["config"]
-    cfg = cfg.with_parameters(endpoint=host, insecure=insecure)
+    cfg = replace(cfg, endpoint=host, insecure=insecure)
 
     return _friendly_client.SynchronousFlyteClient(cfg, **kwargs)
 
