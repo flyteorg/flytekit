@@ -569,7 +569,7 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(insecure=True),
+            platform=PlatformConfig(auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
                 s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
             ),
