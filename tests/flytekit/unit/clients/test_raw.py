@@ -52,7 +52,13 @@ def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_ad
 @mock.patch("flytekit.clients.raw.auth_service")
 @mock.patch("subprocess.run")
 def test_refresh_credentials_from_command(mock_call_to_external_process, mock_admin_auth):
-    _test_refresh_credentials_from_command(mock_call_to_external_process, mock_admin_auth, None)
+    _test_refresh_credentials_from_command(
+        mock_call_to_external_process=mock_call_to_external_process,
+        mock_admin_auth=mock_admin_auth,
+        mock_env=None,
+        env=False,
+        command=["command", "generating", "token"],
+    )
 
 
 @patch("flytekit.configuration.internal.Credentials.COMMAND.read")
@@ -62,19 +68,15 @@ def test_refresh_credentials_from_command_from_environment_variable(
     mock_call_to_external_process, mock_admin_auth, mock_env
 ):
     _test_refresh_credentials_from_command(
-        mock_call_to_external_process,
-        mock_admin_auth,
-        mock_env,
-        True,
+        mock_call_to_external_process=mock_call_to_external_process,
+        mock_admin_auth=mock_admin_auth,
+        mock_env=mock_env,
+        env=True,
         command=["command", "generating", "token", "env"],
     )
 
 
-def _test_refresh_credentials_from_command(
-    mock_call_to_external_process, mock_admin_auth, mock_env, env=False, command=None
-):
-    if command is None:
-        command = ["command", "generating", "token"]
+def _test_refresh_credentials_from_command(mock_call_to_external_process, mock_admin_auth, mock_env, env, command):
     token = "token"
 
     mock_call_to_external_process.return_value = CompletedProcess(command, 0, stdout=token)
