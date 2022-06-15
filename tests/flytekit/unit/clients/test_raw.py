@@ -66,6 +66,7 @@ def test_refresh_credentials_from_command(mock_call_to_external_process, mock_ad
     assert cc._metadata[0][0] == "flyte-authorization"
     assert cc._metadata[0][1] == "Bearer token"
 
+
 @mock.patch("flytekit.clients.raw.dataproxy_service")
 @mock.patch("flytekit.clients.raw.get_basic_authorization_header")
 @mock.patch("flytekit.clients.raw.get_token")
@@ -74,13 +75,13 @@ def test_refresh_credentials_from_command(mock_call_to_external_process, mock_ad
 @mock.patch("flytekit.clients.raw.grpc.insecure_channel")
 @mock.patch("flytekit.clients.raw.grpc.secure_channel")
 def test_refresh_client_credentials_aka_basic(
-    mock_secure_channel,
-    mock_channel,
-    mock_admin,
-    mock_admin_auth,
-    mock_get_token,
-    mock_get_basic_header,
-    mock_dataproxy,
+        mock_secure_channel,
+        mock_channel,
+        mock_admin,
+        mock_admin_auth,
+        mock_get_token,
+        mock_get_basic_header,
+        mock_dataproxy,
 ):
     mock_secure_channel.return_value = True
     mock_channel.return_value = True
