@@ -275,7 +275,9 @@ class RawSynchronousFlyteClient(object):
             cli_logger.error("Failed to generate token from command {}".format(command))
             raise _user_exceptions.FlyteAuthenticationException("Problems refreshing token with command: " + str(e))
 
-        authorization_header_key = self.public_client_config.authorization_metadata_key or Credentials.COMMAND.read() or None
+        authorization_header_key = self.public_client_config.authorization_metadata_key or Credentials.COMMAND.read()
+        if not authorization_header_key:
+            self.set_access_token(output.stdout.strip())
         self.set_access_token(output.stdout.strip(), authorization_header_key)
 
     def _refresh_credentials_noop(self):
