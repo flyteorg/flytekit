@@ -104,7 +104,7 @@ def test_union_type2(input):
 def test_union_type_with_invalid_input():
     runner = CliRunner()
     with pytest.raises(ValueError, match="Failed to convert python type typing.Union"):
-        result = runner.invoke(
+        runner.invoke(
             pyflyte.main,
             [
                 "run",
