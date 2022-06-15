@@ -277,7 +277,6 @@ def _get_client(host: str, insecure: bool) -> _friendly_client.SynchronousFlyteC
     if parent_ctx.obj["cacert"]:
         kwargs["root_certificates"] = parent_ctx.obj["cacert"]
     cfg = parent_ctx.obj["config"]
-    print(cfg)
     cfg = replace(cfg, endpoint=host, insecure=insecure)
 
     return _friendly_client.SynchronousFlyteClient(cfg, **kwargs)
