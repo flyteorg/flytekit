@@ -65,6 +65,17 @@ class Credentials(object):
     This command is executed to return a token using an external process.
     """
 
+    AUTHORIZATION_METADATA_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "authorization_metadata_key", list), YamlConfigEntry("admin.authorizationHeader", list))
+
+    """
+    The authorization metadata key used for passing access tokens in gRPC requests.
+    Traditionally this value is 'authorization' however it is made configurable.
+    The default value in admin is 'flyte-authorization', see 
+    https://github.com/flyteorg/flyteadmin/blob/87cc9424ca4b684515c92f9d40cbcc4f5578e70c/auth/config/config.go#L61-L62
+    For reasoning about calling the header 'flyte-authorization' instead of 'authorization', see
+    https://github.com/flyteorg/flyteadmin/blob/689bfab25c372f4dffcd398dc896cd786912e0df/auth/handlers.go#L187-L191
+    """
+
     CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"), YamlConfigEntry("admin.clientId"))
     """
     This is the public identifier for the app which handles authorization for a Flyte deployment.

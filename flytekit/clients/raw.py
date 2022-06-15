@@ -21,6 +21,7 @@ from google.protobuf.json_format import MessageToJson as _MessageToJson
 
 from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.configuration import AuthType, PlatformConfig
+from flytekit.configuration.internal import Credentials
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
@@ -264,7 +265,7 @@ class RawSynchronousFlyteClient(object):
         :return:
         """
 
-        command = self._cfg.command
+        command = self._cfg.command or Credentials.COMMAND.read()
         if not command:
             raise FlyteAuthenticationException("No command specified in configuration for command authentication")
         cli_logger.debug("Starting external process to generate id token. Command {}".format(command))
@@ -273,13 +274,15 @@ class RawSynchronousFlyteClient(object):
         except subprocess.CalledProcessError as e:
             cli_logger.error("Failed to generate token from command {}".format(command))
             raise _user_exceptions.FlyteAuthenticationException("Problems refreshing token with command: " + str(e))
-        self.set_access_token(output.stdout.strip())
+
+        authorization_header_key = self.public_client_config.authorization_metadata_key or Credentials.COMMAND.read() or None
+        self.set_access_token(output.stdout.strip(), authorization_header_key)
 
     def _refresh_credentials_noop(self):
         pass
 
     def refresh_credentials(self):
-        cfg_auth = self._cfg.auth_mode
+        cfg_auth = self._cfg.auth_mode or Credentials.AUTH_MODE.read()
         if type(cfg_auth) is str:
             try:
                 cfg_auth = AuthType[cfg_auth.upper()]
