@@ -59,7 +59,12 @@ def print_all(
 
 
 @task
-def test_union(a: typing.Union[int, FlyteFile, typing.List[int], MyDataclass, datetime.datetime, Color]):
+def test_union1(a: typing.Union[int, FlyteFile, typing.Dict[str, float], datetime.datetime, Color]):
+    print(a)
+
+
+@task
+def test_union2(a: typing.Union[float, typing.List[int], MyDataclass]):
     print(a)
 
 

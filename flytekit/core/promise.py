@@ -69,16 +69,17 @@ def translate_inputs_to_literals(
 
         if isinstance(input_val, list):
             lt = flyte_literal_type
+            python_type = val_type
             if flyte_literal_type.union_type:
                 for i in range(len(flyte_literal_type.union_type.variants)):
                     variant = flyte_literal_type.union_type.variants[i]
                     if variant.collection_type:
                         lt = variant
-                        val_type = get_args(val_type)[i]
+                        python_type = get_args(val_type)[i]
             if lt.collection_type is None:
                 raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
             try:
-                sub_type = ListTransformer.get_sub_type(val_type)
+                sub_type = ListTransformer.get_sub_type(python_type)
             except ValueError:
                 if len(input_val) == 0:
                     raise
@@ -87,21 +88,22 @@ def translate_inputs_to_literals(
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
             lt = flyte_literal_type
+            python_type = val_type
             if flyte_literal_type.union_type:
                 for i in range(len(flyte_literal_type.union_type.variants)):
                     variant = flyte_literal_type.union_type.variants[i]
                     if variant.map_value_type:
                         lt = variant
-                        val_type = get_args(val_type)[i]
+                        python_type = get_args(val_type)[i]
                     if variant.simple == _type_models.SimpleType.STRUCT:
                         lt = variant
-                        val_type = get_args(val_type)[i]
+                        python_type = get_args(val_type)[i]
             if lt.map_value_type is None and lt.simple != _type_models.SimpleType.STRUCT:
                 raise TypeError(f"Not a map type {lt} but got a map {input_val}")
-            k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
             if lt.simple == _type_models.SimpleType.STRUCT:
                 return TypeEngine.to_literal(ctx, input_val, type(input_val), lt)
             else:
+                k_type, sub_type = DictTransformer.get_dict_types(python_type)  # type: ignore
                 literal_map = {k: extract_value(ctx, v, sub_type, lt.map_value_type) for k, v in input_val.items()}
                 return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literal_map))
         elif isinstance(input_val, Promise):

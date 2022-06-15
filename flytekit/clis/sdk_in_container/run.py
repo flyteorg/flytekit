@@ -266,9 +266,9 @@ class FlyteLiteralConverter(object):
                 literal = converter.convert_to_literal(ctx, param, python_val)
                 self._python_type = python_type
                 return literal
-            except Exception or AttributeError:
-                logging.debug(f"Failed to convert python type {python_type} to literal type {variant}")
-        raise ValueError(f"Failed to convert literal type {lt} to python type {self._python_type}")
+            except (Exception or AttributeError) as e:
+                logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
+        raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
 
     def convert_to_literal(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
