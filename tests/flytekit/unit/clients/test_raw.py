@@ -75,17 +75,15 @@ def _test_refresh_credentials_from_command(
     mock_call_to_external_process, mock_admin_auth, mock_read_command_from_env=None, env=False
 ):
     command = ["command", "generating", "token"]
-    token = "token"
-
-    mock_call_to_external_process.return_value = CompletedProcess(command, 0, stdout=token)
-
     mock_admin_auth.AuthMetadataServiceStub.return_value = get_admin_stub_mock()
-
     if not env:
         cc = RawSynchronousFlyteClient(PlatformConfig(command=command))
     else:
         mock_read_command_from_env.return_value = command
         cc = RawSynchronousFlyteClient(PlatformConfig())
+
+    token = "token"
+    mock_call_to_external_process.return_value = CompletedProcess(command, 0, stdout=token)
 
     cc._refresh_credentials_from_command()
 
