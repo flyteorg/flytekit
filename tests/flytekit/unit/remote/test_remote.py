@@ -193,3 +193,21 @@ def test_more_stuff(mock_client):
     # should give a different thing
     computed_v3 = r._version_from_hash(b"", serialization_settings, "hi")
     assert computed_v2 != computed_v3
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_generate_http_domain_sandbox_rewrite(mock_client):
+    _, temp_filename = tempfile.mkstemp(suffix=".yaml")
+    with open(temp_filename, "w") as f:
+        # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
+        flytectl_config_file = """admin:
+    endpoint: localhost:30081
+    authType: Pkce
+    insecure: true
+        """
+        f.write(flytectl_config_file)
+
+    remote = FlyteRemote(
+        config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
+    )
+    assert remote.generate_http_domain() == "http://localhost:30080"
