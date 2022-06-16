@@ -9,6 +9,7 @@ from mock import MagicMock, patch
 
 from flytekit.clients.raw import RawSynchronousFlyteClient, get_basic_authorization_header, get_token
 from flytekit.configuration import AuthType, PlatformConfig
+from flytekit.configuration.internal import Credentials
 
 
 def get_admin_stub_mock() -> mock.MagicMock:
@@ -49,17 +50,21 @@ def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_ad
     assert client.check_access_token("abc")
 
 
+@mock.patch("flytekit.clients.raw.RawSynchronousFlyteClient.set_access_token")
+@mock.patch("flytekit.clients.raw.auth_service")
 @mock.patch("subprocess.run")
-def test_refresh_credentials_from_command(mock_call_to_external_process):
-    command = ["command", "generating", "token"]
+def test_refresh_credentials_from_command(mock_call_to_external_process, mock_admin_auth, mock_set_access_token):
     token = "token"
+    command = ["command", "generating", "token"]
+
+    mock_admin_auth.AuthMetadataServiceStub.return_value = get_admin_stub_mock()
+    client = RawSynchronousFlyteClient(PlatformConfig(command=command))
 
     mock_call_to_external_process.return_value = CompletedProcess(command, 0, stdout=token)
-
-    cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.EXTERNAL_PROCESS, command=command))
-    cc._refresh_credentials_from_command()
+    client._refresh_credentials_from_command()
 
     mock_call_to_external_process.assert_called_with(command, capture_output=True, text=True, check=True)
+    mock_set_access_token.assert_called_with(token, client.public_client_config.authorization_metadata_key)
 
 
 @mock.patch("flytekit.clients.raw.dataproxy_service")
@@ -195,6 +200,14 @@ def test_basic_strings(mocked_method):
 
 @patch.object(RawSynchronousFlyteClient, "_refresh_credentials_from_command")
 def test_refresh_command(mocked_method):
-    cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.EXTERNAL_PROCESS))
+    cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.EXTERNALCOMMAND))
+    cc.refresh_credentials()
+    assert mocked_method.called
+
+
+@patch.object(RawSynchronousFlyteClient, "_refresh_credentials_from_command")
+def test_refresh_from_environment_variable(mocked_method, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv(Credentials.AUTH_MODE.legacy.get_env_name(), AuthType.EXTERNAL_PROCESS.name, prepend=False)
+    cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode=None).auto(None))
     cc.refresh_credentials()
     assert mocked_method.called
