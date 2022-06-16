@@ -156,7 +156,10 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         return self._get_command_fn(settings)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {**settings.env, **self.environment} if self.environment else settings.env
+        env = {}
+        for elem in (settings.env, self.environment):
+            if elem:
+                env.update(elem)
         return _get_container_definition(
             image=get_registerable_container_image(self.container_image, settings.image_config),
             command=[],
