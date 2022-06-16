@@ -21,7 +21,6 @@ from google.protobuf.json_format import MessageToJson as _MessageToJson
 
 from flytekit.clis.auth import credentials as _credentials_access
 from flytekit.configuration import AuthType, PlatformConfig
-from flytekit.configuration.internal import Credentials
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlyteAuthenticationException
 from flytekit.loggers import cli_logger
