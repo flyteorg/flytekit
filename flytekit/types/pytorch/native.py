@@ -1,5 +1,4 @@
 import pathlib
-import typing
 from typing import Generic, Type, TypeVar
 
 import torch
@@ -58,7 +57,7 @@ class PyTorchTypeTransformer(TypeTransformer, Generic[T]):
         # load pytorch tensor from a file
         return torch.load(local_path)
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if (
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
