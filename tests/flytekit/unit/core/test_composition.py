@@ -1,4 +1,4 @@
-import typing
+from typing import Dict, List, NamedTuple, Optional, Union
 
 import pytest
 
@@ -10,7 +10,7 @@ from flytekit.models import literals as _literal_models
 
 def test_wf1_with_subwf():
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def t1(a: int) -> NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
         return a, "world-" + str(a)
 
@@ -132,7 +132,7 @@ def test_lp_default_handling():
 
 def test_wf1_with_lp_node():
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def t1(a: int) -> NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
         return a, "world-" + str(a)
 
@@ -175,25 +175,25 @@ def test_wf1_with_lp_node():
 
 def test_optional_input():
     @task()
-    def t1(b: typing.Optional[int] = None) -> typing.Optional[int]:
+    def t1(a: Optional[int] = None, b: Optional[List[int]] = None, c: Optional[Dict[str, int]] = None) -> Optional[int]:
         ...
 
     @task()
-    def t2(c: typing.Optional[int] = None) -> typing.Optional[int]:
+    def t2(a: Union[int, Optional[List[int]], None] = None) -> Union[int, Optional[List[int]], None]:
         ...
 
     @workflow
-    def wf(a: typing.Optional[int] = 1) -> typing.Optional[int]:
+    def wf(a: Optional[int] = 1) -> Optional[int]:
         t1()
-        return t2(c=a)
+        return t2(a=a)
 
     assert wf() is None
 
-    @task()
-    def t3(c: typing.Optional[int] = 3) -> typing.Optional[int]:
-        ...
-
     with pytest.raises(ValueError, match="The default value for the optional type must be None, but got 3"):
+
+        @task()
+        def t3(c: Optional[int] = 3) -> Optional[int]:
+            ...
 
         @workflow
         def wf():

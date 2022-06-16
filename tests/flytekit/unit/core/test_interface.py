@@ -200,7 +200,9 @@ def test_parameters_and_defaults():
     assert our_interface.inputs == {"a": Annotated[int, "some annotation"]}
     assert our_interface.outputs == {"o0": Annotated[int, "some annotation"]}
 
-    def z(a: typing.Optional[int] = None, b: typing.Optional[str] = None) -> typing.Tuple[int, str]:
+    def z(
+        a: typing.Optional[int] = None, b: typing.Optional[str] = None, c: typing.Union[typing.List[int], None] = None
+    ) -> typing.Tuple[int, str]:
         ...
 
     our_interface = transform_function_to_interface(z)
@@ -209,6 +211,8 @@ def test_parameters_and_defaults():
     assert params.parameters["a"].default.scalar.none_type == Void()
     assert not params.parameters["b"].required
     assert params.parameters["b"].default.scalar.none_type == Void()
+    assert not params.parameters["c"].required
+    assert params.parameters["c"].default.scalar.none_type == Void()
 
 
 def test_parameters_with_docstring():
