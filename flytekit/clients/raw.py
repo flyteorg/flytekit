@@ -265,7 +265,7 @@ class RawSynchronousFlyteClient(object):
         :return:
         """
 
-        command = self._cfg.command or Credentials.COMMAND.read()
+        command = self._cfg.command
         if not command:
             raise FlyteAuthenticationException("No command specified in configuration for command authentication")
         cli_logger.debug("Starting external process to generate id token. Command {}".format(command))
@@ -283,7 +283,7 @@ class RawSynchronousFlyteClient(object):
         pass
 
     def refresh_credentials(self):
-        cfg_auth = self._cfg.auth_mode or Credentials.AUTH_MODE.read()
+        cfg_auth = self._cfg.auth_mode
         if type(cfg_auth) is str:
             try:
                 cfg_auth = AuthType[cfg_auth.upper()]
