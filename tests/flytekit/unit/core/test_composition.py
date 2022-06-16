@@ -35,7 +35,7 @@ def test_wf1_with_subwf():
 
 
 def test_single_named_output_subwf():
-    nt = typing.NamedTuple("SubWfOutput", sub_int=int)
+    nt = NamedTuple("SubWfOutput", sub_int=int)
 
     @task
     def t1(a: int) -> nt:
@@ -70,7 +70,7 @@ def test_single_named_output_subwf():
 
 def test_lp_default_handling():
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def t1(a: int) -> NamedTuple("OutputsBC", t1_int_output=int, c=str):
         a = a + 2
         return a, "world-" + str(a)
 
