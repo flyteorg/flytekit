@@ -50,9 +50,10 @@ def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_ad
     assert client.check_access_token("abc")
 
 
+@mock.patch("flytekit.clients.raw.RawSynchronousFlyteClient.set_access_token")
 @mock.patch("flytekit.clients.raw.auth_service")
 @mock.patch("subprocess.run")
-def test_refresh_credentials_from_command(mock_call_to_external_process, mock_admin_auth):
+def test_refresh_credentials_from_command(mock_call_to_external_process, mock_admin_auth, mock_set_access_token):
     token = "token"
     command = ["command", "generating", "token"]
 
@@ -63,8 +64,7 @@ def test_refresh_credentials_from_command(mock_call_to_external_process, mock_ad
     cc._refresh_credentials_from_command()
 
     mock_call_to_external_process.assert_called_with(command, capture_output=True, text=True, check=True)
-    assert cc._metadata[0][0] == "flyte-authorization"
-    assert cc._metadata[0][1] == f"Bearer {token}"
+    mock_set_access_token.assert_called_with(token, cc.public_client_config.authorization_metadata_key)
 
 
 @mock.patch("flytekit.clients.raw.dataproxy_service")
