@@ -31,8 +31,8 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 @pytest.mark.parametrize(
     "transformer,python_type,format",
     [
-        (PyTorchTensorTransformer(), torch.Tensor, PyTorchTensorTransformer.PYTORCH_TENSOR_FORMAT),
-        (PyTorchModuleTransformer(), torch.nn.Module, PyTorchModuleTransformer.PYTORCH_MODULE_FORMAT),
+        (PyTorchTensorTransformer(), torch.Tensor, PyTorchTensorTransformer.PYTORCH_FORMAT),
+        (PyTorchModuleTransformer(), torch.nn.Module, PyTorchModuleTransformer.PYTORCH_FORMAT),
         (PyTorchCheckpointTransformer(), PyTorchCheckpoint, PyTorchCheckpointTransformer.PYTORCH_CHECKPOINT_FORMAT),
     ],
 )
@@ -48,13 +48,13 @@ def test_get_literal_type(transformer, python_type, format):
         (
             PyTorchTensorTransformer(),
             torch.Tensor,
-            PyTorchTensorTransformer.PYTORCH_TENSOR_FORMAT,
+            PyTorchTensorTransformer.PYTORCH_FORMAT,
             torch.tensor([[1, 2], [3, 4]]),
         ),
         (
             PyTorchModuleTransformer(),
             torch.nn.Module,
-            PyTorchModuleTransformer.PYTORCH_MODULE_FORMAT,
+            PyTorchModuleTransformer.PYTORCH_FORMAT,
             torch.nn.Linear(2, 2),
         ),
         (
@@ -102,7 +102,7 @@ def test_example_tensor():
         return torch.flatten(array)
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
-    assert task_spec.template.interface.outputs["o0"].type.blob.format is PyTorchTensorTransformer.PYTORCH_TENSOR_FORMAT
+    assert task_spec.template.interface.outputs["o0"].type.blob.format is PyTorchTensorTransformer.PYTORCH_FORMAT
 
 
 def test_example_module():
@@ -111,7 +111,7 @@ def test_example_module():
         return torch.nn.BatchNorm1d(3, track_running_stats=True)
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
-    assert task_spec.template.interface.outputs["o0"].type.blob.format is PyTorchModuleTransformer.PYTORCH_MODULE_FORMAT
+    assert task_spec.template.interface.outputs["o0"].type.blob.format is PyTorchModuleTransformer.PYTORCH_FORMAT
 
 
 def test_example_checkpoint():
