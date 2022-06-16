@@ -58,13 +58,13 @@ def test_refresh_credentials_from_command(mock_call_to_external_process, mock_ad
     command = ["command", "generating", "token"]
 
     mock_admin_auth.AuthMetadataServiceStub.return_value = get_admin_stub_mock()
-    cc = RawSynchronousFlyteClient(PlatformConfig(command=command))
+    client = RawSynchronousFlyteClient(PlatformConfig(command=command))
 
     mock_call_to_external_process.return_value = CompletedProcess(command, 0, stdout=token)
-    cc._refresh_credentials_from_command()
+    client._refresh_credentials_from_command()
 
     mock_call_to_external_process.assert_called_with(command, capture_output=True, text=True, check=True)
-    mock_set_access_token.assert_called_with(token, cc.public_client_config.authorization_metadata_key)
+    mock_set_access_token.assert_called_with(token, client.public_client_config.authorization_metadata_key)
 
 
 @mock.patch("flytekit.clients.raw.dataproxy_service")
