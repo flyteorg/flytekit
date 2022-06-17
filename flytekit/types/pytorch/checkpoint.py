@@ -40,6 +40,7 @@ class PyTorchCheckpoint:
             isinstance(self.hyperparameters, dict)
             or (is_dataclass(self.hyperparameters) and not isinstance(self.hyperparameters, type))
             or (isinstance(self.hyperparameters, tuple) and hasattr(self.hyperparameters, "_fields"))
+            or (self.hyperparameters is None)
         ):
             raise TypeError(
                 f"hyperparameters must be a dict, dataclass, or NamedTuple. Got {type(self.hyperparameters)}"
