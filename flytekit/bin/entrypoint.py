@@ -4,6 +4,7 @@ import os
 import pathlib
 import subprocess
 import tempfile
+import time
 import traceback as _traceback
 from typing import List, Optional
 
@@ -454,6 +455,7 @@ def execute_task_cmd(
     resolver,
     resolver_args,
 ):
+    start = time.perf_counter()
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
     _click.echo("")
@@ -479,6 +481,8 @@ def execute_task_cmd(
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
     )
+    end = time.perf_counter()
+    print("Time spend:", end-start)
 
 
 @_pass_through.command("pyflyte-fast-execute")
