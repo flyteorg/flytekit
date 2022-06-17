@@ -5,7 +5,7 @@ PLUGIN_NAME = "pod"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "flytekit>=1.0.0b0,<1.1.0",
+    "flytekit>=1.0.0b3,<1.2.0",
     "kubernetes>=12.0.1",
 ]
 

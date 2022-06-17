@@ -5,7 +5,7 @@ PLUGIN_NAME = "papermill"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "flytekit>=1.0.0b3,<1.1.0",
+    "flytekit>=1.0.0b3,<1.2.0",
     "papermill>=1.2.0",
     "nbconvert>=6.0.7",
     "ipykernel>=5.0.0",
