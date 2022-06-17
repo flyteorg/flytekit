@@ -125,16 +125,6 @@ In such a case, you can add a special directive in the `setup.py` which will ins
 
     ```
 
-### Flytekit Version Pinning
-Currently we advocate pinning to minor releases of flytekit. To bump the pins across the board, `cd plugins/` and then
-update the command below with the appropriate range and run
-
-```bash
-for f in $(ls **/setup.py); do sed -i "s/flytekit>.*,<1.1/flytekit>=1.1.0b0,<1.2/" $f; done
-```
-
-Try using `gsed` instead of `sed` if you are on a Mac. Also this only works of course for setup files that start with the version in your sed command. There may be plugins that have different pins to start out with.
-
 ## References 📚
 - Example of a simple Python task that allows adding only Python side functionality: [flytekit-greatexpectations](./flytekit-greatexpectations/)
 - Example of a TypeTransformer or a Type Plugin: [flytekit-pandera](./flytekit-pandera/). These plugins add new types to Flyte and tell Flyte how to transform them and add additional features through types. Flyte is a multi-lang system, and type transformers allow marshaling between Flytekit and backend and other languages.
