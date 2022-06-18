@@ -201,7 +201,7 @@ nest-asyncio==1.5.5
     #   jupyter-client
     #   nbclient
     #   notebook
-notebook==6.4.11
+notebook==6.4.12
     # via great-expectations
 numpy==1.22.4
     # via
