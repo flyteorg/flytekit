@@ -1,12 +1,14 @@
 from dataclasses import asdict, dataclass
 from typing import NamedTuple
 
+import pytest
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from dataclasses_json import dataclass_json
 
 from flytekit import task, workflow
+from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekit.types.pytorch import PyTorchCheckpoint
 
 
@@ -43,7 +45,7 @@ class Net(nn.Module):
 
 
 @task
-def generate_model(hyperparameters: Hyperparameters) -> PyTorchCheckpoint:
+def generate_model_dict(hyperparameters: Hyperparameters) -> PyTorchCheckpoint:
     bn = Net()
     optimizer = optim.SGD(bn.parameters(), lr=0.001, momentum=0.9)
     return PyTorchCheckpoint(module=bn, hyperparameters=asdict(hyperparameters), optimizer=optimizer)
@@ -64,6 +66,18 @@ def generate_model_dataclass(hyperparameters: Hyperparameters) -> PyTorchCheckpo
 
 
 @task
+def generate_model_only_module() -> PyTorchCheckpoint:
+    bn = Net()
+    return PyTorchCheckpoint(module=bn)
+
+
+@task
+def empty_checkpoint():
+    with pytest.raises(TypeTransformerFailedError):
+        return PyTorchCheckpoint()
+
+
+@task
 def t1(checkpoint: PyTorchCheckpoint):
     new_bn = Net()
     new_bn.load_state_dict(checkpoint["module_state_dict"])
@@ -76,12 +90,14 @@ def t1(checkpoint: PyTorchCheckpoint):
 
 @workflow
 def wf():
-    checkpoint_dict = generate_model(hyperparameters=Hyperparameters(epochs=5, loss=0.4))
+    checkpoint_dict = generate_model_dict(hyperparameters=Hyperparameters(epochs=5, loss=0.4))
     checkpoint_tuple = generate_model_tuple()
     checkpoint_dataclass = generate_model_dataclass(hyperparameters=Hyperparameters(epochs=5, loss=0.4))
     t1(checkpoint=checkpoint_dict)
     t1(checkpoint=checkpoint_tuple)
     t1(checkpoint=checkpoint_dataclass)
+    generate_model_only_module()
+    empty_checkpoint()
 
 
 @workflow

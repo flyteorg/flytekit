@@ -54,6 +54,7 @@ class PyTorchTypeTransformer(TypeTransformer, Generic[T]):
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
+        # cpu <-> gpu conversion
         if torch.cuda.is_available():
             map_location = "cuda:0"
         else:

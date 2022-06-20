@@ -42,9 +42,12 @@ class PyTorchCheckpoint:
             or (isinstance(self.hyperparameters, tuple) and hasattr(self.hyperparameters, "_fields"))
             or (self.hyperparameters is None)
         ):
-            raise TypeError(
+            raise TypeTransformerFailedError(
                 f"hyperparameters must be a dict, dataclass, or NamedTuple. Got {type(self.hyperparameters)}"
             )
+
+        if not (self.module or self.hyperparameters or self.optimizer):
+            raise TypeTransformerFailedError("Must have at least one of module, hyperparameters, or optimizer")
 
 
 class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
@@ -115,6 +118,7 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
+        # cpu <-> gpu conversion
         if torch.cuda.is_available():
             map_location = "cuda:0"
         else:
