@@ -82,17 +82,17 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
 
         to_save = {}
         for field in fields(python_val):
-            if field.name in ["module", "optimizer"]:
-                to_save[field.name + "_state_dict"] = getattr(getattr(python_val, field.name), "state_dict")()
-            elif field.name == "hyperparameters":
-                hyperparameters = getattr(python_val, field.name)
+            value = getattr(python_val, field.name)
 
-                if isinstance(hyperparameters, dict):
-                    to_save.update(hyperparameters)
-                elif isinstance(hyperparameters, tuple):
-                    to_save.update(hyperparameters._asdict())
-                elif is_dataclass(hyperparameters):
-                    to_save.update(asdict(hyperparameters))
+            if value and field.name in ["module", "optimizer"]:
+                to_save[field.name + "_state_dict"] = getattr(value, "state_dict")()
+            elif value and field.name == "hyperparameters":
+                if isinstance(value, dict):
+                    to_save.update(value)
+                elif isinstance(value, tuple):
+                    to_save.update(value._asdict())
+                elif is_dataclass(value):
+                    to_save.update(asdict(value))
 
         if not to_save:
             raise TypeTransformerFailedError(f"Cannot save empty {python_val}")
@@ -115,8 +115,13 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
+        if torch.cuda.is_available():
+            map_location = "cuda:0"
+        else:
+            map_location = torch.device("cpu")
+
         # load checkpoint from a file
-        return typing.cast(PyTorchCheckpoint, torch.load(local_path))
+        return typing.cast(PyTorchCheckpoint, torch.load(local_path, map_location=map_location))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[PyTorchCheckpoint]:
         if (
