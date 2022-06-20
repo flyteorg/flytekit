@@ -749,11 +749,11 @@ class TypeEngine(typing.Generic[T]):
         """
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
         """
-        if len(lm.literals) != len(python_types):
+        if len(lm.literals) > len(python_types):
             raise ValueError(
                 f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
             )
-        return {k: TypeEngine.to_python_value(ctx, lm.literals[k], v) for k, v in python_types.items()}
+        return {k: TypeEngine.to_python_value(ctx, lm.literals[k], python_types[k]) for k, v in lm.literals.items()}
 
     @classmethod
     def dict_to_literal_map(
