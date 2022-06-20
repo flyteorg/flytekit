@@ -54,14 +54,13 @@ class PyTorchTypeTransformer(TypeTransformer, Generic[T]):
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
-        # if torch.cuda.is_available():
-        #     map_location = "cuda:0"
-        # else:
-        #     map_location = torch.device("cpu")
+        if torch.cuda.is_available():
+            map_location = "cuda:0"
+        else:
+            map_location = torch.device("cpu")
 
         # load pytorch tensor/module from a file
-        # return torch.load(local_path, map_location=map_location)
-        return torch.load(local_path)
+        return torch.load(local_path, map_location=map_location)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if (
