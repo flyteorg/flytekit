@@ -162,7 +162,7 @@ class ConfigFile(object):
         Load the config from this location
         """
         self._location = location
-        if location.endswith("yaml"):
+        if location.endswith("yaml") or location.endswith("yml"):
             self._legacy_config = None
             self._yaml_config = self._read_yaml_config(location)
         else:
