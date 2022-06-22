@@ -162,10 +162,9 @@ class ConfigFile(object):
         Load the config from this location
         """
         self._location = location
-        yaml_result = self._read_yaml_config(location)
-        if yaml_result is not None:
+        if location.endswith("yaml") or location.endswith("yml"):
             self._legacy_config = None
-            self._yaml_config = yaml_result
+            self._yaml_config = self._read_yaml_config(location)
         else:
             self._legacy_config = self._read_legacy_config(location)
             self._yaml_config = None
@@ -177,7 +176,7 @@ class ConfigFile(object):
                 yaml_contents = yaml.safe_load(fh)
                 return yaml_contents
             except yaml.YAMLError as exc:
-                logger.info(f"Error {exc} reading config file {location} as yaml, continuing...")
+                logger.warning(f"Error {exc} reading yaml config file at {location}, ignoring...")
                 return None
 
     def _read_legacy_config(self, location: str) -> _configparser.ConfigParser:
