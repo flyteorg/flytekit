@@ -878,7 +878,7 @@ def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
     **kwargs,
-):
+) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
     This method is used to generate a node with bindings. This is not used in the execution path.
     """
