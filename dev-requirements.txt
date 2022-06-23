@@ -151,14 +151,14 @@ googleapis-common-protos==1.56.2
     #   flyteidl
     #   google-api-core
     #   grpcio-status
-grpcio==1.46.3
+grpcio==1.47.0
     # via
     #   -c requirements.txt
     #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
     #   grpcio-status
-grpcio-status==1.46.3
+grpcio-status==1.47.0
     # via
     #   -c requirements.txt
     #   flytekit
