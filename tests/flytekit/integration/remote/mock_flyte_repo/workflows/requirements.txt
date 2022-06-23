@@ -59,13 +59,10 @@ grpcio-status==1.46.3
 idna==3.3
     # via requests
 importlib-metadata==4.11.4
-<<<<<<< HEAD
-=======
     # via
     #   click
     #   keyring
 jeepney==0.8.0
->>>>>>> origin/master
     # via
     #   click
     #   keyring
