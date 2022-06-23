@@ -9,8 +9,8 @@ plugin_requires = [
     "modin>=0.13.0",
     "fsspec",
     "ray",
-    "grpcio<=1.47.0",
-    "grpcio-status<=1.47.0",
+    "grpcio<=1.43.0",
+    "grpcio-status<=1.43.0",
 ]
 
 __version__ = "0.0.0+develop"
