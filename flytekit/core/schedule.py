@@ -69,7 +69,7 @@ class CronSchedule(_schedule_models.Schedule):
             def my_wf(kickoff_time: datetime): ...
 
             schedule = CronSchedule(
-                cron_expression="*/10 * * * *",
+                schedule="*/1 * * * *"
                 kickoff_time_input_arg="kickoff_time")
 
         """
