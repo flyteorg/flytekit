@@ -188,6 +188,7 @@ from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
+from flytekit.models.documentation import Documentation, SourceCode, LongDescription
 from flytekit.types import directory, file, schema
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
