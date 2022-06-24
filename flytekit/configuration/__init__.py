@@ -467,7 +467,7 @@ class GCSConfig(object):
     gsutil_parallelism: bool = False
 
     @classmethod
-    def auto(self, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "gsutil_parallelism", _internal.GCP.GSUTIL_PARALLELISM.read(config_file))

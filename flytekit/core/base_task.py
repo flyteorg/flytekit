@@ -46,6 +46,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.documentation import Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
@@ -157,6 +158,7 @@ class Task(object):
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
+        docs: Optional[Documentation] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -165,6 +167,7 @@ class Task(object):
         self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
+        self._docs = docs
 
         FlyteEntities.entities.append(self)
 
@@ -195,6 +198,10 @@ class Task(object):
     @property
     def security_context(self) -> SecurityContext:
         return self._security_ctx
+
+    @property
+    def docs(self) -> Documentation:
+        return self._docs
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """

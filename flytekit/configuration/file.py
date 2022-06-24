@@ -221,7 +221,7 @@ class ConfigFile(object):
         return self._legacy_config
 
     @property
-    def yaml_config(self) -> typing.Dict[str, Any]:
+    def yaml_config(self) -> typing.Dict[str, typing.Any]:
         return self._yaml_config
 
 
