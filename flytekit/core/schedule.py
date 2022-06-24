@@ -22,7 +22,7 @@ class CronSchedule(_schedule_models.Schedule):
     .. code-block::
 
         CronSchedule(
-            cron_expression="*/10 * * * *",
+            schedule="*/1 * * * *",  # Following schedule runs every min
         )
 
     See the :std:ref:`User Guide <cookbook:cron schedules>` for further examples.
