@@ -16,7 +16,7 @@ Moreover, it is designed to be extensible and users can bring their own data per
     :no-members:
     :no-inherited-members:
     :no-special-members:
-    
+
 The ``fsspec`` Data Plugin
 --------------------------
 
@@ -31,8 +31,7 @@ As a consequence of the implementation, an S3 driver can be installed using ``pi
 
 `Here <https://github.com/fsspec/filesystem_spec/blob/ffe57d6eabe517b4c39c27487fc45b804d314b58/fsspec/registry.py#L87-L205>`_ is a code snippet that shows protocols mapped to the class it implements.
 
-Once you install the plugin, it overrides all default implementations of the `DataPersistencePlugins <https://github.com/flyteorg/flytekit/blob/5907e766a01058181697de2babd779588e5d48b0/flytekit/core/data_persistence.py#L107-L116>`_ and provides the ones supported by fsspec. 
+Once you install the plugin, it overrides all default implementations of the `DataPersistencePlugins <https://github.com/flyteorg/flytekit/blob/5907e766a01058181697de2babd779588e5d48b0/flytekit/core/data_persistence.py#L107-L116>`_ and provides the ones supported by fsspec.
 
-.. note:: 
+.. note::
    This plugin installs fsspec core only. To install all the fsspec plugins, see `here <https://filesystem-spec.readthedocs.io/en/latest/>`_.
-
