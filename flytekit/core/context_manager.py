@@ -617,10 +617,10 @@ class FlyteContext(object):
         """
         return FlyteContextManager.current_context()
 
-    def get_deck(self):
+    def get_deck(self) -> str:
         from flytekit.deck.deck import _get_deck
 
-        _get_deck(self.execution_state.user_space_params)
+        return _get_deck(self.execution_state.user_space_params)
 
     @dataclass
     class Builder(object):
