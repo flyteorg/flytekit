@@ -74,7 +74,7 @@ fastjsonschema==2.15.3
     # via nbformat
 flyteidl==0.24.21
     # via flytekit
-flytekit==1.0.5
+flytekit==1.0.1
     # via flytekitplugins-papermill
 googleapis-common-protos==1.56.0
     # via
