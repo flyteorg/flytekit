@@ -1,7 +1,7 @@
 ##############################
 Extend Data Persistence layer
 ##############################
-Flytekit provides a data persistence layer, which is used for recording metadata that is shared with Flyte backend. This persistence layer is available for various types to store raw user data and is designed to be cross-cloud compatible.
+Flytekit provides a data persistence layer, which is used for recording metadata that is shared with the Flyte backend. This persistence layer is available for various types to store raw user data and is designed to be cross-cloud compatible.
 Moreover, it is designed to be extensible and users can bring their own data persistence plugins by following the persistence interface.
 
 .. note::
@@ -25,9 +25,9 @@ Flytekit ships with a default storage driver that uses aws-cli on AWS and gsutil
 Why ``fsspec``?
 ^^^^^^^^^^^^^^^
 
-You can use the fsspec plugin implementation to utilize all its available plugins with flytekit. The `fsspec <https://github.com/flyteorg/flytekit/blob/aad4e0e67fbc1614b4aa3e49c49cd777738cd3d7/plugins/flytekit-data-fsspec/setup.py#L25-L26>`_ plugin provides an implementation of the data persistence layer in Flytekit. For example: HDFS, FTP are supported in fsspec, so you can use them with flytekit too.
+You can use the fsspec plugin implementation to utilize all its available plugins with flytekit. The `fsspec <https://github.com/flyteorg/flytekit/tree/aad4e0e67fbc1614b4aa3e49c49cd777738cd3d7/plugins/flytekit-data-fsspec>`_ plugin provides an implementation of the data persistence layer in Flytekit. For example: HDFS, FTP are supported in fsspec, so you can use them with flytekit too.
 The data persistence layer helps store logs of metadata and raw user data.
-As a consequence of the implementation, an S3 driver can be installed using ``pip install s3transfer``.
+As a consequence of the implementation, an S3 driver can be installed using ``pip install s3fs``.
 
 `Here <https://github.com/fsspec/filesystem_spec/blob/ffe57d6eabe517b4c39c27487fc45b804d314b58/fsspec/registry.py#L87-L205>`_ is a code snippet that shows protocols mapped to the class it implements.
 
