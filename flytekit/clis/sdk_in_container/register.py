@@ -1,10 +1,10 @@
 import os
 import pathlib
-import sys
 import typing
 
 import click
 
+from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
@@ -123,12 +123,10 @@ def register(
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
     if len(package_or_module) == 0:
-        click.echo(f"{ctx.get_help()}\n")
-        click.secho(
+        display_help_with_error(
+            ctx,
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
-            fg="red",
         )
-        sys.exit(1)
 
     cli_logger.debug(
         f"Running pyflyte register from {os.getcwd()} "
@@ -170,9 +168,7 @@ def register(
         serialization_settings, detected_root, list(package_or_module), options
     )
     if len(registerable_entities) == 0:
-        click.echo(f"{ctx.get_help()}\n")
-        click.secho("No Flyte entities were detected. Aborting!", fg="red")
-        sys.exit(1)
+        display_help_with_error(ctx, "No Flyte entities were detected. Aborting!")
     cli_logger.info(f"Found and serialized {len(registerable_entities)} entities")
 
     if not version:
