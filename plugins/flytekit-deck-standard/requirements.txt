@@ -4,5 +4,5 @@
 #
 #    pip-compile requirements.in
 #
--e file:.#egg=flytekitplugins-deck
+-e file:.#egg=flytekitplugins-deck-standard
     # via -r requirements.in
