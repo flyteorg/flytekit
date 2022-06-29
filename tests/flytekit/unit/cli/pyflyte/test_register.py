@@ -17,7 +17,7 @@ def test_register_with_no_package_or_module_argument():
     runner = CliRunner()
     with runner.isolated_filesystem():
         result = runner.invoke(pyflyte.main, ["register"])
-        assert result.exit_code == -1
+        assert result.exit_code == 1
         assert (
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed"
             in result.output

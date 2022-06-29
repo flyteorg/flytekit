@@ -120,5 +120,5 @@ def test_package_with_no_pkgs():
     runner = CliRunner()
     with runner.isolated_filesystem():
         result = runner.invoke(pyflyte.main, ["package"])
-        assert result.exit_code == -1
+        assert result.exit_code == 1
         assert "No packages to scan for flyte entities. Aborting!" in result.output

@@ -128,7 +128,7 @@ def register(
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
             fg="red",
         )
-        sys.exit(-1)
+        sys.exit(1)
 
     cli_logger.debug(
         f"Running pyflyte register from {os.getcwd()} "
@@ -170,6 +170,7 @@ def register(
         serialization_settings, detected_root, list(package_or_module), options
     )
     if len(registerable_entities) == 0:
+        click.echo(f"{ctx.get_help()}\n")
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         sys.exit(1)
     cli_logger.info(f"Found and serialized {len(registerable_entities)} entities")

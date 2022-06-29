@@ -102,7 +102,7 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
     if not pkgs:
         click.echo(f"{ctx.get_help()}\n")
         click.secho("No packages to scan for flyte entities. Aborting!", fg="red")
-        sys.exit(-1)
+        sys.exit(1)
 
     try:
         serialize_and_package(pkgs, serialization_settings, source, output, fast)
