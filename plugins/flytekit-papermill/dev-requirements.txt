@@ -42,7 +42,7 @@ flyteidl==1.0.0.post1
     # via
     #   -r dev-requirements.in
     #   flytekit
-flytekit==1.0.3
+flytekit==1.1.0b0
     # via flytekitplugins-spark
 flytekitplugins-spark @ git+https://github.com/flyteorg/flytekit@master#subdirectory=plugins/flytekit-spark
     # via -r dev-requirements.in
