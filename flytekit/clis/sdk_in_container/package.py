@@ -100,6 +100,7 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
+        click.echo(f"{ctx.get_help()}\n")
         click.secho("No packages to scan for flyte entities. Aborting!", fg="red")
         sys.exit(-1)
 

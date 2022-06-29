@@ -122,6 +122,14 @@ def register(
     if pkgs:
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
+    if len(package_or_module) == 0:
+        click.echo(f"{ctx.get_help()}\n")
+        click.secho(
+            "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
+            fg="red",
+        )
+        sys.exit(-1)
+
     cli_logger.debug(
         f"Running pyflyte register from {os.getcwd()} "
         f"with images {image_config} "
