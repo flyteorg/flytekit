@@ -44,6 +44,21 @@ def test_get_registrable_entities():
         assert False, f"found unknown entity {type(e)}"
 
 
+def test_package_with_fast_registration():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast"])
+        assert result.exit_code == 0
+        assert "Successfully serialized" in result.output
+        assert "Successfully packaged" in result.output
+        result = runner.invoke(pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast"])
+        assert result.exit_code == 2
+        assert "flyte-package.tgz already exists, specify -f to override" in result.output
+        result = runner.invoke(pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast", "--force"])
+        assert result.exit_code == 0
+        assert "deleting and re-creating it" in result.output
+
+
 def test_duplicate_registrable_entities():
     @flytekit.task
     def t_1():
