@@ -4,7 +4,7 @@ PLUGIN_NAME = "ray"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<1.2.0"]
+plugin_requires = ["flytekit>=1.1.0,<1.2.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package holds the AWS Batch plugins for flytekit",
+    description="This package holds the Ray plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

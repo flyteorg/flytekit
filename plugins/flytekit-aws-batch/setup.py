@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "ray"
+PLUGIN_NAME = "awsbatch"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 

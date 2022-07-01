@@ -1,17 +1,16 @@
-from flytekitplugins.ray import RayClientConfig, RayConfig, RayJobSubmissionConfig
+import ray
+from flytekitplugins.ray import RayConfig
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 
-config = RayConfig(
-    ray_client_config=RayClientConfig(address="127.0.0.1"),
-    ray_job_submission_config=RayJobSubmissionConfig(entrypoint="python script.py"),
-)
+config = RayConfig(address=None, namespace="ray", runtime_env={"pip": ["numpy"]})
 
 
 def test_ray_task():
     @task(task_config=config)
     def t1(a: int) -> str:
+        assert ray.is_initialized()
         inc = a + 2
         return str(inc)
 
@@ -29,7 +28,6 @@ def test_ray_task():
         env={},
     )
 
-    assert t1.get_custom(settings) == config.to_dict()
     assert t1.get_command(settings) == [
         "pyflyte-execute",
         "--inputs",
@@ -38,6 +36,10 @@ def test_ray_task():
         "{{.outputPrefix}}",
         "--raw-output-data-prefix",
         "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
         "--resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
@@ -46,3 +48,6 @@ def test_ray_task():
         "task-name",
         "t1",
     ]
+
+    assert t1(a=3) == "5"
+    assert not ray.is_initialized()

@@ -7,7 +7,7 @@ This package contains things that are useful when extending Flytekit.
    :template: custom.rst
    :toctree: generated/
 
-   AWSBatchConfig
+   RayConfig
 """
 
-from .task import RayClientConfig, RayConfig, RayJobSubmissionConfig
+from .task import RayConfig
