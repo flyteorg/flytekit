@@ -621,6 +621,9 @@ class FlyteRemote(object):
             return self.register_task(entity, serialization_settings, version)
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
+    # TODO: The function signature of `register_launch_plan` is different from `register_task` and `register_workflow`
+    # since the latter two have `SerializationSettings` in their arguments. This is inconsistent and ideally these 3
+    # should probably have similar API.
     def register_launch_plan(
         self,
         entity: LaunchPlan,
