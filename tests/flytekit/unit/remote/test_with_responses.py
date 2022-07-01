@@ -3,14 +3,15 @@ import typing
 from collections import OrderedDict
 
 import mock
+import pytest
 from flyteidl.admin import launch_plan_pb2, task_pb2, workflow_pb2
 
 import flytekit.configuration
+from flytekit import task, workflow
 from flytekit.configuration import Config, ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core.node_creation import create_node
 from flytekit.core.utils import load_proto_from_file
-from flytekit.core.workflow import workflow
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
@@ -56,6 +57,51 @@ def test_task(mock_client):
     ft = rr.fetch_task(name="merge_sort_remotely", version="tst")
     assert len(ft.interface.inputs) == 2
     assert len(ft.interface.outputs) == 1
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_workflow_from_fetched_tasks_registration_without_serialization_settings(mock_client):
+    merge_sort_remotely = load_proto_from_file(
+        task_pb2.Task,
+        os.path.join(responses_dir, "admin.task_pb2.Task.pb"),
+    )
+    admin_task = task_models.Task.from_flyte_idl(merge_sort_remotely)
+    mock_client.get_task.return_value = admin_task
+    ft = rr.fetch_task(name="merge_sort_remotely", version="tst")
+    assert len(ft.interface.inputs) == 2
+    assert len(ft.interface.outputs) == 1
+
+    @workflow
+    def wf_from_ft(numbers: typing.List[int], run_local_at_count: int) -> typing.List[int]:
+        return ft(numbers=numbers, run_local_at_count=run_local_at_count)
+
+    rr.register_workflow(entity=wf_from_ft, version="v1")
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_workflow_from_fetched_tasks_and_local_task_registration_without_serialization_settings(mock_client):
+    merge_sort_remotely = load_proto_from_file(
+        task_pb2.Task,
+        os.path.join(responses_dir, "admin.task_pb2.Task.pb"),
+    )
+    admin_task = task_models.Task.from_flyte_idl(merge_sort_remotely)
+    mock_client.get_task.return_value = admin_task
+    ft = rr.fetch_task(name="merge_sort_remotely", version="tst")
+    assert len(ft.interface.inputs) == 2
+    assert len(ft.interface.outputs) == 1
+
+    @task
+    def sum_list(inp: typing.List[int]) -> int:
+        return sum(inp)
+
+    @workflow
+    def wf_from_ft_and_lt(numbers: typing.List[int], run_local_at_count: int) -> int:
+        return sum_list(inp=ft(numbers=numbers, run_local_at_count=run_local_at_count))
+
+    with pytest.raises(ValueError) as excinfo:
+        rr.register_workflow(entity=wf_from_ft_and_lt, version="v1")
+
+    assert str(excinfo.value) == "An image is required for PythonAutoContainer tasks"
 
 
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")

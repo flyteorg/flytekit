@@ -2,18 +2,23 @@ import os
 import pathlib
 import tempfile
 
+import numpy as np
+import pandas as pd
 import pytest
 from mock import MagicMock, patch
 
 import flytekit.configuration
+from flytekit import kwtypes, task, workflow
 from flytekit.configuration import Config, DefaultImages, ImageConfig
 from flytekit.exceptions import user as user_exceptions
+from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools.translator import Options
+from flytekit.types.schema import FlyteSchema
 
 CLIENT_METHODS = {
     ResourceType.WORKFLOW: "list_workflows_paginated",
@@ -32,6 +37,83 @@ ENTITY_TYPE_TEXT = {
     ResourceType.TASK: "Task",
     ResourceType.LAUNCH_PLAN: "Launch Plan",
 }
+
+
+@pytest.fixture
+def sql_task_fixture():
+    EXAMPLE_DB = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
+
+    sql_task = SQLite3Task(
+        name="cookbook.sqlite3.sample",
+        query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
+        inputs=kwtypes(limit=int),
+        output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+        task_config=SQLite3Config(uri=EXAMPLE_DB, compressed=True),
+    )
+
+    return sql_task
+
+
+@pytest.fixture
+def python_task_fixture():
+    @task
+    def generate_normal_df(n: int, mean: float, sigma: float) -> pd.DataFrame:
+        return pd.DataFrame({"numbers": np.random.normal(mean, sigma, size=n)})
+
+    return generate_normal_df
+
+
+@pytest.fixture
+def remote():
+    remote = FlyteRemote(Config.auto(), default_project="flytesnacks", default_domain="staging")
+    return remote
+
+
+@patch("flytekit.clients.friendly.SynchronousFlyteClient")
+def test_sql_task_registration_without_serialization_settings(mock_client, sql_task_fixture, remote):
+    remote._client = mock_client
+
+    rt = remote.register_task(entity=sql_task_fixture, version="v1")
+
+    assert rt.id.project == "flytesnacks"
+    assert rt.id.domain == "staging"
+    assert rt.id.name == "cookbook.sqlite3.sample"
+    assert rt.id.version == "v1"
+
+
+def test_python_task_registration_without_serialization_settings(python_task_fixture, remote):
+    with pytest.raises(ValueError) as excinfo:
+        remote.register_task(entity=python_task_fixture, version="v1")
+
+    assert str(excinfo.value) == "An image is required for PythonAutoContainer tasks"
+
+
+@patch("flytekit.clients.friendly.SynchronousFlyteClient")
+def test_workflow_registration_with_only_sql_task_and_without_serialization_settings(
+    mock_client, sql_task_fixture, remote
+):
+    @workflow
+    def only_sql_wf() -> pd.DataFrame:
+        return sql_task_fixture(limit=100)
+
+    remote._client = mock_client
+
+    remote.register_workflow(entity=only_sql_wf, version="v1")
+
+
+def test_workflow_registration_with_sql_and_python_task_and_without_serialization_settings(sql_task_fixture, remote):
+    @task
+    def print_and_count_columns(df: pd.DataFrame) -> int:
+        return len(df[df.columns[0]])
+
+    @workflow
+    def sql_and_python_wf() -> int:
+        return print_and_count_columns(df=sql_task_fixture(limit=100))
+
+    with pytest.raises(ValueError) as excinfo:
+        remote.register_workflow(entity=sql_and_python_wf, version="v1")
+
+    assert str(excinfo.value) == "An image is required for PythonAutoContainer tasks"
 
 
 @patch("flytekit.clients.friendly.SynchronousFlyteClient")
