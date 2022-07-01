@@ -1,3 +1,6 @@
+import os
+import shutil
+
 import pytest
 from click.testing import CliRunner
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan
@@ -10,6 +13,22 @@ import flytekit.tools.serialize_helpers
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.core import context_manager
 from flytekit.exceptions.user import FlyteValidationException
+
+sample_file_contents = """
+from flytekit import task, workflow
+
+@task(cache=True, cache_version="1", retries=3)
+def sum(x: int, y: int) -> int:
+    return x + y
+
+@task(cache=True, cache_version="1", retries=3)
+def square(z: int) -> int:
+    return z*z
+
+@workflow
+def my_workflow(x: int, y: int) -> int:
+    return sum(x=square(z=x), y=square(z=y))
+"""
 
 
 @flytekit.task
@@ -47,16 +66,28 @@ def test_get_registrable_entities():
 def test_package_with_fast_registration():
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast"])
+        os.makedirs("core", exist_ok=True)
+        with open(os.path.join("core", "sample.py"), "w") as f:
+            f.write(sample_file_contents)
+            f.close()
+        result = runner.invoke(
+            pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast", "-o", "flyte-package.tgz"]
+        )
         assert result.exit_code == 0
         assert "Successfully serialized" in result.output
         assert "Successfully packaged" in result.output
-        result = runner.invoke(pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast"])
+        result = runner.invoke(
+            pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast", "-o", "flyte-package.tgz"]
+        )
         assert result.exit_code == 2
         assert "flyte-package.tgz already exists, specify -f to override" in result.output
-        result = runner.invoke(pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast", "--force"])
+        result = runner.invoke(
+            pyflyte.main,
+            ["--pkgs", "core", "package", "--image", "core:v1", "--fast", "--force", "-o", "flyte-package.tgz"],
+        )
         assert result.exit_code == 0
         assert "deleting and re-creating it" in result.output
+        shutil.rmtree("core")
 
 
 def test_duplicate_registrable_entities():

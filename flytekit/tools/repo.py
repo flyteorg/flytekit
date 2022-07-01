@@ -73,7 +73,7 @@ def serialize_to_folder(
 def package(
     registrable_entities: typing.List[RegistrableEntity],
     source: str = ".",
-    output: str = "./flyte-package.tgz",
+    output: typing.Optional[str] = None,
     fast: bool = False,
 ):
     """
@@ -85,6 +85,14 @@ def package(
     """
     if not registrable_entities:
         raise NoSerializableEntitiesError("Nothing to package")
+
+    if output is None:
+        # Avoiding use of context manager as the directory will be deleted once the context completes
+        output_res_tmpdir = tempfile.TemporaryDirectory()
+        click.secho(
+            f"Output given as {output}, using a temporary directory at {output_res_tmpdir.name} instead", fg="yellow"
+        )
+        output = os.path.join(output_res_tmpdir.name, "flyte-package.tgz")
 
     with tempfile.TemporaryDirectory() as output_tmpdir:
         persist_registrable_entities(registrable_entities, output_tmpdir)
@@ -108,7 +116,7 @@ def serialize_and_package(
     pkgs: typing.List[str],
     settings: SerializationSettings,
     source: str = ".",
-    output: str = "./flyte-package.tgz",
+    output: typing.Optional[str] = None,
     fast: bool = False,
     options: typing.Optional[Options] = None,
 ):

@@ -41,7 +41,7 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     "--output",
     required=False,
     type=click.Path(dir_okay=False, writable=True, resolve_path=True, allow_dash=True),
-    default="flyte-package.tgz",
+    default=None,
     help="filesystem path to the source of the python package (from where the pkgs will start).",
 )
 @click.option(
@@ -86,7 +86,7 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
         object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
         This serialization step will set the name of the tasks to the fully qualified name of the task function.
     """
-    if os.path.exists(output) and not force:
+    if output is not None and os.path.exists(output) and not force:
         raise click.BadParameter(click.style(f"Output file {output} already exists, specify -f to override.", fg="red"))
 
     serialization_settings = SerializationSettings(
