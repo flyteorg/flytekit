@@ -367,8 +367,8 @@ class FlyteRemote(object):
     def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
-        settings: typing.Optional[SerializationSettings],
         version: str,
+        settings: typing.Optional[SerializationSettings] = None,
         options: typing.Optional[Options] = None,
     ) -> Identifier:
         """
@@ -376,19 +376,13 @@ class FlyteRemote(object):
         :return: Identifier of the registered entity
         """
         m = OrderedDict()
-        # Create dummy serialization settings for now.
-        # TODO: Clean this up by using lazy usage of serialization settings in translator.py
-        serialization_settings = (
-            settings
-            if settings
-            else SerializationSettings(
-                ImageConfig.auto_default_image(),
-                project=self.default_project,
-                domain=self.default_domain,
-                version=version,
+
+        if settings is None:
+            settings = SerializationSettings(
+                ImageConfig(), project=self.default_project, domain=self.default_domain, version=version
             )
-        )
-        _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
+
+        _ = get_serializable(m, settings=settings, entity=entity, options=options)
 
         ident = None
         for entity, cp_entity in m.items():
@@ -432,7 +426,7 @@ class FlyteRemote(object):
                     default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
                     lp_entity = get_serializable_launch_plan(
                         OrderedDict(),
-                        settings or serialization_settings,
+                        settings,
                         default_lp,
                         recurse_downstream=False,
                         options=options,
@@ -451,7 +445,10 @@ class FlyteRemote(object):
         return ident
 
     def register_task(
-        self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
+        self,
+        entity: PythonTask,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
+        version: typing.Optional[str] = None,
     ) -> FlyteTask:
         """
         Register a qualified task (PythonTask) with Remote
@@ -462,7 +459,7 @@ class FlyteRemote(object):
         :param version: version that will be used to register. If not specified will default to using the serialization settings default
         :return:
         """
-        ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        ident = self._serialize_and_register(entity=entity, version=version, settings=serialization_settings)
         ft = self.fetch_task(
             ident.project,
             ident.domain,
@@ -496,7 +493,7 @@ class FlyteRemote(object):
             b.domain = ident.domain
             b.version = ident.version
             serialization_settings = b.build()
-        ident = self._serialize_and_register(entity, serialization_settings, version, options)
+        ident = self._serialize_and_register(entity, version, serialization_settings, options)
         if default_launch_plan:
             default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
