@@ -118,6 +118,6 @@ env = Environment(
     # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
     # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
     # - https://stackoverflow.com/a/68826578/8474894
-    autoescape = select_autoescape(enabled_extensions=('html',)),
+    autoescape = select_autoescape(enabled_extensions=("html",)),
 )
 template = env.get_template("template.html")
