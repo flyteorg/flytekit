@@ -1,9 +1,11 @@
 ## Include files and folders
 
+# include folders
 recursive-include flytekit *
 recursive-include flytekit_scripts *
 recursive-include plugins *
 
+# include specific files
 include README.md
 include flytekit/py.typed  # marker file for PEP 561
 include flytekit/deck/html/template.html
@@ -19,6 +21,7 @@ include setup.cfg
 
 ## Exclude files and folders
 
+# exclude folders
 recursive-exclude tests *
 recursive-exclude docs *
 recursive-exclude boilerplate *
