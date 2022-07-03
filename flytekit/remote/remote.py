@@ -34,6 +34,7 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
+from flytekit.extras.cloud_pickle_resolver import CloudPickleResolver
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
@@ -119,6 +120,7 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         data_upload_location: str = "s3://my-s3-bucket/data",
+        use_cloudpickle: bool = False,
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -144,6 +146,8 @@ class FlyteRemote(object):
             raw_output_prefix=data_upload_location,
             data_config=config.data_config,
         )
+
+        self._resolver = CloudPickleResolver() if use_cloudpickle else None
 
         # Save the file access object locally, build a context for it and save that as well.
         self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()

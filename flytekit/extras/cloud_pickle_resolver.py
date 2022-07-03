@@ -1,4 +1,7 @@
-from base64 import b64decode, b64encode
+import gzip
+import os
+import pickle
+import tempfile
 from typing import List
 
 import cloudpickle
@@ -7,32 +10,55 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import TrackedInstance
+from flytekit.loggers import remote_logger
 
 
-class ExperimentalNaiveCloudPickleResolver(TrackedInstance, TaskResolverMixin):
+class CloudPickleResolver(TrackedInstance, TaskResolverMixin):
     """
-    Please do not use this resolver, basically ever. This is here for demonstration purposes only. The critical flaw
-    of this resolver is that pretty much any task that it resolves results in loader_args that are enormous. This
-    payload is serialized as part of the ``TaskTemplate`` protobuf object and will live in Admin and then be loaded
-    into Flyte Propeller memory and will pretty much clog up performance along the entire platform.
-
-    TODO: Replace this with a version that will upload the data to S3 or some other durable store upon ``loader_args``
-      and will download the data upon ``load_task``. This will require additional changes to Admin however.
+    Pickles the task (using cloudpickle) and ships it off for Data Persistence (S3, etc.)
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def name(self) -> str:
-        return "cloud pickling task resolver"
+        return "CloudPickleResolver"
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-        raw_bytes = loader_args[0].encode("ascii")
-        pickled = b64decode(raw_bytes)
-        return cloudpickle.loads(pickled)
+        uri = loader_args[0]
+
+        # TODO: get gzipped file from data persistence using URI from loader_args
+        filename = ...
+
+        with gzip.open(filename, mode="rb") as fg:
+            t_bytes = fg.read()
+
+        remote_logger.info(f"Task of size {len(t_bytes)} bytes downloaded from {uri}")
+
+        return pickle.loads(t_bytes)
 
     def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
-        return [b64encode(cloudpickle.dumps(t)).decode("ascii")]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            t_bytes = cloudpickle.dumps(t)
+            t_fname = os.path.join(tmp_dir, "task.pickle")
+            with open(t_fname, "wb") as fh:
+                fh.write(t_bytes)
+            t_fname_gzipped = os.path.join(tmp_dir, "task.tgz")
+            with gzip.GzipFile(filename=t_fname_gzipped, mode="wb", mtime=0) as gzipped:
+                with open(t_fname, "rb") as fd:
+                    gzipped.write(fd.read())
+
+            # TODO: Upload gzipped file for data persistence and get its URI
+            uri = ...
+
+            remote_logger.info(
+                f"Task {t.name} zipped, pickled and persisted to {uri} from temporary file {t_fname_gzipped}"
+            )
+
+            return [uri]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:
-        pass
+        raise NotImplementedError()
 
 
-experimental_cloud_pickle_resolver = ExperimentalNaiveCloudPickleResolver()
+default_cloudpickle_resolver = CloudPickleResolver()
