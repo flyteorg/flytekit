@@ -1,25 +1,47 @@
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from ray.util.client import ray
 
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.extend import TaskPlugins
+from flytekit.models.core.resource import RayCluster, Resource
 
 
 class RayConfig(object):
-    def __init__(self, address: str = None, **kwargs):
+    def __init__(self, address: Optional[str] = None, ray_cluster: Optional[RayCluster] = None, **kwargs):
         """
         :param str address: The address of the Ray cluster to connect to.
-        :param dict kwargs: extra arguments for ray.init(). https://docs.ray.io/en/latest/ray-core/package-ref.html#ray-init
+        :param dict kwargs: Extra arguments for ray.init(). https://docs.ray.io/en/latest/ray-core/package-ref.html#ray-init
+        :param Optional[RayCluster] ray_cluster: Define Ray cluster spec.
         """
-        self.address = address
-        self.extra_args = kwargs
+        if address and ray_cluster:
+            raise ValueError("You cannot specify both address and ray_cluster")
+        self._address = address
+        self._extra_args = kwargs
+        self._ray_cluster = ray_cluster
+        self._resource = Resource(ray=ray_cluster)
+
+    @property
+    def address(self) -> str:
+        return self._address
+
+    @property
+    def ray_cluster(self) -> Optional[RayCluster]:
+        return self._ray_cluster
+
+    @property
+    def extra_args(self) -> dict:
+        return self._extra_args
+
+    @property
+    def resource(self) -> Resource:
+        return self._resource
 
 
 class RayFunctionTask(PythonFunctionTask):
     """
-    Actual Plugin that transforms the local python code for execution within Ray job
+    Actual Plugin that transforms the local python code for execution within Ray job.
     """
 
     _RAY_TASK_TYPE = "ray"
@@ -27,7 +49,13 @@ class RayFunctionTask(PythonFunctionTask):
     def __init__(self, task_config: RayConfig, task_function: Callable, **kwargs):
         if task_config is None:
             task_config = RayConfig()
-        super().__init__(task_config=task_config, task_type=self._RAY_TASK_TYPE, task_function=task_function, **kwargs)
+        super().__init__(
+            task_config=task_config,
+            task_type=self._RAY_TASK_TYPE,
+            task_function=task_function,
+            resource=task_config.resource,
+            **kwargs
+        )
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:

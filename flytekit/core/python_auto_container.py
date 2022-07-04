@@ -14,6 +14,7 @@ from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
+from flytekit.models.core.resource import Resource
 from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
@@ -39,6 +40,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
         secret_requests: Optional[List[Secret]] = None,
+        resource: Resource = None,
         **kwargs,
     ):
         """
@@ -83,6 +85,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
         self._environment = environment
+        self._resource = resource
 
         compilation_state = FlyteContextManager.current_context().compilation_state
         if compilation_state and compilation_state.task_resolver:
@@ -108,6 +111,10 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
     @property
     def resources(self) -> ResourceSpec:
         return self._resources
+
+    @property
+    def resource(self) -> Resource:
+        return self._resource
 
     def get_default_command(self, settings: SerializationSettings) -> List[str]:
         """

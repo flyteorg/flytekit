@@ -13,6 +13,7 @@ from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import resource as _resource
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -322,6 +323,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         config=None,
         k8s_pod=None,
         sql=None,
+        resources=None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -345,6 +347,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             in tandem with the custom.
         :param K8sPod k8s_pod: Alternative to the container used to execute this task.
         :param Sql sql: This is used to execute query in FlytePropeller instead of running container or k8s_pod.
+        :param dict[str, Resource] resources: Cluster resource that task will run on.
         """
         if (
             (container is not None and k8s_pod is not None)
@@ -363,6 +366,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._security_context = security_context
         self._k8s_pod = k8s_pod
         self._sql = sql
+        self._resources = resources
 
     @property
     def id(self):
@@ -437,6 +441,10 @@ class TaskTemplate(_common.FlyteIdlEntity):
     def sql(self):
         return self._sql
 
+    @property
+    def resources(self):
+        return self._resources
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
@@ -453,6 +461,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             config={k: v for k, v in self.config.items()} if self.config is not None else None,
             k8s_pod=self.k8s_pod.to_flyte_idl() if self.k8s_pod else None,
             sql=self.sql.to_flyte_idl() if self.sql else None,
+            resources={k: v.to_flyte_idl() for k, v in self.resources.items()} if self.resources else None,
         )
         return task_template
 
@@ -476,6 +485,9 @@ class TaskTemplate(_common.FlyteIdlEntity):
             config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
             k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,
             sql=Sql.from_flyte_idl(pb2_object.sql) if pb2_object.HasField("sql") else None,
+            resources={k: _resource.Resource.from_flyte_idl(v) for k, v in pb2_object.resources.items()}
+            if pb2_object.resources is not None
+            else None,
         )
 
 
