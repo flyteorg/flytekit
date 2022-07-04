@@ -11,4 +11,4 @@ Feel free to follow the pattern of the built-in types.
    types.builtins.structured
    types.builtins.file
    types.builtins.directory
-   types.builtins.pytorch
+   extras.pytorch

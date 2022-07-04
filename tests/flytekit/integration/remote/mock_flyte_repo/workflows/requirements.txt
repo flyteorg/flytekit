@@ -10,13 +10,9 @@ binaryornot==0.4.4
     # via cookiecutter
 certifi==2022.6.15
     # via requests
-<<<<<<< HEAD
-chardet==4.0.0
-=======
 cffi==1.15.1
     # via cryptography
 chardet==5.0.0
->>>>>>> origin/master
     # via binaryornot
 charset-normalizer==2.1.0
     # via requests
@@ -30,11 +26,8 @@ cookiecutter==2.1.1
     # via flytekit
 croniter==1.3.5
     # via flytekit
-<<<<<<< HEAD
-=======
 cryptography==37.0.2
     # via pyopenssl
->>>>>>> origin/master
 cycler==0.11.0
     # via matplotlib
 dataclasses-json==0.5.7
@@ -132,13 +125,10 @@ py==1.11.0
     # via retry
 pyarrow==6.0.1
     # via flytekit
-<<<<<<< HEAD
-=======
 pycparser==2.21
     # via cffi
 pyopenssl==22.0.0
     # via flytekit
->>>>>>> origin/master
 pyparsing==3.0.9
     # via
     #   matplotlib
