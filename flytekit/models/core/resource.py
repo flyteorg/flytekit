@@ -88,6 +88,7 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
             group_name=self.group_name,
             compute_template=self.compute_template,
             image=self.image,
+            replicas=self.replicas,
             min_replicas=self.min_replicas,
             max_replicas=self.max_replicas,
             ray_start_params=self.ray_start_params,
