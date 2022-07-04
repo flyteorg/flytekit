@@ -37,7 +37,7 @@ def y1(a: typing_extensions.Annotated[typing.List[int], FlyteAnnotation({"foo": 
 
 
 def test_get_variable_descriptions():
-    x_tsk = get_serializable(entity_mapping, serialization_settings, x)
+    x_tsk = get_serializable(entity_mapping, x, serialization_settings)
     x_input_vars = x_tsk.template.interface.inputs
 
     a_ann = x_input_vars["a"].type.annotation
@@ -48,14 +48,14 @@ def test_get_variable_descriptions():
     assert b_ann is None
 
     # Annotated simple type within list generic
-    y0_tsk = get_serializable(entity_mapping, serialization_settings, y0)
+    y0_tsk = get_serializable(entity_mapping, y0, serialization_settings)
     y0_input_vars = y0_tsk.template.interface.inputs
     y0_a_ann = y0_input_vars["a"].type.collection_type.annotation
     assert isinstance(y0_a_ann, TypeAnnotation)
     assert y0_a_ann.annotations["foo"] == {"bar": 1}
 
     # Annotated list generic
-    y1_tsk = get_serializable(entity_mapping, serialization_settings, y1)
+    y1_tsk = get_serializable(entity_mapping, y1, serialization_settings)
     y1_input_vars = y1_tsk.template.interface.inputs
     y1_a_ann = y1_input_vars["a"].type.annotation
     assert isinstance(y1_a_ann, TypeAnnotation)

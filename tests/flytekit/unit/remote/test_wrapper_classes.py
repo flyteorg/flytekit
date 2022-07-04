@@ -37,7 +37,7 @@ def test_wf_cond():
         d = conditional("test1").if_(a > 3).then(t1(a=a)).else_().then(my_sub_wf(a=a))
         return d
 
-    get_serializable(OrderedDict(), serialization_settings, my_wf)
+    get_serializable(OrderedDict(), my_wf, serialization_settings)
 
 
 def test_wf_promote_subwf_lps():
@@ -57,7 +57,7 @@ def test_wf_promote_subwf_lps():
         return subwf(a=b)
 
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, wf)
+    wf_spec = get_serializable(serialized, wf, serialization_settings)
     sub_wf_dict = {s.id: s for s in wf_spec.sub_workflows}
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
 
@@ -75,7 +75,7 @@ def test_wf_promote_subwf_lps():
         return sub_lp(a=b)
 
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, wf2)
+    wf_spec = get_serializable(serialized, wf2, serialization_settings)
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
 
     fwf = FlyteWorkflow.promote_from_model(
@@ -107,7 +107,7 @@ def test_upstream():
         return t2(a=t1(a=a))
 
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, my_wf)
+    wf_spec = get_serializable(serialized, my_wf, serialization_settings)
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
 
     fwf = FlyteWorkflow.promote_from_model(
@@ -124,7 +124,7 @@ def test_upstream():
         return first, second
 
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, parent)
+    wf_spec = get_serializable(serialized, parent, serialization_settings)
     sub_wf_dict = {s.id: s for s in wf_spec.sub_workflows}
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
 

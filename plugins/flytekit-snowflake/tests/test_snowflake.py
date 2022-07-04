@@ -41,7 +41,7 @@ def test_serialization():
         env={},
     )
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, snowflake_task)
+    task_spec = get_serializable(OrderedDict(), snowflake_task, serialization_settings)
 
     assert "{{ .rawOutputDataPrefix" in task_spec.template.sql.statement
     assert "insert overwrite directory" in task_spec.template.sql.statement
@@ -53,7 +53,7 @@ def test_serialization():
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1
 
-    admin_workflow_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    admin_workflow_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert admin_workflow_spec.template.interface.outputs["o0"].type.schema is not None
     assert admin_workflow_spec.template.outputs[0].var == "o0"
     assert admin_workflow_spec.template.outputs[0].binding.promise.node_id == "n0"

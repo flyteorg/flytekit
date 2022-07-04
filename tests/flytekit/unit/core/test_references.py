@@ -66,7 +66,7 @@ def test_ref():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    spec = get_serializable(OrderedDict(), serialization_settings, ref_t1)
+    spec = get_serializable(OrderedDict(), ref_t1, serialization_settings)
     assert isinstance(spec, ReferenceSpec)
     assert isinstance(spec.template, ReferenceTemplate)
     assert spec.template.id == ref_t1.id
@@ -255,7 +255,7 @@ def test_lps(resource_type):
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf1)
+    wf_spec = get_serializable(OrderedDict(), wf1, serialization_settings)
     assert len(wf_spec.template.interface.inputs) == 2
     assert len(wf_spec.template.interface.outputs) == 0
     assert len(wf_spec.template.nodes) == 1
@@ -306,7 +306,7 @@ def test_ref_sub_wf():
         # Subworkflow as references don't work (probably ever). The reason is because we'd need to make a network call
         # to admin to get the structure of the subworkflow and the whole point of reference entities is that there
         # is no network call.
-        get_serializable(OrderedDict(), serialization_settings, wf1)
+        get_serializable(OrderedDict(), wf1, serialization_settings)
 
 
 def test_lp_with_output():
@@ -350,7 +350,7 @@ def test_lp_with_output():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf1)
+    wf_spec = get_serializable(OrderedDict(), wf1, serialization_settings)
     assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.project == "proj"
     assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "app.other.flyte_entity"
 

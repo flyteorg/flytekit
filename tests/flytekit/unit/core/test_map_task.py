@@ -68,7 +68,7 @@ def test_map_task_types():
 
 def test_serialization(serialization_settings):
     maptask = map_task(t1, metadata=TaskMetadata(retries=1))
-    task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
+    task_spec = get_serializable(OrderedDict(), maptask, serialization_settings)
 
     # By default all map_task tasks will have their custom fields set.
     assert task_spec.template.custom["minSuccessRatio"] == 1.0
@@ -107,7 +107,7 @@ def test_serialization(serialization_settings):
 )
 def test_serialization_of_custom_fields(custom_fields_dict, expected_custom_fields, serialization_settings):
     maptask = map_task(t1, **custom_fields_dict)
-    task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
+    task_spec = get_serializable(OrderedDict(), maptask, serialization_settings)
 
     assert task_spec.template.custom == expected_custom_fields
 
@@ -129,11 +129,11 @@ def test_serialization_workflow_def(serialization_settings):
         return map_task(complex_task, metadata=TaskMetadata(retries=2))(a=a)
 
     serialized_control_plane_entities = OrderedDict()
-    wf1_spec = get_serializable(serialized_control_plane_entities, serialization_settings, w1)
+    wf1_spec = get_serializable(serialized_control_plane_entities, w1, serialization_settings)
     assert wf1_spec.template is not None
     assert len(wf1_spec.template.nodes) == 1
 
-    wf2_spec = get_serializable(serialized_control_plane_entities, serialization_settings, w2)
+    wf2_spec = get_serializable(serialized_control_plane_entities, w2, serialization_settings)
     assert wf2_spec.template is not None
     assert len(wf2_spec.template.nodes) == 1
 

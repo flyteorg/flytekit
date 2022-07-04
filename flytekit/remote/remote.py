@@ -368,7 +368,7 @@ class FlyteRemote(object):
         self,
         entity: FlyteLocalEntity,
         version: str,
-        settings: typing.Optional[SerializationSettings] = None,
+        settings: typing.Optional[SerializationSettings] = SerializationSettings(ImageConfig()),
         options: typing.Optional[Options] = None,
     ) -> Identifier:
         """
@@ -376,11 +376,6 @@ class FlyteRemote(object):
         :return: Identifier of the registered entity
         """
         m = OrderedDict()
-
-        if settings is None:
-            settings = SerializationSettings(
-                ImageConfig(), project=self.default_project, domain=self.default_domain, version=version
-            )
 
         _ = get_serializable(m, settings=settings, entity=entity, options=options)
 
@@ -447,7 +442,7 @@ class FlyteRemote(object):
     def register_task(
         self,
         entity: PythonTask,
-        serialization_settings: typing.Optional[SerializationSettings] = None,
+        serialization_settings: typing.Optional[SerializationSettings] = SerializationSettings(ImageConfig()),
         version: typing.Optional[str] = None,
     ) -> FlyteTask:
         """
@@ -472,7 +467,7 @@ class FlyteRemote(object):
     def register_workflow(
         self,
         entity: WorkflowBase,
-        serialization_settings: typing.Optional[SerializationSettings] = None,
+        serialization_settings: typing.Optional[SerializationSettings] = SerializationSettings(ImageConfig()),
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,

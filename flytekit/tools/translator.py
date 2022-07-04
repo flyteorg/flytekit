@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -100,7 +100,7 @@ def to_serializable_case(
 ) -> _core_wf.IfBlock:
     if c is None:
         raise ValueError("Cannot convert none cases to registrable")
-    then_node = get_serializable(entity_mapping, settings, c.then_node, options=options)
+    then_node = get_serializable(entity_mapping, c.then_node, settings, options=options)
     return _core_wf.IfBlock(condition=c.condition, then_node=then_node)
 
 
@@ -224,7 +224,7 @@ def get_serializable_workflow(
 
     # Get node models
     upstream_node_models = [
-        get_serializable(entity_mapping, settings, n, options)
+        get_serializable(entity_mapping, n, settings, options)
         for n in entity.nodes
         if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
     ]
@@ -239,7 +239,7 @@ def get_serializable_workflow(
                 raise Exception(
                     "Reference sub-workflows are currently unsupported. Use reference launch plans instead."
                 )
-            sub_wf_spec = get_serializable(entity_mapping, settings, n.flyte_entity, options)
+            sub_wf_spec = get_serializable(entity_mapping, n.flyte_entity, settings, options)
             if not isinstance(sub_wf_spec, admin_workflow_models.WorkflowSpec):
                 raise TypeError(
                     f"Unexpected type for serialized form of workflow. Expected {admin_workflow_models.WorkflowSpec}, but got {type(sub_wf_spec)}"
@@ -248,7 +248,7 @@ def get_serializable_workflow(
             sub_wfs.extend(sub_wf_spec.sub_workflows)
 
         if isinstance(n.flyte_entity, FlyteWorkflow):
-            get_serializable(entity_mapping, settings, n.flyte_entity, options)
+            get_serializable(entity_mapping, n.flyte_entity, settings, options)
             sub_wfs.append(n.flyte_entity)
             sub_wfs.extend([s for s in n.flyte_entity.sub_workflows.values()])
 
@@ -266,11 +266,11 @@ def get_serializable_workflow(
             )
             for leaf_node in leaf_nodes:
                 if isinstance(leaf_node.flyte_entity, WorkflowBase):
-                    sub_wf_spec = get_serializable(entity_mapping, settings, leaf_node.flyte_entity, options)
+                    sub_wf_spec = get_serializable(entity_mapping, leaf_node.flyte_entity, settings, options)
                     sub_wfs.append(sub_wf_spec.template)
                     sub_wfs.extend(sub_wf_spec.sub_workflows)
                 elif isinstance(leaf_node.flyte_entity, FlyteWorkflow):
-                    get_serializable(entity_mapping, settings, leaf_node.flyte_entity, options)
+                    get_serializable(entity_mapping, leaf_node.flyte_entity, settings, options)
                     sub_wfs.append(leaf_node.flyte_entity)
                     sub_wfs.extend([s for s in leaf_node.flyte_entity.sub_workflows.values()])
 
@@ -310,7 +310,7 @@ def get_serializable_launch_plan(
     :return:
     """
     if recurse_downstream:
-        wf_spec = get_serializable(entity_mapping, settings, entity.workflow, options)
+        wf_spec = get_serializable(entity_mapping, entity.workflow, settings, options)
         wf_id = wf_spec.template.id
     else:
         wf_id = _identifier_model.Identifier(
@@ -380,14 +380,14 @@ def get_serializable_node(
     from flytekit.remote.workflow import FlyteWorkflow
 
     upstream_sdk_nodes = [
-        get_serializable(entity_mapping, settings, n, options=options)
+        get_serializable(entity_mapping, n, settings, options=options)
         for n in entity.upstream_nodes
         if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
     ]
 
     # Reference entities also inherit from the classes in the second if statement so address them first.
     if isinstance(entity.flyte_entity, ReferenceEntity):
-        ref_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        ref_spec = get_serializable(entity_mapping, entity.flyte_entity, settings, options=options)
         ref_template = ref_spec.template
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -409,7 +409,7 @@ def get_serializable_node(
         return node_model
 
     if isinstance(entity.flyte_entity, PythonTask):
-        task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        task_spec = get_serializable(entity_mapping, entity.flyte_entity, settings, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -424,7 +424,7 @@ def get_serializable_node(
             node_model._output_aliases = entity._aliases
 
     elif isinstance(entity.flyte_entity, WorkflowBase):
-        wf_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        wf_spec = get_serializable(entity_mapping, entity.flyte_entity, settings, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -441,11 +441,11 @@ def get_serializable_node(
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_sdk_nodes],
             output_aliases=[],
-            branch_node=get_serializable(entity_mapping, settings, entity.flyte_entity, options=options),
+            branch_node=get_serializable(entity_mapping, entity.flyte_entity, settings, options=options),
         )
 
     elif isinstance(entity.flyte_entity, LaunchPlan):
-        lp_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        lp_spec = get_serializable(entity_mapping, entity.flyte_entity, settings, options=options)
 
         # Node's inputs should not contain the data which is fixed input
         node_input = []
@@ -464,7 +464,7 @@ def get_serializable_node(
 
     elif isinstance(entity.flyte_entity, FlyteTask):
         # Recursive call doesn't do anything except put the entity on the map.
-        get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        get_serializable(entity_mapping, entity.flyte_entity, settings, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -476,9 +476,9 @@ def get_serializable_node(
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
-        wf_template = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        wf_template = get_serializable(entity_mapping, entity.flyte_entity, settings, options=options)
         for _, sub_wf in entity.flyte_entity.sub_workflows.items():
-            get_serializable(entity_mapping, settings, sub_wf, options=options)
+            get_serializable(entity_mapping, sub_wf, settings, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -489,7 +489,7 @@ def get_serializable_node(
         )
     elif isinstance(entity.flyte_entity, FlyteLaunchPlan):
         # Recursive call doesn't do anything except put the entity on the map.
-        get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        get_serializable(entity_mapping, entity.flyte_entity, settings, options=options)
         # Node's inputs should not contain the data which is fixed input
         node_input = []
         for b in entity.bindings:
@@ -524,7 +524,7 @@ def get_serializable_branch_node(
     other = to_serializable_cases(entity_mapping, settings, entity._ifelse_block.other, options)
     else_node_model = None
     if entity._ifelse_block.else_node:
-        else_node_model = get_serializable(entity_mapping, settings, entity._ifelse_block.else_node, options=options)
+        else_node_model = get_serializable(entity_mapping, entity._ifelse_block.else_node, settings, options=options)
 
     return BranchNodeModel(
         if_else=_core_wf.IfElseBlock(
@@ -542,8 +542,8 @@ def get_reference_spec(
 
 def get_serializable(
     entity_mapping: OrderedDict,
-    settings: SerializationSettings,
     entity: FlyteLocalEntity,
+    settings: Optional[SerializationSettings] = SerializationSettings(ImageConfig()),
     options: Optional[Options] = None,
 ) -> FlyteControlPlaneEntity:
     """

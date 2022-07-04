@@ -72,11 +72,11 @@ def get_registrable_entities(
     #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
     for entity in flyte_context.FlyteEntities.entities.copy():
         if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
-            get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity, options=options)
+            get_serializable(new_api_serializable_entities, entity, ctx.serialization_settings, options=options)
 
             if isinstance(entity, WorkflowBase):
                 lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp, options)
+                get_serializable(new_api_serializable_entities, lp, ctx.serialization_settings, options)
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))

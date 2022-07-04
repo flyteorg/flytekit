@@ -46,7 +46,7 @@ def test_normal_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    wf_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert len(wf_spec.template.nodes) == 2
     assert len(wf_spec.template.outputs) == 2
 
@@ -80,11 +80,11 @@ def test_normal_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf)
+    wf_spec = get_serializable(OrderedDict(), empty_wf, serialization_settings)
     assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
     assert wf_spec.template.nodes[0].id == "n0"
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
+    wf_spec = get_serializable(OrderedDict(), empty_wf2, serialization_settings)
     assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
     assert wf_spec.template.nodes[0].id == "n0"
 
@@ -215,7 +215,7 @@ def test_resource_request_override():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    wf_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].task_node.overrides is not None
     assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
@@ -244,7 +244,7 @@ def test_resource_limits_override():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    wf_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == []
     assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
@@ -275,7 +275,7 @@ def test_resources_override():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    wf_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].task_node.overrides is not None
     assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
@@ -311,7 +311,7 @@ def test_timeout_override(timeout, expected):
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    wf_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.timeout == expected
 
@@ -347,7 +347,7 @@ def test_retries_override(retries, expected):
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    wf_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.retries == expected
 
@@ -369,6 +369,6 @@ def test_interruptible_override(interruptible):
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    wf_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.interruptible == interruptible

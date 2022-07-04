@@ -37,7 +37,7 @@ def test_serialization():
         env={},
     )
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, bigquery_task)
+    task_spec = get_serializable(OrderedDict(), bigquery_task, serialization_settings)
 
     assert "SELECT * FROM `bigquery-public-data.crypto_dogecoin.transactions`" in task_spec.template.sql.statement
     assert "@version" in task_spec.template.sql.statement
@@ -48,7 +48,7 @@ def test_serialization():
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1
 
-    admin_workflow_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    admin_workflow_spec = get_serializable(OrderedDict(), my_wf, serialization_settings)
     assert admin_workflow_spec.template.interface.outputs["o0"].type.structured_dataset_type is not None
     assert admin_workflow_spec.template.outputs[0].var == "o0"
     assert admin_workflow_spec.template.outputs[0].binding.promise.node_id == "n0"

@@ -51,7 +51,7 @@ def test_wf_resolving():
 
     # The tasks should get the location the workflow was assigned to as the resolver.
     # The args are the index.
-    srz_t0_spec = get_serializable(OrderedDict(), serialization_settings, workflows_tasks[0])
+    srz_t0_spec = get_serializable(OrderedDict(), workflows_tasks[0], serialization_settings)
     assert srz_t0_spec.template.container.args[-4:] == [
         "--resolver",
         "tests.flytekit.unit.core.test_resolver.my_wf",
@@ -59,7 +59,7 @@ def test_wf_resolving():
         "0",
     ]
 
-    srz_t1_spec = get_serializable(OrderedDict(), serialization_settings, workflows_tasks[1])
+    srz_t1_spec = get_serializable(OrderedDict(), workflows_tasks[1], serialization_settings)
     assert srz_t1_spec.template.container.args[-4:] == [
         "--resolver",
         "tests.flytekit.unit.core.test_resolver.my_wf",

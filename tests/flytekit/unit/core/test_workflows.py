@@ -58,7 +58,7 @@ def test_workflow_values():
         u, v = t1(a=x)
         return y, v
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+    wf_spec = get_serializable(OrderedDict(), wf, serialization_settings)
     assert wf_spec.template.metadata_defaults.interruptible
     assert wf_spec.template.metadata.on_failure == 1
 
@@ -192,7 +192,7 @@ def test_wf_nested_comp():
     assert (8, 10) == outer()
     entity_mapping = OrderedDict()
 
-    model_wf = get_serializable(entity_mapping, serialization_settings, outer)
+    model_wf = get_serializable(entity_mapping, outer, serialization_settings)
 
     assert len(model_wf.template.interface.outputs) == 2
     assert len(model_wf.template.nodes) == 2
@@ -245,7 +245,7 @@ def test_all_node_types():
     assert my_wf_example(a=1) == (6, 16)
     entity_mapping = OrderedDict()
 
-    model_wf = get_serializable(entity_mapping, serialization_settings, my_wf_example)
+    model_wf = get_serializable(entity_mapping, my_wf_example, serialization_settings)
 
     assert len(model_wf.template.interface.outputs) == 2
     assert len(model_wf.template.nodes) == 4
@@ -258,7 +258,7 @@ def test_all_node_types():
 
 
 def test_wf_docstring():
-    model_wf = get_serializable(OrderedDict(), serialization_settings, my_wf_example)
+    model_wf = get_serializable(OrderedDict(), my_wf_example, serialization_settings)
 
     assert len(model_wf.template.interface.outputs) == 2
     assert model_wf.template.interface.outputs["o0"].description == "outputs"

@@ -57,5 +57,5 @@ def test_example():
     def t1(array: np.ndarray) -> np.ndarray:
         return array.flatten()
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    task_spec = get_serializable(OrderedDict(), t1, serialization_settings)
     assert task_spec.template.interface.outputs["o0"].type.blob.format is NumpyArrayTransformer.NUMPY_ARRAY_FORMAT
