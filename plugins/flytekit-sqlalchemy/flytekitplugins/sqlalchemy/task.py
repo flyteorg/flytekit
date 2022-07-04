@@ -2,6 +2,7 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
+from pandas.io.sql import pandasSQL_builder
 from sqlalchemy import create_engine  # type: ignore
 
 from flytekit import current_context, kwtypes
@@ -82,12 +83,14 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         query_template: str,
         task_config: SQLAlchemyConfig,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = FlyteSchema,
         container_image: str = SQLAlchemyDefaultImages.default_image(),
         **kwargs,
     ):
-        output_schema = output_schema_type if output_schema_type else FlyteSchema
-        outputs = kwtypes(results=output_schema)
+        if output_schema_type:
+            outputs = kwtypes(results=output_schema_type)
+        else:
+            outputs = None
 
         super().__init__(
             name=name,
@@ -128,5 +131,9 @@ class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
         interpolated_query = SQLAlchemyTask.interpolate_query(tt.custom["query_template"], **kwargs)
         print(f"Interpolated query {interpolated_query}")
         with engine.begin() as connection:
-            df = pd.read_sql_query(interpolated_query, connection)
+            df = None
+            if tt.interface.outputs:
+                df = pd.read_sql_query(interpolated_query, connection)
+            else:
+                pandasSQL_builder(connection).execute(interpolated_query)
         return df

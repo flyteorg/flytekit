@@ -89,7 +89,7 @@ def _ipython_check() -> bool:
     return is_ipython
 
 
-def _get_deck(new_user_params: ExecutionParameters):
+def _get_deck(new_user_params: ExecutionParameters) -> str:
     """
     Get flyte deck html string
     """

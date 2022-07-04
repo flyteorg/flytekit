@@ -7,16 +7,16 @@ import flytekit
 from flytekit import task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.models.core.types import BlobType
-from flytekit.models.literals import BlobMetadata
-from flytekit.models.types import LiteralType
-from flytekit.tools.translator import get_serializable
-from flytekit.types.pytorch import (
+from flytekit.extras.pytorch import (
     PyTorchCheckpoint,
     PyTorchCheckpointTransformer,
     PyTorchModuleTransformer,
     PyTorchTensorTransformer,
 )
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import BlobMetadata
+from flytekit.models.types import LiteralType
+from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(

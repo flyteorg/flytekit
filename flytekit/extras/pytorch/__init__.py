@@ -1,7 +1,7 @@
 """
 Flytekit PyTorch
 =========================================
-.. currentmodule:: flytekit.types.pytorch
+.. currentmodule:: flytekit.extras.pytorch
 
 .. autosummary::
    :template: custom.rst

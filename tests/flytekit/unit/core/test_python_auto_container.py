@@ -19,6 +19,11 @@ def default_serialization_settings(default_image_config):
     )
 
 
+@pytest.fixture
+def minimal_serialization_settings(default_image_config):
+    return SerializationSettings(project="p", domain="d", version="v", image_config=default_image_config)
+
+
 def test_image_name_interpolation(default_image_config):
     img_to_interpolate = "{{.image.default.fqn}}:{{.image.default.version}}-special"
     img = get_registerable_container_image(img=img_to_interpolate, cfg=default_image_config)
@@ -31,6 +36,7 @@ class DummyAutoContainerTask(PythonAutoContainerTask):
 
 
 task = DummyAutoContainerTask(name="x", task_config=None, task_type="t")
+task_with_env_vars = DummyAutoContainerTask(name="x", environment={"HAM": "spam"}, task_config=None, task_type="t")
 
 
 def test_default_command(default_serialization_settings):
@@ -55,3 +61,21 @@ def test_default_command(default_serialization_settings):
         "task-name",
         "task",
     ]
+
+
+def test_get_container(default_serialization_settings):
+    c = task.get_container(default_serialization_settings)
+    assert c.image == "docker.io/xyz:some-git-hash"
+    assert c.env == {"FOO": "bar"}
+
+
+def test_get_container_with_task_envvars(default_serialization_settings):
+    c = task_with_env_vars.get_container(default_serialization_settings)
+    assert c.image == "docker.io/xyz:some-git-hash"
+    assert c.env == {"FOO": "bar", "HAM": "spam"}
+
+
+def test_get_container_without_serialization_settings_envvars(minimal_serialization_settings):
+    c = task_with_env_vars.get_container(minimal_serialization_settings)
+    assert c.image == "docker.io/xyz:some-git-hash"
+    assert c.env == {"HAM": "spam"}
