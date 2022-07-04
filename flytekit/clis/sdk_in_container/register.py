@@ -1,5 +1,6 @@
 import os
 import pathlib
+import tempfile
 import typing
 
 import click
@@ -67,7 +68,7 @@ Note: This command only works on regular Python packages, not namespace packages
     "--output",
     required=False,
     type=click.Path(dir_okay=True, file_okay=False, writable=True, resolve_path=True),
-    default=".",
+    default=None,
     help="Directory to write the output zip file containing the protobuf definitions",
 )
 @click.option(
@@ -147,6 +148,13 @@ def register(
     # Upload zip file to Admin using FlyteRemote.
     md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
     cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
+
+    # Clean-up temporary directory that was used for fast registration
+    if zip_file.startswith(tempfile.gettempdir()):
+        os.remove(zip_file)
+        tempdir_path = zip_file[: zip_file.rfind(os.sep)]
+        click.secho(f"Deleting the temporary directory at {tempdir_path} used for fast registration", fg="yellow")
+        os.rmdir(tempdir_path)
 
     # Create serialization settings
     # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
