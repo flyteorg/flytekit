@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements.in
 #
--e file:.#egg=flytekitplugins-onnx_scikitlearn
+-e file:.#egg=flytekitplugins-onnxscikitlearn
     # via -r requirements.in
 arrow==1.2.2
     # via jinja2-time
@@ -45,7 +45,7 @@ flatbuffers==2.0
 flyteidl==1.0.1
     # via flytekit
 flytekit==1.0.3
-    # via flytekitplugins-onnx-scikitlearn
+    # via flytekitplugins-onnxscikitlearn
 googleapis-common-protos==1.56.2
     # via
     #   flyteidl
@@ -169,7 +169,7 @@ six==1.16.0
     #   grpcio
     #   python-dateutil
 skl2onnx==1.11.2
-    # via flytekitplugins-onnx-scikitlearn
+    # via flytekitplugins-onnxscikitlearn
 sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0

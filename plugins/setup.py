@@ -21,14 +21,14 @@ SOURCES = {
     "flytekitplugins-kfpytorch": "flytekit-kf-pytorch",
     "flytekitplugins-kftensorflow": "flytekit-kf-tensorflow",
     "flytekitplugins-modin": "flytekit-modin",
+    "flytekitplugins-onnxscikitlearn": "flytekit-onnx-scikitlearn",
+    "flytekitplugins-onnxtensorflow": "flytekit-onnx-tensorflow",
+    "flytekitplugins-onnxpytorch": "flytekit-onnx-pytorch",
     "flytekitplugins-pandera": "flytekit-pandera",
     "flytekitplugins-papermill": "flytekit-papermill",
     "flytekitplugins-snowflake": "flytekit-snowflake",
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
-    "flytekitplugins-onnx_scikitlearn": "flytekit-onnx-scikitlearn",
-    "flytekitplugins-onnx_tensorflow": "flytekit-onnx-tensorflow",
-    "flytekitplugins-onnx_pytorch": "flytekit-onnx-pytorch",
 }
 
 

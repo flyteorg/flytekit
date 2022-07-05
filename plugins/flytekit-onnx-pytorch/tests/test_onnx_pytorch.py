@@ -9,7 +9,7 @@ import torch.nn.init as init
 import torch.onnx
 import torch.utils.model_zoo as model_zoo
 import torchvision.transforms as transforms
-from flytekitplugins.onnx_pytorch import PyTorch2ONNX, PyTorch2ONNXConfig
+from flytekitplugins.onnxpytorch import PyTorch2ONNX, PyTorch2ONNXConfig
 from PIL import Image
 from torch import nn
 

@@ -3,7 +3,7 @@ from typing import Annotated, List, NamedTuple, TypeVar
 import numpy
 import onnxruntime as rt
 import pandas as pd
-from flytekitplugins.onnx_scikitlearn import ScikitLearn2ONNX, ScikitLearn2ONNXConfig
+from flytekitplugins.onnxscikitlearn import ScikitLearn2ONNX, ScikitLearn2ONNXConfig
 from skl2onnx.common._apply_operation import apply_mul
 from skl2onnx.common.data_types import FloatTensorType
 from skl2onnx.proto import onnx_proto

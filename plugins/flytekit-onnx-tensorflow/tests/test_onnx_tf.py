@@ -5,7 +5,7 @@ from typing import Annotated, NamedTuple, TypeVar
 import numpy as np
 import onnxruntime as rt
 import tensorflow as tf
-from flytekitplugins.onnx_tensorflow import TensorFlow2ONNX, TensorFlow2ONNXConfig
+from flytekitplugins.onnxtensorflow import TensorFlow2ONNX, TensorFlow2ONNXConfig
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from tensorflow.keras.preprocessing import image
 

@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "onnx_pytorch"
+PLUGIN_NAME = "onnxpytorch"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 

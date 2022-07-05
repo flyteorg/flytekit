@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "onnx_tensorflow"
+PLUGIN_NAME = "onnxtensorflow"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 

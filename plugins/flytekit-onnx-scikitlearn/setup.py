@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "onnx_scikitlearn"
+PLUGIN_NAME = "onnxscikitlearn"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
