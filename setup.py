@@ -37,7 +37,7 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=1.0.0,<1.1.0",
+        "flyteidl>=1.1.3,<1.2.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<7.0.0",
@@ -48,6 +48,8 @@ setup(
         "python-dateutil>=2.1",
         "grpcio>=1.43.0,!=1.45.0,<2.0",
         "grpcio-status>=1.43,!=1.45.0",
+        "importlib-metadata",
+        "pyopenssl",
         "protobuf>=3.6.1,<4",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",

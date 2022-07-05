@@ -1,19 +1,17 @@
-<html>
-    <p align="center">
-        <img src="https://raw.githubusercontent.com/flyteorg/static-resources/main/common/flyte_circle_gradient_1_4x4.png" alt="Flyte Logo" width="100">
-    </p>
-    <h1 align="center">
-        Flytekit Python
-    </h1>
-    <p align="center">
-        Flytekit Python is the Python SDK built on top of Flyte
-    </p>
-    <h3 align="center">
-        <a href="plugins/README.md">Plugins</a>
-        <span> · </span>
-        <a href="https://docs.flyte.org/projects/flytekit/en/latest/contributing.html">Contribution Guide</a>
-    </h3>
-</html>
+<p align="center">
+    <img src="https://raw.githubusercontent.com/flyteorg/static-resources/main/common/flyte_circle_gradient_1_4x4.png" alt="Flyte Logo" width="100">
+</p>
+<h1 align="center">
+    Flytekit Python
+</h1>
+<p align="center">
+    Flytekit Python is the Python SDK built on top of Flyte
+</p>
+<h3 align="center">
+    <a href="plugins/README.md">Plugins</a>
+    <span> · </span>
+    <a href="https://docs.flyte.org/projects/flytekit/en/latest/contributing.html">Contribution Guide</a>
+</h3>
 
 [![PyPI version fury.io](https://badge.fury.io/py/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
 [![PyPI download day](https://img.shields.io/pypi/dd/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)

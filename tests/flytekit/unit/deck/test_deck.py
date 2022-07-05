@@ -43,4 +43,5 @@ def test_deck_in_jupyter(mock_ipython_check):
 
     with flytekit.new_context() as ctx:
         t1(a=3)
-        ctx.get_deck()
+        deck = ctx.get_deck()
+        assert deck is not None

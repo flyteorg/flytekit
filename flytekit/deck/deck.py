@@ -3,7 +3,7 @@ from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
-from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
@@ -89,7 +89,7 @@ def _ipython_check() -> bool:
     return is_ipython
 
 
-def _get_deck(new_user_params: ExecutionParameters):
+def _get_deck(new_user_params: ExecutionParameters) -> str:
     """
     Get flyte deck html string
     """
@@ -98,7 +98,11 @@ def _get_deck(new_user_params: ExecutionParameters):
 
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
-    output_dir = FlyteContext.current_context().file_access.get_random_local_directory()
+    ctx = FlyteContext.current_context()
+    if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+        output_dir = ctx.execution_state.engine_dir
+    else:
+        output_dir = ctx.file_access.get_random_local_directory()
     deck_path = os.path.join(output_dir, DECK_FILE_NAME)
     with open(deck_path, "w") as f:
         f.write(_get_deck(new_user_params))

@@ -35,7 +35,7 @@ click==8.1.3
     #   flytekit
 cloudpickle==2.1.0
     # via flytekit
-cookiecutter==1.7.3
+cookiecutter==2.1.1
     # via flytekit
 croniter==1.3.5
     # via flytekit
@@ -69,11 +69,11 @@ googleapis-common-protos==1.56.1
     #   grpcio-status
 greenlet==1.1.2
     # via gevent
-grpcio==1.46.1
+grpcio==1.47.0
     # via
     #   flytekit
     #   grpcio-status
-grpcio-status==1.46.1
+grpcio-status==1.47.0
     # via flytekit
 idna==3.3
     # via requests
