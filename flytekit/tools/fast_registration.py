@@ -9,6 +9,8 @@ import tarfile
 import tempfile
 from typing import Optional
 
+import click
+
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import tar_strip_file_attributes
@@ -31,8 +33,11 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike) -> os.PathLike:
     digest = compute_digest(source, ignore.is_ignored)
     archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
-    if output_dir:
-        archive_fname = os.path.join(output_dir, archive_fname)
+    if output_dir is None:
+        output_dir = tempfile.mkdtemp()
+        click.secho(f"Output given as {None}, using a temporary directory at {output_dir} instead", fg="yellow")
+
+    archive_fname = os.path.join(output_dir, archive_fname)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tar_path = os.path.join(tmp_dir, "tmp.tar")
