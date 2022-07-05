@@ -187,7 +187,7 @@ natsort==8.1.0
     # via flytekit
 nbclient==0.6.4
     # via nbconvert
-nbconvert==6.5.0
+nbconvert==7.0.0rc2
     # via notebook
 nbformat==5.4.0
     # via
