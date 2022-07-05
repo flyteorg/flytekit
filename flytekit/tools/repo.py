@@ -91,6 +91,10 @@ def package(
 
         # If Fast serialization is enabled, then an archive is also created and packaged
         if fast:
+            # If output exists and is a path within source, delete it so as to not re-bundle it again.
+            if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
+                click.secho(f"{output} already exists within {source}, deleting and re-creating it", fg="yellow")
+                os.remove(output)
             archive_fname = fast_registration.fast_package(source, output_tmpdir)
             click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
