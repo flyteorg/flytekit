@@ -149,13 +149,6 @@ def register(
     md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
     cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
 
-    # Clean-up temporary directory that was used for fast registration
-    if zip_file.startswith(tempfile.gettempdir()):
-        os.remove(zip_file)
-        tempdir_path = zip_file[: zip_file.rfind(os.sep)]
-        click.secho(f"Deleting the temporary directory at {tempdir_path} used for fast registration", fg="yellow")
-        os.rmdir(tempdir_path)
-
     # Create serialization settings
     # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
     serialization_settings = SerializationSettings(

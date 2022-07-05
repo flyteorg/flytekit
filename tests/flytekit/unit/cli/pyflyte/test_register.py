@@ -62,5 +62,4 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
             f.close()
         result = runner.invoke(pyflyte.main, ["register", "core"])
         assert "Output given as None, using a temporary directory at" in result.output
-        assert "Deleting the temporary directory at" in result.output
         shutil.rmtree("core")
