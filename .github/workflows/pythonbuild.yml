@@ -79,6 +79,7 @@ jobs:
           - flytekit-modin
           - flytekit-pandera
           - flytekit-papermill
+          - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
