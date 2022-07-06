@@ -3,11 +3,13 @@ from collections import OrderedDict
 
 import pytest
 
-import flytekit.configuration
-from flytekit import LaunchPlan, map_task
-from flytekit.configuration import Image, ImageConfig
-from flytekit.core.map_task import MapPythonTask
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
+from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.map_task import MapPythonTask, map_task
 from flytekit.core.task import TaskMetadata, task
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
 
@@ -15,7 +17,7 @@ from flytekit.tools.translator import get_serializable
 @pytest.fixture
 def serialization_settings():
     default_img = Image(name="default", fqn="test", tag="tag")
-    return flytekit.configuration.SerializationSettings(
+    return SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -190,3 +192,77 @@ def test_map_task_metadata():
     assert mapped_1.metadata is map_meta
     mapped_2 = map_task(t2)
     assert mapped_2.metadata is t2.metadata
+
+
+def test_fdsi():
+    @task
+    def a_mappable_task(a: int) -> str:
+        inc = a + 2
+        stringified = str(inc)
+        return stringified
+
+    @task
+    def coalesce(b: typing.List[str]) -> str:
+        coalesced = "".join(b)
+        return coalesced
+
+    @dynamic
+    def wrapper_task(a: typing.List[int]) -> str:
+        mapped_out = map_task(a_mappable_task)(a=a)
+        coalesced = coalesce(b=mapped_out)
+        return coalesced
+
+    @workflow
+    def my_map_workflow(a: typing.List[int]) -> str:
+        return wrapper_task(a=a)
+
+    result = my_map_workflow(a=[1, 2, 3, 4, 5])
+    print(f"{result}")
+
+
+def test_fdsif():
+    @task
+    def a_mappable_task(a: int) -> str:
+        inc = a + 2
+        stringified = str(inc)
+        return stringified
+
+    @task
+    def coalesce(b: typing.List[str]) -> str:
+        coalesced = "".join(b)
+        return coalesced
+
+    @dynamic
+    def wrapper_task(a: typing.List[int]) -> str:
+        mapped_out = map_task(a_mappable_task)(a=a)
+        coalesced = coalesce(b=mapped_out)
+        return coalesced
+
+    with FlyteContextManager.with_context(
+        FlyteContextManager.current_context().with_serialization_settings(
+            SerializationSettings(
+                project="test_proj",
+                domain="test_domain",
+                version="abc",
+                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                env={},
+                fast_serialization_settings=FastSerializationSettings(
+                    enabled=True,
+                    destination_dir="/User/flyte/workflows",
+                    distribution_location="s3://my-s3-bucket/fast/123",
+                ),
+            )
+        )
+    ) as ctx:
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(
+                ctx, {"a": [1, 2, 3, 4, 5]}, type_hints={"a": typing.List[int]}
+            )
+            dynamic_job_spec = wrapper_task.dispatch_execute(ctx, input_literal_map)
+            print(dynamic_job_spec)

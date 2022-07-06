@@ -72,7 +72,7 @@ class DynamicJobSpec(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         """
-        :rtype: flyteidl.core.dynamic_job.DynamicJobSpec
+        :rtype: flyteidl.core.dynamic_job_pb2.DynamicJobSpec
         """
         return _dynamic_job.DynamicJobSpec(
             tasks=[task.to_flyte_idl() for task in self.tasks] if self.tasks else None,

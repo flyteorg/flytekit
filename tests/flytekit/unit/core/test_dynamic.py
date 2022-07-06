@@ -1,10 +1,9 @@
 import typing
 
-import flytekit.configuration
-from flytekit import dynamic
-from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
@@ -30,7 +29,7 @@ def test_wf1_with_fast_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            flytekit.configuration.SerializationSettings(
+            SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
