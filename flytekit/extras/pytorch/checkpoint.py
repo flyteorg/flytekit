@@ -5,17 +5,13 @@ from typing import Any, Callable, Dict, NamedTuple, Optional, Type, Union
 
 import torch
 from dataclasses_json import dataclass_json
+from typing_extensions import Protocol
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-
-try:
-    from typing import Protocol
-except ImportError:
-    from typing_extensions import Protocol
 
 
 class IsDataclass(Protocol):
