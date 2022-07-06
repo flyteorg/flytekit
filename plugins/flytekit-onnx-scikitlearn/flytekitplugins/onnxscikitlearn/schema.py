@@ -15,7 +15,7 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransform
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file import ONNXFile
 
 
 @dataclass_json
@@ -119,12 +119,12 @@ class ScikitLearn2ONNXTransformer(TypeTransformer[ScikitLearn2ONNX]):
         self,
         ctx: FlyteContext,
         lv: Literal,
-        expected_python_type: Type[FlyteFile],
-    ) -> FlyteFile:
+        expected_python_type: Type[ONNXFile],
+    ) -> ONNXFile:
         if not lv.scalar.blob.uri:
             raise TypeTransformerFailedError(f"ONNX format isn't of the expected type {expected_python_type}")
 
-        return FlyteFile[self.ONNX_FORMAT](path=lv.scalar.blob.uri)
+        return ONNXFile(path=lv.scalar.blob.uri)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[ScikitLearn2ONNX]:
         if (

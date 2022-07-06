@@ -1,6 +1,6 @@
 # Some standard imports
 from pathlib import Path
-from typing import Annotated, TypeVar
+from typing import Annotated
 
 import numpy as np
 import onnxruntime
@@ -15,8 +15,7 @@ from torch import nn
 
 import flytekit
 from flytekit import task, workflow
-from flytekit.types.file import JPEGImageFile
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file import JPEGImageFile, ONNXFile
 
 
 class SuperResolutionNet(nn.Module):
@@ -75,7 +74,7 @@ def test_onnx_pytorch():
         return PyTorch2ONNX(model=torch_model)
 
     @task
-    def onnx_predict(model_file: FlyteFile[TypeVar("onnx")]) -> JPEGImageFile:
+    def onnx_predict(model_file: ONNXFile) -> JPEGImageFile:
         ort_session = onnxruntime.InferenceSession(model_file.download())
 
         img = Image.open(

@@ -1,4 +1,4 @@
-from typing import Annotated, List, NamedTuple, TypeVar
+from typing import Annotated, List, NamedTuple
 
 import numpy
 import onnxruntime as rt
@@ -13,7 +13,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
 from flytekit import task, workflow
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file import ONNXFile
 
 
 def test_onnx_scikitlearn_simple():
@@ -46,7 +46,7 @@ def test_onnx_scikitlearn_simple():
 
     @task
     def predict(
-        model: FlyteFile[TypeVar("onnx")],
+        model: ONNXFile,
         X_test: pd.DataFrame,
     ) -> List[int]:
         sess = rt.InferenceSession(model.download())
@@ -106,7 +106,7 @@ def test_onnx_scikitlearn():
         return ScikitLearn2ONNX(model)
 
     @workflow
-    def wf() -> FlyteFile:
+    def wf() -> ONNXFile:
         return get_model()
 
     print(wf())

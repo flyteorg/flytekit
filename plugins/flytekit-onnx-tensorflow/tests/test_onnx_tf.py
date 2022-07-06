@@ -1,6 +1,6 @@
 import urllib
 from io import BytesIO
-from typing import Annotated, NamedTuple, TypeVar
+from typing import Annotated, NamedTuple
 
 import numpy as np
 import onnxruntime as rt
@@ -10,7 +10,7 @@ from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from tensorflow.keras.preprocessing import image
 
 from flytekit import task, workflow
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file import ONNXFile
 
 
 def test_tf_onnx():
@@ -54,7 +54,7 @@ def test_tf_onnx():
 
     @task
     def onnx_predict(
-        model: FlyteFile[TypeVar("onnx")],
+        model: ONNXFile,
         img: np.ndarray,
     ) -> np.ndarray:
         m = rt.InferenceSession(model.download(), providers=["CPUExecutionProvider"])
