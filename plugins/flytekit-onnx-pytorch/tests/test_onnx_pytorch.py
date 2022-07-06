@@ -1,6 +1,5 @@
 # Some standard imports
 from pathlib import Path
-from typing import Annotated
 
 import numpy as np
 import onnxruntime
@@ -12,6 +11,7 @@ import torchvision.transforms as transforms
 from flytekitplugins.onnxpytorch import PyTorch2ONNX, PyTorch2ONNXConfig
 from PIL import Image
 from torch import nn
+from typing_extensions import Annotated
 
 import flytekit
 from flytekit import task, workflow

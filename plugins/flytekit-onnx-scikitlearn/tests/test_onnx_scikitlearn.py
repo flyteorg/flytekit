@@ -1,4 +1,4 @@
-from typing import Annotated, List, NamedTuple
+from typing import List, NamedTuple
 
 import numpy
 import onnxruntime as rt
@@ -11,6 +11,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.datasets import load_iris
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+from typing_extensions import Annotated
 
 from flytekit import task, workflow
 from flytekit.types.file import ONNXFile

@@ -1,6 +1,6 @@
 import urllib
 from io import BytesIO
-from typing import Annotated, NamedTuple
+from typing import NamedTuple
 
 import numpy as np
 import onnxruntime as rt
@@ -8,6 +8,7 @@ import tensorflow as tf
 from flytekitplugins.onnxtensorflow import TensorFlow2ONNX, TensorFlow2ONNXConfig
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from tensorflow.keras.preprocessing import image
+from typing_extensions import Annotated
 
 from flytekit import task, workflow
 from flytekit.types.file import ONNXFile
