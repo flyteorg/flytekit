@@ -275,7 +275,7 @@ kubernetes==24.2.0
     # via -r doc-requirements.in
 lazy-object-proxy==1.7.1
     # via astroid
-lxml==4.9.0
+lxml==4.9.1
     # via sphinx-material
 markdown==3.3.7
     # via -r doc-requirements.in
