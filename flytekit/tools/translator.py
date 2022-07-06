@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask
-from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -543,7 +543,7 @@ def get_reference_spec(
 def get_serializable(
     entity_mapping: OrderedDict,
     entity: FlyteLocalEntity,
-    settings: Optional[SerializationSettings] = SerializationSettings(ImageConfig()),
+    settings: Optional[SerializationSettings] = None,
     options: Optional[Options] = None,
 ) -> FlyteControlPlaneEntity:
     """
