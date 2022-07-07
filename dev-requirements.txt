@@ -444,6 +444,8 @@ tomli==2.0.1
     #   coverage
     #   mypy
     #   pytest
+torch==1.11.0
+    # via -r dev-requirements.in
 traitlets==5.3.0
     # via
     #   ipython
@@ -458,6 +460,7 @@ typing-extensions==4.3.0
     #   importlib-metadata
     #   mypy
     #   responses
+    #   torch
     #   typing-inspect
 typing-inspect==0.7.1
     # via
