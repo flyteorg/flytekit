@@ -34,7 +34,6 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
-from flytekit.extras.cloud_pickle_resolver import CloudPickleResolver
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
@@ -132,6 +131,8 @@ class FlyteRemote(object):
         :param data_upload_location: this is where all the default data will be uploaded when providing inputs.
             The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
         """
+        from flytekit.extras.cloud_pickle_resolver import default_cloudpickle_resolver
+
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
@@ -147,7 +148,10 @@ class FlyteRemote(object):
             data_config=config.data_config,
         )
 
-        self._resolver = CloudPickleResolver() if use_cloudpickle else None
+        self._resolver = None
+        if use_cloudpickle:
+            self._resolver = default_cloudpickle_resolver
+            self._resolver._remote = self
 
         # Save the file access object locally, build a context for it and save that as well.
         self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
@@ -466,7 +470,11 @@ class FlyteRemote(object):
         :param version: version that will be used to register. If not specified will default to using the serialization settings default
         :return:
         """
+        old_resolver = entity._task_resolver
+        if self._resolver:
+            entity._task_resolver = self._resolver
         ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        entity._task_resolver = old_resolver
         ft = self.fetch_task(
             ident.project,
             ident.domain,
