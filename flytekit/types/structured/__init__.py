@@ -10,7 +10,6 @@ Flytekit StructuredDataset
    StructuredDataset
    StructuredDatasetEncoder
    StructuredDatasetDecoder
-   StructuredDatasetTransformerEngine
 """
 
 
