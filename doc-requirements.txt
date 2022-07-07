@@ -664,6 +664,8 @@ tinycss2==1.1.1
     # via nbconvert
 toolz==0.11.2
     # via altair
+torch==1.11.0
+    # via -r doc-requirements.in
 tornado==6.2
     # via
     #   ipykernel
@@ -703,6 +705,7 @@ typing-extensions==4.3.0
     #   pandera
     #   pydantic
     #   responses
+    #   torch
     #   typing-inspect
 typing-inspect==0.7.1
     # via
