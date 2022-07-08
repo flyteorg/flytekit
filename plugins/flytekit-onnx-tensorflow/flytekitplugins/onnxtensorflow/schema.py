@@ -100,7 +100,7 @@ class TensorFlow2ONNXTransformer(TypeTransformer[TensorFlow2ONNX]):
         if not lv.scalar.blob.uri:
             raise TypeTransformerFailedError(f"ONNX format isn't of the expected type {expected_python_type}")
 
-        return ONNXFile[self.ONNX_FORMAT](path=lv.scalar.blob.uri)
+        return ONNXFile(path=lv.scalar.blob.uri)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[TensorFlow2ONNX]:
         if (

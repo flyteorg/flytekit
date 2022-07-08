@@ -1,6 +1,6 @@
 import urllib
 from io import BytesIO
-from typing import NamedTuple
+from typing import List, NamedTuple
 
 import numpy as np
 import onnxruntime as rt
@@ -57,13 +57,15 @@ def test_tf_onnx():
     def onnx_predict(
         model: ONNXFile,
         img: np.ndarray,
-    ) -> np.ndarray:
+    ) -> List[np.ndarray]:
         m = rt.InferenceSession(model.download(), providers=["CPUExecutionProvider"])
         onnx_pred = m.run([n.name for n in m.get_outputs()], {"input": img})
 
         return onnx_pred
 
-    WorkflowOutput = NamedTuple("WorkflowOutput", [("keras_predictions", np.ndarray), ("onnx_predictions", np.ndarray)])
+    WorkflowOutput = NamedTuple(
+        "WorkflowOutput", [("keras_predictions", np.ndarray), ("onnx_predictions", List[np.ndarray])]
+    )
 
     @workflow
     def wf() -> WorkflowOutput:

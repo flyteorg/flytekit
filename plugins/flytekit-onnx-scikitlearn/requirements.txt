@@ -10,11 +10,13 @@ arrow==1.2.2
     # via jinja2-time
 binaryornot==0.4.4
     # via cookiecutter
-certifi==2022.5.18.1
+certifi==2022.6.15
     # via requests
-chardet==4.0.0
+cffi==1.15.1
+    # via cryptography
+chardet==5.0.0
     # via binaryornot
-charset-normalizer==2.0.12
+charset-normalizer==2.1.0
     # via requests
 click==8.1.3
     # via
@@ -26,6 +28,8 @@ cookiecutter==2.1.1
     # via flytekit
 croniter==1.3.5
     # via flytekit
+cryptography==37.0.4
+    # via pyopenssl
 dataclasses-json==0.5.7
     # via flytekit
 decorator==5.1.1
@@ -42,24 +46,26 @@ docstring-parser==0.14.1
     # via flytekit
 flatbuffers==2.0
     # via onnxruntime
-flyteidl==1.0.1
+flyteidl==1.1.8
     # via flytekit
-flytekit==1.0.3
+flytekit==1.1.0
     # via flytekitplugins-onnxscikitlearn
-googleapis-common-protos==1.56.2
+googleapis-common-protos==1.56.3
     # via
     #   flyteidl
     #   grpcio-status
-grpcio==1.46.3
+grpcio==1.47.0
     # via
     #   flytekit
     #   grpcio-status
-grpcio-status==1.46.3
+grpcio-status==1.47.0
     # via flytekit
 idna==3.3
     # via requests
-importlib-metadata==4.11.4
-    # via keyring
+importlib-metadata==4.12.0
+    # via
+    #   flytekit
+    #   keyring
 jinja2==3.1.2
     # via
     #   cookiecutter
@@ -68,11 +74,11 @@ jinja2-time==0.2.0
     # via cookiecutter
 joblib==1.1.0
     # via scikit-learn
-keyring==23.5.1
+keyring==23.6.0
     # via flytekit
 markupsafe==2.1.1
     # via jinja2
-marshmallow==3.16.0
+marshmallow==3.17.0
     # via
     #   dataclasses-json
     #   marshmallow-enum
@@ -85,7 +91,7 @@ mypy-extensions==0.4.3
     # via typing-inspect
 natsort==8.1.0
     # via flytekit
-numpy==1.22.4
+numpy==1.23.0
     # via
     #   onnx
     #   onnxconverter-common
@@ -95,7 +101,7 @@ numpy==1.22.4
     #   scikit-learn
     #   scipy
     #   skl2onnx
-onnx==1.11.0
+onnx==1.12.0
     # via
     #   onnxconverter-common
     #   skl2onnx
@@ -105,7 +111,7 @@ onnxruntime==1.11.1
     # via -r requirements.in
 packaging==21.3
     # via marshmallow
-pandas==1.4.2
+pandas==1.4.3
     # via flytekit
 protobuf==3.20.1
     # via
@@ -123,6 +129,10 @@ protoc-gen-swagger==0.1.0
 py==1.11.0
     # via retry
 pyarrow==6.0.1
+    # via flytekit
+pycparser==2.21
+    # via cffi
+pyopenssl==22.0.0
     # via flytekit
 pyparsing==3.0.9
     # via packaging
@@ -148,7 +158,7 @@ pyyaml==6.0
     #   flytekit
 regex==2022.6.2
     # via docker-image-py
-requests==2.27.1
+requests==2.28.1
     # via
     #   cookiecutter
     #   docker
@@ -178,19 +188,19 @@ text-unidecode==1.3
     # via python-slugify
 threadpoolctl==3.1.0
     # via scikit-learn
-typing-extensions==4.2.0
+typing-extensions==4.3.0
     # via
     #   flytekit
     #   onnx
     #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json
-urllib3==1.26.9
+urllib3==1.26.10
     # via
     #   flytekit
     #   requests
     #   responses
-websocket-client==1.3.2
+websocket-client==1.3.3
     # via docker
 wheel==0.37.1
     # via flytekit

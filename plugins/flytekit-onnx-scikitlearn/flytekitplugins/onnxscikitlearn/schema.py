@@ -59,8 +59,7 @@ class ScikitLearn2ONNX:
 
 def extract_config(t: Type[ScikitLearn2ONNX]) -> Tuple[Type[ScikitLearn2ONNX], ScikitLearn2ONNXConfig]:
     config = None
-    print(get_origin(t))
-    print("##############\n\n\n\n\n\n")
+
     if get_origin(t) is Annotated:
         base_type, config = get_args(t)
         if isinstance(config, ScikitLearn2ONNXConfig):
