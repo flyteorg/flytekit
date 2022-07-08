@@ -16,7 +16,7 @@ import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_origin
 
 import flytekit
 import flytekit.configuration
@@ -87,6 +87,14 @@ def test_forwardref_namedtuple_output():
 
     assert my_task(a=3) == (5, "hello world")
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_annotated_namedtuple_output():
+    @task
+    def my_task() -> typing.NamedTuple("OutputA", a=Annotated[int, "metadata-a"]):
+        return 1
+
+    assert get_origin(my_task.python_interface.outputs["a"]) is Annotated
 
 
 def test_simple_input_no_output():
