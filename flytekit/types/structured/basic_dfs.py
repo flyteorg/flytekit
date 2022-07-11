@@ -6,7 +6,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import DataPersistencePlugins
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -19,7 +19,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
-    StructuredDatasetTransformerEngine,
+    StructuredDatasetTransformerEngine, protocol_prefix,
 )
 
 T = TypeVar("T")
@@ -32,12 +32,11 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         self._persistence = DataPersistencePlugins.find_plugin(protocol)()
 
     def encode(
-        self,
-        ctx: FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
+            self,
+            ctx: FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
         local_dir = ctx.file_access.get_random_local_directory()
@@ -53,10 +52,10 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         super().__init__(pd.DataFrame, protocol, PARQUET)
 
     def decode(
-        self,
-        ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
-        current_task_metadata: StructuredDatasetMetadata,
+            self,
+            ctx: FlyteContext,
+            flyte_value: literals.StructuredDataset,
+            current_task_metadata: StructuredDatasetMetadata,
     ) -> pd.DataFrame:
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
@@ -72,10 +71,10 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         super().__init__(pa.Table, protocol, PARQUET)
 
     def encode(
-        self,
-        ctx: FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
+            self,
+            ctx: FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
         df = structured_dataset.dataframe
@@ -91,10 +90,10 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         super().__init__(pa.Table, protocol, PARQUET)
 
     def decode(
-        self,
-        ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
-        current_task_metadata: StructuredDatasetMetadata,
+            self,
+            ctx: FlyteContext,
+            flyte_value: literals.StructuredDataset,
+            current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         path = flyte_value.uri
         local_dir = ctx.file_access.get_random_local_directory()
@@ -105,14 +104,16 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(local_dir)
 
 
-for protocol in [LOCAL, S3]:
-    StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol))
-    StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol))
-    StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol))
-    StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol))
+ctx = FlyteContextManager.current_context()
+raw_output_protocol = protocol_prefix(ctx.file_access.get_random_local_directory())
+print("raw_output_protocol: ", raw_output_protocol)
 
-# Don't override the default for GCS.
-StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(GCS), default_for_type=False)
-StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(GCS), default_for_type=False)
-StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(GCS), default_for_type=False)
-StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(GCS), default_for_type=False)
+for protocol in [LOCAL, S3, GCS]:
+    StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol),
+                                                protocol == raw_output_protocol)
+    StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol),
+                                                protocol == raw_output_protocol)
+    StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol),
+                                                protocol == raw_output_protocol)
+    StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol),
+                                                protocol == raw_output_protocol)
