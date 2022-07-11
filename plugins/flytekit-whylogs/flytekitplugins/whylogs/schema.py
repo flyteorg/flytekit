@@ -10,7 +10,7 @@ from flytekit.models.types import LiteralType
 
 class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
     """
-    Transforms whylogs Dataset Profiles to and from a Schema (typed/untyped)
+    Transforms whylogs Dataset Profile Views to and from a Schema (typed/untyped)
     """
 
     _TYPE_INFO = BlobType(format="binary", dimensionality=BlobType.BlobDimensionality.SINGLE)
@@ -39,9 +39,14 @@ class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
         ctx.file_access.download(lv.scalar.blob.uri, local_dir)
         return DatasetProfileView.read(local_dir)
 
-    # TODO how can I test this out locally? Do I need to build a wheel of flytekit and use it from a real project?
-    def to_html(self, ctx: FlyteContext, python_val: DatasetProfileView, expected_python_type: Type[DatasetProfileView]) -> str:
-        return str(python_val.to_pandas().to_html())
+    def to_html(self,
+                ctx: FlyteContext,
+                python_val: DatasetProfileView,
+                expected_python_type: Type[DatasetProfileView]
+                ) -> str:
+        pandas_profile = str(python_val.to_pandas().to_html())
+        header = str("<h1>Profile View</h1> \n")
+        return header + pandas_profile
 
 
 TypeEngine.register(WhylogsDatasetProfileTransformer())

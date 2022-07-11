@@ -2,6 +2,9 @@ import markdown
 import pandas
 import plotly.express as px
 from pandas_profiling import ProfileReport
+from whylogs import DatasetProfileView
+from whylogs.viz import NotebookProfileVisualizer
+from whylogs.core.constraints import Constraints
 
 
 class FrameProfilingRenderer:
@@ -48,3 +51,19 @@ class BoxRenderer:
     def to_html(self, df: pandas.DataFrame) -> str:
         fig = px.box(df, y=self._column_name)
         return fig.to_html()
+
+
+class WhylogsSummaryDriftRenderer:
+    @staticmethod
+    def to_html(target_view: DatasetProfileView, reference_view: DatasetProfileView) -> str:
+        viz = NotebookProfileVisualizer()
+        viz.set_profiles(target_profile_view=target_view, reference_profile_view=reference_view)
+        return viz.summary_drift_report().data
+
+
+class WhylogsConstraintsRenderer:
+    @staticmethod
+    def to_html(constraints: Constraints) -> str:
+        viz = NotebookProfileVisualizer()
+        report = viz.constraints_report(constraints=constraints)
+        return report.data

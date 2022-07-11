@@ -2,7 +2,7 @@
 
 whylogs is an open source library for logging any kind of data. With whylogs,
 you are able to generate summaries of datasets (called whylogs profiles) which
-they can use to:
+can be used to:
 
 - Create data constraints to know whether your data looks the way it should
 - Quickly visualize key summary statistics about a dataset
@@ -23,11 +23,11 @@ import pandas as pd
 @task
 def profile(df: pd.DataFrame) -> DatasetProfileView:
     result = ylog.log(df) # Various overloads for different common data types exist
-    profile = result.profile().view()
+    profile = result.view()
     return profile
 ```
 
-Note, you'll be passing around `DatasetProfileView` from tasks, not `DatasetProfile`.
+>**NOTE:** You'll be passing around `DatasetProfileView` from tasks, not `DatasetProfile`.
 
 ## Validating Data
 
@@ -54,4 +54,4 @@ def validate_data(profile: DatasetProfileView):
         raise Exception("Invalid data found")
 ```
 
-See our [constraint notebook](https://github.com/whylabs/whylogs/blob/1.0.x/python/examples/basic/MetricConstraints.ipynb) for more examples.
+Check out our [constraints notebook](https://github.com/whylabs/whylogs/blob/1.0.x/python/examples/basic/MetricConstraints.ipynb) for more examples.

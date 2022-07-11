@@ -1,1 +1,5 @@
-from .transformer import WhylogsDatasetProfileTransformer
+from .schema import WhylogsDatasetProfileTransformer
+
+__all__ = [
+    "WhylogsDatasetProfileTransformer"
+]
