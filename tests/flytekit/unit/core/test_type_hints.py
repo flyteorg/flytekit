@@ -91,9 +91,10 @@ def test_forwardref_namedtuple_output():
 
 def test_annotated_namedtuple_output():
     @task
-    def my_task() -> typing.NamedTuple("OutputA", a=Annotated[int, "metadata-a"]):
-        return 1
+    def my_task(a: int) -> typing.NamedTuple("OutputA", a=Annotated[int, "metadata-a"]):
+        return a + 2
 
+    assert my_task(a=9) == (11,)
     assert get_origin(my_task.python_interface.outputs["a"]) is Annotated
 
 
