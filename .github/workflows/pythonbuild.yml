@@ -49,7 +49,7 @@ jobs:
           pip freeze
       - name: Test with coverage
         run: |
-          coverage run -m pytest tests/flytekit/unit -m "not sandbox_test"
+          pytest tests/flytekit/unit -m "not sandbox_test" --cov=./ --cov-report=xml
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:

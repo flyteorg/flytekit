@@ -5,6 +5,7 @@ coverage[toml]
 joblib
 mock
 pytest
+pytest-cov
 mypy
 pre-commit
 codespell
