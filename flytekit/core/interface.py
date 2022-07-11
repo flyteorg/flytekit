@@ -7,7 +7,7 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
-from typing_extensions import get_args, get_origin
+from typing_extensions import get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
@@ -283,11 +283,8 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     For now the fancy object, maybe in the future a dumb object.
 
     """
-    try:
-        # include_extras can only be used in python >= 3.9
-        type_hints = typing.get_type_hints(fn, include_extras=True)
-    except TypeError:
-        type_hints = typing.get_type_hints(fn)
+
+    type_hints = get_type_hints(fn, include_extras=True)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 
@@ -395,7 +392,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
         bases = return_annotation.__bases__  # type: ignore
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
-            return dict(typing.get_type_hints(return_annotation))
+            return dict(get_type_hints(return_annotation, include_extras=True))
 
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3
