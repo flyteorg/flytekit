@@ -95,6 +95,14 @@ jobs:
           # https://github.com/great-expectations/great_expectations/blob/develop/setup.py#L87-L89
           - python-version: 3.10
             plugin-names: "flytekit-greatexpectations"
+          # onnxruntime does not support python 3.10 yet
+          # https://github.com/microsoft/onnxruntime/issues/9782
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-pytorch"
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-scikitlearn"
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-tensorflow"
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
