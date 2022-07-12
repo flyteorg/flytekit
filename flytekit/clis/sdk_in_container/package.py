@@ -1,8 +1,8 @@
 import os
-import sys
 
 import click
 
+from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.configuration import (
     DEFAULT_RUNTIME_PYTHON_INTERPRETER,
@@ -100,8 +100,7 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
-        click.secho("No packages to scan for flyte entities. Aborting!", fg="red")
-        sys.exit(-1)
+        display_help_with_error(ctx, "No packages to scan for flyte entities. Aborting!")
 
     try:
         serialize_and_package(pkgs, serialization_settings, source, output, fast)

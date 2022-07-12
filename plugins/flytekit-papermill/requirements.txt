@@ -18,15 +18,15 @@ beautifulsoup4==4.11.1
     # via nbconvert
 binaryornot==0.4.4
     # via cookiecutter
-bleach==5.0.0
+bleach==5.0.1
     # via nbconvert
-certifi==2022.5.18.1
+certifi==2022.6.15
     # via requests
-cffi==1.15.0
+cffi==1.15.1
     # via cryptography
-chardet==4.0.0
+chardet==5.0.0
     # via binaryornot
-charset-normalizer==2.0.12
+charset-normalizer==2.1.0
     # via requests
 click==8.1.3
     # via
@@ -35,12 +35,14 @@ click==8.1.3
     #   papermill
 cloudpickle==2.1.0
     # via flytekit
-cookiecutter==1.7.3
+cookiecutter==2.1.1
     # via flytekit
 croniter==1.3.5
     # via flytekit
-cryptography==37.0.2
-    # via secretstorage
+cryptography==37.0.4
+    # via
+    #   pyopenssl
+    #   secretstorage
 dataclasses-json==0.5.7
     # via flytekit
 debugpy==1.6.0
@@ -68,32 +70,33 @@ entrypoints==0.4
     #   papermill
 fastjsonschema==2.15.3
     # via nbformat
-flyteidl==1.0.1
+flyteidl==1.1.8
     # via flytekit
-flytekit==1.1.0b1
+flytekit==1.1.0
     # via flytekitplugins-papermill
-googleapis-common-protos==1.56.1
+googleapis-common-protos==1.56.3
     # via
     #   flyteidl
     #   grpcio-status
-grpcio==1.46.1
+grpcio==1.47.0
     # via
     #   flytekit
     #   grpcio-status
-grpcio-status==1.46.1
+grpcio-status==1.47.0
     # via flytekit
 idna==3.3
     # via requests
-importlib-metadata==4.11.3
+importlib-metadata==4.12.0
     # via
     #   click
+    #   flytekit
     #   jsonschema
     #   keyring
-importlib-resources==5.7.1
+importlib-resources==5.8.0
     # via jsonschema
-ipykernel==6.13.0
+ipykernel==6.15.0
     # via flytekitplugins-papermill
-ipython==7.33.0
+ipython==7.34.0
     # via ipykernel
 jedi==0.18.1
     # via ipython
@@ -108,9 +111,9 @@ jinja2==3.1.2
     #   nbconvert
 jinja2-time==0.2.0
     # via cookiecutter
-jsonschema==4.5.1
+jsonschema==4.6.1
     # via nbformat
-jupyter-client==7.3.1
+jupyter-client==7.3.4
     # via
     #   ipykernel
     #   nbclient
@@ -121,13 +124,13 @@ jupyter-core==4.10.0
     #   nbformat
 jupyterlab-pygments==0.2.2
     # via nbconvert
-keyring==23.5.0
+keyring==23.6.0
     # via flytekit
 markupsafe==2.1.1
     # via
     #   jinja2
     #   nbconvert
-marshmallow==3.15.0
+marshmallow==3.17.0
     # via
     #   dataclasses-json
     #   marshmallow-enum
@@ -140,17 +143,17 @@ matplotlib-inline==0.1.3
     # via
     #   ipykernel
     #   ipython
-mistune==0.8.4
+mistune==2.0.3
     # via nbconvert
 mypy-extensions==0.4.3
     # via typing-inspect
 natsort==8.1.0
     # via flytekit
-nbclient==0.6.3
+nbclient==0.6.6
     # via
     #   nbconvert
     #   papermill
-nbconvert==6.5.0
+nbconvert==7.0.0rc2
     # via flytekitplugins-papermill
 nbformat==5.4.0
     # via
@@ -184,9 +187,7 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-poyo==0.5.0
-    # via cookiecutter
-prompt-toolkit==3.0.29
+prompt-toolkit==3.0.30
     # via ipython
 protobuf==3.20.1
     # via
@@ -197,7 +198,7 @@ protobuf==3.20.1
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
     # via flyteidl
-psutil==5.9.0
+psutil==5.9.1
     # via ipykernel
 ptyprocess==0.7.0
     # via pexpect
@@ -211,6 +212,8 @@ pygments==2.12.0
     # via
     #   ipython
     #   nbconvert
+pyopenssl==22.0.0
+    # via flytekit
 pyparsing==3.0.9
     # via packaging
 pyrsistent==0.18.1
@@ -234,20 +237,23 @@ pytz==2022.1
     #   pandas
 pyyaml==6.0
     # via
+    #   cookiecutter
     #   flytekit
     #   papermill
-pyzmq==23.0.0
-    # via jupyter-client
-regex==2022.4.24
+pyzmq==23.2.0
+    # via
+    #   ipykernel
+    #   jupyter-client
+regex==2022.6.2
     # via docker-image-py
-requests==2.27.1
+requests==2.28.1
     # via
     #   cookiecutter
     #   docker
     #   flytekit
     #   papermill
     #   responses
-responses==0.20.0
+responses==0.21.0
     # via flytekit
 retry==0.9.2
     # via flytekit
@@ -258,7 +264,6 @@ singledispatchmethod==1.0
 six==1.16.0
     # via
     #   bleach
-    #   cookiecutter
     #   grpcio
     #   python-dateutil
 sortedcontainers==2.4.0
@@ -275,13 +280,13 @@ textwrap3==0.9.2
     # via ansiwrap
 tinycss2==1.1.1
     # via nbconvert
-tornado==6.1
+tornado==6.2
     # via
     #   ipykernel
     #   jupyter-client
 tqdm==4.64.0
     # via papermill
-traitlets==5.2.1.post0
+traitlets==5.3.0
     # via
     #   ipykernel
     #   ipython
@@ -291,12 +296,13 @@ traitlets==5.2.1.post0
     #   nbclient
     #   nbconvert
     #   nbformat
-typing-extensions==4.2.0
+typing-extensions==4.3.0
     # via
     #   arrow
     #   flytekit
     #   importlib-metadata
     #   jsonschema
+    #   responses
     #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json
@@ -311,7 +317,7 @@ webencodings==0.5.1
     # via
     #   bleach
     #   tinycss2
-websocket-client==1.3.2
+websocket-client==1.3.3
     # via docker
 wheel==0.37.1
     # via flytekit

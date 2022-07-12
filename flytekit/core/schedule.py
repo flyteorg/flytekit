@@ -15,13 +15,14 @@ from flytekit.models import schedule as _schedule_models
 # Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.
 class CronSchedule(_schedule_models.Schedule):
     """
-    Use this when you have a launch plan that you want to run on a cron expression. The syntax currently used for this
-    follows the `AWS convention <https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions>`__
+    Use this when you have a launch plan that you want to run on a cron expression.
+    This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression-table>`__
+    in case where you are using default native scheduler using the schedule attribute.
 
     .. code-block::
 
         CronSchedule(
-            cron_expression="0 10 * * ? *",
+            schedule="*/1 * * * *",  # Following schedule runs every min
         )
 
     See the :std:ref:`User Guide <cookbook:cron schedules>` for further examples.
@@ -54,9 +55,10 @@ class CronSchedule(_schedule_models.Schedule):
         self, cron_expression: str = None, schedule: str = None, offset: str = None, kickoff_time_input_arg: str = None
     ):
         """
-        :param str cron_expression: This should be a cron expression in AWS style.
+        :param str cron_expression: This should be a cron expression in AWS style.Shouldn't be used in case of native scheduler.
         :param str schedule: This takes a cron alias (see ``_VALID_CRON_ALIASES``) or a croniter parseable schedule.
-          Only one of this or ``cron_expression`` can be set, not both.
+          Only one of this or ``cron_expression`` can be set, not both. This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression-table>`_
+          and is supported by native scheduler
         :param str offset:
         :param str kickoff_time_input_arg: This is a convenient argument to use when your code needs to know what time
           a run was kicked off. Supply the name of the input argument of your workflow to this argument here. Note
@@ -67,7 +69,7 @@ class CronSchedule(_schedule_models.Schedule):
             def my_wf(kickoff_time: datetime): ...
 
             schedule = CronSchedule(
-                cron_expression="0 10 * * ? *",
+                schedule="*/1 * * * *"
                 kickoff_time_input_arg="kickoff_time")
 
         """

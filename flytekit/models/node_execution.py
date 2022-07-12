@@ -92,6 +92,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         started_at,
         duration,
         output_uri=None,
+        deck_uri=None,
         error=None,
         workflow_node_metadata: typing.Optional[WorkflowNodeMetadata] = None,
         task_node_metadata: typing.Optional[TaskNodeMetadata] = None,
@@ -107,6 +108,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         self._started_at = started_at
         self._duration = duration
         self._output_uri = output_uri
+        self._deck_uri = deck_uri
         self._error = error
         self._workflow_node_metadata = workflow_node_metadata
         self._task_node_metadata = task_node_metadata
@@ -141,6 +143,13 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         return self._output_uri
 
     @property
+    def deck_uri(self):
+        """
+        :rtype: str
+        """
+        return self._deck_uri
+
+    @property
     def error(self):
         """
         :rtype: flytekit.models.core.execution.ExecutionError
@@ -166,6 +175,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         obj = _node_execution_pb2.NodeExecutionClosure(
             phase=self.phase,
             output_uri=self.output_uri,
+            deck_uri=self.deck_uri,
             error=self.error.to_flyte_idl() if self.error is not None else None,
             workflow_node_metadata=self.workflow_node_metadata.to_flyte_idl()
             if self.workflow_node_metadata is not None
@@ -185,6 +195,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         return cls(
             phase=p.phase,
             output_uri=p.output_uri if p.HasField("output_uri") else None,
+            deck_uri=p.deck_uri,
             error=_core_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
             started_at=p.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
             duration=p.duration.ToTimedelta(),

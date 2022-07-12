@@ -1,5 +1,7 @@
+import sys
 from typing import Tuple, Union
 
+import click
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan
 from flyteidl.admin.task_pb2 import TaskSpec
 from flyteidl.admin.workflow_pb2 import WorkflowSpec
@@ -125,3 +127,9 @@ def hydrate_registration_parameters(
     del entity.sub_workflows[:]
     entity.sub_workflows.extend(refreshed_sub_workflows)
     return identifier, entity
+
+
+def display_help_with_error(ctx: click.Context, message: str):
+    click.echo(f"{ctx.get_help()}\n")
+    click.secho(message, fg="red")
+    sys.exit(1)
