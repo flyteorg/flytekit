@@ -32,3 +32,4 @@ htmlcov
 *.ipynb
 .env
 *dat
+.env/
