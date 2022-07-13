@@ -31,3 +31,4 @@ docs/source/plugins/generated/
 htmlcov
 *.ipynb
 .env
+*dat
