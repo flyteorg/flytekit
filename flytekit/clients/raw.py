@@ -119,13 +119,11 @@ class RawSynchronousFlyteClient(object):
                 server_address = tuple(endpoint_parts)
             else:
                 server_address = (cfg.endpoint, "443")
-
             cert = ssl.get_server_certificate(server_address)
             x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
             cn = x509.get_subject().CN
             credentials = grpc.ssl_channel_credentials(str.encode(cert))
             options = kwargs.get("options", [])
-            options.append(("grpc.ssl_target_name_override", cn))
             self._channel = grpc.secure_channel(
                 target=cfg.endpoint,
                 credentials=credentials,
