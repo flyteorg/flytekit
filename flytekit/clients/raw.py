@@ -8,7 +8,6 @@ import typing
 from typing import Optional
 
 import grpc
-import OpenSSL
 import requests as _requests
 from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.service import admin_pb2_grpc as _admin_service
