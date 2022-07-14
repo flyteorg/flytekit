@@ -4,7 +4,6 @@ import plotly.express as px
 from pandas_profiling import ProfileReport
 
 
-
 class FrameProfilingRenderer:
     """
     Generate a ProfileReport based on a pandas DataFrame
