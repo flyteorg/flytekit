@@ -11,6 +11,9 @@ from flytekit.core.context_manager import ExecutionParameters, FlyteContextManag
 
 
 def test_spark_task():
+    # Stops an existing global session that would override the spark_config
+    pyspark.sql.SparkSession.builder.getOrCreate().stop()
+
     @task(task_config=Spark(spark_conf={"spark": "1"}))
     def my_spark(a: str) -> int:
         session = flytekit.current_context().spark_session
