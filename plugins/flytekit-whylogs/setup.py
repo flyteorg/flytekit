@@ -12,7 +12,7 @@ setup(
     name=microlib_name,
     version=__version__,
     author="whylabs",
-    author_email="admin@flyte.org",
+    author_email="support@whylabs.ai",
     description="Enable the use of whylogs profiles to be used in flyte tasks to get aggregate statistics about data.",
     url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-whylogs",
     long_description=open("README.md").read(),
