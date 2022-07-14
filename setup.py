@@ -68,7 +68,7 @@ setup(
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<7.0.0",
-        "click>=6.6,<8.0",
+        "click>=6.6",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
         "python-dateutil<=2.8.2,>=2.1",
