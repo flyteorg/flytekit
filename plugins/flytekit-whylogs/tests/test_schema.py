@@ -40,4 +40,3 @@ def test_profile_view_gets_passed_on_tasks(input_data):
     result = whylogs_wf(data=input_data)
     assert result is not None
     assert isinstance(result, datetime)
-

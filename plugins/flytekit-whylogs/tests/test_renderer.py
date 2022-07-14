@@ -73,4 +73,3 @@ def test_summary_drift_report_is_written():
     assert report is not None
     assert isinstance(report, str)
     assert "Profile Summary" in report
-
