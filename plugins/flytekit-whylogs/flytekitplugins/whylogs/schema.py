@@ -39,11 +39,12 @@ class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
         ctx.file_access.download(lv.scalar.blob.uri, local_dir)
         return DatasetProfileView.read(local_dir)
 
-    def to_html(self,
-                ctx: FlyteContext,
-                python_val: DatasetProfileView,
-                expected_python_type: Type[DatasetProfileView]
-                ) -> str:
+    def to_html(
+        self,
+        ctx: FlyteContext,
+        python_val: DatasetProfileView,
+        expected_python_type: Type[DatasetProfileView]
+    ) -> str:
         pandas_profile = str(python_val.to_pandas().to_html())
         header = str("<h1>Profile View</h1> \n")
         return header + pandas_profile

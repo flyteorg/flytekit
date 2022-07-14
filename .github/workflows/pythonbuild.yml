@@ -86,6 +86,7 @@ jobs:
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
+          - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/19116.
