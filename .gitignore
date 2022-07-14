@@ -30,4 +30,5 @@ docs/source/plugins/generated/
 .pytest_flyte
 htmlcov
 *.ipynb
+.env
 *dat
