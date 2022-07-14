@@ -83,9 +83,6 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     # note that when extracting this tarfile, this time will be shown as the modified date
     tar_info.mtime = 0
 
-    # file permissions, probably don't want to remove this, but for some use cases you could
-    tar_info.mode = 0
-
     # user/group info
     tar_info.uid = 0
     tar_info.uname = ""
