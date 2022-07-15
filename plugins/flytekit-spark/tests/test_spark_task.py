@@ -1,5 +1,6 @@
 import pandas as pd
 import pyspark
+import pytest
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import new_spark_session
 from pyspark.sql import SparkSession
@@ -10,7 +11,14 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 
 
-def test_spark_task():
+@pytest.fixture(scope="function")
+def reset_spark_session() -> None:
+    pyspark.sql.SparkSession.builder.getOrCreate().stop()
+    yield
+    pyspark.sql.SparkSession.builder.getOrCreate().stop()
+
+
+def test_spark_task(reset_spark_session):
     @task(task_config=Spark(spark_conf={"spark": "1"}))
     def my_spark(a: str) -> int:
         session = flytekit.current_context().spark_session
