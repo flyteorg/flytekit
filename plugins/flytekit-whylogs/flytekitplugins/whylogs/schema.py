@@ -2,9 +2,9 @@ from typing import Type
 
 from whylogs.core import DatasetProfileView
 
-from flytekit import FlyteContext, BlobType
-from flytekit.extend import T, TypeTransformer, TypeEngine
-from flytekit.models.literals import Literal, Scalar, Blob, BlobMetadata
+from flytekit import BlobType, FlyteContext
+from flytekit.extend import T, TypeEngine, TypeTransformer
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 
@@ -40,10 +40,7 @@ class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
         return DatasetProfileView.read(local_dir)
 
     def to_html(
-        self,
-        ctx: FlyteContext,
-        python_val: DatasetProfileView,
-        expected_python_type: Type[DatasetProfileView]
+        self, ctx: FlyteContext, python_val: DatasetProfileView, expected_python_type: Type[DatasetProfileView]
     ) -> str:
         pandas_profile = str(python_val.to_pandas().to_html())
         header = str("<h1>Profile View</h1> \n")

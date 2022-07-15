@@ -1,7 +1,7 @@
-from pandas import DataFrame
 import whylogs as why
-from whylogs.viz import NotebookProfileVisualizer
+from pandas import DataFrame
 from whylogs.core.constraints import Constraints
+from whylogs.viz import NotebookProfileVisualizer
 
 
 class WhylogsSummaryDriftRenderer:
@@ -10,11 +10,9 @@ class WhylogsSummaryDriftRenderer:
     is the reference and the other one is the target data, meaning that this is what
     the report will compare it against.
     """
+
     @staticmethod
-    def to_html(
-        reference_data: DataFrame,
-        target_data: DataFrame
-    ) -> str:
+    def to_html(reference_data: DataFrame, target_data: DataFrame) -> str:
         """
         This static method will profile the input data and then generate an HTML report
         with the Summary Drift calculations for all the dataframe's columns
@@ -59,6 +57,7 @@ class WhylogsConstraintsRenderer:
     Each Constraints object (builder.build() in the former example) can have as many constraints as
     desired. If you want to learn more, check out our docs and examples at https://whylogs.readthedocs.io/
     """
+
     @staticmethod
     def to_html(constraints: Constraints) -> str:
         viz = NotebookProfileVisualizer()
