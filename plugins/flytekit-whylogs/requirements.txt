@@ -6,72 +6,21 @@
 #
 -e file:.#egg=flytekitplugins-whylogs
     # via -r requirements.in
-appnope==0.1.3
-    # via ipython
-asttokens==2.0.5
-    # via stack-data
-backcall==0.2.0
-    # via ipython
-decorator==5.1.1
-    # via ipython
-executing==0.8.3
-    # via stack-data
 flake8==4.0.1
     # via whylogs
-ipython==8.4.0
-    # via whylogs
-jedi==0.18.1
-    # via ipython
-matplotlib-inline==0.1.3
-    # via ipython
 mccabe==0.6.1
     # via flake8
-numpy==1.22.4
-    # via scipy
-parso==0.8.3
-    # via jedi
-pexpect==4.8.0
-    # via ipython
-pickleshare==0.7.5
-    # via ipython
-prompt-toolkit==3.0.30
-    # via ipython
 protobuf==3.20.1
     # via
     #   flytekitplugins-whylogs
     #   whylogs
-ptyprocess==0.7.0
-    # via pexpect
-pure-eval==0.2.2
-    # via stack-data
-pybars3==0.9.7
-    # via whylogs
 pycodestyle==2.8.0
     # via flake8
 pyflakes==2.4.0
     # via flake8
-pygments==2.12.0
-    # via ipython
-pymeta3==0.5.1
-    # via pybars3
-scipy==1.7.3
-    # via whylogs
-six==1.16.0
-    # via asttokens
-stack-data==0.3.0
-    # via ipython
-traitlets==5.3.0
-    # via
-    #   ipython
-    #   matplotlib-inline
 typing-extensions==4.3.0
     # via whylogs
-wcwidth==0.2.5
-    # via prompt-toolkit
-whylogs[viz]==1.0.6
+whylogs==1.0.6
     # via flytekitplugins-whylogs
 whylogs-sketching==3.4.1.dev2
     # via whylogs
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools
