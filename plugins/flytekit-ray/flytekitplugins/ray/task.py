@@ -60,10 +60,8 @@ class RayFunctionTask(PythonFunctionTask):
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        if os.getenv("RAY_ADDRESS"):
-            ray.util.connect(os.getenv("RAY_ADDRESS"))
-        else:
-            ray.init(self._task_config.address, **self._task_config.extra_args)
+        address = os.getenv("RAY_ADDRESS") or self._task_config.address
+        ray.init(addres=address, **self._task_config.extra_args)
         return user_params
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
