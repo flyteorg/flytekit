@@ -1,7 +1,6 @@
-import os
 from typing import Any, Callable, Optional
 
-from ray.util.client import ray
+import ray
 
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_function_task import PythonFunctionTask
@@ -60,8 +59,7 @@ class RayFunctionTask(PythonFunctionTask):
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        address = os.getenv("RAY_ADDRESS") or self._task_config.address
-        ray.init(addres=address, **self._task_config.extra_args)
+        ray.init(addres=self._task_config.address, **self._task_config.extra_args)
         return user_params
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
