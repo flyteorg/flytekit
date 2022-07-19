@@ -1,3 +1,4 @@
+import os
 from typing import Any, Callable, Optional
 
 from ray.util.client import ray
@@ -59,7 +60,9 @@ class RayFunctionTask(PythonFunctionTask):
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        if not ray.is_connected():
+        if os.getenv("RAY_ADDRESS"):
+            ray.util.connect(os.getenv("RAY_ADDRESS"))
+        else:
             ray.init(self._task_config.address, **self._task_config.extra_args)
         return user_params
 
