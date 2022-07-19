@@ -59,7 +59,8 @@ class RayFunctionTask(PythonFunctionTask):
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        ray.init(self._task_config.address, **self._task_config.extra_args)
+        if not ray.is_connected():
+            ray.init(self._task_config.address, **self._task_config.extra_args)
         return user_params
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:

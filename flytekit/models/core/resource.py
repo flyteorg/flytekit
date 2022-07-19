@@ -13,7 +13,7 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         min_replicas: typing.Optional[int] = 0,
         max_replicas: typing.Optional[int] = None,
         compute_template: typing.Optional[str] = None,
-        image: typing.Optional[str] = "rayproject/ray:1.8.0",
+        image: typing.Optional[str] = "rayproject/ray:1.13.0",
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
     ):
         self._group_name = group_name
@@ -115,7 +115,7 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
     def __init__(
         self,
         compute_template: typing.Optional[str] = None,
-        image: typing.Optional[str] = "rayproject/ray:1.8.0",
+        image: typing.Optional[str] = "rayproject/ray:1.13.0",
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
         service_type: typing.Optional[str] = "ClusterIP",
     ):
