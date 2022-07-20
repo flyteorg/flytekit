@@ -3,18 +3,8 @@ from typing import List
 
 from dataclasses_json import dataclass_json
 
-import flytekit.configuration
-from flytekit.configuration import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-
-serialization_settings = flytekit.configuration.SerializationSettings(
-    project="proj",
-    domain="dom",
-    version="123",
-    image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
-    env={},
-)
 
 
 def test_dataclass():
@@ -36,4 +26,4 @@ def test_dataclass():
         return t1()
 
     res = wf()
-    print(res)
+    assert res.region == "us-west-3"
