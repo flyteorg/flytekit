@@ -15,7 +15,7 @@ from pytimeparse import parse
 from typing_extensions import get_args
 
 from flytekit import BlobType, Literal, Scalar
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
+from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_DOMAIN, CTX_PROJECT
 from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
@@ -513,11 +513,17 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
 
+        image_config = run_level_params.get("image_config", None)
+        if image_config:
+            image_config.images.extend(ImageConfig.auto(ctx.obj[CTX_CONFIG_FILE]).images)
+        else:
+            ImageConfig.auto(ctx.obj[CTX_CONFIG_FILE])
+
         remote_entity = remote.register_script(
             entity,
             project=project,
             domain=domain,
-            image_config=run_level_params.get("image_config", None),
+            image_config=image_config,
             destination_dir=run_level_params.get("destination_dir"),
         )
 
