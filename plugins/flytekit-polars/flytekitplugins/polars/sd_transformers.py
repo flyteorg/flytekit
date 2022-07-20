@@ -64,10 +64,10 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
 
 for protocol in [LOCAL, S3]:
     StructuredDatasetTransformerEngine.register(
-        PolarsDataFrameToParquetEncodingHandler(protocol), default_for_type=True
+        PolarsDataFrameToParquetEncodingHandler(protocol), default_for_type=False
     )
     StructuredDatasetTransformerEngine.register(
-        ParquetToPolarsDataFrameDecodingHandler(protocol), default_for_type=True
+        ParquetToPolarsDataFrameDecodingHandler(protocol), default_for_type=False
     )
 StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler(GCS), default_for_type=False)
 StructuredDatasetTransformerEngine.register(ParquetToPolarsDataFrameDecodingHandler(GCS), default_for_type=False)
