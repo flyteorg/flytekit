@@ -1,5 +1,6 @@
-from typing import List
 from dataclasses import dataclass
+from typing import List
+
 from dataclasses_json import dataclass_json
 
 import flytekit.configuration

@@ -487,7 +487,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         else:
             logger.debug(f"No default format for type {python_type}, using system default.")
             fmt = StructuredDataset.DEFAULT_FILE_FORMAT
-        protocol = self._protocol_from_type_or_prefix(python_type)
+        protocol = self._protocol_from_type_or_prefix(ctx, python_type)
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
 
         sd = StructuredDataset(dataframe=python_val, metadata=meta)

@@ -20,8 +20,8 @@ import pyarrow as pa
 
 from flytekit import kwtypes, task
 from flytekit.types.structured.structured_dataset import (
+    LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -336,7 +336,7 @@ def test_to_python_value_without_incoming_columns():
 def test_format_correct():
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self):
-            super().__init__(pd.DataFrame, S3, "avro")
+            super().__init__(pd.DataFrame, LOCAL, "avro")
 
         def encode(
             self,
