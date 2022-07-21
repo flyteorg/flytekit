@@ -12,6 +12,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
+    ABFS,
     GCS,
     LOCAL,
     PARQUET,
@@ -106,7 +107,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
 
 
 # Don't override default protocol
-for protocol in [LOCAL, S3, GCS]:
+for protocol in [LOCAL, S3, GCS, ABFS]:
     StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol), default_for_type=False)
     StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol), default_for_type=False)
     StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), default_for_type=False)
