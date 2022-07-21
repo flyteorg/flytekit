@@ -381,7 +381,7 @@ def test_format_correct():
 
 def test_protocol_detection():
     # We've don't register defaults to the transformer engine
-    assert len(StructuredDatasetTransformerEngine.DEFAULT_PROTOCOLS) == 0
+    assert pd.DataFrame not in StructuredDatasetTransformerEngine.DEFAULT_PROTOCOLS
     e = StructuredDatasetTransformerEngine()
     ctx = FlyteContextManager.current_context()
     protocol = e._protocol_from_type_or_prefix(ctx, pd.DataFrame)
