@@ -27,7 +27,7 @@ recursive-exclude docs *
 recursive-exclude boilerplate *
 recursive-exclude .github *
 
-# exclude dist folder: 
+# exclude dist folder:
 #  - contains the generated *.tar.gz and .whl files.
 recursive-exclude dist *
 

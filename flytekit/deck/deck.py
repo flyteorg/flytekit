@@ -112,12 +112,12 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
 root = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.join(root, "html")
 env = Environment(
-    loader = FileSystemLoader(templates_dir),
+    loader=FileSystemLoader(templates_dir),
     # 🔥 include autoescaping for security purposes
     # sources:
     # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
     # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
     # - https://stackoverflow.com/a/68826578/8474894
-    autoescape = select_autoescape(enabled_extensions=("html",)),
+    autoescape=select_autoescape(enabled_extensions=("html",)),
 )
 template = env.get_template("template.html")
