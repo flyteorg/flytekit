@@ -392,3 +392,6 @@ def test_protocol_detection():
         ctx2 = ctx.with_file_access(fs).build()
         protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame)
         assert protocol == "s3"
+
+        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame, "bq://foo")
+        assert protocol == "bq"
