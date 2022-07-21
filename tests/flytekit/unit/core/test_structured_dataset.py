@@ -1,3 +1,4 @@
+import tempfile
 import typing
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -375,3 +377,18 @@ def test_format_correct():
         return StructuredDataset(dataframe=df)
 
     assert t1().file_format == "avro"
+
+
+def test_protocol_detection():
+    # We've don't register defaults to the transformer engine
+    assert len(StructuredDatasetTransformerEngine.DEFAULT_PROTOCOLS) == 0
+    e = StructuredDatasetTransformerEngine()
+    ctx = FlyteContextManager.current_context()
+    protocol = e._protocol_from_type_or_prefix(ctx, pd.DataFrame)
+    assert protocol == "/"
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fs = FileAccessProvider(local_sandbox_dir=tmp_dir, raw_output_prefix="s3://fdsa")
+        ctx2 = ctx.with_file_access(fs).build()
+        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame)
+        assert protocol == "s3"
