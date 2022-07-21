@@ -471,10 +471,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             # 3. This is the third and probably most common case. The python StructuredDataset object wraps a dataframe
             # that we will need to invoke an encoder for. Figure out which encoder to call and invoke it.
             df_type = type(python_val.dataframe)
-            if python_val.uri is None:
-                protocol = self.DEFAULT_PROTOCOLS[df_type]
-            else:
-                protocol = protocol_prefix(python_val.uri)
+            protocol = self._protocol_from_type_or_prefix(ctx, df_type, python_val.uri)
             return self.encode(
                 ctx,
                 python_val,
@@ -485,12 +482,30 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             )
 
         # Otherwise assume it's a dataframe instance. Wrap it with some defaults
-        fmt = self.DEFAULT_FORMATS[python_type]
-        protocol = self.DEFAULT_PROTOCOLS[python_type]
+        if python_type in self.DEFAULT_FORMATS:
+            fmt = self.DEFAULT_FORMATS[python_type]
+        else:
+            logger.debug(f"No default format for type {python_type}, using system default.")
+            fmt = StructuredDataset.DEFAULT_FILE_FORMAT
+        protocol = self._protocol_from_type_or_prefix(ctx, python_type)
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
 
         sd = StructuredDataset(dataframe=python_val, metadata=meta)
         return self.encode(ctx, sd, python_type, protocol, fmt, sdt)
+
+    def _protocol_from_type_or_prefix(self, ctx: FlyteContext, df_type: Type, uri: Optional[str] = None) -> str:
+        """
+        Get the protocol from the default, if missing, then look it up from the uri if provided, if not then look
+        up from the provided context's file access.
+        """
+        if df_type in self.DEFAULT_PROTOCOLS:
+            return self.DEFAULT_PROTOCOLS[df_type]
+        else:
+            protocol = protocol_prefix(uri or ctx.file_access.raw_output_prefix)
+            logger.debug(
+                f"No default protocol for type {df_type} found, using {protocol} from output prefix {ctx.file_access.raw_output_prefix}"
+            )
+            return protocol
 
     def encode(
         self,
