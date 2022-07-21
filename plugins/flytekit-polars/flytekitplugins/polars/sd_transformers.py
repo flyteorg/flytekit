@@ -62,12 +62,10 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         return pl.read_parquet(path)
 
 
-for protocol in [LOCAL, S3]:
+for protocol in [LOCAL, S3, GCS]:
     StructuredDatasetTransformerEngine.register(
         PolarsDataFrameToParquetEncodingHandler(protocol), default_for_type=False
     )
     StructuredDatasetTransformerEngine.register(
         ParquetToPolarsDataFrameDecodingHandler(protocol), default_for_type=False
     )
-StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler(GCS), default_for_type=False)
-StructuredDatasetTransformerEngine.register(ParquetToPolarsDataFrameDecodingHandler(GCS), default_for_type=False)
