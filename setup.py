@@ -20,9 +20,11 @@ setup(
     version=__version__,
     maintainer="Flyte Contributors",
     maintainer_email="admin@flyte.org",
-    packages=find_packages(exclude=["tests*"]),
+    packages=find_packages(
+        include=["flytekit", "flytekit_scripts", "plugins"],
+        exclude=["boilerplate", "docs", "tests*"],
+    ),
     include_package_data=True,
-    package_data={"": ["template.html"]},
     url="https://github.com/flyteorg/flytekit",
     description="Flyte SDK for Python",
     long_description=open("README.md", encoding="utf-8").read(),
