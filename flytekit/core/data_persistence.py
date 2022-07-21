@@ -319,6 +319,10 @@ class FileAccessProvider(object):
         self._data_config = data_config if data_config else DataConfig.auto()
 
     @property
+    def raw_output_prefix(self) -> str:
+        return self._raw_output_prefix
+
+    @property
     def data_config(self) -> DataConfig:
         return self._data_config
 
