@@ -68,18 +68,20 @@
 
 </head>
 <body>
+    <!---{#% autoescape true %#}--->
     <nav id="flyte-frame-nav">
         <ul id="flyte-frame-tabs">
             {% for key, value in metadata.items() %}
-                <li onclick="handleLinkClick(this)">{{key}}</li>
+                <li onclick="handleLinkClick(this)">{{ key | safe }}</li>
             {% endfor %}
         </ul>
     </nav>
     <div id="flyte-frame-container">
         {% for key, value in metadata.items() %}
-            <div>{{value}}</div>
+            <div>{{ value | safe }}</div>
         {% endfor %}
     </div>
+    <!---{#% autoescape %#}--->
 </body>
 <script>
     const setTabs = index => {
