@@ -13,7 +13,16 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
 )
+
+StructuredDatasetTransformerEngine.register(
+    basic_dfs.PandasToParquetEncodingHandler("abfs"), default_for_type=True, override=True
+)
+StructuredDatasetTransformerEngine.register(
+    basic_dfs.ParquetToPandasDecodingHandler("abfs"), default_for_type=True, override=True
+)
+
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 

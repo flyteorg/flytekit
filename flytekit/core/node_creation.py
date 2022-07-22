@@ -90,17 +90,11 @@ def create_node(
 
     # When compiling, calling the entity will create a node.
     ctx = FlyteContext.current_context()
-    if (ctx.compilation_state is not None and ctx.compilation_state.mode == 1) or (
-        ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
-    ):
+    if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         outputs = entity(**kwargs)
         # This is always the output of create_and_link_node which returns create_task_output, which can be
         # VoidPromise, Promise, or our custom namedtuple of Promises.
-        if ctx.compilation_state:
-            node = ctx.compilation_state.nodes[-1]
-        else:
-            # Create a dummy node here to mimic the actual runtime when using create_node in dynamic workflow during local execution.
-            node = Node(entity.name, entity.construct_node_metadata(), [], [], entity)
+        node = ctx.compilation_state.nodes[-1]
 
         # In addition to storing the outputs on the object itself, we also want to set them in a map. When used by
         # the imperative workflow patterns, users will probably find themselves doing things like
@@ -149,7 +143,12 @@ def create_node(
         return node
 
     # Handling local execution
-    elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+    # Note: execution state is set to TASK_EXECUTION when running dynamic task locally
+    # https://github.com/flyteorg/flytekit/blob/0815345faf0fae5dc26746a43d4bda4cc2cdf830/flytekit/core/python_function_task.py#L262
+    elif ctx.execution_state is not None and (
+        ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+        or ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+    ):
         if isinstance(entity, RemoteEntity):
             raise AssertionError(f"Remote entities are not yet runnable locally {entity.name}")
 
