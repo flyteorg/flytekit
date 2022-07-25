@@ -39,6 +39,7 @@ DF = typing.TypeVar("DF")  # Dataframe type
 # Protocols
 BIGQUERY = "bq"
 S3 = "s3"
+ABFS = "abfs"
 GCS = "gs"
 LOCAL = "/"
 

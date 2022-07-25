@@ -7,6 +7,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
+    ABFS,
     GCS,
     LOCAL,
     PARQUET,
@@ -62,7 +63,7 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         return pl.read_parquet(path)
 
 
-for protocol in [LOCAL, S3, GCS]:
+for protocol in [LOCAL, S3, GCS, ABFS]:
     StructuredDatasetTransformerEngine.register(
         PolarsDataFrameToParquetEncodingHandler(protocol), default_for_type=False
     )
