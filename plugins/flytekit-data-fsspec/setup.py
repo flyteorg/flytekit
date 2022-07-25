@@ -22,6 +22,7 @@ setup(
     install_requires=plugin_requires,
     extras_require={
         # https://github.com/fsspec/filesystem_spec/blob/master/setup.py#L36
+        "abfs": ["adlfs>=2022.2.0"],
         "aws": ["s3fs>=2021.7.0"],
         "gcp": ["gcsfs>=2021.7.0"],
     },
