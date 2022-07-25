@@ -16,7 +16,7 @@ setup(
     description="This package holds the Ray plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
-    install_requires=plugin_requires,
+    # install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.7",
     classifiers=[
