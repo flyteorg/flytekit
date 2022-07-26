@@ -14,8 +14,7 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 from typing_extensions import get_args
 
-from flytekit import BlobType, Literal, Scalar, configuration
-from flytekit.clis.flyte_cli.main import _detect_default_config_file
+from flytekit import BlobType, Literal, Scalar
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_DOMAIN, CTX_PROJECT
 from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
 from flytekit.configuration import ImageConfig
