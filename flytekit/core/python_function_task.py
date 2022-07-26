@@ -259,6 +259,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         ctx = FlyteContextManager.current_context()
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # Understand why we're setting task_execution mode here. Maybe there's something in prior prs.
+            # I _think_ what we need to do here instead is turn it into a PythonFunctionWorkflow and execute that
+            # instead.
             updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
             with FlyteContextManager.with_context(ctx.with_execution_state(updated_exec_state)):
                 logger.info("Executing Dynamic workflow, using raw inputs")
