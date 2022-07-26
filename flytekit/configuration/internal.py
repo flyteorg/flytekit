@@ -19,16 +19,20 @@ class Images(object):
         :returns a dictionary of name: image<fqn+version> Version is optional
         """
         images: typing.Dict[str, str] = {}
-        if cfg is None or not cfg.legacy_config:
+        if cfg is None:
             return images
-        try:
-            image_names = cfg.legacy_config.options("images")
-        except configparser.NoSectionError:
-            image_names = None
-        if image_names:
-            for i in image_names:
-                images[str(i)] = cfg.legacy_config.get("images", i)
-        return images
+
+        if cfg.legacy_config:
+            try:
+                image_names = cfg.legacy_config.options("images")
+            except configparser.NoSectionError:
+                return {}
+            if image_names:
+                for i in image_names:
+                    images[str(i)] = cfg.legacy_config.get("images", i)
+            return images
+        if cfg.yaml_config:
+            return cfg.yaml_config.get("images")
 
 
 class Deck(object):

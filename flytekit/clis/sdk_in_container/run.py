@@ -14,7 +14,8 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 from typing_extensions import get_args
 
-from flytekit import BlobType, Literal, Scalar
+from flytekit import BlobType, Literal, Scalar, configuration
+from flytekit.clis.flyte_cli.main import _detect_default_config_file
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_DOMAIN, CTX_PROJECT
 from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
 from flytekit.configuration import ImageConfig
@@ -512,12 +513,13 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             return
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+        config_file = ctx.obj.get(CTX_CONFIG_FILE)
 
         image_config = run_level_params.get("image_config", None)
         if image_config:
-            image_config.images.extend(ImageConfig.auto(ctx.obj[CTX_CONFIG_FILE]).images)
+            image_config.images.extend(ImageConfig.auto(config_file).images)
         else:
-            ImageConfig.auto(ctx.obj[CTX_CONFIG_FILE])
+            image_config = ImageConfig.auto(config_file)
 
         remote_entity = remote.register_script(
             entity,

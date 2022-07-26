@@ -237,18 +237,13 @@ class ImageConfig(object):
         :param img_name:
         :return:
         """
-        if config_file is None and img_name is None:
-            raise ValueError("Either an image or a config with a default image should be provided")
-
         default_img = Image.look_up_image_info("default", img_name) if img_name else None
 
-        other_images = []
-        if config_file:
-            config_file = get_config_file(config_file)
-            other_images = [
-                Image.look_up_image_info(k, tag=v, optional_tag=True)
-                for k, v in _internal.Images.get_specified_images(config_file).items()
-            ]
+        config_file = get_config_file(config_file)
+        other_images = [
+            Image.look_up_image_info(k, tag=v, optional_tag=True)
+            for k, v in _internal.Images.get_specified_images(config_file).items()
+        ]
         return cls.create_from(default_img, other_images)
 
     @classmethod
