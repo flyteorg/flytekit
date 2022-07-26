@@ -1,15 +1,20 @@
-from typing import Any, Callable, Optional
+import base64
+import json
+from typing import Any, Callable, Optional, Dict
 
 import ray
 
+from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.extend import TaskPlugins
 from flytekit.models.core.resource import RayCluster, Resource
 
+_RUNTIME = "runtime"
+
 
 class RayConfig(object):
-    def __init__(self, address: Optional[str] = None, ray_cluster: Optional[RayCluster] = None, **kwargs):
+    def __init__(self, address: Optional[str] = None, ray_cluster: Optional[RayCluster] = None, runtime: dict = None, **kwargs):
         """
         :param str address: The address of the Ray cluster to connect to.
         :param dict kwargs: Extra arguments for ray.init(). https://docs.ray.io/en/latest/ray-core/package-ref.html#ray-init
@@ -21,6 +26,7 @@ class RayConfig(object):
         self._extra_args = kwargs
         self._ray_cluster = ray_cluster
         self._resource = Resource(ray=ray_cluster)
+        self._runtime = str(base64.b64encode(json.dumps(runtime).encode('UTF-8'))) if runtime else None
 
     @property
     def address(self) -> str:
@@ -29,6 +35,10 @@ class RayConfig(object):
     @property
     def ray_cluster(self) -> Optional[RayCluster]:
         return self._ray_cluster
+
+    @property
+    def runtime(self) -> Optional[str]:
+        return self._runtime
 
     @property
     def extra_args(self) -> dict:
