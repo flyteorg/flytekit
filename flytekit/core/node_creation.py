@@ -143,7 +143,12 @@ def create_node(
         return node
 
     # Handling local execution
-    elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+    # Note: execution state is set to TASK_EXECUTION when running dynamic task locally
+    # https://github.com/flyteorg/flytekit/blob/0815345faf0fae5dc26746a43d4bda4cc2cdf830/flytekit/core/python_function_task.py#L262
+    elif ctx.execution_state is not None and (
+        ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+        or ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+    ):
         if isinstance(entity, RemoteEntity):
             raise AssertionError(f"Remote entities are not yet runnable locally {entity.name}")
 
