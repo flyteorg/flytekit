@@ -1,20 +1,16 @@
-import pytest
+import base64
+import json
+
 import ray
-from flytekitplugins.ray import RayConfig
+from flytekitplugins.ray.models import ClusterSpec, RayCluster, RayJob, WorkerGroupSpec
+from flytekitplugins.ray.task import RayJobConfig, WorkerNodeConfig
+from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.models.core.resource import ClusterSpec, HeadGroupSpec, RayCluster, WorkerGroupSpec
 
-config = RayConfig(
-    address=None,
-    ray_cluster=RayCluster(
-        name="test_ray",
-        cluster_spec=ClusterSpec(
-            head_group_spec=HeadGroupSpec(image="ray.io/ray:1.10.2"),
-            worker_group_spec=[WorkerGroupSpec(group_name="test_group", replicas=3)],
-        ),
-    ),
+config = RayJobConfig(
+    worker_node=WorkerNodeConfig(group_name="test_group", replicas=3),
     runtime_env={"pip": ["numpy"]},
 )
 
@@ -40,6 +36,22 @@ def test_ray_task():
         env={},
     )
 
+    ray_job_pb = RayJob(
+        ray_cluster=RayCluster(
+            ClusterSpec(
+                worker_group_spec=[
+                    WorkerGroupSpec(
+                        "test_group",
+                        3,
+                    )
+                ],
+            )
+        ),
+        runtime_env=str(base64.b64encode(json.dumps({"pip": ["numpy"]}).encode("UTF-8"))),
+    ).to_flyte_idl()
+
+    assert t1.get_custom(settings) == MessageToDict(ray_job_pb)
+
     assert t1.get_command(settings) == [
         "pyflyte-execute",
         "--inputs",
@@ -63,12 +75,3 @@ def test_ray_task():
 
     assert t1(a=3) == "5"
     assert not ray.is_initialized()
-
-    with pytest.raises(ValueError, match="You cannot specify both address and ray_cluster"):
-        RayConfig(
-            address="127.0.0.1",
-            ray_cluster=RayCluster(
-                name="test_ray",
-                cluster_spec=ClusterSpec(worker_group_spec=[WorkerGroupSpec(group_name="test_group", replicas=3)]),
-            ),
-        )

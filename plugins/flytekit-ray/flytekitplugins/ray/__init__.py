@@ -10,4 +10,4 @@ This package contains things that are useful when extending Flytekit.
    RayConfig
 """
 
-from .task import RayConfig
+from .task import HeadNodeConfig, RayJobConfig, WorkerNodeConfig

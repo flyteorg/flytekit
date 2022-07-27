@@ -13,7 +13,6 @@ from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.core import resource as _resource
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -485,9 +484,6 @@ class TaskTemplate(_common.FlyteIdlEntity):
             config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
             k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,
             sql=Sql.from_flyte_idl(pb2_object.sql) if pb2_object.HasField("sql") else None,
-            resources={k: _resource.Resource.from_flyte_idl(v) for k, v in pb2_object.resources.items()}
-            if pb2_object.resources is not None
-            else None,
         )
 
 

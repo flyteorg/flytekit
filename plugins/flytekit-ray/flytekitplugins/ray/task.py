@@ -1,52 +1,41 @@
 import base64
 import json
-from typing import Any, Callable, Optional, Dict
+import typing
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional
 
 import ray
+from flytekitplugins.ray.models import ClusterSpec, HeadGroupSpec, RayCluster, RayJob, WorkerGroupSpec
+from google.protobuf.json_format import MessageToDict
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.extend import TaskPlugins
-from flytekit.models.core.resource import RayCluster, Resource
-
-_RUNTIME = "runtime"
 
 
-class RayConfig(object):
-    def __init__(self, address: Optional[str] = None, ray_cluster: Optional[RayCluster] = None, runtime: dict = None, **kwargs):
-        """
-        :param str address: The address of the Ray cluster to connect to.
-        :param dict kwargs: Extra arguments for ray.init(). https://docs.ray.io/en/latest/ray-core/package-ref.html#ray-init
-        :param Optional[RayCluster] ray_cluster: Define Ray cluster spec.
-        """
-        if address and ray_cluster:
-            raise ValueError("You cannot specify both address and ray_cluster")
-        self._address = address
-        self._extra_args = kwargs
-        self._ray_cluster = ray_cluster
-        self._resource = Resource(ray=ray_cluster)
-        self._runtime = str(base64.b64encode(json.dumps(runtime).encode('UTF-8'))) if runtime else None
+@dataclass
+class HeadNodeConfig:
+    ray_start_params: typing.Optional[dict] = None
 
-    @property
-    def address(self) -> str:
-        return self._address
 
-    @property
-    def ray_cluster(self) -> Optional[RayCluster]:
-        return self._ray_cluster
+@dataclass
+class WorkerNodeConfig:
+    group_name: str
+    replicas: int
+    min_replicas: typing.Optional[int] = None
+    max_replicas: typing.Optional[int] = None
+    ray_start_params: typing.Optional[dict] = None
 
-    @property
-    def runtime(self) -> Optional[str]:
-        return self._runtime
 
-    @property
-    def extra_args(self) -> dict:
-        return self._extra_args
-
-    @property
-    def resource(self) -> Resource:
-        return self._resource
+@dataclass
+class RayJobConfig:
+    worker_node: WorkerNodeConfig
+    head_node: typing.Optional[HeadNodeConfig] = HeadNodeConfig()
+    runtime_env: typing.Optional[dict] = None
+    address: typing.Optional[str] = None
+    shutdown_after_job_finishes: typing.Optional[bool] = True
+    ttl_seconds_after_finished: typing.Optional[bool] = 3600
 
 
 class RayFunctionTask(PythonFunctionTask):
@@ -56,26 +45,42 @@ class RayFunctionTask(PythonFunctionTask):
 
     _RAY_TASK_TYPE = "ray"
 
-    def __init__(self, task_config: RayConfig, task_function: Callable, **kwargs):
-        if task_config is None:
-            task_config = RayConfig()
-        super().__init__(
-            task_config=task_config,
-            task_type=self._RAY_TASK_TYPE,
-            task_function=task_function,
-            resource=task_config.resource,
-            **kwargs
-        )
+    def __init__(self, task_config: RayJobConfig, task_function: Callable, **kwargs):
+        super().__init__(task_config=task_config, task_type=self._RAY_TASK_TYPE, task_function=task_function, **kwargs)
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        ray.init(address=self._task_config.address, **self._task_config.extra_args)
+        ray.init(address=self._task_config.address)
         return user_params
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
         ray.shutdown()
         return rval
 
+    def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
+        cfg = self._task_config
+
+        ray_job = RayJob(
+            ray_cluster=RayCluster(
+                ClusterSpec(
+                    head_group_spec=HeadGroupSpec(cfg.head_node.ray_start_params),
+                    worker_group_spec=[
+                        WorkerGroupSpec(
+                            cfg.worker_node.group_name,
+                            cfg.worker_node.replicas,
+                            cfg.worker_node.min_replicas,
+                            cfg.worker_node.max_replicas,
+                            cfg.worker_node.ray_start_params,
+                        )
+                    ],
+                )
+            ),
+            runtime_env=str(base64.b64encode(json.dumps(cfg.runtime_env).encode("UTF-8"))),
+            shutdown_after_job_finishes=cfg.shutdown_after_job_finishes,
+            ttl_seconds_after_finished=cfg.ttl_seconds_after_finished,
+        )
+        return MessageToDict(ray_job.to_flyte_idl())
+
 
 # Inject the Ray plugin into flytekits dynamic plugin loading system
-TaskPlugins.register_pythontask_plugin(RayConfig, RayFunctionTask)
+TaskPlugins.register_pythontask_plugin(RayJobConfig, RayFunctionTask)
