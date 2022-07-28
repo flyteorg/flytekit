@@ -69,3 +69,17 @@ def test_notebook_task_complex():
     assert nb.python_interface.outputs.keys() == {"h", "w", "x", "out_nb", "out_rendered_nb"}
     assert nb.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
     assert nb.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
+
+
+def test_notebook_deck_local_execution_doesnt_fail():
+    nb_name = "nb-simple"
+    nb = NotebookTask(
+        name="test",
+        notebook_path=_get_nb_path(nb_name, abs=False),
+        render_deck=True,
+        inputs=kwtypes(pi=float),
+        outputs=kwtypes(square=float),
+    )
+    sqr, out, render = nb.execute(pi=4)
+    # This is largely a no assert test to ensure render_deck never inhibits local execution.
+    assert nb._render_deck, "Passing render deck to init should result in private attribute being set"
