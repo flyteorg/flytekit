@@ -34,4 +34,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    scripts=["scripts/flytekit_sagemaker_runner.py"],
 )
