@@ -64,6 +64,7 @@ class NotebookTask(PythonInstanceTask[T]):
             name="modulename.my_notebook_task", # the name should be unique within all your tasks, usually it is a good
                                                # idea to use the modulename
             notebook_path="../path/to/my_notebook",
+            render_deck=True,
             inputs=kwtypes(v=int),
             outputs=kwtypes(x=int, y=str),
             metadata=TaskMetadata(retries=3, cache=True, cache_version="1.0"),
@@ -77,7 +78,7 @@ class NotebookTask(PythonInstanceTask[T]):
 
     #. It captures the executed notebook in its entirety and is available from Flyte with the name ``out_nb``.
     #. It also converts the captured notebook into an ``html`` page, which the FlyteConsole will render called -
-       ``out_rendered_nb``
+       ``out_rendered_nb``. If ``render_deck=True`` is passed, this html content will be inserted into a deck.
 
     .. note:
 
