@@ -66,7 +66,9 @@ cookiecutter==2.1.1
     #   -c requirements.txt
     #   flytekit
 coverage[toml]==6.4.1
-    # via -r dev-requirements.in
+    # via
+    #   -r dev-requirements.in
+    #   pytest-cov
 croniter==1.3.5
     # via
     #   -c requirements.txt
@@ -136,7 +138,7 @@ google-auth==2.9.0
     #   google-cloud-core
 google-cloud-bigquery==3.2.0
     # via -r dev-requirements.in
-google-cloud-bigquery-storage==2.13.2
+google-cloud-bigquery-storage==2.14.0
     # via
     #   -r dev-requirements.in
     #   google-cloud-bigquery
@@ -275,7 +277,7 @@ platformdirs==2.5.2
     # via virtualenv
 pluggy==1.0.0
     # via pytest
-pre-commit==2.19.0
+pre-commit==2.20.0
     # via -r dev-requirements.in
 prompt-toolkit==3.0.30
     # via ipython
@@ -340,8 +342,11 @@ pyrsistent==0.18.1
 pytest==7.1.2
     # via
     #   -r dev-requirements.in
+    #   pytest-cov
     #   pytest-docker
     #   pytest-flyte
+pytest-cov==3.0.0
+    # via -r dev-requirements.in
 pytest-docker==0.12.0
     # via pytest-flyte
 pytest-flyte @ git+https://github.com/flyteorg/pytest-flyte@main
@@ -356,7 +361,7 @@ python-dateutil==2.8.2
     #   pandas
 python-dotenv==0.20.0
     # via docker-compose
-python-json-logger==2.0.2
+python-json-logger==2.0.4
     # via
     #   -c requirements.txt
     #   flytekit
@@ -380,7 +385,7 @@ pyyaml==5.4.1
     #   docker-compose
     #   flytekit
     #   pre-commit
-regex==2022.6.2
+regex==2022.7.9
     # via
     #   -c requirements.txt
     #   docker-image-py
@@ -444,7 +449,7 @@ tomli==2.0.1
     #   coverage
     #   mypy
     #   pytest
-torch==1.11.0
+torch==1.12.0
     # via -r dev-requirements.in
 traitlets==5.3.0
     # via
@@ -466,7 +471,7 @@ typing-inspect==0.7.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
-urllib3==1.26.9
+urllib3==1.26.10
     # via
     #   -c requirements.txt
     #   flytekit
