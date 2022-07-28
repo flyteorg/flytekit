@@ -322,7 +322,6 @@ class TaskTemplate(_common.FlyteIdlEntity):
         config=None,
         k8s_pod=None,
         sql=None,
-        resources=None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -346,7 +345,6 @@ class TaskTemplate(_common.FlyteIdlEntity):
             in tandem with the custom.
         :param K8sPod k8s_pod: Alternative to the container used to execute this task.
         :param Sql sql: This is used to execute query in FlytePropeller instead of running container or k8s_pod.
-        :param dict[str, Resource] resources: Cluster resource that task will run on.
         """
         if (
             (container is not None and k8s_pod is not None)
@@ -365,7 +363,6 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._security_context = security_context
         self._k8s_pod = k8s_pod
         self._sql = sql
-        self._resources = resources
 
     @property
     def id(self):
@@ -439,10 +436,6 @@ class TaskTemplate(_common.FlyteIdlEntity):
     @property
     def sql(self):
         return self._sql
-
-    @property
-    def resources(self):
-        return self._resources
 
     def to_flyte_idl(self):
         """

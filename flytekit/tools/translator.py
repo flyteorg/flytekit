@@ -207,8 +207,6 @@ def get_serializable_task(
         config=entity.get_config(settings),
         k8s_pod=pod,
         sql=entity.get_sql(settings),
-        # Now we can only assign resource to Ray task.
-        resources={entity.name: entity.resource} if hasattr(entity, "resource") and entity.resource else None,
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
