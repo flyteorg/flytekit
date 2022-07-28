@@ -539,6 +539,8 @@ def test_flyte_file_in_dataclass():
         a: JPEGImageFile
         b: typing.List[FlyteFile]
         c: typing.Dict[str, FlyteFile]
+        d: typing.List[FlyteFile]
+        e: typing.Dict[str, FlyteFile]
 
     @dataclass_json
     @dataclass
@@ -546,8 +548,14 @@ def test_flyte_file_in_dataclass():
         a: FlyteFile
         b: TestInnerFileStruct
 
-    f = FlyteFile("s3://tmp/file")
-    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f], c={"hello": f}))
+    remote_path = "s3://tmp/file"
+    f1 = FlyteFile(remote_path)
+    f2 = FlyteFile("/tmp/file")
+    f2._remote_source = remote_path
+    o = TestFileStruct(
+        a=f1,
+        b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+    )
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -563,6 +571,10 @@ def test_flyte_file_in_dataclass():
     assert o.b.a.path == ot.b.a.remote_source
     assert o.b.b[0].path == ot.b.b[0].remote_source
     assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+    assert ot.b.d[0].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.d[0].path)
+    assert ot.b.e["hello"].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
 
 
 def test_flyte_directory_in_dataclass():
@@ -572,6 +584,8 @@ def test_flyte_directory_in_dataclass():
         a: TensorboardLogs
         b: typing.List[FlyteDirectory]
         c: typing.Dict[str, FlyteDirectory]
+        d: typing.List[FlyteDirectory]
+        e: typing.Dict[str, FlyteDirectory]
 
     @dataclass_json
     @dataclass
@@ -579,9 +593,15 @@ def test_flyte_directory_in_dataclass():
         a: FlyteDirectory
         b: TestInnerFileStruct
 
+    remote_path = "s3://tmp/file"
     tempdir = tempfile.mkdtemp(prefix="flyte-")
-    f = FlyteDirectory(tempdir)
-    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f], c={"hello": f}))
+    f1 = FlyteDirectory(tempdir)
+    f1._remote_source = remote_path
+    f2 = FlyteDirectory(remote_path)
+    o = TestFileStruct(
+        a=f1,
+        b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+    )
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -594,10 +614,15 @@ def test_flyte_directory_in_dataclass():
     assert ot.b.b[0]._downloader is not noop
     assert ot.b.c["hello"]._downloader is not noop
 
-    assert o.a.path == ot.a.path
+    assert o.a.remote_directory == ot.a.remote_directory
+    assert not ctx.file_access.is_remote(ot.a.path)
     assert o.b.a.path == ot.b.a.remote_source
-    assert o.b.b[0].path == ot.b.b[0].path
-    assert o.b.c["hello"].path == ot.b.c["hello"].path
+    assert o.b.b[0].remote_directory == ot.b.b[0].remote_directory
+    assert not ctx.file_access.is_remote(ot.b.b[0].path)
+    assert o.b.c["hello"].remote_directory == ot.b.c["hello"].remote_directory
+    assert not ctx.file_access.is_remote(ot.b.c["hello"].path)
+    assert o.b.d[0].path == ot.b.d[0].remote_source
+    assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
 
 
 def test_structured_dataset_in_dataclass():
@@ -607,6 +632,8 @@ def test_structured_dataset_in_dataclass():
     @dataclass
     class InnerDatasetStruct(object):
         a: StructuredDataset
+        b: typing.List[StructuredDataset]
+        c: typing.Dict[str, StructuredDataset]
 
     @dataclass_json
     @dataclass
@@ -615,7 +642,7 @@ def test_structured_dataset_in_dataclass():
         b: InnerDatasetStruct
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")
-    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd, b=[sd], c={"hello": sd}))
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -625,8 +652,12 @@ def test_structured_dataset_in_dataclass():
 
     assert_frame_equal(df, ot.a.open(pd.DataFrame).all())
     assert_frame_equal(df, ot.b.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.b[0].open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.c["hello"].open(pd.DataFrame).all())
     assert "parquet" == ot.a.file_format
     assert "parquet" == ot.b.a.file_format
+    assert "parquet" == ot.b.b[0].file_format
+    assert "parquet" == ot.b.c["hello"].file_format
 
 
 # Enums should have string values

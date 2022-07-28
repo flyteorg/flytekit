@@ -9,6 +9,7 @@ import base64
 import functools
 import hashlib
 import os
+import pathlib
 import time
 import typing
 import uuid
@@ -22,9 +23,9 @@ from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.core import constants, context_manager, tracker, utils
+from flytekit.core import constants, utils
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
@@ -59,7 +60,7 @@ from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.tools.script_mode import fast_register_single_script
+from flytekit.tools.script_mode import fast_register_single_script, hash_file
 from flytekit.tools.translator import FlyteLocalEntity, Options, get_serializable, get_serializable_launch_plan
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
@@ -144,10 +145,12 @@ class FlyteRemote(object):
             data_config=config.data_config,
         )
 
-        # Save the file access object locally, but also make it available for use from the context.
-        FlyteContextManager.with_context(
-            FlyteContextManager.current_context().with_file_access(self._file_access).build()
-        )
+        # Save the file access object locally, build a context for it and save that as well.
+        self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+
+    @property
+    def context(self) -> FlyteContext:
+        return self._ctx
 
     @property
     def client(self) -> SynchronousFlyteClient:
@@ -426,7 +429,7 @@ class FlyteRemote(object):
                         remote_logger.info(f"{entity.name} already exists")
                     # Let us also create a default launch-plan, ideally the default launchplan should be added
                     # to the orderedDict, but we do not.
-                    default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+                    default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
                     lp_entity = get_serializable_launch_plan(
                         OrderedDict(),
                         settings or serialization_settings,
@@ -495,7 +498,7 @@ class FlyteRemote(object):
             serialization_settings = b.build()
         ident = self._serialize_and_register(entity, serialization_settings, version, options)
         if default_launch_plan:
-            default_lp = LaunchPlan.get_default_launch_plan(FlyteContextManager.current_context(), entity)
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
                 default_lp, version=ident.version, project=ident.project, domain=ident.domain, options=options
             )
@@ -505,9 +508,68 @@ class FlyteRemote(object):
         fwf._python_interface = entity.python_interface
         return fwf
 
+    def _upload_file(
+        self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
+    ) -> typing.Tuple[bytes, str]:
+        """
+        Function will use remote's client to hash and then upload the file using Admin's data proxy service.
+
+        :param to_upload: Must be a single file
+        :param project: Project to upload under, if not supplied will use the remote's default
+        :param domain: Domain to upload under, if not specified will use the remote's default
+        :return: The uploaded location.
+        """
+        if not to_upload.is_file():
+            raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
+        md5_bytes, str_digest = hash_file(to_upload)
+        remote_logger.debug(f"Text hash of file to upload is {str_digest}")
+
+        upload_location = self.client.get_upload_signed_url(
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            content_md5=md5_bytes,
+            filename=to_upload.name,
+        )
+        self._ctx.file_access.put_data(str(to_upload), upload_location.signed_url)
+        remote_logger.warning(
+            f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
+        )
+
+        return md5_bytes, upload_location.native_url
+
+    @staticmethod
+    def _version_from_hash(
+        md5_bytes: bytes,
+        serialization_settings: SerializationSettings,
+        *additional_context: str,
+    ) -> str:
+        """
+        The md5 version that we send to S3/GCS has to match the file contents exactly,
+        but we don't have to use it when registering with the Flyte backend.
+        To avoid changes in the For that add the hash of the compilation settings to hash of file
+
+        :param md5_bytes:
+        :param serialization_settings:
+        :param additional_context: This is for additional context to factor into the version computation,
+          meant for objects (like Options for instance) that don't easily consistently stringify.
+        :return:
+        """
+        from flytekit import __version__
+
+        additional_context = additional_context or []
+
+        h = hashlib.md5(md5_bytes)
+        h.update(bytes(serialization_settings.to_json(), "utf-8"))
+        h.update(bytes(__version__, "utf-8"))
+
+        for s in additional_context:
+            h.update(bytes(s, "utf-8"))
+
+        return base64.urlsafe_b64encode(h.digest()).decode("ascii")
+
     def register_script(
         self,
-        entity: WorkflowBase,
+        entity: typing.Union[WorkflowBase, PythonTask],
         image_config: typing.Optional[ImageConfig] = None,
         version: typing.Optional[str] = None,
         project: typing.Optional[str] = None,
@@ -515,7 +577,7 @@ class FlyteRemote(object):
         destination_dir: str = ".",
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
-    ) -> FlyteWorkflow:
+    ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
         :param destination_dir:
@@ -523,13 +585,11 @@ class FlyteRemote(object):
         :param project:
         :param image_config:
         :param version: version for the entity to be registered as
-        :param entity: The workflow to be registered
+        :param entity: The workflow to be registered or the task to be registered
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
-        _, _, _, fname = tracker.extract_task_module(entity)
-
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
@@ -558,13 +618,10 @@ class FlyteRemote(object):
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            from flytekit import __version__
+            version = self._version_from_hash(md5_bytes, serialization_settings)
 
-            h = hashlib.md5(md5_bytes)
-            h.update(bytes(serialization_settings.to_json(), "utf-8"))
-            h.update(bytes(__version__, "utf-8"))
-            version = base64.urlsafe_b64encode(h.digest())
-
+        if isinstance(entity, PythonTask):
+            return self.register_task(entity, serialization_settings, version)
         return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
 
     def register_launch_plan(
@@ -999,12 +1056,11 @@ class FlyteRemote(object):
                 raise ValueError("Need image config since we are registering")
             self.register_workflow(entity, ss, version=version, options=options)
 
-        ctx = context_manager.FlyteContext.current_context()
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             remote_logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
-            default_lp = LaunchPlan.get_default_launch_plan(ctx, entity)
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
                 default_lp,
                 project=resolved_identifiers.project,
@@ -1378,13 +1434,12 @@ class FlyteRemote(object):
         interface: TypedInterface,
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
-        with self.remote_context():
-            input_literal_map = self._get_input_literal_map(execution_data)
-            execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs)
+        input_literal_map = self._get_input_literal_map(execution_data)
+        execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs, self.context)
 
-            if execution.is_done and not execution.error:
-                output_literal_map = self._get_output_literal_map(execution_data)
-                execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs)
+        if execution.is_done and not execution.error:
+            output_literal_map = self._get_output_literal_map(execution_data)
+            execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs, self.context)
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:

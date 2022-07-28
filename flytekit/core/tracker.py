@@ -199,7 +199,7 @@ class _ModuleSanitizer(object):
         if "__init__.py" not in os.listdir(dirname):
             return basename
 
-        # Now  recurse down such that we can extract the absolute module path
+        # Now recurse down such that we can extract the absolute module path
         mod_name = self._resolve_abs_module_name(dirname, package_root)
         final_mod_name = f"{mod_name}.{basename}" if mod_name else basename
         self._module_cache[path] = final_mod_name
@@ -243,8 +243,8 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         package_root = (
             FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto" else None
         )
-        new_mod_name = _mod_sanitizer.get_absolute_module_name(inspect.getabsfile(f), package_root)
+        new_mod_name = _mod_sanitizer.get_absolute_module_name(inspect.getabsfile(mod), package_root)
         # We only replace the mod_name if it is more specific, else we already have a fully resolved path
         if len(new_mod_name) > len(mod_name):
             mod_name = new_mod_name
-    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(f))
+    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))

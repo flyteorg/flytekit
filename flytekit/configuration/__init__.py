@@ -80,6 +80,7 @@ import datetime
 import enum
 import gzip
 import os
+import pathlib
 import re
 import tempfile
 import typing
@@ -92,7 +93,7 @@ from docker_image import reference
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, set_if_exists
+from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -282,6 +283,11 @@ class AuthType(enum.Enum):
     BASIC = "basic"
     CLIENT_CREDENTIALS = "client_credentials"
     EXTERNAL_PROCESS = "external_process"
+    # The following values are copied from flyteidl's admin client to align the two code bases on the same enum values.
+    # The enum values above will continue to work.
+    CLIENTSECRET = "ClientSecret"
+    PKCE = "Pkce"
+    EXTERNALCOMMAND = "ExternalCommand"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -291,6 +297,7 @@ class PlatformConfig(object):
 
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
+    :param insecure_skip_verify: Wether to skip SSL certificate verification
     :param command: This command is executed to return a token using an external process.
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -303,31 +310,12 @@ class PlatformConfig(object):
 
     endpoint: str = "localhost:30081"
     insecure: bool = False
+    insecure_skip_verify: bool = False
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
-
-    def with_parameters(
-        self,
-        endpoint: str = "localhost:30081",
-        insecure: bool = False,
-        command: typing.Optional[typing.List[str]] = None,
-        client_id: typing.Optional[str] = None,
-        client_credentials_secret: typing.Optional[str] = None,
-        scopes: List[str] = None,
-        auth_mode: AuthType = AuthType.STANDARD,
-    ) -> PlatformConfig:
-        return PlatformConfig(
-            endpoint=endpoint,
-            insecure=insecure,
-            command=command,
-            client_id=client_id,
-            client_credentials_secret=client_credentials_secret,
-            scopes=scopes if scopes else [],
-            auth_mode=auth_mode,
-        )
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
@@ -339,10 +327,19 @@ class PlatformConfig(object):
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "insecure", _internal.Platform.INSECURE.read(config_file))
+        kwargs = set_if_exists(
+            kwargs, "insecure_skip_verify", _internal.Platform.INSECURE_SKIP_VERIFY.read(config_file)
+        )
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
+        )
+
+        kwargs = set_if_exists(
+            kwargs,
+            "client_credentials_secret",
+            read_file_if_exists(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
         )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
@@ -523,10 +520,11 @@ class Config(object):
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
         """
-        Automatically constructs the Config Object. The order of precendence is as follows
+        Automatically constructs the Config Object. The order of precedence is as follows
           1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
           2. If not found in environment then values ar read from the config file
           3. If not found in the file, then the default values are used.
+
         :param config_file: file path to read the config from, if not specified default locations are searched
         :return: Config
         """
@@ -549,7 +547,7 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(insecure=True),
+            platform=PlatformConfig(endpoint="localhost:30081", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
                 s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
             ),

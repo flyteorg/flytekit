@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import configparser as _configparser
 import os
+import pathlib
 import typing
 from dataclasses import dataclass
 from os import getenv
@@ -31,13 +32,16 @@ class LegacyConfigEntry(object):
     option: str
     type_: typing.Type = str
 
+    def get_env_name(self):
+        return f"FLYTE_{self.section.upper()}_{self.option.upper()}"
+
     def read_from_env(self, transform: typing.Optional[typing.Callable] = None) -> typing.Optional[typing.Any]:
         """
         Reads the config entry from environment variable, the structure of the env var is current
         ``FLYTE_{SECTION}_{OPTION}`` all upper cased. We will change this in the future.
         :return:
         """
-        env = f"FLYTE_{self.section.upper()}_{self.option.upper()}"
+        env = self.get_env_name()
         v = os.environ.get(env, None)
         if v is None:
             return None
@@ -90,6 +94,22 @@ def bool_transformer(config_val: typing.Any):
         return config_val
 
 
+def comma_list_transformer(config_val: typing.Any):
+    if type(config_val) is str:
+        return config_val.split(",")
+    else:
+        return config_val
+
+
+def int_transformer(config_val: typing.Any):
+    if type(config_val) is str:
+        try:
+            return int(config_val)
+        except ValueError:
+            logger.warning(f"Couldn't convert configuration setting {config_val} into {int}, leaving as is.")
+    return config_val
+
+
 @dataclass
 class ConfigEntry(object):
     """
@@ -104,6 +124,8 @@ class ConfigEntry(object):
 
     legacy_default_transforms = {
         bool: bool_transformer,
+        list: comma_list_transformer,
+        int: int_transformer,
     }
 
     def __post_init__(self):
@@ -140,7 +162,7 @@ class ConfigFile(object):
         Load the config from this location
         """
         self._location = location
-        if location.endswith("yaml"):
+        if location.endswith("yaml") or location.endswith("yml"):
             self._legacy_config = None
             self._yaml_config = self._read_yaml_config(location)
         else:
@@ -237,6 +259,7 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
         # If not, then return None and let caller handle
         return None
     if isinstance(c, str):
+        logger.debug(f"Using specified config file at {c}")
         return ConfigFile(c)
     return c
 
@@ -253,3 +276,19 @@ def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
     if v:
         d[k] = v
     return d
+
+
+def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing.Optional[str]:
+    """
+    Reads the contents of the file if passed a path. Otherwise, returns None.
+
+    :param filename: The file path to load
+    :param encoding: The encoding to use when reading the file.
+    :return: The contents of the file as a string or None.
+    """
+    if not filename:
+        return None
+
+    filename = pathlib.Path(filename)
+    logger.debug(f"Reading file contents from [{filename}] with current directory [{os.getcwd()}].")
+    return filename.read_text(encoding=encoding)

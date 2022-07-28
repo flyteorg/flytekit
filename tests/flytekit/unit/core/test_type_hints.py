@@ -16,7 +16,7 @@ import pytest
 from dataclasses_json import dataclass_json
 from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_origin
 
 import flytekit
 import flytekit.configuration
@@ -58,7 +58,7 @@ def test_default_wf_params_works():
     @task
     def my_task(a: int):
         wf_params = flytekit.current_context()
-        assert wf_params.execution_id == "ex:local:local:local"
+        assert str(wf_params.execution_id) == "ex:local:local:local"
         assert flyte_tmp_dir in wf_params.raw_output_prefix
 
     my_task(a=3)
@@ -69,11 +69,33 @@ def test_simple_input_output():
     @task
     def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=int, c=str):
         ctx = flytekit.current_context()
-        assert ctx.execution_id == "ex:local:local:local"
+        assert str(ctx.execution_id) == "ex:local:local:local"
         return a + 2, "hello world"
 
     assert my_task(a=3) == (5, "hello world")
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_forwardref_namedtuple_output():
+    # This test case tests typing.NamedTuple outputs for cases where eg.
+    # from __future__ import annotations is enabled, such that all type hints become ForwardRef
+    @task
+    def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=typing.ForwardRef("int"), c=typing.ForwardRef("str")):
+        ctx = flytekit.current_context()
+        assert str(ctx.execution_id) == "ex:local:local:local"
+        return a + 2, "hello world"
+
+    assert my_task(a=3) == (5, "hello world")
+    assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_annotated_namedtuple_output():
+    @task
+    def my_task(a: int) -> typing.NamedTuple("OutputA", a=Annotated[int, "metadata-a"]):
+        return a + 2
+
+    assert my_task(a=9) == (11,)
+    assert get_origin(my_task.python_interface.outputs["a"]) is Annotated
 
 
 def test_simple_input_no_output():

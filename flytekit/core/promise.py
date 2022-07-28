@@ -5,7 +5,7 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-from typing_extensions import Protocol
+from typing_extensions import Protocol, get_args
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
@@ -23,6 +23,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
+from flytekit.models.types import SimpleType
 
 
 def translate_inputs_to_literals(
@@ -68,29 +69,43 @@ def translate_inputs_to_literals(
     ) -> _literal_models.Literal:
 
         if isinstance(input_val, list):
-            if flyte_literal_type.collection_type is None:
+            lt = flyte_literal_type
+            python_type = val_type
+            if flyte_literal_type.union_type:
+                for i in range(len(flyte_literal_type.union_type.variants)):
+                    variant = flyte_literal_type.union_type.variants[i]
+                    if variant.collection_type:
+                        lt = variant
+                        python_type = get_args(val_type)[i]
+            if lt.collection_type is None:
                 raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
             try:
-                sub_type = ListTransformer.get_sub_type(val_type)
+                sub_type = ListTransformer.get_sub_type(python_type)
             except ValueError:
                 if len(input_val) == 0:
                     raise
                 sub_type = type(input_val[0])
-            literal_list = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
+            literal_list = [extract_value(ctx, v, sub_type, lt.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
-            if (
-                flyte_literal_type.map_value_type is None
-                and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
-            ):
-                raise TypeError(f"Not a map type {flyte_literal_type} but got a map {input_val}")
-            k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
-            if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
-                return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
+            lt = flyte_literal_type
+            python_type = val_type
+            if flyte_literal_type.union_type:
+                for i in range(len(flyte_literal_type.union_type.variants)):
+                    variant = flyte_literal_type.union_type.variants[i]
+                    if variant.map_value_type:
+                        lt = variant
+                        python_type = get_args(val_type)[i]
+                    if variant.simple == _type_models.SimpleType.STRUCT:
+                        lt = variant
+                        python_type = get_args(val_type)[i]
+            if lt.map_value_type is None and lt.simple != _type_models.SimpleType.STRUCT:
+                raise TypeError(f"Not a map type {lt} but got a map {input_val}")
+            if lt.simple == _type_models.SimpleType.STRUCT:
+                return TypeEngine.to_literal(ctx, input_val, type(input_val), lt)
             else:
-                literal_map = {
-                    k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
-                }
+                k_type, sub_type = DictTransformer.get_dict_types(python_type)  # type: ignore
+                literal_map = {k: extract_value(ctx, v, sub_type, lt.map_value_type) for k, v in input_val.items()}
                 return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literal_map))
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
@@ -331,6 +346,10 @@ class Promise(object):
 
     def __hash__(self):
         return hash(id(self))
+
+    def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
+        if not self.is_ready:
+            self.ref.node.runs_before(other.ref.node)
 
     def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
@@ -642,8 +661,9 @@ class VoidPromise(object):
     VoidPromise cannot be interacted with and does not allow comparisons or any operations
     """
 
-    def __init__(self, task_name: str):
+    def __init__(self, task_name: str, ref: typing.Optional[NodeOutput] = None):
         self._task_name = task_name
+        self._ref = ref
 
     def runs_before(self, *args, **kwargs):
         """
@@ -651,8 +671,13 @@ class VoidPromise(object):
         where a task returns nothing.
         """
 
-    def __rshift__(self, *args, **kwargs):
-        ...  # See runs_before
+    @property
+    def ref(self) -> NodeOutput:
+        return self._ref
+
+    def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
+        if self.ref:
+            self.ref.node.runs_before(other.ref.node)
 
     @property
     def task_name(self):
@@ -853,7 +878,7 @@ def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
     **kwargs,
-):
+) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
     This method is used to generate a node with bindings. This is not used in the execution path.
     """
@@ -871,7 +896,20 @@ def create_and_link_node(
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
-            raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+            is_optional = False
+            if var.type.union_type:
+                for variant in var.type.union_type.variants:
+                    if variant.simple == SimpleType.NONE:
+                        val, _default = interface.inputs_with_defaults[k]
+                        if _default is not None:
+                            raise ValueError(
+                                f"The default value for the optional type must be None, but got {_default}"
+                            )
+                        is_optional = True
+            if not is_optional:
+                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+            else:
+                continue
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
@@ -920,7 +958,7 @@ def create_and_link_node(
     ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
-        return VoidPromise(entity.name)
+        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
 
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
@@ -989,6 +1027,7 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
             )
         ) as child_ctx:
+            cast(FlyteContext, child_ctx).user_space_params._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
 
         expected_outputs = len(cast(SupportsNodeCreation, entity).python_interface.outputs)

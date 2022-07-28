@@ -5,6 +5,7 @@ from flytekit import dynamic
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
+from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
@@ -108,3 +109,27 @@ def test_nested_dynamic_local():
 
     res = wf(a=2, b=3)
     assert res == ["fast-2", "fast-3", "fast-4", "fast-5", "fast-6"]
+
+
+def test_create_node_dynamic_local():
+    @task
+    def task1(s: str) -> str:
+        return s
+
+    @task
+    def task2(s: str) -> str:
+        return s
+
+    @dynamic
+    def dynamic_wf() -> str:
+        node_1 = create_node(task1, s="hello")
+        node_2 = create_node(task2, s="world")
+        node_1 >> node_2
+
+        return node_1.o0
+
+    @workflow
+    def wf() -> str:
+        return dynamic_wf()
+
+    assert wf() == "hello"

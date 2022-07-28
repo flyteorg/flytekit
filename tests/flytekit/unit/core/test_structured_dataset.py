@@ -1,3 +1,4 @@
+import tempfile
 import typing
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -20,8 +22,8 @@ import pyarrow as pa
 
 from flytekit import kwtypes, task
 from flytekit.types.structured.structured_dataset import (
+    LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -336,7 +338,7 @@ def test_to_python_value_without_incoming_columns():
 def test_format_correct():
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self):
-            super().__init__(pd.DataFrame, S3, "avro")
+            super().__init__(pd.DataFrame, LOCAL, "avro")
 
         def encode(
             self,
@@ -375,3 +377,21 @@ def test_format_correct():
         return StructuredDataset(dataframe=df)
 
     assert t1().file_format == "avro"
+
+
+def test_protocol_detection():
+    # We've don't register defaults to the transformer engine
+    assert pd.DataFrame not in StructuredDatasetTransformerEngine.DEFAULT_PROTOCOLS
+    e = StructuredDatasetTransformerEngine()
+    ctx = FlyteContextManager.current_context()
+    protocol = e._protocol_from_type_or_prefix(ctx, pd.DataFrame)
+    assert protocol == "/"
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fs = FileAccessProvider(local_sandbox_dir=tmp_dir, raw_output_prefix="s3://fdsa")
+        ctx2 = ctx.with_file_access(fs).build()
+        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame)
+        assert protocol == "s3"
+
+        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame, "bq://foo")
+        assert protocol == "bq"

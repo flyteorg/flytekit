@@ -1,4 +1,2 @@
-grpcio<=1.43.0
-grpcio-status<=1.43.0
 .
 -e file:.#egg=flytekitplugins-modin
