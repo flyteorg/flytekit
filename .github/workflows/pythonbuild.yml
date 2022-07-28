@@ -49,9 +49,9 @@ jobs:
           pip freeze
       - name: Test with coverage
         run: |
-          coverage run -m pytest tests/flytekit/unit -m "not sandbox_test"
+          pytest tests/flytekit/unit -m "not sandbox_test" --cov=./ --cov-report=xml
       - name: Codecov
-        uses: codecov/codecov-action@v1.5.2
+        uses: codecov/codecov-action@v3.1.0
         with:
           fail_ci_if_error: true # optional (default = false)
 
