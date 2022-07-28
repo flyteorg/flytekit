@@ -47,7 +47,7 @@ def test_ray_task():
                 ],
             )
         ),
-        runtime_env=str(base64.b64encode(json.dumps({"pip": ["numpy"]}).encode("UTF-8"))),
+        runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),
     ).to_flyte_idl()
 
     assert t1.get_custom(settings) == MessageToDict(ray_job_pb)
