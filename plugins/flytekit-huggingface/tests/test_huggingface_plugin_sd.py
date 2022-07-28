@@ -1,5 +1,5 @@
-import flytekitplugins.huggingface  # noqa F401
 import datasets
+import flytekitplugins.huggingface  # noqa F401
 import pandas as pd
 
 try:

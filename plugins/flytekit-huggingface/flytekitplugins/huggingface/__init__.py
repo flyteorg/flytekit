@@ -11,4 +11,4 @@ This package contains things that are useful when extending Flytekit.
    ParquetToHuggingFaceDatasetDecodingHandler
 """
 
-from .sd_transformers import ParquetToHuggingFaceDatasetDecodingHandler, HuggingFaceDatasetToParquetEncodingHandler
+from .sd_transformers import HuggingFaceDatasetToParquetEncodingHandler, ParquetToHuggingFaceDatasetDecodingHandler
