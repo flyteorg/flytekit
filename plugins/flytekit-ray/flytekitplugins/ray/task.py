@@ -75,7 +75,8 @@ class RayFunctionTask(PythonFunctionTask):
                     ],
                 )
             ),
-            runtime_env=str(base64.b64encode(json.dumps(cfg.runtime_env).encode("UTF-8"))),
+            # Use base64 to encode runtime_env dict and convert it to byte string
+            runtime_env=base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode(),
             shutdown_after_job_finishes=cfg.shutdown_after_job_finishes,
             ttl_seconds_after_finished=cfg.ttl_seconds_after_finished,
         )

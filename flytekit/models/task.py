@@ -460,7 +460,6 @@ class TaskTemplate(_common.FlyteIdlEntity):
             config={k: v for k, v in self.config.items()} if self.config is not None else None,
             k8s_pod=self.k8s_pod.to_flyte_idl() if self.k8s_pod else None,
             sql=self.sql.to_flyte_idl() if self.sql else None,
-            resources={k: v.to_flyte_idl() for k, v in self.resources.items()} if self.resources else None,
         )
         return task_template
 
