@@ -40,7 +40,7 @@ def test_image_config_auto():
 
 
 def test_image_from_flytectl_config():
-    os.environ["FLYTECTL_CONFIG"] = "./configs/sample.yaml"
+    os.environ["FLYTECTL_CONFIG"] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml")
     image_config = ImageConfig.auto(config_file=None)
     assert image_config.images[0].full == "docker.io/xyz:latest"
     assert image_config.images[1].full == "docker.io/abc:None"
