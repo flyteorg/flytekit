@@ -68,6 +68,8 @@ class Options(object):
         max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
         notifications: List of notifications for this execution
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
+        interruptible: Boolean that indicates that this task can be interrupted and/or scheduled on nodes
+                        with lower QoS guarantees.
     """
 
     labels: typing.Optional[common_models.Labels] = None
@@ -77,6 +79,7 @@ class Options(object):
     max_parallelism: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
+    interruptible: typing.Optional[bool] = None
 
     @classmethod
     def default_from(
@@ -343,6 +346,7 @@ def get_serializable_launch_plan(
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
+        interruptible=options.interruptible or entity.interruptible,
     )
 
     lp_id = _identifier_model.Identifier(
