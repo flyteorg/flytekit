@@ -11,6 +11,3 @@ storage:
     access-key: minio
     endpoint: http://localhost:30084
     secret-key: miniostorage
-images:
-  xyz: docker.io/xyz:latest
-  abc: docker.io/abc

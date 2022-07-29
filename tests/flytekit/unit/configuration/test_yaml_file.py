@@ -4,7 +4,7 @@ import mock
 
 from flytekit.configuration import ConfigEntry, get_config_file
 from flytekit.configuration.file import LegacyConfigEntry, YamlConfigEntry
-from flytekit.configuration.internal import AWS, Credentials, Platform
+from flytekit.configuration.internal import AWS, Credentials, Images, Platform
 
 
 def test_config_entry_file():
@@ -18,6 +18,14 @@ def test_config_entry_file():
 
     c = ConfigEntry(LegacyConfigEntry("platform", "url2", str))  # Does not exist
     assert c.read(cfg) is None
+
+
+def test_config_entry_file_normal():
+    # Most yaml config files will not have images, make sure that a normal one without an image section doesn't
+    # return None
+    cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/no_images.yaml"))
+    images_dict = Images.get_specified_images(cfg)
+    assert images_dict == {}
 
 
 @mock.patch("flytekit.configuration.file.getenv")
