@@ -11,6 +11,10 @@ def test_load_images():
     imgs = Images.get_specified_images(cfg)
     assert imgs == {"abc": "docker.io/abc", "xyz": "docker.io/xyz:latest"}
 
+    cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
+    imgs = Images.get_specified_images(cfg)
+    assert imgs == {"abc": "docker.io/abc", "xyz": "docker.io/xyz:latest"}
+
 
 def test_no_images():
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
