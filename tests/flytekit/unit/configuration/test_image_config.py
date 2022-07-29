@@ -1,3 +1,4 @@
+import os
 import sys
 
 import mock
@@ -38,9 +39,11 @@ def test_image_config_auto():
     assert x.images[0].full == f"ghcr.io/flyteorg/flytekit:py{version_str}-latest"
 
 
-def test_jfdskl():
-    auto_none = ImageConfig.auto(config_file=None)
-    print(auto_none)
+def test_image_from_flytectl_config():
+    os.environ["FLYTECTL_CONFIG"] = "./configs/sample.yaml"
+    image_config = ImageConfig.auto(config_file=None)
+    assert image_config.images[0].full == "docker.io/xyz:latest"
+    assert image_config.images[1].full == "docker.io/abc:None"
 
 
 @mock.patch("flytekit.configuration.default_images.sys")
