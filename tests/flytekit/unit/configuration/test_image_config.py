@@ -38,6 +38,11 @@ def test_image_config_auto():
     assert x.images[0].full == f"ghcr.io/flyteorg/flytekit:py{version_str}-latest"
 
 
+def test_jfdskl():
+    auto_none = ImageConfig.auto(config_file=None)
+    print(auto_none)
+
+
 @mock.patch("flytekit.configuration.default_images.sys")
 def test_not_version(mock_sys):
     mock_sys.version_info.major.return_value = 2

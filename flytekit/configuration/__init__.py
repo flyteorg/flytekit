@@ -230,9 +230,14 @@ class ImageConfig(object):
         return ImageConfig(default_image=default_image, images=all_images)
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None, img_name: Optional[str] = None) -> ImageConfig:
+    def auto(
+        cls, config_file: typing.Union[str, ConfigFile, None] = None, img_name: Optional[str] = None
+    ) -> ImageConfig:
         """
         Reads from config file or from img_name
+        Note that this function does not take into account the flytekit default images (see the Dockerfiles at the
+        base of this repo). To pick those up, see the auto_default_image function..
+
         :param config_file:
         :param img_name:
         :return:

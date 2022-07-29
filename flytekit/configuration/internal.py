@@ -7,7 +7,7 @@ from flytekit.configuration.file import ConfigEntry, ConfigFile, LegacyConfigEnt
 
 class Images(object):
     @staticmethod
-    def get_specified_images(cfg: ConfigFile) -> typing.Dict[str, str]:
+    def get_specified_images(cfg: typing.Optional[ConfigFile]) -> typing.Dict[str, str]:
         """
         This section should contain options, where the option name is the friendly name of the image and the corresponding
         value is actual FQN of the image. Example of how the section is structured
@@ -32,7 +32,7 @@ class Images(object):
                     images[str(i)] = cfg.legacy_config.get("images", i)
             return images
         if cfg.yaml_config:
-            return cfg.yaml_config.get("images")
+            return cfg.yaml_config.get("images", images)
 
 
 class Deck(object):
