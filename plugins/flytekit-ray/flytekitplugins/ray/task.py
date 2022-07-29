@@ -16,7 +16,7 @@ from flytekit.extend import TaskPlugins
 
 @dataclass
 class HeadNodeConfig:
-    ray_start_params: typing.Optional[dict] = None
+    ray_start_params: typing.Optional[typing.Dict[str, str]] = None
 
 
 @dataclass
@@ -25,7 +25,7 @@ class WorkerNodeConfig:
     replicas: int
     min_replicas: typing.Optional[int] = None
     max_replicas: typing.Optional[int] = None
-    ray_start_params: typing.Optional[dict] = None
+    ray_start_params: typing.Optional[typing.Dict[str, str]] = None
 
 
 @dataclass
