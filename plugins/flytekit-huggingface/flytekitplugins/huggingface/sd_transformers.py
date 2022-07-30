@@ -1,6 +1,6 @@
 import typing
 
-from datasets.arrow_dataset import Dataset
+import datasets
 
 from flytekit import FlyteContext
 from flytekit.models import literals
@@ -20,7 +20,7 @@ from flytekit.types.structured.structured_dataset import (
 
 class HuggingFaceDatasetToParquetEncodingHandler(StructuredDatasetEncoder):
     def __init__(self, protocol: str):
-        super().__init__(Dataset, protocol, PARQUET)
+        super().__init__(datasets.Dataset, protocol, PARQUET)
 
     def encode(
         self,
@@ -28,7 +28,7 @@ class HuggingFaceDatasetToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        df = typing.cast(Dataset, structured_dataset.dataframe)
+        df = typing.cast(datasets.Dataset, structured_dataset.dataframe)
 
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = f"{local_dir}/00000"
@@ -42,22 +42,22 @@ class HuggingFaceDatasetToParquetEncodingHandler(StructuredDatasetEncoder):
 
 class ParquetToHuggingFaceDatasetDecodingHandler(StructuredDatasetDecoder):
     def __init__(self, protocol: str):
-        super().__init__(Dataset, protocol, PARQUET)
+        super().__init__(datasets.Dataset, protocol, PARQUET)
 
     def decode(
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> Dataset:
+    ) -> datasets.Dataset:
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(flyte_value.uri, local_dir, is_multipart=True)
         path = f"{local_dir}/00000"
 
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
-            return Dataset.from_parquet(path, columns=columns)
-        return Dataset.from_parquet(path)
+            return datasets.Dataset.from_parquet(path, columns=columns)
+        return datasets.Dataset.from_parquet(path)
 
 
 for protocol in [LOCAL, S3]:

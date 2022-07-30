@@ -22,7 +22,7 @@ def test_huggingface_dataset_workflow_subset():
 
     @task
     def consume(df: subset_schema) -> subset_schema:
-        dataset = df.open(datasets.arrow_dataset.Dataset).all()
+        dataset = df.open(datasets.Dataset).all()
 
         assert dataset[0]["col2"] == "a"
         assert dataset[1]["col2"] == "b"
@@ -46,7 +46,7 @@ def test_huggingface_dataset__workflow_full():
 
     @task
     def consume(df: full_schema) -> full_schema:
-        dataset = df.open(datasets.arrow_dataset.Dataset).all()
+        dataset = df.open(datasets.Dataset).all()
 
         assert dataset[0]["col1"] == 1
         assert dataset[1]["col1"] == 3
