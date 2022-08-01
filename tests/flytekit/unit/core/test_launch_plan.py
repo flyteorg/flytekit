@@ -330,6 +330,7 @@ def test_lp_all_parameters():
         labels=labels,
         annotations=annotations,
         raw_output_data_config=raw_output_data_config,
+        interruptible=False,
     )
     lp2 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
@@ -342,6 +343,7 @@ def test_lp_all_parameters():
         labels=labels,
         annotations=annotations,
         raw_output_data_config=raw_output_data_config,
+        interruptible=False,
     )
 
     assert lp is lp2
@@ -358,6 +360,7 @@ def test_lp_all_parameters():
             labels=labels,
             annotations=annotations,
             raw_output_data_config=raw_output_data_config,
+            interruptible=False,
         )
 
 

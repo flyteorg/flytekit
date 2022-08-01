@@ -117,6 +117,7 @@ class LaunchPlan(object):
         max_parallelism: int = None,
         security_context: typing.Optional[security.SecurityContext] = None,
         auth_role: _common_models.AuthRole = None,
+        interruptible: Optional[bool] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -167,6 +168,7 @@ class LaunchPlan(object):
             raw_output_data_config=raw_output_data_config,
             max_parallelism=max_parallelism,
             security_context=security_context,
+            interruptible=interruptible,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -195,6 +197,7 @@ class LaunchPlan(object):
         max_parallelism: int = None,
         security_context: typing.Optional[security.SecurityContext] = None,
         auth_role: _common_models.AuthRole = None,
+        interruptible: Optional[bool] = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -220,6 +223,7 @@ class LaunchPlan(object):
         :param max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
+        :param interruptible: Whether or not the launchplan can be interrupted.
         """
         if name is None and (
             default_inputs is not None
@@ -232,6 +236,7 @@ class LaunchPlan(object):
             or auth_role is not None
             or max_parallelism is not None
             or security_context is not None
+            or interruptible is not None
         ):
             raise ValueError(
                 "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
@@ -263,6 +268,7 @@ class LaunchPlan(object):
                 or raw_output_data_config != cached_outputs["_raw_output_data_config"]
                 or max_parallelism != cached_outputs["_max_parallelism"]
                 or security_context != cached_outputs["_security_context"]
+                or interruptible != cached_outputs["_interruptible"]
             ):
                 raise AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -288,6 +294,7 @@ class LaunchPlan(object):
                 max_parallelism,
                 auth_role=auth_role,
                 security_context=security_context,
+                interruptible=interruptible,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -305,6 +312,7 @@ class LaunchPlan(object):
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         max_parallelism: int = None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        interruptible: Optional[bool] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -322,6 +330,7 @@ class LaunchPlan(object):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._interruptible = interruptible
 
         FlyteEntities.entities.append(self)
 
@@ -338,6 +347,7 @@ class LaunchPlan(object):
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        interruptible: Optional[bool] = None,
     ) -> LaunchPlan:
         return LaunchPlan(
             name=name,
@@ -352,6 +362,7 @@ class LaunchPlan(object):
             auth_role=auth_role or self._auth_role,
             max_parallelism=max_parallelism or self.max_parallelism,
             security_context=security_context or self.security_context,
+            interruptible=interruptible or self.interruptible,
         )
 
     @property
@@ -411,8 +422,12 @@ class LaunchPlan(object):
         return self._max_parallelism
 
     @property
-    def security_context(self) -> typing.Optional[security.SecurityContext]:
+    def security_context(self) -> Optional[security.SecurityContext]:
         return self._security_context
+
+    @property
+    def interruptible(self) -> Optional[bool]:
+        return self._interruptible
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()

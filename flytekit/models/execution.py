@@ -86,6 +86,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         raw_output_data_config=None,
         max_parallelism=None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        interruptible=None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -99,7 +100,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
-
+        :param security_context: Security context to apply to the execution.
+        :param interruptible: Whether or not the execution is interruptible.
         """
         self._launch_plan = launch_plan
         self._metadata = metadata
@@ -111,6 +113,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._interruptible = interruptible
 
     @property
     def launch_plan(self):
@@ -177,6 +180,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     def security_context(self) -> typing.Optional[security.SecurityContext]:
         return self._security_context
 
+    @property
+    def interruptible(self) -> typing.Optional[bool]:
+        return self._interruptible
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -194,6 +201,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             else None,
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            interruptible=self.interruptible,
         )
 
     @classmethod
@@ -217,6 +225,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             security_context=security.SecurityContext.from_flyte_idl(p.security_context)
             if p.security_context
             else None,
+            interruptible=p.interruptible,
         )
 
 

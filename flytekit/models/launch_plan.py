@@ -123,6 +123,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         raw_output_data_config: _common.RawOutputDataConfig,
         max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        interruptible: typing.Optional[bool] = None,
     ):
         """
         The spec for a Launch Plan.
@@ -143,6 +144,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             parallelism/concurrency of MapTasks is independent from this.
         :param security_context: This can be used to add security information to a LaunchPlan, which will be used by
                                  every execution
+        :param interruptible: Whether or not the launchplan can be interrupted.
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -154,6 +156,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._interruptible = interruptible
 
     @property
     def workflow_id(self):
@@ -226,6 +229,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def security_context(self) -> typing.Optional[security.SecurityContext]:
         return self._security_context
 
+    @property
+    def interruptible(self) -> typing.Optional[bool]:
+        return self._interruptible
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -241,6 +248,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            interruptible=self.interruptible,
         )
 
     @classmethod
@@ -273,6 +281,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             security_context=security.SecurityContext.from_flyte_idl(pb2.security_context)
             if pb2.security_context
             else None,
+            interruptible=pb2.interruptible,
         )
 
 
