@@ -1,4 +1,5 @@
 import typing
+
 import pytest
 
 import flytekit.configuration
@@ -11,17 +12,17 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 
 settings = flytekit.configuration.SerializationSettings(
-                project="test_proj",
-                domain="test_domain",
-                version="abc",
-                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-                env={},
-                fast_serialization_settings=FastSerializationSettings(
-                    enabled=True,
-                    destination_dir="/User/flyte/workflows",
-                    distribution_location="s3://my-s3-bucket/fast/123",
-                ),
-            )
+    project="test_proj",
+    domain="test_domain",
+    version="abc",
+    image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+    env={},
+    fast_serialization_settings=FastSerializationSettings(
+        enabled=True,
+        destination_dir="/User/flyte/workflows",
+        distribution_location="s3://my-s3-bucket/fast/123",
+    ),
+)
 
 
 def test_wf1_with_fast_dynamic():
@@ -126,19 +127,5 @@ def test_dynamic_local_use():
         else:
             return 0
 
-    # This should also fail.
-    use_result(a=6)
-
     with pytest.raises(TypeError):
-        with context_manager.FlyteContextManager.with_context(
-            context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
-        ) as ctx:
-            with context_manager.FlyteContextManager.with_context(
-                ctx.with_execution_state(
-                    ctx.execution_state.with_params(
-                        mode=ExecutionState.Mode.TASK_EXECUTION,
-                    )
-                )
-            ) as ctx:
-                input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
-                use_result.dispatch_execute(ctx, input_literal_map)
+        use_result(a=6)

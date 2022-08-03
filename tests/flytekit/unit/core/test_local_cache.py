@@ -1,26 +1,24 @@
 import datetime
 import typing
 from dataclasses import dataclass
-from typing import List
-from flytekit.core.type_engine import TypeEngine
+from typing import Dict, List
 
-import uuid
-from typing import Dict
-from flytekit.models.literals import LiteralMap
 import pandas
 from dataclasses_json import dataclass_json
 from pytest import fixture
 from typing_extensions import Annotated
 
+from flytekit.core.base_sql_task import SQLTask
+from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
 from flytekit.core.local_cache import LocalTaskCache, _calculate_cache_key
 from flytekit.core.task import TaskMetadata, task
-from flytekit.core.base_task import kwtypes
-from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.testing import task_mock
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.models.literals import LiteralMap
 from flytekit.types.schema import FlyteSchema
 
 # Global counter used to validate number of calls to cache
@@ -404,10 +402,11 @@ def test_cache_key_repetition():
     keys = {}
     for i in range(0, 100):
         lit = TypeEngine.to_literal(ctx, kwargs, Dict, lt)
-        print(lit)
-        lm = LiteralMap(literals={
-            "d": lit,
-        })
+        lm = LiteralMap(
+            literals={
+                "d": lit,
+            }
+        )
         key = _calculate_cache_key("t1", "007", lm)
         keys[key] = 1
 

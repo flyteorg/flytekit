@@ -264,6 +264,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # instead.
             updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
             with FlyteContextManager.with_context(ctx.with_execution_state(updated_exec_state)):
+                logger.debug(f"Running compilation for {self} as part of local run as check")
+                self.compile_into_workflow(ctx, task_function, **kwargs)
                 logger.info("Executing Dynamic workflow, using raw inputs")
                 return exception_scopes.user_entry_point(task_function)(**kwargs)
 
