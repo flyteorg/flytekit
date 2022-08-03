@@ -1,10 +1,5 @@
-import flytekitplugins.polars  # noqa F401
 import polars as pl
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
+from typing_extensions import Annotated
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import PARQUET, StructuredDataset
