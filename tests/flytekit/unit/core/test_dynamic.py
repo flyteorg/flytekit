@@ -121,7 +121,6 @@ def test_dynamic_local_use():
     @dynamic
     def use_result(a: int) -> int:
         x = t1(a=a)
-        ctx = context_manager.FlyteContextManager.current_context()
         if len(x) > 6:
             return 5
         else:
