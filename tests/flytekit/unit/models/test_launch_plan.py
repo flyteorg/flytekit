@@ -72,7 +72,7 @@ def test_launch_plan_spec():
         auth_role_model,
         raw_data_output_config,
         max_parallelism,
-        interruptible,
+        interruptible=interruptible,
     )
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_raw_output_prefixed.to_flyte_idl())
