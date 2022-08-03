@@ -2,16 +2,23 @@ import datetime
 import typing
 from dataclasses import dataclass
 from typing import List
+from flytekit.core.type_engine import TypeEngine
 
+import uuid
+from typing import Dict
+from flytekit.models.literals import LiteralMap
 import pandas
 from dataclasses_json import dataclass_json
 from pytest import fixture
 from typing_extensions import Annotated
 
-from flytekit import SQLTask, dynamic, kwtypes
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
-from flytekit.core.local_cache import LocalTaskCache
+from flytekit.core.local_cache import LocalTaskCache, _calculate_cache_key
 from flytekit.core.task import TaskMetadata, task
+from flytekit.core.base_task import kwtypes
+from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.testing import task_mock
 from flytekit.core.workflow import workflow
 from flytekit.types.schema import FlyteSchema
@@ -383,3 +390,25 @@ def test_list_of_pandas_dataframe_hash():
     # Confirm that we see a cache hit in the case of annotated dataframes.
     my_workflow()
     assert n_cached_task_calls == 1
+
+
+def test_cache_key_repetition():
+    pt = Dict
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContextManager.current_context()
+    kwargs = {
+        "a": 0.41083513079747874,
+        "b": 0.7773927872515183,
+        "c": 17,
+    }
+    keys = {}
+    for i in range(0, 100):
+        lit = TypeEngine.to_literal(ctx, kwargs, Dict, lt)
+        print(lit)
+        lm = LiteralMap(literals={
+            "d": lit,
+        })
+        key = _calculate_cache_key("t1", "007", lm)
+        keys[key] = 1
+
+    print(f"Length: {len(keys)}")
