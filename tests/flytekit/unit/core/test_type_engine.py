@@ -1197,7 +1197,7 @@ def test_pass_annotated_to_downstream_tasks():
 
         # We should have a cache miss in the first call to downstream_t
         v_1 = downstream_t(a=v, df=df)
-        v_2 = downstream_t(a=v, df=df)
+        downstream_t(a=v, df=df)
 
         return v_1
 

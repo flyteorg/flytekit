@@ -19,6 +19,8 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
+from flytekit.configuration import SerializationSettings
+from flytekit.configuration.default_images import DefaultImages
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -31,8 +33,6 @@ from flytekit.core.workflow import (
     WorkflowMetadata,
     WorkflowMetadataDefaults,
 )
-from flytekit.configuration import SerializationSettings
-from flytekit.configuration.default_images import DefaultImages
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -265,7 +265,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
-            with FlyteContextManager.with_context(ctx.with_execution_state(updated_exec_state).with_serialization_settings(_LOCAL_ONLY_SS)) as ctx:
+            with FlyteContextManager.with_context(
+                ctx.with_execution_state(updated_exec_state).with_serialization_settings(_LOCAL_ONLY_SS)
+            ) as ctx:
                 logger.debug(f"Running compilation for {self} as part of local run as check")
                 self.compile_into_workflow(ctx, task_function, **kwargs)
                 logger.info("Executing Dynamic workflow, using raw inputs")
