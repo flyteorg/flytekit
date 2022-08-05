@@ -8,7 +8,13 @@ from click.testing import CliRunner
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
 from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY
-from flytekit.clis.sdk_in_container.run import REMOTE_FLAG_KEY, RUN_LEVEL_PARAMS_KEY, get_entities_in_file, run_command
+from flytekit.clis.sdk_in_container.run import (
+    REMOTE_FLAG_KEY,
+    RUN_LEVEL_PARAMS_KEY,
+    FileParamType,
+    get_entities_in_file,
+    run_command,
+)
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.task import task
 
@@ -241,3 +247,11 @@ def test_pyflyte_run_run(image_string, leaf_configuration_file_name, final_image
     mock_remote.register_script.side_effect = check_image
 
     run_command(mock_click_ctx, a)()
+
+
+def test_file_param():
+    m = mock.MagicMock()
+    l = FileParamType().convert(__file__, m, m)
+    assert l.local
+    r = FileParamType().convert("https://tmp/file", m, m)
+    assert r.local is False
