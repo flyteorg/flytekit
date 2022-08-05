@@ -1197,11 +1197,11 @@ def test_pass_annotated_to_downstream_tasks():
 
         # We should have a cache miss in the first call to downstream_t
         v_1 = downstream_t(a=v, df=df)
-        v_2 = downstream_t(a=v, df=df)
+        downstream_t(a=v, df=df)
 
-        return v_1 + v_2
+        return v_1
 
-    assert t1(a=3) == (6 + 6 + 6)
+    assert t1(a=3) == 9
 
 
 def test_literal_hash_int_not_set():
