@@ -314,13 +314,13 @@ def test_pass_annotated_to_downstream_tasks():
 
         # We should have a cache miss in the first call to downstream_t and have a cache hit
         # on the second call.
-        v_1 = downstream_t(a=v)
+        downstream_t(a=v)
         v_2 = downstream_t(a=v)
 
-        return v_1 + v_2
+        return v_2
 
     assert n_cached_task_calls == 0
-    assert t1(a=3) == (6 + 6)
+    assert t1(a=3) == 6
     assert n_cached_task_calls == 1
 
 
