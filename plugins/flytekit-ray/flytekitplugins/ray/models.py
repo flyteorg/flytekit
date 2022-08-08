@@ -121,11 +121,13 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         )
 
 
-class ClusterSpec(_common.FlyteIdlEntity):
+class RayCluster(_common.FlyteIdlEntity):
+    """
+    Define RayCluster spec that will be used by KubeRay to launch the cluster.
+    """
+
     def __init__(
-        self,
-        worker_group_spec: typing.List[WorkerGroupSpec],
-        head_group_spec: typing.Optional[HeadGroupSpec] = HeadGroupSpec(),
+        self, worker_group_spec: typing.List[WorkerGroupSpec], head_group_spec: typing.Optional[HeadGroupSpec] = None
     ):
         self._head_group_spec = head_group_spec
         self._worker_group_spec = worker_group_spec
@@ -146,50 +148,14 @@ class ClusterSpec(_common.FlyteIdlEntity):
         """
         return self._worker_group_spec
 
-    def to_flyte_idl(self):
-        """
-        :rtype: flyteidl.plugins._ray_pb2.ClusterSpec
-        """
-        return _ray_pb2.ClusterSpec(
-            head_group_spec=self.head_group_spec.to_flyte_idl(),
-            worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, proto):
-        """
-        :param flyteidl.plugins._ray_pb2.ClusterSpec proto:
-        :rtype: ClusterSpec
-        """
-        return cls(
-            head_group_spec=HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None,
-            worker_group_spec=[WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec]
-            if proto.worker_group_spec
-            else None,
-        )
-
-
-class RayCluster(_common.FlyteIdlEntity):
-    """
-    Define RayCluster spec that will be used by KubeRay to launch the cluster.
-    """
-
-    def __init__(self, cluster_spec: ClusterSpec):
-        self._cluster_spec = cluster_spec
-
-    @property
-    def cluster_spec(self):
-        """
-        This field indicates ray cluster configuration
-        :rtype: ClusterSpec
-        """
-        return self._cluster_spec
-
     def to_flyte_idl(self) -> _ray_pb2.RayCluster:
         """
         :rtype: flyteidl.plugins._ray_pb2.RayCluster
         """
-        return _ray_pb2.RayCluster(cluster_spec=self.cluster_spec.to_flyte_idl())
+        return _ray_pb2.RayCluster(
+            head_group_spec=self.head_group_spec.to_flyte_idl() if self._head_group_spec else None,
+            worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
+        )
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -197,7 +163,10 @@ class RayCluster(_common.FlyteIdlEntity):
         :param flyteidl.plugins._ray_pb2.RayCluster proto:
         :rtype: RayCluster
         """
-        return cls(cluster_spec=ClusterSpec.from_flyte_idl(proto.cluster_spec))
+        return cls(
+            head_group_spec=HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None,
+            worker_group_spec=[WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec],
+        )
 
 
 class RayJob(_common.FlyteIdlEntity):
@@ -209,13 +178,9 @@ class RayJob(_common.FlyteIdlEntity):
         self,
         ray_cluster: RayCluster,
         runtime_env: typing.Optional[str],
-        shutdown_after_job_finishes: typing.Optional[bool] = True,
-        ttl_seconds_after_finished: typing.Optional[bool] = 3600,
     ):
         self._ray_cluster = ray_cluster
         self._runtime_env = runtime_env
-        self._shutdown_after_job_finishes = shutdown_after_job_finishes
-        self._ttl_seconds_after_finished = ttl_seconds_after_finished
 
     @property
     def ray_cluster(self) -> RayCluster:
@@ -225,20 +190,10 @@ class RayJob(_common.FlyteIdlEntity):
     def runtime_env(self) -> typing.Optional[str]:
         return self._runtime_env
 
-    @property
-    def shutdown_after_job_finishes(self) -> bool:
-        return self._shutdown_after_job_finishes
-
-    @property
-    def ttl_seconds_after_finished(self) -> int:
-        return self._ttl_seconds_after_finished
-
     def to_flyte_idl(self) -> _ray_pb2.RayJob:
         return _ray_pb2.RayJob(
             ray_cluster=self.ray_cluster.to_flyte_idl(),
             runtime_env=self.runtime_env,
-            shutdown_after_job_finishes=self.shutdown_after_job_finishes,
-            ttl_seconds_after_finished=self.ttl_seconds_after_finished,
         )
 
     @classmethod
@@ -246,6 +201,4 @@ class RayJob(_common.FlyteIdlEntity):
         return cls(
             ray_cluster=RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None,
             runtime_env=proto.runtime_env,
-            shutdown_after_job_finishes=proto.shutdown_after_job_finishes,
-            ttl_seconds_after_finished=proto.ttl_seconds_after_finished,
         )

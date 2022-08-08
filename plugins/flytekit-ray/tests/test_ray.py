@@ -2,7 +2,7 @@ import base64
 import json
 
 import ray
-from flytekitplugins.ray.models import ClusterSpec, RayCluster, RayJob, WorkerGroupSpec
+from flytekitplugins.ray.models import RayCluster, RayJob, WorkerGroupSpec
 from flytekitplugins.ray.task import RayJobConfig, WorkerNodeConfig
 from google.protobuf.json_format import MessageToDict
 
@@ -10,7 +10,7 @@ from flytekit import PythonFunctionTask, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 
 config = RayJobConfig(
-    worker_node=WorkerNodeConfig(group_name="test_group", replicas=3),
+    worker_node_config=[WorkerNodeConfig(group_name="test_group", replicas=3)],
     runtime_env={"pip": ["numpy"]},
 )
 
@@ -37,16 +37,7 @@ def test_ray_task():
     )
 
     ray_job_pb = RayJob(
-        ray_cluster=RayCluster(
-            ClusterSpec(
-                worker_group_spec=[
-                    WorkerGroupSpec(
-                        "test_group",
-                        3,
-                    )
-                ],
-            )
-        ),
+        ray_cluster=RayCluster(worker_group_spec=[WorkerGroupSpec("test_group", 3)]),
         runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),
     ).to_flyte_idl()
 

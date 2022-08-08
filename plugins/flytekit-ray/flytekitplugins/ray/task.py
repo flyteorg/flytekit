@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 import ray
-from flytekitplugins.ray.models import ClusterSpec, HeadGroupSpec, RayCluster, RayJob, WorkerGroupSpec
+from flytekitplugins.ray.models import HeadGroupSpec, RayCluster, RayJob, WorkerGroupSpec
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.configuration import SerializationSettings
@@ -30,12 +30,10 @@ class WorkerNodeConfig:
 
 @dataclass
 class RayJobConfig:
-    worker_node: WorkerNodeConfig
-    head_node: typing.Optional[HeadNodeConfig] = HeadNodeConfig()
+    worker_node_config: typing.List[WorkerNodeConfig]
+    head_node_config: typing.Optional[HeadNodeConfig] = None
     runtime_env: typing.Optional[dict] = None
     address: typing.Optional[str] = None
-    shutdown_after_job_finishes: typing.Optional[bool] = True
-    ttl_seconds_after_finished: typing.Optional[bool] = 3600
 
 
 class RayFunctionTask(PythonFunctionTask):
@@ -62,23 +60,14 @@ class RayFunctionTask(PythonFunctionTask):
 
         ray_job = RayJob(
             ray_cluster=RayCluster(
-                ClusterSpec(
-                    head_group_spec=HeadGroupSpec(cfg.head_node.ray_start_params),
-                    worker_group_spec=[
-                        WorkerGroupSpec(
-                            cfg.worker_node.group_name,
-                            cfg.worker_node.replicas,
-                            cfg.worker_node.min_replicas,
-                            cfg.worker_node.max_replicas,
-                            cfg.worker_node.ray_start_params,
-                        )
-                    ],
-                )
+                head_group_spec=HeadGroupSpec(cfg.head_node_config.ray_start_params) if cfg.head_node_config else None,
+                worker_group_spec=[
+                    WorkerGroupSpec(c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params)
+                    for c in cfg.worker_node_config
+                ],
             ),
             # Use base64 to encode runtime_env dict and convert it to byte string
             runtime_env=base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode(),
-            shutdown_after_job_finishes=cfg.shutdown_after_job_finishes,
-            ttl_seconds_after_finished=cfg.ttl_seconds_after_finished,
         )
         return MessageToDict(ray_job.to_flyte_idl())
 
