@@ -153,7 +153,7 @@ class RayCluster(_common.FlyteIdlEntity):
         :rtype: flyteidl.plugins._ray_pb2.RayCluster
         """
         return _ray_pb2.RayCluster(
-            head_group_spec=self.head_group_spec.to_flyte_idl() if self._head_group_spec else None,
+            head_group_spec=self.head_group_spec.to_flyte_idl() if self.head_group_spec else None,
             worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
         )
 

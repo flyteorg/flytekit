@@ -46,7 +46,6 @@ jobs:
       - name: Install dependencies
         run: |
           make setup${{ matrix.spark-version-suffix }}
-          pip install --no-deps -U git+https://github.com/flyteorg/flyteidl@ray
           pip freeze
       - name: Test with coverage
         run: |
@@ -114,7 +113,6 @@ jobs:
           pip install -r requirements.txt
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
-          pip install --no-deps -U git+https://github.com/flyteorg/flyteidl@ray
           pip freeze
       - name: Test with coverage
         run: |
@@ -140,7 +138,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip==21.2.4
           pip install -r dev-requirements.txt
-          pip install --no-deps -U git+https://github.com/flyteorg/flyteidl@ray
       - name: Lint
         run: |
           make lint
@@ -162,6 +159,5 @@ jobs:
         run: |
           python -m pip install --upgrade pip==21.2.4 setuptools wheel
           pip install -r doc-requirements.txt
-          pip install --no-deps -U git+https://github.com/flyteorg/flyteidl@ray
       - name: Build the documentation
         run: make -C docs html

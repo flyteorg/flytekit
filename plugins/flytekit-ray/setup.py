@@ -4,7 +4,7 @@ PLUGIN_NAME = "ray"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["awscli"]
+plugin_requires = ["ray", "flytekit>=1.1.0b0,<1.2.0"]
 
 __version__ = "0.0.0+develop"
 
