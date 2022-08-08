@@ -88,7 +88,7 @@ class FileParamType(click.ParamType):
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if FileAccessProvider.is_remote(value):
-            return FileParam(filepath=value)
+            return FileParam(filepath=value, local=False)
         p = pathlib.Path(value)
         if p.exists() and p.is_file():
             return FileParam(filepath=str(p.resolve()))
