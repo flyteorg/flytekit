@@ -679,6 +679,11 @@ class VoidPromise(object):
         if self.ref:
             self.ref.node.runs_before(other.ref.node)
 
+    def with_overrides(self, *args, **kwargs):
+        if self.ref:
+            self.ref.node.with_overrides(*args, **kwargs)
+        return self
+
     @property
     def task_name(self):
         return self._task_name
