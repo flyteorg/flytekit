@@ -141,7 +141,9 @@ class NotebookTask(PythonInstanceTask[T]):
         # injecting a logger, so we cannot redirect logs to the flyte child loggers (e.g., the userspace logger)
         # and we instead send to stdout directly
         if self._stream_logs:
-            logging.getLogger("papermill").addHandler(logging.StreamHandler(sys.stdout))
+            papermill_logger = logging.getLogger("papermill")
+            papermill_logger.addHandler(logging.StreamHandler(sys.stdout))
+            papermill_logger.setLevel(logging.INFO)
 
         if not os.path.exists(self._notebook_path):
             raise ValueError(f"Illegal notebook path passed in {self._notebook_path}")
