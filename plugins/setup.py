@@ -26,6 +26,7 @@ SOURCES = {
     "flytekitplugins-onnxpytorch": "flytekit-onnx-pytorch",
     "flytekitplugins-pandera": "flytekit-pandera",
     "flytekitplugins-papermill": "flytekit-papermill",
+    "flytekitplugins-ray": "flytekit-ray",
     "flytekitplugins-snowflake": "flytekit-snowflake",
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",

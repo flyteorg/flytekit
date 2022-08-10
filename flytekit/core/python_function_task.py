@@ -111,7 +111,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                                   can be used to inject some client side variables only. Prefer using ExecutionParams
         :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
             executing normally or specially handling a dynamic case.
-        :param Optional[TaskResolverMixin] task_type: String task type to be associated with this Task
+        :param str task_type: String task type to be associated with this Task
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
