@@ -7,7 +7,6 @@ recursive-include plugins *
 
 # include specific files
 include README.md
-include flytekit/py.typed  # marker file for PEP 561
 include flytekit/deck/html/template.html
 
 include CHANGELOG.md

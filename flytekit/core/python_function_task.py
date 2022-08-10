@@ -19,6 +19,8 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
+from flytekit.configuration import SerializationSettings
+from flytekit.configuration.default_images import DefaultImages
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -257,10 +259,17 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         representing that newly generated workflow, instead of executing it.
         """
         ctx = FlyteContextManager.current_context()
+        # This is a placeholder SerializationSettings placeholder and is only used to test compilation for dynamic tasks
+        # when run locally. The output of the compilation should never actually be used anywhere.
+        _LOCAL_ONLY_SS = SerializationSettings.for_image(DefaultImages.default_image(), "v", "p", "d")
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
-            with FlyteContextManager.with_context(ctx.with_execution_state(updated_exec_state)):
+            with FlyteContextManager.with_context(
+                ctx.with_execution_state(updated_exec_state).with_serialization_settings(_LOCAL_ONLY_SS)
+            ) as ctx:
+                logger.debug(f"Running compilation for {self} as part of local run as check")
+                self.compile_into_workflow(ctx, task_function, **kwargs)
                 logger.info("Executing Dynamic workflow, using raw inputs")
                 return exception_scopes.user_entry_point(task_function)(**kwargs)
 

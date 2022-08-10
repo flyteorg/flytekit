@@ -8,7 +8,9 @@ from dataclasses_json import dataclass_json
 from pytest import fixture
 from typing_extensions import Annotated
 
-from flytekit import SQLTask, dynamic, kwtypes
+from flytekit.core.base_sql_task import SQLTask
+from flytekit.core.base_task import kwtypes
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.task import TaskMetadata, task
@@ -309,13 +311,13 @@ def test_pass_annotated_to_downstream_tasks():
 
         # We should have a cache miss in the first call to downstream_t and have a cache hit
         # on the second call.
-        v_1 = downstream_t(a=v)
+        downstream_t(a=v)
         v_2 = downstream_t(a=v)
 
-        return v_1 + v_2
+        return v_2
 
     assert n_cached_task_calls == 0
-    assert t1(a=3) == (6 + 6)
+    assert t1(a=3) == 6
     assert n_cached_task_calls == 1
 
 
