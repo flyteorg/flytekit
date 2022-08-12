@@ -15,9 +15,6 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 
 
-FLYTEPLUGINS_POD_TYPE_CLASS_NAME = "flytekitplugins.pod.task.Pod"
-
-
 @dataclass
 class OutputLocation:
     """
@@ -136,7 +133,7 @@ class ShellTask(PythonInstanceTask[T]):
 
         if task_config is not None:
             fully_qualified_class_name = task_config.__module__ + '.' + task_config.__class__.__name__
-            if not fully_qualified_class_name == FLYTEPLUGINS_POD_TYPE_CLASS_NAME:
+            if not fully_qualified_class_name == "flytekitplugins.pod.task.Pod":
                 raise ValueError("TaskConfig can either be empty - indicating simple container task or a PodConfig.")
 
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
