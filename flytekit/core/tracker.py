@@ -230,8 +230,6 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         name = f.lhs
         # We cannot get the sourcefile for an instance, so we replace it with the module
         f = mod
-    elif isinstance(f, ImperativeWorkflow):
-        return f.name, "", "", ""
     else:
         mod = inspect.getmodule(f)
         if mod is None:
@@ -242,11 +240,6 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     if mod_name == "__main__":
         return name, "", name, os.path.abspath(inspect.getfile(f))
 
-    mod_name = get_full_module_name(mod, mod_name)
-    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))
-
-
-def get_full_module_name(mod, mod_name):
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (
             FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto" else None
@@ -255,4 +248,5 @@ def get_full_module_name(mod, mod_name):
         # We only replace the mod_name if it is more specific, else we already have a fully resolved path
         if len(new_mod_name) > len(mod_name):
             mod_name = new_mod_name
-    return mod_name
+    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))
+

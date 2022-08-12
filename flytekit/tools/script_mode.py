@@ -1,6 +1,7 @@
 import gzip
 import hashlib
 import importlib
+import inspect
 import os
 import shutil
 import tarfile
@@ -11,8 +12,6 @@ from pathlib import Path
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 
 from flytekit.core import context_manager
-from flytekit.core.tracker import extract_task_module, get_full_module_name
-from flytekit.core.workflow import WorkflowBase
 
 
 def compress_single_script(source_path: str, destination: str, full_module_name: str):
@@ -104,9 +103,8 @@ def fast_register_single_script(
     # Open a temp directory and dump the contents of the digest.
     with tempfile.TemporaryDirectory() as tmp_dir:
         archive_fname = os.path.join(tmp_dir, "script_mode.tar.gz")
-        compress_single_script(
-            source_path, archive_fname, get_full_module_name(importlib.import_module(module_name), module_name)
-        )
+        mod = importlib.import_module(module_name)
+        compress_single_script(source_path, archive_fname, mod.__name__)
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         md5, _ = hash_file(archive_fname)
