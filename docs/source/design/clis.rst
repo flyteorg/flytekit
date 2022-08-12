@@ -27,12 +27,12 @@ Flytectl
 
 `Flytectl <https://pypi.org/project/yt-flyte-playground-flytectl/>`__ is the general CLI to communicate with the Flyte control plane (FlyteAdmin). Think of this as the ``kubectl`` for Flyte.
 
-Think of this as a network-aware (can talk to admin) but not code-aware (no need to have user code checked out) CLI. In the registration flow, this CLI is responsible for shipping the compiled Protobuf files off to Flyte Admin.
+Think of this as a network-aware (can talk to FlyteAdmin) but not code-aware (no need to have user code checked out) CLI. In the registration flow, this CLI is responsible for shipping the compiled Protobuf files off to FlyteAdmin.
 
 Pyflyte
 ========
 
-Unlike ``flytectl``, think of this CLI as code-aware, which is responsible for the serialization (compilation) step in the registration flow. It will parse through the user code, looking for tasks, workflows, and launch plans, and compile them to protobuf files.
+Unlike ``flytectl``, think of this CLI as code-aware, which is responsible for the serialization (compilation) step in the registration flow. It will parse through the user code, looking for tasks, workflows, and launch plans, and compile them to `protobuf files <https://github.com/flyteorg/flyteidl/blob/0b20c5c99f9e964370d4f4ca663990ed56a14c7c/protos/flyteidl/core/workflow_closure.proto#L11-L18>`__.
 
 What is ``pyflyte run``?
 ========================
@@ -54,7 +54,7 @@ The ``pyflyte package`` command parses and compiles the user’s Python code int
 
 The ``flytectl register`` command then ships the protobuf objects over the network to the Flyte control plane. In the process, ``flytectl`` also allows you to set run-time attributes such as IAM roles, K8s service accounts, etc.
 
-``pyflyte package + flytectl register`` produces a **portable** package (a .tgz file) of Flyte entities (compiled protobuf files that are stored on the local disk), which makes it easy to introspect the objects at a later time if required. You can use register this package with multiple Flyte backends. You can save this package, use it for an audit, register with different admins, etc.
+``pyflyte package + flytectl register`` produces a **portable** package (a .tgz file) of Flyte entities (compiled protobuf files that are stored on the local disk), which makes it easy to introspect the objects at a later time if required. You can use register this package with multiple Flyte backends. You can save this package, use it for an audit, register with different FlyteAdmins, etc.
 
 Why should you use ``pyflyte register``?
 ========================================
@@ -77,9 +77,9 @@ In a broad way, ``pyflyte register`` is equivalent to ``pyflyte run`` minus laun
 What is the difference between ``pyflyte package + flytectl register`` and ``pyflyte register``?
 ==============================================================================================
 
-``pyflyte package + flytectl register`` works well with multiple admins since it produces a portable package. You can also use it to run scripts in CI.
+``pyflyte package + flytectl register`` works well with multiple FlyteAdmins since it produces a portable package. You can also use it to run scripts in CI.
 
-``pyflyte register`` works well in single admin use-cases and cases where you are iterating locally.
+``pyflyte register`` works well in single FlyteAdmin use-cases and cases where you are iterating locally.
 
 Should you use ``pyflyte run`` or ``pyflyte package + flytectl register``?
 ==========================================================================
@@ -88,7 +88,7 @@ Both the commands have their own place in a production Flyte setting.
 
 ``pyflyte run`` is useful when you are getting started with Flyte, testing small scripts, or iterating over local scripts.
 
-``pyflyte package + flytectl register`` is useful when you wish to work with multiple admins, wherein you can package the script, compile it into protobuf objects, write it to local disk, and upload this zipped package to different FlyteAdmins.
+``pyflyte package + flytectl register`` is useful when you wish to work with multiple FlyteAdmins, wherein you can package the script, compile it into protobuf objects, write it to local disk, and upload this zipped package to different FlyteAdmins.
 
 .. note ::
 
