@@ -12,6 +12,7 @@ from pathlib import Path
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 
 from flytekit.core import context_manager
+from flytekit.core.tracker import get_full_module_path
 
 
 def compress_single_script(source_path: str, destination: str, full_module_name: str):
@@ -104,7 +105,7 @@ def fast_register_single_script(
     with tempfile.TemporaryDirectory() as tmp_dir:
         archive_fname = os.path.join(tmp_dir, "script_mode.tar.gz")
         mod = importlib.import_module(module_name)
-        compress_single_script(source_path, archive_fname, mod.__name__)
+        compress_single_script(source_path, archive_fname, get_full_module_path(mod, mod.__name__))
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         md5, _ = hash_file(archive_fname)

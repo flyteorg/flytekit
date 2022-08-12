@@ -4,6 +4,7 @@ import inspect
 import inspect as _inspect
 import os
 import typing
+from types import ModuleType
 from typing import Callable, Tuple, Union
 
 from flytekit.configuration.feature_flags import FeatureFlags
@@ -222,7 +223,6 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     :param f: A task or any other callable
     :return: [name to use: str, module_name: str, function_name: str, full_path: str]
     """
-    from flytekit.core.workflow import ImperativeWorkflow
 
     if isinstance(f, TrackedInstance):
         mod = importlib.import_module(f.instantiated_in)
@@ -240,6 +240,11 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     if mod_name == "__main__":
         return name, "", name, os.path.abspath(inspect.getfile(f))
 
+    mod_name = get_full_module_path(mod, mod_name)
+    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))
+
+
+def get_full_module_path(mod: ModuleType, mod_name: str) -> str:
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (
             FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto" else None
@@ -248,5 +253,4 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         # We only replace the mod_name if it is more specific, else we already have a fully resolved path
         if len(new_mod_name) > len(mod_name):
             mod_name = new_mod_name
-    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))
-
+    return mod_name
