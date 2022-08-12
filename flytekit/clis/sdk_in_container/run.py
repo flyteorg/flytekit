@@ -15,7 +15,13 @@ from pytimeparse import parse
 from typing_extensions import get_args
 
 from flytekit import BlobType, Literal, Scalar
-from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_DOMAIN, CTX_PROJECT
+from flytekit.clis.sdk_in_container.constants import (
+    CTX_CONFIG_FILE,
+    CTX_DOMAIN,
+    CTX_MODULE,
+    CTX_PROJECT,
+    CTX_PROJECT_ROOT,
+)
 from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
@@ -542,6 +548,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             domain=domain,
             image_config=image_config,
             destination_dir=run_level_params.get("destination_dir"),
+            source_path=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT_ROOT),
+            module_name=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_MODULE),
         )
 
         options = None
@@ -602,11 +610,14 @@ class WorkflowCommand(click.MultiCommand):
             )
 
         project_root = _find_project_root(self._filename)
+        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
+
         # Find the relative path for the filename relative to the root of the project.
         # N.B.: by construction project_root will necessarily be an ancestor of the filename passed in as
         # a parameter.
         rel_path = self._filename.relative_to(project_root)
         module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
+        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
         entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
