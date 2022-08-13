@@ -8,6 +8,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
+from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.node import Node
@@ -27,7 +28,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
-from flytekit.models.core.workflow import TaskNodeOverrides
+from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -460,6 +461,20 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_sdk_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
+        )
+
+    elif isinstance(entity.flyte_entity, Gate):
+        if entity.flyte_entity.sleep_duration:
+            gn = GateNode(sleep=SleepCondition(duration=entity.flyte_entity.sleep_duration))
+        else:
+            gn = GateNode(signal=SignalCondition(entity.flyte_entity.name, type=entity.flyte_entity.literal_type))
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=[],
+            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            output_aliases=[],
+            gate_node=gn,
         )
 
     elif isinstance(entity.flyte_entity, FlyteTask):
