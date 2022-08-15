@@ -458,6 +458,7 @@ DataPersistencePlugins.register_plugin("file://", DiskPersistence)
 DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
+print(flyte_tmp_dir)
 default_local_file_access_provider = FileAccessProvider(
     local_sandbox_dir=os.path.join(flyte_tmp_dir, "sandbox"),
     raw_output_prefix=os.path.join(flyte_tmp_dir, "raw"),

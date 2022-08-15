@@ -1,5 +1,4 @@
 import importlib
-import inspect
 
 from flytekit.core.tracker import extract_task_module
 
