@@ -1,4 +1,3 @@
-import base64
 import os
 import typing
 
@@ -8,15 +7,14 @@ from fsspec.registry import known_implementations
 from flytekit.configuration import DataConfig, S3Config
 from flytekit.extend import DataPersistence, DataPersistencePlugins
 from flytekit.loggers import logger
-from flytekit.tools import script_mode
 
 S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
 S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
 
 # Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
 # for key and secret
-_FSSPEC_S3_KEY_ID = "AWS_ACCESS_KEY_ID"
-_FSSPEC_S3_SECRET = "AWS_SECRET_ACCESS_KEY"
+_FSSPEC_S3_KEY_ID = "key"
+_FSSPEC_S3_SECRET = "secret"
 
 
 def s3_setup_args(s3_cfg: S3Config):
@@ -58,20 +56,11 @@ class FSSpecPersistence(DataPersistence):
 
     def get_filesystem(self, path: str) -> fsspec.AbstractFileSystem:
         protocol = FSSpecPersistence.get_protocol(path)
-        print("path", path)
         kwargs = {}
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
         elif protocol == "s3":
             kwargs = s3_setup_args(self._data_cfg.s3)
-        elif protocol == "http" and path[0] == "/":
-            md5, _ = script_mode.hash_file(path)
-            encoded_md5 = base64.b64encode(md5)
-            with open(path, "+rb") as local_file:
-                content = local_file.read()
-                content_length = len(content)
-                headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
-            return fsspec.filesystem(protocol, headers=headers)  # type: ignore
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
     def get_anonymous_filesystem(self, path: str) -> typing.Optional[fsspec.AbstractFileSystem]:
@@ -119,13 +108,6 @@ class FSSpecPersistence(DataPersistence):
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         fs = self.get_filesystem(to_path)
-        kwargs = {}
-        md5, _ = script_mode.hash_file(from_path)
-        encoded_md5 = base64.b64encode(md5)
-        with open(from_path, "+rb") as local_file:
-            content = local_file.read()
-            content_length = len(content)
-            kwargs = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
             # BEGIN HACK!
@@ -140,8 +122,7 @@ class FSSpecPersistence(DataPersistence):
                 fs.put_file(l, r)
             return
             # END OF HACK!!
-        print(kwargs)
-        return fs.put(from_path, to_path, headers=kwargs)
+        return fs.put(from_path, to_path)
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
         path_list = list(paths)  # make type check happy
