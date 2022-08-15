@@ -93,7 +93,6 @@ class FSSpecPersistence(DataPersistence):
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         fs = self.get_filesystem(from_path)
-
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
@@ -122,7 +121,7 @@ class FSSpecPersistence(DataPersistence):
                 fs.put_file(l, r)
             return
             # END OF HACK!!
-        return fs.put(from_path, to_path)
+        return fs.put(from_path, to_path, recursive=recursive)
 
     def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
         path_list = list(paths)  # make type check happy
