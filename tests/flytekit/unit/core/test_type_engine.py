@@ -155,12 +155,13 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Foo(object):
+        v: typing.Optional[int]
         w: int
         x: typing.List[int]
         y: typing.Dict[str, str]
         z: Bar
 
-    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
+    foo = Foo(v=5, w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
     generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
@@ -172,10 +173,13 @@ def test_list_of_dataclass_getting_python_value():
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
     assert isinstance(pv, list)
+    assert pv[0].v == foo.v
     assert pv[0].w == foo.w
     assert pv[0].x == foo.x
     assert pv[0].y == foo.y
     assert pv[0].z.x == foo.z.x
+    assert type(pv[0].v) == int
+    assert type(pv[0].w) == int
     assert type(pv[0].z.x) == float
     assert pv[0].z.y == foo.z.y
     assert pv[0].z.z == foo.z.z
