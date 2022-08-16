@@ -9,18 +9,19 @@ import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
-from flytekit.core.data_persistence import DataPersistencePlugins
+
 import _datetime
 import numpy as _np
-import pandas
 import pandas as pd
-import pyarrow
 import pyarrow as pa
+
+from flytekit.core.data_persistence import DataPersistencePlugins
 
 if importlib.util.find_spec("pyspark") is not None:
     import pyspark
 if importlib.util.find_spec("polars") is not None:
     import polars as pl
+
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
@@ -156,7 +157,7 @@ def extract_cols_and_format(
                 if ordered_dict_cols is not None:
                     raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {aa}")
                 ordered_dict_cols = aa
-            elif isinstance(aa, pyarrow.Schema):
+            elif isinstance(aa, pa.Schema):
                 if pa_schema is not None:
                     raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {aa}")
                 pa_schema = aa
@@ -366,8 +367,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return cls._finder(StructuredDatasetTransformerEngine.DECODERS, df_type, protocol, format)
 
     @classmethod
-    def _handler_finder(cls, h: Handlers) -> Dict[str, Handlers]:
-        # Maybe think about default dict in the future, but is typing as nice?
+    def _handler_finder(cls, h: Handlers, protocol: str) -> Dict[str, Handlers]:
         if isinstance(h, StructuredDatasetEncoder):
             top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
@@ -376,9 +376,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             raise TypeError(f"We don't support this type of handler {h}")
         if h.python_type not in top_level:
             top_level[h.python_type] = {}
-        if h.protocol not in top_level[h.python_type]:
-            top_level[h.python_type][h.protocol] = {}
-        return top_level[h.python_type][h.protocol]
+        if protocol not in top_level[h.python_type]:
+            top_level[h.python_type][protocol] = {}
+        return top_level[h.python_type][protocol]
 
     def __init__(self):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
@@ -388,26 +388,48 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         self._hash_overridable = True
 
     @classmethod
-    def register(cls, h: Handlers, default_for_type: Optional[bool] = True, override: Optional[bool] = False):
+    def register(cls, h: Handlers, default_for_type: Optional[bool] = False, override: Optional[bool] = False):
         """
-        Call this with any handler to register it with this dataframe meta-transformer
+        Call this with any Encoder or Decoder to register it with the flytekit type system. If your handler does not
+        specify a protocol (e.g. s3, gs, etc.) field, then
 
-        The string "://" should not be present in any handler's protocol so we don't check for it.
+        :param h: The StructuredDatasetEncoder or StructuredDatasetDecoder you wish to register with this transformer.
+        :param default_for_type: If set, when a user returns from a task an instance of the dataframe the handler
+          handles, e.g. ``return pd.DataFrame(...)``, not wrapped around the ``StructuredDataset`` object, we will
+          use this handler's protocol and format as the default, effectively saying that this handler will be called.
+          Note that this shouldn't be set if your handler's protocol is None, because that implies that your handler
+          is capable of handling all the different storage protocols that flytekit's data persistence layer is aware of.
+          In these cases, the protocol is determined by the raw output data prefix set in the active context.
+        :param override: Override any previous registrations. If default_for_type is also set, this will also override
+          the default.
         """
         if h.protocol is None:
-            for protocol in DataPersistencePlugins.supported_protocols():
-                ...
+            if default_for_type:
+                raise ValueError(f"Registering SD handler {h} with all protocols should never have default specified.")
+            for persistence_protocol in DataPersistencePlugins.supported_protocols():
+                cls.register_for_protocol(h, persistence_protocol, False, override)
+        elif h.protocol == "":
+            raise ValueError(f"Use None instead of empty string for registering handler {h}")
+        else:
+            cls.register_for_protocol(h, h.protocol, default_for_type, override)
 
-        lowest_level = cls._handler_finder(h)
+    @classmethod
+    def register_for_protocol(cls, h: Handlers, protocol: str, default_for_type: bool, override: bool):
+        """
+        See the main register function instead.
+        """
+        lowest_level = cls._handler_finder(h, protocol)
         if h.supported_format in lowest_level and override is False:
             raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
         lowest_level[h.supported_format] = h
         logger.debug(f"Registered {h} as handler for {h.python_type}, protocol {h.protocol}, fmt {h.supported_format}")
 
         if default_for_type:
-            # TODO: Add logging, think about better ux, maybe default False and warn if doesn't exist.
+            logger.debug(
+                f"Using storage {protocol} and format {h.supported_format} for dataframes of type {h.python_type} from handler {h}"
+            )
             cls.DEFAULT_FORMATS[h.python_type] = h.supported_format
-            cls.DEFAULT_PROTOCOLS[h.python_type] = h.protocol
+            cls.DEFAULT_PROTOCOLS[h.python_type] = protocol
 
         # Register with the type engine as well
         # The semantics as of now are such that it doesn't matter which order these transformers are loaded in, as
@@ -661,7 +683,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         else:
             df = python_val
 
-        if isinstance(df, pandas.DataFrame):
+        if isinstance(df, pd.DataFrame):
             return df.describe().to_html()
         elif isinstance(df, pa.Table):
             return df.to_string()
