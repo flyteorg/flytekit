@@ -449,6 +449,8 @@ class DataclassTransformer(TypeTransformer[object]):
             return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
+        if val is None:
+            return val
         if t == int:
             return int(val)
 
