@@ -9,7 +9,7 @@ import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
-
+from flytekit.core.data_persistence import DataPersistencePlugins
 import _datetime
 import numpy as _np
 import pandas
@@ -168,7 +168,7 @@ def extract_cols_and_format(
 
 
 class StructuredDatasetEncoder(ABC):
-    def __init__(self, python_type: Type[T], protocol: str, supported_format: Optional[str] = None):
+    def __init__(self, python_type: Type[T], protocol: Optional[str] = None, supported_format: Optional[str] = None):
         """
         Extend this abstract class, implement the encode function, and register your concrete class with the
         StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
@@ -184,7 +184,7 @@ class StructuredDatasetEncoder(ABC):
           for does not exist, the transformer enginer will look for the "" endcoder instead and write a warning.
         """
         self._python_type = python_type
-        self._protocol = protocol.replace("://", "")
+        self._protocol = protocol.replace("://", "") if protocol else None
         self._supported_format = supported_format or ""
 
     @property
@@ -192,7 +192,7 @@ class StructuredDatasetEncoder(ABC):
         return self._python_type
 
     @property
-    def protocol(self) -> str:
+    def protocol(self) -> Optional[str]:
         return self._protocol
 
     @property
@@ -228,7 +228,7 @@ class StructuredDatasetEncoder(ABC):
 
 
 class StructuredDatasetDecoder(ABC):
-    def __init__(self, python_type: Type[DF], protocol: str, supported_format: Optional[str] = None):
+    def __init__(self, python_type: Type[DF], protocol: Optional[str] = None, supported_format: Optional[str] = None):
         """
         Extend this abstract class, implement the decode function, and register your concrete class with the
         StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
@@ -243,7 +243,7 @@ class StructuredDatasetDecoder(ABC):
           for does not exist, the transformer enginer will look for the "" decoder instead and write a warning.
         """
         self._python_type = python_type
-        self._protocol = protocol.replace("://", "")
+        self._protocol = protocol.replace("://", "") if protocol else None
         self._supported_format = supported_format or ""
 
     @property
@@ -251,7 +251,7 @@ class StructuredDatasetDecoder(ABC):
         return self._python_type
 
     @property
-    def protocol(self) -> str:
+    def protocol(self) -> Optional[str]:
         return self._protocol
 
     @property
@@ -394,6 +394,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         The string "://" should not be present in any handler's protocol so we don't check for it.
         """
+        if h.protocol is None:
+            for protocol in DataPersistencePlugins.supported_protocols():
+                ...
+
         lowest_level = cls._handler_finder(h)
         if h.supported_format in lowest_level and override is False:
             raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
