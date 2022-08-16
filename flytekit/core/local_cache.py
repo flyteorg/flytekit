@@ -1,8 +1,8 @@
 from typing import Optional
 
-import joblib
 from diskcache import Cache
 from google.protobuf.struct_pb2 import Struct
+from joblib.hashing import NumpyHasher
 
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap
 
@@ -28,7 +28,7 @@ def _recursive_hash_placement(literal: Literal) -> Literal:
         return literal
 
 
-class ProtoJoblibHasher(joblib.hashing.NumpyHasher):
+class ProtoJoblibHasher(NumpyHasher):
     def save(self, obj):
         if isinstance(obj, Struct):
             obj = dict(
@@ -36,7 +36,7 @@ class ProtoJoblibHasher(joblib.hashing.NumpyHasher):
                 cls=obj.__class__,
                 obj=dict(sorted(obj.fields.items())),
             )
-        return obj
+        NumpyHasher.save(self, obj)
 
 
 def _calculate_cache_key(task_name: str, cache_version: str, input_literal_map: LiteralMap) -> str:
