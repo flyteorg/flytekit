@@ -403,6 +403,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         :param override: Override any previous registrations. If default_for_type is also set, this will also override
           the default.
         """
+        if not (isinstance(h, StructuredDatasetEncoder) or isinstance(h, StructuredDatasetDecoder)):
+            raise TypeError(f"We don't support this type of handler {h}")
+
         if h.protocol is None:
             if default_for_type:
                 raise ValueError(f"Registering SD handler {h} with all protocols should never have default specified.")

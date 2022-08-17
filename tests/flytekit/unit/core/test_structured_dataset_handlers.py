@@ -23,8 +23,8 @@ arrow_schema = pa.schema(fields)
 
 def test_pandas():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
-    encoder = basic_dfs.PandasToParquetEncodingHandler("/")
-    decoder = basic_dfs.ParquetToPandasDecodingHandler("/")
+    encoder = basic_dfs.PandasToParquetEncodingHandler()
+    decoder = basic_dfs.ParquetToPandasDecodingHandler()
 
     ctx = context_manager.FlyteContextManager.current_context()
     sd = StructuredDataset(dataframe=df)
