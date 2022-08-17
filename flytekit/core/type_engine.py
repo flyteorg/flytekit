@@ -449,7 +449,9 @@ class DataclassTransformer(TypeTransformer[object]):
             return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
-        if t == int:
+        if val is None:
+            return val
+        if t == int or t == typing.Optional[int]:
             return int(val)
 
         if isinstance(val, list):
@@ -1309,6 +1311,11 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
     element_type = element_property["type"]
     element_format = element_property["format"] if "format" in element_property else None
+
+    if type(element_type) == list:
+        # Element type of Optional[int] is [integer, None]
+        return typing.Optional[_get_element_type({"type": element_type[0]})]
+
     if element_type == "string":
         return str
     elif element_type == "integer":
