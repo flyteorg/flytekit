@@ -1,8 +1,8 @@
-import base64
 from typing import Optional
 
-import cloudpickle
 from diskcache import Cache
+from google.protobuf.struct_pb2 import Struct
+from joblib.hashing import NumpyHasher
 
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap
 
@@ -28,15 +28,26 @@ def _recursive_hash_placement(literal: Literal) -> Literal:
         return literal
 
 
+class ProtoJoblibHasher(NumpyHasher):
+    def save(self, obj):
+        if isinstance(obj, Struct):
+            obj = dict(
+                rewrite_rule="google.protobuf.struct_pb2.Struct",
+                cls=obj.__class__,
+                obj=dict(sorted(obj.fields.items())),
+            )
+        NumpyHasher.save(self, obj)
+
+
 def _calculate_cache_key(task_name: str, cache_version: str, input_literal_map: LiteralMap) -> str:
     # Traverse the literals and replace the literal with a new literal that only contains the hash
     literal_map_overridden = {}
     for key, literal in input_literal_map.literals.items():
         literal_map_overridden[key] = _recursive_hash_placement(literal)
 
-    # Pickle the literal map and use base64 encoding to generate a representation of it
-    b64_encoded = base64.b64encode(cloudpickle.dumps(LiteralMap(literal_map_overridden)))
-    return f"{task_name}-{cache_version}-{b64_encoded}"
+    # Generate a hash key of inputs with joblib
+    hashed_inputs = ProtoJoblibHasher().hash(literal_map_overridden)
+    return f"{task_name}-{cache_version}-{hashed_inputs}"
 
 
 class LocalTaskCache(object):

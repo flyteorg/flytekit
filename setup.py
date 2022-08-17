@@ -52,6 +52,7 @@ setup(
         "grpcio-status>=1.43,!=1.45.0",
         "importlib-metadata",
         "pyopenssl",
+        "joblib",
         "protobuf>=3.6.1,<4",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",

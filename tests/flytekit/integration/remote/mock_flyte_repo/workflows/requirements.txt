@@ -46,13 +46,13 @@ docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.14.1
     # via flytekit
-flyteidl==1.1.8
+flyteidl==1.1.12
     # via flytekit
-flytekit==1.1.0
+flytekit==1.1.1
     # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
-fonttools==4.33.3
+fonttools==4.35.0
     # via matplotlib
-googleapis-common-protos==1.56.3
+googleapis-common-protos==1.56.4
     # via
     #   flyteidl
     #   grpcio-status
@@ -81,9 +81,9 @@ jinja2-time==0.2.0
     # via cookiecutter
 joblib==1.1.0
     # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
-keyring==23.6.0
+keyring==23.8.2
     # via flytekit
-kiwisolver==1.4.3
+kiwisolver==1.4.4
     # via matplotlib
 markupsafe==2.1.1
     # via jinja2
@@ -96,7 +96,7 @@ marshmallow-enum==1.5.1
     # via dataclasses-json
 marshmallow-jsonschema==0.13.0
     # via flytekit
-matplotlib==3.5.2
+matplotlib==3.5.3
     # via -r tests/flytekit/integration/remote/mock_flyte_repo/workflows/requirements.in
 mypy-extensions==0.4.3
     # via typing-inspect
@@ -142,17 +142,18 @@ pyparsing==3.0.9
     #   packaging
 python-dateutil==2.8.2
     # via
+    #   arrow
     #   croniter
     #   flytekit
     #   matplotlib
     #   pandas
-python-json-logger==2.0.2
+python-json-logger==2.0.4
     # via flytekit
 python-slugify==6.1.2
     # via cookiecutter
 pytimeparse==1.1.8
     # via flytekit
-pytz==2022.1
+pytz==2022.2.1
     # via
     #   flytekit
     #   pandas
@@ -160,7 +161,7 @@ pyyaml==6.0
     # via
     #   cookiecutter
     #   flytekit
-regex==2022.6.2
+regex==2022.7.25
     # via docker-image-py
 requests==2.28.1
     # via
@@ -172,7 +173,7 @@ responses==0.21.0
     # via flytekit
 retry==0.9.2
     # via flytekit
-secretstorage==3.3.2
+secretstorage==3.3.3
     # via keyring
 singledispatchmethod==1.0
     # via flytekit
@@ -196,7 +197,7 @@ typing-extensions==4.3.0
     #   typing-inspect
 typing-inspect==0.7.1
     # via dataclasses-json
-urllib3==1.26.9
+urllib3==1.26.11
     # via
     #   flytekit
     #   requests
@@ -211,5 +212,5 @@ wrapt==1.14.1
     # via
     #   deprecated
     #   flytekit
-zipp==3.8.0
+zipp==3.8.1
     # via importlib-metadata
