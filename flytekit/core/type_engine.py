@@ -451,7 +451,7 @@ class DataclassTransformer(TypeTransformer[object]):
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if val is None:
             return val
-        if t == int:
+        if t == int or t == typing.Optional[int]:
             return int(val)
 
         if isinstance(val, list):
@@ -1314,7 +1314,7 @@ def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
 
     if type(element_type) == list:
         # Element type of Optional[int] is [integer, None]
-        element_type = element_type[0]
+        return typing.Optional[_get_element_type({"type": element_type[0]})]
 
     if element_type == "string":
         return str
