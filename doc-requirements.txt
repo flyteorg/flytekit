@@ -313,7 +313,7 @@ matplotlib-inline==0.1.5
     #   ipython
 missingno==0.5.1
     # via pandas-profiling
-mistune==0.8.4
+mistune==2.0.3
     # via
     #   great-expectations
     #   nbconvert
