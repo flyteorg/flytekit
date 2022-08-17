@@ -37,13 +37,6 @@ from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
 
-# Protocols
-BIGQUERY = "bq"
-S3 = "s3"
-ABFS = "abfs"
-GCS = "gs"
-LOCAL = "/"
-
 # For specifying the storage formats of StructuredDatasets. It's just a string, nothing fancy.
 StructuredDatasetFormat: TypeAlias = str
 
