@@ -19,6 +19,7 @@ from flytekit.core.testing import task_mock
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.literals import LiteralMap
+from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema
 
 # Global counter used to validate number of calls to cache
@@ -411,3 +412,29 @@ def test_cache_key_repetition():
         keys.add(key)
 
     assert len(keys) == 1
+
+
+def test_stable_cache_key():
+    """
+    The intent of this test is to ensure cache keys are stable across releases and python versions.
+    """
+    pt = Dict
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContextManager.current_context()
+    kwargs = {
+        "a": 42,
+        "b": "abcd",
+        "c": 0.12349,
+        "d": [1, 2, 3],
+    }
+    lit = TypeEngine.to_literal(ctx, kwargs, Dict, lt)
+    lm = LiteralMap(
+        literals={
+            "lit_1": lit,
+            "lit_2": TypeEngine.to_literal(ctx, 99, int, LiteralType(simple=SimpleType.INTEGER)),
+            "lit_3": TypeEngine.to_literal(ctx, 3.14, float, LiteralType(simple=SimpleType.FLOAT)),
+            "lit_4": TypeEngine.to_literal(ctx, True, bool, LiteralType(simple=SimpleType.BOOLEAN)),
+        }
+    )
+    key = _calculate_cache_key("task_name_1", "31415", lm)
+    assert key == "task_name_1-31415-a291dc6fe0be387c1cfd67b4c6b78259"
