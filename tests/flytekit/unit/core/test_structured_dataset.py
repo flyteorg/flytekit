@@ -49,23 +49,6 @@ def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
 
-# from flytekit.remote.remote import FlyteRemote
-# from flytekit.configuration import Config
-# from flytekit.core.data_persistence import DataPersistencePlugins
-# import pandas as pd
-#
-#
-# def test_locfdsa():
-#     df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
-#     rr = FlyteRemote(
-#         Config.auto(config_file="/Users/ytong/.flyte/dev-uniondemo.yaml"),
-#         default_project="flytesnacks",
-#         default_domain="development",
-#     )
-#     f_print_wf = rr.fetch_workflow(name="core.sd.print_wf")
-#     rr.execute(f_print_wf, inputs={"df": df})
-
-
 def test_types_pandas():
     pt = pd.DataFrame
     lt = TypeEngine.to_literal_type(pt)
