@@ -409,15 +409,3 @@ def test_protocol_detection():
 
         protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame, "bq://foo")
         assert protocol == "bq"
-
-
-def test_fds():
-    # cols = kwtypes(name={"firstname": str, "middlename": str, "lastname": str}, state=str, gender=str)
-    # cols = kwtypes(name=kwtypes(firstname=str, middlename=str, lastname=str), state=str, gender=str)
-    cols = kwtypes(name=kwtypes(firstname=str, middlename=str, lastname=str), state=str, gender=str)
-    tt = Annotated[pd.DataFrame, cols]
-
-    lt = StructuredDatasetTransformerEngine().get_literal_type(tt)
-    print(lt)
-
-
