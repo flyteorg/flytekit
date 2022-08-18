@@ -751,7 +751,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return self._SUPPORTED_TYPES[t]
         if hasattr(t, "__origin__") and t.__origin__ == list:
             return type_models.LiteralType(collection_type=self._get_dataset_column_literal_type(t.__args__[0]))
-        if hasattr(t, "__origin__") and t.__origin__ == dict or isinstance(t, collections.OrderedDict):
+        if hasattr(t, "__origin__") and t.__origin__ == dict:
             return type_models.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
         raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 

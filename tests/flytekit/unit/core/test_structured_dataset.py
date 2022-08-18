@@ -394,8 +394,6 @@ def test_protocol_detection():
     assert pd.DataFrame not in StructuredDatasetTransformerEngine.DEFAULT_PROTOCOLS
     e = StructuredDatasetTransformerEngine()
     ctx = FlyteContextManager.current_context()
-    x = StructuredDatasetTransformerEngine.ENCODERS
-    y = StructuredDatasetTransformerEngine.DECODERS
     protocol = e._protocol_from_type_or_prefix(ctx, pd.DataFrame)
     assert protocol == "file"
 
