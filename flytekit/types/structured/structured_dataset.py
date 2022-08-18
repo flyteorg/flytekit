@@ -279,7 +279,7 @@ def protocol_prefix(uri: str) -> str:
     if g and g.groups():
         return g.groups()[0]
 
-    return DiskPersistence.PROTOCOL
+    return "/"
 
 
 def convert_schema_type_to_structured_dataset_type(
