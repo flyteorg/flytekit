@@ -1,9 +1,13 @@
 import tempfile
 import typing
 
+import pandas as pd
+import pyarrow as pa
 import pytest
+from typing_extensions import Annotated
 
 import flytekit.configuration
+from flytekit import kwtypes, task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -11,13 +15,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
-
-from typing_extensions import Annotated
-
-import pandas as pd
-import pyarrow as pa
-
-from flytekit import kwtypes, task
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
     StructuredDataset,
@@ -50,6 +47,7 @@ def test_protocol():
 
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
 
 # from flytekit.remote.remote import FlyteRemote
 # from flytekit.configuration import Config

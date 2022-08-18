@@ -432,7 +432,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             protocol = DataPersistencePlugins.get_protocol(DiskPersistence.PROTOCOL)
         lowest_level = cls._handler_finder(h, protocol)
         if h.supported_format in lowest_level and override is False:
-            raise DuplicateHandlerError(f"Already registered a handler for {(h.python_type, protocol, h.supported_format)}")
+            raise DuplicateHandlerError(
+                f"Already registered a handler for {(h.python_type, protocol, h.supported_format)}"
+            )
         lowest_level[h.supported_format] = h
         logger.debug(f"Registered {h} as handler for {h.python_type}, protocol {protocol}, fmt {h.supported_format}")
 
