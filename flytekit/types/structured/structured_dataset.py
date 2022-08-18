@@ -15,7 +15,7 @@ import numpy as _np
 import pandas as pd
 import pyarrow as pa
 
-from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersistence
+from flytekit.core.data_persistence import DataPersistencePlugins
 
 if importlib.util.find_spec("pyspark") is not None:
     import pyspark
