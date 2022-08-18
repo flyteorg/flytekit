@@ -277,11 +277,6 @@ class StructuredDatasetDecoder(ABC):
 def protocol_prefix(uri: str) -> str:
     p = DataPersistencePlugins.get_protocol(uri)
     return p
-    # g = re.search(r"([\w]+)://.*", uri)
-    # if g and g.groups():
-    #     return g.groups()[0]
-    #
-    # return "/"
 
 
 def convert_schema_type_to_structured_dataset_type(
@@ -750,12 +745,12 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return result
 
     def _get_dataset_column_literal_type(self, t: Type) -> type_models.LiteralType:
-        if t in self._SUPPORTED_TYPES:
-            return self._SUPPORTED_TYPES[t]
         if hasattr(t, "__origin__") and t.__origin__ == list:
             return type_models.LiteralType(collection_type=self._get_dataset_column_literal_type(t.__args__[0]))
-        if hasattr(t, "__origin__") and t.__origin__ == dict:
+        if hasattr(t, "__origin__") and t.__origin__ == dict or isinstance(t, collections.OrderedDict):
             return type_models.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
+        if t in self._SUPPORTED_TYPES:
+            return self._SUPPORTED_TYPES[t]
         raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 
     def _convert_ordered_dict_of_columns_to_list(

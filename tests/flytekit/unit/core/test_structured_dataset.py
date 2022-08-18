@@ -12,10 +12,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
 
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
+from typing_extensions import Annotated
 
 import pandas as pd
 import pyarrow as pa
@@ -54,21 +51,21 @@ def test_protocol():
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
-from flytekit.remote.remote import FlyteRemote
-from flytekit.configuration import Config
-from flytekit.core.data_persistence import DataPersistencePlugins
-import pandas as pd
-
-
-def test_locfdsa():
-    df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
-    rr = FlyteRemote(
-        Config.auto(config_file="/Users/ytong/.flyte/dev-uniondemo.yaml"),
-        default_project="flytesnacks",
-        default_domain="development",
-    )
-    f_print_wf = rr.fetch_workflow(name="core.sd.print_wf")
-    rr.execute(f_print_wf, inputs={"df": df})
+# from flytekit.remote.remote import FlyteRemote
+# from flytekit.configuration import Config
+# from flytekit.core.data_persistence import DataPersistencePlugins
+# import pandas as pd
+#
+#
+# def test_locfdsa():
+#     df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+#     rr = FlyteRemote(
+#         Config.auto(config_file="/Users/ytong/.flyte/dev-uniondemo.yaml"),
+#         default_project="flytesnacks",
+#         default_domain="development",
+#     )
+#     f_print_wf = rr.fetch_workflow(name="core.sd.print_wf")
+#     rr.execute(f_print_wf, inputs={"df": df})
 
 
 def test_types_pandas():
@@ -412,3 +409,15 @@ def test_protocol_detection():
 
         protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame, "bq://foo")
         assert protocol == "bq"
+
+
+def test_fds():
+    # cols = kwtypes(name={"firstname": str, "middlename": str, "lastname": str}, state=str, gender=str)
+    # cols = kwtypes(name=kwtypes(firstname=str, middlename=str, lastname=str), state=str, gender=str)
+    cols = kwtypes(name=kwtypes(firstname=str, middlename=str, lastname=str), state=str, gender=str)
+    tt = Annotated[pd.DataFrame, cols]
+
+    lt = StructuredDatasetTransformerEngine().get_literal_type(tt)
+    print(lt)
+
+
