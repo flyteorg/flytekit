@@ -15,7 +15,7 @@ import numpy as _np
 import pandas as pd
 import pyarrow as pa
 
-from flytekit.core.data_persistence import DataPersistencePlugins
+from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersistence
 
 if importlib.util.find_spec("pyspark") is not None:
     import pyspark
@@ -278,7 +278,8 @@ def protocol_prefix(uri: str) -> str:
     g = re.search(r"([\w]+)://.*", uri)
     if g and g.groups():
         return g.groups()[0]
-    return LOCAL
+
+    return DiskPersistence.PROTOCOL
 
 
 def convert_schema_type_to_structured_dataset_type(
