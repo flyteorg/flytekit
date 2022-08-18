@@ -15,7 +15,7 @@ import numpy as _np
 import pandas as pd
 import pyarrow as pa
 
-from flytekit.core.data_persistence import DataPersistencePlugins
+from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersistence
 
 if importlib.util.find_spec("pyspark") is not None:
     import pyspark
@@ -275,11 +275,13 @@ class StructuredDatasetDecoder(ABC):
 
 
 def protocol_prefix(uri: str) -> str:
-    g = re.search(r"([\w]+)://.*", uri)
-    if g and g.groups():
-        return g.groups()[0]
-
-    return "/"
+    p = DataPersistencePlugins.get_protocol(uri)
+    return p
+    # g = re.search(r"([\w]+)://.*", uri)
+    # if g and g.groups():
+    #     return g.groups()[0]
+    #
+    # return "/"
 
 
 def convert_schema_type_to_structured_dataset_type(
@@ -299,6 +301,10 @@ def convert_schema_type_to_structured_dataset_type(
         return type_models.SimpleType.BOOLEAN
     else:
         raise AssertionError(f"Unrecognized SchemaColumnType: {column_type}")
+
+
+class DuplicateHandlerError(ValueError):
+    ...
 
 
 class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
@@ -404,7 +410,18 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             if default_for_type:
                 raise ValueError(f"Registering SD handler {h} with all protocols should never have default specified.")
             for persistence_protocol in DataPersistencePlugins.supported_protocols():
-                cls.register_for_protocol(h, persistence_protocol, False, override)
+                # TODO: Clean this up when we get to replacing the persistence layer.
+                # The behavior of the protocols given in the supported_protocols and is_supported_protocol
+                # is not actually the same as the one returned in get_protocol.
+                stripped = DataPersistencePlugins.get_protocol(persistence_protocol)
+                logger.debug(f"Automatically registering {persistence_protocol} as {stripped} with {h}")
+                try:
+                    cls.register_for_protocol(h, stripped, False, override)
+                except DuplicateHandlerError:
+                    ...
+            # Add this?
+            # cls.register_for_protocol(h, "/", False, override)
+
         elif h.protocol == "":
             raise ValueError(f"Use None instead of empty string for registering handler {h}")
         else:
@@ -415,11 +432,14 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         """
         See the main register function instead.
         """
+        if protocol == "/":
+            # TODO: Special fix again, because get_protocol returns file, instead of file://
+            protocol = DataPersistencePlugins.get_protocol(DiskPersistence.PROTOCOL)
         lowest_level = cls._handler_finder(h, protocol)
         if h.supported_format in lowest_level and override is False:
-            raise ValueError(f"Already registered a handler for {(h.python_type, h.protocol, h.supported_format)}")
+            raise DuplicateHandlerError(f"Already registered a handler for {(h.python_type, protocol, h.supported_format)}")
         lowest_level[h.supported_format] = h
-        logger.debug(f"Registered {h} as handler for {h.python_type}, protocol {h.protocol}, fmt {h.supported_format}")
+        logger.debug(f"Registered {h} as handler for {h.python_type}, protocol {protocol}, fmt {h.supported_format}")
 
         if default_for_type:
             logger.debug(

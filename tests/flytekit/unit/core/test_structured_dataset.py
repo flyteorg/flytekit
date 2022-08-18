@@ -48,11 +48,27 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 
 def test_protocol():
     assert protocol_prefix("s3://my-s3-bucket/file") == "s3"
-    assert protocol_prefix("/file") == "/"
+    assert protocol_prefix("/file") == "file"
 
 
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+from flytekit.remote.remote import FlyteRemote
+from flytekit.configuration import Config
+from flytekit.core.data_persistence import DataPersistencePlugins
+import pandas as pd
+
+
+def test_locfdsa():
+    df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+    rr = FlyteRemote(
+        Config.auto(config_file="/Users/ytong/.flyte/dev-uniondemo.yaml"),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+    f_print_wf = rr.fetch_workflow(name="core.sd.print_wf")
+    rr.execute(f_print_wf, inputs={"df": df})
 
 
 def test_types_pandas():
@@ -120,10 +136,10 @@ def test_types_sd():
 
 
 def test_retrieving():
-    assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "/", PARQUET) is not None
+    assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET) is not None
     with pytest.raises(ValueError):
         # We don't have a default "" format encoder
-        StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "/", "")
+        StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", "")
 
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self, protocol):
@@ -383,8 +399,10 @@ def test_protocol_detection():
     assert pd.DataFrame not in StructuredDatasetTransformerEngine.DEFAULT_PROTOCOLS
     e = StructuredDatasetTransformerEngine()
     ctx = FlyteContextManager.current_context()
+    x = StructuredDatasetTransformerEngine.ENCODERS
+    y = StructuredDatasetTransformerEngine.DECODERS
     protocol = e._protocol_from_type_or_prefix(ctx, pd.DataFrame)
-    assert protocol == "/"
+    assert protocol == "file"
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         fs = FileAccessProvider(local_sandbox_dir=tmp_dir, raw_output_prefix="s3://fdsa")
