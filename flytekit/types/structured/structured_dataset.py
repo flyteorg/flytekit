@@ -3,7 +3,6 @@ from __future__ import annotations
 import collections
 import importlib
 import os
-import re
 import types
 import typing
 from abc import ABC, abstractmethod
