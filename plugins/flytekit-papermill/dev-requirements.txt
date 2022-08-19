@@ -44,7 +44,7 @@ flyteidl==1.0.0.post1
     #   flytekit
 flytekit==1.1.0b0
     # via flytekitplugins-spark
-flytekitplugins-spark @ git+https://github.com/flyteorg/flytekit@master#subdirectory=plugins/flytekit-spark
+flytekitplugins-spark @ git+https://github.com/flyteorg/flytekit@sd-data-persistence#subdirectory=plugins/flytekit-spark
     # via -r dev-requirements.in
 googleapis-common-protos==1.55.0
     # via
