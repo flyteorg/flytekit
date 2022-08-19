@@ -46,7 +46,7 @@ chardet==5.0.0
     # via
     #   -c requirements.txt
     #   binaryornot
-charset-normalizer==2.1.0
+charset-normalizer==2.1.1
     # via
     #   -c requirements.txt
     #   requests
@@ -59,7 +59,7 @@ cloudpickle==2.1.0
     # via
     #   -c requirements.txt
     #   flytekit
-codespell==2.1.0
+codespell==2.2.1
     # via -r dev-requirements.in
 cookiecutter==2.1.1
     # via
@@ -100,7 +100,7 @@ distlib==0.3.5
     # via virtualenv
 distro==1.7.0
     # via docker-compose
-docker[ssh]==5.0.3
+docker[ssh]==6.0.0
     # via
     #   -c requirements.txt
     #   docker-compose
@@ -134,7 +134,7 @@ google-auth==2.10.0
     # via
     #   google-api-core
     #   google-cloud-core
-google-cloud-bigquery==3.3.1
+google-cloud-bigquery==3.3.2
     # via -r dev-requirements.in
 google-cloud-bigquery-storage==2.14.2
     # via
@@ -233,7 +233,7 @@ marshmallow-jsonschema==0.13.0
     # via
     #   -c requirements.txt
     #   flytekit
-matplotlib-inline==0.1.5
+matplotlib-inline==0.1.6
     # via ipython
 mock==4.0.3
     # via -r dev-requirements.in
@@ -259,6 +259,7 @@ numpy==1.21.6
 packaging==21.3
     # via
     #   -c requirements.txt
+    #   docker
     #   google-cloud-bigquery
     #   marshmallow
     #   pytest
@@ -386,7 +387,7 @@ pyyaml==5.4.1
     #   docker-compose
     #   flytekit
     #   pre-commit
-regex==2022.7.25
+regex==2022.8.17
     # via
     #   -c requirements.txt
     #   docker-image-py
@@ -467,13 +468,14 @@ typing-extensions==4.3.0
     #   responses
     #   torch
     #   typing-inspect
-typing-inspect==0.7.1
+typing-inspect==0.8.0
     # via
     #   -c requirements.txt
     #   dataclasses-json
 urllib3==1.26.11
     # via
     #   -c requirements.txt
+    #   docker
     #   flytekit
     #   requests
     #   responses
