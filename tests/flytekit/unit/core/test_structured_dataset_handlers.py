@@ -13,6 +13,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetTransformerEngine,
 )
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
@@ -41,3 +42,13 @@ def test_base_isnt_instantiable():
 
     with pytest.raises(TypeError):
         StructuredDatasetDecoder(pd.DataFrame, "", "")
+
+
+def test_arrow():
+    encoder = basic_dfs.ArrowToParquetEncodingHandler()
+    decoder = basic_dfs.ParquetToArrowDecodingHandler()
+    assert encoder.protocol is None
+    assert decoder.protocol is None
+    assert encoder.python_type is decoder.python_type
+    d = StructuredDatasetTransformerEngine.DECODERS[encoder.python_type]["s3"]["parquet"]
+    assert d is not None

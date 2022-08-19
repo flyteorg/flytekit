@@ -18,6 +18,6 @@ def test_is_remote():
 
 def test_lister():
     x = DataPersistencePlugins.supported_protocols()
-    main_protocols = set(["file", "/", "gs", "http", "https", "s3"])
+    main_protocols = {"file", "/", "gs", "http", "https", "s3"}
     all_protocols = set([y.replace("://", "") for y in x])
     assert main_protocols.issubset(all_protocols)

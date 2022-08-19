@@ -172,6 +172,8 @@ class StructuredDatasetEncoder(ABC):
         :param python_type: The dataframe class in question that you want to register this encoder with
         :param protocol: A prefix representing the storage driver (e.g. 's3, 'gs', 'bq', etc.). You can use either
           "s3" or "s3://". They are the same since the "://" will just be stripped by the constructor.
+          If None, this encoder will be registered with all protocols that flytekit's data persistence layer
+          is capable of handling.
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the encoder works with any format. If the format being asked
           for does not exist, the transformer enginer will look for the "" endcoder instead and write a warning.
@@ -231,6 +233,8 @@ class StructuredDatasetDecoder(ABC):
         :param python_type: The dataframe class in question that you want to register this decoder with
         :param protocol: A prefix representing the storage driver (e.g. 's3, 'gs', 'bq', etc.). You can use either
           "s3" or "s3://". They are the same since the "://" will just be stripped by the constructor.
+          If None, this decoder will be registered with all protocols that flytekit's data persistence layer
+          is capable of handling.
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the decoder works with any format. If the format being asked
           for does not exist, the transformer enginer will look for the "" decoder instead and write a warning.
@@ -413,8 +417,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                     cls.register_for_protocol(h, stripped, False, override)
                 except DuplicateHandlerError:
                     ...
-            # Add this?
-            # cls.register_for_protocol(h, "/", False, override)
 
         elif h.protocol == "":
             raise ValueError(f"Use None instead of empty string for registering handler {h}")

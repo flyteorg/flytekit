@@ -130,6 +130,11 @@ def test_retrieving():
     with pytest.raises(ValueError):
         StructuredDatasetTransformerEngine.register(TempEncoder("gs://"), default_for_type=False)
 
+    with pytest.raises(ValueError, match="Use None instead"):
+        e = TempEncoder("")
+        e._protocol = ""
+        StructuredDatasetTransformerEngine.register(e)
+
     class TempEncoder:
         pass
 
@@ -202,6 +207,24 @@ def test_fill_in_literal_type():
     assert res is empty_format_temp_encoder
 
 
+def test_slash_register():
+    class TempEncoder(StructuredDatasetEncoder):
+        def __init__(self, fmt: str):
+            super().__init__(MyDF, None, supported_format=fmt)
+
+        def encode(
+            self,
+            ctx: FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
+        ) -> literals.StructuredDataset:
+            return literals.StructuredDataset(uri="")
+
+    # Check that registering with a / triggers the file protocol instead.
+    StructuredDatasetTransformerEngine.register(TempEncoder("/"))
+    assert StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("file") is not None
+
+
 def test_sd():
     sd = StructuredDataset(dataframe="hi")
     sd.uri = "my uri"
@@ -265,6 +288,9 @@ def test_convert_schema_type_to_structured_dataset_type():
     assert convert_schema_type_to_structured_dataset_type(schema_ct.BOOLEAN) == SimpleType.BOOLEAN
     with pytest.raises(AssertionError, match="Unrecognized SchemaColumnType"):
         convert_schema_type_to_structured_dataset_type(int)
+
+    with pytest.raises(AssertionError, match="Unrecognized SchemaColumnType"):
+        convert_schema_type_to_structured_dataset_type(20)
 
 
 def test_to_python_value_with_incoming_columns():

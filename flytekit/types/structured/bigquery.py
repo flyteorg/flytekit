@@ -10,13 +10,14 @@ from flytekit import FlyteContext
 from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    BIGQUERY,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
     StructuredDatasetMetadata,
     StructuredDatasetTransformerEngine,
 )
+
+BIGQUERY = "bq"
 
 
 def _write_to_bq(structured_dataset: StructuredDataset):
