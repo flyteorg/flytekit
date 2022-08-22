@@ -1,4 +1,4 @@
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.data_persistence import DataPersistencePlugins, FileAccessProvider
 
 
 def test_get_random_remote_path():
@@ -14,3 +14,10 @@ def test_is_remote():
     assert fp.is_remote("/tmp/foo/bar") is False
     assert fp.is_remote("file://foo/bar") is False
     assert fp.is_remote("s3://my-bucket/foo/bar") is True
+
+
+def test_lister():
+    x = DataPersistencePlugins.supported_protocols()
+    main_protocols = {"file", "/", "gs", "http", "https", "s3"}
+    all_protocols = set([y.replace("://", "") for y in x])
+    assert main_protocols.issubset(all_protocols)
