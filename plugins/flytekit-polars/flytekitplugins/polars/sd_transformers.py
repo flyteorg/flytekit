@@ -7,11 +7,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    ABFS,
-    GCS,
-    LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -20,8 +16,8 @@ from flytekit.types.structured.structured_dataset import (
 
 
 class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, protocol: str):
-        super().__init__(pl.DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(pl.DataFrame, None, PARQUET)
 
     def encode(
         self,
@@ -45,8 +41,8 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
 
 
 class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self, protocol: str):
-        super().__init__(pl.DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(pl.DataFrame, None, PARQUET)
 
     def decode(
         self,
@@ -63,10 +59,5 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         return pl.read_parquet(path)
 
 
-for protocol in [LOCAL, S3, GCS, ABFS]:
-    StructuredDatasetTransformerEngine.register(
-        PolarsDataFrameToParquetEncodingHandler(protocol), default_for_type=False
-    )
-    StructuredDatasetTransformerEngine.register(
-        ParquetToPolarsDataFrameDecodingHandler(protocol), default_for_type=False
-    )
+StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToPolarsDataFrameDecodingHandler())
