@@ -141,7 +141,6 @@ jobs:
         run: |
           cd plugins/${{ matrix.plugin-names }}
           coverage run -m pytest tests
-
   lint:
     runs-on: ubuntu-latest
     steps:
