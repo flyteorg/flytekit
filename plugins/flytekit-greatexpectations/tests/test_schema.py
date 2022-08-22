@@ -6,7 +6,7 @@ import typing
 import pandas as pd
 import pytest
 from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectationsFlyteConfig, GreatExpectationsType
-from great_expectations.exceptions import ValidationError
+from great_expectations.exceptions import InvalidBatchRequestError, ValidationError
 
 from flytekit import task, workflow
 from flytekit.types.file import CSVFile
@@ -144,7 +144,7 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
         my_task(directory="my_assets")
 
     # Capture IndexError
-    with pytest.raises(IndexError):
+    with pytest.raises(InvalidBatchRequestError):
         my_wf()
 
 
@@ -194,7 +194,7 @@ def test_ge_runtimebatchrequest_pandas_config():
 
     @task
     def my_task(pandas_df: GreatExpectationsType[FlyteSchema, ge_config]) -> int:
-        return len(pandas_df)
+        return len(pandas_df.open().all())
 
     @workflow
     def runtime_pandas_wf(df: pd.DataFrame):
@@ -238,7 +238,7 @@ def test_ge_schema_flyteschema():
             ),
         ]
     ) -> int:
-        return dataframe.shape[0]
+        return dataframe.open().all().shape[0]
 
     @workflow
     def valid_wf(dataframe: FlyteSchema) -> int:
@@ -263,7 +263,7 @@ def test_ge_schema_flyteschema_literal():
             ),
         ]
     ) -> int:
-        return dataframe.shape[0]
+        return dataframe.open().all().shape[0]
 
     @workflow
     def valid_wf() -> int:

@@ -2,12 +2,12 @@ import configparser
 import datetime
 import typing
 
-from flytekit.configuration.file import ConfigEntry, ConfigFile, LegacyConfigEntry
+from flytekit.configuration.file import ConfigEntry, ConfigFile, LegacyConfigEntry, YamlConfigEntry
 
 
 class Images(object):
     @staticmethod
-    def get_specified_images(cfg: ConfigFile) -> typing.Dict[str, str]:
+    def get_specified_images(cfg: typing.Optional[ConfigFile]) -> typing.Dict[str, str]:
         """
         This section should contain options, where the option name is the friendly name of the image and the corresponding
         value is actual FQN of the image. Example of how the section is structured
@@ -21,21 +21,34 @@ class Images(object):
         images: typing.Dict[str, str] = {}
         if cfg is None:
             return images
-        try:
-            image_names = cfg.legacy_config.options("images")
-        except configparser.NoSectionError:
-            image_names = None
-        if image_names:
-            for i in image_names:
-                images[str(i)] = cfg.legacy_config.get("images", i)
-        return images
+
+        if cfg.legacy_config:
+            try:
+                image_names = cfg.legacy_config.options("images")
+            except configparser.NoSectionError:
+                return {}
+            if image_names:
+                for i in image_names:
+                    images[str(i)] = cfg.legacy_config.get("images", i)
+            return images
+        if cfg.yaml_config:
+            return cfg.yaml_config.get("images", images)
+
+
+class Deck(object):
+    SECTION = "deck"
+    DISABLE_DECK = ConfigEntry(LegacyConfigEntry(SECTION, "disable_deck", bool))
 
 
 class AWS(object):
     SECTION = "aws"
-    S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint"))
-    S3_ACCESS_KEY_ID = ConfigEntry(LegacyConfigEntry(SECTION, "access_key_id"))
-    S3_SECRET_ACCESS_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "secret_access_key"))
+    S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint"), YamlConfigEntry("storage.connection.endpoint"))
+    S3_ACCESS_KEY_ID = ConfigEntry(
+        LegacyConfigEntry(SECTION, "access_key_id"), YamlConfigEntry("storage.connection.access-key")
+    )
+    S3_SECRET_ACCESS_KEY = ConfigEntry(
+        LegacyConfigEntry(SECTION, "secret_access_key"), YamlConfigEntry("storage.connection.secret-key")
+    )
     ENABLE_DEBUG = ConfigEntry(LegacyConfigEntry(SECTION, "enable_debug", bool))
     RETRIES = ConfigEntry(LegacyConfigEntry(SECTION, "retries", int))
     BACKOFF_SECONDS = ConfigEntry(
@@ -51,12 +64,12 @@ class GCP(object):
 
 class Credentials(object):
     SECTION = "credentials"
-    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command"), list)
+    COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command", list), YamlConfigEntry("admin.command", list))
     """
     This command is executed to return a token using an external process.
     """
 
-    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"))
+    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"), YamlConfigEntry("admin.clientId"))
     """
     This is the public identifier for the app which handles authorization for a Flyte deployment.
     More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -69,23 +82,36 @@ class Credentials(object):
     secret as a file is impossible.
     """
 
-    SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list))
+    CLIENT_CREDENTIALS_SECRET_LOCATION = ConfigEntry(
+        LegacyConfigEntry(SECTION, "client_secret_location"), YamlConfigEntry("admin.clientSecretLocation")
+    )
+    """
+    Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+    password from a mounted file.
+    """
 
-    AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"))
+    SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
+
+    AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"), YamlConfigEntry("admin.authType"))
     """
     The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
-    - 'standard' This uses the pkce-enhanced authorization code flow by opening a browser window to initiate credentials
-            access.
-    - 'basic' or 'client_credentials' This uses cert-based auth in which the end user enters a client id and a client
-            secret and public key encryption is used to facilitate authentication.
+    - 'standard' or 'Pkce': This uses the pkce-enhanced authorization code flow by opening a browser window to initiate
+            credentials access.
+    - 'basic', 'client_credentials' or 'clientSecret': This uses symmetric key auth in which the end user enters a
+            client id and a client secret and public key encryption is used to facilitate authentication.
     - None: No auth will be attempted.
     """
 
 
 class Platform(object):
     SECTION = "platform"
-    URL = ConfigEntry(LegacyConfigEntry(SECTION, "url"))
-    INSECURE = ConfigEntry(LegacyConfigEntry(SECTION, "insecure", bool))
+    URL = ConfigEntry(
+        LegacyConfigEntry(SECTION, "url"), YamlConfigEntry("admin.endpoint"), lambda x: x.replace("dns:///", "")
+    )
+    INSECURE = ConfigEntry(LegacyConfigEntry(SECTION, "insecure", bool), YamlConfigEntry("admin.insecure", bool))
+    INSECURE_SKIP_VERIFY = ConfigEntry(
+        LegacyConfigEntry(SECTION, "insecure_skip_verify", bool), YamlConfigEntry("admin.insecureSkipVerify", bool)
+    )
 
 
 class LocalSDK(object):
@@ -109,12 +135,6 @@ class LocalSDK(object):
     runtime option in this file.
 
     TODO delete the one from internal config
-    """
-
-    # Feature Gate
-    USE_STRUCTURED_DATASET = ConfigEntry(LegacyConfigEntry(SECTION, "use_structured_dataset", bool))
-    """
-    Note: This gate will be switched to True at some point in the future. Definitely by 1.0, if not v0.31.0.
     """
 
 

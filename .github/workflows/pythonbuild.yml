@@ -11,10 +11,11 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         spark-version-suffix: ["", "-spark2"]
         exclude:
@@ -24,33 +25,35 @@ jobs:
             spark-version-suffix: "-spark2"
           - python-version: 3.10
             spark-version-suffix: "-spark2"
+          # Ignore this test because we failed to install docker-py
+          # docker-py will install pywin32==227, whereas pywin only added support for python 3.10 in version 301.
+          # For more detail, see https://github.com/flyteorg/flytekit/pull/856#issuecomment-1067152855
+          - python-version: 3.10
+            os: windows-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        # This path is specific to Ubuntu
-        path: ~/.cache/pip
-        # Look to see if there is a cache hit for the corresponding requirements files
-        key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('requirements{0}.txt', matrix.spark-version-suffix))) }}
-    - name: Install dependencies
-      run: |
-        make setup${{ matrix.spark-version-suffix }}
-        pip freeze
-    - name: Test FlyteSchema compatibility
-      run: |
-        FLYTE_SDK_USE_STRUCTURED_DATASET=FALSE python -m pytest tests/flytekit_compatibility
-    - name: Test with coverage
-      run: |
-        FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit
-    - name: Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        fail_ci_if_error: true # optional (default = false)
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('requirements{0}.txt', matrix.spark-version-suffix))) }}
+      - name: Install dependencies
+        run: |
+          make setup${{ matrix.spark-version-suffix }}
+          pip freeze
+      - name: Test with coverage
+        run: |
+          pytest tests/flytekit/unit -m "not sandbox_test" --cov=./ --cov-report=xml
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.0
+        with:
+          fail_ci_if_error: true # optional (default = false)
 
   build-plugins:
     runs-on: ubuntu-latest
@@ -66,6 +69,7 @@ jobs:
           - flytekit-bigquery
           - flytekit-data-fsspec
           - flytekit-dbt
+          - flytekit-deck-standard
           - flytekit-dolt
           - flytekit-greatexpectations
           - flytekit-hive
@@ -74,28 +78,46 @@ jobs:
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
           - flytekit-modin
+          - flytekit-onnx-pytorch
+          - flytekit-onnx-scikitlearn
+          - flytekit-onnx-tensorflow
           - flytekit-pandera
           - flytekit-papermill
+          - flytekit-polars
+          - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
+          - flytekit-whylogs
         exclude:
-          # dbt is not supported on 3.10 yet.
-          # https://github.com/dbt-labs/dbt-core/issues/4562
-          - python-version: 3.10
-            plugin-names: "flytekit-dbt"
           # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/19116.
           - python-version: 3.10
             plugin-names: "flytekit-modin"
+          # Great-expectations does not support python 3.10 yet
+          # https://github.com/great-expectations/great_expectations/blob/develop/setup.py#L87-L89
+          - python-version: 3.10
+            plugin-names: "flytekit-greatexpectations"
+          # onnxruntime does not support python 3.10 yet
+          # https://github.com/microsoft/onnxruntime/issues/9782
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-pytorch"
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-scikitlearn"
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-tensorflow"
+          # whylogs-sketching library does not have a 3.10 build yet
+          # Issue tracked: https://github.com/whylabs/whylogs/issues/697
+          - python-version: 3.10
+            plugin-names: "flytekit-whylogs"
     steps:
+      # - name: Set up postgres (linux)
+      #   if: runner.os == 'Linux' && matrix.plugin-names == 'flytekit-dbt'
+      #   shell: bash
+      #   run: |
+      #     sudo systemctl start postgresql.service
+      #     pg_isready
       - uses: actions/checkout@v2
-      - name: Set up postgres (linux)
-        if: runner.os == 'Linux' && matrix.plugin-names == 'flytekit-dbt'
-        shell: bash
-        run: |
-          sudo systemctl start postgresql.service
-          pg_isready
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -111,14 +133,14 @@ jobs:
         run: |
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install -e .
+          pip install -r requirements.txt
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
           pip freeze
       - name: Test with coverage
         run: |
           cd plugins/${{ matrix.plugin-names }}
-          FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests
+          coverage run -m pytest tests
 
   lint:
     runs-on: ubuntu-latest

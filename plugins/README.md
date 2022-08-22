@@ -1,6 +1,6 @@
 # Flytekit Python Plugins
 
-All Flytekit plugins maintained by the core team are added here. It is not necessary to add plugins here, but this is a good starting place.
+All the Flytekit plugins maintained by the core team are added here. It is not necessary to add plugins here, but this is a good starting place.
 
 ## Currently Available Plugins 🔌
 
@@ -32,7 +32,7 @@ Flytekit plugins are structured as micro-libs and can be authored in an independ
 
 > Refer to the [Python microlibs](https://medium.com/@jherreras/python-microlibs-5be9461ad979) blog to understand the idea of microlibs.
 
-The plugins maintained by the core team are maintained in this repository and provide a simple way of discovery.
+The plugins maintained by the core team can be found in this repository and provide a simple way of discovery.
 
 ## Unit tests 🧪
 
@@ -132,9 +132,18 @@ setup(
 
         ```
 
-## References 📚
+### Flytekit Version Pinning
+Currently we advocate pinning to minor releases of flytekit. To bump the pins across the board, `cd plugins/` and then
+update the command below with the appropriate range and run
 
-- Example of a simple python task that allows adding Python side functionality only: [flytekit-greatexpectations](./flytekit-greatexpectations/)
+```bash
+for f in $(ls **/setup.py); do sed -i "s/flytekit>.*,<1.1/flytekit>=1.1.0b0,<1.2/" $f; done
+```
+
+Try using `gsed` instead of `sed` if you are on a Mac. Also this only works of course for setup files that start with the version in your sed command. There may be plugins that have different pins to start out with.
+
+## References 📚
+- Example of a simple Python task that allows adding only Python side functionality: [flytekit-greatexpectations](./flytekit-greatexpectations/)
 - Example of a TypeTransformer or a Type Plugin: [flytekit-pandera](./flytekit-pandera/). These plugins add new types to Flyte and tell Flyte how to transform them and add additional features through types. Flyte is a multi-lang system, and type transformers allow marshaling between Flytekit and backend and other languages.
 - Example of TaskTemplate plugin which also allows plugin writers to supply a prebuilt container for runtime: [flytekit-sqlalchemy](./flytekit-sqlalchemy/)
 - Example of a SQL backend plugin where the actual query invocation is done by a backend plugin: [flytekit-snowflake](./flytekit-snowflake/)

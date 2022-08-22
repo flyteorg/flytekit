@@ -75,3 +75,8 @@ csv = typing.TypeVar("csv")
 #: Can be used to receive or return a CSVFile. The underlying type is a FlyteFile type. This is just a
 #: decoration and useful for attaching content type information with the file and automatically documenting code.
 CSVFile = FlyteFile[csv]
+
+onnx = typing.TypeVar("onnx")
+#: Can be used to receive or return an ONNXFile. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
+ONNXFile = FlyteFile[onnx]

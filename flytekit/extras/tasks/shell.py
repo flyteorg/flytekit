@@ -132,7 +132,8 @@ class ShellTask(PythonInstanceTask[T]):
             script_file = os.path.abspath(script_file)
 
         if task_config is not None:
-            if str(type(task_config)) != "flytekitplugins.pod.task.Pod":
+            fully_qualified_class_name = task_config.__module__ + "." + task_config.__class__.__name__
+            if not fully_qualified_class_name == "flytekitplugins.pod.task.Pod":
                 raise ValueError("TaskConfig can either be empty - indicating simple container task or a PodConfig.")
 
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
@@ -201,6 +202,9 @@ class ShellTask(PythonInstanceTask[T]):
             for v in self._output_locs:
                 outputs[v.var] = self._interpolizer.interpolate(v.location, inputs=kwargs)
 
+        if os.name == "nt":
+            self._script = self._script.lstrip().rstrip().replace("\n", "&&")
+
         gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
         if self._debug:
             print("\n==============================================\n")
@@ -210,7 +214,7 @@ class ShellTask(PythonInstanceTask[T]):
         try:
             subprocess.check_call(gen_script, shell=True)
         except subprocess.CalledProcessError as e:
-            files = os.listdir("./")
+            files = os.listdir(".")
             fstr = "\n-".join(files)
             logger.error(
                 f"Failed to Execute Script, return-code {e.returncode} \n"
@@ -234,3 +238,144 @@ class ShellTask(PythonInstanceTask[T]):
 
     def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
         return self._config_task_instance.post_execute(user_params, rval)
+
+
+class RawShellTask(ShellTask):
+    """ """
+
+    def __init__(
+        self,
+        name: str,
+        debug: bool = False,
+        script: typing.Optional[str] = None,
+        script_file: typing.Optional[str] = None,
+        task_config: T = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        output_locs: typing.Optional[typing.List[OutputLocation]] = None,
+        **kwargs,
+    ):
+        """
+        The `RawShellTask` is a minimal extension of the existing `ShellTask`. It's purpose is to support wrapping a
+        "raw" or "pure" shell script which needs to be executed with some environment variables set, and some arguments,
+        which may not be known until execution time.
+
+        This class is not meant to be instantiated into tasks by users, but used with the factory function
+        `get_raw_shell_task()`. An instance of this class will be returned with either user-specified or default
+        template. The template itself will export the desired environment variables, and subsequently execute the
+        desired "raw" script with the specified arguments.
+
+        .. note::
+            This means that within your workflow, you can dynamically control the env variables, arguments, and even the
+            actual script you want to run.
+
+        .. note::
+            The downside is that a dynamic workflow will be required. The "raw" script passed in at execution time must
+            be at the specified location.
+
+        These args are forwarded directly to the parent `ShellTask` constructor as behavior does not diverge
+        """
+        super().__init__(
+            name=name,
+            debug=debug,
+            script=script,
+            script_file=script_file,
+            task_config=task_config,
+            inputs=inputs,
+            output_locs=output_locs,
+            **kwargs,
+        )
+
+    def make_export_string_from_env_dict(self, d: typing.Dict[str, str]) -> str:
+        """
+        Utility function to convert a dictionary of desired environment variable key: value pairs into a string of
+        ```
+        export k1=v1
+        export k2=v2
+        ...
+        ```
+        """
+        items = []
+        for k, v in d.items():
+            items.append(f"export {k}={v}")
+        return "\n".join(items)
+
+    def execute(self, **kwargs) -> typing.Any:
+        """
+        Executes the given script by substituting the inputs and outputs and extracts the outputs from the filesystem
+        """
+        logger.info(f"Running shell script as type {self.task_type}")
+        if self.script_file:
+            with open(self.script_file) as f:
+                self._script = f.read()
+
+        outputs: typing.Dict[str, str] = {}
+        if self._output_locs:
+            for v in self._output_locs:
+                outputs[v.var] = self._interpolizer.interpolate(v.location, inputs=kwargs)
+
+        if os.name == "nt":
+            self._script = self._script.lstrip().rstrip().replace("\n", "&&")
+
+        if "env" in kwargs and isinstance(kwargs["env"], dict):
+            kwargs["export_env"] = self.make_export_string_from_env_dict(kwargs["env"])
+
+        gen_script = self._interpolizer.interpolate(self._script, inputs=kwargs, outputs=outputs)
+        if self._debug:
+            print("\n==============================================\n")
+            print(gen_script)
+            print("\n==============================================\n")
+
+        try:
+            subprocess.check_call(gen_script, shell=True)
+        except subprocess.CalledProcessError as e:
+            files = os.listdir(".")
+            fstr = "\n-".join(files)
+            logger.error(
+                f"Failed to Execute Script, return-code {e.returncode} \n"
+                f"StdErr: {e.stderr}\n"
+                f"StdOut: {e.stdout}\n"
+                f" Current directory contents: .\n-{fstr}"
+            )
+            raise
+
+        final_outputs = []
+        for v in self._output_locs:
+            if issubclass(v.var_type, FlyteFile):
+                final_outputs.append(FlyteFile(outputs[v.var]))
+            if issubclass(v.var_type, FlyteDirectory):
+                final_outputs.append(FlyteDirectory(outputs[v.var]))
+        if len(final_outputs) == 1:
+            return final_outputs[0]
+        if len(final_outputs) > 1:
+            return tuple(final_outputs)
+        return None
+
+
+# The raw_shell_task is an instance of RawShellTask and wraps a 'pure' shell script
+# This utility function allows for the specification of env variables, arguments, and the actual script within the
+# workflow definition rather than at `RawShellTask` instantiation
+def get_raw_shell_task(name: str) -> RawShellTask:
+
+    return RawShellTask(
+        name=name,
+        debug=True,
+        inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
+        output_locs=[
+            OutputLocation(
+                var="out",
+                var_type=FlyteDirectory,
+                location="{ctx.working_directory}",
+            )
+        ],
+        script="""
+#!/bin/bash
+
+set -uex
+
+cd {ctx.working_directory}
+
+{inputs.export_env}
+
+bash {inputs.script_file} {inputs.script_args}
+""",
+    )

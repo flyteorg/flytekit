@@ -1,27 +1,67 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from abc import abstractmethod
+from typing import Dict, List, Optional, Union
 
 from flytekit.core.type_engine import LiteralsResolver
-from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
+from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
 
 
-class FlyteTaskExecution(admin_task_execution_models.TaskExecution):
+class RemoteExecutionBase(object):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._inputs: Optional[LiteralsResolver] = None
+        self._outputs: Optional[LiteralsResolver] = None
+
+    @property
+    def inputs(self) -> Optional[LiteralsResolver]:
+        return self._inputs
+
+    @property
+    @abstractmethod
+    def error(self) -> core_execution_models.ExecutionError:
+        ...
+
+    @property
+    @abstractmethod
+    def is_done(self) -> bool:
+        ...
+
+    @property
+    def outputs(self) -> Optional[LiteralsResolver]:
+        """
+        :return: Returns the outputs LiteralsResolver to the execution
+        :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
+        """
+        if not self.is_done:
+            raise user_exceptions.FlyteAssertion(
+                "Please wait until the execution has completed before requesting the outputs."
+            )
+        if self.error:
+            raise user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
+
+        return self._outputs
+
+
+class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskExecution):
     """A class encapsulating a task execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
         super(FlyteTaskExecution, self).__init__(*args, **kwargs)
-        self._inputs = None
-        self._outputs = None
+        self._flyte_task = None
 
     @property
-    def is_complete(self) -> bool:
+    def task(self) -> Optional[FlyteTask]:
+        return self._flyte_task
+
+    @property
+    def is_done(self) -> bool:
         """Whether or not the execution is complete."""
         return self.closure.phase in {
             core_execution_models.TaskExecutionPhase.ABORTED,
@@ -30,36 +70,12 @@ class FlyteTaskExecution(admin_task_execution_models.TaskExecution):
         }
 
     @property
-    def inputs(self) -> Dict[str, Any]:
-        """
-        Returns the inputs of the task execution in the standard Python format that is produced by
-        the type engine.
-        """
-        return self._inputs
-
-    @property
-    def outputs(self) -> Dict[str, Any]:
-        """
-        Returns the outputs of the task execution, if available, in the standard Python format that is produced by
-        the type engine.
-
-        :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
-        """
-        if not self.is_complete:
-            raise user_exceptions.FlyteAssertion(
-                "Please wait until the node execution has completed before requesting the outputs."
-            )
-        if self.error:
-            raise user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
-        return self._outputs
-
-    @property
     def error(self) -> Optional[core_execution_models.ExecutionError]:
         """
         If execution is in progress, raise an exception. Otherwise, return None if no error was present upon
         reaching completion.
         """
-        if not self.is_complete:
+        if not self.is_done:
             raise user_exceptions.FlyteAssertion(
                 "Please what until the task execution has completed before requesting error information."
             )
@@ -75,17 +91,17 @@ class FlyteTaskExecution(admin_task_execution_models.TaskExecution):
         )
 
 
-class FlyteWorkflowExecution(execution_models.Execution):
+class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
     """A class encapsulating a workflow execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
         super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
         self._node_executions = None
-        self._inputs = None
-        self._outputs = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
-        self._raw_inputs: Optional[LiteralsResolver] = None
-        self._raw_outputs: Optional[LiteralsResolver] = None
+
+    @property
+    def flyte_workflow(self) -> Optional[FlyteWorkflow]:
+        return self._flyte_workflow
 
     @property
     def node_executions(self) -> Dict[str, "FlyteNodeExecution"]:
@@ -93,53 +109,19 @@ class FlyteWorkflowExecution(execution_models.Execution):
         return self._node_executions or {}
 
     @property
-    def inputs(self) -> Dict[str, Any]:
-        """
-        Returns the inputs to the execution in the standard python format as dictated by the type engine.
-        """
-        return self._inputs
-
-    @property
-    def outputs(self) -> Dict[str, Any]:
-        """
-        Returns the outputs to the execution in the standard python format as dictated by the type engine.
-
-        :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
-        """
-        if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
-                "Please wait until the node execution has completed before requesting the outputs."
-            )
-        if self.error:
-            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
-        return self._outputs
-
-    @property
-    def raw_outputs(self) -> LiteralsResolver:
-        if self._raw_outputs is None:
-            raise ValueError(f"WF execution: {self} doesn't have raw outputs set")
-        return self._raw_outputs
-
-    @property
-    def raw_inputs(self) -> LiteralsResolver:
-        if self._raw_inputs is None:
-            raise ValueError(f"WF execution: {self} doesn't have raw inputs set")
-        return self._raw_inputs
-
-    @property
     def error(self) -> core_execution_models.ExecutionError:
         """
         If execution is in progress, raise an exception.  Otherwise, return None if no error was present upon
         reaching completion.
         """
-        if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
+        if not self.is_done:
+            raise user_exceptions.FlyteAssertion(
                 "Please wait until a workflow has completed before checking for an error."
             )
         return self.closure.error
 
     @property
-    def is_complete(self) -> bool:
+    def is_done(self) -> bool:
         """
         Whether or not the execution is complete.
         """
@@ -159,7 +141,7 @@ class FlyteWorkflowExecution(execution_models.Execution):
         )
 
 
-class FlyteNodeExecution(node_execution_models.NodeExecution):
+class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecution):
     """A class encapsulating a node execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
@@ -167,9 +149,8 @@ class FlyteNodeExecution(node_execution_models.NodeExecution):
         self._task_executions = None
         self._workflow_executions = []
         self._underlying_node_executions = None
-        self._inputs = None
-        self._outputs = None
         self._interface = None
+        self._flyte_node = None
 
     @property
     def task_executions(self) -> List[FlyteTaskExecution]:
@@ -196,41 +177,19 @@ class FlyteNodeExecution(node_execution_models.NodeExecution):
         return self.task_executions or self._underlying_node_executions or []
 
     @property
-    def inputs(self) -> Dict[str, Any]:
-        """
-        Returns the inputs to the execution in the standard python format as dictated by the type engine.
-        """
-        return self._inputs
-
-    @property
-    def outputs(self) -> Dict[str, Any]:
-        """
-        Returns the outputs to the execution in the standard python format as dictated by the type engine.
-
-        :raises: ``FlyteAssertion`` error if execution is in progress or execution ended in error.
-        """
-        if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
-                "Please wait until the node execution has completed before requesting the outputs."
-            )
-        if self.error:
-            raise _user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
-        return self._outputs
-
-    @property
     def error(self) -> core_execution_models.ExecutionError:
         """
         If execution is in progress, raise an exception. Otherwise, return None if no error was present upon
         reaching completion.
         """
-        if not self.is_complete:
-            raise _user_exceptions.FlyteAssertion(
+        if not self.is_done:
+            raise user_exceptions.FlyteAssertion(
                 "Please wait until the node execution has completed before requesting error information."
             )
         return self.closure.error
 
     @property
-    def is_complete(self) -> bool:
+    def is_done(self) -> bool:
         """Whether or not the execution is complete."""
         return self.closure.phase in {
             core_execution_models.NodeExecutionPhase.ABORTED,

@@ -1,10 +1,20 @@
 import os
+from datetime import datetime
 
 import py
 import pytest
 
-from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SecretsConfig, SerializationSettings
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager, SecretsManager
+from flytekit.configuration import (
+    SERIALIZED_CONTEXT_ENV_VAR,
+    FastSerializationSettings,
+    Image,
+    ImageConfig,
+    SecretsConfig,
+    SerializationSettings,
+)
+from flytekit.core import mock_stats
+from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, SecretsManager
+from flytekit.models.core import identifier as id_models
 
 
 class SampleTestClass(object):
@@ -90,8 +100,8 @@ def test_validate_image():
     ic = ImageConfig.validate_image(None, "image", (img3_cli, img4_cli))
     assert ic
     assert ic.default_image.full == img3
-    assert len(ic.images) == 1
-    assert ic.images[0].full == img4
+    assert len(ic.images) == 2
+    assert ic.images[1].full == img4
 
 
 def test_secrets_manager_default():
@@ -189,8 +199,27 @@ def test_serialization_settings_transport():
         ),
     )
 
-    tp = serialization_settings.prepare_for_transport()
+    tp = serialization_settings.serialized_context
+    with_serialized = serialization_settings.with_serialized_context()
+    assert serialization_settings.env == {"hello": "blah"}
+    assert with_serialized.env
+    assert with_serialized.env[SERIALIZED_CONTEXT_ENV_VAR] == tp
     ss = SerializationSettings.from_transport(tp)
     assert ss is not None
     assert ss == serialization_settings
     assert len(tp) == 376
+
+
+def test_exec_params():
+    ep = ExecutionParameters(
+        execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
+        task_id=id_models.Identifier(id_models.ResourceType.TASK, "local", "local", "local", "local"),
+        execution_date=datetime.utcnow(),
+        stats=mock_stats.MockStats(),
+        logging=None,
+        tmp_dir="/tmp",
+        raw_output_prefix="",
+        decks=[],
+    )
+
+    assert ep.task_id.name == "local"

@@ -22,6 +22,7 @@ from typing_extensions import Annotated
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import flyte_tmp_dir
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
 from flytekit.core.task import task
@@ -32,6 +33,8 @@ from flytekit.core.type_engine import (
     LiteralsResolver,
     SimpleTransformer,
     TypeEngine,
+    TypeTransformer,
+    TypeTransformerFailedError,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -39,8 +42,8 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import JPEGImageFile
@@ -50,6 +53,8 @@ from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
+
+T = typing.TypeVar("T")
 
 
 def test_type_engine():
@@ -150,12 +155,14 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Foo(object):
+        u: typing.Optional[int]
+        v: typing.Optional[int]
         w: int
         x: typing.List[int]
         y: typing.Dict[str, str]
         z: Bar
 
-    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
+    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
     generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
@@ -165,16 +172,23 @@ def test_list_of_dataclass_getting_python_value():
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
     foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
 
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
-    assert isinstance(pv, list)
-    assert pv[0].w == foo.w
-    assert pv[0].x == foo.x
-    assert pv[0].y == foo.y
-    assert pv[0].z.x == foo.z.x
-    assert type(pv[0].z.x) == float
-    assert pv[0].z.y == foo.z.y
-    assert pv[0].z.z == foo.z.z
-    assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
+    guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    print("=====")
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert isinstance(guessed_pv, list)
+    assert guessed_pv[0].u == pv[0].u
+    assert guessed_pv[0].v == pv[0].v
+    assert guessed_pv[0].w == pv[0].w
+    assert guessed_pv[0].x == pv[0].x
+    assert guessed_pv[0].y == pv[0].y
+    assert guessed_pv[0].z.x == pv[0].z.x
+    assert type(guessed_pv[0].u) == int
+    assert guessed_pv[0].v is None
+    assert type(guessed_pv[0].w) == int
+    assert type(guessed_pv[0].z.x) == float
+    assert guessed_pv[0].z.y == pv[0].z.y
+    assert guessed_pv[0].z.z == pv[0].z.z
+    assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
 
 
 def test_file_no_downloader_default():
@@ -367,7 +381,7 @@ def test_guessing_basic():
 
     lt = model_types.LiteralType(simple=model_types.SimpleType.NONE)
     pt = TypeEngine.guess_python_type(lt)
-    assert pt is None
+    assert pt is type(None)  # noqa: E721
 
     lt = model_types.LiteralType(
         blob=BlobType(
@@ -534,6 +548,8 @@ def test_flyte_file_in_dataclass():
         a: JPEGImageFile
         b: typing.List[FlyteFile]
         c: typing.Dict[str, FlyteFile]
+        d: typing.List[FlyteFile]
+        e: typing.Dict[str, FlyteFile]
 
     @dataclass_json
     @dataclass
@@ -541,8 +557,14 @@ def test_flyte_file_in_dataclass():
         a: FlyteFile
         b: TestInnerFileStruct
 
-    f = FlyteFile("s3://tmp/file")
-    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f], c={"hello": f}))
+    remote_path = "s3://tmp/file"
+    f1 = FlyteFile(remote_path)
+    f2 = FlyteFile("/tmp/file")
+    f2._remote_source = remote_path
+    o = TestFileStruct(
+        a=f1,
+        b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+    )
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -558,6 +580,10 @@ def test_flyte_file_in_dataclass():
     assert o.b.a.path == ot.b.a.remote_source
     assert o.b.b[0].path == ot.b.b[0].remote_source
     assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+    assert ot.b.d[0].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.d[0].path)
+    assert ot.b.e["hello"].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
 
 
 def test_flyte_directory_in_dataclass():
@@ -567,6 +593,8 @@ def test_flyte_directory_in_dataclass():
         a: TensorboardLogs
         b: typing.List[FlyteDirectory]
         c: typing.Dict[str, FlyteDirectory]
+        d: typing.List[FlyteDirectory]
+        e: typing.Dict[str, FlyteDirectory]
 
     @dataclass_json
     @dataclass
@@ -574,9 +602,15 @@ def test_flyte_directory_in_dataclass():
         a: FlyteDirectory
         b: TestInnerFileStruct
 
+    remote_path = "s3://tmp/file"
     tempdir = tempfile.mkdtemp(prefix="flyte-")
-    f = FlyteDirectory(tempdir)
-    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f], c={"hello": f}))
+    f1 = FlyteDirectory(tempdir)
+    f1._remote_source = remote_path
+    f2 = FlyteDirectory(remote_path)
+    o = TestFileStruct(
+        a=f1,
+        b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+    )
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -589,10 +623,15 @@ def test_flyte_directory_in_dataclass():
     assert ot.b.b[0]._downloader is not noop
     assert ot.b.c["hello"]._downloader is not noop
 
-    assert o.a.path == ot.a.path
+    assert o.a.remote_directory == ot.a.remote_directory
+    assert not ctx.file_access.is_remote(ot.a.path)
     assert o.b.a.path == ot.b.a.remote_source
-    assert o.b.b[0].path == ot.b.b[0].path
-    assert o.b.c["hello"].path == ot.b.c["hello"].path
+    assert o.b.b[0].remote_directory == ot.b.b[0].remote_directory
+    assert not ctx.file_access.is_remote(ot.b.b[0].path)
+    assert o.b.c["hello"].remote_directory == ot.b.c["hello"].remote_directory
+    assert not ctx.file_access.is_remote(ot.b.c["hello"].path)
+    assert o.b.d[0].path == ot.b.d[0].remote_source
+    assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
 
 
 def test_structured_dataset_in_dataclass():
@@ -602,6 +641,8 @@ def test_structured_dataset_in_dataclass():
     @dataclass
     class InnerDatasetStruct(object):
         a: StructuredDataset
+        b: typing.List[StructuredDataset]
+        c: typing.Dict[str, StructuredDataset]
 
     @dataclass_json
     @dataclass
@@ -610,7 +651,7 @@ def test_structured_dataset_in_dataclass():
         b: InnerDatasetStruct
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")
-    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd, b=[sd], c={"hello": sd}))
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -620,8 +661,12 @@ def test_structured_dataset_in_dataclass():
 
     assert_frame_equal(df, ot.a.open(pd.DataFrame).all())
     assert_frame_equal(df, ot.b.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.b[0].open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.c["hello"].open(pd.DataFrame).all())
     assert "parquet" == ot.a.file_format
     assert "parquet" == ot.b.a.file_format
+    assert "parquet" == ot.b.b[0].file_format
+    assert "parquet" == ot.b.c["hello"].file_format
 
 
 # Enums should have string values
@@ -654,7 +699,7 @@ def test_structured_dataset_type():
 
     ctx = FlyteContextManager.current_context()
     lv = tf.to_literal(ctx, df, pd.DataFrame, lt)
-    assert "/tmp/flyte" in lv.scalar.structured_dataset.uri
+    assert flyte_tmp_dir in lv.scalar.structured_dataset.uri
     metadata = lv.scalar.structured_dataset.metadata
     assert metadata.structured_dataset_type.format == "parquet"
     v1 = tf.to_python_value(ctx, lv, pd.DataFrame)
@@ -666,7 +711,7 @@ def test_structured_dataset_type():
     assert subset_lt.structured_dataset_type is not None
 
     subset_lv = tf.to_literal(ctx, df, pd.DataFrame, subset_lt)
-    assert "/tmp/flyte" in subset_lv.scalar.structured_dataset.uri
+    assert flyte_tmp_dir in subset_lv.scalar.structured_dataset.uri
     v1 = tf.to_python_value(ctx, subset_lv, pd.DataFrame)
     v2 = tf.to_python_value(ctx, subset_lv, pa.Table)
     subset_data = pd.DataFrame({name: ["Tom", "Joseph"]})
@@ -713,6 +758,283 @@ def test_enum_type():
         TypeEngine.to_literal_type(UnsupportedEnumValues)
 
 
+def union_type_tags_unique(t: LiteralType):
+    seen = set()
+    for x in t.union_type.variants:
+        if x.structure.tag in seen:
+            return False
+        seen.add(x.structure.tag)
+
+    return True
+
+
+def test_union_type():
+    pt = typing.Union[str, int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "str"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
+def test_union_type_with_annotated():
+    pt = typing.Union[
+        Annotated[str, FlyteAnnotation({"hello": "world"})], Annotated[int, FlyteAnnotation({"test": 123})]
+    ]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(
+            simple=SimpleType.STRING, structure=TypeStructure(tag="str"), annotation=TypeAnnotation({"hello": "world"})
+        ),
+        LiteralType(
+            simple=SimpleType.INTEGER, structure=TypeStructure(tag="int"), annotation=TypeAnnotation({"test": 123})
+        ),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "str"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
+def test_annotated_union_type():
+    pt = Annotated[typing.Union[str, int], FlyteAnnotation({"hello": "world"})]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert lt.annotation == TypeAnnotation({"hello": "world"})
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, "hello", pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "str"
+    assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
+    assert v == "hello"
+
+
+def test_optional_type():
+    pt = typing.Optional[int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, None, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "none"
+    assert lv.scalar.union.value.scalar.none_type == Void()
+    assert v is None
+
+
+def test_union_from_unambiguous_literal():
+    pt = typing.Union[str, int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, int, LiteralType(simple=SimpleType.INTEGER))
+    assert lv.scalar.primitive.integer == 3
+
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert v == 3
+
+
+def test_union_custom_transformer():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            LiteralType(simple=SimpleType.INTEGER),
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x.val))),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    pt = typing.Union[int, MyInt]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="MyInt")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.value.scalar.primitive.integer == 3
+    assert v == 3
+
+    lv = TypeEngine.to_literal(ctx, MyInt(10), pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "MyInt"
+    assert lv.scalar.union.value.scalar.primitive.integer == 10
+    assert v == MyInt(10)
+
+    lv = TypeEngine.to_literal(ctx, 4, int, LiteralType(simple=SimpleType.INTEGER))
+    assert lv.scalar.primitive.integer == 4
+    try:
+        TypeEngine.to_python_value(ctx, lv, pt)
+    except TypeError as e:
+        assert "Ambiguous choice of variant" in str(e)
+
+    del TypeEngine._REGISTRY[MyInt]
+
+
+def test_union_custom_transformer_sanity_check():
+    class UnsignedInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, UnsignedInt):
+                return False
+            return other.val == self.val
+
+    # This transformer will not work in the implicit wrapping case
+    class UnsignedIntTransformer(TypeTransformer[UnsignedInt]):
+        def __init__(self):
+            super().__init__("UnsignedInt", UnsignedInt)
+
+        def get_literal_type(self, t: typing.Type[T]) -> LiteralType:
+            return LiteralType(simple=SimpleType.INTEGER)
+
+        def to_literal(
+            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType
+        ) -> Literal:
+            if type(python_val) != int:
+                raise TypeTransformerFailedError("Expected an integer")
+
+            if python_val < 0:
+                raise TypeTransformerFailedError("Expected a non-negative integer")
+
+            return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
+
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> T:
+            val = lv.scalar.primitive.integer
+            return UnsignedInt(0 if val < 0 else val)
+
+    TypeEngine.register(UnsignedIntTransformer())
+
+    pt = typing.Union[int, UnsignedInt]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="UnsignedInt")),
+    ]
+    assert union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    with pytest.raises(TypeError, match="Ambiguous choice of variant for union type"):
+        TypeEngine.to_literal(ctx, 3, pt, lt)
+
+    del TypeEngine._REGISTRY[UnsignedInt]
+
+
+def test_union_of_lists():
+    pt = typing.Union[typing.List[int], typing.List[str]]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(
+            collection_type=LiteralType(simple=SimpleType.INTEGER),
+            structure=TypeStructure(tag="Typed List"),
+        ),
+        LiteralType(
+            collection_type=LiteralType(simple=SimpleType.STRING),
+            structure=TypeStructure(tag="Typed List"),
+        ),
+    ]
+    # Tags are deliberately NOT unique beacuse they are not required to encode the deep type structure,
+    # only the top-level type transformer choice
+    #
+    # The stored typed will be used to differentiate union variants and must produce a unique choice.
+    assert not union_type_tags_unique(lt)
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, ["hello", "world"], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "Typed List"
+    assert [x.scalar.primitive.string_value for x in lv.scalar.union.value.collection.literals] == ["hello", "world"]
+    assert v == ["hello", "world"]
+
+    lv = TypeEngine.to_literal(ctx, [1, 3], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert lv.scalar.union.stored_type.structure.tag == "Typed List"
+    assert [x.scalar.primitive.integer for x in lv.scalar.union.value.collection.literals] == [1, 3]
+    assert v == [1, 3]
+
+
+def test_list_of_unions():
+    pt = typing.List[typing.Union[str, int]]
+    lt = TypeEngine.to_literal_type(pt)
+    # todo(maximsmol): seems like the order here is non-deterministic
+    assert lt.collection_type.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    assert union_type_tags_unique(lt.collection_type)  # tags are deliberately NOT unique
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert [x.scalar.union.stored_type.structure.tag for x in lv.collection.literals] == ["str", "int", "str"]
+    assert v == ["hello", 123, "world"]
+
+
 def test_pickle_type():
     class Foo(object):
         def __init__(self, number: int):
@@ -724,7 +1046,7 @@ def test_pickle_type():
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, Foo(1), FlytePickle, lt)
-    assert "/tmp/flyte/" in lv.scalar.blob.uri
+    assert flyte_tmp_dir in lv.scalar.blob.uri
 
     transformer = FlytePickleTransformer()
     gt = transformer.guess_python_type(lt)
@@ -843,10 +1165,25 @@ def test_dict_to_literal_map_with_wrong_input_type():
         TypeEngine.dict_to_literal_map(ctx, input, guessed_python_types)
 
 
+def test_nested_annotated():
+    """
+    Test to show that nested Annotated types are flattened.
+    """
+    pt = Annotated[Annotated[int, "inner-annotation"], "outer-annotation"]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.simple == model_types.SimpleType.INTEGER
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 42, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert v == 42
+
+
 def test_pass_annotated_to_downstream_tasks():
     """
     Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
     """
+
     # pandas dataframe hash function
     def hash_pandas_dataframe(df: pd.DataFrame) -> str:
         return str(pd.util.hash_pandas_object(df))
@@ -870,11 +1207,11 @@ def test_pass_annotated_to_downstream_tasks():
 
         # We should have a cache miss in the first call to downstream_t
         v_1 = downstream_t(a=v, df=df)
-        v_2 = downstream_t(a=v, df=df)
+        downstream_t(a=v, df=df)
 
-        return v_1 + v_2
+        return v_1
 
-    assert t1(a=3) == (6 + 6 + 6)
+    assert t1(a=3) == 9
 
 
 def test_literal_hash_int_not_set():
@@ -1002,44 +1339,6 @@ def test_schema_in_dataclass():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
     assert o == ot
-
-
-@pytest.mark.parametrize(
-    "literal_value,python_type,expected_python_value",
-    [
-        (
-            Literal(
-                collection=LiteralCollection(
-                    literals=[
-                        Literal(scalar=Scalar(primitive=Primitive(integer=1))),
-                        Literal(scalar=Scalar(primitive=Primitive(integer=2))),
-                        Literal(scalar=Scalar(primitive=Primitive(integer=3))),
-                    ]
-                )
-            ),
-            typing.List[int],
-            [1, 2, 3],
-        ),
-        (
-            Literal(
-                map=LiteralMap(
-                    literals={
-                        "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
-                        "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
-                    },
-                )
-            ),
-            typing.Dict[str, str],
-            {"k1": "v1", "k2": "2"},
-        ),
-    ],
-)
-def test_literals_resolver(literal_value, python_type, expected_python_value):
-    lit_dict = {"a": literal_value}
-
-    lr = LiteralsResolver(lit_dict)
-    out = lr.get("a", python_type)
-    assert out == expected_python_value
 
 
 def test_guess_of_dataclass():

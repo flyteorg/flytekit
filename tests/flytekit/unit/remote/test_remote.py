@@ -1,12 +1,19 @@
+import os
+import pathlib
+import tempfile
+
 import pytest
 from mock import MagicMock, patch
 
-from flytekit.configuration import Config
+import flytekit.configuration
+from flytekit.configuration import Config, DefaultImages, ImageConfig
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
+from flytekit.models import security
 from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
-from flytekit.remote.remote import FlyteRemote, Options
+from flytekit.remote.remote import FlyteRemote
+from flytekit.tools.translator import Options
 
 CLIENT_METHODS = {
     ResourceType.WORKFLOW: "list_workflows_paginated",
@@ -28,7 +35,7 @@ ENTITY_TYPE_TEXT = {
 
 
 @patch("flytekit.clients.friendly.SynchronousFlyteClient")
-def test_remote_fetch_workflow_execution(mock_client_manager):
+def test_remote_fetch_execution(mock_client_manager):
     admin_workflow_execution = Execution(
         id=WorkflowExecutionIdentifier("p1", "d1", "n1"),
         spec=MagicMock(),
@@ -40,7 +47,7 @@ def test_remote_fetch_workflow_execution(mock_client_manager):
 
     remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     remote._client = mock_client
-    flyte_workflow_execution = remote.fetch_workflow_execution(name="n1")
+    flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
 
 
@@ -54,7 +61,7 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_wf_exec):
 
     def local_assertions(*args, **kwargs):
         execution_spec = args[3]
-        assert execution_spec.auth_role.kubernetes_service_account == "svc"
+        assert execution_spec.security_context.run_as.k8s_service_account == "svc"
         assert execution_spec.labels == common_models.Labels({"a": "my_label_value"})
         assert execution_spec.annotations == common_models.Annotations({"b": "my_annotation_value"})
 
@@ -64,7 +71,7 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_wf_exec):
     options = Options(
         labels=common_models.Labels({"a": "my_label_value"}),
         annotations=common_models.Annotations({"b": "my_annotation_value"}),
-        auth_role=common_models.AuthRole(kubernetes_service_account="svc"),
+        security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account="svc")),
     )
 
     remote._execute(
@@ -85,12 +92,14 @@ def test_underscore_execute_fall_back_remote_attributes(mock_wf_exec):
     remote._client = mock_client
 
     options = Options(
-        auth_role=common_models.AuthRole(assumable_iam_role="iam:some:role"),
+        raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
+        security_context=security.SecurityContext(run_as=security.Identity(iam_role="iam:some:role")),
     )
 
     def local_assertions(*args, **kwargs):
         execution_spec = args[3]
-        assert execution_spec.auth_role.assumable_iam_role == "iam:some:role"
+        assert execution_spec.security_context.run_as.iam_role == "iam:some:role"
+        assert execution_spec.raw_output_data_config.output_location_prefix == "raw_output"
 
     mock_client.create_execution.side_effect = local_assertions
 
@@ -146,3 +155,59 @@ def test_passing_of_kwargs(mock_client):
     FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args)
     assert mock_client.called
     assert mock_client.call_args[1] == additional_args
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_more_stuff(mock_client):
+    r = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+
+    # Can't upload a folder
+    with pytest.raises(ValueError):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            r._upload_file(pathlib.Path(tmp_dir))
+
+    # Test that this copies the file.
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        mm = MagicMock()
+        mm.signed_url = os.path.join(tmp_dir, "tmp_file")
+        mock_client.return_value.get_upload_signed_url.return_value = mm
+
+        r._upload_file(pathlib.Path(__file__))
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+
+    # gives a thing
+    computed_v = r._version_from_hash(b"", serialization_settings)
+    assert len(computed_v) > 0
+
+    # gives the same thing
+    computed_v2 = r._version_from_hash(b"", serialization_settings)
+    assert computed_v2 == computed_v2
+
+    # should give a different thing
+    computed_v3 = r._version_from_hash(b"", serialization_settings, "hi")
+    assert computed_v2 != computed_v3
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_generate_http_domain_sandbox_rewrite(mock_client):
+    _, temp_filename = tempfile.mkstemp(suffix=".yaml")
+    with open(temp_filename, "w") as f:
+        # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
+        flytectl_config_file = """admin:
+    endpoint: localhost:30081
+    authType: Pkce
+    insecure: true
+        """
+        f.write(flytectl_config_file)
+
+    remote = FlyteRemote(
+        config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
+    )
+    assert remote.generate_http_domain() == "http://localhost:30080"

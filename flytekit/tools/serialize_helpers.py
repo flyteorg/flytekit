@@ -18,7 +18,9 @@ from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as _identifier
-from flytekit.tools.translator import get_serializable
+from flytekit.tools.translator import Options, get_serializable
+
+RegistrableEntity = typing.Union[_idl_admin_TaskSpec, _idl_admin_LaunchPlan, _idl_admin_WorkflowSpec]
 
 
 def _determine_text_chars(length):
@@ -58,7 +60,9 @@ def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Se
     return duplicate_tasks
 
 
-def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
+def get_registrable_entities(
+    ctx: flyte_context.FlyteContext, options: typing.Optional[Options] = None
+) -> typing.List[RegistrableEntity]:
     """
     Returns all entities that can be serialized and should be sent over to Flyte backend. This will filter any entities
     that are not known to Admin
@@ -68,11 +72,11 @@ def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
     #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
     for entity in flyte_context.FlyteEntities.entities.copy():
         if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
-            get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
+            get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity, options=options)
 
             if isinstance(entity, WorkflowBase):
                 lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
+                get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp, options)
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
@@ -93,14 +97,21 @@ def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
     return [v.to_flyte_idl() for v in entities_to_be_serialized]
 
 
-def persist_registrable_entities(entities: typing.List, folder: str):
+def persist_registrable_entities(entities: typing.List[RegistrableEntity], folder: str):
     """
     For protobuf serializable list of entities, writes a file with the name if the entity and
     enumeration order to the specified folder
+
+    This function will write to the folder specified the following protobuf types ::
+        flyteidl.admin.launch_plan_pb2.LaunchPlan
+        flyteidl.admin.workflow_pb2.WorkflowSpec
+        flyteidl.admin.task_pb2.TaskSpec
+
+    These can be inspected by calling (in the launch plan case) ::
+        flyte-cli parse-proto -f filename.pb -p flyteidl.admin.launch_plan_pb2.LaunchPlan
     """
     zero_padded_length = _determine_text_chars(len(entities))
     for i, entity in enumerate(entities):
-        name = ""
         fname_index = str(i).zfill(zero_padded_length)
         if isinstance(entity, _idl_admin_TaskSpec):
             name = entity.template.id.name

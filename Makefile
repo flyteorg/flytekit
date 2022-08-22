@@ -12,7 +12,8 @@ help:
 
 .PHONY: install-piptools
 install-piptools:
-	pip install -U pip-tools setuptools wheel pip==22.0.3
+	# pip 22.1 broke pip-tools: https://github.com/jazzband/pip-tools/issues/1617
+	python -m pip install -U pip-tools setuptools wheel "pip>=22.0.3,!=22.1"
 
 .PHONY: update_boilerplate
 update_boilerplate:
@@ -50,8 +51,7 @@ test: lint unit_test
 
 .PHONY: unit_test
 unit_test:
-	FLYTE_SDK_USE_STRUCTURED_DATASET=FALSE pytest tests/flytekit_compatibility && \
-		FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE pytest tests/flytekit/unit
+	pytest -m "not sandbox_test" tests/flytekit/unit
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
 requirements-spark2.txt: requirements-spark2.in install-piptools
@@ -79,7 +79,7 @@ requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit/core flytekit/types
+	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""

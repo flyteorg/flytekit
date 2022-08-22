@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import collections
-from typing import Type, Union
+from typing import TYPE_CHECKING, Type, Union
 
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
@@ -12,11 +12,15 @@ from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
 
+if TYPE_CHECKING:
+    from flytekit.remote.remote_callable import RemoteEntity
+
+
 # This file exists instead of moving to node.py because it needs Task/Workflow/LaunchPlan and those depend on Node
 
 
 def create_node(
-    entity: Union[PythonTask, LaunchPlan, WorkflowBase], *args, **kwargs
+    entity: Union[PythonTask, LaunchPlan, WorkflowBase, RemoteEntity], *args, **kwargs
 ) -> Union[Node, VoidPromise, Type[collections.namedtuple]]:
     """
     This is the function you want to call if you need to specify dependencies between tasks that don't consume and/or
@@ -65,6 +69,8 @@ def create_node(
         t2(t1_node.o0)
 
     """
+    from flytekit.remote.remote_callable import RemoteEntity
+
     if len(args) > 0:
         raise _user_exceptions.FlyteAssertion(
             f"Only keyword args are supported to pass inputs to workflows and tasks."
@@ -75,8 +81,9 @@ def create_node(
         not isinstance(entity, PythonTask)
         and not isinstance(entity, WorkflowBase)
         and not isinstance(entity, LaunchPlan)
+        and not isinstance(entity, RemoteEntity)
     ):
-        raise AssertionError("Should be but it's not")
+        raise AssertionError(f"Should be a callable Flyte entity (either local or fetched) but is {type(entity)}")
 
     # This function is only called from inside workflows and dynamic tasks.
     # That means there are two scenarios we need to take care of, compilation and local workflow execution.
@@ -84,7 +91,6 @@ def create_node(
     # When compiling, calling the entity will create a node.
     ctx = FlyteContext.current_context()
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-
         outputs = entity(**kwargs)
         # This is always the output of create_and_link_node which returns create_task_output, which can be
         # VoidPromise, Promise, or our custom namedtuple of Promises.
@@ -105,9 +111,11 @@ def create_node(
             return node
 
         # If a Promise or custom namedtuple of Promises, we need to attach each output as an attribute to the node.
-        if entity.python_interface.outputs:
+        # todo: fix the noqas below somehow... can't add abstract property to RemoteEntity because it has to come
+        #  before the model Template classes in FlyteTask/Workflow/LaunchPlan
+        if entity.interface.outputs:  # noqa
             if isinstance(outputs, tuple):
-                for output_name in entity.python_interface.output_names:
+                for output_name in entity.interface.outputs.keys():  # noqa
                     attr = getattr(outputs, output_name)
                     if attr is None:
                         raise _user_exceptions.FlyteAssertion(
@@ -120,7 +128,7 @@ def create_node(
                     setattr(node, output_name, attr)
                     node.outputs[output_name] = attr
             else:
-                output_names = entity.python_interface.output_names
+                output_names = [k for k in entity.interface.outputs.keys()]  # noqa
                 if len(output_names) != 1:
                     raise _user_exceptions.FlyteAssertion(f"Output of length 1 expected but {len(output_names)} found")
 
@@ -135,7 +143,15 @@ def create_node(
         return node
 
     # Handling local execution
-    elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+    # Note: execution state is set to TASK_EXECUTION when running dynamic task locally
+    # https://github.com/flyteorg/flytekit/blob/0815345faf0fae5dc26746a43d4bda4cc2cdf830/flytekit/core/python_function_task.py#L262
+    elif ctx.execution_state is not None and (
+        ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+        or ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+    ):
+        if isinstance(entity, RemoteEntity):
+            raise AssertionError(f"Remote entities are not yet runnable locally {entity.name}")
+
         if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
             logger.warning(f"Manual node creation cannot be used in branch logic {entity.name}")
             raise Exception("Being more restrictive for now and disallowing manual node creation in branch logic")

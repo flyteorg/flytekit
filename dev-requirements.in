@@ -5,8 +5,11 @@ coverage[toml]
 joblib
 mock
 pytest
+pytest-cov
 mypy
 pre-commit
 codespell
 google-cloud-bigquery
 google-cloud-bigquery-storage
+IPython
+torch

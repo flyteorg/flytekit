@@ -93,6 +93,7 @@ def test_execution_spec(literal_value_pair):
                 )
             ]
         ),
+        raw_output_data_config=_common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
         max_parallelism=100,
     )
     assert obj.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
@@ -111,6 +112,7 @@ def test_execution_spec(literal_value_pair):
     ]
     assert obj.disable_all is None
     assert obj.max_parallelism == 100
+    assert obj.raw_output_data_config.output_location_prefix == "raw_output"
 
     obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -130,6 +132,7 @@ def test_execution_spec(literal_value_pair):
     ]
     assert obj2.disable_all is None
     assert obj2.max_parallelism == 100
+    assert obj2.raw_output_data_config.output_location_prefix == "raw_output"
 
     obj = _execution.ExecutionSpec(
         _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),

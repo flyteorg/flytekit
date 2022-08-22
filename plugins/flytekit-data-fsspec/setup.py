@@ -4,7 +4,7 @@ PLUGIN_NAME = "fsspec"
 
 microlib_name = f"flytekitplugins-data-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=0.21.3,<1.0.0", "fsspec>=2021.7.0", "botocore>=1.7.48"]
+plugin_requires = ["flytekit>=1.1.0b0,<1.2.0", "fsspec>=2021.7.0", "botocore>=1.7.48", "pandas>=1.2.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -22,6 +22,7 @@ setup(
     install_requires=plugin_requires,
     extras_require={
         # https://github.com/fsspec/filesystem_spec/blob/master/setup.py#L36
+        "abfs": ["adlfs>=2022.2.0"],
         "aws": ["s3fs>=2021.7.0"],
         "gcp": ["gcsfs>=2021.7.0"],
     },

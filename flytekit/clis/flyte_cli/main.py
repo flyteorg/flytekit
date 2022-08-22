@@ -4,6 +4,7 @@ import os
 import os as _os
 import stat as _stat
 import sys as _sys
+from dataclasses import replace
 from typing import Callable, Dict, List, Tuple, Union
 
 import click as _click
@@ -272,9 +273,13 @@ def _render_schedule_expr(lp):
 
 def _get_client(host: str, insecure: bool) -> _friendly_client.SynchronousFlyteClient:
     parent_ctx = _click.get_current_context(silent=True)
+    kwargs = {}
+    if parent_ctx.obj["cacert"]:
+        kwargs["root_certificates"] = parent_ctx.obj["cacert"]
     cfg = parent_ctx.obj["config"]
-    cfg = cfg.with_parameters(endpoint=host, insecure=insecure)
-    return _friendly_client.SynchronousFlyteClient(cfg, root_certificates=parent_ctx.obj["cacert"])
+    cfg = replace(cfg, endpoint=host, insecure=insecure)
+
+    return _friendly_client.SynchronousFlyteClient(cfg, **kwargs)
 
 
 _PROJECT_FLAGS = ["-p", "--project"]
@@ -477,6 +482,7 @@ class _FlyteSubCommand(_click.Command):
     }
 
     def make_context(self, cmd_name, args, parent=None):
+        # This list represents the set of args/flags that can be, and are, set on both the parent and subcommand.
         prefix_args = []
         for param in self.params:
             if (
@@ -499,14 +505,38 @@ class _FlyteSubCommand(_click.Command):
         if cmd_name == "setup-config":
             return ctx
 
-        config = parent.params["config"]
-        if config is None:
+        config_file = parent.params["config"]
+        if config_file is None:
             # Run this as the module is loading to pick up settings that click can
             # then use when constructing the commands
-            config = _detect_default_config_file()
+            config_file = _detect_default_config_file()
 
-        print("Config loading")
-        ctx.obj["config"] = configuration.PlatformConfig.auto(config_file=config)
+        config_obj = configuration.PlatformConfig.auto(config_file=config_file)
+
+        # These two flags are special in that they are specifiable in both the user's default ~/.flyte/config file,
+        # and in the flyte-cli command itself, both in the parent-command position (flyte-cli) , and in the
+        # child-command position (e.g. list-task-names).
+        # For both host and insecure, command line values will override the setting in a config file.
+        #
+        # The host url option is a required setting, so if missing it will fail, but it may be set in the click command,
+        # so we don't have to check now. It will be checked later.
+
+        # If the host was not specified in the parent command, and also not in the subcommand, but is in the file,
+        # then add in the switch and value before creating the context
+        if _HOST_FLAGS[0] not in prefix_args and _HOST_FLAGS[0] not in args and config_obj.endpoint:
+            prefix_args.extend([_HOST_FLAGS[0], config_obj.endpoint])
+
+        # If insecure was not in the parent command and not in the subcommand, but is true in the config object (the
+        # default is False), then add the flag to the args before creating the context.
+        if _INSECURE_FLAGS[0] not in prefix_args and _INSECURE_FLAGS[0] not in args and config_obj.insecure:
+            prefix_args.append(_INSECURE_FLAGS[0])
+
+        # Create context object and fill in with additional objects
+        ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
+        ctx.obj = ctx.obj or {}
+        ctx.obj["cacert"] = parent.params["cacert"] or None
+        ctx.obj["config"] = config_obj
+
         return ctx
 
 

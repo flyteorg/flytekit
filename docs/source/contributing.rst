@@ -62,11 +62,11 @@ We recommend using a virtual environment to develop Flytekit. Inside the top lev
 Install `shellcheck <https://github.com/koalaman/shellcheck>`__ for linting shell scripts.
 
 .. note::
-    It's important to maintain separate virtualenvs for flytekit *development* and Flytekit *use*. The reason is that installing a Python
-    library in editable mode will link it to your source code. That is, the behavior will change as you work on the code,
+    It is important to maintain separate virtualenvs for flytekit *development* and flytekit *use* because installing a Python
+    library in editable mode will link it to your source code. The behavior will change as you work on the code,
     check out different branches, etc.
 
-This will install Flytekit dependencies and also install Flytekit itself in editable mode. This basically links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``.
+This will install Flytekit dependencies and Flytekit in editable mode. This links your virtual Python's ``site-packages`` with your local repo folder, allowing your local changes to take effect when the same Python interpreter runs ``import flytekit``.
 
 Plugin Development
 ==================
@@ -162,7 +162,7 @@ We use `codespell <https://github.com/codespell-project/codespell>`__ to catch s
 4. Open HTML pages present in the ``docs/build`` directory in the browser
 5. After creating the pull request, check if the docs are rendered correctly by clicking on the documentation check
 
-   .. image:: https://raw.githubusercontent.com/flyteorg/flyte/static-resources/img/flytesnacks/contribution-guide/test_docs_link.png
+   .. image:: https://raw.githubusercontent.com/flyteorg/static-resources/main/common/test_docs_link.png
        :alt: Doc link in PR
 
 **********************************

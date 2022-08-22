@@ -1,3 +1,78 @@
+"""
+=====================
+Configuration
+=====================
+
+.. currentmodule:: flytekit.configuration
+
+Flytekit Configuration Ecosystem
+--------------------------------
+
+Where can configuration come from?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Command line arguments. This is the ideal location for settings to go. (See ``pyflyte package --help`` for example.)
+- Environment variables. Users can specify these at compile time, but when your task is run, Flyte Propeller will also set configuration to ensure correct interaction with the platform.
+- A config file - an INI style configuration file. By default, flytekit will look for a file in two places
+  1. First, a file named ``flytekit.config`` in the Python interpreter's starting directory
+  2. A file in ``~/.flyte/config`` in the home directory as detected by Python.
+
+How is configuration used?
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Configuration usage can roughly be bucketed into the following areas,
+
+- Compile-time settings - things like the default image, where to look for Flyte code, etc.
+- Platform settings - Where to find the Flyte backend (Admin DNS, whether to use SSL)
+- Run time (registration) settings - these are things like the K8s service account to use, a specific S3/GCS bucket to write off-loaded data (dataframes and files) to, notifications, labels & annotations, etc.
+- Data access settings - Is there a custom S3 endpoint in use? Backoff/retry behavior for accessing S3/GCS, key and password, etc.
+- Other settings - Statsd configuration, which is a run-time applicable setting but is not necessarily relevant to the Flyte platform.
+
+Configuration Objects
+---------------------
+
+The following objects are encapsulated in a parent object called ``Config``.
+
+.. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
+
+   ~Config
+
+.. _configuration-compile-time-settings:
+
+Compilation (Serialization) Time Settings
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
+
+   ~Image
+   ~ImageConfig
+   ~SerializationSettings
+
+.. _configuration-execution-time-settings:
+
+Execution Time Settings
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
+
+   ~PlatformConfig
+   ~StatsConfig
+   ~SecretsConfig
+   ~S3Config
+   ~GCSConfig
+   ~DataConfig
+   ~Config
+
+"""
 from __future__ import annotations
 
 import base64
@@ -5,18 +80,20 @@ import datetime
 import enum
 import gzip
 import os
+import pathlib
 import re
-import sys
 import tempfile
 import typing
 from dataclasses import dataclass, field
+from io import BytesIO
 from typing import Dict, List, Optional
 
 from dataclasses_json import dataclass_json
 from docker_image import reference
 
 from flytekit.configuration import internal as _internal
-from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, set_if_exists
+from flytekit.configuration.default_images import DefaultImages
+from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -26,6 +103,7 @@ DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 DEFAULT_IMAGE_NAME = "default"
 DEFAULT_IN_CONTAINER_SRC_PATH = "/root"
 _IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
+SERIALIZED_CONTEXT_ENV_VAR = "_F_SS_C"
 
 
 @dataclass_json
@@ -100,7 +178,7 @@ class ImageConfig(object):
         lookup_images = [self.default_image] if self.default_image else []
         if self.images:
             lookup_images.extend(self.images)
-        # lookup_images = l + [self.default_image] if self.images else [self.default_image]
+
         for i in lookup_images:
             if i.name == name:
                 return i
@@ -113,6 +191,12 @@ class ImageConfig(object):
         is provided. a default image, is one that is specified as
           default=img or just img. All other images should be provided with a name, in the format
           name=img
+        This method can be used with the CLI
+
+        :param _: click argument, ignored here.
+        :param param: the click argument, here should be "image"
+        :param values: user-supplied images
+        :return:
         """
         default_image = None
         images = []
@@ -132,31 +216,66 @@ class ImageConfig(object):
             else:
                 images.append(img)
 
-        return ImageConfig(default_image, images)
+        return ImageConfig.create_from(default_image=default_image, other_images=images)
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None, img_name: Optional[str] = None) -> ImageConfig:
+    def create_from(
+        cls, default_image: Optional[Image], other_images: typing.Optional[typing.List[Image]] = None
+    ) -> ImageConfig:
+        if default_image and not isinstance(default_image, Image):
+            raise ValueError(f"Default image should be of type Image or None not {type(default_image)}")
+        all_images = [default_image] if default_image else []
+        if other_images:
+            all_images.extend(other_images)
+        return ImageConfig(default_image=default_image, images=all_images)
+
+    @classmethod
+    def auto(
+        cls, config_file: typing.Union[str, ConfigFile, None] = None, img_name: Optional[str] = None
+    ) -> ImageConfig:
         """
         Reads from config file or from img_name
+        Note that this function does not take into account the flytekit default images (see the Dockerfiles at the
+        base of this repo). To pick those up, see the auto_default_image function..
+
         :param config_file:
         :param img_name:
         :return:
         """
-        if config_file is None and img_name is None:
-            raise ValueError("Either an image or a config with a default image should be provided")
-
         default_img = Image.look_up_image_info("default", img_name) if img_name else None
-        all_images = [default_img] if default_img else []
 
-        other_images = []
-        if config_file:
-            config_file = get_config_file(config_file)
-            other_images = [
-                Image.look_up_image_info(k, tag=v, optional_tag=True)
-                for k, v in _internal.Images.get_specified_images(config_file).items()
-            ]
-        all_images.extend(other_images)
-        return ImageConfig(default_image=default_img, images=all_images)
+        config_file = get_config_file(config_file)
+        other_images = [
+            Image.look_up_image_info(k, tag=v, optional_tag=True)
+            for k, v in _internal.Images.get_specified_images(config_file).items()
+        ]
+        return cls.create_from(default_img, other_images)
+
+    @classmethod
+    def from_images(cls, default_image: str, m: typing.Optional[typing.Dict[str, str]] = None):
+        """
+            Allows you to programmatically create an ImageConfig. Usually only the default_image is required, unless
+            your workflow uses multiple images
+
+            .. code:: python
+
+              ImageConfig.from_dict(
+                  "ghcr.io/flyteorg/flytecookbook:v1.0.0",
+                   {
+                        "spark": "ghcr.io/flyteorg/myspark:...",
+                        "other": "...",
+              })
+
+        :return:
+        """
+        m = m or {}
+        def_img = Image.look_up_image_info("default", default_image) if default_image else None
+        other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in m.items()]
+        return cls.create_from(def_img, other_images)
+
+    @classmethod
+    def auto_default_image(cls) -> ImageConfig:
+        return cls.auto(img_name=DefaultImages.default_image())
 
 
 class AuthType(enum.Enum):
@@ -164,48 +283,39 @@ class AuthType(enum.Enum):
     BASIC = "basic"
     CLIENT_CREDENTIALS = "client_credentials"
     EXTERNAL_PROCESS = "external_process"
+    # The following values are copied from flyteidl's admin client to align the two code bases on the same enum values.
+    # The enum values above will continue to work.
+    CLIENTSECRET = "ClientSecret"
+    PKCE = "Pkce"
+    EXTERNALCOMMAND = "ExternalCommand"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class PlatformConfig(object):
+    """
+    This object contains the settings to talk to a Flyte backend (the DNS location of your Admin server basically).
+
+    :param endpoint: DNS for Flyte backend
+    :param insecure: Whether or not to use SSL
+    :param insecure_skip_verify: Wether to skip SSL certificate verification
+    :param command: This command is executed to return a token using an external process.
+    :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
+      More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
+    :param client_credentials_secret: Used for service auth, which is automatically called during pyflyte. This will
+      allow the Flyte engine to read the password directly from the environment variable. Note that this is
+      less secure! Please only use this if mounting the secret as a file is impossible.
+    :param scopes: List of scopes to request. This is only applicable to the client credentials flow.
+    :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
+    """
+
     endpoint: str = "localhost:30081"
     insecure: bool = False
+    insecure_skip_verify: bool = False
     command: typing.Optional[typing.List[str]] = None
-    """
-    This command is executed to return a token using an external process.
-    """
     client_id: typing.Optional[str] = None
-    """
-    This is the public identifier for the app which handles authorization for a Flyte deployment.
-    More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
-    """
     client_credentials_secret: typing.Optional[str] = None
-    """
-    Used for service auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
-    password directly from the environment variable. Note that this is less secure! Please only use this if mounting the
-    secret as a file is impossible.
-    """
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
-
-    def with_parameters(
-        self,
-        endpoint: str = "localhost:30081",
-        insecure: bool = False,
-        command: typing.Optional[typing.List[str]] = None,
-        client_id: typing.Optional[str] = None,
-        client_credentials_secret: typing.Optional[str] = None,
-        scopes: List[str] = None,
-        auth_mode: AuthType = AuthType.STANDARD,
-    ) -> PlatformConfig:
-        return PlatformConfig(
-            endpoint=endpoint,
-            command=command,
-            client_id=client_id,
-            client_credentials_secret=client_credentials_secret,
-            scopes=scopes if scopes else [],
-            auth_mode=auth_mode,
-        )
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
@@ -217,10 +327,19 @@ class PlatformConfig(object):
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "insecure", _internal.Platform.INSECURE.read(config_file))
+        kwargs = set_if_exists(
+            kwargs, "insecure_skip_verify", _internal.Platform.INSECURE_SKIP_VERIFY.read(config_file)
+        )
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
+        )
+
+        kwargs = set_if_exists(
+            kwargs,
+            "client_credentials_secret",
+            read_file_if_exists(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
         )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
@@ -234,6 +353,15 @@ class PlatformConfig(object):
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class StatsConfig(object):
+    """
+    Configuration for sending statsd.
+
+    :param host: The statsd host
+    :param port: statsd port
+    :param disabled: Whether or not to send
+    :param disabled_tags: Turn on to reduce cardinality.
+    """
+
     host: str = "localhost"
     port: int = 8125
     disabled: bool = False
@@ -257,6 +385,14 @@ class StatsConfig(object):
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class SecretsConfig(object):
+    """
+    Configuration for secrets.
+
+    :param env_prefix: This is the prefix that will be used to lookup for injected secrets at runtime.
+    :param default_dir: This is the default directory that will be used to find secrets as individual files under.
+    :param file_prefix: This is the prefix for the file in the default dir.
+    """
+
     env_prefix: str = "_FSEC_"
     default_dir: str = os.path.join(os.sep, "etc", "secrets")
     file_prefix: str = ""
@@ -294,7 +430,7 @@ class S3Config(object):
         """
         Automatically configure
         :param config_file:
-        :return: Configr
+        :return: Config
         """
         config_file = get_config_file(config_file)
         kwargs = {}
@@ -346,10 +482,13 @@ class DataConfig(object):
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Config(object):
     """
-    This object represents the environment for Flytekit to perform either
-       1. Interactive session with Flyte backend
-       2. Some parts are required for Serialization, for example Platform Config is not required
-       3. Runtime of a task
+    This is the parent configuration object and holds all the underlying configuration object types. An instance of
+    this object holds all the config necessary to
+
+    1. Interactive session with Flyte backend
+    2. Some parts are required for Serialization, for example Platform Config is not required
+    3. Runtime of a task
+
     Args:
         entrypoint_settings: EntrypointSettings object for use with Spark tasks. If supplied, this will be
           used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
@@ -381,10 +520,11 @@ class Config(object):
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
         """
-        Automatically constructs the Config Object. The order of precendence is as follows
+        Automatically constructs the Config Object. The order of precedence is as follows
           1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
           2. If not found in environment then values ar read from the config file
           3. If not found in the file, then the default values are used.
+
         :param config_file: file path to read the config from, if not specified default locations are searched
         :return: Config
         """
@@ -407,9 +547,9 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(insecure=True),
+            platform=PlatformConfig(endpoint="localhost:30081", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
-                s3=S3Config(endpoint="localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
+                s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
             ),
         )
 
@@ -513,6 +653,103 @@ class SerializationSettings(object):
             )
         )
 
+    @classmethod
+    def from_transport(cls, s: str) -> SerializationSettings:
+        compressed_val = base64.b64decode(s.encode("utf-8"))
+        json_str = gzip.decompress(compressed_val).decode("utf-8")
+        return cls.from_json(json_str)
+
+    @classmethod
+    def for_image(
+        cls,
+        image: str,
+        version: str,
+        project: str = "",
+        domain: str = "",
+        python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
+    ) -> SerializationSettings:
+        img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
+        return SerializationSettings(
+            image_config=img,
+            project=project,
+            domain=domain,
+            version=version,
+            python_interpreter=python_interpreter_path,
+            flytekit_virtualenv_root=cls.venv_root_from_interpreter(python_interpreter_path),
+        )
+
+    @staticmethod
+    def venv_root_from_interpreter(interpreter_path: str) -> str:
+        """
+        Computes the path of the virtual environment root, based on the passed in python interpreter path
+        for example /opt/venv/bin/python3 -> /opt/venv
+        """
+        return os.path.dirname(os.path.dirname(interpreter_path))
+
+    @staticmethod
+    def default_entrypoint_settings(interpreter_path: str) -> EntrypointSettings:
+        """
+        Assumes the entrypoint is installed in a virtual-environment where the interpreter is
+        """
+        return EntrypointSettings(
+            path=os.path.join(
+                SerializationSettings.venv_root_from_interpreter(interpreter_path), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC
+            )
+        )
+
+    def new_builder(self) -> Builder:
+        """
+        Creates a ``SerializationSettings.Builder`` that copies the existing serialization settings parameters and
+        allows for customization.
+        """
+        return SerializationSettings.Builder(
+            project=self.project,
+            domain=self.domain,
+            version=self.version,
+            image_config=self.image_config,
+            env=self.env.copy() if self.env else None,
+            flytekit_virtualenv_root=self.flytekit_virtualenv_root,
+            python_interpreter=self.python_interpreter,
+            fast_serialization_settings=self.fast_serialization_settings,
+        )
+
+    def should_fast_serialize(self) -> bool:
+        """
+        Whether or not the serialization settings specify that entities should be serialized for fast registration.
+        """
+        return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
+
+    def _has_serialized_context(self) -> bool:
+        return self.env and SERIALIZED_CONTEXT_ENV_VAR in self.env
+
+    @property
+    def serialized_context(self) -> str:
+        """
+        :return: returns the serialization context as a base64encoded, gzip compressed, json strinnn
+        """
+        if self._has_serialized_context():
+            return self.env[SERIALIZED_CONTEXT_ENV_VAR]
+        json_str = self.to_json()
+        buf = BytesIO()
+        with gzip.GzipFile(mode="wb", fileobj=buf, mtime=0) as f:
+            f.write(json_str.encode("utf-8"))
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+    def with_serialized_context(self) -> SerializationSettings:
+        """
+        Use this method to create a new SerializationSettings that has an environment variable set with the SerializedContext
+        This is useful in transporting SerializedContext to serialized and registered tasks.
+        The setting will be availabe in the `env` field with the key `SERIALIZED_CONTEXT_ENV_VAR`
+        :return: A newly constructed SerializationSettings, or self, if it already has the serializationSettings
+        """
+        if self._has_serialized_context():
+            return self
+        b = self.new_builder()
+        if not b.env:
+            b.env = {}
+        b.env[SERIALIZED_CONTEXT_ENV_VAR] = self.serialized_context
+        return b.build()
+
     @dataclass
     class Builder(object):
         project: str
@@ -539,74 +776,3 @@ class SerializationSettings(object):
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,
             )
-
-    @classmethod
-    def from_transport(cls, s: str) -> SerializationSettings:
-        compressed_val = base64.b64decode(s.encode("utf-8"))
-        json_str = gzip.decompress(compressed_val).decode("utf-8")
-        return cls.from_json(json_str)
-
-    @classmethod
-    def for_image(
-        cls,
-        image: str,
-        version: str,
-        project: str = "",
-        domain: str = "",
-        python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
-    ) -> SerializationSettings:
-        img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
-        return SerializationSettings(
-            image_config=img,
-            project=project,
-            domain=domain,
-            version=version,
-            python_interpreter=python_interpreter_path,
-            flytekit_virtualenv_root=cls.venv_root_from_interpreter(python_interpreter_path),
-        )
-
-    def new_builder(self) -> Builder:
-        """
-        Creates a ``SerializationSettings.Builder`` that copies the existing serialization settings parameters and
-        allows for customization.
-        """
-        return SerializationSettings.Builder(
-            project=self.project,
-            domain=self.domain,
-            version=self.version,
-            image_config=self.image_config,
-            env=self.env,
-            flytekit_virtualenv_root=self.flytekit_virtualenv_root,
-            python_interpreter=self.python_interpreter,
-            fast_serialization_settings=self.fast_serialization_settings,
-        )
-
-    def should_fast_serialize(self) -> bool:
-        """
-        Whether or not the serialization settings specify that entities should be serialized for fast registration.
-        """
-        return self.fast_serialization_settings is not None and self.fast_serialization_settings.enabled
-
-    def prepare_for_transport(self) -> str:
-        json_str = self.to_json()
-        compressed_value = gzip.compress(json_str.encode("utf-8"))
-        return base64.b64encode(compressed_value).decode("utf-8")
-
-    @staticmethod
-    def venv_root_from_interpreter(interpreter_path: str) -> str:
-        """
-        Computes the path of the virtual environment root, based on the passed in python interpreter path
-        for example /opt/venv/bin/python3 -> /opt/venv
-        """
-        return os.path.dirname(os.path.dirname(interpreter_path))
-
-    @staticmethod
-    def default_entrypoint_settings(interpreter_path: str) -> EntrypointSettings:
-        """
-        Assumes the entrypoint is installed in a virtual-environment where the interpreter is
-        """
-        return EntrypointSettings(
-            path=os.path.join(
-                SerializationSettings.venv_root_from_interpreter(interpreter_path), DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC
-            )
-        )

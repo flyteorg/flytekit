@@ -112,7 +112,9 @@ def test_env_var_bool_transformer(mock_file_read):
 
     del os.environ[test_env_var]
 
-    assert b.read() is None
+    cfg_file_mock = mock.MagicMock()
+    cfg_file_mock.legacy_config.return_value = True
+    assert b.read(cfg=cfg_file_mock) is None
 
     # The last read should've triggered the file read since now the env var is no longer set.
     assert mock_file_read.call_count == 1

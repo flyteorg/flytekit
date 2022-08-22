@@ -1,4 +1,4 @@
-.[all]
+.
 -e file:.#egg=flytekit
 
 git+https://github.com/flyteorg/furo@main
@@ -14,3 +14,23 @@ sphinx-panels
 sphinxcontrib-yt
 grpcio
 cryptography
+
+# Packages for Plugin docs
+# Package name              Plugin needing it
+botocore                    # fsspec
+fsspec                      # fsspec
+google-cloud                # bigquery
+google-cloud-bigquery       # bigquery
+markdown                    # deck
+plotly                      # deck
+pandas_profiling            # deck
+dolt_integrations           # dolt
+great-expectations          # greatexpectations
+kubernetes                  # k8s-pod
+modin                       # modin
+pandera                     # pandera
+papermill                   # papermill
+jupyter                     # papermill
+pyspark                     # spark
+sqlalchemy                  # sqlalchemy
+torch                       # pytorch

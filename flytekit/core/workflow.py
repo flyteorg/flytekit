@@ -31,6 +31,7 @@ from flytekit.core.promise import (
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
+from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
@@ -572,7 +573,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         default_metadata: Optional[WorkflowMetadataDefaults],
         docstring: Docstring = None,
     ):
-        name = f"{workflow_function.__module__}.{workflow_function.__name__}"
+        name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
         native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
 

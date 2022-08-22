@@ -1,3 +1,4 @@
+import tempfile
 import typing
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -18,8 +20,9 @@ except ImportError:
 import pandas as pd
 import pyarrow as pa
 
-from flytekit import kwtypes
+from flytekit import kwtypes, task
 from flytekit.types.structured.structured_dataset import (
+    LOCAL,
     PARQUET,
     StructuredDataset,
     StructuredDatasetDecoder,
@@ -330,3 +333,65 @@ def test_to_python_value_without_incoming_columns():
     subset_pd_type = Annotated[pd.DataFrame, kwtypes(age=int)]
     sub_df = fdt.to_python_value(ctx, lit, subset_pd_type)
     assert sub_df.shape[1] == 1
+
+
+def test_format_correct():
+    class TempEncoder(StructuredDatasetEncoder):
+        def __init__(self):
+            super().__init__(pd.DataFrame, LOCAL, "avro")
+
+        def encode(
+            self,
+            ctx: FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
+        ) -> literals.StructuredDataset:
+            return literals.StructuredDataset(
+                uri="/tmp/avro", metadata=StructuredDatasetMetadata(structured_dataset_type)
+            )
+
+    ctx = FlyteContextManager.current_context()
+    df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+    annotated_sd_type = Annotated[StructuredDataset, "avro", kwtypes(name=str, age=int)]
+    df_literal_type = TypeEngine.to_literal_type(annotated_sd_type)
+    assert df_literal_type.structured_dataset_type is not None
+    assert len(df_literal_type.structured_dataset_type.columns) == 2
+    assert df_literal_type.structured_dataset_type.columns[0].name == "name"
+    assert df_literal_type.structured_dataset_type.columns[0].literal_type.simple is not None
+    assert df_literal_type.structured_dataset_type.columns[1].name == "age"
+    assert df_literal_type.structured_dataset_type.columns[1].literal_type.simple is not None
+    assert df_literal_type.structured_dataset_type.format == "avro"
+
+    sd = annotated_sd_type(df)
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
+
+    StructuredDatasetTransformerEngine.register(TempEncoder(), default_for_type=False)
+    sd2 = annotated_sd_type(df)
+    sd_literal = TypeEngine.to_literal(ctx, sd2, python_type=annotated_sd_type, expected=df_literal_type)
+    assert sd_literal.scalar.structured_dataset.metadata.structured_dataset_type.format == "avro"
+
+    @task
+    def t1() -> Annotated[StructuredDataset, "avro"]:
+        return StructuredDataset(dataframe=df)
+
+    assert t1().file_format == "avro"
+
+
+def test_protocol_detection():
+    # We've don't register defaults to the transformer engine
+    assert pd.DataFrame not in StructuredDatasetTransformerEngine.DEFAULT_PROTOCOLS
+    e = StructuredDatasetTransformerEngine()
+    ctx = FlyteContextManager.current_context()
+    protocol = e._protocol_from_type_or_prefix(ctx, pd.DataFrame)
+    assert protocol == "/"
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fs = FileAccessProvider(local_sandbox_dir=tmp_dir, raw_output_prefix="s3://fdsa")
+        ctx2 = ctx.with_file_access(fs).build()
+        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame)
+        assert protocol == "s3"
+
+        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame, "bq://foo")
+        assert protocol == "bq"
