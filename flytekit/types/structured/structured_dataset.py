@@ -416,7 +416,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 try:
                     cls.register_for_protocol(h, stripped, False, override)
                 except DuplicateHandlerError:
-                    ...
+                    logger.debug(f"Skipping {persistence_protocol}/{stripped} for {h} because duplicate")
 
         elif h.protocol == "":
             raise ValueError(f"Use None instead of empty string for registering handler {h}")
