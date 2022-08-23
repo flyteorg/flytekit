@@ -27,6 +27,7 @@ class TensorFlow2ONNXConfig:
     extra_opset: Optional[List[int]] = None
     shape_override: Optional[Dict[str, List[Any]]] = None
     inputs_as_nchw: Optional[List[str]] = None
+    outputs_as_nchw: Optional[List[str]] = None
     large_model: bool = False
 
 
