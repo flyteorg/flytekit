@@ -18,7 +18,7 @@ from flytekit.types.structured.structured_dataset import (
 
 class PolarsDataFrameRenderer:
     """
-    Render a Spark dataframe schema as an HTML table.
+    Render a Polars dataframe schema as an HTML table.
     """
 
     def to_html(self, df: pl.DataFrame) -> str:
