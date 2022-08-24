@@ -30,7 +30,7 @@ class ScikitLearn2ONNXConfig:
     custom_parsers: Dict[Callable[..., Any], Callable[..., None]] = field(default_factory=dict)
     options: Dict[Any, Any] = field(default_factory=dict)
     intermediate: bool = False
-    naming: Union[str, Callable[..., Any]] = None
+    naming: Optional[Union[str, Callable[..., Any]]] = None
     white_op: Optional[Set[str]] = None
     black_op: Optional[Set[str]] = None
     verbose: int = 0
