@@ -33,5 +33,5 @@ class ArrowRenderer:
     """
 
     def to_html(self, df: pyarrow.Table) -> str:
-        assert isinstance(df, pandas.Table)
+        assert isinstance(df, pyarrow.Table)
         return df.to_string()

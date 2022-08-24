@@ -13,21 +13,14 @@ import _datetime
 import numpy as _np
 import pandas as pd
 import pyarrow as pa
-
-from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersistence
-from flytekit.deck.renderer import Renderable
-
-if importlib.util.find_spec("pyspark") is not None:
-    import pyspark
-if importlib.util.find_spec("polars") is not None:
-    import polars as pl
-
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersistence
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.deck.renderer import Renderable
 from flytekit.loggers import logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
