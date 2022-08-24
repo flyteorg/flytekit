@@ -1,5 +1,6 @@
 import typing
 
+import pandas as pd
 import polars as pl
 
 from flytekit import FlyteContext
@@ -13,6 +14,17 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+
+class PolarsDataFrameRenderer:
+    """
+    Render a Spark dataframe schema as an HTML table.
+    """
+
+    def to_html(self, df: pl.DataFrame) -> str:
+        assert isinstance(df, pl.DataFrame)
+        describe_df = df.describe()
+        return pd.DataFrame(describe_df.transpose(), columns=describe_df.columns).to_html(index=False)
 
 
 class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
@@ -61,3 +73,4 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
 
 StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToPolarsDataFrameDecodingHandler())
+StructuredDatasetTransformerEngine.register_renderer(pl.DataFrame, PolarsDataFrameRenderer())

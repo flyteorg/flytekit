@@ -1690,14 +1690,13 @@ def test_union_type():
 
 def test_optional_type():
     @task
-    def t1(a: typing.Optional[int]) -> typing.Optional[int]:
+    def t1(a: typing.Optional[int] = None) -> typing.Optional[int]:
         return a
 
     @workflow
     def wf(a: typing.Optional[int]) -> typing.Optional[int]:
-        return t1(a=a)
+        return t1()
 
-    assert wf(a=2) == 2
     assert wf(a=None) is None
 
 
