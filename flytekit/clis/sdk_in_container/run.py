@@ -25,7 +25,7 @@ from flytekit.clis.sdk_in_container.constants import (
 from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.core import context_manager, tracker
+from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
@@ -486,14 +486,12 @@ def get_entities_in_file(filename: str) -> Entities:
     workflows = []
     tasks = []
     module = importlib.import_module(module_name)
-    for k in dir(module):
-        o = module.__dict__[k]
-        if isinstance(o, PythonFunctionWorkflow):
-            _, _, fn, _ = tracker.extract_task_module(o)
-            workflows.append(fn)
+    for name in dir(module):
+        o = module.__dict__[name]
+        if isinstance(o, WorkflowBase):
+            workflows.append(name)
         elif isinstance(o, PythonTask):
-            _, _, fn, _ = tracker.extract_task_module(o)
-            tasks.append(fn)
+            tasks.append(name)
 
     return Entities(workflows, tasks)
 

@@ -135,6 +135,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         if not self._downloaded:
             self._downloader()
             self._downloaded = True
+        print("hello", self.path)
         return self.path
 
     @classmethod
