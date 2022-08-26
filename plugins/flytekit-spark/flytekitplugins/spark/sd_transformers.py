@@ -1,5 +1,6 @@
 import typing
 
+import pandas as pd
 from pyspark.sql.dataframe import DataFrame
 
 from flytekit import FlyteContext
@@ -13,6 +14,16 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+
+class SparkDataFrameRenderer:
+    """
+    Render a Spark dataframe schema as an HTML table.
+    """
+
+    def to_html(self, df: DataFrame) -> str:
+        assert isinstance(df, DataFrame)
+        return pd.DataFrame(df.schema, columns=["StructField"]).to_html()
 
 
 class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
@@ -50,3 +61,4 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
 
 StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToSparkDecodingHandler())
+StructuredDatasetTransformerEngine.register_renderer(DataFrame, SparkDataFrameRenderer())
