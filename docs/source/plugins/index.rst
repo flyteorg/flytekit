@@ -23,6 +23,9 @@ Plugin API reference
 * :ref:`Snowflake <snowflake>` - Snowflake API reference
 * :ref:`Spark <spark>` - Spark API reference
 * :ref:`SQLAlchemy <sqlalchemy>` - SQLAlchemy API reference
+* :ref:`ONNX PyTorch <onnxpytorch>` - ONNX PyTorch API reference
+* :ref:`ONNX TensorFlow <onnxtensorflow>` - ONNX TensorFlow API reference
+* :ref:`ONNX ScikitLearn <onnxscikitlearn>` - ONNX ScikitLearn API reference
 
 .. toctree::
    :maxdepth: 2
@@ -47,3 +50,6 @@ Plugin API reference
    Snowflake <snowflake>
    Spark <spark>
    SQLAlchemy <sqlalchemy>
+   ONNX PyTorch <onnxpytorch>
+   ONNX TensorFlow <onnxtensorflow>
+   ONNX ScikitLearn <onnxscikitlearn>

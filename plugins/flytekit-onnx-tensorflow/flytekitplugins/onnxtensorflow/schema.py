@@ -18,6 +18,22 @@ from flytekit.types.file import ONNXFile
 @dataclass_json
 @dataclass
 class TensorFlow2ONNXConfig:
+    """
+    TensorFlow2ONNXConfig is the config used during the tensorflow to ONNX conversion.
+
+    Args:
+      input_signature: The shape/dtype of the inputs to the model.
+      custom_ops: If a model contains ops not recognized by ONNX runtime, you can tag these ops with a custom op domain so that the runtime can still open the model.
+      target: List of workarounds applied to help certain platforms.
+      custom_op_handlers: A dictionary of custom op handlers.
+      custom_rewriter: A list of custom graph rewriters.
+      opset: The ONNX opset number.
+      extra_opset: The extra ONNX opset numbers to be used by, say, custom ops.
+      shape_override: Dict with inputs that override the shapes given by tensorflow.
+      inputs_as_nchw: Transpose inputs in list from nhwc to nchw.
+      large_model: Whether to use the ONNX external tensor storage format.
+    """
+
     input_signature: Union[tf.TensorSpec, np.ndarray]
     custom_ops: Optional[Dict[str, Any]] = None
     target: Optional[List[Any]] = None
@@ -33,7 +49,7 @@ class TensorFlow2ONNXConfig:
 @dataclass_json
 @dataclass
 class TensorFlow2ONNX:
-    model: tf.keras = field(default=None)
+    model: tf.keras.Model = field(default=None)
 
 
 def extract_config(t: Type[TensorFlow2ONNX]) -> Tuple[Type[TensorFlow2ONNX], TensorFlow2ONNXConfig]:
