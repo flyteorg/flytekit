@@ -68,6 +68,15 @@ StructuredDatasetTransformerEngine.register(MockBQEncodingHandlers(), False, Tru
 StructuredDatasetTransformerEngine.register(MockBQDecodingHandlers(), False, True)
 
 
+class NumpyRenderer:
+    """
+    The Polars DataFrame summary statistics are rendered as an HTML table.
+    """
+
+    def to_html(self, array: np.ndarray) -> str:
+        return pd.DataFrame(array).describe().to_html()
+
+
 @pytest.fixture(autouse=True)
 def numpy_type():
     class NumpyEncodingHandlers(StructuredDatasetEncoder):
@@ -101,9 +110,9 @@ def numpy_type():
             table = pq.read_table(local_dir)
             return table.to_pandas().to_numpy()
 
-    for protocol in ["/", "s3"]:
-        StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
-        StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray))
+    StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray))
+    StructuredDatasetTransformerEngine.register_renderer(np.ndarray, NumpyRenderer())
 
 
 @task

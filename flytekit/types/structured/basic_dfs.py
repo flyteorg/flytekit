@@ -7,6 +7,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from flytekit import FlyteContext
+from flytekit.deck import TopFrameRenderer
+from flytekit.deck.renderer import ArrowRenderer
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -103,3 +105,6 @@ StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler())
 StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler())
+
+StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
+StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())
