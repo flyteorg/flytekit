@@ -171,10 +171,11 @@ class NotebookTask(PythonInstanceTask[T]):
         return self._config_task_instance.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_models.K8sPod:
-        # The task name in original command is incorrect because we use _dummy_task_func to create the _config_task_instance.
+        # The task name in original command is incorrect because we use _dummy_task_func to construct the _config_task_instance.
         # Therefore, Here we replace primary container's command with NotebookTask's command.
         def fn(settings: SerializationSettings) -> typing.List[str]:
             return self.get_command(settings)
+
         self._config_task_instance.set_command_fn(fn)
         return self._config_task_instance.get_k8s_pod(settings)
 
