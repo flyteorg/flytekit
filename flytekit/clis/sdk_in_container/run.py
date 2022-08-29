@@ -27,7 +27,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.interface import Variable
-from flytekit.models.literals import Blob, BlobMetadata, Primitive
+from flytekit.models.literals import Blob, BlobMetadata, Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
@@ -265,7 +265,7 @@ class FlyteLiteralConverter(object):
                 python_val = converter._click_type.convert(value, param, ctx)
                 literal = converter.convert_to_literal(ctx, param, python_val)
                 self._python_type = python_type
-                return literal
+                return Literal(scalar=Scalar(union=Union(literal, variant)))
             except (Exception or AttributeError) as e:
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
