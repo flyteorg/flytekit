@@ -577,6 +577,8 @@ class FlyteRemote(object):
         destination_dir: str = ".",
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
+        source_path: typing.Optional[str] = None,
+        module_name: typing.Optional[str] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -588,13 +590,16 @@ class FlyteRemote(object):
         :param entity: The workflow to be registered or the task to be registered
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
+        :param source_path: The root of the project path
+        :param module_name: the name of the module
         :return:
         """
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
         upload_location, md5_bytes = fast_register_single_script(
-            entity,
+            source_path,
+            module_name,
             functools.partial(
                 self.client.get_upload_signed_url,
                 project=project or self.default_project,
