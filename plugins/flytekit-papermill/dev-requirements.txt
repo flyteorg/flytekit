@@ -50,9 +50,9 @@ flytekit==1.1.0b0
     # via
     #   flytekitplugins-pod
     #   flytekitplugins-spark
-flytekitplugins-pod==1.1.1
+flytekitplugins-pod==v1.2.0b0
     # via -r dev-requirements.in
-flytekitplugins-spark==1.1.1
+flytekitplugins-spark @ git+https://github.com/flyteorg/flytekit@master#subdirectory=plugins/flytekit-spark
     # via -r dev-requirements.in
 google-auth==2.11.0
     # via kubernetes
