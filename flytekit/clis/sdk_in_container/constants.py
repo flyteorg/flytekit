@@ -7,6 +7,8 @@ CTX_TEST = "test"
 CTX_PACKAGES = "pkgs"
 CTX_NOTIFICATIONS = "notifications"
 CTX_CONFIG_FILE = "config_file"
+CTX_PROJECT_ROOT = "project_root"
+CTX_MODULE = "module"
 
 
 project_option = _click.option(
