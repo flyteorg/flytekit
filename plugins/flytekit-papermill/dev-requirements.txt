@@ -99,7 +99,7 @@ numpy==1.22.1
     # via
     #   pandas
     #   pyarrow
-oauthlib==3.2.1
+oauthlib==3.2.0
     # via requests-oauthlib
 pandas==1.3.5
     # via flytekit
@@ -126,9 +126,7 @@ pyasn1==0.4.8
     #   rsa
 pyasn1-modules==0.2.8
     # via google-auth
-pycparser==2.21
-    # via cffi
-pyspark==3.3.0
+pyspark==3.2.1
     # via flytekitplugins-spark
 python-dateutil==2.8.1
     # via
