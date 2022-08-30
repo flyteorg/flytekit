@@ -19,6 +19,7 @@ from flytekit.configuration import Image, ImageConfig
 from flytekit.core.task import task
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
+IMPERATIVE_WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imperative_wf.py")
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -27,6 +28,16 @@ def test_pyflyte_run_wf():
     module_path = WORKFLOW_FILE
     result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
 
+    assert result.exit_code == 0
+
+
+def test_imperative_wf():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", IMPERATIVE_WORKFLOW_FILE, "wf", "--in1", "hello", "--in2", "world"],
+        catch_exceptions=False,
+    )
     assert result.exit_code == 0
 
 

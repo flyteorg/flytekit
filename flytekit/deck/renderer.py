@@ -1,6 +1,7 @@
 from typing import Any, Optional
 
 import pandas
+import pyarrow
 from typing_extensions import Protocol, runtime_checkable
 
 
@@ -24,3 +25,13 @@ class TopFrameRenderer:
     def to_html(self, df: pandas.DataFrame) -> str:
         assert isinstance(df, pandas.DataFrame)
         return df.to_html(max_rows=self._max_rows)
+
+
+class ArrowRenderer:
+    """
+    Render a Arrow dataframe as an HTML table.
+    """
+
+    def to_html(self, df: pyarrow.Table) -> str:
+        assert isinstance(df, pyarrow.Table)
+        return df.to_string()

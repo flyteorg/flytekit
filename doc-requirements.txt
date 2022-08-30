@@ -6,6 +6,10 @@
 #
 -e file:.#egg=flytekit
     # via -r doc-requirements.in
+absl-py==1.2.0
+    # via
+    #   tensorboard
+    #   tensorflow
 alabaster==0.7.12
     # via sphinx
 altair==4.2.0
@@ -22,8 +26,12 @@ argon2-cffi-bindings==21.2.0
     # via argon2-cffi
 arrow==1.2.2
     # via jinja2-time
-astroid==2.12.2
+astroid==2.12.5
     # via sphinx-autoapi
+asttokens==2.0.8
+    # via stack-data
+astunparse==1.6.3
+    # via tensorflow
 attrs==22.1.0
     # via
     #   jsonschema
@@ -42,7 +50,7 @@ binaryornot==0.4.4
     # via cookiecutter
 bleach==5.0.1
     # via nbconvert
-botocore==1.27.53
+botocore==1.27.62
     # via -r doc-requirements.in
 cachetools==5.2.0
     # via google-auth
@@ -56,7 +64,7 @@ cffi==1.15.1
     #   cryptography
 chardet==5.0.0
     # via binaryornot
-charset-normalizer==2.1.0
+charset-normalizer==2.1.1
     # via requests
 click==8.1.3
     # via
@@ -115,13 +123,18 @@ entrypoints==0.4
     # via
     #   altair
     #   jupyter-client
-    #   nbconvert
     #   papermill
+executing==1.0.0
+    # via stack-data
 fastjsonschema==2.16.1
     # via nbformat
+flatbuffers==1.12
+    # via
+    #   tensorflow
+    #   tf2onnx
 flyteidl==1.1.12
     # via flytekit
-fonttools==4.35.0
+fonttools==4.37.1
     # via matplotlib
 fsspec==2022.7.1
     # via
@@ -129,19 +142,25 @@ fsspec==2022.7.1
     #   modin
 furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
+gast==0.4.0
+    # via tensorflow
 google-api-core[grpc]==2.8.2
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
     #   google-cloud-core
-google-auth==2.10.0
+google-auth==2.11.0
     # via
     #   google-api-core
+    #   google-auth-oauthlib
     #   google-cloud-core
     #   kubernetes
+    #   tensorboard
+google-auth-oauthlib==0.4.6
+    # via tensorboard
 google-cloud==0.34.0
     # via -r doc-requirements.in
-google-cloud-bigquery==3.3.1
+google-cloud-bigquery==3.3.2
     # via -r doc-requirements.in
 google-cloud-bigquery-storage==2.14.2
     # via google-cloud-bigquery
@@ -149,6 +168,8 @@ google-cloud-core==2.3.2
     # via google-cloud-bigquery
 google-crc32c==1.3.0
     # via google-resumable-media
+google-pasta==0.2.0
+    # via tensorflow
 google-resumable-media==2.3.3
     # via google-cloud-bigquery
 googleapis-common-protos==1.56.4
@@ -156,9 +177,9 @@ googleapis-common-protos==1.56.4
     #   flyteidl
     #   google-api-core
     #   grpcio-status
-great-expectations==0.15.18
+great-expectations==0.15.20
     # via -r doc-requirements.in
-greenlet==1.1.2
+greenlet==1.1.3
     # via sqlalchemy
 grpcio==1.47.0
     # via
@@ -167,10 +188,14 @@ grpcio==1.47.0
     #   google-api-core
     #   google-cloud-bigquery
     #   grpcio-status
+    #   tensorboard
+    #   tensorflow
 grpcio-status==1.47.0
     # via
     #   flytekit
     #   google-api-core
+h5py==3.7.0
+    # via tensorflow
 htmlmin==0.1.12
     # via pandas-profiling
 idna==3.3
@@ -185,15 +210,16 @@ importlib-metadata==4.12.0
     #   great-expectations
     #   keyring
     #   markdown
+    #   nbconvert
     #   sphinx
-ipykernel==6.15.1
+ipykernel==6.15.2
     # via
     #   ipywidgets
     #   jupyter
     #   jupyter-console
     #   notebook
     #   qtconsole
-ipython==7.34.0
+ipython==8.4.0
     # via
     #   great-expectations
     #   ipykernel
@@ -201,10 +227,9 @@ ipython==7.34.0
     #   jupyter-console
 ipython-genutils==0.2.0
     # via
-    #   ipywidgets
     #   notebook
     #   qtconsole
-ipywidgets==7.7.1
+ipywidgets==8.0.1
     # via
     #   great-expectations
     #   jupyter
@@ -230,18 +255,19 @@ joblib==1.1.0
     #   flytekit
     #   pandas-profiling
     #   phik
+    #   scikit-learn
 jsonpatch==1.32
     # via great-expectations
 jsonpointer==2.3
     # via jsonpatch
-jsonschema==4.10.0
+jsonschema==4.14.0
     # via
     #   altair
     #   great-expectations
     #   nbformat
 jupyter==1.0.0
     # via -r doc-requirements.in
-jupyter-client==7.3.4
+jupyter-client==7.3.5
     # via
     #   ipykernel
     #   jupyter-console
@@ -259,8 +285,12 @@ jupyter-core==4.11.1
     #   qtconsole
 jupyterlab-pygments==0.2.2
     # via nbconvert
-jupyterlab-widgets==1.1.1
+jupyterlab-widgets==3.0.2
     # via ipywidgets
+keras==2.9.0
+    # via tensorflow
+keras-preprocessing==1.1.2
+    # via tensorflow
 keyring==23.8.2
     # via flytekit
 kiwisolver==1.4.4
@@ -269,6 +299,8 @@ kubernetes==24.2.0
     # via -r doc-requirements.in
 lazy-object-proxy==1.7.1
     # via astroid
+libclang==14.0.6
+    # via tensorflow
 lxml==4.9.1
     # via
     #   nbconvert
@@ -276,13 +308,16 @@ lxml==4.9.1
 makefun==1.14.0
     # via great-expectations
 markdown==3.4.1
-    # via -r doc-requirements.in
+    # via
+    #   -r doc-requirements.in
+    #   tensorboard
 markupsafe==2.1.1
     # via
     #   jinja2
     #   nbconvert
     #   pandas-profiling
-marshmallow==3.17.0
+    #   werkzeug
+marshmallow==3.17.1
     # via
     #   dataclasses-json
     #   marshmallow-enum
@@ -297,17 +332,17 @@ matplotlib==3.5.3
     #   pandas-profiling
     #   phik
     #   seaborn
-matplotlib-inline==0.1.5
+matplotlib-inline==0.1.6
     # via
     #   ipykernel
     #   ipython
 missingno==0.5.1
     # via pandas-profiling
-mistune==0.8.4
+mistune==2.0.4
     # via
     #   great-expectations
     #   nbconvert
-modin==0.12.1
+modin==0.15.2
     # via -r doc-requirements.in
 multimethod==1.8
     # via
@@ -317,11 +352,11 @@ mypy-extensions==0.4.3
     # via typing-inspect
 natsort==8.1.0
     # via flytekit
-nbclient==0.6.6
+nbclient==0.6.7
     # via
     #   nbconvert
     #   papermill
-nbconvert==6.5.3
+nbconvert==7.0.0
     # via
     #   jupyter
     #   notebook
@@ -338,32 +373,50 @@ nest-asyncio==1.5.5
     #   jupyter-client
     #   nbclient
     #   notebook
-networkx==2.6.3
+networkx==2.8.6
     # via visions
 notebook==6.4.12
     # via
     #   great-expectations
     #   jupyter
-    #   widgetsnbextension
-numpy==1.21.6
+numpy==1.23.2
     # via
     #   altair
     #   great-expectations
+    #   h5py
     #   imagehash
+    #   keras-preprocessing
     #   matplotlib
     #   missingno
     #   modin
+    #   onnx
+    #   onnxconverter-common
+    #   opt-einsum
     #   pandas
     #   pandas-profiling
     #   pandera
     #   phik
     #   pyarrow
     #   pywavelets
+    #   scikit-learn
     #   scipy
     #   seaborn
+    #   skl2onnx
+    #   tensorboard
+    #   tensorflow
+    #   tf2onnx
     #   visions
 oauthlib==3.2.0
     # via requests-oauthlib
+onnx==1.12.0
+    # via
+    #   onnxconverter-common
+    #   skl2onnx
+    #   tf2onnx
+onnxconverter-common==1.12.2
+    # via skl2onnx
+opt-einsum==3.3.0
+    # via tensorflow
 packaging==21.3
     # via
     #   google-cloud-bigquery
@@ -376,7 +429,8 @@ packaging==21.3
     #   pandera
     #   qtpy
     #   sphinx
-pandas==1.3.5
+    #   tensorflow
+pandas==1.4.3
     # via
     #   altair
     #   dolt-integrations
@@ -390,7 +444,7 @@ pandas==1.3.5
     #   visions
 pandas-profiling==3.2.0
     # via -r doc-requirements.in
-pandera==0.9.0
+pandera==0.12.0
     # via -r doc-requirements.in
 pandocfilters==1.5.0
     # via nbconvert
@@ -421,7 +475,7 @@ proto-plus==1.22.0
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
-protobuf==3.20.1
+protobuf==3.19.4
     # via
     #   flyteidl
     #   flytekit
@@ -430,16 +484,25 @@ protobuf==3.20.1
     #   google-cloud-bigquery-storage
     #   googleapis-common-protos
     #   grpcio-status
+    #   onnx
+    #   onnxconverter-common
     #   proto-plus
     #   protoc-gen-swagger
+    #   skl2onnx
+    #   tensorboard
+    #   tensorflow
 protoc-gen-swagger==0.1.0
     # via flyteidl
 psutil==5.9.1
-    # via ipykernel
+    # via
+    #   ipykernel
+    #   modin
 ptyprocess==0.7.0
     # via
     #   pexpect
     #   terminado
+pure-eval==0.2.2
+    # via stack-data
 py==1.11.0
     # via retry
 py4j==0.10.9.5
@@ -525,11 +588,11 @@ pyzmq==23.2.1
     #   jupyter-client
     #   notebook
     #   qtconsole
-qtconsole==5.3.1
+qtconsole==5.3.2
     # via jupyter
 qtpy==2.2.0
     # via qtconsole
-regex==2022.7.25
+regex==2022.8.17
     # via docker-image-py
 requests==2.28.1
     # via
@@ -545,8 +608,12 @@ requests==2.28.1
     #   requests-oauthlib
     #   responses
     #   sphinx
+    #   tensorboard
+    #   tf2onnx
 requests-oauthlib==1.3.1
-    # via kubernetes
+    # via
+    #   google-auth-oauthlib
+    #   kubernetes
 responses==0.21.0
     # via flytekit
 retry==0.9.2
@@ -557,14 +624,18 @@ ruamel-yaml==0.17.17
     # via great-expectations
 ruamel-yaml-clib==0.2.6
     # via ruamel-yaml
-scipy==1.7.3
+scikit-learn==1.1.2
+    # via skl2onnx
+scipy==1.9.1
     # via
     #   great-expectations
     #   imagehash
     #   missingno
     #   pandas-profiling
     #   phik
+    #   scikit-learn
     #   seaborn
+    #   skl2onnx
 seaborn==0.11.2
     # via
     #   missingno
@@ -573,13 +644,21 @@ send2trash==1.8.0
     # via notebook
 six==1.16.0
     # via
+    #   asttokens
+    #   astunparse
     #   bleach
     #   google-auth
+    #   google-pasta
     #   grpcio
     #   imagehash
+    #   keras-preprocessing
     #   kubernetes
     #   python-dateutil
     #   sphinx-code-include
+    #   tensorflow
+    #   tf2onnx
+skl2onnx==1.12
+    # via -r doc-requirements.in
 snowballstemmer==2.2.0
     # via sphinx
 sortedcontainers==2.4.0
@@ -610,7 +689,7 @@ sphinx-copybutton==0.5.0
     # via -r doc-requirements.in
 sphinx-fontawesome==0.0.6
     # via -r doc-requirements.in
-sphinx-gallery==0.11.0
+sphinx-gallery==0.11.1
     # via -r doc-requirements.in
 sphinx-material==0.0.35
     # via -r doc-requirements.in
@@ -634,6 +713,8 @@ sphinxcontrib-yt==0.2.2
     # via -r doc-requirements.in
 sqlalchemy==1.4.40
     # via -r doc-requirements.in
+stack-data==0.5.0
+    # via ipython
 statsd==3.3.0
     # via flytekit
 tangled-up-in-unicode==0.2.0
@@ -644,14 +725,32 @@ tenacity==8.0.1
     # via
     #   papermill
     #   plotly
+tensorboard==2.9.1
+    # via tensorflow
+tensorboard-data-server==0.6.1
+    # via tensorboard
+tensorboard-plugin-wit==1.8.1
+    # via tensorboard
+tensorflow==2.9.1
+    # via -r doc-requirements.in
+tensorflow-estimator==2.9.0
+    # via tensorflow
+tensorflow-io-gcs-filesystem==0.26.0
+    # via tensorflow
 termcolor==1.1.0
-    # via great-expectations
+    # via
+    #   great-expectations
+    #   tensorflow
 terminado==0.15.0
     # via notebook
 text-unidecode==1.3
     # via python-slugify
 textwrap3==0.9.2
     # via ansiwrap
+tf2onnx==1.12.0
+    # via -r doc-requirements.in
+threadpoolctl==3.1.0
+    # via scikit-learn
 tinycss2==1.1.1
     # via nbconvert
 toolz==0.12.0
@@ -687,10 +786,12 @@ typing-extensions==4.3.0
     #   astroid
     #   flytekit
     #   great-expectations
+    #   onnx
     #   pydantic
+    #   tensorflow
     #   torch
     #   typing-inspect
-typing-inspect==0.7.1
+typing-inspect==0.8.0
     # via
     #   dataclasses-json
     #   pandera
@@ -702,7 +803,7 @@ unidecode==1.3.4
     # via
     #   python-slugify
     #   sphinx-autoapi
-urllib3==1.26.11
+urllib3==1.26.12
     # via
     #   botocore
     #   flytekit
@@ -718,13 +819,18 @@ webencodings==0.5.1
     # via
     #   bleach
     #   tinycss2
-websocket-client==1.3.3
+websocket-client==1.4.0
     # via
     #   docker
     #   kubernetes
+werkzeug==2.2.2
+    # via tensorboard
 wheel==0.37.1
-    # via flytekit
-widgetsnbextension==3.6.1
+    # via
+    #   astunparse
+    #   flytekit
+    #   tensorboard
+widgetsnbextension==4.0.2
     # via ipywidgets
 wrapt==1.14.1
     # via
@@ -732,6 +838,7 @@ wrapt==1.14.1
     #   deprecated
     #   flytekit
     #   pandera
+    #   tensorflow
 zipp==3.8.1
     # via importlib-metadata
 

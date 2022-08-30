@@ -7,16 +7,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from flytekit import FlyteContext
-from flytekit.core.data_persistence import DataPersistencePlugins
+from flytekit.deck import TopFrameRenderer
+from flytekit.deck.renderer import ArrowRenderer
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    ABFS,
-    GCS,
-    LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -27,10 +24,8 @@ T = TypeVar("T")
 
 
 class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, protocol: str):
-        super().__init__(pd.DataFrame, protocol, PARQUET)
-        # todo: Use this somehow instead of relaying ont he ctx file_access
-        self._persistence = DataPersistencePlugins.find_plugin(protocol)()
+    def __init__(self):
+        super().__init__(pd.DataFrame, None, PARQUET)
 
     def encode(
         self,
@@ -50,8 +45,8 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self, protocol: str):
-        super().__init__(pd.DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(pd.DataFrame, None, PARQUET)
 
     def decode(
         self,
@@ -69,8 +64,8 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
 
 
 class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, protocol: str):
-        super().__init__(pa.Table, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(pa.Table, None, PARQUET)
 
     def encode(
         self,
@@ -88,8 +83,8 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
 
 
 class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self, protocol: str):
-        super().__init__(pa.Table, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(pa.Table, None, PARQUET)
 
     def decode(
         self,
@@ -106,9 +101,10 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(local_dir)
 
 
-# Don't override default protocol
-for protocol in [LOCAL, S3, GCS, ABFS]:
-    StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(protocol), default_for_type=False)
-    StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(protocol), default_for_type=False)
-    StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), default_for_type=False)
-    StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol), default_for_type=False)
+StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler())
+StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler())
+
+StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
+StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())

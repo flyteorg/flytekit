@@ -18,11 +18,8 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    BIGQUERY,
     DF,
-    LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -41,7 +38,7 @@ pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 class MockBQEncodingHandlers(StructuredDatasetEncoder):
     def __init__(self):
-        super().__init__(pd.DataFrame, BIGQUERY, "")
+        super().__init__(pd.DataFrame, "bq", "")
 
     def encode(
         self,
@@ -56,7 +53,7 @@ class MockBQEncodingHandlers(StructuredDatasetEncoder):
 
 class MockBQDecodingHandlers(StructuredDatasetDecoder):
     def __init__(self):
-        super().__init__(pd.DataFrame, BIGQUERY, "")
+        super().__init__(pd.DataFrame, "bq", "")
 
     def decode(
         self,
@@ -69,6 +66,15 @@ class MockBQDecodingHandlers(StructuredDatasetDecoder):
 
 StructuredDatasetTransformerEngine.register(MockBQEncodingHandlers(), False, True)
 StructuredDatasetTransformerEngine.register(MockBQDecodingHandlers(), False, True)
+
+
+class NumpyRenderer:
+    """
+    The Polars DataFrame summary statistics are rendered as an HTML table.
+    """
+
+    def to_html(self, array: np.ndarray) -> str:
+        return pd.DataFrame(array).describe().to_html()
 
 
 @pytest.fixture(autouse=True)
@@ -104,9 +110,9 @@ def numpy_type():
             table = pq.read_table(local_dir)
             return table.to_pandas().to_numpy()
 
-    for protocol in [LOCAL, S3]:
-        StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
-        StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray))
+    StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray))
+    StructuredDatasetTransformerEngine.register_renderer(np.ndarray, NumpyRenderer())
 
 
 @task
