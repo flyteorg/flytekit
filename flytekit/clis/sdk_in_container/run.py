@@ -264,7 +264,6 @@ class FlyteLiteralConverter(object):
                 # and then use flyte converter to convert it to literal.
                 python_val = converter._click_type.convert(value, param, ctx)
                 literal = converter.convert_to_literal(ctx, param, python_val)
-                self._python_type = python_type
                 return Literal(scalar=Scalar(union=Union(literal, variant)))
             except (Exception or AttributeError) as e:
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
