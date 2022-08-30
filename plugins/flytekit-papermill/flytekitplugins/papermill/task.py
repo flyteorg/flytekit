@@ -10,10 +10,12 @@ from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
 from flytekit import FlyteContext, PythonInstanceTask
+from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.loggers import logger
+from flytekit.models import task as task_models
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file import HTMLPage, PythonNotebook
 
@@ -123,12 +125,13 @@ class NotebookTask(PythonInstanceTask[T]):
         # errors.
         # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
-        self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
+        self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func, **kwargs)
         # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
         # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
         # at serialization time.
         self._config_task_instance._name = f"{PAPERMILL_TASK_PREFIX}.{name}"
-        task_type = f"nb-{self._config_task_instance.task_type}"
+        task_type = f"{self._config_task_instance.task_type}"
+        task_type_version = self._config_task_instance.task_type_version
         self._notebook_path = os.path.abspath(notebook_path)
 
         self._render_deck = render_deck
@@ -144,7 +147,12 @@ class NotebookTask(PythonInstanceTask[T]):
                 }
             )
         super().__init__(
-            name, task_config, task_type=task_type, interface=Interface(inputs=inputs, outputs=outputs), **kwargs
+            name,
+            task_config,
+            task_type=task_type,
+            task_type_version=task_type_version,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            **kwargs,
         )
 
     @property
@@ -158,6 +166,21 @@ class NotebookTask(PythonInstanceTask[T]):
     @property
     def rendered_output_path(self) -> str:
         return self._notebook_path.split(".ipynb")[0] + "-out.html"
+
+    def get_container(self, settings: SerializationSettings) -> task_models.Container:
+        return self._config_task_instance.get_container(settings)
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> task_models.K8sPod:
+        # The task name in original command is incorrect because we use _dummy_task_func to construct the _config_task_instance.
+        # Therefore, Here we replace primary container's command with NotebookTask's command.
+        def fn(settings: SerializationSettings) -> typing.List[str]:
+            return self.get_command(settings)
+
+        self._config_task_instance.set_command_fn(fn)
+        return self._config_task_instance.get_k8s_pod(settings)
+
+    def get_config(self, settings: SerializationSettings) -> typing.Dict[str, str]:
+        return self._config_task_instance.get_config(settings)
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         return self._config_task_instance.pre_execute(user_params)
