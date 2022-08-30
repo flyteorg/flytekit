@@ -2,8 +2,12 @@ import datetime
 import os
 
 from flytekitplugins.papermill import NotebookTask
+from flytekitplugins.pod import Pod
+from kubernetes.client import V1Container, V1PodSpec
 
+import flytekit
 from flytekit import kwtypes
+from flytekit.configuration import Image, ImageConfig
 from flytekit.types.file import PythonNotebook
 
 from .testdata.datatype import X
@@ -83,3 +87,36 @@ def test_notebook_deck_local_execution_doesnt_fail():
     sqr, out, render = nb.execute(pi=4)
     # This is largely a no assert test to ensure render_deck never inhibits local execution.
     assert nb._render_deck, "Passing render deck to init should result in private attribute being set"
+
+
+def generate_por_spec_for_task():
+    primary_container = V1Container(name="primary")
+    pod_spec = V1PodSpec(containers=[primary_container])
+
+    return pod_spec
+
+
+nb = NotebookTask(
+    name="test",
+    task_config=Pod(pod_spec=generate_por_spec_for_task(), primary_container_name="primary"),
+    notebook_path=_get_nb_path("nb-simple", abs=False),
+    inputs=kwtypes(h=str, n=int, w=str),
+    outputs=kwtypes(h=str, w=PythonNotebook, x=X),
+)
+
+
+def test_notebook_pod_task():
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+    )
+
+    assert nb.get_container(serialization_settings) is None
+    assert nb.get_config(serialization_settings)["primary_container_name"] == "primary"
+    assert (
+        nb.get_command(serialization_settings)
+        == nb.get_k8s_pod(serialization_settings).pod_spec["containers"][0]["args"]
+    )
