@@ -15,7 +15,7 @@ from flytekit.core.context_manager import ExecutionParameters
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.loggers import logger
-from flytekit.models import task as _task_models
+from flytekit.models import task as task_models
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file import HTMLPage, PythonNotebook
 
@@ -167,10 +167,10 @@ class NotebookTask(PythonInstanceTask[T]):
     def rendered_output_path(self) -> str:
         return self._notebook_path.split(".ipynb")[0] + "-out.html"
 
-    def get_container(self, settings: SerializationSettings) -> _task_models.Container:
+    def get_container(self, settings: SerializationSettings) -> task_models.Container:
         return self._config_task_instance.get_container(settings)
 
-    def get_k8s_pod(self, settings: SerializationSettings) -> _task_models.K8sPod:
+    def get_k8s_pod(self, settings: SerializationSettings) -> task_models.K8sPod:
         # The task name in original command is incorrect because we use _dummy_task_func to construct the _config_task_instance.
         # Therefore, Here we replace primary container's command with NotebookTask's command.
         def fn(settings: SerializationSettings) -> typing.List[str]:
