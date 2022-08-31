@@ -7,7 +7,7 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
-from typing_extensions import get_args, get_origin, get_type_hints
+from typing_extensions import Annotated, get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
@@ -259,14 +259,16 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
 def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
     try:
         if hasattr(t, "__origin__") and hasattr(t, "__args__"):
-            if t.__origin__ == list:
+            if get_origin(t) == list:
                 return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
-            elif t.__origin__ == dict and t.__args__[0] == str:
+            elif get_origin(t) == dict and t.__args__[0] == str:
                 return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
-            elif t.__origin__ == typing.Union:
+            elif get_origin(t) == typing.Union:
                 return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]
-            else:
-                return FlytePickle[t]
+            elif get_origin(t) == Annotated:
+                base_type, config = get_args(t)
+                return typing.Annotated[_change_unrecognized_type_to_pickle(base_type), config]
+            return FlytePickle[t]
         else:
             TypeEngine.get_transformer(t)
     except ValueError:
