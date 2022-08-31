@@ -265,8 +265,8 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
                 return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
             elif get_origin(t) == typing.Union:
                 return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]
-            elif get_origin(t) == Annotated:
-                base_type, config = get_args(t)
+            elif get_origin(t) is Annotated:
+                base_type, *config = get_args(t)
                 return Annotated[_change_unrecognized_type_to_pickle(base_type), config]
             return FlytePickle[t]
         else:
