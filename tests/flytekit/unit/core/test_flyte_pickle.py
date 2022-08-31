@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from collections.abc import Sequence
-from typing import Dict, List, Union
+from typing import Annotated, Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -88,16 +88,11 @@ def test_nested2():
 
 def test_union():
     @task
-    def t1(data: Union[np.ndarray, pd.DataFrame, Sequence[int]]):
+    def t1(data: Annotated[Union[np.ndarray, pd.DataFrame, Sequence[int]], "some annotation"]):
         print(data)
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
-    assert task_spec.template.interface.inputs["data"].type.union_type.variants[0].blob.format == "NumpyArray"
-    assert (
-        task_spec.template.interface.inputs["data"].type.union_type.variants[1].structured_dataset_type.format
-        == "parquet"
-    )
-    assert (
-        task_spec.template.interface.inputs["data"].type.union_type.variants[2].blob.format
-        == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
-    )
+    variants = task_spec.template.interface.inputs["data"].type.union_type.variants
+    assert variants[0].blob.format == "NumpyArray"
+    assert variants[1].structured_dataset_type.format == "parquet"
+    assert variants[2].blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
