@@ -4,6 +4,7 @@ from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
+from typing_extensions import Annotated
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
