@@ -7,10 +7,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    GCS,
-    LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -18,9 +15,19 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
+class HuggingFaceDatasetRenderer:
+    """
+    The datasets Dataset printable representation is saved to HTML.
+    """
+
+    def to_html(self, df: datasets.Dataset) -> str:
+        assert isinstance(df, datasets.Dataset)
+        return str(df).replace("\n", "<br>")
+
+
 class HuggingFaceDatasetToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, protocol: str):
-        super().__init__(datasets.Dataset, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(datasets.Dataset, None, PARQUET)
 
     def encode(
         self,
@@ -41,8 +48,8 @@ class HuggingFaceDatasetToParquetEncodingHandler(StructuredDatasetEncoder):
 
 
 class ParquetToHuggingFaceDatasetDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self, protocol: str):
-        super().__init__(datasets.Dataset, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(datasets.Dataset, None, PARQUET)
 
     def decode(
         self,
@@ -60,12 +67,6 @@ class ParquetToHuggingFaceDatasetDecodingHandler(StructuredDatasetDecoder):
         return datasets.Dataset.from_parquet(path)
 
 
-for protocol in [LOCAL, S3]:
-    StructuredDatasetTransformerEngine.register(
-        HuggingFaceDatasetToParquetEncodingHandler(protocol), default_for_type=True
-    )
-    StructuredDatasetTransformerEngine.register(
-        ParquetToHuggingFaceDatasetDecodingHandler(protocol), default_for_type=True
-    )
-StructuredDatasetTransformerEngine.register(HuggingFaceDatasetToParquetEncodingHandler(GCS), default_for_type=False)
-StructuredDatasetTransformerEngine.register(ParquetToHuggingFaceDatasetDecodingHandler(GCS), default_for_type=False)
+StructuredDatasetTransformerEngine.register(HuggingFaceDatasetToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToHuggingFaceDatasetDecodingHandler())
+StructuredDatasetTransformerEngine.register_renderer(datasets.Dataset, HuggingFaceDatasetRenderer())
