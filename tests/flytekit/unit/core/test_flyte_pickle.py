@@ -1,5 +1,6 @@
 from collections import OrderedDict
-from typing import Dict, List, Sequence, Union
+from collections.abc import Sequence
+from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
