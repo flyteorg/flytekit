@@ -263,6 +263,10 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
                 return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
             elif t.__origin__ == dict and t.__args__[0] == str:
                 return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
+            elif t.__origin__ == typing.Union:
+                return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]
+            else:
+                return FlytePickle[t]
         else:
             TypeEngine.get_transformer(t)
     except ValueError:

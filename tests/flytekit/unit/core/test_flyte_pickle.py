@@ -1,5 +1,8 @@
 from collections import OrderedDict
-from typing import Dict, List
+from typing import Dict, List, Sequence, Union
+
+import numpy as np
+import pandas as pd
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
@@ -79,4 +82,21 @@ def test_nested2():
     assert (
         task_spec.template.interface.outputs["o0"].type.collection_type.map_value_type.blob.format
         is FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+    )
+
+
+def test_union():
+    @task
+    def t1(data: Union[np.ndarray, pd.DataFrame, Sequence[int]]):
+        print(data)
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    assert task_spec.template.interface.inputs["data"].type.union_type.variants[0].blob.format == "NumpyArray"
+    assert (
+        task_spec.template.interface.inputs["data"].type.union_type.variants[1].structured_dataset_type.format
+        == "parquet"
+    )
+    assert (
+        task_spec.template.interface.inputs["data"].type.union_type.variants[2].blob.format
+        == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
     )
