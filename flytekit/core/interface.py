@@ -333,7 +333,10 @@ def transform_variable_map(
                 elif v.__origin__ is dict:
                     sub_type = v.__args__[1]
             if hasattr(sub_type, "__origin__") and sub_type.__origin__ is FlytePickle:
-                res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
+                if hasattr(sub_type.python_type(), "__name__"):
+                    res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
+                elif hasattr(sub_type.python_type(), "_name"):
+                    res[k].type.metadata = {"python_class_name": sub_type.python_type()._name}
 
     return res
 
