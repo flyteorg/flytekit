@@ -24,6 +24,7 @@ from flytekit.clis.sdk_in_container.run import (
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
+from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteRemote
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
@@ -294,3 +295,25 @@ def test_literal_converter(python_type, python_value):
     )
 
     assert lc.convert(click_ctx, ctx, python_value) == TypeEngine.to_literal(ctx, python_value, python_type, lt)
+
+
+def test_enum_converter():
+    pt = typing.Union[str, Color]
+
+    get_upload_url_fn = functools.partial(FlyteRemote(Config.auto()).client.get_upload_signed_url)
+    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(pt)
+    lc = FlyteLiteralConverter(click_ctx, ctx, literal_type=lt, python_type=pt, get_upload_url_fn=get_upload_url_fn)
+    union_lt = lc.convert(click_ctx, ctx, "red").scalar.union
+
+    assert union_lt.stored_type.simple == SimpleType.STRING
+    assert union_lt.stored_type.enum_type is None
+
+    pt = typing.Union[Color, str]
+    lt = TypeEngine.to_literal_type(typing.Union[Color, str])
+    lc = FlyteLiteralConverter(click_ctx, ctx, literal_type=lt, python_type=pt, get_upload_url_fn=get_upload_url_fn)
+    union_lt = lc.convert(click_ctx, ctx, "red").scalar.union
+
+    assert union_lt.stored_type.simple is None
+    assert union_lt.stored_type.enum_type.values == ["red", "green", "blue"]
