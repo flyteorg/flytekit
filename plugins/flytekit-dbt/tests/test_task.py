@@ -57,8 +57,8 @@ class TestDBTRun:
             return dbt_run_task(
                 input=DBTRunInput(
                     project_dir=DBT_PROJECT_DIR,
-                    profiles_dir="tests/jaffle_shop/profiles",
-                    profile="jaffle_shop",
+                    profiles_dir=DBT_PROFILES_DIR,
+                    profile=DBT_PROFILE,
                 )
             )
 
@@ -75,7 +75,7 @@ class TestDBTRun:
                 input=DBTRunInput(
                     project_dir=".",
                     profiles_dir=DBT_PROFILES_DIR,
-                    profile="jaffle_shop",
+                    profile=DBT_PROFILE,
                 )
             )
 

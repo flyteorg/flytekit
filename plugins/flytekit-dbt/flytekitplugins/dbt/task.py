@@ -1,4 +1,3 @@
-import logging
 import os
 
 from flytekitplugins.dbt.error import DBTHandledError, DBTUnhandledError
@@ -8,6 +7,7 @@ from flytekitplugins.dbt.util import run_cli
 from flytekit import kwtypes
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
+from flytekit.loggers import logger
 
 SUCCESS = 0
 HANDLED_ERROR_CODE = 1
@@ -86,9 +86,9 @@ class DBTRun(PythonInstanceTask):
         cmd = ["dbt", "--log-format", "json", "run"] + args
         full_command = " ".join(cmd)
 
-        logging.info(f"Executing command: {full_command}")
+        logger.info(f"Executing command: {full_command}")
         exit_code, logs = run_cli(cmd)
-        logging.info(f"dbt exited with return code {exit_code}")
+        logger.info(f"dbt exited with return code {exit_code}")
 
         if exit_code == HANDLED_ERROR_CODE and not task_input.ignore_handled_error:
             raise DBTHandledError(f"handled error while executing {full_command}", logs)
@@ -211,9 +211,9 @@ class DBTTest(PythonInstanceTask):
         cmd = ["dbt", "--log-format", "json", "test"] + args
         full_command = " ".join(cmd)
 
-        logging.info(f"Executing command: {full_command}")
+        logger.info(f"Executing command: {full_command}")
         exit_code, logs = run_cli(cmd)
-        logging.info(f"dbt exited with return code {exit_code}")
+        logger.info(f"dbt exited with return code {exit_code}")
 
         if exit_code == HANDLED_ERROR_CODE and not task_input.ignore_handled_error:
             raise DBTHandledError(f"handled error while executing {full_command}", logs)

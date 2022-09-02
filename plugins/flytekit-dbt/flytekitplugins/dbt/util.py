@@ -1,7 +1,8 @@
 import json
-import logging
 import subprocess
 from typing import List
+
+from flytekit.loggers import logger
 
 
 def run_cli(cmd: List[str]) -> (int, List[str]):
@@ -28,14 +29,12 @@ def run_cli(cmd: List[str]) -> (int, List[str]):
         try:
             json_line = json.loads(line)
         except json.JSONDecodeError:
-            logging.info(line.rstrip())
+            logger.info(line.rstrip())
         else:
             logs.append(json_line)
-            level = json_line.get("levelname", "").lower()
-            if hasattr(logging, level):
-                getattr(logging, level)(json_line.get("message", ""))
-            else:
-                logging.info(line.rstrip())
+            # TODO: pluck `levelname` from json_line and choose appropriate level to use
+            # in flytekit logger instead of defaulting to `info`
+            logger.info(line.rstrip())
 
     process.wait()
     return process.returncode, logs
