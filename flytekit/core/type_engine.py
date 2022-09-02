@@ -1007,7 +1007,7 @@ class UnionTransformer(TypeTransformer[T]):
                     # Should really never happen, sanity check
                     raise TypeError("Ambiguous choice of variant for union type")
                 found_res = True
-            except Exception as e:
+            except (TypeTransformerFailedError, AttributeError) as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
                 continue
 
