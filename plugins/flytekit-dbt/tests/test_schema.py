@@ -1,6 +1,6 @@
-import pytest
 import shlex
 
+import pytest
 from flytekitplugins.dbt.schema import BaseDBTInput, DBTRunInput, DBTTestInput
 
 project_dir = "."

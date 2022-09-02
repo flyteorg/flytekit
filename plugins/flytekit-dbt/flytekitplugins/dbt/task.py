@@ -1,19 +1,13 @@
 import logging
 import os
 
+from flytekitplugins.dbt.error import DBTHandledError, DBTUnhandledError
+from flytekitplugins.dbt.schema import DBTRunInput, DBTRunOutput, DBTTestInput, DBTTestOutput
+from flytekitplugins.dbt.util import run_cli
+
 from flytekit import kwtypes
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
-
-from flytekitplugins.dbt.error import DBTHandledError, DBTUnhandledError
-from flytekitplugins.dbt.schema import (
-    DBTRunInput,
-    DBTRunOutput,
-    DBTTestInput,
-    DBTTestOutput,
-)
-from flytekitplugins.dbt.util import run_cli
-
 
 SUCCESS = 0
 HANDLED_ERROR_CODE = 1

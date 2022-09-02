@@ -1,20 +1,14 @@
 import os
 import pathlib
+
 import pytest
 import touch
-import subprocess
+from flytekitplugins.dbt.error import DBTUnhandledError
+from flytekitplugins.dbt.schema import DBTRunInput, DBTRunOutput, DBTTestInput, DBTTestOutput
+from flytekitplugins.dbt.task import DBTRun, DBTTest
 
 from flytekit import workflow
 from flytekit.tools.subprocess import check_call
-
-from flytekitplugins.dbt.error import DBTUnhandledError
-from flytekitplugins.dbt.schema import (
-    DBTRunInput,
-    DBTRunOutput,
-    DBTTestInput,
-    DBTTestOutput,
-)
-from flytekitplugins.dbt.task import DBTRun, DBTTest
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -25,14 +19,28 @@ def prepare_db():
     database_file = pathlib.Path(dbs_path, "database_name.db")
     touch.touch(database_file)
 
-    # Seed
-    check_call(["dbt", "--log-format", "json", "seed", "--project-dir", "tests/jaffle_shop", "--profiles-dir", "tests/jaffle_shop/profiles", "--profile", "jaffle_shop"])
+    # Seed the database
+    check_call(
+        [
+            "dbt",
+            "--log-format",
+            "json",
+            "seed",
+            "--project-dir",
+            "tests/jaffle_shop",
+            "--profiles-dir",
+            "tests/jaffle_shop/profiles",
+            "--profile",
+            "jaffle_shop",
+        ]
+    )
     # subprocess.run(args=["dbt", "--log-format", "json", "seed", "--project-dir", "tests/jaffle_shop", "--profiles-dir", "tests/jaffle_shop/profiles", "--profile", "jaffle_shop"])
 
     yield
 
     # Delete the database file
     database_file.unlink()
+
 
 # def test_simple_task2():
 #     dbt_run_task = DBTRun(
@@ -51,6 +59,7 @@ def prepare_db():
 #         )
 #     result = my_workflow()
 #     assert isinstance(result, DBTRunOutput)
+
 
 class TestDBTRun:
     def test_simple_task(self):
