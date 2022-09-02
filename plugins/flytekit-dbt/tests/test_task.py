@@ -21,7 +21,7 @@ def prepare_db():
     dbs_path = pathlib.Path(DBT_PROJECT_DIR, "dbs")
     dbs_path.mkdir(exist_ok=True, parents=True)
     database_file = pathlib.Path(dbs_path, "database_name.db")
-    touch.touch(database_file)
+    touch.touch(str(database_file))
 
     # Seed the database
     check_call(
