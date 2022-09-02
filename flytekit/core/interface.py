@@ -267,7 +267,7 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
                 return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]
             elif get_origin(t) is Annotated:
                 base_type, *config = get_args(t)
-                return Annotated[_change_unrecognized_type_to_pickle(base_type), config]
+                return Annotated[(_change_unrecognized_type_to_pickle(base_type), *config)]
             return FlytePickle[t]
         else:
             TypeEngine.get_transformer(t)
