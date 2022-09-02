@@ -45,25 +45,6 @@ def prepare_db():
     database_file.unlink()
 
 
-# def test_simple_task2():
-#     dbt_run_task = DBTRun(
-#         name="test-task",
-#     )
-
-#     @workflow
-#     def my_workflow() -> DBTRunOutput:
-#         # run all models
-#         return dbt_run_task(
-#             input=DBTRunInput(
-#                 project_dir=DBT_PROJECT_DIR,
-#                 profiles_dir=DBT_PROFILES_DIR,
-#                 profile=DBT_PROFILE,
-#             )
-#         )
-#     result = my_workflow()
-#     assert isinstance(result, DBTRunOutput)
-
-
 class TestDBTRun:
     def test_simple_task(self):
         dbt_run_task = DBTRun(
