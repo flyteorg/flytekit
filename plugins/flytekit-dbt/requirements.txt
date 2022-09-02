@@ -45,10 +45,15 @@ cryptography==3.4.8
     #   secretstorage
 dataclasses-json==0.5.6
     # via flytekit
-dbt-core==1.0.3
-    # via flytekitplugins-dbt
-dbt-extractor==0.4.0
+dbt-core==1.2.1
+    # via
+    #   -r requirements.in
+    #   dbt-sqlite
+    #   flytekitplugins-dbt
+dbt-extractor==0.4.1
     # via dbt-core
+dbt-sqlite==1.2.0a2
+    # via -r requirements.in
 decorator==5.1.1
     # via retry
 deprecated==1.2.13

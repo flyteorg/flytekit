@@ -10,10 +10,13 @@ from flytekitplugins.dbt.task import DBTRun, DBTTest
 from flytekit import workflow
 from flytekit.tools.subprocess import check_call
 
+# DBT_PROJECT_DIR = "tests/jaffle_shop"
+# DBT_PROFILES_DIR =
+
 
 @pytest.fixture(scope="module", autouse=True)
 def prepare_db():
-    # Ensure path to database exists
+    # Ensure path to sqlite database file exists
     dbs_path = pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "jaffle_shop", "dbs")
     dbs_path.mkdir(exist_ok=True, parents=True)
     database_file = pathlib.Path(dbs_path, "database_name.db")
