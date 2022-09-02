@@ -2,7 +2,6 @@ import os
 import pathlib
 
 import pytest
-import touch
 from flytekitplugins.dbt.error import DBTUnhandledError
 from flytekitplugins.dbt.schema import DBTRunInput, DBTRunOutput, DBTTestInput, DBTTestOutput
 from flytekitplugins.dbt.task import DBTRun, DBTTest
@@ -21,7 +20,7 @@ def prepare_db():
     dbs_path = pathlib.Path(DBT_PROJECT_DIR, "dbs")
     dbs_path.mkdir(exist_ok=True, parents=True)
     database_file = pathlib.Path(dbs_path, "database_name.db")
-    touch.touch(str(database_file))
+    database_file.touch()
 
     # Seed the database
     check_call(
