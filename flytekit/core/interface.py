@@ -261,6 +261,10 @@ def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
         if hasattr(t, "__origin__") and hasattr(t, "__args__"):
             if get_origin(t) == list:
                 return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
+            elif t == Dict:
+                # Dict in python < 3.9 has __args__ attribute, so add an additional if statement to
+                # make sure that we use the Dict transformer for typing.Dict instead of pickle transformer.
+                return t
             elif get_origin(t) == dict and t.__args__[0] == str:
                 return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
             elif get_origin(t) == typing.Union:
