@@ -89,7 +89,7 @@ def test_nested2():
 
 def test_union():
     @task
-    def t1(data: Annotated[Union[np.ndarray, pd.DataFrame, Sequence[int]], "some annotation"]):
+    def t1(data: Annotated[Union[np.ndarray, pd.DataFrame, Sequence], "some annotation"]):
         print(data)
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
