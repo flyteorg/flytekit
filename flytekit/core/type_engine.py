@@ -299,8 +299,9 @@ class DataclassTransformer(TypeTransformer[object]):
             if UnionTransformer.is_optional_type(expected_type):
                 expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
 
-            if dataclasses.is_dataclass(original_type):
-                self.assert_type(expected_type, v.__getattribute__(f.name))
+            val = v.__getattribute__(f.name)
+            if dataclasses.is_dataclass(val):
+                self.assert_type(expected_type, val)
             elif original_type != expected_type:
                 raise TypeTransformerFailedError(f"Type of Val '{original_type}' is not an instance of {expected_type}")
 
