@@ -1014,9 +1014,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     @staticmethod
     def is_optional_type(t: Type[T]) -> bool:
-        if get_origin(t) is typing.Union and type(None) in get_args(t):
-            return True
-        return False
+        return get_origin(t) is typing.Union and type(None) in get_args(t)
 
     @staticmethod
     def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
