@@ -270,6 +270,40 @@ class DataclassTransformer(TypeTransformer[object]):
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
 
+    def assert_type(self, expected_type: DataClassJsonMixin, v: T):
+        # Check the type of value in dataclass matches the expected_type by iterating all attributes
+        #
+        # @dataclass_json
+        # @dataclass
+        # class Foo(object):
+        #     a: int = 0
+        #
+        # @task
+        # def t1(a: Foo):
+        #     ...
+        #
+        # we use guess_python_type (FooSchema) as our expected_type by default if using flyte remote to execute the above workflow.
+        # FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo). Therefore, we can't
+        # use `assert type(v) == expected_type` here.
+
+        expected_fields_dict = {}
+        for f in dataclasses.fields(expected_type):
+            expected_fields_dict[f.name] = f.type
+
+        for f in dataclasses.fields(type(v)):
+            original_type = f.type
+            expected_type = expected_fields_dict[f.name]
+
+            if UnionTransformer.is_optional_type(original_type):
+                original_type = UnionTransformer.get_sub_type_in_optional(original_type)
+            if UnionTransformer.is_optional_type(expected_type):
+                expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+
+            if dataclasses.is_dataclass(original_type):
+                self.assert_type(expected_type, v.__getattribute__(f.name))
+            elif original_type != expected_type:
+                raise TypeTransformerFailedError(f"Type of Val '{original_type}' is not an instance of {expected_type}")
+
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         """
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
@@ -976,6 +1010,19 @@ class UnionTransformer(TypeTransformer[T]):
 
     def __init__(self):
         super().__init__("Typed Union", typing.Union)
+
+    @staticmethod
+    def is_optional_type(t: Type[T]) -> bool:
+        if get_origin(t) is typing.Union and type(None) in get_args(t):
+            return True
+        return False
+
+    @staticmethod
+    def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
+        """
+        Return the generic Type T of the Optional type
+        """
+        return get_args(t)[0]
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         if get_origin(t) is Annotated:

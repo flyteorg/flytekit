@@ -791,6 +791,27 @@ def test_union_type():
     assert v == "hello"
 
 
+def test_assert_dataclass_type():
+    @dataclass_json
+    @dataclass
+    class Args(object):
+        x: int
+        y: typing.Optional[str]
+
+    @dataclass_json
+    @dataclass
+    class Schema(object):
+        x: typing.Optional[Args] = None
+
+    pt = Schema
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContextManager.current_context()
+    gt = TypeEngine.guess_python_type(lt)
+    pv = Schema(x=Args(x=3, y="hello"))
+    DataclassTransformer().assert_type(typing.cast(DataClassJsonMixin, gt), pv)
+    DataclassTransformer().assert_type(typing.cast(DataClassJsonMixin, Schema), pv)
+
+
 def test_union_type_with_annotated():
     pt = typing.Union[
         Annotated[str, FlyteAnnotation({"hello": "world"})], Annotated[int, FlyteAnnotation({"test": 123})]
