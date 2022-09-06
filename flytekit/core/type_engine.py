@@ -282,9 +282,9 @@ class DataclassTransformer(TypeTransformer[object]):
         # def t1(a: Foo):
         #     ...
         #
-        # we use guess_python_type (FooSchema) as our expected_type by default if using flyte remote to execute the above workflow.
-        # FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo). Therefore, we can't
-        # use `assert type(v) == expected_type` here.
+        # we use guess_python_type (FooSchema) as our expected_type by default if using flyte remote to execute the above task.
+        # FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
+        # Therefore, we can't use `assert type(v) == expected_type` here.
 
         expected_fields_dict = {}
         for f in dataclasses.fields(expected_type):
