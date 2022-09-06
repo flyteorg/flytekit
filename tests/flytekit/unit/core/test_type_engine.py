@@ -806,7 +806,6 @@ def test_assert_dataclass_type():
 
     pt = Schema
     lt = TypeEngine.to_literal_type(pt)
-    ctx = FlyteContextManager.current_context()
     gt = TypeEngine.guess_python_type(lt)
     pv = Schema(x=Args(x=3, y="hello"))
     DataclassTransformer().assert_type(gt, pv)
