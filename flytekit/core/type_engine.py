@@ -270,9 +270,11 @@ class DataclassTransformer(TypeTransformer[object]):
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
 
-    def assert_type(self, expected_type: DataClassJsonMixin, v: T):
-        # Check the type of value in dataclass matches the expected_type by iterating all attributes
-        #
+    def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+        # Skip iterating all attributes in the dataclasses if the type of v already matches the expected_type
+        if type(v) == expected_type:
+            return
+
         # @dataclass_json
         # @dataclass
         # class Foo(object):
@@ -282,9 +284,12 @@ class DataclassTransformer(TypeTransformer[object]):
         # def t1(a: Foo):
         #     ...
         #
-        # we use guess_python_type (FooSchema) as our expected_type by default if using flyte remote to execute the above task.
-        # FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
-        # Therefore, we can't use `assert type(v) == expected_type` here.
+        # In above example, the type of v may not equal to the expected_type in some cases
+        # For example,
+        # 1. The input of t1 is another dataclass (bar), then we should raise an error
+        # 2. when Using flyte remote to execute the above task, the expected_type is guess_python_type (FooSchema) by default.
+        # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
+        # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
 
         expected_fields_dict = {}
         for f in dataclasses.fields(expected_type):
