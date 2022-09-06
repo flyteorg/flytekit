@@ -271,7 +271,7 @@ class DataclassTransformer(TypeTransformer[object]):
         super().__init__("Object-Dataclass-Transformer", object)
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
-        # Skip iterating all attributes in the dataclasses if the type of v already matches the expected_type
+        # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
         if type(v) == expected_type:
             return
 

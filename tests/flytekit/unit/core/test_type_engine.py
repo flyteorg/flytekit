@@ -35,6 +35,7 @@ from flytekit.core.type_engine import (
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
+    UnionTransformer,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -808,8 +809,14 @@ def test_assert_dataclass_type():
     ctx = FlyteContextManager.current_context()
     gt = TypeEngine.guess_python_type(lt)
     pv = Schema(x=Args(x=3, y="hello"))
-    DataclassTransformer().assert_type(typing.cast(DataClassJsonMixin, gt), pv)
-    DataclassTransformer().assert_type(typing.cast(DataClassJsonMixin, Schema), pv)
+    DataclassTransformer().assert_type(gt, pv)
+    DataclassTransformer().assert_type(Schema, pv)
+
+
+def test_union_transformer():
+    assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert not UnionTransformer.is_optional_type(str)
+    assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
 
 
 def test_union_type_with_annotated():
