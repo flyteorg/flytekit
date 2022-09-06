@@ -111,12 +111,6 @@ jobs:
           - python-version: 3.10
             plugin-names: "flytekit-whylogs"
     steps:
-      # - name: Set up postgres (linux)
-      #   if: runner.os == 'Linux' && matrix.plugin-names == 'flytekit-dbt'
-      #   shell: bash
-      #   run: |
-      #     sudo systemctl start postgresql.service
-      #     pg_isready
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
