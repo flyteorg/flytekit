@@ -811,6 +811,17 @@ def test_assert_dataclass_type():
     DataclassTransformer().assert_type(gt, pv)
     DataclassTransformer().assert_type(Schema, pv)
 
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+
+    pv = Bar(x=3)
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+    ):
+        DataclassTransformer().assert_type(gt, pv)
+
 
 def test_union_transformer():
     assert UnionTransformer.is_optional_type(typing.Optional[int])
