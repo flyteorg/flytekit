@@ -336,7 +336,7 @@ def transform_variable_map(
                 if hasattr(sub_type.python_type(), "__name__"):
                     res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
                 elif hasattr(sub_type.python_type(), "_name"):
-                    # If the class doesn't have the __name__ attribute, like sequence, use _name instead.
+                    # If the class doesn't have the __name__ attribute, like typing.Sequence, use _name instead.
                     res[k].type.metadata = {"python_class_name": sub_type.python_type()._name}
 
     return res
