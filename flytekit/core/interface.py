@@ -259,11 +259,11 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
 def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
     try:
         if hasattr(t, "__origin__") and hasattr(t, "__args__"):
-            if get_origin(t) == list:
+            if get_origin(t) is list:
                 return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
-            elif get_origin(t) == dict and t.__args__[0] == str:
+            elif get_origin(t) is dict and t.__args__[0] == str:
                 return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
-            elif get_origin(t) == typing.Union:
+            elif get_origin(t) is typing.Union:
                 return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]
             elif get_origin(t) is Annotated:
                 base_type, *config = get_args(t)
@@ -336,6 +336,7 @@ def transform_variable_map(
                 if hasattr(sub_type.python_type(), "__name__"):
                     res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
                 elif hasattr(sub_type.python_type(), "_name"):
+                    # If the class doesn't have the __name__ attribute, like sequence, use _name instead.
                     res[k].type.metadata = {"python_class_name": sub_type.python_type()._name}
 
     return res
