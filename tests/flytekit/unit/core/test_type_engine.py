@@ -35,6 +35,7 @@ from flytekit.core.type_engine import (
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
+    UnionTransformer,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -780,6 +781,43 @@ def test_union_type():
     assert lv.scalar.union.stored_type.structure.tag == "str"
     assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
     assert v == "hello"
+
+
+def test_assert_dataclass_type():
+    @dataclass_json
+    @dataclass
+    class Args(object):
+        x: int
+        y: typing.Optional[str]
+
+    @dataclass_json
+    @dataclass
+    class Schema(object):
+        x: typing.Optional[Args] = None
+
+    pt = Schema
+    lt = TypeEngine.to_literal_type(pt)
+    gt = TypeEngine.guess_python_type(lt)
+    pv = Schema(x=Args(x=3, y="hello"))
+    DataclassTransformer().assert_type(gt, pv)
+    DataclassTransformer().assert_type(Schema, pv)
+
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+
+    pv = Bar(x=3)
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+    ):
+        DataclassTransformer().assert_type(gt, pv)
+
+
+def test_union_transformer():
+    assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert not UnionTransformer.is_optional_type(str)
+    assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
 
 
 def test_union_type_with_annotated():
