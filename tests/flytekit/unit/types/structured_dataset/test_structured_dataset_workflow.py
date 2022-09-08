@@ -1,17 +1,12 @@
 import os
 import typing
 
-import pytest
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
+from typing_extensions import Annotated
 
 from flytekit import FlyteContext, FlyteContextManager, kwtypes, task, workflow
 from flytekit.models import literals
