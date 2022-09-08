@@ -135,7 +135,7 @@ class TestDBTTest:
                 )
             )
 
-    def test_task_outputt(self):
+    def test_task_output(self):
         dbt_test_task = DBTTest(
             name="test-task",
         )
