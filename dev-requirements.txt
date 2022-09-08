@@ -8,7 +8,9 @@
     # via
     #   -c requirements.txt
     #   pytest-flyte
-arrow==1.2.2
+appnope==0.1.3
+    # via ipython
+arrow==1.2.3
     # via
     #   -c requirements.txt
     #   jinja2-time
@@ -20,7 +22,7 @@ attrs==20.3.0
     #   pytest-docker
 backcall==0.2.0
     # via ipython
-bcrypt==3.2.2
+bcrypt==4.0.0
     # via paramiko
 binaryornot==0.4.4
     # via
@@ -37,7 +39,6 @@ certifi==2022.6.15
 cffi==1.15.1
     # via
     #   -c requirements.txt
-    #   bcrypt
     #   cryptography
     #   pynacl
 cfgv==3.3.1
@@ -46,7 +47,7 @@ chardet==5.0.0
     # via
     #   -c requirements.txt
     #   binaryornot
-charset-normalizer==2.1.0
+charset-normalizer==2.1.1
     # via
     #   -c requirements.txt
     #   requests
@@ -55,11 +56,11 @@ click==8.1.3
     #   -c requirements.txt
     #   cookiecutter
     #   flytekit
-cloudpickle==2.1.0
+cloudpickle==2.2.0
     # via
     #   -c requirements.txt
     #   flytekit
-codespell==2.1.0
+codespell==2.2.1
     # via -r dev-requirements.in
 cookiecutter==2.1.1
     # via
@@ -69,16 +70,15 @@ coverage[toml]==6.4.4
     # via
     #   -r dev-requirements.in
     #   pytest-cov
-croniter==1.3.5
+croniter==1.3.7
     # via
     #   -c requirements.txt
     #   flytekit
-cryptography==37.0.4
+cryptography==38.0.1
     # via
     #   -c requirements.txt
     #   paramiko
     #   pyopenssl
-    #   secretstorage
 dataclasses-json==0.5.7
     # via
     #   -c requirements.txt
@@ -96,11 +96,11 @@ diskcache==5.4.0
     # via
     #   -c requirements.txt
     #   flytekit
-distlib==0.3.5
+distlib==0.3.6
     # via virtualenv
 distro==1.7.0
     # via docker-compose
-docker[ssh]==5.0.3
+docker[ssh]==6.0.0
     # via
     #   -c requirements.txt
     #   docker-compose
@@ -115,34 +115,34 @@ dockerpty==0.4.1
     # via docker-compose
 docopt==0.6.2
     # via docker-compose
-docstring-parser==0.14.1
+docstring-parser==0.15
     # via
     #   -c requirements.txt
     #   flytekit
 filelock==3.8.0
     # via virtualenv
-flyteidl==1.1.12
+flyteidl==1.1.14
     # via
     #   -c requirements.txt
     #   flytekit
-google-api-core[grpc]==2.8.2
+google-api-core[grpc]==2.10.0
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
     #   google-cloud-core
-google-auth==2.10.0
+google-auth==2.11.0
     # via
     #   google-api-core
     #   google-cloud-core
-google-cloud-bigquery==3.3.1
+google-cloud-bigquery==3.3.2
     # via -r dev-requirements.in
-google-cloud-bigquery-storage==2.14.2
+google-cloud-bigquery-storage==2.15.0
     # via
     #   -r dev-requirements.in
     #   google-cloud-bigquery
 google-cloud-core==2.3.2
     # via google-cloud-bigquery
-google-crc32c==1.3.0
+google-crc32c==1.5.0
     # via google-resumable-media
 google-resumable-media==2.3.3
     # via google-cloud-bigquery
@@ -152,19 +152,19 @@ googleapis-common-protos==1.56.4
     #   flyteidl
     #   google-api-core
     #   grpcio-status
-grpcio==1.47.0
+grpcio==1.48.1
     # via
     #   -c requirements.txt
     #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
     #   grpcio-status
-grpcio-status==1.47.0
+grpcio-status==1.48.1
     # via
     #   -c requirements.txt
     #   flytekit
     #   google-api-core
-identify==2.5.3
+identify==2.5.5
     # via pre-commit
 idna==3.3
     # via
@@ -185,13 +185,12 @@ iniconfig==1.1.1
     # via pytest
 ipython==7.34.0
     # via -r dev-requirements.in
-jedi==0.18.1
-    # via ipython
-jeepney==0.8.0
+jaraco-classes==3.2.2
     # via
     #   -c requirements.txt
     #   keyring
-    #   secretstorage
+jedi==0.18.1
+    # via ipython
 jinja2==3.1.2
     # via
     #   -c requirements.txt
@@ -211,7 +210,7 @@ jsonschema==3.2.0
     # via
     #   -c requirements.txt
     #   docker-compose
-keyring==23.8.2
+keyring==23.9.1
     # via
     #   -c requirements.txt
     #   flytekit
@@ -219,7 +218,7 @@ markupsafe==2.1.1
     # via
     #   -c requirements.txt
     #   jinja2
-marshmallow==3.17.0
+marshmallow==3.17.1
     # via
     #   -c requirements.txt
     #   dataclasses-json
@@ -233,10 +232,14 @@ marshmallow-jsonschema==0.13.0
     # via
     #   -c requirements.txt
     #   flytekit
-matplotlib-inline==0.1.5
+matplotlib-inline==0.1.6
     # via ipython
 mock==4.0.3
     # via -r dev-requirements.in
+more-itertools==8.14.0
+    # via
+    #   -c requirements.txt
+    #   jaraco-classes
 mypy==0.971
     # via -r dev-requirements.in
 mypy-extensions==0.4.3
@@ -244,7 +247,7 @@ mypy-extensions==0.4.3
     #   -c requirements.txt
     #   mypy
     #   typing-inspect
-natsort==8.1.0
+natsort==8.2.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -259,6 +262,7 @@ numpy==1.21.6
 packaging==21.3
     # via
     #   -c requirements.txt
+    #   docker
     #   google-cloud-bigquery
     #   marshmallow
     #   pytest
@@ -280,9 +284,9 @@ pluggy==1.0.0
     # via pytest
 pre-commit==2.20.0
     # via -r dev-requirements.in
-prompt-toolkit==3.0.30
+prompt-toolkit==3.0.31
     # via ipython
-proto-plus==1.22.0
+proto-plus==1.22.1
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
@@ -340,7 +344,7 @@ pyrsistent==0.18.1
     # via
     #   -c requirements.txt
     #   jsonschema
-pytest==7.1.2
+pytest==7.1.3
     # via
     #   -r dev-requirements.in
     #   pytest-cov
@@ -360,7 +364,7 @@ python-dateutil==2.8.2
     #   flytekit
     #   google-cloud-bigquery
     #   pandas
-python-dotenv==0.20.0
+python-dotenv==0.21.0
     # via docker-compose
 python-json-logger==2.0.4
     # via
@@ -386,7 +390,7 @@ pyyaml==5.4.1
     #   docker-compose
     #   flytekit
     #   pre-commit
-regex==2022.7.25
+regex==2022.8.17
     # via
     #   -c requirements.txt
     #   docker-image-py
@@ -410,10 +414,6 @@ retry==0.9.2
     #   flytekit
 rsa==4.9
     # via google-auth
-secretstorage==3.3.3
-    # via
-    #   -c requirements.txt
-    #   keyring
 singledispatchmethod==1.0
     # via
     #   -c requirements.txt
@@ -467,17 +467,18 @@ typing-extensions==4.3.0
     #   responses
     #   torch
     #   typing-inspect
-typing-inspect==0.7.1
+typing-inspect==0.8.0
     # via
     #   -c requirements.txt
     #   dataclasses-json
-urllib3==1.26.11
+urllib3==1.26.12
     # via
     #   -c requirements.txt
+    #   docker
     #   flytekit
     #   requests
     #   responses
-virtualenv==20.16.3
+virtualenv==20.16.5
     # via pre-commit
 wcwidth==0.2.5
     # via prompt-toolkit
