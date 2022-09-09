@@ -147,8 +147,8 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Bar(object):
-        v: typing.Optional[int]
-        w: typing.Optional[str]
+        v: typing.Union[int, None]
+        w: typing.Union[None, str]
         x: float
         y: str
         z: typing.Dict[str, bool]
