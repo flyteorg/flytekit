@@ -99,6 +99,12 @@ Note: This command only works on regular Python packages, not namespace packages
     type=str,
     help="Version the package or module is registered with",
 )
+@click.option(
+    "--deref-symlinks",
+    default=False,
+    is_flag=True,
+    help="Enables symlink dereferencing when packaging files in fast registration",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -111,6 +117,7 @@ def register(
     service_account: str,
     raw_data_prefix: str,
     version: typing.Optional[str],
+    deref_symlinks: bool,
     package_or_module: typing.Tuple[str],
 ):
     """
@@ -142,7 +149,7 @@ def register(
     # Create a zip file containing all the entries.
     detected_root = find_common_root(package_or_module)
     cli_logger.debug(f"Using {detected_root} as root folder for project")
-    zip_file = fast_package(detected_root, output)
+    zip_file = fast_package(detected_root, output, deref_symlinks)
 
     # Upload zip file to Admin using FlyteRemote.
     md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
