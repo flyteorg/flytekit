@@ -4,7 +4,7 @@ PLUGIN_NAME = "sqlalchemy"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<1.2.0", "sqlalchemy>=1.4.7"]
+plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "sqlalchemy>=1.4.7"]
 
 __version__ = "0.0.0+develop"
 
