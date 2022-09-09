@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Optional
 
-from flyteidl.admin import entity_description_pb2 as _entity_description_pb2
+from flyteidl.admin import description_entity_pb2
 
 from flytekit.models import common as _common_models
 
@@ -20,8 +20,13 @@ class LongDescription(_common_models.FlyteIdlEntity):
     icon_link: Optional[str] = ""
     format: DescriptionFormat = DescriptionFormat.RST
 
+    def to_flyte_idl(self):
+        return description_entity_pb2.LongDescription(
+            values=self.values, uri=self.uri, long_format=self.format.value, icon_link=self.icon_link
+        )
+
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _entity_description_pb2.LongDescription) -> "LongDescription":
+    def from_flyte_idl(cls, pb2_object: description_entity_pb2.LongDescription) -> "LongDescription":
         return cls(
             values=pb2_object.values,
             uri=pb2_object.uri,
@@ -29,40 +34,20 @@ class LongDescription(_common_models.FlyteIdlEntity):
             icon_link=pb2_object.icon_link,
         )
 
-    def to_flyte_idl(self):
-        return _entity_description_pb2.LongDescription(
-            values=self.values, uri=self.uri, long_format=self.format.value, icon_link=self.icon_link
-        )
-
 
 @dataclass
 class SourceCode(_common_models.FlyteIdlEntity):
-    file: Optional[str] = None
-    line_number: Optional[int] = None
-    repo: Optional[str] = None
-    branch: Optional[str] = None
     link: Optional[str] = None
-    language: Optional[str] = None
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object: _entity_description_pb2.SourceCode) -> "SourceCode":
-        return cls(
-            file=pb2_object.file,
-            line_number=pb2_object.line_number,
-            repo=pb2_object.repo,
-            branch=pb2_object.branch,
-            link=pb2_object.link,
-            language=pb2_object.language,
-        )
 
     def to_flyte_idl(self):
-        return _entity_description_pb2.SourceCode(
-            file=self.file,
-            line_number=self.line_number,
-            repo=self.repo,
-            branch=self.branch,
+        return description_entity_pb2.SourceCode(
             link=self.link,
-            language=self.language,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: description_entity_pb2.SourceCode) -> "SourceCode":
+        return cls(
+            link=pb2_object.link,
         )
 
 
@@ -70,26 +55,26 @@ class SourceCode(_common_models.FlyteIdlEntity):
 class Documentation(_common_models.FlyteIdlEntity):
 
     short_description: str
-    long_description: LongDescription
+    long_description: Optional[LongDescription] = None
     source_code: Optional[SourceCode] = None
     tags: Optional[List[str]] = None
     labels: Optional[Dict[str, str]] = None
 
+    def to_flyte_idl(self):
+        return description_entity_pb2.DescriptionEntity(
+            short_description=self.short_description,
+            long_description=self.long_description.to_flyte_idl() if self.long_description else None,
+            tags=self.tags,
+            labels=self.labels,
+            source_code=self.source_code.to_flyte_idl() if self.source_code else None,
+        )
+
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _entity_description_pb2.EntityDescription) -> "Documentation":
+    def from_flyte_idl(cls, pb2_object: description_entity_pb2.DescriptionEntity) -> "Documentation":
         return cls(
             short_description=pb2_object.short_description,
             long_description=LongDescription.from_flyte_idl(pb2_object.long_description),
             source_code=SourceCode.from_flyte_idl(pb2_object.source_code),
             tags=pb2_object.tags,
             labels=pb2_object.labels,
-        )
-
-    def to_flyte_idl(self):
-        return _entity_description_pb2.EntityDescription(
-            short_description=self.short_description,
-            long_description=self.long_description.to_flyte_idl() if self.long_description else None,
-            tags=self.tags,
-            labels=self.labels,
-            source=self.source_code.to_flyte_idl() if self.source_code else None,
         )

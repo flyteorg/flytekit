@@ -481,12 +481,11 @@ class TaskTemplate(_common.FlyteIdlEntity):
 
 
 class TaskSpec(_common.FlyteIdlEntity):
-    def __init__(self, template, entity_description):
+    def __init__(self, template):
         """
         :param TaskTemplate template:
         """
         self._template = template
-        self._entity_description = entity_description
 
     @property
     def template(self):
@@ -495,20 +494,12 @@ class TaskSpec(_common.FlyteIdlEntity):
         """
         return self._template
 
-    @property
-    def entity_description(self):
-        """
-        :rtype: Documentation
-        """
-        return self._entity_description
-
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.tasks_pb2.TaskSpec
         """
         return _admin_task.TaskSpec(
             template=self.template.to_flyte_idl(),
-            entity_description=self.entity_description.to_flyte_idl() if self._entity_description else None,
         )
 
     @classmethod
@@ -519,7 +510,6 @@ class TaskSpec(_common.FlyteIdlEntity):
         """
         return cls(
             TaskTemplate.from_flyte_idl(pb2_object.template),
-            Documentation.from_flyte_idl(pb2_object.entity_description),
         )
 
 

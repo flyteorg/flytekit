@@ -462,6 +462,8 @@ class FlyteRemote(object):
         :return:
         """
         ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        print(entity.docs)
+        self.client.create_description_entity(ident, entity.docs)
         ft = self.fetch_task(
             ident.project,
             ident.domain,

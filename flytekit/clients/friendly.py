@@ -2,6 +2,7 @@ import datetime
 import typing
 
 from flyteidl.admin import common_pb2 as _common_pb2
+from flyteidl.admin import description_entity_pb2 as _description_entity_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
 from flyteidl.admin import matchable_resource_pb2 as _matchable_resource_pb2
@@ -1002,5 +1003,36 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 content_md5=content_md5,
                 filename=filename,
                 expires_in=expires_in_pb,
+            )
+        )
+
+    ####################################################################################################################
+    #
+    #  Description Entity Endpoints
+    #
+    ####################################################################################################################
+
+    def create_description_entity(self, description_entity_identifer, description_entity):
+        """
+        This will create a task definition in the Admin database. Once successful, the task object can be
+        retrieved via the client or viewed via the UI or command-line interfaces.
+
+        .. note ::
+
+            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+            the database must match the existing definition exactly. Furthermore, as long as the request
+            remains identical, calling this method multiple times will result in success.
+
+        :param flytekit.models.core.identifier.Identifier task_identifer: The identifier for this task.
+        :param flytekit.models.task.TaskSpec task_spec: This is the actual definition of the task that
+            should be created.
+        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
+            task is found, this exception is raised.  The client might choose to ignore this exception because the
+            identical task is already registered.
+        :raises grpc.RpcError:
+        """
+        super(SynchronousFlyteClient, self).create_description_entity(
+            _description_entity_pb2.DescriptionEntityCreateRequest(
+                id=description_entity_identifer.to_flyte_idl(), description_entity=description_entity.to_flyte_idl()
             )
         )
