@@ -505,6 +505,9 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if get_origin(t) is typing.Union and type(None) in get_args(t):
             # Handle optional type. e.g. Optional[int], Optional[dataclass]
+            # Marshmallow doesn't support union type, so the type here is always an optional type.
+            # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
+            # Note: Typing.Union[None, int] is also an optional type, but Marshmallow does not support it.
             return self._fix_val_int(get_args(t)[0], val)
 
         if dataclasses.is_dataclass(t):

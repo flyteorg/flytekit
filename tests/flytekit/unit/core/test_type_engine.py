@@ -149,7 +149,7 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass()
     class Bar(object):
         v: typing.Union[int, None]
-        w: typing.Union[None, str]
+        w: typing.Optional[str]
         x: float
         y: str
         z: typing.Dict[str, bool]
