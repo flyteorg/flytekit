@@ -51,7 +51,14 @@ def _read_from_bq(
     frames = []
     for message in reader.rows().pages:
         frames.append(message.to_dataframe())
-    return pd.concat(frames)
+    if len(frames) > 0:
+        df = pd.concat(frames)
+    else:
+        schema = pa.ipc.read_schema(
+            pa.py_buffer(read_session.arrow_schema.serialized_schema)
+        )
+        df = schema.empty_table().to_pandas()
+    return df
 
 
 class PandasToBQEncodingHandlers(StructuredDatasetEncoder):
