@@ -20,8 +20,8 @@ def _sanitize_resource_name(resource: _task_models.Resources.ResourceEntry) -> s
 
 class Pod(object):
     """
-    Pod is a platform-wide configuration that uses pod templates. Every default task is launched as a container in a pod.
-    They expose a fully modifiable Kubernetes pod spec that is used to customize the task execution runtime.
+    Pod is a platform-wide configuration that uses pod templates. By default, every task is launched as a container in a pod.
+    This plugin helps expose a fully modifiable Kubernetes pod spec to customize the task execution runtime.
     To use pod tasks:
     1. Define a pod spec;
     2. Specify the primary container name.
