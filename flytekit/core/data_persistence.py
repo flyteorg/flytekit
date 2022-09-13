@@ -171,6 +171,10 @@ class DataPersistencePlugins(object):
         """
         return protocol in cls._PLUGINS
 
+    @classmethod
+    def supported_protocols(cls) -> typing.List[str]:
+        return [k for k in cls._PLUGINS.keys()]
+
 
 class DiskPersistence(DataPersistence):
     """

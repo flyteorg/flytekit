@@ -1,5 +1,6 @@
 import typing
 
+import pandas as pd
 from pyspark.sql.dataframe import DataFrame
 
 from flytekit import FlyteContext
@@ -7,11 +8,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    ABFS,
-    GCS,
-    LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -19,9 +16,19 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
+class SparkDataFrameRenderer:
+    """
+    Render a Spark dataframe schema as an HTML table.
+    """
+
+    def to_html(self, df: DataFrame) -> str:
+        assert isinstance(df, DataFrame)
+        return pd.DataFrame(df.schema, columns=["StructField"]).to_html()
+
+
 class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, protocol: str):
-        super().__init__(DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(DataFrame, None, PARQUET)
 
     def encode(
         self,
@@ -36,8 +43,8 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
 
 
 class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self, protocol: str):
-        super().__init__(DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(DataFrame, None, PARQUET)
 
     def decode(
         self,
@@ -52,6 +59,6 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
         return user_ctx.spark_session.read.parquet(flyte_value.uri)
 
 
-for protocol in [LOCAL, S3, GCS, ABFS]:
-    StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler(protocol), default_for_type=False)
-    StructuredDatasetTransformerEngine.register(ParquetToSparkDecodingHandler(protocol), default_for_type=False)
+StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToSparkDecodingHandler())
+StructuredDatasetTransformerEngine.register_renderer(DataFrame, SparkDataFrameRenderer())

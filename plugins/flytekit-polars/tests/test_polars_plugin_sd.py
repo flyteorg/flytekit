@@ -1,10 +1,7 @@
-import flytekitplugins.polars  # noqa F401
+import pandas as pd
 import polars as pl
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
+from flytekitplugins.polars.sd_transformers import PolarsDataFrameRenderer
+from typing_extensions import Annotated
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import PARQUET, StructuredDataset
@@ -62,3 +59,10 @@ def test_polars_workflow_full():
 
     result = wf()
     assert result is not None
+
+
+def test_polars_renderer():
+    df = pl.DataFrame({"col1": [1, 3, 2], "col2": list("abc")})
+    assert PolarsDataFrameRenderer().to_html(df) == pd.DataFrame(
+        df.describe().transpose(), columns=df.describe().columns
+    ).to_html(index=False)

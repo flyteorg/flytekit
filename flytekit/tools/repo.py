@@ -75,6 +75,7 @@ def package(
     source: str = ".",
     output: str = "./flyte-package.tgz",
     fast: bool = False,
+    deref_symlinks: bool = False,
 ):
     """
     Package the given entities and the source code (if fast is enabled) into a package with the given name in output
@@ -82,6 +83,7 @@ def package(
     :param source: source folder
     :param output: output package name with suffix
     :param fast: fast enabled implies source code is bundled
+    :param deref_symlinks: if enabled then symlinks are dereferenced during packaging
     """
     if not registrable_entities:
         raise NoSerializableEntitiesError("Nothing to package")
@@ -95,7 +97,7 @@ def package(
             if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
                 click.secho(f"{output} already exists within {source}, deleting and re-creating it", fg="yellow")
                 os.remove(output)
-            archive_fname = fast_registration.fast_package(source, output_tmpdir)
+            archive_fname = fast_registration.fast_package(source, output_tmpdir, deref_symlinks)
             click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
         with tarfile.open(output, "w:gz") as tar:
@@ -110,13 +112,14 @@ def serialize_and_package(
     source: str = ".",
     output: str = "./flyte-package.tgz",
     fast: bool = False,
+    deref_symlinks: bool = False,
     options: typing.Optional[Options] = None,
 ):
     """
     Fist serialize and then package all entities
     """
     registrable_entities = serialize(pkgs, settings, source, options=options)
-    package(registrable_entities, source, output, fast)
+    package(registrable_entities, source, output, fast, deref_symlinks)
 
 
 def register(

@@ -34,3 +34,6 @@ jupyter                     # papermill
 pyspark                     # spark
 sqlalchemy                  # sqlalchemy
 torch                       # pytorch
+skl2onnx                    # onnxscikitlearn
+tf2onnx                     # onnxtensorflow
+tensorflow                  # onnxtensorflow

@@ -6,7 +6,7 @@ import logging
 import os
 import pathlib
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast
 
 import click
@@ -15,11 +15,17 @@ from pytimeparse import parse
 from typing_extensions import get_args
 
 from flytekit import BlobType, Literal, Scalar
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
+from flytekit.clis.sdk_in_container.constants import (
+    CTX_CONFIG_FILE,
+    CTX_DOMAIN,
+    CTX_MODULE,
+    CTX_PROJECT,
+    CTX_PROJECT_ROOT,
+)
 from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.core import context_manager, tracker
+from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
@@ -27,7 +33,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.interface import Variable
-from flytekit.models.literals import Blob, BlobMetadata, Primitive
+from flytekit.models.literals import Blob, BlobMetadata, Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
@@ -88,7 +94,7 @@ class FileParamType(click.ParamType):
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if FileAccessProvider.is_remote(value):
-            return FileParam(filepath=value)
+            return FileParam(filepath=value, local=False)
         p = pathlib.Path(value)
         if p.exists() and p.is_file():
             return FileParam(filepath=str(p.resolve()))
@@ -264,8 +270,7 @@ class FlyteLiteralConverter(object):
                 # and then use flyte converter to convert it to literal.
                 python_val = converter._click_type.convert(value, param, ctx)
                 literal = converter.convert_to_literal(ctx, param, python_val)
-                self._python_type = python_type
-                return literal
+                return Literal(scalar=Scalar(union=Union(literal, variant)))
             except (Exception or AttributeError) as e:
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
@@ -480,14 +485,12 @@ def get_entities_in_file(filename: str) -> Entities:
     workflows = []
     tasks = []
     module = importlib.import_module(module_name)
-    for k in dir(module):
-        o = module.__dict__[k]
-        if isinstance(o, PythonFunctionWorkflow):
-            _, _, fn, _ = tracker.extract_task_module(o)
-            workflows.append(fn)
+    for name in dir(module):
+        o = module.__dict__[name]
+        if isinstance(o, WorkflowBase):
+            workflows.append(name)
         elif isinstance(o, PythonTask):
-            _, _, fn, _ = tracker.extract_task_module(o)
-            tasks.append(fn)
+            tasks.append(name)
 
     return Entities(workflows, tasks)
 
@@ -512,13 +515,38 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             return
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+        config_file = ctx.obj.get(CTX_CONFIG_FILE)
+
+        # Images come from three places:
+        # * The default flytekit images, which are already supplied by the base run_level_params.
+        # * The images provided by the user on the command line.
+        # * The images provided by the user via the config file, if there is one. (Images on the command line should
+        #   override all).
+        #
+        # However, the run_level_params already contains both the default flytekit images (lowest priority), as well
+        # as the images from the command line (highest priority). So when we read from the config file, we only
+        # want to add in the images that are missing, including the default, if that's also missing.
+        image_config_from_parent_cmd = run_level_params.get("image_config", None)
+        additional_image_names = set([v.name for v in image_config_from_parent_cmd.images])
+        new_additional_images = [v for v in image_config_from_parent_cmd.images]
+        new_default = image_config_from_parent_cmd.default_image
+        if config_file:
+            cfg_ic = ImageConfig.auto(config_file=config_file)
+            new_default = new_default or cfg_ic.default_image
+            for addl in cfg_ic.images:
+                if addl.name not in additional_image_names:
+                    new_additional_images.append(addl)
+
+        image_config = replace(image_config_from_parent_cmd, default_image=new_default, images=new_additional_images)
 
         remote_entity = remote.register_script(
             entity,
             project=project,
             domain=domain,
-            image_config=run_level_params.get("image_config", None),
+            image_config=image_config,
             destination_dir=run_level_params.get("destination_dir"),
+            source_path=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT_ROOT),
+            module_name=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_MODULE),
         )
 
         options = None
@@ -579,11 +607,16 @@ class WorkflowCommand(click.MultiCommand):
             )
 
         project_root = _find_project_root(self._filename)
+
         # Find the relative path for the filename relative to the root of the project.
         # N.B.: by construction project_root will necessarily be an ancestor of the filename passed in as
         # a parameter.
         rel_path = self._filename.relative_to(project_root)
         module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
+
+        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
+        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
+
         entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object

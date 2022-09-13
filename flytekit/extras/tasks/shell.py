@@ -132,7 +132,8 @@ class ShellTask(PythonInstanceTask[T]):
             script_file = os.path.abspath(script_file)
 
         if task_config is not None:
-            if str(type(task_config)) != "flytekitplugins.pod.task.Pod":
+            fully_qualified_class_name = task_config.__module__ + "." + task_config.__class__.__name__
+            if not fully_qualified_class_name == "flytekitplugins.pod.task.Pod":
                 raise ValueError("TaskConfig can either be empty - indicating simple container task or a PodConfig.")
 
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used

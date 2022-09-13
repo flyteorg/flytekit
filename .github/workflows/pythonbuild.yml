@@ -83,6 +83,7 @@ jobs:
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
+          - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy

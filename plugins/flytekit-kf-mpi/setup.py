@@ -4,7 +4,7 @@ PLUGIN_NAME = "kfmpi"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<1.2.0", "flyteidl>=0.21.4"]
+plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "flyteidl>=0.21.4"]
 
 __version__ = "0.0.0+develop"
 

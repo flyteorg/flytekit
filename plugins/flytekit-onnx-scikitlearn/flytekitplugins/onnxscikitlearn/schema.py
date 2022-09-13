@@ -21,6 +21,26 @@ from flytekit.types.file import ONNXFile
 @dataclass_json
 @dataclass
 class ScikitLearn2ONNXConfig:
+    """
+    ScikitLearn2ONNXConfig is the config used during the scikitlearn to ONNX conversion.
+
+    Args:
+      initial_types: The types of the inputs to the model.
+      name: The name of the graph in the produced ONNX model.
+      doc_string: A string attached onto the produced ONNX model.
+      target_opset: The ONNX opset number.
+      custom_conversion_functions: A dictionary for specifying the user customized conversion function.
+      custom_shape_calculators: A dictionary for specifying the user customized shape calculator.
+      custom_parsers: Parsers determine which outputs are expected for which particular task.
+      options: Specific options given to converters.
+      intermediate: If True, the function returns the converted model and the instance of Topology used, else, it returns the converted model.
+      naming: Change the way intermediates are named.
+      white_op: White list of ONNX nodes allowed while converting a pipeline.
+      black_op: Black list of ONNX nodes disallowed while converting a pipeline.
+      verbose: Display progress while converting a model.
+      final_types: Used to overwrite the type (if type is not None) and the name of every output.
+    """
+
     initial_types: List[Tuple[str, Type]]
     name: Optional[str] = None
     doc_string: str = ""
@@ -30,7 +50,7 @@ class ScikitLearn2ONNXConfig:
     custom_parsers: Dict[Callable[..., Any], Callable[..., None]] = field(default_factory=dict)
     options: Dict[Any, Any] = field(default_factory=dict)
     intermediate: bool = False
-    naming: Union[str, Callable[..., Any]] = None
+    naming: Optional[Union[str, Callable[..., Any]]] = None
     white_op: Optional[Set[str]] = None
     black_op: Optional[Set[str]] = None
     verbose: int = 0

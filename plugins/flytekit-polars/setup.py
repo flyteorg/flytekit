@@ -5,7 +5,7 @@ PLUGIN_NAME = "polars"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "flytekit>=1.1.0b0,<1.2.0",
+    "flytekit>=1.1.0b0,<2.0.0",
     "polars>=0.8.27",
 ]
 
@@ -35,4 +35,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
