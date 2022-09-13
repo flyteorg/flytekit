@@ -53,8 +53,12 @@ def test_types_pandas():
     pt = pd.DataFrame
     lt = TypeEngine.to_literal_type(pt)
     assert lt.structured_dataset_type is not None
-    assert lt.structured_dataset_type.format == PARQUET
+    assert lt.structured_dataset_type.format == ""
     assert lt.structured_dataset_type.columns == []
+
+    pt = Annotated[pd.DataFrame, "csv"]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.structured_dataset_type.format == "csv"
 
 
 def test_annotate_extraction():
