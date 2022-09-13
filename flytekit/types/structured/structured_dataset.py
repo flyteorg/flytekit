@@ -128,14 +128,14 @@ def extract_cols_and_format(
         optional str for the format,
         optional pyarrow Schema
     """
-    fmt = None
+    fmt = ""
     ordered_dict_cols = None
     pa_schema = None
     if get_origin(t) is Annotated:
         base_type, *annotate_args = get_args(t)
         for aa in annotate_args:
             if isinstance(aa, StructuredDatasetFormat):
-                if fmt is not None:
+                if fmt != "":
                     raise ValueError(f"A format was already specified {fmt}, cannot use {aa}")
                 fmt = aa
             elif isinstance(aa, collections.OrderedDict):
@@ -334,16 +334,17 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
     Renderers: Dict[Type, Renderable] = {}
 
-    @staticmethod
-    def _finder(handler_map, df_type: Type, protocol: str, format: str):
+    @classmethod
+    def _finder(cls, handler_map, df_type: Type, protocol: str, format: str):
         try:
             return handler_map[df_type][protocol][format]
         except KeyError:
             try:
-                hh = handler_map[df_type][protocol][""]
+                default_format = cls.DEFAULT_FORMATS.get(df_type, None) or PARQUET
+                hh = handler_map[df_type][protocol][default_format]
                 logger.info(
                     f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"
-                    f" format {format}, using default instead."
+                    f" format {format}, using default {default_format} instead."
                 )
                 return hh
             except KeyError:
@@ -517,7 +518,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 python_val,
                 df_type,
                 protocol,
-                sdt.format or typing.cast(StructuredDataset, python_val).DEFAULT_FILE_FORMAT,
+                sdt.format,
                 sdt,
             )
 
@@ -762,17 +763,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # Get the column information
         converted_cols = self._convert_ordered_dict_of_columns_to_list(column_map)
 
-        # Get the format
-        default_format = (
-            original_python_type.DEFAULT_FILE_FORMAT
-            if issubclass(original_python_type, StructuredDataset)
-            else self.DEFAULT_FORMATS.get(original_python_type, PARQUET)
-        )
-        fmt = storage_format or default_format
-
         return StructuredDatasetType(
             columns=converted_cols,
-            format=fmt,
+            format=storage_format,
             external_schema_type="arrow" if pa_schema else None,
             external_schema_bytes=typing.cast(pa.lib.Schema, pa_schema).to_string().encode() if pa_schema else None,
         )
