@@ -1,4 +1,5 @@
 import os
+import typing
 from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -89,12 +90,17 @@ def _ipython_check() -> bool:
     return is_ipython
 
 
-def _get_deck(new_user_params: ExecutionParameters) -> str:
+def _get_deck(new_user_params: ExecutionParameters) -> typing.Union[str, "IPython.core.display.HTML"]:
     """
     Get flyte deck html string
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
-    return template.render(metadata=deck_map)
+    raw_html = template.render(metadata=deck_map)
+    if _ipython_check():
+        from IPython.core.display import HTML
+
+        return HTML(raw_html)
+    return raw_html
 
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):

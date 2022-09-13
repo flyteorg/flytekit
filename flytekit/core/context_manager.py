@@ -617,7 +617,26 @@ class FlyteContext(object):
         """
         return FlyteContextManager.current_context()
 
-    def get_deck(self) -> str:
+    def get_deck(self) -> typing.Union[str, "IPython.core.display.HTML"]:
+        """
+        Returns the deck that was created as part of the last execution.
+
+        The return value depends on the execution environment. In a notebook, the return value is compatible with
+        IPython.display and should be rendered in the notebook.
+
+        .. code-block:: python
+
+            with flytekit.new_context() as ctx:
+                my_task(...)
+            ctx.get_deck()
+
+        OR if you wish to explicity display
+
+        .. code-block:: python
+
+            from IPython import display
+            display(ctx.get_deck())
+        """
         from flytekit.deck.deck import _get_deck
 
         return _get_deck(self.execution_state.user_space_params)
