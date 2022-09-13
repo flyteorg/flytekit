@@ -119,9 +119,9 @@ def test_types_sd():
 
 def test_retrieving():
     assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET) is not None
-    with pytest.raises(ValueError):
-        # We don't have a default "" format encoder
-        StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", "")
+    assert StructuredDatasetTransformerEngine.get_encoder(
+        pd.DataFrame, "file", ""
+    ) is StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET)
 
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self, protocol):
@@ -388,8 +388,9 @@ def test_format_correct():
     assert df_literal_type.structured_dataset_type.format == "avro"
 
     sd = annotated_sd_type(df)
-    with pytest.raises(ValueError):
-        TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
+    lt = TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
+    # We haven't registered avro encoder, so here use default parquet encoder instead
+    assert lt.scalar.structured_dataset.metadata.structured_dataset_type.format == PARQUET
 
     StructuredDatasetTransformerEngine.register(TempEncoder(), default_for_type=False)
     sd2 = annotated_sd_type(df)

@@ -340,7 +340,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return handler_map[df_type][protocol][format]
         except KeyError:
             try:
-                default_format = cls.DEFAULT_FORMATS.get(df_type, "")
+                default_format = cls.DEFAULT_FORMATS.get(df_type, PARQUET)
                 hh = handler_map[df_type][protocol][default_format]
                 logger.info(
                     f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"
@@ -523,11 +523,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             )
 
         # Otherwise assume it's a dataframe instance. Wrap it with some defaults
-        if python_type in self.DEFAULT_FORMATS:
-            fmt = self.DEFAULT_FORMATS[python_type]
-        else:
-            logger.debug(f"No default format for type {python_type}, using system default.")
-            fmt = StructuredDataset.DEFAULT_FILE_FORMAT
+        fmt = self.DEFAULT_FORMATS.get(python_type, "")
         protocol = self._protocol_from_type_or_prefix(ctx, python_type)
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
 

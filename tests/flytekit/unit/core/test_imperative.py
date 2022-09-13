@@ -373,6 +373,4 @@ def test_nonfunction_task_and_df_input():
 
     assert len(wf_spec.template.interface.outputs) == 1
     assert wf_spec.template.interface.outputs["output_from_t3"].type.structured_dataset_type is not None
-    assert wf_spec.template.interface.outputs["output_from_t3"].type.structured_dataset_type == StructuredDatasetType(
-        format="parquet"
-    )
+    assert wf_spec.template.interface.outputs["output_from_t3"].type.structured_dataset_type.format == ""
