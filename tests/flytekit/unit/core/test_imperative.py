@@ -16,7 +16,6 @@ from flytekit.models import literals as literal_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDatasetType
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(

@@ -72,7 +72,7 @@ def test_annotate_extraction():
     a, b, c, d = extract_cols_and_format(pd.DataFrame)
     assert a is pd.DataFrame
     assert b is None
-    assert c is ""
+    assert c == ""
     assert d is None
 
 
