@@ -340,7 +340,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return handler_map[df_type][protocol][format]
         except KeyError:
             try:
-                default_format = cls.DEFAULT_FORMATS.get(df_type, None) or PARQUET
+                default_format = cls.DEFAULT_FORMATS.get(df_type, "")
                 hh = handler_map[df_type][protocol][default_format]
                 logger.info(
                     f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"

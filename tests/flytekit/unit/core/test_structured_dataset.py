@@ -72,7 +72,7 @@ def test_annotate_extraction():
     a, b, c, d = extract_cols_and_format(pd.DataFrame)
     assert a is pd.DataFrame
     assert b is None
-    assert c is None
+    assert c is ""
     assert d is None
 
 
@@ -192,9 +192,10 @@ def test_fill_in_literal_type():
         ) -> literals.StructuredDataset:
             return literals.StructuredDataset(uri="")
 
-    StructuredDatasetTransformerEngine.register(TempEncoder("myavro"), default_for_type=True)
+    default_encoder = TempEncoder("myavro")
+    StructuredDatasetTransformerEngine.register(default_encoder, default_for_type=True)
     lt = TypeEngine.to_literal_type(MyDF)
-    assert lt.structured_dataset_type.format == "myavro"
+    assert lt.structured_dataset_type.format == ""
 
     ctx = FlyteContextManager.current_context()
     fdt = StructuredDatasetTransformerEngine()
@@ -208,7 +209,7 @@ def test_fill_in_literal_type():
     StructuredDatasetTransformerEngine.register(empty_format_temp_encoder, default_for_type=False)
 
     res = StructuredDatasetTransformerEngine.get_encoder(MyDF, "tmpfs", "rando")
-    assert res is empty_format_temp_encoder
+    assert res is default_encoder
 
 
 def test_slash_register():
