@@ -42,6 +42,10 @@ def test_read_file_if_exists():
     assert read_file_if_exists(None) is None
     assert read_file_if_exists("") is None
 
+    bad_config_fn = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/bad.config")
+    first_line = read_file_if_exists(filename=bad_config_fn)
+    assert not first_line.endswith("\n")
+
 
 def test_command():
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))

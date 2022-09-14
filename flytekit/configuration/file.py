@@ -291,4 +291,4 @@ def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing
 
     filename = pathlib.Path(filename)
     logger.debug(f"Reading file contents from [{filename}] with current directory [{os.getcwd()}].")
-    return filename.read_text(encoding=encoding)
+    return filename.read_text(encoding=encoding).strip()
