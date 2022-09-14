@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit import Literal
+from flytekit import Literal, Documentation
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -449,6 +449,13 @@ class FlyteRemote(object):
                 raise
         return ident
 
+    def register_description_entity(self, ident: Identifier, docs: Documentation):
+        try:
+            self.client.create_description_entity(ident, docs)
+        except FlyteEntityAlreadyExistsException:
+            print("test")
+            remote_logger.info(f"{docs} already exists")
+
     def register_task(
         self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
     ) -> FlyteTask:
@@ -462,8 +469,7 @@ class FlyteRemote(object):
         :return:
         """
         ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-        print(entity.docs)
-        self.client.create_description_entity(ident, entity.docs)
+        self.register_description_entity(ident, entity.docs)
         ft = self.fetch_task(
             ident.project,
             ident.domain,

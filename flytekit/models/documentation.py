@@ -57,15 +57,11 @@ class Documentation(_common_models.FlyteIdlEntity):
     short_description: str
     long_description: Optional[LongDescription] = None
     source_code: Optional[SourceCode] = None
-    tags: Optional[List[str]] = None
-    labels: Optional[Dict[str, str]] = None
 
     def to_flyte_idl(self):
         return description_entity_pb2.DescriptionEntity(
             short_description=self.short_description,
             long_description=self.long_description.to_flyte_idl() if self.long_description else None,
-            tags=self.tags,
-            labels=self.labels,
             source_code=self.source_code.to_flyte_idl() if self.source_code else None,
         )
 
@@ -75,6 +71,4 @@ class Documentation(_common_models.FlyteIdlEntity):
             short_description=pb2_object.short_description,
             long_description=LongDescription.from_flyte_idl(pb2_object.long_description),
             source_code=SourceCode.from_flyte_idl(pb2_object.source_code),
-            tags=pb2_object.tags,
-            labels=pb2_object.labels,
         )
