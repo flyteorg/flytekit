@@ -2,39 +2,46 @@ import datetime
 import functools
 import importlib
 import json
+import logging
 import os
 import pathlib
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast
 
 import click
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
+from typing_extensions import get_args
 
 from flytekit import BlobType, Literal, Scalar
-from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_DOMAIN, CTX_PROJECT
-from flytekit.configuration import Config, ImageConfig, SerializationSettings
+from flytekit.clis.sdk_in_container.constants import (
+    CTX_CONFIG_FILE,
+    CTX_DOMAIN,
+    CTX_MODULE,
+    CTX_PROJECT,
+    CTX_PROJECT_ROOT,
+)
+from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
+from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.core import context_manager, tracker
+from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
-from flytekit.loggers import cli_logger
 from flytekit.models import literals
 from flytekit.models.interface import Variable
-from flytekit.models.literals import Blob, BlobMetadata, Primitive
+from flytekit.models.literals import Blob, BlobMetadata, Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
-from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
+from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
 
 REMOTE_FLAG_KEY = "remote"
 RUN_LEVEL_PARAMS_KEY = "run_level_params"
-FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 DATA_PROXY_CALLBACK_KEY = "data_proxy"
 
 
@@ -87,7 +94,7 @@ class FileParamType(click.ParamType):
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if FileAccessProvider.is_remote(value):
-            return FileParam(filepath=value)
+            return FileParam(filepath=value, local=False)
         p = pathlib.Path(value)
         if p.exists() and p.is_file():
             return FileParam(filepath=str(p.resolve()))
@@ -244,6 +251,30 @@ class FlyteLiteralConverter(object):
 
         return lit
 
+    def convert_to_union(
+        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
+    ) -> Literal:
+        lt = self._literal_type
+        for i in range(len(self._literal_type.union_type.variants)):
+            variant = self._literal_type.union_type.variants[i]
+            python_type = get_args(self._python_type)[i]
+            converter = FlyteLiteralConverter(
+                ctx,
+                self._flyte_ctx,
+                variant,
+                python_type,
+                self._create_upload_fn,
+            )
+            try:
+                # Here we use click converter to convert the input in command line to native python type,
+                # and then use flyte converter to convert it to literal.
+                python_val = converter._click_type.convert(value, param, ctx)
+                literal = converter.convert_to_literal(ctx, param, python_val)
+                return Literal(scalar=Scalar(union=Union(literal, variant)))
+            except (Exception or AttributeError) as e:
+                logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
+        raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
+
     def convert_to_literal(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
     ) -> Literal:
@@ -255,7 +286,7 @@ class FlyteLiteralConverter(object):
 
         if self._literal_type.collection_type or self._literal_type.map_value_type:
             # TODO Does not support nested flytefile, flyteschema types
-            v = json.loads(value)
+            v = json.loads(value) if isinstance(value, str) else value
             if self._literal_type.collection_type and not isinstance(v, list):
                 raise click.BadParameter(f"Expected json list '[...]', parsed value is {type(v)}")
             if self._literal_type.map_value_type and not isinstance(v, dict):
@@ -263,11 +294,14 @@ class FlyteLiteralConverter(object):
             return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
 
         if self._literal_type.union_type:
-            raise NotImplementedError("Union type is not yet implemented for pyflyte run")
+            return self.convert_to_union(ctx, param, value)
 
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
-                o = cast(DataClassJsonMixin, self._python_type).from_json(value)
+                if type(value) != self._python_type:
+                    o = cast(DataClassJsonMixin, self._python_type).from_json(value)
+                else:
+                    o = value
                 return TypeEngine.to_literal(self._flyte_ctx, o, self._python_type, self._literal_type)
             return Literal(scalar=self._converter.convert(value, self._python_type))
 
@@ -396,16 +430,14 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
     ]
 
 
-def load_naive_entity(module_name: str, entity_name: str) -> typing.Union[WorkflowBase, PythonTask]:
+def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
     """
     Load the workflow of a the script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
     """
-    flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
-        SerializationSettings(None)
-    )
-    with context_manager.FlyteContextManager.with_context(flyte_ctx):
-        with module_loader.add_sys_path(os.getcwd()):
+    flyte_ctx_builder = context_manager.FlyteContextManager.current_context().new_builder()
+    with context_manager.FlyteContextManager.with_context(flyte_ctx_builder):
+        with module_loader.add_sys_path(project_root):
             importlib.import_module(module_name)
     return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
 
@@ -444,9 +476,7 @@ def get_entities_in_file(filename: str) -> Entities:
     """
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
-    flyte_ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
-        SerializationSettings(None)
-    )
+    flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder()
     module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
@@ -455,14 +485,12 @@ def get_entities_in_file(filename: str) -> Entities:
     workflows = []
     tasks = []
     module = importlib.import_module(module_name)
-    for k in dir(module):
-        o = module.__dict__[k]
-        if isinstance(o, PythonFunctionWorkflow):
-            _, _, fn, _ = tracker.extract_task_module(o)
-            workflows.append(fn)
+    for name in dir(module):
+        o = module.__dict__[name]
+        if isinstance(o, WorkflowBase):
+            workflows.append(name)
         elif isinstance(o, PythonTask):
-            _, _, fn, _ = tracker.extract_task_module(o)
-            tasks.append(fn)
+            tasks.append(name)
 
     return Entities(workflows, tasks)
 
@@ -473,6 +501,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     """
 
     def _run(*args, **kwargs):
+        # By the time we get to this function, all the loading has already happened
+
         run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
         project, domain = run_level_params.get("project"), run_level_params.get("domain")
         inputs = {}
@@ -485,17 +515,38 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             return
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+        config_file = ctx.obj.get(CTX_CONFIG_FILE)
 
-        # StructuredDatasetTransformerEngine.register(
-        #     PandasToParquetDataProxyEncodingHandler(get_upload_url_fn), default_for_type=True
-        # )
+        # Images come from three places:
+        # * The default flytekit images, which are already supplied by the base run_level_params.
+        # * The images provided by the user on the command line.
+        # * The images provided by the user via the config file, if there is one. (Images on the command line should
+        #   override all).
+        #
+        # However, the run_level_params already contains both the default flytekit images (lowest priority), as well
+        # as the images from the command line (highest priority). So when we read from the config file, we only
+        # want to add in the images that are missing, including the default, if that's also missing.
+        image_config_from_parent_cmd = run_level_params.get("image_config", None)
+        additional_image_names = set([v.name for v in image_config_from_parent_cmd.images])
+        new_additional_images = [v for v in image_config_from_parent_cmd.images]
+        new_default = image_config_from_parent_cmd.default_image
+        if config_file:
+            cfg_ic = ImageConfig.auto(config_file=config_file)
+            new_default = new_default or cfg_ic.default_image
+            for addl in cfg_ic.images:
+                if addl.name not in additional_image_names:
+                    new_additional_images.append(addl)
+
+        image_config = replace(image_config_from_parent_cmd, default_image=new_default, images=new_additional_images)
 
         remote_entity = remote.register_script(
             entity,
             project=project,
             domain=domain,
-            image_config=run_level_params.get("image_config", None),
+            image_config=image_config,
             destination_dir=run_level_params.get("destination_dir"),
+            source_path=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT_ROOT),
+            module_name=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_MODULE),
         )
 
         options = None
@@ -532,32 +583,46 @@ class WorkflowCommand(click.MultiCommand):
 
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._filename = filename
+        self._filename = pathlib.Path(filename).resolve()
 
     def list_commands(self, ctx):
         entities = get_entities_in_file(self._filename)
         return entities.all()
 
     def get_command(self, ctx, exe_entity):
+        """
+        This command uses the filename with which this command was created, and the string name of the entity passed
+          after the Python filename on the command line, to load the Python object, and then return the Command that
+          click should run.
+        :param ctx: The click Context object.
+        :param exe_entity: string of the flyte entity provided by the user. Should be the name of a workflow, or task
+          function.
+        :return:
+        """
+
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(
                 f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
             )
 
+        project_root = _find_project_root(self._filename)
+
+        # Find the relative path for the filename relative to the root of the project.
+        # N.B.: by construction project_root will necessarily be an ancestor of the filename passed in as
+        # a parameter.
+        rel_path = self._filename.relative_to(project_root)
         module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
-        entity = load_naive_entity(module, exe_entity)
+
+        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
+        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
+
+        entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
         p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
         d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
-        cfg_obj = Config.auto(cfg_file_location)
-        cli_logger.info(
-            f"Run is using config object {cfg_obj}" + (f" with file {cfg_file_location}" if cfg_file_location else "")
-        )
-        r = FlyteRemote(cfg_obj, default_project=p, default_domain=d)
-        ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
+        r = get_and_save_remote_with_click_context(ctx, p, d)
         get_upload_url_fn = functools.partial(r.client.get_upload_signed_url, project=p, domain=d)
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()
@@ -596,8 +661,16 @@ class RunCommand(click.MultiCommand):
         return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
 
 
+_run_help = """
+This command can execute either a workflow or a task from the commandline, for fully self-contained scripts.
+Tasks and workflows cannot be imported from other files currently. Please use `pyflyte package` or
+`pyflyte register` to handle those and then launch from the Flyte UI or `flytectl`
+
+Note: This command only works on regular Python packages, not namespace packages. When determining
+      the root of your project, it finds the first folder that does not have an __init__.py file.
+"""
+
 run = RunCommand(
     name="run",
-    help="Run command: This command can execute either a workflow or a task from the commandline, for "
-    "fully self-contained scripts. Tasks and workflows cannot be imported from other files currently.",
+    help=_run_help,
 )

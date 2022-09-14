@@ -1034,5 +1034,17 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         super(SynchronousFlyteClient, self).create_description_entity(
             _description_entity_pb2.DescriptionEntityCreateRequest(
                 id=description_entity_identifer.to_flyte_idl(), description_entity=description_entity.to_flyte_idl()
+
+    def get_download_signed_url(
+        self, native_url: str, expires_in: datetime.timedelta = None
+    ) -> _data_proxy_pb2.CreateUploadLocationResponse:
+        expires_in_pb = None
+        if expires_in:
+            expires_in_pb = Duration()
+            expires_in_pb.FromTimedelta(expires_in)
+        return super(SynchronousFlyteClient, self).create_download_location(
+            _data_proxy_pb2.CreateDownloadLocationRequest(
+                native_url=native_url,
+                expires_in=expires_in_pb,
             )
         )

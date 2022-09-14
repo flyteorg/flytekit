@@ -32,13 +32,16 @@ class LegacyConfigEntry(object):
     option: str
     type_: typing.Type = str
 
+    def get_env_name(self):
+        return f"FLYTE_{self.section.upper()}_{self.option.upper()}"
+
     def read_from_env(self, transform: typing.Optional[typing.Callable] = None) -> typing.Optional[typing.Any]:
         """
         Reads the config entry from environment variable, the structure of the env var is current
         ``FLYTE_{SECTION}_{OPTION}`` all upper cased. We will change this in the future.
         :return:
         """
-        env = f"FLYTE_{self.section.upper()}_{self.option.upper()}"
+        env = self.get_env_name()
         v = os.environ.get(env, None)
         if v is None:
             return None
@@ -159,7 +162,7 @@ class ConfigFile(object):
         Load the config from this location
         """
         self._location = location
-        if location.endswith("yaml"):
+        if location.endswith("yaml") or location.endswith("yml"):
             self._legacy_config = None
             self._yaml_config = self._read_yaml_config(location)
         else:

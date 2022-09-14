@@ -230,25 +230,25 @@ class ImageConfig(object):
         return ImageConfig(default_image=default_image, images=all_images)
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None, img_name: Optional[str] = None) -> ImageConfig:
+    def auto(
+        cls, config_file: typing.Union[str, ConfigFile, None] = None, img_name: Optional[str] = None
+    ) -> ImageConfig:
         """
         Reads from config file or from img_name
+        Note that this function does not take into account the flytekit default images (see the Dockerfiles at the
+        base of this repo). To pick those up, see the auto_default_image function..
+
         :param config_file:
         :param img_name:
         :return:
         """
-        if config_file is None and img_name is None:
-            raise ValueError("Either an image or a config with a default image should be provided")
-
         default_img = Image.look_up_image_info("default", img_name) if img_name else None
 
-        other_images = []
-        if config_file:
-            config_file = get_config_file(config_file)
-            other_images = [
-                Image.look_up_image_info(k, tag=v, optional_tag=True)
-                for k, v in _internal.Images.get_specified_images(config_file).items()
-            ]
+        config_file = get_config_file(config_file)
+        other_images = [
+            Image.look_up_image_info(k, tag=v, optional_tag=True)
+            for k, v in _internal.Images.get_specified_images(config_file).items()
+        ]
         return cls.create_from(default_img, other_images)
 
     @classmethod
@@ -297,6 +297,7 @@ class PlatformConfig(object):
 
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
+    :param insecure_skip_verify: Wether to skip SSL certificate verification
     :param command: This command is executed to return a token using an external process.
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -309,31 +310,12 @@ class PlatformConfig(object):
 
     endpoint: str = "localhost:30081"
     insecure: bool = False
+    insecure_skip_verify: bool = False
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
-
-    def with_parameters(
-        self,
-        endpoint: str = "localhost:30081",
-        insecure: bool = False,
-        command: typing.Optional[typing.List[str]] = None,
-        client_id: typing.Optional[str] = None,
-        client_credentials_secret: typing.Optional[str] = None,
-        scopes: List[str] = None,
-        auth_mode: AuthType = AuthType.STANDARD,
-    ) -> PlatformConfig:
-        return PlatformConfig(
-            endpoint=endpoint,
-            insecure=insecure,
-            command=command,
-            client_id=client_id,
-            client_credentials_secret=client_credentials_secret,
-            scopes=scopes if scopes else [],
-            auth_mode=auth_mode,
-        )
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
@@ -345,6 +327,9 @@ class PlatformConfig(object):
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "insecure", _internal.Platform.INSECURE.read(config_file))
+        kwargs = set_if_exists(
+            kwargs, "insecure_skip_verify", _internal.Platform.INSECURE_SKIP_VERIFY.read(config_file)
+        )
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
@@ -562,7 +547,7 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(insecure=True),
+            platform=PlatformConfig(endpoint="localhost:30081", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
                 s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
             ),

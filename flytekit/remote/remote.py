@@ -9,6 +9,7 @@ import base64
 import functools
 import hashlib
 import os
+import pathlib
 import time
 import typing
 import uuid
@@ -22,7 +23,7 @@ from flytekit import Literal, Documentation
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.core import constants, tracker, utils
+from flytekit.core import constants, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -59,7 +60,7 @@ from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.tools.script_mode import fast_register_single_script
+from flytekit.tools.script_mode import fast_register_single_script, hash_file
 from flytekit.tools.translator import FlyteLocalEntity, Options, get_serializable, get_serializable_launch_plan
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
@@ -515,6 +516,65 @@ class FlyteRemote(object):
         fwf._python_interface = entity.python_interface
         return fwf
 
+    def _upload_file(
+        self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
+    ) -> typing.Tuple[bytes, str]:
+        """
+        Function will use remote's client to hash and then upload the file using Admin's data proxy service.
+
+        :param to_upload: Must be a single file
+        :param project: Project to upload under, if not supplied will use the remote's default
+        :param domain: Domain to upload under, if not specified will use the remote's default
+        :return: The uploaded location.
+        """
+        if not to_upload.is_file():
+            raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
+        md5_bytes, str_digest = hash_file(to_upload)
+        remote_logger.debug(f"Text hash of file to upload is {str_digest}")
+
+        upload_location = self.client.get_upload_signed_url(
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            content_md5=md5_bytes,
+            filename=to_upload.name,
+        )
+        self._ctx.file_access.put_data(str(to_upload), upload_location.signed_url)
+        remote_logger.warning(
+            f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
+        )
+
+        return md5_bytes, upload_location.native_url
+
+    @staticmethod
+    def _version_from_hash(
+        md5_bytes: bytes,
+        serialization_settings: SerializationSettings,
+        *additional_context: str,
+    ) -> str:
+        """
+        The md5 version that we send to S3/GCS has to match the file contents exactly,
+        but we don't have to use it when registering with the Flyte backend.
+        To avoid changes in the For that add the hash of the compilation settings to hash of file
+
+        :param md5_bytes:
+        :param serialization_settings:
+        :param additional_context: This is for additional context to factor into the version computation,
+          meant for objects (like Options for instance) that don't easily consistently stringify.
+        :return:
+        """
+        from flytekit import __version__
+
+        additional_context = additional_context or []
+
+        h = hashlib.md5(md5_bytes)
+        h.update(bytes(serialization_settings.to_json(), "utf-8"))
+        h.update(bytes(__version__, "utf-8"))
+
+        for s in additional_context:
+            h.update(bytes(s, "utf-8"))
+
+        return base64.urlsafe_b64encode(h.digest()).decode("ascii")
+
     def register_script(
         self,
         entity: typing.Union[WorkflowBase, PythonTask],
@@ -525,6 +585,8 @@ class FlyteRemote(object):
         destination_dir: str = ".",
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
+        source_path: typing.Optional[str] = None,
+        module_name: typing.Optional[str] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -536,15 +598,16 @@ class FlyteRemote(object):
         :param entity: The workflow to be registered or the task to be registered
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
+        :param source_path: The root of the project path
+        :param module_name: the name of the module
         :return:
         """
-        _, _, _, fname = tracker.extract_task_module(entity)
-
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
         upload_location, md5_bytes = fast_register_single_script(
-            entity,
+            source_path,
+            module_name,
             functools.partial(
                 self.client.get_upload_signed_url,
                 project=project or self.default_project,
@@ -568,12 +631,7 @@ class FlyteRemote(object):
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            from flytekit import __version__
-
-            h = hashlib.md5(md5_bytes)
-            h.update(bytes(serialization_settings.to_json(), "utf-8"))
-            h.update(bytes(__version__, "utf-8"))
-            version = base64.urlsafe_b64encode(h.digest())
+            version = self._version_from_hash(md5_bytes, serialization_settings)
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)

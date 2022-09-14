@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64 as _base64
+import ssl
 import subprocess
 import time
 import typing
@@ -110,6 +111,22 @@ class RawSynchronousFlyteClient(object):
         self._cfg = cfg
         if cfg.insecure:
             self._channel = grpc.insecure_channel(cfg.endpoint, **kwargs)
+        elif cfg.insecure_skip_verify:
+            # Get port from endpoint or use 443
+            endpoint_parts = cfg.endpoint.rsplit(":", 1)
+            if len(endpoint_parts) == 2 and endpoint_parts[1].isdigit():
+                server_address = tuple(endpoint_parts)
+            else:
+                server_address = (cfg.endpoint, "443")
+            cert = ssl.get_server_certificate(server_address)
+            credentials = grpc.ssl_channel_credentials(str.encode(cert))
+            options = kwargs.get("options", [])
+            self._channel = grpc.secure_channel(
+                target=cfg.endpoint,
+                credentials=credentials,
+                options=options,
+                compression=kwargs.get("compression", None),
+            )
         else:
             if "credentials" not in kwargs:
                 credentials = grpc.ssl_channel_credentials(
@@ -251,7 +268,10 @@ class RawSynchronousFlyteClient(object):
         except subprocess.CalledProcessError as e:
             cli_logger.error("Failed to generate token from command {}".format(command))
             raise _user_exceptions.FlyteAuthenticationException("Problems refreshing token with command: " + str(e))
-        self.set_access_token(output.stdout.strip())
+        authorization_header_key = self.public_client_config.authorization_metadata_key or None
+        if not authorization_header_key:
+            self.set_access_token(output.stdout.strip())
+        self.set_access_token(output.stdout.strip(), authorization_header_key)
 
     def _refresh_credentials_noop(self):
         pass
@@ -860,6 +880,17 @@ class RawSynchronousFlyteClient(object):
         :raises grpc.RpcError:
         """
         return self._stub.CreateDescriptionEntity(description_entity_create_request)
+
+    @_handle_rpc_error(retry=True)
+    def create_download_location(
+        self, create_download_location_request: _dataproxy_pb2.CreateDownloadLocationRequest
+    ) -> _dataproxy_pb2.CreateDownloadLocationResponse:
+        """
+        Get a signed url to be used during fast registration
+        :param flyteidl.service.dataproxy_pb2.CreateDownloadLocationRequest create_download_location_request:
+        :rtype: flyteidl.service.dataproxy_pb2.CreateDownloadLocationResponse
+        """
+        return self._dataproxy_stub.CreateDownloadLocation(create_download_location_request, metadata=self._metadata)
 
 
 def get_token(token_endpoint, authorization_header, scope):

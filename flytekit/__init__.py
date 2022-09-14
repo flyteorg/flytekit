@@ -154,6 +154,7 @@ Common Flyte IDL Objects
 """
 
 import sys
+from typing import Generator
 
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
@@ -181,6 +182,7 @@ from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
+from flytekit.extras import pytorch
 from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
 from flytekit.models.common import Annotations, AuthRole, Labels
@@ -189,7 +191,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.documentation import Documentation, LongDescription, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types import directory, file, schema
+from flytekit.types import directory, file, numpy, schema
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetFormat,
@@ -214,6 +216,10 @@ def current_context() -> ExecutionParameters:
     There are some special params, that should be available
     """
     return FlyteContextManager.current_context().execution_state.user_space_params
+
+
+def new_context() -> Generator[FlyteContext, None, None]:
+    return FlyteContextManager.with_context(FlyteContextManager.current_context().new_builder())
 
 
 def load_implicit_plugins():

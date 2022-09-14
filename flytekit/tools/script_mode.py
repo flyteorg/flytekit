@@ -1,5 +1,6 @@
 import gzip
 import hashlib
+import importlib
 import os
 import shutil
 import tarfile
@@ -10,11 +11,10 @@ from pathlib import Path
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 
 from flytekit.core import context_manager
-from flytekit.core.tracker import extract_task_module
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.tracker import get_full_module_path
 
 
-def compress_single_script(absolute_project_path: str, destination: str, full_module_name: str):
+def compress_single_script(source_path: str, destination: str, full_module_name: str):
     """
     Compresses the single script while maintaining the folder structure for that file.
 
@@ -42,7 +42,6 @@ def compress_single_script(absolute_project_path: str, destination: str, full_mo
     Note how `another_example.py` and `yet_another_example.py` were not copied to the destination.
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
-        source_path = os.path.join(absolute_project_path)
         destination_path = os.path.join(tmp_dir, "code")
         # This is the script relative path to the root of the project
         script_relative_path = Path()
@@ -55,7 +54,7 @@ def compress_single_script(absolute_project_path: str, destination: str, full_mo
             destination_path = os.path.join(destination_path, p)
             script_relative_path = Path(script_relative_path, p)
             init_file = Path(os.path.join(source_path, "__init__.py"))
-            if init_file.exists:
+            if init_file.exists():
                 shutil.copy(init_file, Path(os.path.join(tmp_dir, "code", script_relative_path, "__init__.py")))
 
         # Ensure destination path exists to cover the case of a single file and no modules.
@@ -84,9 +83,6 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     # note that when extracting this tarfile, this time will be shown as the modified date
     tar_info.mtime = 0
 
-    # file permissions, probably don't want to remove this, but for some use cases you could
-    tar_info.mode = 0
-
     # user/group info
     tar_info.uid = 0
     tar_info.uname = ""
@@ -101,16 +97,14 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
 
 
 def fast_register_single_script(
-    wf_entity: WorkflowBase, create_upload_location_fn: typing.Callable
+    source_path: str, module_name: str, create_upload_location_fn: typing.Callable
 ) -> (_data_proxy_pb2.CreateUploadLocationResponse, bytes):
-    _, mod_name, _, script_full_path = extract_task_module(wf_entity)
-    # Find project root by moving up the folder hierarchy until you cannot find a __init__.py file.
-    source_path = _find_project_root(script_full_path)
 
     # Open a temp directory and dump the contents of the digest.
     with tempfile.TemporaryDirectory() as tmp_dir:
         archive_fname = os.path.join(tmp_dir, "script_mode.tar.gz")
-        compress_single_script(source_path, archive_fname, mod_name)
+        mod = importlib.import_module(module_name)
+        compress_single_script(source_path, archive_fname, get_full_module_path(mod, mod.__name__))
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         md5, _ = hash_file(archive_fname)
@@ -139,10 +133,14 @@ def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
 
 def _find_project_root(source_path) -> Path:
     """
-    Traverse from current working directory until it can no longer find __init__.py files
+    Find the root of the project.
+    The root of the project is considered to be the first ancestor from source_path that does
+    not contain a __init__.py file.
+
+    N.B.: This assumption only holds for regular packages (as opposed to namespace packages)
     """
     # Start from the directory right above source_path
-    path = Path(source_path).parents[0]
+    path = Path(source_path).parent.resolve()
     while os.path.exists(os.path.join(path, "__init__.py")):
         path = path.parent
     return path

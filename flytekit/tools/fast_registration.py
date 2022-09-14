@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import os
 import posixpath
 import subprocess as _subprocess
 import tarfile
+import tempfile
 from typing import Optional
+
+import click
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
@@ -16,23 +21,32 @@ FAST_FILEENDING = ".tar.gz"
 file_access = FlyteContextManager.current_context().file_access
 
 
-def fast_package(source: os.PathLike, output_dir: os.PathLike) -> os.PathLike:
+def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: bool = False) -> os.PathLike:
     """
     Takes a source directory and packages everything not covered by common ignores into a tarball
     named after a hexdigest of the included files.
     :param os.PathLike source:
     :param os.PathLike output_dir:
+    :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
     ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, StandardIgnore])
     digest = compute_digest(source, ignore.is_ignored)
     archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
-    if output_dir:
-        archive_fname = os.path.join(output_dir, archive_fname)
+    if output_dir is None:
+        output_dir = tempfile.mkdtemp()
+        click.secho(f"Output given as {None}, using a temporary directory at {output_dir} instead", fg="yellow")
 
-    with tarfile.open(archive_fname, "w:gz") as tar:
-        tar.add(source, arcname="", filter=ignore.tar_filter)
+    archive_fname = os.path.join(output_dir, archive_fname)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tar_path = os.path.join(tmp_dir, "tmp.tar")
+        with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
+            tar.add(source, arcname="", filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)))
+        with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
+            with open(tar_path, "rb") as tar_file:
+                gzipped.write(tar_file.read())
 
     return archive_fname
 

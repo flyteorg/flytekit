@@ -7,12 +7,15 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
+from typing_extensions import Annotated, get_args, get_origin, get_type_hints
+
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
+from flytekit.models.literals import Void
 from flytekit.types.pickle import FlytePickle
 
 T = typing.TypeVar("T")
@@ -182,11 +185,17 @@ def transform_inputs_to_parameters(
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
-        required = _default is None
-        default_lv = None
-        if _default is not None:
-            default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
-        params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
+        if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
+            from flytekit import Literal, Scalar
+
+            literal = Literal(scalar=Scalar(none_type=Void()))
+            params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
+        else:
+            required = _default is None
+            default_lv = None
+            if _default is not None:
+                default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
+            params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
     return _interface_models.ParameterMap(params)
 
 
@@ -250,12 +259,16 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
 def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
     try:
         if hasattr(t, "__origin__") and hasattr(t, "__args__"):
-            if t.__origin__ == list:
+            if get_origin(t) is list:
                 return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
-            elif t.__origin__ == dict and t.__args__[0] == str:
+            elif get_origin(t) is dict and t.__args__[0] == str:
                 return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
-        else:
-            TypeEngine.get_transformer(t)
+            elif get_origin(t) is typing.Union:
+                return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]
+            elif get_origin(t) is Annotated:
+                base_type, *config = get_args(t)
+                return Annotated[(_change_unrecognized_type_to_pickle(base_type), *config)]
+        TypeEngine.get_transformer(t)
     except ValueError:
         logger.warning(
             f"Unsupported Type {t} found, Flyte will default to use PickleFile as the transport. "
@@ -274,11 +287,8 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     For now the fancy object, maybe in the future a dumb object.
 
     """
-    try:
-        # include_extras can only be used in python >= 3.9
-        type_hints = typing.get_type_hints(fn, include_extras=True)
-    except TypeError:
-        type_hints = typing.get_type_hints(fn)
+
+    type_hints = get_type_hints(fn, include_extras=True)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 
@@ -323,7 +333,11 @@ def transform_variable_map(
                 elif v.__origin__ is dict:
                     sub_type = v.__args__[1]
             if hasattr(sub_type, "__origin__") and sub_type.__origin__ is FlytePickle:
-                res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
+                if hasattr(sub_type.python_type(), "__name__"):
+                    res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
+                elif hasattr(sub_type.python_type(), "_name"):
+                    # If the class doesn't have the __name__ attribute, like typing.Sequence, use _name instead.
+                    res[k].type.metadata = {"python_class_name": sub_type.python_type()._name}
 
     return res
 
@@ -386,7 +400,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
         bases = return_annotation.__bases__  # type: ignore
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
-            return return_annotation.__annotations__
+            return dict(get_type_hints(return_annotation, include_extras=True))
 
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3

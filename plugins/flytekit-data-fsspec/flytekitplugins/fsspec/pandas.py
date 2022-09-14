@@ -13,7 +13,6 @@ from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -22,7 +21,7 @@ from flytekit.types.structured.structured_dataset import (
 
 def get_storage_options(cfg: DataConfig, uri: str) -> typing.Optional[typing.Dict]:
     protocol = FSSpecPersistence.get_protocol(uri)
-    if protocol == S3:
+    if protocol == "s3":
         kwargs = s3_setup_args(cfg.s3)
         if kwargs:
             return kwargs

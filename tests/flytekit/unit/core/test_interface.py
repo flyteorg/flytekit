@@ -12,6 +12,7 @@ from flytekit.core.interface import (
     transform_variable_map,
 )
 from flytekit.models.core import types as _core_types
+from flytekit.models.literals import Void
 from flytekit.types.file import FlyteFile
 from flytekit.types.pickle import FlytePickle
 
@@ -198,6 +199,20 @@ def test_parameters_and_defaults():
     assert params.parameters["a"].default is None
     assert our_interface.inputs == {"a": Annotated[int, "some annotation"]}
     assert our_interface.outputs == {"o0": Annotated[int, "some annotation"]}
+
+    def z(
+        a: typing.Optional[int] = None, b: typing.Optional[str] = None, c: typing.Union[typing.List[int], None] = None
+    ) -> typing.Tuple[int, str]:
+        ...
+
+    our_interface = transform_function_to_interface(z)
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert not params.parameters["a"].required
+    assert params.parameters["a"].default.scalar.none_type == Void()
+    assert not params.parameters["b"].required
+    assert params.parameters["b"].default.scalar.none_type == Void()
+    assert not params.parameters["c"].required
+    assert params.parameters["c"].default.scalar.none_type == Void()
 
 
 def test_parameters_with_docstring():

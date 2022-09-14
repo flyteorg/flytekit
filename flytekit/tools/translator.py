@@ -289,7 +289,9 @@ def get_serializable_workflow(
         nodes=upstream_node_models,
         outputs=entity.output_bindings,
     )
-    return admin_workflow_models.WorkflowSpec(template=wf_t, sub_workflows=list(set(sub_wfs)))
+    return admin_workflow_models.WorkflowSpec(
+        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string())
+    )
 
 
 def get_serializable_launch_plan(
@@ -322,7 +324,10 @@ def get_serializable_launch_plan(
     if not options:
         options = Options()
 
-    raw = None
+    if options and options.raw_output_data_config:
+        raw_prefix_config = options.raw_output_data_config
+    else:
+        raw_prefix_config = entity.raw_output_data_config or _common_models.RawOutputDataConfig("")
 
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
@@ -335,7 +340,7 @@ def get_serializable_launch_plan(
         labels=options.labels or entity.labels or _common_models.Labels({}),
         annotations=options.annotations or entity.annotations or _common_models.Annotations({}),
         auth_role=None,
-        raw_output_data_config=raw or entity.raw_output_data_config or _common_models.RawOutputDataConfig(""),
+        raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
     )

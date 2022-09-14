@@ -243,6 +243,7 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
         raw_output_prefix=raw_output_data_prefix,
         checkpoint=checkpointer,
+        task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
 
     try:

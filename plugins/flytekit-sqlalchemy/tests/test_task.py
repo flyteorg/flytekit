@@ -75,6 +75,13 @@ def test_workflow(sql_server):
     def my_task(df: pandas.DataFrame) -> int:
         return len(df[df.columns[0]])
 
+    insert_task = SQLAlchemyTask(
+        "test",
+        query_template="insert into tracks values (5, 'flyte')",
+        output_schema_type=None,
+        task_config=SQLAlchemyConfig(uri=sql_server),
+    )
+
     sql_task = SQLAlchemyTask(
         "test",
         query_template="select * from tracks limit {{.inputs.limit}}",
@@ -84,9 +91,10 @@ def test_workflow(sql_server):
 
     @workflow
     def wf(limit: int) -> int:
+        insert_task()
         return my_task(df=sql_task(limit=limit))
 
-    assert wf(limit=5) == 5
+    assert wf(limit=10) == 6
 
 
 def test_task_serialization(sql_server):

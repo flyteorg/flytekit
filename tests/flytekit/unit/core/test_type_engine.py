@@ -35,6 +35,7 @@ from flytekit.core.type_engine import (
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
+    UnionTransformer,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -147,6 +148,7 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Bar(object):
+        v: typing.Union[int, None]
         w: typing.Optional[str]
         x: float
         y: str
@@ -155,12 +157,14 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Foo(object):
+        u: typing.Optional[int]
+        v: typing.Optional[int]
         w: int
         x: typing.List[int]
         y: typing.Dict[str, str]
         z: Bar
 
-    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
+    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}))
     generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
@@ -170,16 +174,24 @@ def test_list_of_dataclass_getting_python_value():
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
     foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
 
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
-    assert isinstance(pv, list)
-    assert pv[0].w == foo.w
-    assert pv[0].x == foo.x
-    assert pv[0].y == foo.y
-    assert pv[0].z.x == foo.z.x
-    assert type(pv[0].z.x) == float
-    assert pv[0].z.y == foo.z.y
-    assert pv[0].z.z == foo.z.z
-    assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
+    guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert isinstance(guessed_pv, list)
+    assert guessed_pv[0].u == pv[0].u
+    assert guessed_pv[0].v == pv[0].v
+    assert guessed_pv[0].w == pv[0].w
+    assert guessed_pv[0].x == pv[0].x
+    assert guessed_pv[0].y == pv[0].y
+    assert guessed_pv[0].z.x == pv[0].z.x
+    assert type(guessed_pv[0].u) == int
+    assert guessed_pv[0].v is None
+    assert type(guessed_pv[0].w) == int
+    assert type(guessed_pv[0].z.v) == int
+    assert type(guessed_pv[0].z.x) == float
+    assert guessed_pv[0].z.v == pv[0].z.v
+    assert guessed_pv[0].z.y == pv[0].z.y
+    assert guessed_pv[0].z.z == pv[0].z.z
+    assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
 
 
 def test_file_no_downloader_default():
@@ -539,6 +551,8 @@ def test_flyte_file_in_dataclass():
         a: JPEGImageFile
         b: typing.List[FlyteFile]
         c: typing.Dict[str, FlyteFile]
+        d: typing.List[FlyteFile]
+        e: typing.Dict[str, FlyteFile]
 
     @dataclass_json
     @dataclass
@@ -546,8 +560,14 @@ def test_flyte_file_in_dataclass():
         a: FlyteFile
         b: TestInnerFileStruct
 
-    f = FlyteFile("s3://tmp/file")
-    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f], c={"hello": f}))
+    remote_path = "s3://tmp/file"
+    f1 = FlyteFile(remote_path)
+    f2 = FlyteFile("/tmp/file")
+    f2._remote_source = remote_path
+    o = TestFileStruct(
+        a=f1,
+        b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+    )
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -563,6 +583,10 @@ def test_flyte_file_in_dataclass():
     assert o.b.a.path == ot.b.a.remote_source
     assert o.b.b[0].path == ot.b.b[0].remote_source
     assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+    assert ot.b.d[0].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.d[0].path)
+    assert ot.b.e["hello"].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
 
 
 def test_flyte_directory_in_dataclass():
@@ -572,6 +596,8 @@ def test_flyte_directory_in_dataclass():
         a: TensorboardLogs
         b: typing.List[FlyteDirectory]
         c: typing.Dict[str, FlyteDirectory]
+        d: typing.List[FlyteDirectory]
+        e: typing.Dict[str, FlyteDirectory]
 
     @dataclass_json
     @dataclass
@@ -579,9 +605,15 @@ def test_flyte_directory_in_dataclass():
         a: FlyteDirectory
         b: TestInnerFileStruct
 
+    remote_path = "s3://tmp/file"
     tempdir = tempfile.mkdtemp(prefix="flyte-")
-    f = FlyteDirectory(tempdir)
-    o = TestFileStruct(a=f, b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f], c={"hello": f}))
+    f1 = FlyteDirectory(tempdir)
+    f1._remote_source = remote_path
+    f2 = FlyteDirectory(remote_path)
+    o = TestFileStruct(
+        a=f1,
+        b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+    )
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -594,10 +626,15 @@ def test_flyte_directory_in_dataclass():
     assert ot.b.b[0]._downloader is not noop
     assert ot.b.c["hello"]._downloader is not noop
 
-    assert o.a.path == ot.a.path
+    assert o.a.remote_directory == ot.a.remote_directory
+    assert not ctx.file_access.is_remote(ot.a.path)
     assert o.b.a.path == ot.b.a.remote_source
-    assert o.b.b[0].path == ot.b.b[0].path
-    assert o.b.c["hello"].path == ot.b.c["hello"].path
+    assert o.b.b[0].remote_directory == ot.b.b[0].remote_directory
+    assert not ctx.file_access.is_remote(ot.b.b[0].path)
+    assert o.b.c["hello"].remote_directory == ot.b.c["hello"].remote_directory
+    assert not ctx.file_access.is_remote(ot.b.c["hello"].path)
+    assert o.b.d[0].path == ot.b.d[0].remote_source
+    assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
 
 
 def test_structured_dataset_in_dataclass():
@@ -607,6 +644,8 @@ def test_structured_dataset_in_dataclass():
     @dataclass
     class InnerDatasetStruct(object):
         a: StructuredDataset
+        b: typing.List[StructuredDataset]
+        c: typing.Dict[str, StructuredDataset]
 
     @dataclass_json
     @dataclass
@@ -615,7 +654,7 @@ def test_structured_dataset_in_dataclass():
         b: InnerDatasetStruct
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")
-    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd))
+    o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd, b=[sd], c={"hello": sd}))
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -625,8 +664,12 @@ def test_structured_dataset_in_dataclass():
 
     assert_frame_equal(df, ot.a.open(pd.DataFrame).all())
     assert_frame_equal(df, ot.b.a.open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.b[0].open(pd.DataFrame).all())
+    assert_frame_equal(df, ot.b.c["hello"].open(pd.DataFrame).all())
     assert "parquet" == ot.a.file_format
     assert "parquet" == ot.b.a.file_format
+    assert "parquet" == ot.b.b[0].file_format
+    assert "parquet" == ot.b.c["hello"].file_format
 
 
 # Enums should have string values
@@ -749,6 +792,43 @@ def test_union_type():
     assert lv.scalar.union.stored_type.structure.tag == "str"
     assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
     assert v == "hello"
+
+
+def test_assert_dataclass_type():
+    @dataclass_json
+    @dataclass
+    class Args(object):
+        x: int
+        y: typing.Optional[str]
+
+    @dataclass_json
+    @dataclass
+    class Schema(object):
+        x: typing.Optional[Args] = None
+
+    pt = Schema
+    lt = TypeEngine.to_literal_type(pt)
+    gt = TypeEngine.guess_python_type(lt)
+    pv = Schema(x=Args(x=3, y="hello"))
+    DataclassTransformer().assert_type(gt, pv)
+    DataclassTransformer().assert_type(Schema, pv)
+
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+
+    pv = Bar(x=3)
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+    ):
+        DataclassTransformer().assert_type(gt, pv)
+
+
+def test_union_transformer():
+    assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert not UnionTransformer.is_optional_type(str)
+    assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
 
 
 def test_union_type_with_annotated():
@@ -1143,6 +1223,7 @@ def test_pass_annotated_to_downstream_tasks():
     """
     Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
     """
+
     # pandas dataframe hash function
     def hash_pandas_dataframe(df: pd.DataFrame) -> str:
         return str(pd.util.hash_pandas_object(df))
@@ -1166,11 +1247,11 @@ def test_pass_annotated_to_downstream_tasks():
 
         # We should have a cache miss in the first call to downstream_t
         v_1 = downstream_t(a=v, df=df)
-        v_2 = downstream_t(a=v, df=df)
+        downstream_t(a=v, df=df)
 
-        return v_1 + v_2
+        return v_1
 
-    assert t1(a=3) == (6 + 6 + 6)
+    assert t1(a=3) == 9
 
 
 def test_literal_hash_int_not_set():

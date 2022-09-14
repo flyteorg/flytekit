@@ -271,7 +271,7 @@ Retrieving & Inspecting Executions
 **********************************
 
 After an execution is completed, you can retrieve the execution using the :meth:`~flytekit.remote.remote.FlyteRemote.fetch_execution` method.
-The fetched execution can be used to retrieve the inputs and outputs of the execution.
+The fetched execution can be used to retrieve the inputs and outputs of an execution.
 
 .. code-block:: python
 
@@ -306,6 +306,8 @@ To fetch output of a specific node execution:
 .. code-block:: python
 
     node_execution_output = synced_execution.node_executions["n1"].outputs["model_file"]
+
+:ref:`Node <flyte:divedeep-nodes>` here, can correspond to a task, workflow, or branch node.
 
 ****************
 Listing Entities

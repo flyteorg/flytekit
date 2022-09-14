@@ -7,7 +7,7 @@ from flytekit.configuration.file import ConfigEntry, ConfigFile, LegacyConfigEnt
 
 class Images(object):
     @staticmethod
-    def get_specified_images(cfg: ConfigFile) -> typing.Dict[str, str]:
+    def get_specified_images(cfg: typing.Optional[ConfigFile]) -> typing.Dict[str, str]:
         """
         This section should contain options, where the option name is the friendly name of the image and the corresponding
         value is actual FQN of the image. Example of how the section is structured
@@ -21,14 +21,18 @@ class Images(object):
         images: typing.Dict[str, str] = {}
         if cfg is None:
             return images
-        try:
-            image_names = cfg.legacy_config.options("images")
-        except configparser.NoSectionError:
-            image_names = None
-        if image_names:
-            for i in image_names:
-                images[str(i)] = cfg.legacy_config.get("images", i)
-        return images
+
+        if cfg.legacy_config:
+            try:
+                image_names = cfg.legacy_config.options("images")
+            except configparser.NoSectionError:
+                return {}
+            if image_names:
+                for i in image_names:
+                    images[str(i)] = cfg.legacy_config.get("images", i)
+            return images
+        if cfg.yaml_config:
+            return cfg.yaml_config.get("images", images)
 
 
 class Deck(object):
@@ -105,6 +109,9 @@ class Platform(object):
         LegacyConfigEntry(SECTION, "url"), YamlConfigEntry("admin.endpoint"), lambda x: x.replace("dns:///", "")
     )
     INSECURE = ConfigEntry(LegacyConfigEntry(SECTION, "insecure", bool), YamlConfigEntry("admin.insecure", bool))
+    INSECURE_SKIP_VERIFY = ConfigEntry(
+        LegacyConfigEntry(SECTION, "insecure_skip_verify", bool), YamlConfigEntry("admin.insecureSkipVerify", bool)
+    )
 
 
 class LocalSDK(object):

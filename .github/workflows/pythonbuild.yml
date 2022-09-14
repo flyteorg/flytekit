@@ -49,9 +49,9 @@ jobs:
           pip freeze
       - name: Test with coverage
         run: |
-          coverage run -m pytest tests/flytekit/unit -m "not sandbox_test"
+          pytest tests/flytekit/unit -m "not sandbox_test" --cov=./ --cov-report=xml
       - name: Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3.1.0
         with:
           fail_ci_if_error: true # optional (default = false)
 
@@ -77,16 +77,40 @@ jobs:
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
           - flytekit-modin
+          - flytekit-onnx-pytorch
+          - flytekit-onnx-scikitlearn
+          - flytekit-onnx-tensorflow
           - flytekit-pandera
           - flytekit-papermill
+          - flytekit-polars
+          - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
+          - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/19116.
           - python-version: 3.10
             plugin-names: "flytekit-modin"
+          # Great-expectations does not support python 3.10 yet
+          # https://github.com/great-expectations/great_expectations/blob/develop/setup.py#L87-L89
+          - python-version: 3.10
+            plugin-names: "flytekit-greatexpectations"
+          # onnxruntime does not support python 3.10 yet
+          # https://github.com/microsoft/onnxruntime/issues/9782
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-pytorch"
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-scikitlearn"
+          - python-version: 3.10
+            plugin-names: "flytekit-onnx-tensorflow"
+          # whylogs-sketching library does not have a 3.10 build yet
+          # Issue tracked: https://github.com/whylabs/whylogs/issues/697
+          - python-version: 3.10
+            plugin-names: "flytekit-whylogs"
+
+
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -104,7 +128,7 @@ jobs:
         run: |
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install -e .
+          pip install -r requirements.txt
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
           pip freeze
