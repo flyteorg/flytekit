@@ -510,6 +510,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         outputs = None
         if pb2_object.HasField("outputs"):
             outputs = LiteralMapBlob.from_flyte_idl(pb2_object.outputs)
+        abort_metadata = None
         if pb2_object.HasField("abort_metadata"):
             abort_metadata = AbortMetadata.from_flyte_idl(pb2_object.abort_metadata)
         return cls(
