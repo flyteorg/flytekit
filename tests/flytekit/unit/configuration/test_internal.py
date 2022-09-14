@@ -40,8 +40,9 @@ def test_client_secret_location():
 
     # Assert secret contains a newline
     with open(cfg._yaml_config["admin"]["clientSecretLocation"], "rb") as f:
-        assert f.read() == b"hello\n"
+        assert f.read().decode().endswith("\n") is True
 
+    # Assert that secret in platform config does not contain a newline
     platform_cfg = PlatformConfig.auto(cfg)
     assert platform_cfg.client_credentials_secret == "hello"
 

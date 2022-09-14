@@ -94,6 +94,7 @@ from docker_image import reference
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
+from flytekit.loggers import logger
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -340,7 +341,7 @@ class PlatformConfig(object):
             _internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)
         )
         if client_credentials_secret and client_credentials_secret.endswith("\n"):
-            # TODO Add logging
+            logger.info("Newline stripped from client secret")
             client_credentials_secret = client_credentials_secret.strip()
         kwargs = set_if_exists(
             kwargs,
