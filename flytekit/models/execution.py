@@ -492,7 +492,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             phase=self.phase,
             error=self.error.to_flyte_idl() if self.error is not None else None,
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None,
-            abort_metadata=self.abort_metadata.to_flyte_idl(),
+            abort_metadata=self.abort_metadata.to_flyte_idl() if self.abort_metadata is not None else None,
         )
         obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
