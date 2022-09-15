@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from flytekit import FlyteContext, kwtypes
-from flytekit.configuration import SerializationSettings, DefaultImages
+from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
