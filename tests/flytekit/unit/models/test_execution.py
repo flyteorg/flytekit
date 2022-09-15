@@ -22,27 +22,23 @@ def test_execution_closure_with_output():
     test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=pytz.UTC)
     test_timedelta = datetime.timedelta(seconds=10)
     test_outputs = _execution.LiteralMapBlob(values=_OUTPUT_MAP, uri="http://foo/")
-    abort_metadata = _execution.AbortMetadata(cause="cause", principal="skinner")
 
     obj = _execution.ExecutionClosure(
         phase=_core_exec.WorkflowExecutionPhase.SUCCEEDED,
         started_at=test_datetime,
         duration=test_timedelta,
         outputs=test_outputs,
-        abort_metadata=abort_metadata,
     )
     assert obj.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
     assert obj.started_at == test_datetime
     assert obj.duration == test_timedelta
     assert obj.outputs == test_outputs
-    assert obj.abort_metadata == abort_metadata
     obj2 = _execution.ExecutionClosure.from_flyte_idl(obj.to_flyte_idl())
     assert obj2 == obj
     assert obj2.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
     assert obj2.started_at == test_datetime
     assert obj2.duration == test_timedelta
     assert obj2.outputs == test_outputs
-    assert obj2.abort_metadata == abort_metadata
 
 
 def test_execution_closure_with_error():

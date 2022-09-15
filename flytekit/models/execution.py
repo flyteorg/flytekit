@@ -155,10 +155,16 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
             mode=pb2_object.mode,
             principal=pb2_object.principal,
             nesting=pb2_object.nesting,
-            scheduled_at=pb2_object.scheduled_at.ToDatetime(),
-            parent_node_execution=_identifier.NodeExecutionIdentifier.from_flyte_idl(pb2_object.parent_node_execution),
-            reference_execution=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(pb2_object.reference_execution),
-            system_metadata=SystemMetadata.from_flyte_idl(pb2_object.system_metadata),
+            scheduled_at=pb2_object.scheduled_at.ToDatetime() if pb2_object.HasField("scheduled_at") else None,
+            parent_node_execution=_identifier.NodeExecutionIdentifier.from_flyte_idl(pb2_object.parent_node_execution)
+            if pb2_object.HasField("parent_node_execution")
+            else None,
+            reference_execution=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(pb2_object.reference_execution)
+            if pb2_object.HasField("reference_execution")
+            else None,
+            system_metadata=SystemMetadata.from_flyte_idl(pb2_object.system_metadata)
+            if pb2_object.HasField("system_metadata")
+            else None,
         )
 
 
