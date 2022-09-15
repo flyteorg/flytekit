@@ -1034,6 +1034,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         super(SynchronousFlyteClient, self).create_description_entity(
             _description_entity_pb2.DescriptionEntityCreateRequest(
                 id=description_entity_identifer.to_flyte_idl(), description_entity=description_entity.to_flyte_idl()
+            )
+        )
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None
