@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import time
 import typing
 
 import flyteidl
@@ -9,7 +8,6 @@ import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
 import pytz as _pytz
-from google.protobuf.timestamp_pb2 import Timestamp
 
 import flytekit
 from flytekit.models import common as _common_models
@@ -32,11 +30,7 @@ class SystemMetadata(_common_models.FlyteIdlEntity):
         return _execution_pb2.SystemMetadata(execution_cluster=self.execution_cluster)
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object) -> SystemMetadata:
-        """
-        :param flyteidl.admin.execution_pb2.SystemMetadata pb2_object:
-        :return: SystemMetadata
-        """
+    def from_flyte_idl(cls, pb2_object: flyteidl.admin.execution_pb2.SystemMetadata) -> SystemMetadata:
         return cls(
             execution_cluster=pb2_object.execution_cluster,
         )
@@ -53,10 +47,10 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         mode: int,
         principal: str,
         nesting: int,
-        scheduled_at: datetime.datetime = None,
-        parent_node_execution: _identifier.NodeExecutionIdentifier = None,
-        reference_execution: _identifier.WorkflowExecutionIdentifier = None,
-        system_metadata: SystemMetadata = None,
+        scheduled_at: typing.Optional[datetime.datetime] = None,
+        parent_node_execution: typing.Optional[_identifier.NodeExecutionIdentifier] = None,
+        reference_execution: typing.Optional[_identifier.WorkflowExecutionIdentifier] = None,
+        system_metadata: typing.Optional[SystemMetadata] = None,
     ):
         """
         :param mode: An enum value from ExecutionMetadata.ExecutionMode which specifies how the job started.
@@ -444,9 +438,9 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         phase: int,
         started_at: datetime.datetime,
         duration: datetime.timedelta,
-        error: flytekit.models.core.execution.ExecutionError = None,
-        outputs: LiteralMapBlob = None,
-        abort_metadata: AbortMetadata = None,
+        error: typing.Optional[flytekit.models.core.execution.ExecutionError] = None,
+        outputs: typing.Optional[LiteralMapBlob] = None,
+        abort_metadata: typing.Optional[AbortMetadata] = None,
     ):
         """
         :param phase: From the flytekit.models.core.execution.WorkflowExecutionPhase enum
