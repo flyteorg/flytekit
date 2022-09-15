@@ -17,7 +17,7 @@ from flytekit.types.structured.structured_dataset import (
 
 class HuggingFaceDatasetRenderer:
     """
-    The datasets Dataset printable representation is saved to HTML.
+    The datasets.Dataset printable representation is saved to HTML.
     """
 
     def to_html(self, df: datasets.Dataset) -> str:
