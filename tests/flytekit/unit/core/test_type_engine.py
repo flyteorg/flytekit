@@ -35,6 +35,7 @@ from flytekit.core.type_engine import (
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
+    UnionTransformer,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -147,6 +148,7 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Bar(object):
+        v: typing.Union[int, None]
         w: typing.Optional[str]
         x: float
         y: str
@@ -155,12 +157,14 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Foo(object):
+        u: typing.Optional[int]
+        v: typing.Optional[int]
         w: int
         x: typing.List[int]
         y: typing.Dict[str, str]
         z: Bar
 
-    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
+    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}))
     generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
@@ -170,16 +174,23 @@ def test_list_of_dataclass_getting_python_value():
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
     foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
 
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
-    assert isinstance(pv, list)
-    assert pv[0].w == foo.w
-    assert pv[0].x == foo.x
-    assert pv[0].y == foo.y
-    assert pv[0].z.x == foo.z.x
-    assert type(pv[0].z.x) == float
-    assert pv[0].z.y == foo.z.y
-    assert pv[0].z.z == foo.z.z
-    assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
+    guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    print("=====")
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert isinstance(guessed_pv, list)
+    assert guessed_pv[0].u == pv[0].u
+    assert guessed_pv[0].v == pv[0].v
+    assert guessed_pv[0].w == pv[0].w
+    assert guessed_pv[0].x == pv[0].x
+    assert guessed_pv[0].y == pv[0].y
+    assert guessed_pv[0].z.x == pv[0].z.x
+    assert type(guessed_pv[0].u) == int
+    assert guessed_pv[0].v is None
+    assert type(guessed_pv[0].w) == int
+    assert type(guessed_pv[0].z.x) == float
+    assert guessed_pv[0].z.y == pv[0].z.y
+    assert guessed_pv[0].z.z == pv[0].z.z
+    assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
 
 
 def test_file_no_downloader_default():
@@ -782,6 +793,43 @@ def test_union_type():
     assert v == "hello"
 
 
+def test_assert_dataclass_type():
+    @dataclass_json
+    @dataclass
+    class Args(object):
+        x: int
+        y: typing.Optional[str]
+
+    @dataclass_json
+    @dataclass
+    class Schema(object):
+        x: typing.Optional[Args] = None
+
+    pt = Schema
+    lt = TypeEngine.to_literal_type(pt)
+    gt = TypeEngine.guess_python_type(lt)
+    pv = Schema(x=Args(x=3, y="hello"))
+    DataclassTransformer().assert_type(gt, pv)
+    DataclassTransformer().assert_type(Schema, pv)
+
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+
+    pv = Bar(x=3)
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+    ):
+        DataclassTransformer().assert_type(gt, pv)
+
+
+def test_union_transformer():
+    assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert not UnionTransformer.is_optional_type(str)
+    assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
+
+
 def test_union_type_with_annotated():
     pt = typing.Union[
         Annotated[str, FlyteAnnotation({"hello": "world"})], Annotated[int, FlyteAnnotation({"test": 123})]
@@ -1174,6 +1222,7 @@ def test_pass_annotated_to_downstream_tasks():
     """
     Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
     """
+
     # pandas dataframe hash function
     def hash_pandas_dataframe(df: pd.DataFrame) -> str:
         return str(pd.util.hash_pandas_object(df))
@@ -1197,11 +1246,11 @@ def test_pass_annotated_to_downstream_tasks():
 
         # We should have a cache miss in the first call to downstream_t
         v_1 = downstream_t(a=v, df=df)
-        v_2 = downstream_t(a=v, df=df)
+        downstream_t(a=v, df=df)
 
-        return v_1 + v_2
+        return v_1
 
-    assert t1(a=3) == (6 + 6 + 6)
+    assert t1(a=3) == 9
 
 
 def test_literal_hash_int_not_set():

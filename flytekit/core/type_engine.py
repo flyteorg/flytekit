@@ -270,6 +270,46 @@ class DataclassTransformer(TypeTransformer[object]):
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
 
+    def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+        # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
+        if type(v) == expected_type:
+            return
+
+        # @dataclass_json
+        # @dataclass
+        # class Foo(object):
+        #     a: int = 0
+        #
+        # @task
+        # def t1(a: Foo):
+        #     ...
+        #
+        # In above example, the type of v may not equal to the expected_type in some cases
+        # For example,
+        # 1. The input of t1 is another dataclass (bar), then we should raise an error
+        # 2. when using flyte remote to execute the above task, the expected_type is guess_python_type (FooSchema) by default.
+        # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
+        # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
+
+        expected_fields_dict = {}
+        for f in dataclasses.fields(expected_type):
+            expected_fields_dict[f.name] = f.type
+
+        for f in dataclasses.fields(type(v)):
+            original_type = f.type
+            expected_type = expected_fields_dict[f.name]
+
+            if UnionTransformer.is_optional_type(original_type):
+                original_type = UnionTransformer.get_sub_type_in_optional(original_type)
+            if UnionTransformer.is_optional_type(expected_type):
+                expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+
+            val = v.__getattribute__(f.name)
+            if dataclasses.is_dataclass(val):
+                self.assert_type(expected_type, val)
+            elif original_type != expected_type:
+                raise TypeTransformerFailedError(f"Type of Val '{original_type}' is not an instance of {expected_type}")
+
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         """
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
@@ -449,7 +489,9 @@ class DataclassTransformer(TypeTransformer[object]):
             return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
-        if t == int:
+        if val is None:
+            return val
+        if t == int or t == typing.Optional[int]:
             return int(val)
 
         if isinstance(val, list):
@@ -460,6 +502,13 @@ class DataclassTransformer(TypeTransformer[object]):
             ktype, vtype = DictTransformer.get_dict_types(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {self._fix_val_int(ktype, k): self._fix_val_int(vtype, v) for k, v in val.items()}
+
+        if get_origin(t) is typing.Union and type(None) in get_args(t):
+            # Handle optional type. e.g. Optional[int], Optional[dataclass]
+            # Marshmallow doesn't support union type, so the type here is always an optional type.
+            # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
+            # Note: Union[None, int] is also an optional type, but Marshmallow does not support it.
+            return self._fix_val_int(get_args(t)[0], val)
 
         if dataclasses.is_dataclass(t):
             return self._fix_dataclass_int(t, val)  # type: ignore
@@ -975,6 +1024,17 @@ class UnionTransformer(TypeTransformer[T]):
     def __init__(self):
         super().__init__("Typed Union", typing.Union)
 
+    @staticmethod
+    def is_optional_type(t: Type[T]) -> bool:
+        return get_origin(t) is typing.Union and type(None) in get_args(t)
+
+    @staticmethod
+    def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
+        """
+        Return the generic Type T of the Optional type
+        """
+        return get_args(t)[0]
+
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         if get_origin(t) is Annotated:
             t = get_args(t)[0]
@@ -1309,6 +1369,11 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
     element_type = element_property["type"]
     element_format = element_property["format"] if "format" in element_property else None
+
+    if type(element_type) == list:
+        # Element type of Optional[int] is [integer, None]
+        return typing.Optional[_get_element_type({"type": element_type[0]})]
+
     if element_type == "string":
         return str
     elif element_type == "integer":
