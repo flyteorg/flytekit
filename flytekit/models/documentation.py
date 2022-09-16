@@ -9,6 +9,12 @@ from flytekit.models import common as _common_models
 
 @dataclass
 class LongDescription(_common_models.FlyteIdlEntity):
+    """
+    Full user description with formatting preserved. This can be rendered
+    by clients, such as the console or command line tools with in-tact
+    formatting.
+    """
+
     class DescriptionFormat(Enum):
         UNKNOWN = 0
         MARKDOWN = 1
@@ -37,6 +43,10 @@ class LongDescription(_common_models.FlyteIdlEntity):
 
 @dataclass
 class SourceCode(_common_models.FlyteIdlEntity):
+    """
+    Link to source code used to define this task or workflow.
+    """
+
     link: Optional[str] = None
 
     def to_flyte_idl(self):
@@ -53,6 +63,14 @@ class SourceCode(_common_models.FlyteIdlEntity):
 
 @dataclass
 class Documentation(_common_models.FlyteIdlEntity):
+    """
+    DescriptionEntity contains detailed description for the task/workflow/launch plan.
+    Documentation could provide insight into the algorithms, business use case, etc.
+    Args:
+        short_description (str): One-liner overview of the entity.
+        long_description (Optional[LongDescription]): Full user description with formatting preserved.
+        source_code (Optional[SourceCode]): link to source code used to define this entity
+    """
 
     short_description: str
     long_description: Optional[LongDescription] = None

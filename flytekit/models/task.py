@@ -13,7 +13,6 @@ from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
-from flytekit.models.documentation import Documentation
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -498,9 +497,7 @@ class TaskSpec(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.tasks_pb2.TaskSpec
         """
-        return _admin_task.TaskSpec(
-            template=self.template.to_flyte_idl(),
-        )
+        return _admin_task.TaskSpec(template=self.template.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -508,9 +505,7 @@ class TaskSpec(_common.FlyteIdlEntity):
         :param flyteidl.admin.tasks_pb2.TaskSpec pb2_object:
         :rtype: TaskSpec
         """
-        return cls(
-            TaskTemplate.from_flyte_idl(pb2_object.template),
-        )
+        return cls(TaskTemplate.from_flyte_idl(pb2_object.template))
 
 
 class Task(_common.FlyteIdlEntity):

@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit import Literal, Documentation
+from flytekit import Documentation, Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -450,12 +450,18 @@ class FlyteRemote(object):
                 raise
         return ident
 
-    def register_description_entity(self, ident: Identifier, docs: Documentation):
+    def register_description_entity(self, identifier: Identifier, documentation: Documentation):
+        """
+        Register a description entity with Remote
+        For any conflicting parameters method arguments are regarded as overrides
+
+        :param Identifier identifier: Identifier of the registered entity. e.g. task/workflow/launchPlan
+        :param Documentation documentation:  docs contains detailed description for the task/workflow/launch.
+        """
         try:
-            self.client.create_description_entity(ident, docs)
+            self.client.create_description_entity(identifier, documentation)
         except FlyteEntityAlreadyExistsException:
-            print("test")
-            remote_logger.info(f"{docs} already exists")
+            remote_logger.info(f"{documentation} already exists")
 
     def register_task(
         self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
