@@ -88,6 +88,7 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
         super().__init__(
             name=name,
             task_config=task_config,
+            # if you use your own image, keep in mind to specify the container image here
             container_image=container_image or DefaultImages.default_image(),
             executor_type=SQLite3TaskExecutor,
             task_type=self._SQLITE_TASK_TYPE,
