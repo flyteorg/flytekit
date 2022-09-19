@@ -467,7 +467,12 @@ def get_serializable_node(
         if entity.flyte_entity.sleep_duration:
             gn = GateNode(sleep=SleepCondition(duration=entity.flyte_entity.sleep_duration))
         else:
-            gn = GateNode(signal=SignalCondition(entity.flyte_entity.name, type=entity.flyte_entity.literal_type))
+            output_name = list(entity.flyte_entity.python_interface.outputs.keys())[0]  # should be o0
+            gn = GateNode(
+                signal=SignalCondition(
+                    entity.flyte_entity.name, type=entity.flyte_entity.literal_type, output_variable_name=output_name
+                )
+            )
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,

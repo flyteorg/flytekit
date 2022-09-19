@@ -220,7 +220,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
 
 
 class SignalCondition(_common.FlyteIdlEntity):
-    def __init__(self, signal_id: str, type: type_models.LiteralType):
+    def __init__(self, signal_id: str, type: type_models.LiteralType, output_variable_name: str):
         """
         Represents a dependency on an signal from a user.
         :param signal_id: The node id of the signal, also the signal name.
@@ -228,6 +228,7 @@ class SignalCondition(_common.FlyteIdlEntity):
         """
         self._signal_id = signal_id
         self._type = type
+        self._output_variable_name = output_variable_name
 
     @property
     def signal_id(self) -> str:
@@ -237,12 +238,22 @@ class SignalCondition(_common.FlyteIdlEntity):
     def type(self) -> type_models.LiteralType:
         return self._type
 
+    @property
+    def output_variable_name(self) -> str:
+        return self._output_variable_name
+
     def to_flyte_idl(self) -> _core_workflow.SignalCondition:
-        return _core_workflow.SignalCondition(signal_id=self.signal_id, type=self.type.to_flyte_idl())
+        return _core_workflow.SignalCondition(
+            signal_id=self.signal_id, type=self.type.to_flyte_idl(), output_variable_name=self.output_variable_name
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _core_workflow.SignalCondition):
-        return cls(signal_id=pb2_object.signal_id, type=type_models.LiteralType.from_flyte_idl(pb2_object.type))
+        return cls(
+            signal_id=pb2_object.signal_id,
+            type=type_models.LiteralType.from_flyte_idl(pb2_object.type),
+            output_variable_name=pb2_object.output_variable_name,
+        )
 
 
 class SleepCondition(_common.FlyteIdlEntity):

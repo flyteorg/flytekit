@@ -6,12 +6,9 @@ from typing import Tuple, Union
 
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import FlyteContext
-from flytekit.core.promise import (
-    Promise,
-    VoidPromise,
-    flyte_entity_call_handler,
-)
+from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handler
 from flytekit.core.type_engine import TypeEngine
+from flytekit.loggers import logger
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.types import LiteralType
 
@@ -24,9 +21,13 @@ class Gate(object):
     input, or run a timer.
     """
 
-    def __init__(self, name: str, input_type: typing.Optional[typing.Type] = None,
-                 sleep_duration: typing.Optional[datetime.timedelta] = None,
-                 timeout: typing.Optional[datetime.timedelta] = None):
+    def __init__(
+        self,
+        name: str,
+        input_type: typing.Optional[typing.Type] = None,
+        sleep_duration: typing.Optional[datetime.timedelta] = None,
+        timeout: typing.Optional[datetime.timedelta] = None,
+    ):
         self._name = name
         self._input_type = input_type
         self._sleep_duration = sleep_duration
@@ -59,9 +60,11 @@ class Gate(object):
             return flyte_interface.Interface()
 
         # If this is a signaling node then the output should be of the type requested by the signal.
-        return flyte_interface.Interface(outputs={
-            "o0": self.input_type,
-        })
+        return flyte_interface.Interface(
+            outputs={
+                "o0": self.input_type,
+            }
+        )
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         # Part of SupportsNodeCreation interface
@@ -76,24 +79,44 @@ class Gate(object):
             print(f"Fake sleeping {self.name}")
             return VoidPromise(self.name)
 
-        # Triggering stdin is easy, can use that to ask for input, but doing that in tests is hard.
-        # TODO: FIGURE OUT HOW TO DO THIS!
+        # Trigger stdin
         if issubclass(self.input_type, bool):
+            input(f"Pausing execution for gate {self.name}, press enter to continue...\n")
             l = TypeEngine.to_literal(ctx, True, bool, TypeEngine.to_literal_type(bool))  # noqa
             p = Promise(var="o0", val=l)
             return p
         elif issubclass(self.input_type, int):
-            l = TypeEngine.to_literal(ctx, 42, int, TypeEngine.to_literal_type(int))  # noqa
+            x = input(f"Pausing execution for {self.name}, enter integer: ")
+            ii = int(x)
+            logger.debug(f"Parsed {x} to {ii} from gate node {self.name}")
+            l = TypeEngine.to_literal(ctx, ii, int, TypeEngine.to_literal_type(int))  # noqa
+            p = Promise(var="o0", val=l)
+            return p
+        elif issubclass(self.input_type, float):
+            x = input(f"Pausing execution for {self.name}, enter float: ")
+            ff = float(x)
+            logger.debug(f"Parsed {x} to {ff} from gate node {self.name}")
+            l = TypeEngine.to_literal(ctx, ff, float, TypeEngine.to_literal_type(float))  # noqa
             p = Promise(var="o0", val=l)
             return p
         else:
-            raise Exception("only bool or int")
+            # Todo: We should implement the rest by way of importing the code in pyflyte run
+            #   that parses text from the command line
+            raise Exception("only bool or int/float")
 
 
 def signal(name: str, timeout: datetime.timedelta, expected_type: typing.Type):
-    # Create a Gate object. This object will function like a task. Note that unlike a task, each time this function
-    # is called, a new Python object is created. If a workflow calls a subworkflow twice, and the subworkflow has
-    # a signal, then two Gate objects are created. This shouldn't be a problem as long as the objects are identical.
+    """
+    Create a Gate object. This object will function like a task. Note that unlike a task,
+    each time this function is called, a new Python object is created. If a workflow
+    calls a subworkflow twice, and the subworkflow has a signal, then two Gate
+    objects are created. This shouldn't be a problem as long as the objects are identical.
+
+    :param name:
+    :param timeout:
+    :param expected_type:
+    :return:
+    """
 
     g = Gate(name, input_type=expected_type, timeout=timeout)
 
