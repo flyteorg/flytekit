@@ -15,15 +15,17 @@ pip install flytekitplugins-whylogs
 To generate profiles, you can add a task like the following:
 
 ```python
+import whylogs as why
 from whylogs.core import DatasetProfileView
-import whylogs as ylog
 
 import pandas as pd
 
+from flytekit import task
+
 @task
 def profile(df: pd.DataFrame) -> DatasetProfileView:
-    result = ylog.log(df) # Various overloads for different common data types exist
-    profile = result.view()
+    result = why.log(df) # Various overloads for different common data types exist
+    profile_view = result.view()
     return profile
 ```
 
@@ -37,21 +39,19 @@ if the data in the workflow doesn't conform to some configured constraints, like
 min/max values on features, data types on features, etc.
 
 ```python
+from whylogs.core.constraints.factories import greater_than_number, mean_between_range
+
 @task
-def validate_data(profile: DatasetProfileView):
-    column = profile.get_column("my_column")
-    print(column.to_summary_dict()) # To see available things you can validate against
-    builder = ConstraintsBuilder(profile)
-    numConstraint = MetricConstraint(
-        name='numbers between 0 and 4 only',
-        condition=lambda x: x.min > 0 and x.max < 4,
-        metric_selector=MetricsSelector(metric_name='distribution', column_name='my_column'))
-    builder.add_constraint(numConstraint)
+def validate_data(profile_view: DatasetProfileView):
+    builder = ConstraintsBuilder(dataset_profile_view=profile_view)
+    builder.add_constraint(greater_than_number(column_name="my_column", number=0.14))
+    builder.add_constraint(mean_between_range(column_name="my_other_column", lower=2, upper=3))
     constraint = builder.build()
     valid = constraint.validate()
 
-    if(not valid):
+    if valid is False:
+        print(constraint.report())
         raise Exception("Invalid data found")
 ```
 
-Check out our [constraints notebook](https://github.com/whylabs/whylogs/blob/1.0.x/python/examples/basic/MetricConstraints.ipynb) for more examples.
+If you want to learn more about whylogs, check out our [example notebooks](https://github.com/whylabs/whylogs/tree/mainline/python/examples).
