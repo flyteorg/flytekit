@@ -3,11 +3,11 @@ from typing import Type
 
 import pandas as pd
 import whylogs as why
+from flytekitplugins.whylogs.schema import WhylogsDatasetProfileTransformer
 from whylogs.core import DatasetProfileView
 
-from flytekitplugins.whylogs.schema import WhylogsDatasetProfileTransformer
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit import task, workflow
+from flytekit.core.context_manager import FlyteContextManager
 
 
 @task
@@ -44,6 +44,6 @@ def test_to_html_method() -> None:
     tf = WhylogsDatasetProfileTransformer()
     profile_view = whylogs_profiling()
     report = tf.to_html(FlyteContextManager.current_context(), profile_view, Type[DatasetProfileView])
-    
+
     assert isinstance(report, str)
     assert "Profile Visualizer" in report
