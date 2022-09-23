@@ -261,9 +261,9 @@ def test_dict_wf_with_constants():
     assert n_cached_task_calls == 2
 
 
-def test_set_integer_literal_hash_is_not_cached():
+def test_set_integer_literal_hash_is_cached():
     """
-    Test to confirm that the local cache is not set in the case of integers, even if we
+    Test to confirm that the local cache is set in the case of integers, even if we
     return an annotated integer. In order to make this very explicit, we define a constant hash
     function, i.e. the same value is returned by it regardless of the input.
     """
@@ -289,13 +289,13 @@ def test_set_integer_literal_hash_is_not_cached():
     assert n_cached_task_calls == 0
     assert wf(a=3) == 3
     assert n_cached_task_calls == 1
-    # Confirm that the value is not cached, even though we set a hash function that
-    # returns a constant value and that the task has only one input.
-    assert wf(a=2) == 2
-    assert n_cached_task_calls == 2
+    # Confirm that the value is cached due to the fact the hash value is constant, regardless
+    # of the value passed to the cacheable task.
+    assert wf(a=2) == 3
+    assert n_cached_task_calls == 1
     # Confirm that the cache is hit if we execute the workflow with the same value as previous run.
-    assert wf(a=2) == 2
-    assert n_cached_task_calls == 2
+    assert wf(a=2) == 3
+    assert n_cached_task_calls == 1
 
 
 def test_pass_annotated_to_downstream_tasks():

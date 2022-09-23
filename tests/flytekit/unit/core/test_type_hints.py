@@ -1811,11 +1811,11 @@ def test_union_type_ambiguity_resolution():
     del TypeEngine._REGISTRY[MyInt]
 
 
-def test_task_annotate_primitive_type_has_no_effect():
+def test_task_annotate_primitive_type_is_allowed():
     @task
     def plus_two(
         a: int,
-    ) -> Annotated[int, HashMethod(str)]:  # Note the use of `str` as the hash function for ints. This has no effect.
+    ) -> Annotated[int, HashMethod(lambda x: str(x + 1))]:
         return a + 2
 
     assert plus_two(a=1) == 3
@@ -1832,7 +1832,7 @@ def test_task_annotate_primitive_type_has_no_effect():
         ),
     )
     assert output_lm.literals["o0"].scalar.primitive.integer == 5
-    assert output_lm.literals["o0"].hash is None
+    assert output_lm.literals["o0"].hash == "6"
 
 
 def test_task_hash_return_pandas_dataframe():
