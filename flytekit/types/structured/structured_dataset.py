@@ -376,9 +376,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
         self._type_assertions_enabled = False
 
-        # Instances of StructuredDataset opt-in to the ability of being cached.
-        self._hash_overridable = True
-
     @classmethod
     def register_renderer(cls, python_type: Type, renderer: Renderable):
         cls.Renderers[python_type] = renderer

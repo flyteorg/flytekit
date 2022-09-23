@@ -62,13 +62,10 @@ class TypeTransformer(typing.Generic[T]):
     Base transformer type that should be implemented for every python native type that can be handled by flytekit
     """
 
-    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True, hash_overridable: bool = False):
+    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True):
         self._t = t
         self._name = name
         self._type_assertions_enabled = enable_type_assertions
-        # `hash_overridable` indicates that the literals produced by this type transformer can set their hashes if needed.
-        # See (link to documentation where this feature is explained).
-        self._hash_overridable = hash_overridable
 
     @property
     def name(self):
@@ -87,10 +84,6 @@ class TypeTransformer(typing.Generic[T]):
         Indicates if the transformer wants type assertions to be enabled at the core type engine layer
         """
         return self._type_assertions_enabled
-
-    @property
-    def hash_overridable(self) -> bool:
-        return self._hash_overridable
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, t):
@@ -742,7 +735,7 @@ class TypeEngine(typing.Generic[T]):
 
         # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
         hash = None
-        if transformer.hash_overridable and get_origin(python_type) is Annotated:
+        if get_origin(python_type) is Annotated:
             # We are now dealing with one of two cases:
             # 1. The annotated type is a `HashMethod`, which indicates that we should we should produce the hash using
             #    the method indicated in the annotation.
