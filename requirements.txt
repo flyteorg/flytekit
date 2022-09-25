@@ -74,7 +74,7 @@ jinja2==3.1.2
     #   jinja2-time
 jinja2-time==0.2.0
     # via cookiecutter
-joblib==1.1.0
+joblib==1.2.0
     # via flytekit
 jsonschema==3.2.0
     # via -r requirements.in
