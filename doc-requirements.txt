@@ -255,7 +255,7 @@ jinja2-time==0.2.0
     # via cookiecutter
 jmespath==1.0.1
     # via botocore
-joblib==1.1.0
+joblib==1.2.0
     # via
     #   flytekit
     #   pandas-profiling
