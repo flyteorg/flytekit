@@ -1254,17 +1254,16 @@ def test_pass_annotated_to_downstream_tasks():
     assert t1(a=3) == 9
 
 
-def test_literal_hash_int_not_set():
+def test_literal_hash_int_can_be_set():
     """
-    Test to confirm that annotating an integer with `HashMethod` does not force the literal to have its
-    hash set.
+    Test to confirm that annotating an integer with `HashMethod` is allowed.
     """
     ctx = FlyteContext.current_context()
     lv = TypeEngine.to_literal(
         ctx, 42, Annotated[int, HashMethod(str)], LiteralType(simple=model_types.SimpleType.INTEGER)
     )
     assert lv.scalar.primitive.integer == 42
-    assert lv.hash is None
+    assert lv.hash == "42"
 
 
 def test_literal_hash_to_python_value():
