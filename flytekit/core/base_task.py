@@ -46,7 +46,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.documentation import Documentation
+from flytekit.models.documentation import Documentation, LongDescription
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
@@ -398,6 +398,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._environment = environment if environment else {}
         self._task_config = task_config
         self._disable_deck = disable_deck
+        if self._python_interface.docstring:
+            short_description = self._python_interface.docstring.short_description
+            long_description = None
+            if self._python_interface.docstring.long_description:
+                long_description = LongDescription(value=self._python_interface.docstring.long_description)
+
+            if self.docs is None:
+                self._docs = Documentation(short_description=short_description, long_description=long_description)
+            else:
+                self._docs.short_description = short_description
+                self._docs.long_description = long_description
 
     # TODO lets call this interface and the other as flyte_interface?
     @property

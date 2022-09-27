@@ -21,20 +21,20 @@ class LongDescription(_common_models.FlyteIdlEntity):
         HTML = 2
         RST = 3
 
-    values: Optional[str] = ""
+    value: Optional[str] = ""
     uri: Optional[str] = ""
     icon_link: Optional[str] = ""
     format: DescriptionFormat = DescriptionFormat.RST
 
     def to_flyte_idl(self):
         return description_entity_pb2.LongDescription(
-            values=self.values, uri=self.uri, long_format=self.format.value, icon_link=self.icon_link
+            value=self.value, uri=self.uri, format=self.format.value, icon_link=self.icon_link
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: description_entity_pb2.LongDescription) -> "LongDescription":
         return cls(
-            values=pb2_object.values,
+            value=pb2_object.value,
             uri=pb2_object.uri,
             format=LongDescription.DescriptionFormat(pb2_object.long_format),
             icon_link=pb2_object.icon_link,
