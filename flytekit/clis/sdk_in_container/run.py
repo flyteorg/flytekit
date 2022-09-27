@@ -35,6 +35,7 @@ from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
 from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow
+from flytekit.models.execution import ClusterAssignment
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root
@@ -241,6 +242,15 @@ class RunLevelParams(PyFlyteParams):
             show_default=True,
             help="Use this to limit number of launch plans retreived from the backend, "
             "if `from-server` option is used",
+        )
+    )
+    cluster_pool: str = make_field(
+        click.Option(
+            param_decls=["--cluster-pool", "cluster_pool"],
+            required=False,
+            type=str,
+            default="",
+            help="Assign newly created execution to a given cluster pool",
         )
     )
     computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)

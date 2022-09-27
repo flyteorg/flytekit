@@ -5,6 +5,7 @@ import typing
 from typing import Optional
 
 import flyteidl
+import flyteidl.admin.cluster_assignment_pb2 as _cluster_assignment_pb2
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
@@ -179,6 +180,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         overwrite_cache: Optional[bool] = None,
         envs: Optional[_common_models.Envs] = None,
         tags: Optional[typing.List[str]] = None,
+        cluster_assignment: Optional[ClusterAssignment] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -210,6 +212,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._overwrite_cache = overwrite_cache
         self._envs = envs
         self._tags = tags
+        self._cluster_assignment = cluster_assignment
 
     @property
     def launch_plan(self):
@@ -288,6 +291,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     def tags(self) -> Optional[typing.List[str]]:
         return self._tags
 
+    @property
+    def cluster_assignment(self) -> typing.Optional[ClusterAssignment]:
+        return self._cluster_assignment
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -308,6 +315,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             overwrite_cache=self.overwrite_cache,
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags,
+            cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
         )
 
     @classmethod
@@ -336,6 +344,28 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             tags=p.tags,
         )
 
+
+class ClusterAssignment(_common_models.FlyteIdlEntity):
+    def __init__(self, cluster_pool=None):
+        """
+        :param Text cluster_pool:
+        """
+        self._cluster_pool = cluster_pool
+
+    @property
+    def cluster_pool(self):
+        """
+        :rtype: Text
+        """
+        return self._cluster_pool
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.ClusterAssignment
+        """
+        return _cluster_assignment_pb2.ClusterAssignment(
+            cluster_pool=self.cluster_pool,
+        )
 
 class LiteralMapBlob(_common_models.FlyteIdlEntity):
     def __init__(self, values=None, uri=None):

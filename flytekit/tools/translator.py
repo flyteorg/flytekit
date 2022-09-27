@@ -24,6 +24,7 @@ from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import execution
 from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
@@ -76,6 +77,7 @@ class Options(object):
         max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
         notifications: List of notifications for this execution.
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
+        cluster_assignment: Assign newly create execution to a cluster that conforms with cluster_assignment object.
     """
 
     labels: typing.Optional[common_models.Labels] = None
@@ -85,6 +87,7 @@ class Options(object):
     max_parallelism: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
+    cluster_assignment: typing.Optional[execution.ClusterAssignment] = None
 
     @classmethod
     def default_from(
