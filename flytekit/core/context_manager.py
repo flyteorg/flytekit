@@ -617,7 +617,7 @@ class FlyteContext(object):
         """
         return FlyteContextManager.current_context()
 
-    def get_deck(self) -> typing.Union[str, "IPython.core.display.HTML"]:  #type:ignore
+    def get_deck(self) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
         """
         Returns the deck that was created as part of the last execution.
 

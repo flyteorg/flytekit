@@ -90,7 +90,7 @@ def _ipython_check() -> bool:
     return is_ipython
 
 
-def _get_deck(new_user_params: ExecutionParameters) -> typing.Union[str, "IPython.core.display.HTML"]:  #type:ignore
+def _get_deck(new_user_params: ExecutionParameters) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
     """
     Get flyte deck html string
     """
