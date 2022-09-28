@@ -23,7 +23,7 @@ scikit-learn==1.1.1
 botocore                    # fsspec
 fsspec                      # fsspec
 google-cloud                # bigquery
-google-cloud-bigquery==3.1.0       # bigquery
+google-cloud-bigquery==3.1.0 # bigquery
 markdown                    # deck
 plotly                      # deck
 pandas_profiling            # deck

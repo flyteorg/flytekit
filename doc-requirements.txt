@@ -111,7 +111,7 @@ diskcache==5.4.0
     # via flytekit
 distlib==0.3.6
     # via virtualenv
-docker==5.0.3
+docker==6.0.0
     # via flytekit
 docker-image-py==0.1.12
     # via flytekit
@@ -556,7 +556,7 @@ pyasn1-modules==0.2.8
     # via google-auth
 pycparser==2.21
     # via cffi
-pydantic==1.10.0
+pydantic==1.9.2
     # via
     #   pandas-profiling
     #   pandera
