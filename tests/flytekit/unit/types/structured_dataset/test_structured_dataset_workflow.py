@@ -1,17 +1,12 @@
 import os
 import typing
 
-import pytest
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
+from typing_extensions import Annotated
 
 from flytekit import FlyteContext, FlyteContextManager, kwtypes, task, workflow
 from flytekit.models import literals
@@ -68,6 +63,15 @@ StructuredDatasetTransformerEngine.register(MockBQEncodingHandlers(), False, Tru
 StructuredDatasetTransformerEngine.register(MockBQDecodingHandlers(), False, True)
 
 
+class NumpyRenderer:
+    """
+    The Polars DataFrame summary statistics are rendered as an HTML table.
+    """
+
+    def to_html(self, array: np.ndarray) -> str:
+        return pd.DataFrame(array).describe().to_html()
+
+
 @pytest.fixture(autouse=True)
 def numpy_type():
     class NumpyEncodingHandlers(StructuredDatasetEncoder):
@@ -101,9 +105,9 @@ def numpy_type():
             table = pq.read_table(local_dir)
             return table.to_pandas().to_numpy()
 
-    for protocol in ["/", "s3"]:
-        StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray, protocol, PARQUET))
-        StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray, protocol, PARQUET))
+    StructuredDatasetTransformerEngine.register(NumpyEncodingHandlers(np.ndarray))
+    StructuredDatasetTransformerEngine.register(NumpyDecodingHandlers(np.ndarray))
+    StructuredDatasetTransformerEngine.register_renderer(np.ndarray, NumpyRenderer())
 
 
 @task

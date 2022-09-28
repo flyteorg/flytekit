@@ -23,7 +23,10 @@ def flyte_project(tmp_path):
             "workflows": {
                 "__pycache__": {"some.pyc": ""},
                 "hello_world.py": "print('Hello World!')",
-            }
+            },
+        },
+        "utils": {
+            "util.py": "print('Hello from utils!')",
         },
         ".venv": {"lots": "", "of": "", "packages": ""},
         ".env": "supersecret",
@@ -35,6 +38,7 @@ def flyte_project(tmp_path):
     }
 
     make_tree(tmp_path, tree)
+    os.symlink(str(tmp_path) + "/utils/util.py", str(tmp_path) + "/src/util")
     subprocess.run(["git", "init", str(tmp_path)])
     return tmp_path
 
@@ -48,9 +52,29 @@ def test_package(flyte_project, tmp_path):
             ".gitignore",
             "keep.foo",
             "src",
+            "src/util",
             "src/workflows",
             "src/workflows/hello_world.py",
+            "utils",
+            "utils/util.py",
         ]
+        util = tar.getmember("src/util")
+        assert util.issym()
+    assert str(os.path.basename(archive_fname)).startswith(FAST_PREFIX)
+    assert str(archive_fname).endswith(FAST_FILEENDING)
+
+
+def test_package_with_symlink(flyte_project, tmp_path):
+    archive_fname = fast_package(source=flyte_project / "src", output_dir=tmp_path, deref_symlinks=True)
+    with tarfile.open(archive_fname, dereference=True) as tar:
+        assert tar.getnames() == [
+            "",  # tar root, output removes leading '/'
+            "util",
+            "workflows",
+            "workflows/hello_world.py",
+        ]
+        util = tar.getmember("util")
+        assert util.isfile()
     assert str(os.path.basename(archive_fname)).startswith(FAST_PREFIX)
     assert str(archive_fname).endswith(FAST_FILEENDING)
 

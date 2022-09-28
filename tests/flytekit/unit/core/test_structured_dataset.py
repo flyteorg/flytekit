@@ -414,3 +414,18 @@ def test_protocol_detection():
 
         protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame, "bq://foo")
         assert protocol == "bq"
+
+
+def test_register_renderers():
+    class DummyRenderer:
+        def to_html(self, input: str) -> str:
+            return "hello " + input
+
+    renderers = StructuredDatasetTransformerEngine.Renderers
+    StructuredDatasetTransformerEngine.register_renderer(str, DummyRenderer())
+    assert renderers[str].to_html("flyte") == "hello flyte"
+    assert pd.DataFrame in renderers
+    assert pa.Table in renderers
+
+    with pytest.raises(NotImplementedError, match="Could not find a renderer for <class 'int'> in"):
+        StructuredDatasetTransformerEngine().to_html(FlyteContextManager.current_context(), 3, int)

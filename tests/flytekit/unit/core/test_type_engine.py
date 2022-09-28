@@ -35,6 +35,7 @@ from flytekit.core.type_engine import (
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
+    UnionTransformer,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -147,6 +148,7 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Bar(object):
+        v: typing.Union[int, None]
         w: typing.Optional[str]
         x: float
         y: str
@@ -162,7 +164,7 @@ def test_list_of_dataclass_getting_python_value():
         y: typing.Dict[str, str]
         z: Bar
 
-    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
+    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}))
     generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
@@ -173,7 +175,6 @@ def test_list_of_dataclass_getting_python_value():
     foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
 
     guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
-    print("=====")
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
     assert isinstance(guessed_pv, list)
     assert guessed_pv[0].u == pv[0].u
@@ -185,7 +186,9 @@ def test_list_of_dataclass_getting_python_value():
     assert type(guessed_pv[0].u) == int
     assert guessed_pv[0].v is None
     assert type(guessed_pv[0].w) == int
+    assert type(guessed_pv[0].z.v) == int
     assert type(guessed_pv[0].z.x) == float
+    assert guessed_pv[0].z.v == pv[0].z.v
     assert guessed_pv[0].z.y == pv[0].z.y
     assert guessed_pv[0].z.z == pv[0].z.z
     assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
@@ -791,6 +794,43 @@ def test_union_type():
     assert v == "hello"
 
 
+def test_assert_dataclass_type():
+    @dataclass_json
+    @dataclass
+    class Args(object):
+        x: int
+        y: typing.Optional[str]
+
+    @dataclass_json
+    @dataclass
+    class Schema(object):
+        x: typing.Optional[Args] = None
+
+    pt = Schema
+    lt = TypeEngine.to_literal_type(pt)
+    gt = TypeEngine.guess_python_type(lt)
+    pv = Schema(x=Args(x=3, y="hello"))
+    DataclassTransformer().assert_type(gt, pv)
+    DataclassTransformer().assert_type(Schema, pv)
+
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+
+    pv = Bar(x=3)
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+    ):
+        DataclassTransformer().assert_type(gt, pv)
+
+
+def test_union_transformer():
+    assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert not UnionTransformer.is_optional_type(str)
+    assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
+
+
 def test_union_type_with_annotated():
     pt = typing.Union[
         Annotated[str, FlyteAnnotation({"hello": "world"})], Annotated[int, FlyteAnnotation({"test": 123})]
@@ -1214,17 +1254,16 @@ def test_pass_annotated_to_downstream_tasks():
     assert t1(a=3) == 9
 
 
-def test_literal_hash_int_not_set():
+def test_literal_hash_int_can_be_set():
     """
-    Test to confirm that annotating an integer with `HashMethod` does not force the literal to have its
-    hash set.
+    Test to confirm that annotating an integer with `HashMethod` is allowed.
     """
     ctx = FlyteContext.current_context()
     lv = TypeEngine.to_literal(
         ctx, 42, Annotated[int, HashMethod(str)], LiteralType(simple=model_types.SimpleType.INTEGER)
     )
     assert lv.scalar.primitive.integer == 42
-    assert lv.hash is None
+    assert lv.hash == "42"
 
 
 def test_literal_hash_to_python_value():

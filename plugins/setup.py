@@ -13,6 +13,7 @@ SOURCES = {
     "flytekitplugins-awssagemaker": "flytekit-aws-sagemaker",
     "flytekitplugins-bigquery": "flytekit-bigquery",
     "flytekitplugins-fsspec": "flytekit-data-fsspec",
+    "flytekitplugins-dbt": "flytekit-dbt",
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
     "flytekitplugins-hive": "flytekit-hive",

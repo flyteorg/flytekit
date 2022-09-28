@@ -52,7 +52,7 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:
-            TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+            raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(uri, local_path, is_multipart=False)

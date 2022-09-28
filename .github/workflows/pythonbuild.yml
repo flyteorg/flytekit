@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  FLYTE_SDK_LOGGING_LEVEL: 10  # debug
+  FLYTE_SDK_LOGGING_LEVEL: 10 # debug
 
 jobs:
   build:
@@ -68,6 +68,7 @@ jobs:
           - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-data-fsspec
+          - flytekit-dbt
           - flytekit-deck-standard
           - flytekit-dolt
           - flytekit-greatexpectations
@@ -109,8 +110,6 @@ jobs:
           # Issue tracked: https://github.com/whylabs/whylogs/issues/697
           - python-version: 3.10
             plugin-names: "flytekit-whylogs"
-
-
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -136,7 +135,6 @@ jobs:
         run: |
           cd plugins/${{ matrix.plugin-names }}
           coverage run -m pytest tests
-
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -62,13 +62,10 @@ class TypeTransformer(typing.Generic[T]):
     Base transformer type that should be implemented for every python native type that can be handled by flytekit
     """
 
-    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True, hash_overridable: bool = False):
+    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True):
         self._t = t
         self._name = name
         self._type_assertions_enabled = enable_type_assertions
-        # `hash_overridable` indicates that the literals produced by this type transformer can set their hashes if needed.
-        # See (link to documentation where this feature is explained).
-        self._hash_overridable = hash_overridable
 
     @property
     def name(self):
@@ -87,10 +84,6 @@ class TypeTransformer(typing.Generic[T]):
         Indicates if the transformer wants type assertions to be enabled at the core type engine layer
         """
         return self._type_assertions_enabled
-
-    @property
-    def hash_overridable(self) -> bool:
-        return self._hash_overridable
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, t):
@@ -269,6 +262,46 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
+
+    def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+        # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
+        if type(v) == expected_type:
+            return
+
+        # @dataclass_json
+        # @dataclass
+        # class Foo(object):
+        #     a: int = 0
+        #
+        # @task
+        # def t1(a: Foo):
+        #     ...
+        #
+        # In above example, the type of v may not equal to the expected_type in some cases
+        # For example,
+        # 1. The input of t1 is another dataclass (bar), then we should raise an error
+        # 2. when using flyte remote to execute the above task, the expected_type is guess_python_type (FooSchema) by default.
+        # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
+        # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
+
+        expected_fields_dict = {}
+        for f in dataclasses.fields(expected_type):
+            expected_fields_dict[f.name] = f.type
+
+        for f in dataclasses.fields(type(v)):
+            original_type = f.type
+            expected_type = expected_fields_dict[f.name]
+
+            if UnionTransformer.is_optional_type(original_type):
+                original_type = UnionTransformer.get_sub_type_in_optional(original_type)
+            if UnionTransformer.is_optional_type(expected_type):
+                expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+
+            val = v.__getattribute__(f.name)
+            if dataclasses.is_dataclass(val):
+                self.assert_type(expected_type, val)
+            elif original_type != expected_type:
+                raise TypeTransformerFailedError(f"Type of Val '{original_type}' is not an instance of {expected_type}")
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         """
@@ -451,7 +484,7 @@ class DataclassTransformer(TypeTransformer[object]):
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if val is None:
             return val
-        if t == int or t == typing.Optional[int]:
+        if t == int:
             return int(val)
 
         if isinstance(val, list):
@@ -462,6 +495,13 @@ class DataclassTransformer(TypeTransformer[object]):
             ktype, vtype = DictTransformer.get_dict_types(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {self._fix_val_int(ktype, k): self._fix_val_int(vtype, v) for k, v in val.items()}
+
+        if get_origin(t) is typing.Union and type(None) in get_args(t):
+            # Handle optional type. e.g. Optional[int], Optional[dataclass]
+            # Marshmallow doesn't support union type, so the type here is always an optional type.
+            # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
+            # Note: Union[None, int] is also an optional type, but Marshmallow does not support it.
+            return self._fix_val_int(get_args(t)[0], val)
 
         if dataclasses.is_dataclass(t):
             return self._fix_dataclass_int(t, val)  # type: ignore
@@ -695,7 +735,7 @@ class TypeEngine(typing.Generic[T]):
 
         # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
         hash = None
-        if transformer.hash_overridable and get_origin(python_type) is Annotated:
+        if get_origin(python_type) is Annotated:
             # We are now dealing with one of two cases:
             # 1. The annotated type is a `HashMethod`, which indicates that we should we should produce the hash using
             #    the method indicated in the annotation.
@@ -976,6 +1016,17 @@ class UnionTransformer(TypeTransformer[T]):
 
     def __init__(self):
         super().__init__("Typed Union", typing.Union)
+
+    @staticmethod
+    def is_optional_type(t: Type[T]) -> bool:
+        return get_origin(t) is typing.Union and type(None) in get_args(t)
+
+    @staticmethod
+    def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
+        """
+        Return the generic Type T of the Optional type
+        """
+        return get_args(t)[0]
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         if get_origin(t) is Annotated:

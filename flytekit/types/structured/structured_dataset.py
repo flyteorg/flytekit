@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import importlib
 import os
 import types
 import typing
@@ -13,20 +12,14 @@ import _datetime
 import numpy as _np
 import pandas as pd
 import pyarrow as pa
-
-from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersistence
-
-if importlib.util.find_spec("pyspark") is not None:
-    import pyspark
-if importlib.util.find_spec("polars") is not None:
-    import polars as pl
-
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersistence
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.deck.renderer import Renderable
 from flytekit.loggers import logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
@@ -339,6 +332,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     DEFAULT_FORMATS: Dict[Type, str] = {}
 
     Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
+    Renderers: Dict[Type, Renderable] = {}
 
     @staticmethod
     def _finder(handler_map, df_type: Type, protocol: str, format: str):
@@ -382,8 +376,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
         self._type_assertions_enabled = False
 
-        # Instances of StructuredDataset opt-in to the ability of being cached.
-        self._hash_overridable = True
+    @classmethod
+    def register_renderer(cls, python_type: Type, renderer: Renderable):
+        cls.Renderers[python_type] = renderer
 
     @classmethod
     def register(cls, h: Handlers, default_for_type: Optional[bool] = False, override: Optional[bool] = False):
@@ -698,19 +693,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         else:
             df = python_val
 
-        if isinstance(df, pd.DataFrame):
-            return df.describe().to_html()
-        elif isinstance(df, pa.Table):
-            return df.to_string()
-        elif isinstance(df, _np.ndarray):
-            return pd.DataFrame(df).describe().to_html()
-        elif importlib.util.find_spec("pyspark") is not None and isinstance(df, pyspark.sql.DataFrame):
-            return pd.DataFrame(df.schema, columns=["StructField"]).to_html()
-        elif importlib.util.find_spec("polars") is not None and isinstance(df, pl.DataFrame):
-            describe_df = df.describe()
-            return pd.DataFrame(describe_df.transpose(), columns=describe_df.columns).to_html(index=False)
+        if type(df) in self.Renderers:
+            return self.Renderers[type(df)].to_html(df)
         else:
-            raise NotImplementedError("Conversion to html string should be implemented")
+            raise NotImplementedError(f"Could not find a renderer for {type(df)} in {self.Renderers}")
 
     def open_as(
         self,

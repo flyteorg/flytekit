@@ -21,12 +21,13 @@ FAST_FILEENDING = ".tar.gz"
 file_access = FlyteContextManager.current_context().file_access
 
 
-def fast_package(source: os.PathLike, output_dir: os.PathLike) -> os.PathLike:
+def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: bool = False) -> os.PathLike:
     """
     Takes a source directory and packages everything not covered by common ignores into a tarball
     named after a hexdigest of the included files.
     :param os.PathLike source:
     :param os.PathLike output_dir:
+    :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
     ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, StandardIgnore])
@@ -41,7 +42,7 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike) -> os.PathLike:
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tar_path = os.path.join(tmp_dir, "tmp.tar")
-        with tarfile.open(tar_path, "w") as tar:
+        with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
             tar.add(source, arcname="", filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)))
         with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
