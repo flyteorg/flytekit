@@ -159,7 +159,7 @@ def register(
 
     # Create a zip file containing all the entries.
     zip_file = fast_package(detected_root, output, deref_symlinks)
-    md5_bytes, str_digest = hash_file(pathlib.Path(zip_file))
+    md5_bytes, _ = hash_file(pathlib.Path(zip_file))
 
     if non_fast is False:
         # Upload zip file to Admin using FlyteRemote.
