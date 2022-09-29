@@ -13,6 +13,7 @@ from flytekit.loggers import cli_logger
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.repo import find_common_root, load_packages_and_modules
 from flytekit.tools.repo import register as repo_register
+from flytekit.tools.script_mode import hash_file
 from flytekit.tools.translator import Options
 
 _register_help = """
@@ -105,6 +106,12 @@ Note: This command only works on regular Python packages, not namespace packages
     is_flag=True,
     help="Enables symlink dereferencing when packaging files in fast registration",
 )
+@click.option(
+    "--non-fast",
+    default=False,
+    is_flag=True,
+    help="Enables to skip zipping and uploading the package",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -118,6 +125,7 @@ def register(
     raw_data_prefix: str,
     version: typing.Optional[str],
     deref_symlinks: bool,
+    non_fast: bool,
     package_or_module: typing.Tuple[str],
 ):
     """
@@ -138,22 +146,30 @@ def register(
     cli_logger.debug(
         f"Running pyflyte register from {os.getcwd()} "
         f"with images {image_config} "
-        f"and image destinationfolder {destination_dir} "
+        f"and image destination folder {destination_dir} "
         f"on {len(package_or_module)} package(s) {package_or_module}"
     )
 
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
 
-    # Todo: add switch for non-fast - skip the zipping and uploading and no fastserializationsettings
-    # Create a zip file containing all the entries.
     detected_root = find_common_root(package_or_module)
     cli_logger.debug(f"Using {detected_root} as root folder for project")
-    zip_file = fast_package(detected_root, output, deref_symlinks)
+    fast_serialization_settings = None
 
-    # Upload zip file to Admin using FlyteRemote.
-    md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
-    cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
+    # Create a zip file containing all the entries.
+    zip_file = fast_package(detected_root, output, deref_symlinks)
+    md5_bytes, _ = hash_file(pathlib.Path(zip_file))
+
+    if non_fast is False:
+        # Upload zip file to Admin using FlyteRemote.
+        md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
+        cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
+        fast_serialization_settings = FastSerializationSettings(
+            enabled=not non_fast,
+            destination_dir=destination_dir,
+            distribution_location=native_url,
+        )
 
     # Create serialization settings
     # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
@@ -161,11 +177,7 @@ def register(
         project=project,
         domain=domain,
         image_config=image_config,
-        fast_serialization_settings=FastSerializationSettings(
-            enabled=True,
-            destination_dir=destination_dir,
-            distribution_location=native_url,
-        ),
+        fast_serialization_settings=fast_serialization_settings,
     )
 
     options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
