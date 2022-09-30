@@ -137,6 +137,9 @@ def register(
     if pkgs:
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
+    if non_fast and not version:
+        raise ValueError("Version is a required parameter in case --non-fast is specified.")
+
     if len(package_or_module) == 0:
         display_help_with_error(
             ctx,
@@ -155,12 +158,12 @@ def register(
 
     detected_root = find_common_root(package_or_module)
     cli_logger.debug(f"Using {detected_root} as root folder for project")
-    fast_serialization_settings = None
 
     # Create a zip file containing all the entries.
     zip_file = fast_package(detected_root, output, deref_symlinks)
     md5_bytes, _ = hash_file(pathlib.Path(zip_file))
 
+    fast_serialization_settings = None
     if non_fast is False:
         # Upload zip file to Admin using FlyteRemote.
         md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
@@ -193,6 +196,10 @@ def register(
     if not version:
         version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
         cli_logger.info(f"Computed version is {version}")
+
+    cli_logger.warn(
+        f"Registering entities under version {version} using the following serialization settings = {serialization_settings}"
+    )
 
     # Register using repo code
     repo_register(registerable_entities, project, domain, version, remote.client)
