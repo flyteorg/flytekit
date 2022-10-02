@@ -299,6 +299,11 @@ You can use :meth:`~flytekit.remote.remote.FlyteRemote.sync` to sync the entity 
     synced_execution = remote.sync(execution, sync_nodes=True)
     node_keys = synced_execution.node_executions.keys()
 
+when using ``FlyteRemote.sync``
+
+- ``Received message larger than max (xxx vs. 4194304)`` usually crops up when the message size is too large.
+- To fix this, edit the flyte-admin-base-config config map to increase ``maxMessageSizeBytes`` value.
+
 ``node_executions`` will fetch all the underlying node executions recursively.
 
 To fetch output of a specific node execution:
