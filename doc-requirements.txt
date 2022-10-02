@@ -484,7 +484,7 @@ proto-plus==1.22.1
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
-protobuf==3.19.4
+protobuf==3.19.5
     # via
     #   flyteidl
     #   flytekit
