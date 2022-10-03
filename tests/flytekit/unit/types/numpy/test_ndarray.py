@@ -34,6 +34,11 @@ def generate_numpy_dtype_object() -> Annotated[np.ndarray, kwtypes(allow_pickle=
 
 
 @task
+def generate_numpy_fails() -> Annotated[np.ndarray, {"allow_pickle": True}]:
+    return np.array([1, 2, 3])
+
+
+@task
 def t1(array: np.ndarray) -> np.ndarray:
     assert array.dtype == int
     output = np.empty(len(array))
@@ -67,6 +72,10 @@ def wf():
     t2(array=array_2d)
     t3(array=array_1d)
     t4(array=array_dtype_object)
+    try:
+        generate_numpy_fails()
+    except Exception as e:
+        assert isinstance(e, TypeError)
 
 
 @workflow
