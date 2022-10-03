@@ -1,7 +1,7 @@
 import pathlib
 import typing
 from collections import OrderedDict
-from typing import Tuple, Type
+from typing import Dict, Tuple, Type
 
 import numpy as np
 from typing_extensions import Annotated, get_args, get_origin
@@ -13,7 +13,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 
-def extract_metadata(t: Type[np.ndarray]) -> Tuple[Type[np.ndarray], OrderedDict[str, bool]]:
+def extract_metadata(t: Type[np.ndarray]) -> Tuple[Type[np.ndarray], Dict[str, bool]]:
     metadata = None
     if get_origin(t) is Annotated:
         base_type, metadata = get_args(t)
