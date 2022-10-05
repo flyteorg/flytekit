@@ -49,7 +49,7 @@ class Node(object):
 
     def __rshift__(self, other: Node):
         self.runs_before(other)
-        return self
+        return other
 
     @property
     def outputs(self):
