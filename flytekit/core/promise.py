@@ -350,6 +350,7 @@ class Promise(object):
     def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
         if not self.is_ready:
             self.ref.node.runs_before(other.ref.node)
+        return self
 
     def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
@@ -678,6 +679,7 @@ class VoidPromise(object):
     def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
         if self.ref:
             self.ref.node.runs_before(other.ref.node)
+        return self
 
     def with_overrides(self, *args, **kwargs):
         if self.ref:
