@@ -210,7 +210,8 @@ def get_serializable_task(
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
-    return task_models.TaskSpec(template=tt)
+
+    return task_models.TaskSpec(template=tt, docs=entity.docs)
 
 
 def get_serializable_workflow(

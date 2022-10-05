@@ -450,19 +450,6 @@ class FlyteRemote(object):
                 raise
         return ident
 
-    def register_description_entity(self, identifier: Identifier, documentation: Documentation):
-        """
-        Register a description entity with Remote
-        For any conflicting parameters method arguments are regarded as overrides
-
-        :param Identifier identifier: Identifier of the registered entity. e.g. task/workflow/launchPlan
-        :param Documentation documentation:  docs contains detailed description for the task/workflow/launch.
-        """
-        try:
-            self.client.create_description_entity(identifier, documentation)
-        except FlyteEntityAlreadyExistsException:
-            remote_logger.info(f"{documentation} already exists")
-
     def register_task(
         self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
     ) -> FlyteTask:
@@ -476,7 +463,6 @@ class FlyteRemote(object):
         :return:
         """
         ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-        self.register_description_entity(ident, entity.docs)
         ft = self.fetch_task(
             ident.project,
             ident.domain,

@@ -853,34 +853,6 @@ class RawSynchronousFlyteClient(object):
         """
         return self._dataproxy_stub.CreateUploadLocation(create_upload_location_request, metadata=self._metadata)
 
-    ####################################################################################################################
-    #
-    #  Description Entity Endpoints
-    #
-    ####################################################################################################################
-
-    @_handle_rpc_error()
-    @_handle_invalid_create_request
-    def create_description_entity(self, description_entity_create_request):
-        """
-        This will create a description entity definition in the Admin database. Once successful, the description entity object can be
-        retrieved via the client or viewed via the UI or command-line interfaces.
-
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
-            the database must match the existing definition exactly. This also means that as long as the request
-            remains identical, calling this method multiple times will result in success.
-
-        :param: flyteidl.admin.task_pb2.DescriptionEntityCreateRequest description_entity_create_request: The request protobuf object.
-        :rtype: flyteidl.admin.task_pb2.DescriptionEntityCreateResponse
-        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the description entity
-            is found, this exception is raised.  The client might choose to ignore this exception because the identical
-            description entity is already registered.
-        :raises grpc.RpcError:
-        """
-        return self._stub.CreateDescriptionEntity(description_entity_create_request)
-
     @_handle_rpc_error(retry=True)
     def create_download_location(
         self, create_download_location_request: _dataproxy_pb2.CreateDownloadLocationRequest
