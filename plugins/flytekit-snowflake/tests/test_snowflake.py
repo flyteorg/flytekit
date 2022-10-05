@@ -84,7 +84,6 @@ def test_sql_template():
         inputs=kwtypes(ds=str),
         query_template="""select 1 from\t
          custom where column = 1""",
-        # the schema literal's backend uri will be equal to the value of .raw_output_data
         output_schema_type=FlyteSchema,
     )
     assert snowflake_task.query_template == "select 1 from\\t\\n         custom where column = 1"
