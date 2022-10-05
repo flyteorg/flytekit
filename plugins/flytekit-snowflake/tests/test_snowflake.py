@@ -10,7 +10,7 @@ from flytekit.types.schema import FlyteSchema
 
 query_template = """
             insert overwrite directory '{{ .rawOutputDataPrefix }}' stored as parquet
-            select * 
+            select *
             from my_table
             where ds = '{{ .Inputs.ds }}'
         """
