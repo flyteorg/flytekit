@@ -1,5 +1,4 @@
 import os
-import pathlib
 import shutil
 import subprocess
 
@@ -45,30 +44,6 @@ def test_register_with_no_package_or_module_argument():
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed"
             in result.output
         )
-
-
-@mock.patch("flytekit.clis.sdk_in_container.register.repo_register")
-@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
-@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-def test_image_config(mock_client, mock_remote, mock_repo_register):
-    mock_remote._client = mock_client
-    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
-    mock_remote.return_value._upload_file.return_value = "dummy_md5_bytes", "dummy_native_url"
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        out = subprocess.run(["git", "init"], capture_output=True)
-        assert out.returncode == 0
-        os.makedirs("core2", exist_ok=True)
-        with open(os.path.join("core2", "sample.py"), "w") as f:
-            f.write(sample_file_contents)
-            f.close()
-
-        pp = pathlib.Path.joinpath(pathlib.Path(__file__).parent.parent.parent, "configuration/configs/", "sample.yaml")
-        result = runner.invoke(
-            pyflyte.main, ["--config", str(pp), "register", "--non-fast", "--version", "v42", "core2"]
-        )
-        assert result.exit_code == 0
-        shutil.rmtree("core2")
 
 
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
