@@ -6,7 +6,7 @@ import logging
 import os
 import pathlib
 import typing
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import cast
 
 import click
@@ -22,7 +22,11 @@ from flytekit.clis.sdk_in_container.constants import (
     CTX_PROJECT,
     CTX_PROJECT_ROOT,
 )
-from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
+from flytekit.clis.sdk_in_container.helpers import (
+    FLYTE_REMOTE_INSTANCE_KEY,
+    get_and_save_remote_with_click_context,
+    patch_image_config,
+)
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
@@ -517,27 +521,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
         config_file = ctx.obj.get(CTX_CONFIG_FILE)
 
-        # Images come from three places:
-        # * The default flytekit images, which are already supplied by the base run_level_params.
-        # * The images provided by the user on the command line.
-        # * The images provided by the user via the config file, if there is one. (Images on the command line should
-        #   override all).
-        #
-        # However, the run_level_params already contains both the default flytekit images (lowest priority), as well
-        # as the images from the command line (highest priority). So when we read from the config file, we only
-        # want to add in the images that are missing, including the default, if that's also missing.
-        image_config_from_parent_cmd = run_level_params.get("image_config", None)
-        additional_image_names = set([v.name for v in image_config_from_parent_cmd.images])
-        new_additional_images = [v for v in image_config_from_parent_cmd.images]
-        new_default = image_config_from_parent_cmd.default_image
-        if config_file:
-            cfg_ic = ImageConfig.auto(config_file=config_file)
-            new_default = new_default or cfg_ic.default_image
-            for addl in cfg_ic.images:
-                if addl.name not in additional_image_names:
-                    new_additional_images.append(addl)
-
-        image_config = replace(image_config_from_parent_cmd, default_image=new_default, images=new_additional_images)
+        image_config = run_level_params.get("image_config")
+        image_config = patch_image_config(config_file, image_config)
 
         remote_entity = remote.register_script(
             entity,
