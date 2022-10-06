@@ -194,7 +194,12 @@ def test_promise_chaining():
         c >> a
         return b
 
+    @workflow
+    def wf1(x: int):
+        task_a(x=x) >> task_b(x=x) >> task_c(x=x)
+
     wf(x=3)
+    wf1(x=3)
 
 
 def test_resource_request_override():
