@@ -2,6 +2,7 @@ import os
 import typing
 from typing import Dict, List
 
+from flytekit import task
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
@@ -323,3 +324,20 @@ def test_parameter_change_to_pickle_type():
     assert params.parameters["a"].default is None
     assert our_interface.outputs["o0"].__origin__ == FlytePickle
     assert our_interface.inputs["a"].__origin__ == FlytePickle
+
+
+def test_doc_string():
+    @task
+    def t1(a: int) -> int:
+        """Set the temperature value.
+
+        The value of the temp parameter is stored as a value in
+        the class variable temperature.
+        """
+        return a
+
+    assert t1.docs.short_description == "Set the temperature value."
+    assert (
+        t1.docs.long_description.value
+        == "The value of the temp parameter is stored as a value in\nthe class variable temperature."
+    )
