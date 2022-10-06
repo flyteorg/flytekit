@@ -484,6 +484,14 @@ class DataclassTransformer(TypeTransformer[object]):
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if val is None:
             return val
+
+        if get_origin(t) is typing.Union and type(None) in get_args(t):
+            # Handle optional type. e.g. Optional[int], Optional[dataclass]
+            # Marshmallow doesn't support union type, so the type here is always an optional type.
+            # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
+            # Note: Union[None, int] is also an optional type, but Marshmallow does not support it.
+            t = get_args(t)[0]
+
         if t == int:
             return int(val)
 
@@ -495,13 +503,6 @@ class DataclassTransformer(TypeTransformer[object]):
             ktype, vtype = DictTransformer.get_dict_types(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {self._fix_val_int(ktype, k): self._fix_val_int(vtype, v) for k, v in val.items()}
-
-        if get_origin(t) is typing.Union and type(None) in get_args(t):
-            # Handle optional type. e.g. Optional[int], Optional[dataclass]
-            # Marshmallow doesn't support union type, so the type here is always an optional type.
-            # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
-            # Note: Union[None, int] is also an optional type, but Marshmallow does not support it.
-            return self._fix_val_int(get_args(t)[0], val)
 
         if dataclasses.is_dataclass(t):
             return self._fix_dataclass_int(t, val)  # type: ignore
@@ -878,7 +879,6 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
-
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
             # Annotated[typing.List[int], 'foo']
