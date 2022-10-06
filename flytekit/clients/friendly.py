@@ -2,7 +2,6 @@ import datetime
 import typing
 
 from flyteidl.admin import common_pb2 as _common_pb2
-from flyteidl.admin import description_entity_pb2 as _description_entity_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
 from flyteidl.admin import matchable_resource_pb2 as _matchable_resource_pb2

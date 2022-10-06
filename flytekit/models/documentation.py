@@ -28,7 +28,10 @@ class LongDescription(_common_models.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         return description_entity_pb2.LongDescription(
-            value=self.value, uri=self.uri, format=self.format.value, icon_link=self.icon_link
+            value=self.value if self.value else None,
+            uri=self.uri if self.uri else None,
+            format=self.format.value,
+            icon_link=self.icon_link,
         )
 
     @classmethod
@@ -36,7 +39,7 @@ class LongDescription(_common_models.FlyteIdlEntity):
         return cls(
             value=pb2_object.value,
             uri=pb2_object.uri,
-            format=LongDescription.DescriptionFormat(pb2_object.long_format),
+            format=LongDescription.DescriptionFormat(pb2_object.format),
             icon_link=pb2_object.icon_link,
         )
 
@@ -50,15 +53,11 @@ class SourceCode(_common_models.FlyteIdlEntity):
     link: Optional[str] = None
 
     def to_flyte_idl(self):
-        return description_entity_pb2.SourceCode(
-            link=self.link,
-        )
+        return description_entity_pb2.SourceCode(link=self.link)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: description_entity_pb2.SourceCode) -> "SourceCode":
-        return cls(
-            link=pb2_object.link,
-        )
+        return cls(link=pb2_object.link) if pb2_object.link else None
 
 
 @dataclass
@@ -87,6 +86,8 @@ class Documentation(_common_models.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object: description_entity_pb2.DescriptionEntity) -> "Documentation":
         return cls(
             short_description=pb2_object.short_description,
-            long_description=LongDescription.from_flyte_idl(pb2_object.long_description),
-            source_code=SourceCode.from_flyte_idl(pb2_object.source_code),
+            long_description=LongDescription.from_flyte_idl(pb2_object.long_description)
+            if pb2_object.long_description
+            else None,
+            source_code=SourceCode.from_flyte_idl(pb2_object.source_code) if pb2_object.source_code else None,
         )
