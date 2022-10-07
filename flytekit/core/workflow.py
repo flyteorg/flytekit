@@ -169,7 +169,7 @@ class WorkflowBase(object):
         workflow_metadata: WorkflowMetadata,
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
-        docs: Documentation,
+        docs: Optional[Documentation] = None,
         **kwargs,
     ):
         self._name = name
