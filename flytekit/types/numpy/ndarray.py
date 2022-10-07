@@ -14,7 +14,7 @@ from flytekit.models.types import LiteralType
 
 
 def extract_metadata(t: Type[np.ndarray]) -> Tuple[Type[np.ndarray], Dict[str, bool]]:
-    metadata = None
+    metadata = {}
     if get_origin(t) is Annotated:
         base_type, metadata = get_args(t)
         if isinstance(metadata, OrderedDict):
@@ -56,9 +56,7 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
         pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
 
         # save numpy array to file
-        np.save(
-            file=local_path, arr=python_val, allow_pickle=metadata.get("allow_pickle", False) if metadata else False
-        )
+        np.save(file=local_path, arr=python_val, allow_pickle=metadata.get("allow_pickle", False))
 
         remote_path = ctx.file_access.get_random_remote_path(local_path)
         ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
@@ -78,8 +76,8 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
         # load numpy array from a file
         return np.load(
             file=local_path,
-            allow_pickle=metadata.get("allow_pickle", False) if metadata else False,
-            mmap_mode=metadata.get("mmap_mode") if metadata else None,
+            allow_pickle=metadata.get("allow_pickle", False),
+            mmap_mode=metadata.get("mmap_mode"),
         )
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[np.ndarray]:
