@@ -166,7 +166,7 @@ pillow==9.2.0
     #   visions
 plotly==5.9.0
     # via flytekitplugins-deck-standard
-protobuf==3.20.1
+protobuf==3.20.2
     # via
     #   flyteidl
     #   flytekit
