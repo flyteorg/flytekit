@@ -202,7 +202,7 @@ def register(
         version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
         cli_logger.info(f"Computed version is {version}")
 
-    cli_logger.warn(
+    click.echo(
         f"Registering entities under version {version} using the following serialization settings = {serialization_settings}"
     )
 
