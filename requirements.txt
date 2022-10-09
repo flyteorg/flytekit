@@ -192,6 +192,9 @@ urllib3==1.26.12
     #   flytekit
     #   requests
     #   responses
+vaex-core==4.13.0
+    # via
+    #   flytekit
 websocket-client==0.59.0
     # via
     #   -r requirements.in
