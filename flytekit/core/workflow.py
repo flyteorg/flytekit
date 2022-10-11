@@ -184,16 +184,16 @@ class WorkflowBase(object):
         self._docs = docs
 
         if self._python_interface.docstring:
-            short_description = self._python_interface.docstring.short_description
-            long_description = None
-            if self._python_interface.docstring.long_description:
-                long_description = LongDescription(value=self._python_interface.docstring.long_description)
-
             if self.docs is None:
-                self._docs = Documentation(short_description=short_description, long_description=long_description)
+                self._docs = Documentation(
+                    short_description=self._python_interface.docstring.short_description,
+                    long_description=LongDescription(value=self._python_interface.docstring.long_description),
+                )
             else:
-                self._docs.short_description = short_description
-                self._docs.long_description = long_description
+                if self._python_interface.docstring.short_description:
+                    self._docs.short_description = self._python_interface.docstring.short_description
+                if self._python_interface.docstring.long_description:
+                    self._docs.long_description = self._python_interface.docstring.long_description
 
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)

@@ -114,6 +114,16 @@ def fast_register_single_script(
         return upload_location, md5
 
 
+def upload_single_file(
+    file: typing.Union[str, Path], create_upload_location_fn: typing.Callable
+) -> _data_proxy_pb2.CreateUploadLocationResponse:
+    flyte_ctx = context_manager.FlyteContextManager.current_context()
+    md5, _ = hash_file(file)
+    upload_location = create_upload_location_fn(content_md5=md5)
+    flyte_ctx.file_access.put_data(file, upload_location.signed_url)
+    return upload_location
+
+
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
     """
     Hash a file and produce a digest to be used as a version

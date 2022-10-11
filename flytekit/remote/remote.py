@@ -23,7 +23,7 @@ from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.core import constants, utils
+from flytekit.core import constants, context_manager, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -60,7 +60,7 @@ from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
-from flytekit.tools.script_mode import fast_register_single_script, hash_file
+from flytekit.tools.script_mode import fast_register_single_script, hash_file, upload_single_file
 from flytekit.tools.translator import FlyteLocalEntity, Options, get_serializable, get_serializable_launch_plan
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
@@ -607,7 +607,6 @@ class FlyteRemote(object):
                 filename="scriptmode.tar.gz",
             ),
         )
-
         serialization_settings = SerializationSettings(
             project=project,
             domain=domain,
@@ -618,6 +617,21 @@ class FlyteRemote(object):
                 distribution_location=upload_location.native_url,
             ),
         )
+
+        # Upload long description file if it's present locally, and override the uri in the entity.
+        if entity.docs and entity.docs.long_description and entity.docs.long_description.uri:
+            ctx = context_manager.FlyteContextManager.current_context()
+            if not ctx.file_access.is_remote(entity.docs.long_description.uri):
+                upload_location, _ = upload_single_file(
+                    entity.docs.long_description.uri,
+                    functools.partial(
+                        self.client.get_upload_signed_url,
+                        project=project or self.default_project,
+                        domain=domain or self.default_domain,
+                        filename=os.path.basename(entity.docs.long_description.uri),
+                    ),
+                )
+                entity.docs.long_description.uri = upload_location.native_url
 
         if version is None:
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
