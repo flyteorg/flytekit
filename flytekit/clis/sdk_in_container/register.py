@@ -1,5 +1,4 @@
 import os
-import pathlib
 import typing
 
 import click
@@ -7,14 +6,10 @@ import click
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
-from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.loggers import cli_logger
-from flytekit.tools.fast_registration import fast_package
-from flytekit.tools.repo import find_common_root, load_packages_and_modules
-from flytekit.tools.repo import register as repo_register
-from flytekit.tools.script_mode import hash_file
-from flytekit.tools.translator import Options
+from flytekit.tools import repo
 
 _register_help = """
 This command is similar to package but instead of producing a zip file, all your Flyte entities are compiled,
@@ -143,56 +138,27 @@ def register(
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
         )
 
-    cli_logger.debug(
+    click.secho(
         f"Running pyflyte register from {os.getcwd()} "
         f"with images {image_config} "
         f"and image destination folder {destination_dir} "
-        f"on {len(package_or_module)} package(s) {package_or_module}"
+        f"on {len(package_or_module)} package(s) {package_or_module}",
+        dim=True,
     )
 
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-
-    detected_root = find_common_root(package_or_module)
-    cli_logger.debug(f"Using {detected_root} as root folder for project")
-    fast_serialization_settings = None
-
-    # Create a zip file containing all the entries.
-    zip_file = fast_package(detected_root, output, deref_symlinks)
-    md5_bytes, _ = hash_file(pathlib.Path(zip_file))
-
-    if non_fast is False:
-        # Upload zip file to Admin using FlyteRemote.
-        md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
-        cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
-        fast_serialization_settings = FastSerializationSettings(
-            enabled=not non_fast,
-            destination_dir=destination_dir,
-            distribution_location=native_url,
-        )
-
-    # Create serialization settings
-    # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
-    serialization_settings = SerializationSettings(
-        project=project,
-        domain=domain,
-        image_config=image_config,
-        fast_serialization_settings=fast_serialization_settings,
+    repo.register(
+        project,
+        domain,
+        image_config,
+        output,
+        destination_dir,
+        service_account,
+        raw_data_prefix,
+        version,
+        deref_symlinks,
+        fast=not non_fast,
+        package_or_module=package_or_module,
+        remote=remote,
     )
-
-    options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
-
-    # Load all the entities
-    registerable_entities = load_packages_and_modules(
-        serialization_settings, detected_root, list(package_or_module), options
-    )
-    if len(registerable_entities) == 0:
-        display_help_with_error(ctx, "No Flyte entities were detected. Aborting!")
-    cli_logger.info(f"Found and serialized {len(registerable_entities)} entities")
-
-    if not version:
-        version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
-        cli_logger.info(f"Computed version is {version}")
-
-    # Register using repo code
-    repo_register(registerable_entities, project, domain, version, remote.client)

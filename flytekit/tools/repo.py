@@ -15,10 +15,12 @@ from flyteidl.core import identifier_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clis.helpers import hydrate_registration_parameters
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.exceptions.user import FlyteEntityAlreadyExistsException
 from flytekit.loggers import logger
+from flytekit.models.launch_plan import LaunchPlan
+from flytekit.remote import FlyteRemote
 from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import RegistrableEntity, get_registrable_entities, persist_registrable_entities
@@ -122,46 +124,6 @@ def serialize_and_package(
     package(registrable_entities, source, output, fast, deref_symlinks)
 
 
-def register(
-    registrable_entities: typing.List[RegistrableEntity],
-    project: str,
-    domain: str,
-    version: str,
-    client: SynchronousFlyteClient,
-):
-    # The incoming registrable entities are already in base protobuf form, not model form, so we use the
-    # raw client's methods instead of the friendly client's methods by calling super
-    for admin_entity in registrable_entities:
-        try:
-            if isinstance(admin_entity, _idl_admin_TaskSpec):
-                ident, task_spec = hydrate_registration_parameters(
-                    identifier_pb2.TASK, project, domain, version, admin_entity
-                )
-                logger.debug(f"Creating task {ident}")
-                super(SynchronousFlyteClient, client).create_task(TaskCreateRequest(id=ident, spec=task_spec))
-            elif isinstance(admin_entity, _idl_admin_WorkflowSpec):
-                ident, wf_spec = hydrate_registration_parameters(
-                    identifier_pb2.WORKFLOW, project, domain, version, admin_entity
-                )
-                logger.debug(f"Creating workflow {ident}")
-                super(SynchronousFlyteClient, client).create_workflow(WorkflowCreateRequest(id=ident, spec=wf_spec))
-            elif isinstance(admin_entity, _idl_admin_LaunchPlan):
-                ident, admin_lp = hydrate_registration_parameters(
-                    identifier_pb2.LAUNCH_PLAN, project, domain, version, admin_entity
-                )
-                logger.debug(f"Creating launch plan {ident}")
-                super(SynchronousFlyteClient, client).create_launch_plan(
-                    LaunchPlanCreateRequest(id=ident, spec=admin_lp.spec)
-                )
-            else:
-                raise AssertionError(f"Unknown entity of type {type(admin_entity)}")
-        except FlyteEntityAlreadyExistsException:
-            logger.info(f"{admin_entity} already exists")
-        except Exception as e:
-            logger.info(f"Failed to register entity {admin_entity} with error {e}")
-            raise e
-
-
 def find_common_root(
     pkgs_or_mods: typing.Union[typing.Tuple[str], typing.List[str]],
 ) -> Path:
@@ -225,3 +187,67 @@ def load_packages_and_modules(
     registrable_entities = serialize(pkgs_and_modules, ss, str(project_root), options)
 
     return registrable_entities
+
+
+def register(
+    project: str,
+    domain: str,
+    image_config: ImageConfig,
+    output: str,
+    destination_dir: str,
+    service_account: str,
+    raw_data_prefix: str,
+    version: typing.Optional[str],
+    deref_symlinks: bool,
+    fast: bool,
+    package_or_module: typing.Tuple[str],
+    remote: FlyteRemote,
+):
+    detected_root = find_common_root(package_or_module)
+    click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
+    fast_serialization_settings = None
+    if fast:
+        md5_bytes, native_url = remote.fast_package(detected_root, deref_symlinks, output)
+        fast_serialization_settings = FastSerializationSettings(
+            enabled=True,
+            destination_dir=destination_dir,
+            distribution_location=native_url,
+        )
+
+    # Create serialization settings
+    # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
+    serialization_settings = SerializationSettings(
+        project=project,
+        domain=domain,
+        version=version,
+        image_config=image_config,
+        fast_serialization_settings=fast_serialization_settings,
+    )
+
+    if not version and not fast:
+        version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
+        click.secho(f"Computed version is {version}", fg="yellow")
+    elif not version:
+        click.secho(f"Version is required.", fg="red")
+        return
+
+    b = serialization_settings.new_builder()
+    b.version = version
+    serialization_settings = b.build()
+
+    options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
+
+    # Load all the entities
+    registerable_entities = load_packages_and_modules(
+        serialization_settings, detected_root, list(package_or_module), options
+    )
+    if len(registerable_entities) == 0:
+        click.secho("No Flyte entities were detected. Aborting!", fg="red")
+        return
+    click.secho(f"Found and serialized {len(registerable_entities)} entities")
+
+    for cp_entity in registerable_entities:
+        name = cp_entity.id.name if isinstance(cp_entity, LaunchPlan) else cp_entity.template.id.name
+        click.secho(f"  Registering {name}....", dim=True, nl=False)
+        i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
+        click.secho(f"done, with id[{i}].", dim=True)
