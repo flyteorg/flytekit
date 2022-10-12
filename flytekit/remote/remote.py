@@ -1473,13 +1473,15 @@ class FlyteRemote(object):
                 )
         return literal_models.LiteralMap({})
 
-    def generate_http_domain(self) -> str:
+    def generate_console_http_domain(self) -> str:
         """
-        This should generate the domain where the HTTP endpoints for the Flyte backend are hosted. This should be
-        the domain that console is hosted on.
+        This should generate the domain where console is hosted.
 
         :return:
         """
+        # If the console endpoint is explicitly set, return it, else derive it from the admin config
+        if self.config.platform.console_endpoint:
+            return self.config.platform.console_endpoint
         protocol = "http" if self.config.platform.insecure else "https"
         endpoint = self.config.platform.endpoint
         # N.B.: this assumes that in case we have an identical configuration as the sandbox default config we are running single binary. The intent here is
@@ -1491,4 +1493,4 @@ class FlyteRemote(object):
     def generate_console_url(
         self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
     ):
-        return f"{self.generate_http_domain()}/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
+        return f"{self.generate_console_http_domain()}/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
