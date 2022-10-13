@@ -1,6 +1,6 @@
 import typing
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, Callable, Dict
 
 from flytekitplugins.awssagemaker.distributed_training import DistributedTrainingContext
 from google.protobuf.json_format import MessageToDict
@@ -48,7 +48,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
 
     _SAGEMAKER_TRAINING_JOB_TASK = "sagemaker_training_job_task"
 
-    OUTPUT_TYPE = TypeVar("tar.gz")
+    OUTPUT_TYPE = "tar.gz"
 
     def __init__(
         self,
@@ -70,7 +70,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
         ):
             raise ValueError("TaskConfig, algorithm_specification, training_job_resource_config are required")
 
-        input_type = TypeVar(self._content_type_to_blob_format(task_config.algorithm_specification.input_content_type))
+        input_type = self._content_type_to_blob_format(task_config.algorithm_specification.input_content_type)
 
         interface = Interface(
             # TODO change train and validation to be FlyteDirectory when available

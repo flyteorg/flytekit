@@ -44,7 +44,7 @@ def test_diabetes():
     # the last column is the class
     CLASSES_COLUMNS = OrderedDict({"class": int})
 
-    MODELSER_JOBLIB = typing.TypeVar("joblib.dat")
+    MODELSER_JOBLIB = "joblib.dat"
 
     class XGBoostModelHyperparams(object):
         """
@@ -80,12 +80,7 @@ def test_diabetes():
     @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def split_traintest_dataset(
         dataset: FlyteFile[typing.TypeVar("csv")], seed: int, test_split_ratio: float
-    ) -> (
-        FlyteSchema[FEATURE_COLUMNS],
-        FlyteSchema[FEATURE_COLUMNS],
-        FlyteSchema[CLASSES_COLUMNS],
-        FlyteSchema[CLASSES_COLUMNS],
-    ):
+    ) -> typing.Tuple[FlyteSchema[FEATURE_COLUMNS]]:
         """
         Retrieves the training dataset from the given blob location and then splits it using the split ratio and returns the result
         This splitter is only for the dataset that has the format as specified in the example csv. The last column is assumed to be
