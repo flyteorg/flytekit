@@ -112,6 +112,7 @@ class Platform(object):
     INSECURE_SKIP_VERIFY = ConfigEntry(
         LegacyConfigEntry(SECTION, "insecure_skip_verify", bool), YamlConfigEntry("admin.insecureSkipVerify", bool)
     )
+    CONSOLE_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "console_endpoint"), YamlConfigEntry("console.endpoint"))
 
 
 class LocalSDK(object):
