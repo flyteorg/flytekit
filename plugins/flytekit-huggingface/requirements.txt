@@ -137,7 +137,7 @@ pandas==1.4.3
     # via
     #   datasets
     #   flytekit
-protobuf==3.20.1
+protobuf==3.20.2
     # via
     #   flyteidl
     #   flytekit

@@ -26,6 +26,7 @@ Plugin API reference
 * :ref:`ONNX PyTorch <onnxpytorch>` - ONNX PyTorch API reference
 * :ref:`ONNX TensorFlow <onnxtensorflow>` - ONNX TensorFlow API reference
 * :ref:`ONNX ScikitLearn <onnxscikitlearn>` - ONNX ScikitLearn API reference
+* :ref:`Ray <ray>` - Ray
 
 .. toctree::
    :maxdepth: 2
@@ -53,3 +54,4 @@ Plugin API reference
    ONNX PyTorch <onnxpytorch>
    ONNX TensorFlow <onnxtensorflow>
    ONNX ScikitLearn <onnxscikitlearn>
+   Ray <ray>

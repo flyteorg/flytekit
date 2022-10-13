@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 import pandas
+import pandas as pd
+import pytest
 from dataclasses_json import dataclass_json
 from pytest import fixture
 from typing_extensions import Annotated
@@ -426,6 +428,14 @@ def test_stable_cache_key():
         "b": "abcd",
         "c": 0.12349,
         "d": [1, 2, 3],
+        "e": {
+            "e_a": 11,
+            "e_b": list(range(1000)),
+            "e_c": {
+                "e_c_a": 12.34,
+                "e_c_b": "a string",
+            },
+        },
     }
     lit = TypeEngine.to_literal(ctx, kwargs, Dict, lt)
     lm = LiteralMap(
@@ -437,4 +447,39 @@ def test_stable_cache_key():
         }
     )
     key = _calculate_cache_key("task_name_1", "31415", lm)
-    assert key == "task_name_1-31415-a291dc6fe0be387c1cfd67b4c6b78259"
+    assert key == "task_name_1-31415-404b45f8556276183621d4bf37f50049"
+
+
+def calculate_cache_key_multiple_times(x, n=1000):
+    series = pd.Series(
+        [
+            _calculate_cache_key(
+                task_name="task_name",
+                cache_version="cache_version",
+                input_literal_map=LiteralMap(
+                    literals={
+                        "d": TypeEngine.to_literal(
+                            ctx=FlyteContextManager.current_context(),
+                            expected=TypeEngine.to_literal_type(Dict),
+                            python_type=Dict,
+                            python_val=x,
+                        ),
+                    }
+                ),
+            )
+            for _ in range(n)
+        ]
+    ).value_counts()
+    return series
+
+
+@pytest.mark.parametrize(
+    "d",
+    [
+        dict(a=1, b=2, c=3),
+        dict(x=dict(a=1, b=2, c=3)),
+        dict(xs=[dict(a=1, b=2, c=3), dict(y=dict(a=10, b=20, c=30))]),
+    ],
+)
+def test_cache_key_consistency(d):
+    assert len(calculate_cache_key_multiple_times(d)) == 1

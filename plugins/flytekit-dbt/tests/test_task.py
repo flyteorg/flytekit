@@ -58,6 +58,8 @@ class TestDBTRun:
                     project_dir=DBT_PROJECT_DIR,
                     profiles_dir=DBT_PROFILES_DIR,
                     profile=DBT_PROFILE,
+                    select=["tag:something"],
+                    exclude=["tag:something-else"],
                 )
             )
 

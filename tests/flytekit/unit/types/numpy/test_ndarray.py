@@ -1,6 +1,7 @@
 import numpy as np
+from typing_extensions import Annotated
 
-from flytekit import task, workflow
+from flytekit import kwtypes, task, workflow
 
 
 @task
@@ -14,8 +15,7 @@ def generate_numpy_2d() -> np.ndarray:
 
 
 @task
-def generate_numpy_dtype_object() -> np.ndarray:
-    # dtype=object cannot be serialized
+def generate_numpy_dtype_object() -> Annotated[np.ndarray, kwtypes(allow_pickle=True, mmap_mode="r")]:
     return np.array(
         [
             [
@@ -31,6 +31,11 @@ def generate_numpy_dtype_object() -> np.ndarray:
         ],
         dtype=object,
     )
+
+
+@task
+def generate_numpy_fails() -> Annotated[np.ndarray, {"allow_pickle": True}]:
+    return np.array([1, 2, 3])
 
 
 @task
@@ -53,17 +58,24 @@ def t3(array: np.ndarray) -> np.ndarray:
     return array.reshape(2, 3)
 
 
+@task
+def t4(array: Annotated[np.ndarray, kwtypes(allow_pickle=True)]) -> int:
+    return array.size
+
+
 @workflow
 def wf():
     array_1d = generate_numpy_1d()
     array_2d = generate_numpy_2d()
-    try:
-        generate_numpy_dtype_object()
-    except Exception as e:
-        assert isinstance(e, TypeError)
+    array_dtype_object = generate_numpy_dtype_object()
     t1(array=array_1d)
     t2(array=array_2d)
     t3(array=array_1d)
+    t4(array=array_dtype_object)
+    try:
+        generate_numpy_fails()
+    except Exception as e:
+        assert isinstance(e, TypeError)
 
 
 @workflow

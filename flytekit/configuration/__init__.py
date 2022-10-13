@@ -299,6 +299,7 @@ class PlatformConfig(object):
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
     :param insecure_skip_verify: Wether to skip SSL certificate verification
+    :param console_endpoint: endpoint for console if differenet than Flyte backend
     :param command: This command is executed to return a token using an external process.
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -312,6 +313,7 @@ class PlatformConfig(object):
     endpoint: str = "localhost:30081"
     insecure: bool = False
     insecure_skip_verify: bool = False
+    console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
@@ -351,6 +353,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
+        kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
         return PlatformConfig(**kwargs)
 
     @classmethod
