@@ -8,7 +8,7 @@ from flytekit.models import common as _common_models
 
 
 @dataclass
-class LongDescription(_common_models.FlyteIdlEntity):
+class Description(_common_models.FlyteIdlEntity):
     """
     Full user description with formatting preserved. This can be rendered
     by clients, such as the console or command line tools with in-tact
@@ -27,7 +27,7 @@ class LongDescription(_common_models.FlyteIdlEntity):
     format: DescriptionFormat = DescriptionFormat.RST
 
     def to_flyte_idl(self):
-        return description_entity_pb2.LongDescription(
+        return description_entity_pb2.Description(
             value=self.value if self.value else None,
             uri=self.uri if self.uri else None,
             format=self.format.value,
@@ -35,11 +35,11 @@ class LongDescription(_common_models.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: description_entity_pb2.LongDescription) -> "LongDescription":
+    def from_flyte_idl(cls, pb2_object: description_entity_pb2.Description) -> "Description":
         return cls(
             value=pb2_object.value,
             uri=pb2_object.uri,
-            format=LongDescription.DescriptionFormat(pb2_object.format),
+            format=Description.DescriptionFormat(pb2_object.format),
             icon_link=pb2_object.icon_link,
         )
 
@@ -67,12 +67,12 @@ class Documentation(_common_models.FlyteIdlEntity):
     Documentation could provide insight into the algorithms, business use case, etc.
     Args:
         short_description (str): One-liner overview of the entity.
-        long_description (Optional[LongDescription]): Full user description with formatting preserved.
+        long_description (Optional[Description]): Full user description with formatting preserved.
         source_code (Optional[SourceCode]): link to source code used to define this entity
     """
 
     short_description: str
-    long_description: Optional[LongDescription] = None
+    long_description: Optional[Description] = None
     source_code: Optional[SourceCode] = None
 
     def to_flyte_idl(self):
@@ -86,7 +86,7 @@ class Documentation(_common_models.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object: description_entity_pb2.DescriptionEntity) -> "Documentation":
         return cls(
             short_description=pb2_object.short_description,
-            long_description=LongDescription.from_flyte_idl(pb2_object.long_description)
+            long_description=Description.from_flyte_idl(pb2_object.long_description)
             if pb2_object.long_description
             else None,
             source_code=SourceCode.from_flyte_idl(pb2_object.source_code) if pb2_object.source_code else None,

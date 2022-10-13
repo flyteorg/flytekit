@@ -39,7 +39,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.documentation import Documentation, LongDescription
+from flytekit.models.documentation import Description, Documentation
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -187,7 +187,7 @@ class WorkflowBase(object):
             if self.docs is None:
                 self._docs = Documentation(
                     short_description=self._python_interface.docstring.short_description,
-                    long_description=LongDescription(value=self._python_interface.docstring.long_description),
+                    long_description=Description(value=self._python_interface.docstring.long_description),
                 )
             else:
                 if self._python_interface.docstring.short_description:

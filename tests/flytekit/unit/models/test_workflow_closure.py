@@ -8,7 +8,7 @@ from flytekit.models import workflow_closure as _workflow_closure
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow
-from flytekit.models.documentation import Documentation, LongDescription, SourceCode
+from flytekit.models.documentation import Description, Documentation, SourceCode
 
 
 def test_workflow_closure():
@@ -85,7 +85,7 @@ def test_workflow_closure():
     assert obj == obj2
 
     short_description = "short"
-    long_description = LongDescription(value="long", icon_link="http://icon")
+    long_description = Description(value="long", icon_link="http://icon")
     source_code = SourceCode(link="https://github.com/flyteorg/flytekit")
     docs = Documentation(
         short_description=short_description, long_description=long_description, source_code=source_code

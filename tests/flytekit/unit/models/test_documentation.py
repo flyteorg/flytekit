@@ -1,14 +1,14 @@
-from flytekit.models.documentation import Documentation, LongDescription, SourceCode
+from flytekit.models.documentation import Description, Documentation, SourceCode
 
 
 def test_long_description():
     value = "long"
     icon_link = "http://icon"
-    obj = LongDescription(value=value, icon_link=icon_link)
-    assert LongDescription.from_flyte_idl(obj.to_flyte_idl()) == obj
+    obj = Description(value=value, icon_link=icon_link)
+    assert Description.from_flyte_idl(obj.to_flyte_idl()) == obj
     assert obj.value == value
     assert obj.icon_link == icon_link
-    assert obj.format == LongDescription.DescriptionFormat.RST
+    assert obj.format == Description.DescriptionFormat.RST
 
 
 def test_source_code():
@@ -20,7 +20,7 @@ def test_source_code():
 
 def test_documentation():
     short_description = "short"
-    long_description = LongDescription(value="long", icon_link="http://icon")
+    long_description = Description(value="long", icon_link="http://icon")
     source_code = SourceCode(link="https://github.com/flyteorg/flytekit")
     obj = Documentation(short_description=short_description, long_description=long_description, source_code=source_code)
     assert Documentation.from_flyte_idl(obj.to_flyte_idl()) == obj

@@ -7,7 +7,7 @@ from google.protobuf import text_format
 
 import flytekit.models.interface as interface_models
 import flytekit.models.literals as literal_models
-from flytekit import Documentation, LongDescription, SourceCode
+from flytekit import Description, Documentation, SourceCode
 from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
 from tests.flytekit.common import parameterizers
@@ -166,7 +166,7 @@ def test_task_spec():
     )
 
     short_description = "short"
-    long_description = LongDescription(value="long", icon_link="http://icon")
+    long_description = Description(value="long", icon_link="http://icon")
     source_code = SourceCode(link="https://github.com/flyteorg/flytekit")
     docs = Documentation(
         short_description=short_description, long_description=long_description, source_code=source_code
