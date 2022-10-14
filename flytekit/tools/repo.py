@@ -224,7 +224,7 @@ def register(
         fast_serialization_settings=fast_serialization_settings,
     )
 
-    if not version and not fast:
+    if not version and fast:
         version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
         click.secho(f"Computed version is {version}", fg="yellow")
     elif not version:
