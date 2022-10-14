@@ -17,7 +17,6 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
-from flyteidl.admin import task_pb2, workflow_pb2, launch_plan_pb2
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit import Literal
@@ -63,7 +62,6 @@ from flytekit.remote.task import FlyteTask
 from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.script_mode import fast_register_single_script, hash_file
-from flytekit.tools.serialize_helpers import RegistrableEntity
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
@@ -375,7 +373,7 @@ class FlyteRemote(object):
 
     def raw_register(
         self,
-        cp_entity: typing.Union[FlyteControlPlaneEntity, RegistrableEntity],
+        cp_entity: FlyteControlPlaneEntity,
         settings: typing.Optional[SerializationSettings],
         version: str,
         create_default_launchplan: bool = True,
@@ -411,9 +409,6 @@ class FlyteRemote(object):
             remote_logger.debug(f"Skipping registration of Reference entity, name: {cp_entity.template.id.name}")
             return None
 
-        if isinstance(cp_entity, task_pb2.TaskSpec):
-            cp_entity = task_models.TaskSpec.from_flyte_idl(cp_entity)
-
         if isinstance(cp_entity, task_models.TaskSpec):
             ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
             try:
@@ -421,9 +416,6 @@ class FlyteRemote(object):
             except FlyteEntityAlreadyExistsException:
                 remote_logger.info(f" {ident} Already Exists!")
             return ident
-
-        if isinstance(cp_entity, workflow_pb2.WorkflowSpec):
-            cp_entity = admin_workflow_models.WorkflowSpec.from_flyte_idl(cp_entity)
 
         if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
             ident = self._resolve_identifier(ResourceType.WORKFLOW, cp_entity.template.id.name, version, settings)
@@ -453,9 +445,6 @@ class FlyteRemote(object):
                 except FlyteEntityAlreadyExistsException:
                     remote_logger.info(f" {lp_entity.id} Already Exists!")
             return ident
-
-        if isinstance(cp_entity, launch_plan_pb2.LaunchPlan):
-            cp_entity = launch_plan_models.LaunchPlan.from_flyte_idl(cp_entity)
 
         if isinstance(cp_entity, launch_plan_models.LaunchPlan):
             ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, cp_entity.id.name, version, settings)
