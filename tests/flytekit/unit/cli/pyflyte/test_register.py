@@ -51,7 +51,7 @@ def test_register_with_no_package_or_module_argument():
 def test_register_with_no_output_dir_passed(mock_client, mock_remote):
     mock_remote._client = mock_client
     mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
-    mock_remote.return_value._upload_file.return_value = "dummy_md5_bytes", "dummy_native_url"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
     runner = CliRunner()
     with runner.isolated_filesystem():
         out = subprocess.run(["git", "init"], capture_output=True)
@@ -61,7 +61,7 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
             f.write(sample_file_contents)
             f.close()
         result = runner.invoke(pyflyte.main, ["register", "core"])
-        assert "Output given as None, using a temporary directory at" in result.output
+        assert "Successfully registered 4 entities" in result.output
         shutil.rmtree("core")
 
 
@@ -69,8 +69,6 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_non_fast_register(mock_client, mock_remote):
     mock_remote._client = mock_client
-    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
-    mock_remote.return_value._upload_file.return_value = "dummy_md5_bytes", "dummy_native_url"
     runner = CliRunner()
     with runner.isolated_filesystem():
         out = subprocess.run(["git", "init"], capture_output=True)
@@ -80,7 +78,7 @@ def test_non_fast_register(mock_client, mock_remote):
             f.write(sample_file_contents)
             f.close()
         result = runner.invoke(pyflyte.main, ["register", "--non-fast", "--version", "a-version", "core"])
-        assert "Output given as None, using a temporary directory at" in result.output
+        assert "Successfully registered 4 entities" in result.output
         shutil.rmtree("core")
 
 

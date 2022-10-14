@@ -156,17 +156,20 @@ def register(
 
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    repo.register(
-        project,
-        domain,
-        image_config,
-        output,
-        destination_dir,
-        service_account,
-        raw_data_prefix,
-        version,
-        deref_symlinks,
-        fast=not non_fast,
-        package_or_module=package_or_module,
-        remote=remote,
-    )
+    try:
+        repo.register(
+            project,
+            domain,
+            image_config,
+            output,
+            destination_dir,
+            service_account,
+            raw_data_prefix,
+            version,
+            deref_symlinks,
+            fast=not non_fast,
+            package_or_module=package_or_module,
+            remote=remote,
+        )
+    except Exception as e:
+        raise e
