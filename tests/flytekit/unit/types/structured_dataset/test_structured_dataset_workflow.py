@@ -6,7 +6,6 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-import vaex
 from typing_extensions import Annotated
 
 from flytekit import FlyteContext, FlyteContextManager, kwtypes, task, workflow
@@ -24,14 +23,12 @@ from flytekit.types.structured.structured_dataset import (
 
 PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
 NUMPY_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
-VAEX_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
 BQ_PATH = "bq://flyte-dataset:flyte.table"
 
 my_cols = kwtypes(Name=str, Age=int)
 fields = [("Name", pa.string()), ("Age", pa.int32())]
 arrow_schema = pa.schema(fields)
 pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
-vaex_df = vaex.from_dict(dict(x=[2, 3], y=[30, 40]))
 
 
 class MockBQEncodingHandlers(StructuredDatasetEncoder):
@@ -202,19 +199,6 @@ def t10(dataset: Annotated[StructuredDataset, my_cols]) -> np.ndarray:
 
 
 @task
-def t11(dataset: Annotated[StructuredDataset, my_cols]) -> vaex.DataFrame:
-    # s3 (parquet) -> vaex -> s3 (parquet)
-    vaex_df = dataset.open(vaex.DataFrame).all()
-    return vaex_df
-
-
-@task
-def t12(df: vaex.DataFrame) -> Annotated[StructuredDataset, my_cols]:
-    # df: vaex -> s3 (parquet)
-    return StructuredDataset(dataframe=df)
-
-
-@task
 def generate_pandas() -> pd.DataFrame:
     return pd_df
 
@@ -229,17 +213,11 @@ def generate_arrow() -> pa.Table:
     return pa.Table.from_pandas(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]}))
 
 
-@task
-def generate_vaex() -> vaex.DataFrame:
-    return vaex_df
-
-
 @workflow()
 def wf():
     df = generate_pandas()
     np_array = generate_numpy()
     arrow_df = generate_arrow()
-    vaex_df = generate_vaex()
     t1(dataframe=df)
     t1a(dataframe=df)
     t2(dataframe=df)
@@ -253,8 +231,6 @@ def wf():
     t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
     t10(dataset=StructuredDataset(uri=NUMPY_PATH))
-    t11(dataset=StructuredDataset(uri=VAEX_PATH))
-    t12(dataframe=vaex_df)
 
 
 def test_structured_dataset_wf():

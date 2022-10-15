@@ -5,7 +5,6 @@ from typing import TypeVar
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-import vaex
 
 from flytekit import FlyteContext
 from flytekit.deck import TopFrameRenderer
@@ -102,49 +101,10 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         return pq.read_table(local_dir)
 
 
-class VaexToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self):
-        super().__init__(vaex.DataFrame, None, PARQUET)
-
-    def encode(
-        self,
-        ctx: FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
-    ) -> literals.StructuredDataset:
-        df = typing.cast(vaex.DataFrame, structured_dataset.dataframe)
-        path = ctx.file_access.get_random_remote_directory()
-        local_dir = ctx.file_access.get_random_local_directory()
-        local_path = os.path.join(local_dir, f"{0:05}")
-        df.export_parquet(local_path)
-        ctx.file_access.upload_directory(local_dir, path)
-        return literals.StructuredDataset(
-            uri=path,
-            metadata=StructuredDatasetMetadata(structured_dataset_type=StructuredDatasetType(format=PARQUET)),
-        )
-
-
-class ParquetToVaexDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self):
-        super().__init__(vaex.DataFrame, None, PARQUET)
-
-    def decode(
-        self,
-        ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
-        current_task_metadata: StructuredDatasetMetadata,
-    ) -> vaex.DataFrame:
-        local_dir = ctx.file_access.get_random_local_directory()
-        ctx.file_access.get_data(flyte_value.uri, local_dir, is_multipart=True)
-        return vaex.open(local_dir)
-
-
 StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler())
 StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler())
-StructuredDatasetTransformerEngine.register(ParquetToVaexDecodingHandler())
-StructuredDatasetTransformerEngine.register(VaexToParquetEncodingHandler())
 
 StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
 StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())
