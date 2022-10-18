@@ -1,4 +1,6 @@
+import pandas as pd
 import vaex
+from flytekitplugins.vaex.sd_transformers import VaexDataFrameRenderer
 from typing_extensions import Annotated
 
 from flytekit import kwtypes, task, workflow
@@ -17,10 +19,10 @@ def test_vaex_workflow_subset():
     @task
     def consume(df: subset_schema) -> subset_schema:
         df = df.open(vaex.dataframe.DataFrameLocal).all()
-        col2 = df.col2.values.tolist()
-        assert col2[0] == "a"
-        assert col2[1] == "b"
-        assert col2[2] == "c"
+        coly = df.y.values.tolist()
+        assert coly[0] == "a"
+        assert coly[1] == "b"
+        assert coly[2] == "c"
         return StructuredDataset(dataframe=df)
 
     @workflow
@@ -57,3 +59,9 @@ def test_vaex_workflow_full():
 
     result = wf()
     assert result is not None
+
+
+def test_vaex_renderer():
+    assert VaexDataFrameRenderer().to_html(vaex_df) == pd.DataFrame(
+        vaex_df.describe().transpose(), columns=vaex_df.columns
+    ).to_html(index=False)

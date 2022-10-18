@@ -47,7 +47,7 @@ class ParquetToVaxDataFrameDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> vaex.dataframe:
+    ) -> vaex.dataframe.DataFrameLocal:
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(flyte_value.uri, local_dir, is_multipart=True)
         path = f"{local_dir}/00000"
