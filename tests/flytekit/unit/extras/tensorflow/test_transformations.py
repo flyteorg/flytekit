@@ -37,8 +37,7 @@ def get_tf_model():
     ],
 )
 def test_get_literal_type(transformer, python_type, format):
-    tf = transformer
-    lt = tf.get_literal_type(python_type)
+    lt = transformer.get_literal_type(python_type)
     assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE))
 
 
@@ -51,24 +50,14 @@ def test_get_literal_type(transformer, python_type, format):
             TensorflowModelTransformer.TENSORFLOW_FORMAT,
             get_tf_model()
         ),
-        (
-            TensorflowModelTransformer(),
-            tf.keras.Model,
-            TensorflowModelTransformer.TENSORFLOW_FORMAT,
-            tf.keras.Sequential([
-                tf.keras.layers.Dense(2, activation="relu"),
-                tf.keras.layers.Dense(4),
-            ])
-        ),
     ],
 )
 def test_to_python_value_and_literal(transformer, python_type, format, python_val):
     ctx = context_manager.FlyteContext.current_context()
-    tf = transformer
     python_val = python_val
-    lt = tf.get_literal_type(python_type)
+    lt = transformer.get_literal_type(python_type)
 
-    lv = tf.to_literal(ctx, python_val, type(python_val), lt)  # type: ignore
+    lv = transformer.to_literal(ctx, python_val, type(python_val), lt)  # type: ignore
     assert lv.scalar.blob.metadata == BlobMetadata(
         type=BlobType(
             format=format,
@@ -77,7 +66,7 @@ def test_to_python_value_and_literal(transformer, python_type, format, python_va
     )
     assert lv.scalar.blob.uri is not None
 
-    output = tf.to_python_value(ctx, lv, python_type)
+    output = transformer.to_python_value(ctx, lv, python_type)
     if isinstance(python_val, tf.keras.Model):
         for w1, w2 in zip(output.weights, python_val.weights):
             np.testing.assert_allclose(w1.numpy(), w2.numpy())

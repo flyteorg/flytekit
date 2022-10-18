@@ -1,4 +1,5 @@
 import tensorflow as tf
+from typing import List
 
 from flytekit import task, workflow
 
@@ -12,19 +13,13 @@ def generate_model() -> tf.keras.Model:
 
 
 @task
-def get_model_weights(model: tf.keras.Model) -> list:
-    return model.weights
-
-
-@task
-def get_model_layers(model: tf.keras.Model) -> list:
+def get_model_layers(model: tf.keras.Model) -> List[tf.keras.layers.Layer]:
     return model.layers
 
 
 @workflow
 def wf():
     model = generate_model()
-    get_model_weights(model=model)
     get_model_layers(model=model)
 
 
