@@ -1,6 +1,7 @@
 import os
 import typing
 
+import pandas as pd
 import vaex
 
 from flytekit import FlyteContext, StructuredDatasetType
@@ -17,7 +18,7 @@ from flytekit.types.structured.structured_dataset import (
 
 class VaexDataFrameToParquetEncodingHandlers(StructuredDatasetEncoder):
     def __init__(self):
-        super().__init__(vaex.DataFrame, None, PARQUET)
+        super().__init__(vaex.dataframe.DataFrameLocal, None, PARQUET)
 
     def encode(
         self,
@@ -25,7 +26,7 @@ class VaexDataFrameToParquetEncodingHandlers(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        df = typing.cast(vaex.DataFrame, structured_dataset.dataframe)
+        df = typing.cast(vaex.dataframe.DataFrameLocal, structured_dataset.dataframe)
         path = ctx.file_access.get_random_remote_directory()
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = os.path.join(local_dir, f"{0:05}")
@@ -39,7 +40,7 @@ class VaexDataFrameToParquetEncodingHandlers(StructuredDatasetEncoder):
 
 class ParquetToVaxDataFrameDecodingHandler(StructuredDatasetDecoder):
     def __init__(self):
-        super().__init__(vaex.DataFrame, None, PARQUET)
+        super().__init__(vaex.dataframe.DataFrameLocal, None, PARQUET)
 
     def decode(
         self,
@@ -58,12 +59,12 @@ class VaexDataFrameRenderer:
     Render a Vaex dataframe schema as an HTML table.
     """
 
-    def to_html(self, df: vaex.DataFrame) -> str:
-        assert isinstance(df, vaex.DataFrame)
+    def to_html(self, df: vaex.dataframe.DataFrameLocal) -> str:
+        assert isinstance(df, vaex.dataframe.DataFrameLocal)
         describe_df = df.describe()
         return pd.DataFrame(describe_df.transpose(), columns=describe_df.columns).to_html(index=False)
 
 
 StructuredDatasetTransformerEngine.register(VaexDataFrameToParquetEncodingHandlers())
 StructuredDatasetTransformerEngine.register(ParquetToVaxDataFrameDecodingHandler())
-StructuredDatasetTransformerEngine.register_renderer(vaex.DataFrame, VaexDataFrameRenderer())
+StructuredDatasetTransformerEngine.register_renderer(vaex.dataframe.DataFrameLocal, VaexDataFrameRenderer())

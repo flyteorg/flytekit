@@ -16,12 +16,11 @@ def test_vaex_workflow_subset():
 
     @task
     def consume(df: subset_schema) -> subset_schema:
-        df = df.open(vaex.DataFrame).all()
-
-        assert df["y"][0] == "a"
-        assert df["y"][1] == "b"
-        assert df["y"][2] == "c"
-
+        df = df.open(vaex.dataframe.DataFrameLocal).all()
+        col2 = df.col2.values.tolist()
+        assert col2[0] == "a"
+        assert col2[1] == "b"
+        assert col2[2] == "c"
         return StructuredDataset(dataframe=df)
 
     @workflow
@@ -39,14 +38,16 @@ def test_vaex_workflow_full():
 
     @task
     def consume(df: full_schema) -> full_schema:
-        df = df.open(vaex.DataFrame).all()
+        df = df.open(vaex.dataframe.DataFrameLocal).all()
+        colx = df.x.values.tolist()
+        coly = df.y.values.tolist()
 
-        assert df["x"][0] == 1
-        assert df["x"][1] == 3
-        assert df["x"][2] == 2
-        assert df["y"][0] == "a"
-        assert df["y"][1] == "b"
-        assert df["y"][2] == "c"
+        assert colx[0] == 1
+        assert colx[1] == 3
+        assert colx[2] == 2
+        assert coly[0] == "a"
+        assert coly[1] == "b"
+        assert coly[2] == "c"
 
         return StructuredDataset(dataframe=df.sort("x"))
 
