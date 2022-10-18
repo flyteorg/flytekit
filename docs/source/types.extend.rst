@@ -12,3 +12,4 @@ Feel free to follow the pattern of the built-in types.
    types.builtins.file
    types.builtins.directory
    extras.pytorch
+   extras.tensorflow
