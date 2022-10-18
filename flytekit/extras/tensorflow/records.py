@@ -15,7 +15,8 @@ T = TypeVar("T")
 class TensorflowExampleTransformer(TypeTransformer[tf.train.Example]):
     """
     TypeTransformer that supports serialising and deserialising tensor.train.Example
-    dataset to and from TFRecord file.
+    message (or protobuf) type, to and from TFRecord file.
+    https://www.tensorflow.org/tutorials/load_data/tfrecord
     """
 
     TENSORFLOW_FORMAT = "TensorflowExample"
