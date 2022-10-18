@@ -4,7 +4,7 @@ import tensorflow as tf
 import flytekit
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.extras.tensorflow import TensorflowRecordTransformer
+from flytekit.extras.tensorflow import TensorflowExampleTransformer
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
@@ -32,7 +32,7 @@ features = tf.train.Features(
 @pytest.mark.parametrize(
     "transformer,python_type,format",
     [
-        (TensorflowRecordTransformer(), tf.train.Example, TensorflowRecordTransformer.TENSORFLOW_FORMAT),
+        (TensorflowExampleTransformer(), tf.train.Example, TensorflowExampleTransformer.TENSORFLOW_FORMAT),
     ],
 )
 def test_get_literal_type(transformer, python_type, format):
@@ -45,9 +45,9 @@ def test_get_literal_type(transformer, python_type, format):
     "transformer,python_type,format,python_val",
     [
         (
-            TensorflowRecordTransformer(),
+            TensorflowExampleTransformer(),
             tf.train.Example,
-            TensorflowRecordTransformer.TENSORFLOW_FORMAT,
+            TensorflowExampleTransformer.TENSORFLOW_FORMAT,
             tf.train.Example(features=features),
         )
     ],

@@ -1,5 +1,5 @@
 import pathlib
-from typing import Generic, Type, TypeVar
+from typing import Type, TypeVar
 
 import tensorflow as tf
 
@@ -12,7 +12,17 @@ from flytekit.models.types import LiteralType
 T = TypeVar("T")
 
 
-class TensorflowRecordTransformer(TypeTransformer, Generic[T]):
+class TensorflowExampleTransformer(TypeTransformer[tf.train.Example]):
+    """
+    TypeTransformer that supports serialising and deserialising tensor.train.Example
+    dataset to and from TFRecord file.
+    """
+
+    TENSORFLOW_FORMAT = "TensorflowExample"
+
+    def __init__(self):
+        super().__init__(name="Tensorflow Example", t=tf.train.Example)
+
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
@@ -73,11 +83,4 @@ class TensorflowRecordTransformer(TypeTransformer, Generic[T]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-class TensorflowRecordTransformer(TensorflowRecordTransformer[tf.train.Example]):
-    TENSORFLOW_FORMAT = "TensorflowTensorRecord"
-
-    def __init__(self):
-        super().__init__(name="Tensorflow TensorRecord", t=tf.train.Example)
-
-
-TypeEngine.register(TensorflowRecordTransformer())
+TypeEngine.register(TensorflowExampleTransformer())

@@ -5,7 +5,8 @@ Flytekit Tensorflow
 .. autosummary::
    :template: custom.rst
    :toctree: generated/
-    TensorflowCheckpoint
+
+    TensorflowExample
 """
 from flytekit.loggers import logger
 
@@ -21,8 +22,6 @@ except (ImportError, OSError):
 
 
 if _tensorflow_installed:
-    from .native import TensorflowRecordTransformer
+    from .records import TensorflowExampleTransformer
 else:
-    logger.info(
-        "We won't register TensorflowCheckpointTransformer, TensorflowTensorTransformer, and TensorflowModuleTransformer because tensorflow is not installed."
-    )
+    logger.info("We won't register TensorflowExampleTransformer because tensorflow is not installed.")
