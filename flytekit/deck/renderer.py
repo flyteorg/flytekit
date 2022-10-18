@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import pandas
 import pyarrow
@@ -23,7 +23,7 @@ class TopFrameRenderer:
     Render a DataFrame as an HTML table.
     """
 
-    def __init__(self, max_rows: Optional[int] = DEFAULT_MAX_ROWS, max_cols: Optional[int] = DEFAULT_MAX_COLS):
+    def __init__(self, max_rows: int = DEFAULT_MAX_ROWS, max_cols: int = DEFAULT_MAX_COLS):
         self._max_rows = max_rows
         self._max_cols = max_cols
 
