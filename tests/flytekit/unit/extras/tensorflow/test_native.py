@@ -1,64 +1,40 @@
-import tensorflow
+import tensorflow as tf
 
 from flytekit import task, workflow
 
 
 @task
-def generate_tensor_1d() -> tensorflow.Tensor:
-    return tensorflow.zeros(5, dtype=tensorflow.int32)
+def generate_tf_example() -> tf.train.Example:
+    a = tf.train.Feature(bytes_list=tf.train.BytesList(value=[b"foo", b"bar"]))
+    b = tf.train.Feature(float_list=tf.train.FloatList(value=[1.0, 2.0]))
+    features = tf.train.Features(feature=dict(a=a, b=b))
+    return tf.train.Example(features=features)
 
 
 @task
-def generate_tensor_2d() -> tensorflow.Tensor:
-    return tensorflow.constant([[1.0, -1.0, 2], [1.0, -1.0, 9], [0, 7.0, 3]])
-
-
-class MyModel(tensorflow.Module):
-    def __init__(self):
-        super(MyModel, self).__init__()
-        self.l0 = tensorflow.keras.layers.Dense(2, input_shape=(4,), activation=None)
-        self.l1 = tensorflow.keras.layers.Dense(1, input_shape=(2,), activation=None)
-
-    def forward(self, input):
-        out0 = self.l0(input)
-        out0_relu = tensorflow.nn.relu(out0)
-        return self.l1(out0_relu)
+def t1(example: tf.train.Example) -> tf.train.Example:
+    assert example.features.feature["a"].bytes_list.value == [b"foo", b"bar"]
+    assert example.features.feature["b"].float_list.value == [1.0, 2.0]
+    return example
 
 
 @task
-def generate_model() -> tensorflow.Module:
-    return MyModel()
-
-
-@task
-def t1(tensor: tensorflow.Tensor) -> tensorflow.Tensor:
-    assert tensor.dtype == tensorflow.int32
-    return tensor
-
-
-@task
-def t2(tensor: tensorflow.Tensor) -> tensorflow.Tensor:
-    # convert 2D to 3D
-    return tensorflow.expand_dims(tensor, 2)  # shape: [3, 3, 1]
-
-
-@task
-def t3(model: tensorflow.Module) -> tensorflow.Tensor:
-    return model.weight
-
-
-@task
-def t4(model: tensorflow.Module) -> tensorflow.Module:
-    return model.l1
+def t2(example: tf.train.Example) -> tf.train.Example:
+    # add a third feature
+    int_feat = tf.train.Feature(int64_list=tf.train.Int64List(value=[3, 4]))
+    example.features.feature.get_or_create("c")
+    example.features.feature.setdefault("c", int_feat)
+    return example
 
 
 @workflow
-def wf():
-    t1(tensor=generate_tensor_1d())
-    t2(tensor=generate_tensor_2d())
-    t4(model=MyModel())
+def wf() -> tf.train.Example:
+    t1(tensor=generate_tf_example())
+    result = t2(tensor=generate_tf_example())
+    return result
 
 
 @workflow
 def test_wf():
-    wf()
+    example = wf()
+    assert example.features.feature["c"].int64_list.value == [3, 4]
