@@ -50,8 +50,7 @@ class TensorflowExampleTransformer(TypeTransformer[tf.train.Example]):
         pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
 
         # Write the `tf.train.Example` observations to the file.
-        filename = "test.tfrecord"
-        with tf.io.TFRecordWriter(filename) as writer:
+        with tf.io.TFRecordWriter(local_path) as writer:
             writer.write(python_val.SerializeToString())
         remote_path = ctx.file_access.get_random_remote_path(local_path)
         ctx.file_access.put_data(local_path, remote_path, is_multipart=False)

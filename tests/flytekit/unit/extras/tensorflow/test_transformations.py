@@ -66,4 +66,4 @@ def test_to_python_value_and_literal(transformer, python_type, format, python_va
     )
     assert lv.scalar.blob.uri is not None
     output = tf.to_python_value(ctx, lv, python_type)
-    assert tf.math.equal(output, python_val)
+    assert output.features.feature == python_val.features.feature
