@@ -74,4 +74,12 @@ class KerasSequentialTransformer(KerasTypeTransformer[keras.Sequential]):
         super().__init__(name="Keras Sequential", t=keras.Sequential)
 
 
+class KerasModelTransformer(KerasTypeTransformer[keras.Model]):
+    KERAS_FORMAT = "KerasModel"
+
+    def __init__(self):
+        super().__init__(name="Keras Model", t=keras.Model)
+
+
 TypeEngine.register(KerasSequentialTransformer())
+TypeEngine.register(KerasModelTransformer())

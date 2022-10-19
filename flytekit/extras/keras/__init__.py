@@ -21,6 +21,8 @@ except (ImportError, OSError):
 
 
 if _keras_installed:
-    from .native import KerasSequentialTransformer
+    from .native import KerasModelTransformer, KerasSequentialTransformer
 else:
-    logger.info("We won't register KerasSequentialTransformer  because keras is not installed.")
+    logger.info(
+        "We won't register KerasSequentialTransformer and KerasModelTransformer because keras is not installed."
+    )
