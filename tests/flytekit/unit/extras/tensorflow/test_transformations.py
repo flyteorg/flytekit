@@ -1,8 +1,8 @@
 from collections import OrderedDict
 
+import numpy as np
 import pytest
 import tensorflow as tf
-import numpy as np
 
 import flytekit
 from flytekit import task
@@ -22,6 +22,7 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     env=None,
     image_config=ImageConfig(default_image=default_img, images=[default_img]),
 )
+
 
 def get_tf_model():
     inputs = tf.keras.Input(shape=(32,))
@@ -44,12 +45,7 @@ def test_get_literal_type(transformer, python_type, format):
 @pytest.mark.parametrize(
     "transformer,python_type,format,python_val",
     [
-        (
-            TensorflowModelTransformer(),
-            tf.keras.Model,
-            TensorflowModelTransformer.TENSORFLOW_FORMAT,
-            get_tf_model()
-        ),
+        (TensorflowModelTransformer(), tf.keras.Model, TensorflowModelTransformer.TENSORFLOW_FORMAT, get_tf_model()),
     ],
 )
 def test_to_python_value_and_literal(transformer, python_type, format, python_val):

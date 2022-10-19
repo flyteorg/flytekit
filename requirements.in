@@ -13,3 +13,4 @@ pandas<1.4.0
 numpy<1.22.0
 # This is required by docker-compose and otherwise clashes with docker-py
 websocket-client<1.0.0
+grpcio-status<1.49.0

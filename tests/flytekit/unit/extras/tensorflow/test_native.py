@@ -1,5 +1,6 @@
-import tensorflow as tf
 from typing import List
+
+import tensorflow as tf
 
 from flytekit import task, workflow
 
