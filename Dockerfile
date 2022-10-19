@@ -14,6 +14,6 @@ ARG VERSION
 ARG DOCKER_IMAGE
 
 # Pod tasks should be exposed in the default image
-RUN pip install -U flytekit==$VERSION flytekitplugins-pod==$VERSION scikit-learn
+RUN pip install -U flytekit==$VERSION flytekitplugins-pod==$VERSION flytekitplugins-deck-standard==$VERSION scikit-learn
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
