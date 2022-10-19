@@ -64,14 +64,26 @@ def test_local_exec():
     snowflake_task = SnowflakeTask(
         name="flytekit.demo.snowflake_task.query2",
         inputs=kwtypes(ds=str),
-        query_template=query_template,
+        query_template="select 1\n",
         # the schema literal's backend uri will be equal to the value of .raw_output_data
         output_schema_type=FlyteSchema,
     )
 
     assert len(snowflake_task.interface.inputs) == 1
+    assert snowflake_task.query_template == "select 1\\n"
     assert len(snowflake_task.interface.outputs) == 1
 
     # will not run locally
     with pytest.raises(Exception):
         snowflake_task()
+
+
+def test_sql_template():
+    snowflake_task = SnowflakeTask(
+        name="flytekit.demo.snowflake_task.query2",
+        inputs=kwtypes(ds=str),
+        query_template="""select 1 from\t
+         custom where column = 1""",
+        output_schema_type=FlyteSchema,
+    )
+    assert snowflake_task.query_template == "select 1 from\\t\\n         custom where column = 1"

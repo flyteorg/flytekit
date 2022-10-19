@@ -196,18 +196,54 @@ def test_more_stuff(mock_client):
 
 
 @patch("flytekit.remote.remote.SynchronousFlyteClient")
-def test_generate_http_domain_sandbox_rewrite(mock_client):
+def test_generate_console_http_domain_sandbox_rewrite(mock_client):
     _, temp_filename = tempfile.mkstemp(suffix=".yaml")
-    with open(temp_filename, "w") as f:
-        # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
-        flytectl_config_file = """admin:
+    try:
+        with open(temp_filename, "w") as f:
+            # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
+            flytectl_config_file = """admin:
+    endpoint: example.com
+    authType: Pkce
+    insecure: false
+"""
+            f.write(flytectl_config_file)
+
+        remote = FlyteRemote(
+            config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
+        )
+        assert remote.generate_console_http_domain() == "https://example.com"
+
+        with open(temp_filename, "w") as f:
+            # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
+            flytectl_config_file = """admin:
     endpoint: localhost:30081
     authType: Pkce
     insecure: true
-        """
-        f.write(flytectl_config_file)
+"""
+            f.write(flytectl_config_file)
 
-    remote = FlyteRemote(
-        config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
-    )
-    assert remote.generate_http_domain() == "http://localhost:30080"
+        remote = FlyteRemote(
+            config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
+        )
+        assert remote.generate_console_http_domain() == "http://localhost:30080"
+
+        with open(temp_filename, "w") as f:
+            # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
+            flytectl_config_file = """admin:
+    endpoint: localhost:30081
+    authType: Pkce
+    insecure: true
+console:
+    endpoint: http://localhost:30090
+"""
+            f.write(flytectl_config_file)
+
+        remote = FlyteRemote(
+            config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
+        )
+        assert remote.generate_console_http_domain() == "http://localhost:30090"
+    finally:
+        try:
+            os.remove(temp_filename)
+        except OSError:
+            pass

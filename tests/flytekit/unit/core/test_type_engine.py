@@ -144,6 +144,31 @@ def test_list_of_dict_getting_python_value():
     assert isinstance(pv, list)
 
 
+def test_list_of_single_dataclass():
+    @dataclass_json
+    @dataclass()
+    class Bar(object):
+        v: typing.Optional[typing.List[int]]
+        w: typing.Optional[typing.List[float]]
+
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        a: typing.Optional[typing.List[str]]
+        b: Bar
+
+    foo = Foo(a=["abc", "def"], b=Bar(v=[1, 2, 99], w=[3.1415, 2.7182]))
+    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
+    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert pv[0].a == ["abc", "def"]
+    assert pv[0].b == Bar(v=[1, 2, 99], w=[3.1415, 2.7182])
+
+
 def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
