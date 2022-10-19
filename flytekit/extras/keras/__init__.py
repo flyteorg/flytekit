@@ -13,7 +13,7 @@ from flytekit.loggers import logger
 # that have soft dependencies
 try:
     # isolate the exception to the keras import
-    import keras
+    from tensorflow import keras
 
     _keras_installed = True
 except (ImportError, OSError):
