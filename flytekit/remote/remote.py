@@ -10,6 +10,7 @@ import functools
 import hashlib
 import os
 import pathlib
+import sys
 import time
 import typing
 import uuid
@@ -19,7 +20,7 @@ from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit import Literal
+from flytekit import Documentation, Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -421,10 +422,12 @@ class FlyteRemote(object):
                 if isinstance(cp_entity, task_models.TaskSpec):
                     ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
                     self.client.create_task(task_identifer=ident, task_spec=cp_entity)
+                    self.offload_long_description(cp_entity.docs, ident.project, ident.domain)
                 elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
                     ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
                     try:
                         self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
+                        self.offload_long_description(cp_entity.docs, ident.project, ident.domain)
                     except FlyteEntityAlreadyExistsException:
                         remote_logger.info(f"{entity.name} already exists")
                     # Let us also create a default launch-plan, ideally the default launchplan should be added
@@ -449,6 +452,30 @@ class FlyteRemote(object):
                 remote_logger.info(f"Failed to register entity {entity.name} with error {e}")
                 raise
         return ident
+
+    def offload_long_description(self, docs: Documentation, project: str, domain: str):
+        if docs and docs.long_description:
+            ctx = context_manager.FlyteContextManager.current_context()
+            if docs.long_description.value:
+                # Offload the long description if the size > 4KB
+                if sys.getsizeof(docs.long_description.value) > 4 * 1024 * 1024:
+                    local_path = ctx.file_access.get_random_local_path()
+                    with open(local_path, "w") as f:
+                        f.write(docs.long_description.value)
+                    docs.long_description.uri = local_path
+                    docs.long_description.value = None
+
+            # Upload long description file if it's present locally, and override the uri in the entity.
+            if docs.long_description.uri and not ctx.file_access.is_remote(docs.long_description.uri):
+                md5, _ = hash_file(docs.long_description.uri)
+                upload_location = self.client.get_upload_signed_url(
+                    content_md5=md5,
+                    project=project,
+                    domain=domain,
+                    filename=os.path.basename(docs.long_description.uri),
+                )
+                ctx.file_access.put_data(docs.long_description.uri, upload_location.signed_url)
+                docs.long_description.uri = upload_location.native_url
 
     def register_task(
         self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
@@ -617,21 +644,6 @@ class FlyteRemote(object):
                 distribution_location=upload_location.native_url,
             ),
         )
-
-        # Upload long description file if it's present locally, and override the uri in the entity.
-        if entity.docs and entity.docs.long_description and entity.docs.long_description.uri:
-            ctx = context_manager.FlyteContextManager.current_context()
-            if not ctx.file_access.is_remote(entity.docs.long_description.uri):
-                upload_location, _ = upload_single_file(
-                    entity.docs.long_description.uri,
-                    functools.partial(
-                        self.client.get_upload_signed_url,
-                        project=project or self.default_project,
-                        domain=domain or self.default_domain,
-                        filename=os.path.basename(entity.docs.long_description.uri),
-                    ),
-                )
-                entity.docs.long_description.uri = upload_location.native_url
 
         if version is None:
             # The md5 version that we send to S3/GCS has to match the file contents exactly,

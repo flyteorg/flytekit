@@ -408,7 +408,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 if self._python_interface.docstring.short_description:
                     self._docs.short_description = self._python_interface.docstring.short_description
                 if self._python_interface.docstring.long_description:
-                    self._docs.long_description = self._python_interface.docstring.long_description
+                    self._docs.long_description = Description(value=self._python_interface.docstring.long_description)
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
