@@ -10,9 +10,9 @@ from flytekit.core.interface import transform_function_to_interface, transform_i
 from flytekit.core.type_engine import TypeEngine
 
 try:
-    from typing import Annotated
+    from typing import Annotated  # type: ignore
 except ImportError:
-    from typing_extensions import Annotated
+    from typing_extensions import Annotated  # type: ignore
 
 
 @dataclass_json

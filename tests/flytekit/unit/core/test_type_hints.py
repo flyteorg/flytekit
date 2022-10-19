@@ -1612,7 +1612,7 @@ def test_error_messages():
         return 10, "hello"
 
     @task
-    def foo2(a: int, b: str) -> typing.Tuple[int, str]:
+    def foo2(a: int, b: str) -> typing.Tuple[str, int]:
         return "hello", 10
 
     @task

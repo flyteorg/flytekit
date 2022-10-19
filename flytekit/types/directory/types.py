@@ -17,6 +17,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 T = typing.TypeVar("T")
+PathType = typing.Union[str, os.PathLike]
 
 
 def noop():
@@ -26,7 +27,7 @@ def noop():
 @dataclass_json
 @dataclass
 class FlyteDirectory(os.PathLike, typing.Generic[T]):
-    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type :ignore
     """
     .. warning::
 

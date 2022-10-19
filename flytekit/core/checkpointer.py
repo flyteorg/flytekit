@@ -81,7 +81,7 @@ class SyncCheckpoint(Checkpoint):
         self._checkpoint_dest = checkpoint_dest
         self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
         self._td = tempfile.TemporaryDirectory()
-        self._prev_download_path = None
+        self._prev_download_path: typing.Optional[Path] = None
 
     def __del__(self):
         self._td.cleanup()
@@ -154,6 +154,6 @@ class SyncCheckpoint(Checkpoint):
         return f.read_bytes()
 
     def write(self, b: bytes):
-        f = io.BytesIO(b)
-        f = typing.cast(io.BufferedReader, f)
+        p = io.BytesIO(b)
+        f = typing.cast(io.BufferedReader, p)
         self.save(f)

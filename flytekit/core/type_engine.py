@@ -405,10 +405,11 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is list:
-            return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]
+            return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]  # type: ignore
 
         if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is dict:
-            return {k: self._deserialize_flyte_type(v, expected_python_type.__args__[1]) for k, v in python_val.items()}
+            # type: ignore
+            return {k: self._deserialize_flyte_type(v, expected_python_type.__args__[1]) for k, v in python_val.items()}  # type: ignore
 
         if not dataclasses.is_dataclass(expected_python_type):
             return python_val
@@ -1120,7 +1121,7 @@ class UnionTransformer(TypeTransformer[T]):
 
         raise TypeError(f"Cannot convert from {lv} to {expected_python_type} (using tag {union_tag})")
 
-    def guess_python_type(self, literal_type: LiteralType) -> type:
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Union[typing.Tuple[type], ...]:
         if literal_type.union_type is not None:
             return typing.Union[tuple(TypeEngine.guess_python_type(v.type) for v in literal_type.union_type.variants)]
 
@@ -1137,7 +1138,7 @@ class DictTransformer(TypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[type], Optional[type]]:
+    def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[typing.Any], ...]:
         """
         Return the generic Type T of the Dict
         """
@@ -1218,7 +1219,7 @@ class DictTransformer(TypeTransformer[dict]):
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Union[dict, typing.Dict[typing.Any, typing.Any]]:
         if literal_type.map_value_type:
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
@@ -1359,7 +1360,7 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
+def _get_element_type(element_property: typing.Dict[str, str]) -> Optional[typing.Any]:
     element_type = element_property["type"]
     element_format = element_property["format"] if "format" in element_property else None
 

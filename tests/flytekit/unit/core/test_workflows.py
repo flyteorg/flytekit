@@ -16,9 +16,9 @@ from flytekit.tools.translator import get_serializable
 from flytekit.types.schema import FlyteSchema
 
 try:
-    from typing import Annotated
+    from typing import Annotated  # type: ignore
 except ImportError:
-    from typing_extensions import Annotated
+    from typing_extensions import Annotated  # type: ignore
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(

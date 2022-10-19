@@ -60,7 +60,7 @@ class StructuredDataset(object):
     def __init__(
         self,
         dataframe: typing.Optional[typing.Any] = None,
-        uri: Optional[str] = None,
+        uri: Optional[str, os.PathLike] = None,
         metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
         **kwargs,
     ):
@@ -73,10 +73,10 @@ class StructuredDataset(object):
         # This is not for users to set, the transformer will set this.
         self._literal_sd: Optional[literals.StructuredDataset] = None
         # Not meant for users to set, will be set by an open() call
-        self._dataframe_type = None
+        self._dataframe_type: Optional[Type[DF]] = None
 
     @property
-    def dataframe(self) -> Type[typing.Any]:
+    def dataframe(self) -> Optional[typing.Any]:
         return self._dataframe
 
     @property
@@ -363,14 +363,14 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if isinstance(h, StructuredDatasetEncoder):
             top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
-            top_level = cls.DECODERS
+            top_level = cls.DECODERS  # type: ignore
         else:
             raise TypeError(f"We don't support this type of handler {h}")
         if h.python_type not in top_level:
             top_level[h.python_type] = {}
         if protocol not in top_level[h.python_type]:
             top_level[h.python_type][protocol] = {}
-        return top_level[h.python_type][protocol]
+        return top_level[h.python_type][protocol]  # type: ignore
 
     def __init__(self):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
@@ -638,7 +638,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             if issubclass(expected_python_type, StructuredDataset):
                 sd = StructuredDataset(dataframe=None, metadata=metad)
                 sd._literal_sd = sd_literal
-                return sd
+                return sd  # type: ignore
             else:
                 return self.open_as(ctx, sd_literal, expected_python_type, metad)
 
@@ -675,7 +675,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             )
             sd._literal_sd = lv.scalar.structured_dataset
             sd.file_format = metad.structured_dataset_type.format
-            return sd
+            return sd  # type: ignore
 
         # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means
         # we should do the opening/downloading and whatever else it might entail right now. No iteration option here.
@@ -788,7 +788,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # todo: technically we should return the dataframe type specified in the constructor, but to do that,
         #   we'd have to store that, which we don't do today. See possibly #1363
         if literal_type.structured_dataset_type is not None:
-            return StructuredDataset
+            return StructuredDataset  # type: ignore
         raise ValueError(f"StructuredDatasetTransformerEngine cannot reverse {literal_type}")
 
 

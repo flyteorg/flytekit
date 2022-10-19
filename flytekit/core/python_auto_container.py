@@ -82,7 +82,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
-        self._environment = environment
+        self._environment = environment  # type: ignore
 
         compilation_state = FlyteContextManager.current_context().compilation_state
         if compilation_state and compilation_state.task_resolver:
@@ -92,7 +92,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 )
             self._task_resolver = compilation_state.task_resolver
             if self._task_resolver.task_name(self) is not None:
-                self._name = self._task_resolver.task_name(self)
+                self._name = self._task_resolver.task_name(self)  # type: ignore
         else:
             self._task_resolver = task_resolver or default_task_resolver
         self._get_command_fn = self.get_default_command
@@ -190,7 +190,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 
-        task_module = importlib.import_module(task_module)
+        task_module = importlib.import_module(task_module)  # type: ignore
         task_def = getattr(task_module, task_name)
         return task_def
 

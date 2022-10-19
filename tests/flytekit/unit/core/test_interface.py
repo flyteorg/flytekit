@@ -17,9 +17,9 @@ from flytekit.types.file import FlyteFile
 from flytekit.types.pickle import FlytePickle
 
 try:
-    from typing import Annotated
+    from typing import Annotated  # type: ignore
 except ImportError:
-    from typing_extensions import Annotated
+    from typing_extensions import Annotated  # type: ignore
 
 
 def test_extract_only():

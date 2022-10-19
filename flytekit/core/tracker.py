@@ -229,9 +229,9 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         mod_name = mod.__name__
         name = f.lhs
         # We cannot get the sourcefile for an instance, so we replace it with the module
-        f = mod
+        f = mod  # type: ignore
     else:
-        mod = inspect.getmodule(f)
+        mod = inspect.getmodule(f)  # type: ignore
         if mod is None:
             raise AssertionError(f"Unable to determine module of {f}")
         mod_name = mod.__name__
