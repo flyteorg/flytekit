@@ -27,7 +27,7 @@ def noop():
 @dataclass_json
 @dataclass
 class FlyteDirectory(os.PathLike, typing.Generic[T]):
-    path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type :ignore
+    path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     .. warning::
 
