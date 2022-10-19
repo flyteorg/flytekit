@@ -43,3 +43,4 @@ tensorflow==2.9.0           # onnxtensorflow
 whylogs                     # whylogs
 whylabs-client              # whylogs
 ray                         # ray
+scikit-learn                # scikit-learn
