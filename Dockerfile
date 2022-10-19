@@ -1,4 +1,5 @@
-FROM python:3.9-slim-buster
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim-buster
 
 MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
