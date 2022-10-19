@@ -2,7 +2,7 @@ from setuptools import setup
 
 PLUGIN_NAME = "vaex"
 
-microlib_name = f"plugins-{PLUGIN_NAME}"
+microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "vaex-core>=4.13.0,<4.14"]
 
