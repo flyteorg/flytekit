@@ -6,8 +6,8 @@ from typing_extensions import Annotated
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import PARQUET, StructuredDataset
 
-subset_schema = Annotated[StructuredDataset, kwtypes(col2=str), PARQUET]
-full_schema = Annotated[StructuredDataset, PARQUET]
+full_schema = Annotated[StructuredDataset, kwtypes(x=int, y=str), PARQUET]
+subset_schema = Annotated[StructuredDataset, kwtypes(y=str), PARQUET]
 vaex_df = vaex.from_dict(dict(x=[1, 3, 2], y=["a", "b", "c"]))
 
 
@@ -18,12 +18,13 @@ def test_vaex_workflow_subset():
 
     @task
     def consume(df: subset_schema) -> subset_schema:
-        df = df.open(vaex.dataframe.DataFrameLocal).all()
-        coly = df.y.values.tolist()
+        subset_df = df.open(vaex.dataframe.DataFrameLocal).all()
+        assert subset_df.column_names == ["y"]
+        coly = subset_df.y.values.tolist()
         assert coly[0] == "a"
         assert coly[1] == "b"
         assert coly[2] == "c"
-        return StructuredDataset(dataframe=df)
+        return StructuredDataset(dataframe=subset_df)
 
     @workflow
     def wf() -> subset_schema:
@@ -40,9 +41,10 @@ def test_vaex_workflow_full():
 
     @task
     def consume(df: full_schema) -> full_schema:
-        df = df.open(vaex.dataframe.DataFrameLocal).all()
-        colx = df.x.values.tolist()
-        coly = df.y.values.tolist()
+        full_df = df.open(vaex.dataframe.DataFrameLocal).all()
+        assert full_df.column_names == ["x", "y"]
+        colx = full_df.x.values.tolist()
+        coly = full_df.y.values.tolist()
 
         assert colx[0] == 1
         assert colx[1] == 3
@@ -51,7 +53,7 @@ def test_vaex_workflow_full():
         assert coly[1] == "b"
         assert coly[2] == "c"
 
-        return StructuredDataset(dataframe=df.sort("x"))
+        return StructuredDataset(dataframe=full_df.sort("x"))
 
     @workflow
     def wf() -> full_schema:
@@ -62,6 +64,7 @@ def test_vaex_workflow_full():
 
 
 def test_vaex_renderer():
+    vaex_df = vaex.from_dict(dict(x=[1, 3, 2], y=["a", "b", "c"]))
     assert VaexDataFrameRenderer().to_html(vaex_df) == pd.DataFrame(
         vaex_df.describe().transpose(), columns=vaex_df.columns
     ).to_html(index=False)

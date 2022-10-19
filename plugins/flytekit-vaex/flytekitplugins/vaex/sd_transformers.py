@@ -51,6 +51,9 @@ class ParquetToVaxDataFrameDecodingHandler(StructuredDatasetDecoder):
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(flyte_value.uri, local_dir, is_multipart=True)
         path = f"{local_dir}/00000"
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
+            return vaex.open(path)[columns]
         return vaex.open(path)
 
 
