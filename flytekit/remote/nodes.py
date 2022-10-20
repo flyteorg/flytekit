@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 from flytekit.core import constants as _constants
 from flytekit.core import hash as _hash_mixin
@@ -12,7 +12,7 @@ from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.remote import component_nodes as _component_nodes
+from flytekit.remote import component_nodes as _component_nodes, FlyteTask
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
@@ -28,6 +28,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         flyte_workflow: Optional["FlyteWorkflow"] = None,
         flyte_launch_plan: Optional["FlyteLaunchPlan"] = None,
         flyte_branch_node: Optional["FlyteBranchNode"] = None,
+        should_register: bool = False,
     ):
         # todo: flyte_branch_node is the only non-entity here, feels wrong, it should probably be a Condition
         #   or the other ones changed.
@@ -73,27 +74,29 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         model: _workflow_model.Node,
         sub_workflows: Optional[Dict[id_models.Identifier, _workflow_model.WorkflowTemplate]],
         node_launch_plans: Optional[Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec]],
-        tasks: Optional[Dict[id_models.Identifier, _task_model.TaskTemplate]],
-    ) -> FlyteNode:
+        tasks: Dict[id_models.Identifier, FlyteTask],
+        converted_sub_workflows: Dict[id_models.Identifier, "FlyteWorkflow"],
+    ) -> Tuple[Optional[FlyteNode],  Dict[id_models.Identifier, "FlyteWorkflow"]]:
         node_model_id = model.id
         # TODO: Consider removing
         if id in {_constants.START_NODE_ID, _constants.END_NODE_ID}:
             remote_logger.warning(f"Should not call promote from model on a start node or end node {model}")
-            return None
+            return None, converted_sub_workflows
 
         flyte_task_node, flyte_workflow_node, flyte_branch_node = None, None, None
         if model.task_node is not None:
             flyte_task_node = _component_nodes.FlyteTaskNode.promote_from_model(model.task_node, tasks)
         elif model.workflow_node is not None:
-            flyte_workflow_node = _component_nodes.FlyteWorkflowNode.promote_from_model(
+            flyte_workflow_node, converted_sub_workflows = _component_nodes.FlyteWorkflowNode.promote_from_model(
                 model.workflow_node,
                 sub_workflows,
                 node_launch_plans,
                 tasks,
+                converted_sub_workflows,
             )
         elif model.branch_node is not None:
-            flyte_branch_node = _component_nodes.FlyteBranchNode.promote_from_model(
-                model.branch_node, sub_workflows, node_launch_plans, tasks
+            flyte_branch_node, converted_sub_workflows = _component_nodes.FlyteBranchNode.promote_from_model(
+                model.branch_node, sub_workflows, node_launch_plans, tasks, converted_sub_workflows,
             )
         else:
             raise _system_exceptions.FlyteSystemException(
@@ -117,7 +120,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 bindings=model.inputs,
                 metadata=model.metadata,
                 flyte_task=flyte_task_node.flyte_task,
-            )
+            ), converted_sub_workflows
         elif flyte_workflow_node is not None:
             if flyte_workflow_node.flyte_workflow is not None:
                 return cls(
@@ -126,7 +129,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                     bindings=model.inputs,
                     metadata=model.metadata,
                     flyte_workflow=flyte_workflow_node.flyte_workflow,
-                )
+                ), converted_sub_workflows
             elif flyte_workflow_node.flyte_launch_plan is not None:
                 return cls(
                     id=node_model_id,
@@ -134,7 +137,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                     bindings=model.inputs,
                     metadata=model.metadata,
                     flyte_launch_plan=flyte_workflow_node.flyte_launch_plan,
-                )
+                ), converted_sub_workflows
             raise _system_exceptions.FlyteSystemException(
                 "Bad FlyteWorkflowNode model, both launch plan and workflow are None"
             )
@@ -145,7 +148,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 bindings=model.inputs,
                 metadata=model.metadata,
                 flyte_branch_node=flyte_branch_node,
-            )
+            ), converted_sub_workflows
         raise _system_exceptions.FlyteSystemException("Bad FlyteNode model, both task and workflow nodes are empty")
 
     @property

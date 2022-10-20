@@ -29,6 +29,7 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import TaskNodeOverrides
 
+
 FlyteLocalEntity = Union[
     PythonTask,
     BranchNode,
@@ -249,8 +250,9 @@ def get_serializable_workflow(
 
         if isinstance(n.flyte_entity, FlyteWorkflow):
             get_serializable(entity_mapping, settings, n.flyte_entity, options)
-            sub_wfs.append(n.flyte_entity)
-            sub_wfs.extend([s for s in n.flyte_entity.sub_workflows.values()])
+            sub_wfs.append(n.flyte_entity.template)
+            for swf in n.flyte_entity.flyte_sub_workflows:
+                sub_wfs.append(swf.template)
 
         if isinstance(n.flyte_entity, BranchNode):
             if_else: workflow_model.IfElseBlock = n.flyte_entity._ifelse_block
@@ -476,8 +478,8 @@ def get_serializable_node(
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
-        wf_template = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
-        for _, sub_wf in entity.flyte_entity.sub_workflows.items():
+        wf_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        for sub_wf in entity.flyte_entity.flyte_sub_workflows:
             get_serializable(entity_mapping, settings, sub_wf, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -485,7 +487,7 @@ def get_serializable_node(
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_sdk_nodes],
             output_aliases=[],
-            workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_template.id),
+            workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.id),
         )
     elif isinstance(entity.flyte_entity, FlyteLaunchPlan):
         # Recursive call doesn't do anything except put the entity on the map.
@@ -540,6 +542,48 @@ def get_reference_spec(
     return ReferenceSpec(template)
 
 
+def get_serializable_flyte_workflow(entity: "FlyteWorkflow", settings: SerializationSettings) -> FlyteControlPlaneEntity:
+    """
+    TODO replace with deep copy
+    """
+
+    def _mutate_task_node(tn: workflow_model.TaskNode):
+        tn.reference_id._project = settings.project
+        tn.reference_id._domain = settings.domain
+
+    def _mutate_branch_node_task_ids(bn: workflow_model.BranchNode):
+        _mutate_node(bn.if_else.case.then_node)
+        for c in bn.if_else.other:
+            _mutate_node(c.then_node)
+        if bn.if_else.else_node:
+            _mutate_node(bn.if_else.else_node)
+
+    def _mutate_node(n: workflow_model.Node):
+        if n.task_node:
+            _mutate_task_node(n.task_node)
+        elif n.branch_node:
+            _mutate_branch_node_task_ids(n.branch_node)
+        elif n.workflow_node:
+            pass
+
+    for n in entity.flyte_nodes:
+        _mutate_node(n)
+
+    entity.id._project = settings.project
+    entity.id._domain = settings.domain
+
+    return entity
+
+
+def get_serializable_flyte_task(entity: "FlyteTask", settings: SerializationSettings) -> FlyteControlPlaneEntity:
+    """
+    TODO replace with deep copy
+    """
+    entity.id._project = settings.project
+    entity.id._domain = settings.domain
+    return entity
+
+
 def get_serializable(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -589,7 +633,16 @@ def get_serializable(
     elif isinstance(entity, BranchNode):
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity, options)
 
-    elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow) or isinstance(entity, FlyteLaunchPlan):
+    elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow):
+        if entity.should_register:
+            if isinstance(entity, FlyteTask):
+                cp_entity = get_serializable_flyte_task(entity, settings)
+            else:
+                cp_entity = get_serializable_flyte_workflow(entity, settings)
+        else:
+            cp_entity = entity
+
+    elif isinstance(entity, FlyteLaunchPlan):
         cp_entity = entity
 
     else:

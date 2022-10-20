@@ -8,7 +8,7 @@ from flytekit.remote.remote_callable import RemoteEntity
 class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskTemplate):
     """A class encapsulating a remote Flyte task."""
 
-    def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None):
+    def __init__(self, id, type, metadata, interface, custom, container=None, task_type_version=0, config=None, should_register: bool = False):
         super(FlyteTask, self).__init__(
             id,
             type,
@@ -19,11 +19,15 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, _task_model.TaskT
             task_type_version=task_type_version,
             config=config,
         )
-        self._name = id.name
+        self._should_register = should_register
+
+    @property
+    def should_register(self) -> bool:
+        return self._should_register
 
     @property
     def name(self) -> str:
-        return self._name
+        return self.id.name
 
     @property
     def resource_type(self) -> _identifier_model.ResourceType:

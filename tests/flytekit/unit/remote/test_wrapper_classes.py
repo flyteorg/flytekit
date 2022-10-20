@@ -58,11 +58,11 @@ def test_wf_promote_subwf_lps():
 
     serialized = OrderedDict()
     wf_spec = get_serializable(serialized, serialization_settings, wf)
-    sub_wf_dict = {s.id: s for s in wf_spec.sub_workflows}
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
 
     fwf = FlyteWorkflow.promote_from_model(
-        wf_spec.template, sub_workflows=sub_wf_dict, node_launch_plans=lp_specs, tasks=task_templates
+        wf_spec.template, sub_workflows=wf_spec.sub_workflows, node_launch_plans=lp_specs,
+        tasks=[t for k, t in task_templates.items()]
     )
     assert len(fwf.outputs) == 1
     assert list(fwf.interface.inputs.keys()) == ["b"]
@@ -79,7 +79,7 @@ def test_wf_promote_subwf_lps():
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
 
     fwf = FlyteWorkflow.promote_from_model(
-        wf_spec.template, sub_workflows={}, node_launch_plans=lp_specs, tasks=task_templates
+        wf_spec.template, sub_workflows=[], node_launch_plans=lp_specs, tasks=[t for k, t in task_templates.items()]
     )
     assert len(fwf.outputs) == 1
     assert list(fwf.interface.inputs.keys()) == ["b"]
@@ -111,7 +111,7 @@ def test_upstream():
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
 
     fwf = FlyteWorkflow.promote_from_model(
-        wf_spec.template, sub_workflows={}, node_launch_plans={}, tasks=task_templates
+        wf_spec.template, sub_workflows=[], node_launch_plans={}, tasks=list(task_templates.values()),
     )
 
     assert len(fwf.flyte_nodes[0].upstream_nodes) == 0
@@ -125,11 +125,11 @@ def test_upstream():
 
     serialized = OrderedDict()
     wf_spec = get_serializable(serialized, serialization_settings, parent)
-    sub_wf_dict = {s.id: s for s in wf_spec.sub_workflows}
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
 
     fwf = FlyteWorkflow.promote_from_model(
-        wf_spec.template, sub_workflows=sub_wf_dict, node_launch_plans={}, tasks=task_templates
+        wf_spec.template, sub_workflows=wf_spec.sub_workflows, node_launch_plans={},
+        tasks=[v for k, v in task_templates.items()]
     )
     # Test upstream nodes don't get confused by subworkflows
     assert len(fwf.flyte_nodes[0].upstream_nodes) == 0

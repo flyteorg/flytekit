@@ -12,6 +12,7 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core.workflow import WorkflowTemplate
 from flytekit.models.task import TaskTemplate
 from flytekit.remote import FlyteLaunchPlan, FlyteTask
@@ -71,7 +72,6 @@ def test_fetched_task():
 
 def test_misnamed():
     with pytest.raises(FlyteAssertion):
-
         @workflow
         def wf(a: int) -> int:
             return ft(b=a)
@@ -109,23 +109,23 @@ def test_dynamic():
         return s
 
     with context_manager.FlyteContextManager.with_context(
-        context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
-                project="test_proj",
-                domain="test_domain",
-                version="abc",
-                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
-                env={},
-                fast_serialization_settings=FastSerializationSettings(enabled=True),
-            )
-        )
-    ) as ctx:
-        with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.execution_state.with_params(
-                    mode=ExecutionState.Mode.TASK_EXECUTION,
+            context_manager.FlyteContextManager.current_context().with_serialization_settings(
+                context_manager.SerializationSettings(
+                    project="test_proj",
+                    domain="test_domain",
+                    version="abc",
+                    image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                    env={},
+                    fast_serialization_settings=FastSerializationSettings(enabled=True),
                 )
             )
+    ) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+                ctx.with_execution_state(
+                    ctx.execution_state.with_params(
+                        mode=ExecutionState.Mode.TASK_EXECUTION,
+                    )
+                )
         ) as ctx:
             input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 2})
             # Test that it works
@@ -143,9 +143,11 @@ def test_dynamic():
 def test_calling_wf():
     # No way to fetch from Admin in unit tests so we serialize and then promote back
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, sub_wf)
+    wf_spec: WorkflowSpec = get_serializable(serialized, serialization_settings, sub_wf)
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
-    fwf = FlyteWorkflow.promote_from_model(wf_spec.template, tasks=task_templates)
+    fwf = FlyteWorkflow.promote_from_model(wf_spec.template,
+                                           tasks={k: FlyteTask.promote_from_model(t) for k, t in
+                                                  task_templates.items()})
 
     @workflow
     def parent_1(a: int, b: str) -> typing.Tuple[int, str]:
@@ -162,8 +164,11 @@ def test_calling_wf():
 
     # Pick out the subworkflow templates from the ordereddict. We can't use the output of the gather_dependent_entities
     # function because that only looks for WorkflowSpecs
-    subwf_templates = {x.id: x for x in list(filter(lambda x: isinstance(x, WorkflowTemplate), serialized.values()))}
-    fwf_p1 = FlyteWorkflow.promote_from_model(wf_spec.template, sub_workflows=subwf_templates, tasks=task_templates_p1)
+    subwf_templates = {x.template.id: x.template for x in
+                       list(filter(lambda x: isinstance(x, WorkflowSpec), serialized.values()))}
+    fwf_p1 = FlyteWorkflow.promote_from_model(wf_spec.template, sub_workflows=subwf_templates,
+                                              tasks={k: FlyteTask.promote_from_model(t) for k, t in
+                                                     task_templates_p1.items()})
 
     @workflow
     def parent_2(a: int, b: str) -> typing.Tuple[int, str]:
