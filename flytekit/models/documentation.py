@@ -71,7 +71,7 @@ class Documentation(_common_models.FlyteIdlEntity):
         source_code (Optional[SourceCode]): link to source code used to define this entity
     """
 
-    short_description: str
+    short_description: Optional[str] = None
     long_description: Optional[Description] = None
     source_code: Optional[SourceCode] = None
 

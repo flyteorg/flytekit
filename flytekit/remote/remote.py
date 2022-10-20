@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import functools
 import hashlib
+import inspect
 import os
 import pathlib
 import sys
@@ -19,8 +20,9 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
 from flyteidl.core import literals_pb2 as literals_pb2
+from git import Repo
 
-from flytekit import Documentation, Literal
+from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -47,6 +49,7 @@ from flytekit.models.admin.common import Sort
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
+from flytekit.models.documentation import Documentation, SourceCode
 from flytekit.models.execution import (
     ExecutionMetadata,
     ExecutionSpec,
@@ -421,13 +424,13 @@ class FlyteRemote(object):
             try:
                 if isinstance(cp_entity, task_models.TaskSpec):
                     ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
+                    self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
                     self.client.create_task(task_identifer=ident, task_spec=cp_entity)
-                    self.offload_long_description(cp_entity.docs, ident.project, ident.domain)
                 elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
                     ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
                     try:
+                        self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
                         self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
-                        self.offload_long_description(cp_entity.docs, ident.project, ident.domain)
                     except FlyteEntityAlreadyExistsException:
                         remote_logger.info(f"{entity.name} already exists")
                     # Let us also create a default launch-plan, ideally the default launchplan should be added
@@ -453,7 +456,12 @@ class FlyteRemote(object):
                 raise
         return ident
 
-    def offload_long_description(self, docs: Documentation, project: str, domain: str):
+    def update_description_entity(
+        self, docs: Documentation, settings: typing.Optional[SerializationSettings], project: str, domain: str
+    ):
+        # 1. Offload the long description if the size > 4KB
+        # 2. Upload long description file if it's present locally, and override the uri in the entity
+        # 3. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
         if docs and docs.long_description:
             ctx = context_manager.FlyteContextManager.current_context()
             if docs.long_description.value:
@@ -476,6 +484,8 @@ class FlyteRemote(object):
                 )
                 ctx.file_access.put_data(docs.long_description.uri, upload_location.signed_url)
                 docs.long_description.uri = upload_location.native_url
+
+            docs.source_code = SourceCode(link=settings.git_repo)
 
     def register_task(
         self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
@@ -638,6 +648,7 @@ class FlyteRemote(object):
             project=project,
             domain=domain,
             image_config=image_config,
+            git_repo="github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1],
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
