@@ -83,6 +83,16 @@ def test_sync_checkpoint_restore_default_path(tmpdir):
     assert cp.restore() == cp._prev_download_path
 
 
+def test_sync_checkpoint_read_empty_dir(tmpdir):
+    td_path = Path(tmpdir)
+    dest = td_path.joinpath("dest")
+    dest.mkdir()
+    src = td_path.joinpath("src")
+    src.mkdir()
+    cp = SyncCheckpoint(checkpoint_dest=str(dest), checkpoint_src=str(src))
+    assert cp.read() is None
+
+
 def test_sync_checkpoint_read_multiple_files(tmpdir):
     """
     Read can only work with one file.

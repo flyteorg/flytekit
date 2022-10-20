@@ -1,6 +1,7 @@
 import pandas
 
 from flytekit import kwtypes, task, workflow
+from flytekit.configuration import DefaultImages
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 
 # https://www.sqlitetutorial.net/sqlite-sample-database/
@@ -99,4 +100,9 @@ def test_task_serialization():
     ]
 
     assert tt.custom["query_template"] == "select TrackId, Name from tracks limit {{.inputs.limit}}"
-    assert tt.container.image != ""
+    assert tt.container.image == DefaultImages.default_image()
+
+    image = "xyz.io/docker2:latest"
+    sql_task._container_image = image
+    tt = sql_task.serialize_to_model(sql_task.SERIALIZE_SETTINGS)
+    assert tt.container.image == image

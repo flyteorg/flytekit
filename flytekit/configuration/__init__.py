@@ -94,6 +94,7 @@ from docker_image import reference
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
+from flytekit.loggers import logger
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -298,6 +299,7 @@ class PlatformConfig(object):
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
     :param insecure_skip_verify: Wether to skip SSL certificate verification
+    :param console_endpoint: endpoint for console if differenet than Flyte backend
     :param command: This command is executed to return a token using an external process.
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -311,6 +313,7 @@ class PlatformConfig(object):
     endpoint: str = "localhost:30081"
     insecure: bool = False
     insecure_skip_verify: bool = False
+    console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
@@ -336,14 +339,21 @@ class PlatformConfig(object):
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
         )
 
+        client_credentials_secret = read_file_if_exists(
+            _internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)
+        )
+        if client_credentials_secret and client_credentials_secret.endswith("\n"):
+            logger.info("Newline stripped from client secret")
+            client_credentials_secret = client_credentials_secret.strip()
         kwargs = set_if_exists(
             kwargs,
             "client_credentials_secret",
-            read_file_if_exists(_internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)),
+            client_credentials_secret,
         )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
+        kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
         return PlatformConfig(**kwargs)
 
     @classmethod

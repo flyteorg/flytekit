@@ -62,13 +62,10 @@ class TypeTransformer(typing.Generic[T]):
     Base transformer type that should be implemented for every python native type that can be handled by flytekit
     """
 
-    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True, hash_overridable: bool = False):
+    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True):
         self._t = t
         self._name = name
         self._type_assertions_enabled = enable_type_assertions
-        # `hash_overridable` indicates that the literals produced by this type transformer can set their hashes if needed.
-        # See (link to documentation where this feature is explained).
-        self._hash_overridable = hash_overridable
 
     @property
     def name(self):
@@ -87,10 +84,6 @@ class TypeTransformer(typing.Generic[T]):
         Indicates if the transformer wants type assertions to be enabled at the core type engine layer
         """
         return self._type_assertions_enabled
-
-    @property
-    def hash_overridable(self) -> bool:
-        return self._hash_overridable
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, t):
@@ -491,6 +484,14 @@ class DataclassTransformer(TypeTransformer[object]):
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if val is None:
             return val
+
+        if get_origin(t) is typing.Union and type(None) in get_args(t):
+            # Handle optional type. e.g. Optional[int], Optional[dataclass]
+            # Marshmallow doesn't support union type, so the type here is always an optional type.
+            # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
+            # Note: Union[None, int] is also an optional type, but Marshmallow does not support it.
+            t = get_args(t)[0]
+
         if t == int:
             return int(val)
 
@@ -502,13 +503,6 @@ class DataclassTransformer(TypeTransformer[object]):
             ktype, vtype = DictTransformer.get_dict_types(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {self._fix_val_int(ktype, k): self._fix_val_int(vtype, v) for k, v in val.items()}
-
-        if get_origin(t) is typing.Union and type(None) in get_args(t):
-            # Handle optional type. e.g. Optional[int], Optional[dataclass]
-            # Marshmallow doesn't support union type, so the type here is always an optional type.
-            # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
-            # Note: Union[None, int] is also an optional type, but Marshmallow does not support it.
-            return self._fix_val_int(get_args(t)[0], val)
 
         if dataclasses.is_dataclass(t):
             return self._fix_dataclass_int(t, val)  # type: ignore
@@ -657,14 +651,13 @@ class TypeEngine(typing.Generic[T]):
             find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
 
         Step 3:
-            if v is of type data class, use the dataclass transformer
-
-        Step 4:
             Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
             This is potentially non-deterministic - will depend on the registration pattern.
 
             TODO lets make this deterministic by using an ordered dict
 
+        Step 4:
+            if v is of type data class, use the dataclass transformer
         """
 
         # Step 1
@@ -687,9 +680,6 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
         # Step 3
-        if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
-
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
         for base_type in cls._REGISTRY.keys():
@@ -704,6 +694,11 @@ class TypeEngine(typing.Generic[T]):
                 # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
+
+        # Step 4
+        if dataclasses.is_dataclass(python_type):
+            return cls._DATACLASS_TRANSFORMER
+
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
@@ -742,7 +737,7 @@ class TypeEngine(typing.Generic[T]):
 
         # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
         hash = None
-        if transformer.hash_overridable and get_origin(python_type) is Annotated:
+        if get_origin(python_type) is Annotated:
             # We are now dealing with one of two cases:
             # 1. The annotated type is a `HashMethod`, which indicates that we should we should produce the hash using
             #    the method indicated in the annotation.
@@ -885,7 +880,6 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
-
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
             # Annotated[typing.List[int], 'foo']

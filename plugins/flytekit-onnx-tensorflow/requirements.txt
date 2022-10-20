@@ -151,7 +151,7 @@ pandas==1.4.3
     # via flytekit
 pillow==9.2.0
     # via -r requirements.in
-protobuf==3.19.4
+protobuf==3.19.5
     # via
     #   flyteidl
     #   flytekit

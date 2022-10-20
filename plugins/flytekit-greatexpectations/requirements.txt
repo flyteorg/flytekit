@@ -235,7 +235,7 @@ prometheus-client==0.14.1
     # via notebook
 prompt-toolkit==3.0.30
     # via ipython
-protobuf==3.20.1
+protobuf==3.20.2
     # via
     #   flyteidl
     #   flytekit
