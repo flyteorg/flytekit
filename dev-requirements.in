@@ -13,4 +13,4 @@ google-cloud-bigquery
 google-cloud-bigquery-storage
 IPython
 torch
-tensorflow
+tensorflow<=2.8.1
