@@ -303,7 +303,6 @@ class FlyteLiteralConverter(object):
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
                 if self._python_type == dict:
-                    print(value)
                     o = json.loads(value)
                 elif type(value) != self._python_type:
                     o = cast(DataClassJsonMixin, self._python_type).from_json(value)
