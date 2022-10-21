@@ -13,8 +13,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models.admin.workflow import WorkflowSpec
-from flytekit.models.core.workflow import WorkflowTemplate
-from flytekit.models.task import TaskTemplate
+from flytekit.models.task import TaskSpec
 from flytekit.remote import FlyteLaunchPlan, FlyteTask
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.workflow import FlyteWorkflow
@@ -64,7 +63,7 @@ def test_fetched_task():
     serialized = OrderedDict()
     wf_spec = get_serializable(serialized, serialization_settings, wf)
     vals = [v for v in serialized.values()]
-    tts = [f for f in filter(lambda x: isinstance(x, TaskTemplate), vals)]
+    tts = [f for f in filter(lambda x: isinstance(x, TaskSpec), vals)]
     assert len(tts) == 1
     assert wf_spec.template.nodes[0].id == "foobar"
     assert wf_spec.template.outputs[0].binding.promise.node_id == "foobar"
