@@ -24,19 +24,20 @@ def test_deck():
 
 
 @pytest.mark.parametrize(
-    "disable_deck,enable_deck,expected_decks",
+    "disable_deck,expected_decks",
     [
-        (None, None, 0),
-        (False, None, 2),  # input and output decks
-        (True, None, 0),
-        (None, False, 0),
-        (None, True, 2),
+        (None, 0),
+        (False, 2),  # input and output decks
+        (True, 0),
     ],
 )
-def test_deck_for_task(disable_deck, enable_deck, expected_decks):
+def test_deck_for_task(disable_deck, expected_decks):
     ctx = FlyteContextManager.current_context()
 
-    @task(disable_deck=disable_deck, enable_deck=enable_deck)
+    kwargs = {}
+    if disable_deck is not None:
+        kwargs['disable_deck'] = disable_deck
+    @task(**kwargs)
     def t1(a: int) -> str:
         return str(a)
 
@@ -45,38 +46,20 @@ def test_deck_for_task(disable_deck, enable_deck, expected_decks):
 
 
 @pytest.mark.parametrize(
-    "disable_deck, enable_deck",
+    "disable_deck, expected_decks",
     [
-        (False, False),
-        (False, True),
-        (True, False),
-        (True, True),
+        (None, 1),
+        (False, 1 + 2),  # input and output decks
+        (True, 1),
     ],
 )
-def test_invalid_deck_settings(disable_deck, enable_deck):
-    with pytest.raises(Exception):
-
-        @task(disable_deck=disable_deck, enable_deck=enable_deck)
-        def t1(a: int) -> str:
-            return str(a)
-
-        t1(a=3)
-
-
-@pytest.mark.parametrize(
-    "disable_deck,enable_deck,expected_decks",
-    [
-        (None, None, 1),
-        (False, None, 1 + 2),  # input and output decks
-        (True, None, 1),
-        (None, False, 1),
-        (None, True, 1 + 2),
-    ],
-)
-def test_deck_pandas_dataframe(disable_deck, enable_deck, expected_decks):
+def test_deck_pandas_dataframe(disable_deck, expected_decks):
     ctx = FlyteContextManager.current_context()
 
-    @task(disable_deck=disable_deck, enable_deck=enable_deck)
+    kwargs = {}
+    if disable_deck is not None:
+        kwargs['disable_deck'] = disable_deck
+    @task(**kwargs)
     def t_df(a: str) -> int:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
         flytekit.current_context().default_deck.append(TopFrameRenderer().to_html(df))

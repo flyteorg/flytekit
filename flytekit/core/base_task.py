@@ -364,8 +364,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        disable_deck: Optional[bool] = None,
-        enable_deck: Optional[bool] = None,
+        disable_deck: bool = True,
         **kwargs,
     ):
         """
@@ -390,14 +389,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
-
-        if disable_deck is not None and enable_deck is not None:
-            raise AssertionError("Cannot set disable_deck and enable_deck at the same time")
-        if disable_deck is None:
-            disable_deck = True
-        if enable_deck is None:
-            enable_deck = False
-        self._enable_deck = not disable_deck or enable_deck
+        self._disable_deck = disable_deck
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
@@ -534,7 +526,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
                     ) from e
 
-            if self._enable_deck:
+            if self._disable_deck is False:
                 INPUT = "input"
                 OUTPUT = "output"
 
