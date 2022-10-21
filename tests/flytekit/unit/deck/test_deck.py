@@ -36,7 +36,8 @@ def test_deck_for_task(disable_deck, expected_decks):
 
     kwargs = {}
     if disable_deck is not None:
-        kwargs['disable_deck'] = disable_deck
+        kwargs["disable_deck"] = disable_deck
+
     @task(**kwargs)
     def t1(a: int) -> str:
         return str(a)
@@ -58,7 +59,8 @@ def test_deck_pandas_dataframe(disable_deck, expected_decks):
 
     kwargs = {}
     if disable_deck is not None:
-        kwargs['disable_deck'] = disable_deck
+        kwargs["disable_deck"] = disable_deck
+
     @task(**kwargs)
     def t_df(a: str) -> int:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
