@@ -508,7 +508,7 @@ class TaskSpec(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.tasks_pb2.TaskSpec
         """
         return _admin_task.TaskSpec(
-            template=self.template.to_flyte_idl(), description_entity=self.docs.to_flyte_idl() if self.docs else None
+            template=self.template.to_flyte_idl(), description=self.docs.to_flyte_idl() if self.docs else None
         )
 
     @classmethod

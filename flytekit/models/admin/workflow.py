@@ -53,7 +53,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         return _admin_workflow.WorkflowSpec(
             template=self._template.to_flyte_idl(),
             sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
-            description_entity=self._docs.to_flyte_idl() if self._docs else None,
+            description=self._docs.to_flyte_idl() if self._docs else None,
         )
 
     @classmethod
