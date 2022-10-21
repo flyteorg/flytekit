@@ -530,15 +530,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             INPUT = "input"
             OUTPUT = "output"
 
-            input_deck = Deck(INPUT)
-            for k, v in native_inputs.items():
-                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+            if _internal.Deck.ENABLE_DECK.read() and self.disable_deck is False:
+                input_deck = Deck(INPUT)
+                for k, v in native_inputs.items():
+                    input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            output_deck = Deck(OUTPUT)
-            for k, v in native_outputs_as_map.items():
-                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
-
-            if _internal.Deck.DISABLE_DECK.read() is not True and self.disable_deck is False:
+                output_deck = Deck(OUTPUT)
+                for k, v in native_outputs_as_map.items():
+                    output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
                 _output_deck(self.name.split(".")[-1], new_user_params)
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)

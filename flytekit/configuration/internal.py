@@ -37,7 +37,7 @@ class Images(object):
 
 class Deck(object):
     SECTION = "deck"
-    DISABLE_DECK = ConfigEntry(LegacyConfigEntry(SECTION, "disable_deck", bool))
+    ENABLE_DECK = ConfigEntry(LegacyConfigEntry(SECTION, "disable_deck", bool))
 
 
 class AWS(object):
