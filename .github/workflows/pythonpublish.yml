@@ -76,9 +76,9 @@ jobs:
           push_git_tag: true
           push_image_and_stages: true
           registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}"
+          build_extra_args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }} --build-arg=PYTHON_VERSION=${{ matrix.python-version }}"
           context: .
-          dockerfile: Dockerfile.py${{ matrix.python-version }}
+          dockerfile: Dockerfile
       - name: Push SQLAlchemy Image to GitHub Registry
         uses: whoan/docker-build-with-cache-action@v5
         with:

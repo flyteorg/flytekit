@@ -1,6 +1,10 @@
 .
 -e file:.#egg=flytekit
 attrs<21
+# Restrict grpcio and grpcio-status.  The 1.50.0 version pulls in a version of protobuf that is not compatible.
+# More details in https://github.com/flyteorg/flyte/issues/3006
+grpcio<=1.47.0
+grpcio-status<=1.47.0
 # We need to restrict constrain the versions of both jsonschema and pyyaml because of docker-compose (which is
 # used to run integration tests) pins those two libraries. We are in the process of removing docker-compose in
 # favor of a more generic solution that involves Flytectl to stand up the sandbox, described in

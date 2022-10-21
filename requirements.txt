@@ -42,9 +42,9 @@ deprecated==1.2.13
     # via flytekit
 diskcache==5.4.0
     # via flytekit
-docker-image-py==0.1.12
-    # via flytekit
 docker==6.0.0
+    # via flytekit
+docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.15
     # via flytekit
@@ -54,14 +54,15 @@ googleapis-common-protos==1.56.4
     # via
     #   flyteidl
     #   grpcio-status
-grpcio-status==1.48.2
+grpcio==1.47.0
     # via
     #   -r requirements.in
     #   flytekit
-grpcio==1.50.0
-    # via
-    #   flytekit
     #   grpcio-status
+grpcio-status==1.47.0
+    # via
+    #   -r requirements.in
+    #   flytekit
 idna==3.4
     # via requests
 importlib-metadata==5.0.0
@@ -70,14 +71,14 @@ importlib-metadata==5.0.0
     #   flytekit
     #   jsonschema
     #   keyring
-jaraco.classes==3.2.3
+jaraco-classes==3.2.3
     # via keyring
-jinja2-time==0.2.0
-    # via cookiecutter
 jinja2==3.1.2
     # via
     #   cookiecutter
     #   jinja2-time
+jinja2-time==0.2.0
+    # via cookiecutter
 joblib==1.2.0
     # via flytekit
 jsonschema==3.2.0
@@ -86,17 +87,17 @@ keyring==23.9.3
     # via flytekit
 markupsafe==2.1.1
     # via jinja2
-marshmallow-enum==1.5.1
-    # via dataclasses-json
-marshmallow-jsonschema==0.13.0
-    # via flytekit
 marshmallow==3.18.0
     # via
     #   dataclasses-json
     #   marshmallow-enum
     #   marshmallow-jsonschema
+marshmallow-enum==1.5.1
+    # via dataclasses-json
+marshmallow-jsonschema==0.13.0
+    # via flytekit
 more-itertools==9.0.0
-    # via jaraco.classes
+    # via jaraco-classes
 mypy-extensions==0.4.3
     # via typing-inspect
 natsort==8.2.0
