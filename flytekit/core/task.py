@@ -89,7 +89,7 @@ def task(
     secret_requests: Optional[List[Secret]] = None,
     execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     task_resolver: Optional[TaskResolverMixin] = None,
-    disable_deck: bool = False,
+    disable_deck: bool = True,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
