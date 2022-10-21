@@ -179,7 +179,6 @@ def task(
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: If true, this task will not output deck html file
-    :param enable_deck: If true, this task will output deck html file
     """
 
     def wrapper(fn) -> PythonFunctionTask:
