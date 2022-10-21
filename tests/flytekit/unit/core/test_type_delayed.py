@@ -10,7 +10,7 @@ from flytekit.core.interface import transform_function_to_interface, transform_i
 from flytekit.core.type_engine import TypeEngine
 
 try:
-    from typing import Annotated  # type: ignore
+    from typing import Annotated
 except ImportError:
     from typing_extensions import Annotated  # type: ignore
 

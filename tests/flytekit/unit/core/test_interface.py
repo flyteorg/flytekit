@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import typing
 from typing import Dict, List
@@ -17,7 +19,7 @@ from flytekit.types.file import FlyteFile
 from flytekit.types.pickle import FlytePickle
 
 try:
-    from typing import Annotated  # type: ignore
+    from typing import Annotated
 except ImportError:
     from typing_extensions import Annotated  # type: ignore
 

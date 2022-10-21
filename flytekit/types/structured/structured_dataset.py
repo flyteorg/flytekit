@@ -6,7 +6,7 @@ import types
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Generator, Optional, Type, Union
+from typing import Any, Dict, Generator, Optional, Type, Union, overload
 
 import _datetime
 import numpy as _np
@@ -326,12 +326,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
     }
 
-    ENCODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetEncoder]]] = {}
-    DECODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetDecoder]]] = {}
+    ENCODERS: Dict[Type, Dict[str, Dict[str, Handlers]]] = {}
+    DECODERS: Dict[Type, Dict[str, Dict[str, Handlers]]] = {}
     DEFAULT_PROTOCOLS: Dict[Type, str] = {}
     DEFAULT_FORMATS: Dict[Type, str] = {}
 
-    Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
+    # Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
+    Handlers = typing.TypeVar["Handlers", StructuredDatasetEncoder, StructuredDatasetDecoder]
     Renderers: Dict[Type, Renderable] = {}
 
     @staticmethod
@@ -359,18 +360,18 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return cls._finder(StructuredDatasetTransformerEngine.DECODERS, df_type, protocol, format)
 
     @classmethod
-    def _handler_finder(cls, h: Handlers, protocol: str) -> Dict[str, Handlers]:
+    def _handler_finder(cls, h: Handlers, protocol: str) -> Dict[str, Any]:
         if isinstance(h, StructuredDatasetEncoder):
             top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
-            top_level = cls.DECODERS  # type: ignore
+            top_level = cls.DECODERS
         else:
             raise TypeError(f"We don't support this type of handler {h}")
         if h.python_type not in top_level:
             top_level[h.python_type] = {}
         if protocol not in top_level[h.python_type]:
             top_level[h.python_type][protocol] = {}
-        return top_level[h.python_type][protocol]  # type: ignore
+        return top_level[h.python_type][protocol]
 
     def __init__(self):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
@@ -569,7 +570,19 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         sd_model.metadata._structured_dataset_type.format = handler.supported_format
         return Literal(scalar=Scalar(structured_dataset=sd_model))
 
+    @overload
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        ...
+
+    @overload
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: StructuredDataset
+    ) -> StructuredDatasetType:
+        ...
+
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
         """
         The only tricky thing with converting a Literal (say the output of an earlier task), to a Python value at
         the start of a task execution, is the column subsetting behavior. For example, if you have,
@@ -638,7 +651,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             if issubclass(expected_python_type, StructuredDataset):
                 sd = StructuredDataset(dataframe=None, metadata=metad)
                 sd._literal_sd = sd_literal
-                return sd  # type: ignore
+                return sd
             else:
                 return self.open_as(ctx, sd_literal, expected_python_type, metad)
 
@@ -675,7 +688,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             )
             sd._literal_sd = lv.scalar.structured_dataset
             sd.file_format = metad.structured_dataset_type.format
-            return sd  # type: ignore
+            return sd
 
         # If the requested type was not a StructuredDataset, then it means it was a plain dataframe type, which means
         # we should do the opening/downloading and whatever else it might entail right now. No iteration option here.
@@ -784,11 +797,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         """
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[StructuredDataset]:
         # todo: technically we should return the dataframe type specified in the constructor, but to do that,
         #   we'd have to store that, which we don't do today. See possibly #1363
         if literal_type.structured_dataset_type is not None:
-            return StructuredDataset  # type: ignore
+            return StructuredDataset
         raise ValueError(f"StructuredDatasetTransformerEngine cannot reverse {literal_type}")
 
 

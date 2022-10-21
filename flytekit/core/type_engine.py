@@ -11,7 +11,7 @@ import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, NamedTuple, Optional, Type, cast
+from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -398,18 +398,19 @@ class DataclassTransformer(TypeTransformer[object]):
                 python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
             return python_val
 
-    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> T:
+    def _deserialize_flyte_type(
+        self, python_val: T, expected_python_type: Type
+    ) -> T | List[Any] | Dict[Any, Union[Any, List[Any]]]:
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
         from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is list:
-            return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]  # type: ignore
+            return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]
 
         if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is dict:
-            # type: ignore
-            return {k: self._deserialize_flyte_type(v, expected_python_type.__args__[1]) for k, v in python_val.items()}  # type: ignore
+            return {k: self._deserialize_flyte_type(v, expected_python_type.__args__[1]) for k, v in python_val.items()}
 
         if not dataclasses.is_dataclass(expected_python_type):
             return python_val
