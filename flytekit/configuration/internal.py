@@ -35,11 +35,6 @@ class Images(object):
             return cfg.yaml_config.get("images", images)
 
 
-class Deck(object):
-    SECTION = "deck"
-    ENABLE_DECK = ConfigEntry(LegacyConfigEntry(SECTION, "enable_deck", bool))
-
-
 class AWS(object):
     SECTION = "aws"
     S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint"), YamlConfigEntry("storage.connection.endpoint"))

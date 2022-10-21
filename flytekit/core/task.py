@@ -89,7 +89,8 @@ def task(
     secret_requests: Optional[List[Secret]] = None,
     execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     task_resolver: Optional[TaskResolverMixin] = None,
-    disable_deck: bool = False,
+    disable_deck: Optional[bool] = None,
+    enable_deck: Optional[bool] = None,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -179,6 +180,7 @@ def task(
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: If true, this task will not output deck html file
+    :param enable_deck: If true, this task will output deck html file
     """
 
     def wrapper(fn) -> PythonFunctionTask:
@@ -204,6 +206,7 @@ def task(
             execution_mode=execution_mode,
             task_resolver=task_resolver,
             disable_deck=disable_deck,
+            enable_deck=enable_deck,
         )
         update_wrapper(task_instance, fn)
         return task_instance
