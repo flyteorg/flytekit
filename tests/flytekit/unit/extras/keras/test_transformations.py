@@ -86,7 +86,7 @@ def test_to_python_value_and_literal(transformer, python_type, format, python_va
     assert lv.scalar.blob.uri is not None
 
     output = tf.to_python_value(ctx, lv, python_type)
-    if isinstance(python_val, keras.Sequential):
+    if isinstance(python_val, (keras.Sequential, keras.Model)):
         for p1, p2 in zip(output.weights, python_val.weights):
             np.testing.assert_array_equal(p1.numpy(), p2.numpy())
         assert True
