@@ -97,3 +97,64 @@ Both the commands have their own place in a production Flyte setting.
 .. note ::
 
    Neither ``pyflyte register`` nor ``pyflyte run`` commands work on Python namespace packages since both the tools traverse the filesystem to find the first folder that doesn't have an __init__.py file, which is interpreted as the root of the project. Both the commands use this root as the basis to name the Flyte entities.
+
+How to setup SSL while using ``pyflyte run`` on gcloud cluster?
+===============================================================
+
+1. Follow tutorial upto `SSL Certificate <https://docs.flyte.org/en/latest/deployment/gcp/manual.html#ssl-certificate>`__.
+
+2. Install `certificate manager <https://cert-manager.io/docs/installation/helm/>`__ by running the following commands:
+
+.. prompt:: bash $
+
+  helm repo add jetstack https://charts.jetstack.io
+
+.. prompt:: bash $
+
+  helm repo update
+  
+.. prompt:: bash $
+
+  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.crds.yaml
+
+.. prompt:: bash $
+
+  helm install cert-manager jetstack/cert-manager --namespace flyte --create-namespace --version v1.9.1
+
+3. Add flyte-certificate.yaml:
+
+.. code-block:: yaml
+
+   apiVersion: cert-manager.io/v1
+   kind: ClusterIssuer
+   metadata:
+    name: letsencrypt-production
+   spec:
+    acme:
+      server: https://acme-v02.api.letsencrypt.org/directory
+      email: <YOUR_EMAIL>
+      privateKeySecretRef:
+        name: letsencrypt-production
+      solvers:
+      - selector: {}
+        http01:
+          ingress:
+            class: nginx
+
+
+4. Add the certificate:
+ 
+.. prompt:: bash $
+ 
+   kubectl apply -f flyte-certificate.yaml
+ 
+5. Continue tutorial from `Ingress <https://docs.flyte.org/en/latest/deployment/gcp/manual.html#ingress>`__ to `Installing flyte (Step 3) <https://docs.flyte.org/en/latest/deployment/gcp/manual.html#installing-flyte>`__.
+
+6. Modify the values as described, but remove the field for common.ingress.annotations.cert-manager.io/issuer and add:
+
+.. code-block:: yaml
+
+   cert-manager.io/cluster-issuer: "letsencrypt-production"
+  
+  
+7. Completed and Continue.
