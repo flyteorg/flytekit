@@ -113,6 +113,8 @@ def download_distribution(additional_distribution: str, destination: str):
     # This will overwrite the existing user flyte workflow code in the current working code dir.
     result = _subprocess.run(
         ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
-        stdout=_subprocess.PIPE,
+        capture_output=True,
     )
-    result.check_returncode()
+
+    if result.check_returncode():
+        raise Exception(f"Error found while running tar. stdout={result.stdout}, stderr={result.stderr}")
