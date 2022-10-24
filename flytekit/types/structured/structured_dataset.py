@@ -6,7 +6,7 @@ import types
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generator, Optional, Type, Union, overload
+from typing import Any, Dict, Generator, Optional, Type, Union
 
 import _datetime
 import numpy as _np
@@ -326,12 +326,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
     }
 
-    ENCODERS: Dict[Type, Dict[str, Dict[str, Handlers]]] = {}
-    DECODERS: Dict[Type, Dict[str, Dict[str, Handlers]]] = {}
+    ENCODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetEncoder]]] = {}
+    DECODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetDecoder]]] = {}
     DEFAULT_PROTOCOLS: Dict[Type, str] = {}
     DEFAULT_FORMATS: Dict[Type, str] = {}
 
-    # Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
     Handlers = typing.TypeVar["Handlers", StructuredDatasetEncoder, StructuredDatasetDecoder]
     Renderers: Dict[Type, Renderable] = {}
 
@@ -360,7 +359,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return cls._finder(StructuredDatasetTransformerEngine.DECODERS, df_type, protocol, format)
 
     @classmethod
-    def _handler_finder(cls, h: Handlers, protocol: str) -> Dict[str, Any]:
+    def _handler_finder(cls, h: Handlers, protocol: str) -> Dict[str, Handlers]:
+        top_level = typing.cast(Dict[Type[Any], Dict[str, Dict[str, Union[cls.DECODERS, cls.ENCODERS]]]], {})
         if isinstance(h, StructuredDatasetEncoder):
             top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
@@ -569,16 +569,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # with a format of "" is used.
         sd_model.metadata._structured_dataset_type.format = handler.supported_format
         return Literal(scalar=Scalar(structured_dataset=sd_model))
-
-    @overload
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        ...
-
-    @overload
-    def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: StructuredDataset
-    ) -> StructuredDatasetType:
-        ...
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset

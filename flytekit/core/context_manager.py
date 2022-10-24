@@ -80,15 +80,15 @@ class ExecutionParameters(object):
     @dataclass(init=False)
     class Builder(object):
         stats: taggable.TaggableStats
-        execution_date: typing.Optional[datetime]
-        logging: Optional[_logging.Logger]
-        execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier]
         attrs: typing.Dict[str, typing.Any]
-        working_dir: typing.Optional[utils.AutoDeletingTempDir]
-        checkpoint: typing.Optional[Checkpoint]
         decks: List[Deck]
-        raw_output_prefix: Optional[str]
-        task_id: typing.Optional[_identifier.Identifier]
+        raw_output_prefix: Optional[str] = None
+        execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier] = None
+        working_dir: typing.Optional[utils.AutoDeletingTempDir] = None
+        checkpoint: typing.Optional[Checkpoint] = None
+        execution_date: typing.Optional[datetime] = None
+        logging: Optional[_logging.Logger] = None
+        task_id: typing.Optional[_identifier.Identifier] = None
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
