@@ -16,7 +16,7 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
-class VaexDataFrameToParquetEncodingHandlers(StructuredDatasetEncoder):
+class VaexDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
     def __init__(self):
         super().__init__(vaex.dataframe.DataFrameLocal, None, PARQUET)
 
@@ -68,6 +68,6 @@ class VaexDataFrameRenderer:
         return pd.DataFrame(describe_df.transpose(), columns=describe_df.columns).to_html(index=False)
 
 
-StructuredDatasetTransformerEngine.register(VaexDataFrameToParquetEncodingHandlers())
+StructuredDatasetTransformerEngine.register(VaexDataFrameToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToVaxDataFrameDecodingHandler())
 StructuredDatasetTransformerEngine.register_renderer(vaex.dataframe.DataFrameLocal, VaexDataFrameRenderer())

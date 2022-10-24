@@ -7,8 +7,8 @@ This package contains things that are useful when extending Flytekit.
    :template: custom.rst
    :toctree: generated/
 
-   VaexDataFrameToParquetEncodingHandlers
+   VaexDataFrameToParquetEncodingHandler
    ParParquetToVaxDataFrameDecodingHandler
 """
 
-from .sd_transformers import ParquetToVaxDataFrameDecodingHandler, VaexDataFrameToParquetEncodingHandlers
+from .sd_transformers import ParquetToVaxDataFrameDecodingHandler, VaexDataFrameToParquetEncodingHandler
