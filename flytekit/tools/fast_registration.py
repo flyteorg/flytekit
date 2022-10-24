@@ -116,5 +116,6 @@ def download_distribution(additional_distribution: str, destination: str):
         capture_output=True,
     )
 
-    if result.check_returncode():
-        raise Exception(f"Error found while running tar. stdout={result.stdout}, stderr={result.stderr}")
+    print(f"result.check_returncode={result.check_returncode}, stdout={result.stdout}, stderr={result.stderr}")
+    # if result.check_returncode():
+    #     raise Exception(f"Error found while running tar. stdout={result.stdout}, stderr={result.stderr}")
