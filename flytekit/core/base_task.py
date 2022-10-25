@@ -36,6 +36,7 @@ from flytekit.core.promise import (
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
+from flytekit.core.runtime_env import RuntimeEnv
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.deck.deck import Deck
@@ -156,6 +157,7 @@ class Task(object):
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
+        runtime_env: Optional[RuntimeEnv] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -164,6 +166,7 @@ class Task(object):
         self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
+        self._runtime_env = runtime_env
 
         FlyteEntities.entities.append(self)
 
@@ -194,6 +197,10 @@ class Task(object):
     @property
     def security_context(self) -> SecurityContext:
         return self._security_ctx
+
+    @property
+    def runtime_env(self) -> Optional[RuntimeEnv]:
+        return self._runtime_env
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
