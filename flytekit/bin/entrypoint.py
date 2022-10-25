@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import datetime as _datetime
 import os
@@ -80,20 +81,31 @@ def _dispatch_execute(
     output_file_dict = {}
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
+        loop = asyncio.get_event_loop()
+
         # Step1
-        local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
-        ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-        idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+        async def load_input_proto():
+            local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+            ctx.file_access.get_data(inputs_path, local_inputs_file)
+            input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+            idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+            return idl_input_literals
 
         # Step2
-        if task_def.runtime_env:
+        async def install_dependencies():
             task_def.runtime_env.install_dependencies()
 
+        idl_input_literals = loop.create_task(load_input_proto())
+        tasks = [idl_input_literals]
+        if task_def.runtime_env:
+            tasks.append(loop.create_task(install_dependencies()))
+
+        loop.run_until_complete(asyncio.wait(tasks))
+        loop.close()
         # Step3
         # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
         # of the FlyteScopedExceptions
-        outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
+        outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals.result())
         # Step4a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")

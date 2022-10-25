@@ -35,8 +35,8 @@ class RuntimeEnv:
         for package in self._pip_packages:
             pip_install_cmd.append(" " + package)
 
-        print(pip_install_cmd)
+        logger.info(f"Install python packages with command: {pip_install_cmd}")
         try:
             subprocess.run(pip_install_cmd, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
-            logger.error("Failed to install python packages with error: {}".format(e))
+            logger.error(f"Failed to install python packages with error: {e}")
