@@ -114,7 +114,7 @@ def test_container():
         output_data_dir="/tmp",
         command=["cat"],
         arguments=["/tmp/a"],
-        requests=Resources(mem="400Mi", cpu="1"),
+        requests=Resources(mem="400Mi", cpu="1", gpu="1"),
     )
 
     ssettings = (
@@ -124,6 +124,8 @@ def test_container():
     )
     task_spec = get_serializable(OrderedDict(), ssettings, t2)
     assert "pyflyte" not in task_spec.template.container.args
+    assert t2.get_container(ssettings).resources.requests[0].name == "gpu"
+    assert t2.get_container(ssettings).resources.requests[0].value == "1"
 
 
 def test_launch_plan_with_fixed_input():
