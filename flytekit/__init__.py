@@ -179,6 +179,7 @@ from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanc
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, WorkflowReference
 from flytekit.core.resources import Resources
+from flytekit.core.runtime_env import RuntimeEnv
 from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
