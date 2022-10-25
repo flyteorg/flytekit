@@ -107,7 +107,7 @@ def download_distribution(additional_distribution: str, destination: str):
         raise ValueError("Destination path is required to download distribution and it should be a directory")
     # NOTE the os.path.join(destitation, ''). This is to ensure that the given path is infact a directory and all
     # downloaded data should be copied into this directory
-    FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ''))
+    FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))
     tarfile_name = os.path.basename(additional_distribution)
     if not tarfile_name.endswith(".tar.gz"):
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
