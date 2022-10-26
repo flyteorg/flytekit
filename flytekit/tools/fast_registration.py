@@ -103,10 +103,11 @@ def download_distribution(additional_distribution: str, destination: str):
     :param Text additional_distribution:
     :param os.PathLike destination:
     """
-    if not destination:
+    if not os.path.isdir(destination):
         raise ValueError("Destination path is required to download distribution and it should be a directory")
-    # NOTE the os.path.join(destitation, ''). This is to ensure that the given path is infact a directory and all
-    # downloaded data should be copied into this directory
+    # NOTE the os.path.join(destination, ''). This is to ensure that the given path is infact a directory and all
+    # downloaded data should be copied into this directory. We do this to account for a difference in behavior in 
+    # fsspec, which requires a trailing slash in case of pre-existing directory.
     FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))
     tarfile_name = os.path.basename(additional_distribution)
     if not tarfile_name.endswith(".tar.gz"):
