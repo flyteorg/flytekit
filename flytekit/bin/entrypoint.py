@@ -82,7 +82,7 @@ def _dispatch_execute(
     output_file_dict = {}
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         # Step1
         async def load_input_proto():
