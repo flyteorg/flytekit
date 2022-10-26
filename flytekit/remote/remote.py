@@ -53,13 +53,10 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
+from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
-from flytekit.remote.launch_plan import FlyteLaunchPlan
-from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.remote_callable import RemoteEntity
-from flytekit.remote.task import FlyteTask
-from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.script_mode import fast_register_single_script, hash_file
 from flytekit.tools.translator import (
@@ -73,6 +70,14 @@ from flytekit.tools.translator import (
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
+
+
+class RegistrationSkipped(Exception):
+    """
+    RegistrationSkipped error is raised when trying to register an entity that is not registrable.
+    """
+
+    pass
 
 
 @dataclass
@@ -393,6 +398,15 @@ class FlyteRemote(object):
         :param og_entity: Pass in the original workflow (flytekit type) if create_default_launchplan is true
         :return: Identifier of the created entity
         """
+        if isinstance(cp_entity, RemoteEntity):
+            if isinstance(cp_entity, (FlyteWorkflow, FlyteTask)):
+                if not cp_entity.should_register:
+                    remote_logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
+                    raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
+            else:
+                remote_logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
+                raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
+
         if isinstance(
             cp_entity,
             (
@@ -484,10 +498,6 @@ class FlyteRemote(object):
 
         ident = None
         for entity, cp_entity in m.items():
-            if isinstance(entity, RemoteEntity):
-                remote_logger.debug(f"Skipping registration of remote entity: {entity.name}")
-                continue
-
             if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and is_dummy_serialization_setting:
                 # Only in the case of workflows can we use the dummy serialization settings.
                 raise user_exceptions.FlyteValueException(
@@ -495,14 +505,17 @@ class FlyteRemote(object):
                     f"No serialization settings set, but workflow contains entities that need to be registered. {cp_entity.id.name}",
                 )
 
-            ident = self.raw_register(
-                cp_entity,
-                settings=settings,
-                version=version,
-                create_default_launchplan=True,
-                options=options,
-                og_entity=entity,
-            )
+            try:
+                ident = self.raw_register(
+                    cp_entity,
+                    settings=settings,
+                    version=version,
+                    create_default_launchplan=True,
+                    options=options,
+                    og_entity=entity,
+                )
+            except RegistrationSkipped:
+                pass
 
         return ident
 

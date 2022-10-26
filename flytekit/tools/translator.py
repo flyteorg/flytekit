@@ -28,7 +28,7 @@ from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import TaskNodeOverrides
-
+from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -220,9 +220,6 @@ def get_serializable_workflow(
     entity: WorkflowBase,
     options: Optional[Options] = None,
 ) -> admin_workflow_models.WorkflowSpec:
-    # TODO: Try to move up following config refactor - https://github.com/flyteorg/flyte/issues/2214
-    from flytekit.remote.workflow import FlyteWorkflow
-
     # Get node models
     upstream_node_models = [
         get_serializable(entity_mapping, settings, n, options)
@@ -375,11 +372,6 @@ def get_serializable_node(
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
-
-    # TODO: Try to move back up following config refactor - https://github.com/flyteorg/flyte/issues/2214
-    from flytekit.remote.launch_plan import FlyteLaunchPlan
-    from flytekit.remote.task import FlyteTask
-    from flytekit.remote.workflow import FlyteWorkflow
 
     upstream_sdk_nodes = [
         get_serializable(entity_mapping, settings, n, options=options)
@@ -542,7 +534,9 @@ def get_reference_spec(
     return ReferenceSpec(template)
 
 
-def get_serializable_flyte_workflow(entity: "FlyteWorkflow", settings: SerializationSettings) -> FlyteControlPlaneEntity:
+def get_serializable_flyte_workflow(
+    entity: "FlyteWorkflow", settings: SerializationSettings
+) -> FlyteControlPlaneEntity:
     """
     TODO replace with deep copy
     """
@@ -607,11 +601,6 @@ def get_serializable(
     :return: The resulting control plane entity, in addition to being added to the mutable entity_mapping parameter
       is also returned.
     """
-    # TODO: Try to replace following config refactor - https://github.com/flyteorg/flyte/issues/2214
-    from flytekit.remote.launch_plan import FlyteLaunchPlan
-    from flytekit.remote.task import FlyteTask
-    from flytekit.remote.workflow import FlyteWorkflow
-
     if entity in entity_mapping:
         return entity_mapping[entity]
 

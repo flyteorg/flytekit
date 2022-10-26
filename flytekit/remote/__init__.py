@@ -85,9 +85,14 @@ Execution Objects
 
 """
 
-from flytekit.remote.task import FlyteTask
-from flytekit.remote.component_nodes import FlyteTaskNode, FlyteWorkflowNode, FlyteTask
-from flytekit.remote.workflow import FlyteWorkflow, FlyteNode
-from flytekit.remote.launch_plan import FlyteLaunchPlan
+from flytekit.remote.entities import (
+    FlyteBranchNode,
+    FlyteLaunchPlan,
+    FlyteNode,
+    FlyteTask,
+    FlyteTaskNode,
+    FlyteWorkflow,
+    FlyteWorkflowNode,
+)
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote

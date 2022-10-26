@@ -11,6 +11,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan
 from flytekit.remote import FlyteRemote
+from flytekit.remote.remote import RegistrationSkipped
 from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
@@ -234,11 +235,17 @@ def register(
     if len(serializable_entities) == 0:
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
-    click.secho(f"Found and serialized {len(serializable_entities)} entities")
 
+    # TODO add support for tqdm in the future.
     for cp_entity in serializable_entities:
         name = cp_entity.id.name if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id.name
-        click.secho(f"  Registering {name}....", dim=True, nl=False)
-        i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
-        click.secho(f"done, {i.resource_type_name()} with version {i.version}.", dim=True)
+        click.secho(f"  Registering {name} [ ]", dim=True, nl=False)
+        try:
+            i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
+            click.echo(
+                click.style("\b\b\b[✔] ", fg="green")
+                + click.style(f"{i.resource_type_name()} version[{i.version}].", dim=True)
+            )
+        except RegistrationSkipped:
+            click.echo(click.style("\b\b\b[x] ", fg="red") + click.style("skipped, remote entity!", dim=True))
     click.secho(f"Successfully registered {len(serializable_entities)} entities", fg="green")
