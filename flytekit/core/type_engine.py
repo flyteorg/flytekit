@@ -165,7 +165,7 @@ class SimpleTransformer(TypeTransformer[T]):
         return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        if type(python_val) != self._type:
+        if not isinstance(python_val, self._type):
             raise TypeTransformerFailedError(f"Expected value of type {self._type} but got type {type(python_val)}")
         return self._to_literal_transformer(python_val)
 
@@ -180,7 +180,7 @@ class SimpleTransformer(TypeTransformer[T]):
 
         try:  # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
             res = self._from_literal_transformer(lv)
-            if type(res) != self._type:
+            if not isinstance(res, self._type):
                 raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
             return res
         except AttributeError:
@@ -734,7 +734,6 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
             transformer.assert_type(python_type, python_val)
-
         # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
         hash = None
         if get_origin(python_type) is Annotated:
@@ -748,7 +747,6 @@ class TypeEngine(typing.Generic[T]):
                     continue
                 hash = annotation.calculate(python_val)
                 break
-
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
 
         if hash is not None:
