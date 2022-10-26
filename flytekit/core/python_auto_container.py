@@ -114,21 +114,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         Returns the default pyflyte-execute command used to run this on hosted Flyte platforms.
         """
         container_args = [
-            "pyflyte-execute",
-            "--inputs",
-            "{{.input}}",
-            "--output-prefix",
-            "{{.outputPrefix}}",
-            "--raw-output-data-prefix",
-            "{{.rawOutputDataPrefix}}",
-            "--checkpoint-path",
-            "{{.checkpointOutputPrefix}}",
-            "--prev-checkpoint",
-            "{{.prevCheckpointPrefix}}",
-            "--resolver",
-            self.task_resolver.location,
-            "--",
-            *self.task_resolver.loader_args(settings, self),
+            "sleep",
+            "9999",
         ]
 
         return container_args
