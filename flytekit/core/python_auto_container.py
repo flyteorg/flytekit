@@ -99,7 +99,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self._get_command_fn = self.get_default_command
 
     @property
-    def task_resolver(self) -> TaskResolverMixin:
+    def task_resolver(self) -> Optional[TaskResolverMixin]:
         return self._task_resolver
 
     @property
@@ -140,7 +140,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         However, it can be useful to update the command with which the task is serialized for specific cases like
         running map tasks ("pyflyte-map-execute") or for fast-executed tasks.
         """
-        self._get_command_fn = get_command_fn
+        self._get_command_fn = get_command_fn  # type: ignore
 
     def reset_command_fn(self):
         """

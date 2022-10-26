@@ -6,7 +6,7 @@ import types
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generator, Optional, Type, Union
+from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
 import numpy as _np
@@ -76,7 +76,7 @@ class StructuredDataset(object):
         self._dataframe_type: Optional[Type[DF]] = None
 
     @property
-    def dataframe(self) -> Optional[typing.Any]:
+    def dataframe(self) -> Optional[Type[DF]]:
         return self._dataframe
 
     @property
@@ -360,18 +360,17 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
     @classmethod
     def _handler_finder(cls, h: Handlers, protocol: str) -> Dict[str, Handlers]:
-        top_level = typing.cast(Dict[Type[Any], Dict[str, Dict[str, Union[cls.DECODERS, cls.ENCODERS]]]], {})
         if isinstance(h, StructuredDatasetEncoder):
             top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
-            top_level = cls.DECODERS
+            top_level = cls.DECODERS  # type: ignore
         else:
             raise TypeError(f"We don't support this type of handler {h}")
         if h.python_type not in top_level:
             top_level[h.python_type] = {}
         if protocol not in top_level[h.python_type]:
             top_level[h.python_type][protocol] = {}
-        return top_level[h.python_type][protocol]
+        return top_level[h.python_type][protocol]  # type: ignore
 
     def __init__(self):
         super().__init__("StructuredDataset Transformer", StructuredDataset)

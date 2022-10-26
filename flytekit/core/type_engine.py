@@ -1122,9 +1122,9 @@ class UnionTransformer(TypeTransformer[T]):
 
         raise TypeError(f"Cannot convert from {lv} to {expected_python_type} (using tag {union_tag})")
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.Union[typing.Tuple[type], ...]:
+    def guess_python_type(self, literal_type: LiteralType) -> type:
         if literal_type.union_type is not None:
-            return typing.Union[tuple(TypeEngine.guess_python_type(v.type) for v in literal_type.union_type.variants)]
+            return typing.Union[tuple(TypeEngine.guess_python_type(v.type) for v in literal_type.union_type.variants)]  # type: ignore
 
         raise ValueError(f"Union transformer cannot reverse {literal_type}")
 
@@ -1139,7 +1139,7 @@ class DictTransformer(TypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[typing.Any], ...]:
+    def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[type], Optional[type]]:
         """
         Return the generic Type T of the Dict
         """
@@ -1153,7 +1153,7 @@ class DictTransformer(TypeTransformer[dict]):
                         parsed."
                 )
             if _origin is dict and _args is not None:
-                return _args
+                return _args  # type: ignore
         return None, None
 
     @staticmethod
@@ -1361,13 +1361,13 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, str]) -> Optional[typing.Any]:
+def _get_element_type(element_property: typing.Dict[str, str]) -> type:
     element_type = element_property["type"]
     element_format = element_property["format"] if "format" in element_property else None
 
     if type(element_type) == list:
         # Element type of Optional[int] is [integer, None]
-        return typing.Optional[_get_element_type({"type": element_type[0]})]
+        return typing.Optional[_get_element_type({"type": element_type[0]})]  # type: ignore
 
     if element_type == "string":
         return str
