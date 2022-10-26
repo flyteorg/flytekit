@@ -1,13 +1,19 @@
 import json
 from subprocess import CompletedProcess
 
+import grpc
 import mock
 import pytest
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.service import auth_pb2
 from mock import MagicMock, patch
 
-from flytekit.clients.raw import RawSynchronousFlyteClient, get_basic_authorization_header, get_token
+from flytekit.clients.raw import (
+    RawSynchronousFlyteClient,
+    _handle_invalid_create_request,
+    get_basic_authorization_header,
+    get_token,
+)
 from flytekit.configuration import AuthType, PlatformConfig
 from flytekit.configuration.internal import Credentials
 
@@ -211,3 +217,24 @@ def test_refresh_from_environment_variable(mocked_method, monkeypatch: pytest.Mo
     cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode=None).auto(None))
     cc.refresh_credentials()
     assert mocked_method.called
+
+
+def test__handle_invalid_create_request_decorator_happy():
+    client = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.CLIENT_CREDENTIALS))
+    mocked_method = client._stub.CreateWorkflow = mock.Mock()
+    _handle_invalid_create_request(client.create_workflow("/flyteidl.service.AdminService/CreateWorkflow"))
+    mocked_method.assert_called_once()
+
+
+@patch("flytekit.clients.raw.cli_logger")
+@patch("flytekit.clients.raw._MessageToJson")
+def test__handle_invalid_create_request_decorator_raises(mock_to_JSON, mock_logger):
+    mock_to_JSON(return_value="test")
+    err = grpc.RpcError()
+    err.details = "There is already a workflow with different structure."
+    err.code = lambda: grpc.StatusCode.INVALID_ARGUMENT
+    client = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.CLIENT_CREDENTIALS))
+    client._stub.CreateWorkflow = mock.Mock(side_effect=err)
+    with pytest.raises(grpc.RpcError):
+        _handle_invalid_create_request(client.create_workflow("/flyteidl.service.AdminService/CreateWorkflow"))
+    mock_logger.error.assert_called_with("There is already a workflow with different structure.")
