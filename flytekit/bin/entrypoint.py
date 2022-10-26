@@ -5,6 +5,7 @@ import os
 import pathlib
 import subprocess
 import tempfile
+import time
 import traceback as _traceback
 from typing import List, Optional
 
@@ -85,15 +86,21 @@ def _dispatch_execute(
 
         # Step1
         async def load_input_proto():
+            start = time.time()
             local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
             ctx.file_access.get_data(inputs_path, local_inputs_file)
             input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
             idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+            end = time.time()
+            print(f"time elapsed in load_input_proto: {end-start}")
             return idl_input_literals
 
         # Step2
         async def install_dependencies():
+            start = time.time()
             task_def.runtime_env.install_dependencies()
+            end = time.time()
+            print(f"time elapsed in install_dependencies: {end - start}")
 
         idl_input_literals = loop.create_task(load_input_proto())
         tasks = [idl_input_literals]
