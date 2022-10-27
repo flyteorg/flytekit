@@ -294,9 +294,9 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
-        outputs[k] = _change_unrecognized_type_to_pickle(v)
+        outputs[k] = _change_unrecognized_type_to_pickle(v)  # type: ignore
     inputs = OrderedDict()
-    for k, v in signature.parameters.items():
+    for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
@@ -355,9 +355,7 @@ def output_name_generator(length: int) -> Generator[str, None, None]:
         yield default_output_name(x)
 
 
-def extract_return_annotation(
-    return_annotation: Union[Union[Tuple[Type[Any]], Type[Any], Any], Tuple, None]
-) -> Dict[str, Union[Tuple[Type[Any]], Type[Any], Any]]:
+def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Dict[str, Type]:
     """
     The purpose of this function is to sort out whether a function is returning one thing, or multiple things, and to
     name the outputs accordingly, either by using our default name function, or from a typing.NamedTuple.
