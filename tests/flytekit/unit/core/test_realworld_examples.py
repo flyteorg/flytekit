@@ -2,6 +2,7 @@ import typing
 from collections import OrderedDict
 
 import pandas as pd
+from typing_extensions import Annotated
 
 from flytekit import Resources
 from flytekit.core.task import task
@@ -44,7 +45,7 @@ def test_diabetes():
     # the last column is the class
     CLASSES_COLUMNS = OrderedDict({"class": int})
 
-    MODELSER_JOBLIB = typing.Annotated[str, FileExt("joblib.dat")]
+    MODELSER_JOBLIB = Annotated[str, FileExt("joblib.dat")]
 
     class XGBoostModelHyperparams(object):
         """

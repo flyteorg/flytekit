@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict
 
 from flytekitplugins.awssagemaker.distributed_training import DistributedTrainingContext
 from google.protobuf.json_format import MessageToDict
+from typing_extensions import Annotated
 
 import flytekit
 from flytekit import ExecutionParameters, FlyteContextManager, PythonFunctionTask, kwtypes
@@ -48,7 +49,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
 
     _SAGEMAKER_TRAINING_JOB_TASK = "sagemaker_training_job_task"
 
-    OUTPUT_TYPE = typing.Annotated[str, FileExt("tar.gz")]
+    OUTPUT_TYPE = Annotated[str, FileExt("tar.gz")]
 
     def __init__(
         self,

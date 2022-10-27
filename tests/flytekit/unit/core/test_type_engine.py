@@ -1430,7 +1430,7 @@ def test_file_ext_with_flyte_file_existing_file():
 
 
 def test_file_ext_with_flyte_file_new_file():
-    TAR_GZ = typing.Annotated[str, FileExt("tar.gz")]
+    TAR_GZ = Annotated[str, FileExt("tar.gz")]
     flyte_file = FlyteFile[TAR_GZ]
     assert flyte_file.extension() == "tar.gz"
 
@@ -1441,7 +1441,7 @@ class WrongType:
 
 
 def test_file_ext_with_flyte_file_wrong_type():
-    WRONG_TYPE = typing.Annotated[int, WrongType(2)]
+    WRONG_TYPE = Annotated[int, WrongType(2)]
     with pytest.raises(ValueError) as e:
         FlyteFile[WRONG_TYPE]
     assert str(e.value) == "Underlying type of File Extension must be of type <str>"

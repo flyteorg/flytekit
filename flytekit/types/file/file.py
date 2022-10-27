@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
+from typing_extensions import Annotated
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
@@ -152,7 +153,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         if item is None:
             return cls
 
-        if typing.get_origin(item) is typing.Annotated:
+        if typing.get_origin(item) is Annotated:
             if typing.get_args(item)[0] == str:
                 item = typing.get_args(item)[1]
             else:
