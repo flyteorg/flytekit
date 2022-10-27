@@ -2,7 +2,6 @@ import os
 
 from flytekitplugins.dbt.error import DBTHandledError, DBTUnhandledError
 from flytekitplugins.dbt.schema import (
-    DBTFreshness,
     DBTFreshnessInput,
     DBTFreshnessOutput,
     DBTRunInput,
