@@ -615,7 +615,7 @@ class FlyteRemote(object):
             filename=to_upload.name,
         )
         self._ctx.file_access.put_data(str(to_upload), upload_location.signed_url)
-        remote_logger.warning(
+        remote_logger.debug(
             f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
         )
 

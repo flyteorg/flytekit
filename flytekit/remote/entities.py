@@ -153,7 +153,7 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, TaskSpec):
         return "Task"
 
     @classmethod
-    def promote_from_model(cls, base_model: _task_model.TaskTemplate) -> "FlyteTask":
+    def promote_from_model(cls, base_model: _task_model.TaskTemplate) -> FlyteTask:
         t = cls(
             id=base_model.id,
             type=base_model.type,
@@ -175,10 +175,9 @@ class FlyteTaskNode(_workflow_model.TaskNode):
     A class encapsulating a task that a Flyte node needs to execute.
     """
 
-    def __init__(self, flyte_task: "flytekit.remote.task.FlyteTask", should_register: bool = False):
-        self._flyte_task = flyte_task
+    def __init__(self, flyte_task: FlyteTask):
         super(FlyteTaskNode, self).__init__(None)
-        self._should_register = should_register
+        self._flyte_task = flyte_task
 
     @property
     def reference_id(self) -> id_models.Identifier:
@@ -188,31 +187,16 @@ class FlyteTaskNode(_workflow_model.TaskNode):
         return self._flyte_task.id
 
     @property
-    def should_register(self) -> bool:
-        return self._should_register
-
-    @property
-    def flyte_task(self) -> "flytekit.remote.tasks.task.FlyteTask":
+    def flyte_task(self) -> FlyteTask:
         return self._flyte_task
 
     @classmethod
-    def promote_from_model(
-        cls,
-        base_model: _workflow_model.TaskNode,
-        tasks: Dict[id_models.Identifier, FlyteTask],
-    ) -> "FlyteTaskNode":
+    def promote_from_model(cls, task: FlyteTask) -> FlyteTaskNode:
         """
         Takes the idl wrapper for a TaskNode and returns the hydrated Flytekit object for it by fetching it with the
         FlyteTask control plane.
-
-        :param base_model:
-        :param tasks:
         """
-        if base_model.reference_id in tasks:
-            flyte_task = tasks[base_model.reference_id]
-            return cls(flyte_task)
-
-        raise _system_exceptions.FlyteSystemException(f"Task template {base_model.reference_id} not found.")
+        return cls(flyte_task=task)
 
 
 class FlyteWorkflowNode(_workflow_model.WorkflowNode):
@@ -222,7 +206,6 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         self,
         flyte_workflow: FlyteWorkflow = None,
         flyte_launch_plan: FlyteLaunchPlan = None,
-        should_register: bool = False,
     ):
         if flyte_workflow and flyte_launch_plan:
             raise _system_exceptions.FlyteSystemException(
@@ -232,7 +215,6 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
 
         self._flyte_workflow = flyte_workflow
         self._flyte_launch_plan = flyte_launch_plan
-        self._should_register = should_register
         super(FlyteWorkflowNode, self).__init__(
             launchplan_ref=self._flyte_launch_plan.id if self._flyte_launch_plan else None,
             sub_workflow_ref=self._flyte_workflow.id if self._flyte_workflow else None,
@@ -242,10 +224,6 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
         if self.flyte_workflow is not None:
             return f"FlyteWorkflowNode with workflow: {self.flyte_workflow}"
         return f"FlyteWorkflowNode with launch plan: {self.flyte_launch_plan}"
-
-    @property
-    def should_register(self) -> bool:
-        return self._should_register
 
     @property
     def launchplan_ref(self) -> id_models.Identifier:
@@ -263,6 +241,21 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
     @property
     def flyte_workflow(self) -> FlyteWorkflow:
         return self._flyte_workflow
+
+    @classmethod
+    def _promote_workflow(
+        cls,
+        wf: _workflow_models.WorkflowTemplate,
+        sub_workflows: Optional[Dict[Identifier, _workflow_models.WorkflowTemplate]] = None,
+        tasks: Optional[Dict[Identifier, FlyteTask]] = None,
+        node_launch_plans: Optional[Dict[Identifier, launch_plan_models.LaunchPlanSpec]] = None,
+    ) -> FlyteWorkflow:
+        return FlyteWorkflow.promote_from_model(
+            wf,
+            sub_workflows=sub_workflows,
+            node_launch_plans=node_launch_plans,
+            tasks=tasks,
+        )
 
     @classmethod
     def promote_from_model(
@@ -287,7 +280,7 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
             if base_model.reference in sub_workflows:
                 wf = None
                 if base_model.reference not in converted_sub_workflows:
-                    wf = FlyteWorkflow.promote_from_model(
+                    wf = cls._promote_workflow(
                         sub_workflows[base_model.reference],
                         sub_workflows=sub_workflows,
                         node_launch_plans=node_launch_plans,
@@ -305,13 +298,8 @@ class FlyteWorkflowNode(_workflow_model.WorkflowNode):
 
 
 class FlyteBranchNode(_workflow_model.BranchNode):
-    def __init__(self, if_else: _workflow_model.IfElseBlock, should_register: bool = False):
+    def __init__(self, if_else: _workflow_model.IfElseBlock):
         super().__init__(if_else)
-        self._should_register = should_register
-
-    @property
-    def should_register(self) -> bool:
-        return self._should_register
 
     @classmethod
     def promote_from_model(
@@ -391,14 +379,35 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         return self._flyte_entity
 
     @classmethod
+    def _promote_task_node(cls, t: FlyteTask) -> FlyteTaskNode:
+        return FlyteTaskNode.promote_from_model(t)
+
+    @classmethod
+    def _promote_workflow_node(
+        cls,
+        wn: _workflow_model.WorkflowNode,
+        sub_workflows: Dict[id_models.Identifier, _workflow_model.WorkflowTemplate],
+        node_launch_plans: Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec],
+        tasks: Dict[Identifier, FlyteTask],
+        converted_sub_workflows: Dict[id_models.Identifier, FlyteWorkflow],
+    ) -> Tuple[FlyteWorkflowNode, Dict[id_models.Identifier, FlyteWorkflow]]:
+        return FlyteWorkflowNode.promote_from_model(
+            wn,
+            sub_workflows,
+            node_launch_plans,
+            tasks,
+            converted_sub_workflows,
+        )
+
+    @classmethod
     def promote_from_model(
         cls,
         model: _workflow_model.Node,
         sub_workflows: Optional[Dict[id_models.Identifier, _workflow_model.WorkflowTemplate]],
         node_launch_plans: Optional[Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec]],
         tasks: Dict[id_models.Identifier, FlyteTask],
-        converted_sub_workflows: Dict[id_models.Identifier, "FlyteWorkflow"],
-    ) -> Tuple[Optional[FlyteNode], Dict[id_models.Identifier, "FlyteWorkflow"]]:
+        converted_sub_workflows: Dict[id_models.Identifier, FlyteWorkflow],
+    ) -> Tuple[Optional[FlyteNode], Dict[id_models.Identifier, FlyteWorkflow]]:
         node_model_id = model.id
         # TODO: Consider removing
         if id in {_constants.START_NODE_ID, _constants.END_NODE_ID}:
@@ -407,9 +416,13 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
 
         flyte_task_node, flyte_workflow_node, flyte_branch_node = None, None, None
         if model.task_node is not None:
-            flyte_task_node = FlyteTaskNode.promote_from_model(model.task_node, tasks)
+            if model.task_node.reference_id not in tasks:
+                raise RuntimeError(
+                    f"Remote Workflow closure does not have task with id {model.task_node.reference_id}."
+                )
+            flyte_task_node = cls._promote_task_node(tasks[model.task_node.reference_id])
         elif model.workflow_node is not None:
-            flyte_workflow_node, converted_sub_workflows = FlyteWorkflowNode.promote_from_model(
+            flyte_workflow_node, converted_sub_workflows = cls._promote_workflow_node(
                 model.workflow_node,
                 sub_workflows,
                 node_launch_plans,
@@ -522,6 +535,10 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, WorkflowSpec
         return self._name
 
     @property
+    def flyte_tasks(self) -> Optional[List[FlyteTask]]:
+        return self._tasks
+
+    @property
     def should_register(self) -> bool:
         return self._should_register
 
@@ -603,6 +620,17 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, WorkflowSpec
         return [n for n in nodes if n.id not in {_constants.START_NODE_ID, _constants.END_NODE_ID}]
 
     @classmethod
+    def _promote_node(
+        cls,
+        model: _workflow_model.Node,
+        sub_workflows: Optional[Dict[id_models.Identifier, _workflow_model.WorkflowTemplate]],
+        node_launch_plans: Optional[Dict[id_models.Identifier, _launch_plan_model.LaunchPlanSpec]],
+        tasks: Dict[id_models.Identifier, FlyteTask],
+        converted_sub_workflows: Dict[id_models.Identifier, FlyteWorkflow],
+    ) -> Tuple[Optional[FlyteNode], Dict[id_models.Identifier, FlyteWorkflow]]:
+        return FlyteNode.promote_from_model(model, sub_workflows, node_launch_plans, tasks, converted_sub_workflows)
+
+    @classmethod
     def promote_from_model(
         cls,
         base_model: _workflow_models.WorkflowTemplate,
@@ -616,7 +644,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, WorkflowSpec
         node_map = {}
         converted_sub_workflows = {}
         for node in base_model_non_system_nodes:
-            flyte_node, converted_sub_workflows = FlyteNode.promote_from_model(
+            flyte_node, converted_sub_workflows = cls._promote_node(
                 node, sub_workflows, node_launch_plans, tasks, converted_sub_workflows
             )
             node_map[node.id] = flyte_node
@@ -705,7 +733,7 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
         return self._name
 
     @property
-    def flyte_workflow(self) -> Optional["FlyteWorkflow"]:
+    def flyte_workflow(self) -> Optional[FlyteWorkflow]:
         return self._flyte_workflow
 
     @classmethod

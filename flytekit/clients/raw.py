@@ -258,7 +258,6 @@ class RawSynchronousFlyteClient(object):
         :param self: RawSynchronousFlyteClient
         :return:
         """
-
         command = self._cfg.command
         if not command:
             raise FlyteAuthenticationException("No command specified in configuration for command authentication")
