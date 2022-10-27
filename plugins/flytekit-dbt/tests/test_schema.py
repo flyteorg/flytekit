@@ -1,7 +1,7 @@
 import shlex
 
 import pytest
-from flytekitplugins.dbt.schema import BaseDBTInput, DBTRunInput, DBTTestInput
+from flytekitplugins.dbt.schema import BaseDBTInput, DBTFreshnessInput, DBTRunInput, DBTTestInput
 
 project_dir = "."
 profiles_dir = "profiles"
@@ -220,6 +220,106 @@ class TestDBTestInput:
             ),
             (
                 DBTTestInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    select=["test_type:singular"],
+                    exclude=["path:marts/finance,tag:nightly,config.materialized:table"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --select test_type:singular --exclude path:marts/finance,tag:nightly,config.materialized:table",
+            ),
+        ],
+    )
+    def test_to_args(self, task_input, expected):
+        assert task_input.to_args() == shlex.split(expected)
+
+
+class TestDBFreshnessInput:
+    @pytest.mark.parametrize(
+        "task_input,expected",
+        [
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name}",
+            ),
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    select=["test_type:singular"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --select test_type:singular",
+            ),
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    select=["model_a", "model_b"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --select model_a model_b",
+            ),
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    select=["tag:nightly", "my_model", "finance.base.*"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --select tag:nightly my_model finance.base.*",
+            ),
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    select=["tag:nightly", "my_model", "finance.base.*", "test_type:singular"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --select tag:nightly my_model finance.base.* test_type:singular",
+            ),
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    select=["path:marts/finance,tag:nightly,config.materialized:table,test_type:singular"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --select path:marts/finance,tag:nightly,config.materialized:table,test_type:singular",
+            ),
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    exclude=["model_a", "model_b"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --exclude model_a model_b",
+            ),
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    exclude=["tag:nightly", "my_model", "finance.base.*"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --exclude tag:nightly my_model finance.base.*",
+            ),
+            (
+                DBTFreshnessInput(
+                    project_dir=project_dir,
+                    profiles_dir=profiles_dir,
+                    profile=profile_name,
+                    exclude=["path:marts/finance,tag:nightly,config.materialized:table"],
+                ),
+                f"--project-dir {project_dir} --profiles-dir {profiles_dir} --profile {profile_name} --exclude path:marts/finance,tag:nightly,config.materialized:table",
+            ),
+            (
+                DBTFreshnessInput(
                     project_dir=project_dir,
                     profiles_dir=profiles_dir,
                     profile=profile_name,
