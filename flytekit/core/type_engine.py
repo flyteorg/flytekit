@@ -11,7 +11,7 @@ import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
+from typing import Dict, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -165,7 +165,9 @@ class SimpleTransformer(TypeTransformer[T]):
         return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        if type(python_val) != self._type:
+        if not isinstance(python_type, self._type) and not (
+            inspect.isclass(python_type) and issubclass(python_type, self._type)
+        ):
             raise TypeTransformerFailedError(f"Expected value of type {self._type} but got type {type(python_val)}")
         return self._to_literal_transformer(python_val)
 
