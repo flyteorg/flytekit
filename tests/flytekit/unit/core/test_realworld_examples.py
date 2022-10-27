@@ -6,7 +6,7 @@ import pandas as pd
 from flytekit import Resources
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file import FileExt, FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 
@@ -44,7 +44,7 @@ def test_diabetes():
     # the last column is the class
     CLASSES_COLUMNS = OrderedDict({"class": int})
 
-    MODELSER_JOBLIB = "joblib.dat"
+    MODELSER_JOBLIB = typing.Annotated[str, FileExt("joblib.dat")]
 
     class XGBoostModelHyperparams(object):
         """

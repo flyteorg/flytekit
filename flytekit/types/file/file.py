@@ -151,6 +151,13 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
         if item is None:
             return cls
+
+        if typing.get_origin(item) is typing.Annotated:
+            if typing.get_args(item)[0] == str:
+                item = typing.get_args(item)[1]
+            else:
+                raise ValueError("Underlying type of File Extension must be of type <str>")
+
         item_string = str(item)
         item_string = item_string.strip().lstrip("~").lstrip(".")
         if item == "":

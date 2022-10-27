@@ -11,7 +11,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.extend import ExecutionState, IgnoreOutputs, Interface, PythonTask, TaskPlugins
 from flytekit.loggers import logger
 from flytekit.types.directory.types import FlyteDirectory
-from flytekit.types.file import FlyteFile
+from flytekit.types.file import FileExt, FlyteFile
 
 from .models import training_job as _training_job_models
 
@@ -48,7 +48,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
 
     _SAGEMAKER_TRAINING_JOB_TASK = "sagemaker_training_job_task"
 
-    OUTPUT_TYPE = "tar.gz"
+    OUTPUT_TYPE = typing.Annotated[str, FileExt("tar.gz")]
 
     def __init__(
         self,
@@ -70,7 +70,9 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
         ):
             raise ValueError("TaskConfig, algorithm_specification, training_job_resource_config are required")
 
-        input_type = self._content_type_to_blob_format(task_config.algorithm_specification.input_content_type)
+        input_type = typing.Annotated[
+            str, FileExt(self._content_type_to_blob_format(task_config.algorithm_specification.input_content_type))
+        ]
 
         interface = Interface(
             # TODO change train and validation to be FlyteDirectory when available
