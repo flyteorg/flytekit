@@ -331,7 +331,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     DEFAULT_PROTOCOLS: Dict[Type, str] = {}
     DEFAULT_FORMATS: Dict[Type, str] = {}
 
-    Handlers = typing.TypeVar["Handlers", StructuredDatasetEncoder, StructuredDatasetDecoder]
+    Handlers = Union["Handlers", StructuredDatasetEncoder, StructuredDatasetDecoder]
     Renderers: Dict[Type, Renderable] = {}
 
     @staticmethod

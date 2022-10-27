@@ -1029,11 +1029,9 @@ def test_union_custom_transformer_sanity_check():
 
             return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
 
-        def to_python_value(
-            self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]
-        ) -> UnsignedInt[Literal]:
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> Literal:
             val = lv.scalar.primitive.integer
-            return UnsignedInt(0 if val < 0 else val)
+            return UnsignedInt(0 if val < 0 else val)  # type: ignore
 
     TypeEngine.register(UnsignedIntTransformer())
 
