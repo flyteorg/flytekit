@@ -13,4 +13,3 @@ Refer to :doc:`cookbook <advanced_custom_types>` if you'd like to contribute a F
    types.builtins.file
    types.builtins.directory
    extras.pytorch
-   extras.tensorflow
