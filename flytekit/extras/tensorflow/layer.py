@@ -1,4 +1,4 @@
-import json as _json
+import json
 from typing import Type
 
 import tensorflow as tf
@@ -9,11 +9,9 @@ from flytekit.models.literals import Literal, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 
 
-class TensorflowLayerTransformer(TypeTransformer[tf.keras.layers.Layer]):
-    def __init__(
-        self,
-    ):
-        super().__init__(name="Tensorflow Layer", t=tf.keras.layers.Layer)
+class TensorFlowLayerTransformer(TypeTransformer[tf.keras.layers.Layer]):
+    def __init__(self):
+        super().__init__(name="TensorFlow Layer", t=tf.keras.layers.Layer)
 
     def get_literal_type(self, t: Type[tf.keras.layers.Layer]) -> LiteralType:
         return LiteralType(simple=SimpleType.STRING)
@@ -27,7 +25,7 @@ class TensorflowLayerTransformer(TypeTransformer[tf.keras.layers.Layer]):
     ) -> Literal:
         layer_config = tf.keras.layers.serialize(python_val)
 
-        return Literal(Scalar(primitive=Primitive(string_value=_json.dumps(layer_config))))
+        return Literal(Scalar(primitive=Primitive(string_value=json.dumps(layer_config))))
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[tf.keras.layers.Layer]
@@ -35,7 +33,7 @@ class TensorflowLayerTransformer(TypeTransformer[tf.keras.layers.Layer]):
         if not (lv and lv.scalar and lv.scalar.primitive):
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
-        layer_config = _json.loads(lv.scalar.primitive.string_value)
+        layer_config = json.loads(lv.scalar.primitive.string_value)
         return tf.keras.layers.deserialize(layer_config)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[tf.keras.layers.Layer]:
@@ -45,4 +43,4 @@ class TensorflowLayerTransformer(TypeTransformer[tf.keras.layers.Layer]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-TypeEngine.register(TensorflowLayerTransformer())
+TypeEngine.register(TensorFlowLayerTransformer())

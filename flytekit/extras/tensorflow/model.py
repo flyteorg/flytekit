@@ -10,13 +10,11 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 
-class TensorflowModelTransformer(TypeTransformer[tf.keras.Model]):
+class TensorFlowModelTransformer(TypeTransformer[tf.keras.Model]):
     TENSORFLOW_FORMAT = "TensorflowModel"
 
-    def __init__(
-        self,
-    ):
-        super().__init__(name="Tensorflow Model", t=tf.keras.Model)
+    def __init__(self):
+        super().__init__(name="TensorFlow Model", t=tf.keras.Model)
 
     def get_literal_type(self, t: Type[tf.keras.Model]) -> LiteralType:
         return LiteralType(
@@ -75,4 +73,4 @@ class TensorflowModelTransformer(TypeTransformer[tf.keras.Model]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-TypeEngine.register(TensorflowModelTransformer())
+TypeEngine.register(TensorFlowModelTransformer())

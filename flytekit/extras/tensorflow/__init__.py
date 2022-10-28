@@ -1,5 +1,5 @@
 """
-Flytekit Tensorflow
+Flytekit TensorFlow
 =========================================
 .. currentmodule:: flytekit.extras.tensorflow
 
@@ -18,9 +18,9 @@ except (ImportError, OSError):
 
 
 if _tensorflow_installed:
-    from .layer import TensorflowLayerTransformer
-    from .model import TensorflowModelTransformer
+    from .layer import TensorFlowLayerTransformer
+    from .model import TensorFlowModelTransformer
 else:
     logger.info(
-        "Unable to register TensorflowModelTransformer, TensorflowLayerTransformer because tensorflow is not installed."
+        "Unable to register TensorFlowModelTransformer, TensorFlowLayerTransformer because tensorflow is not installed."
     )

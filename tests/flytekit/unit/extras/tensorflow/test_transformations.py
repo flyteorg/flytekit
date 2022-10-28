@@ -9,7 +9,7 @@ import flytekit
 from flytekit import task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.extras.tensorflow import TensorflowLayerTransformer, TensorflowModelTransformer
+from flytekit.extras.tensorflow import TensorFlowLayerTransformer, TensorFlowModelTransformer
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType, SimpleType
@@ -35,8 +35,8 @@ def get_tf_model():
 @pytest.mark.parametrize(
     "transformer,python_type,format",
     [
-        (TensorflowModelTransformer(), tf.keras.Model, TensorflowModelTransformer.TENSORFLOW_FORMAT),
-        (TensorflowLayerTransformer(), tf.keras.layers.Layer, None),
+        (TensorFlowModelTransformer(), tf.keras.Model, TensorFlowModelTransformer.TENSORFLOW_FORMAT),
+        (TensorFlowLayerTransformer(), tf.keras.layers.Layer, None),
     ],
 )
 def test_get_literal_type(transformer, python_type, format):
@@ -50,10 +50,10 @@ def test_get_literal_type(transformer, python_type, format):
 @pytest.mark.parametrize(
     "transformer,python_type,format,python_val",
     [
-        (TensorflowModelTransformer(), tf.keras.Model, TensorflowModelTransformer.TENSORFLOW_FORMAT, get_tf_model()),
-        (TensorflowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Dense(4)),
-        (TensorflowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Conv1D(8, 1, activation="relu")),
-        (TensorflowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Softmax()),
+        (TensorFlowModelTransformer(), tf.keras.Model, TensorFlowModelTransformer.TENSORFLOW_FORMAT, get_tf_model()),
+        (TensorFlowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Dense(4)),
+        (TensorFlowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Conv1D(8, 1, activation="relu")),
+        (TensorFlowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Softmax()),
     ],
 )
 def test_to_python_value_and_literal(transformer, python_type, format, python_val):
@@ -86,7 +86,7 @@ def test_example_model():
         return get_tf_model()
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
-    assert task_spec.template.interface.outputs["o0"].type.blob.format is TensorflowModelTransformer.TENSORFLOW_FORMAT
+    assert task_spec.template.interface.outputs["o0"].type.blob.format is TensorFlowModelTransformer.TENSORFLOW_FORMAT
 
 
 def test_example_layer():
