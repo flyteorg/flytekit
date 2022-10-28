@@ -574,7 +574,7 @@ wrapt==1.14.1
     #   deprecated
     #   flytekit
     #   tensorflow
-zipp==3.10.0
+zipp==3.9.0
     # via
     #   -c requirements.txt
     #   importlib-metadata

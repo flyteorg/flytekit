@@ -21,6 +21,6 @@ except (ImportError, OSError):
 
 
 if _tensorflow_installed:
-    from .model.native import TensorflowModelTransformer
+    from .model import TensorflowModelTransformer
 else:
     logger.info("Unable to register TensorflowModelTransformer because tensorflow is not installed.")
