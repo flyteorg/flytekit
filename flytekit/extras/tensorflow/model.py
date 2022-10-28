@@ -43,7 +43,7 @@ class TensorflowModelTransformer(TypeTransformer[tf.keras.Model]):
         local_path = ctx.file_access.get_random_local_path() + ".h5"
         pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
 
-        # save tensorflow model to a folder in SavedModel format
+        # save tensorflow model in h5 format
         tf.keras.models.save_model(python_val, local_path)
 
         remote_path = ctx.file_access.get_random_remote_path(local_path)
@@ -61,7 +61,7 @@ class TensorflowModelTransformer(TypeTransformer[tf.keras.Model]):
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
-        # load tensorflow model from the SavedModel folder
+        # load tensorflow model from the h5 format
         return tf.keras.models.load_model(local_path)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[tf.keras.Model]:

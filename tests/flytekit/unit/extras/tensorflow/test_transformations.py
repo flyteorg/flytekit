@@ -1,3 +1,4 @@
+import json
 from collections import OrderedDict
 
 import numpy as np
@@ -8,10 +9,10 @@ import flytekit
 from flytekit import task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.extras.tensorflow import TensorflowModelTransformer
+from flytekit.extras.tensorflow import TensorflowLayerTransformer, TensorflowModelTransformer
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
-from flytekit.models.types import LiteralType
+from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -35,40 +36,48 @@ def get_tf_model():
     "transformer,python_type,format",
     [
         (TensorflowModelTransformer(), tf.keras.Model, TensorflowModelTransformer.TENSORFLOW_FORMAT),
+        (TensorflowLayerTransformer(), tf.keras.layers.Layer, None),
     ],
 )
 def test_get_literal_type(transformer, python_type, format):
     lt = transformer.get_literal_type(python_type)
-    assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE))
+    if isinstance(python_type, tf.keras.Model):
+        assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE))
+    elif isinstance(python_type, tf.keras.layers.Layer):
+        assert lt == LiteralType(simple=SimpleType.STRING)
 
 
 @pytest.mark.parametrize(
     "transformer,python_type,format,python_val",
     [
         (TensorflowModelTransformer(), tf.keras.Model, TensorflowModelTransformer.TENSORFLOW_FORMAT, get_tf_model()),
+        (TensorflowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Dense(4)),
+        (TensorflowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Conv1D(8, 1, activation="relu")),
+        (TensorflowLayerTransformer(), tf.keras.layers.Layer, None, tf.keras.layers.Softmax()),
     ],
 )
 def test_to_python_value_and_literal(transformer, python_type, format, python_val):
     ctx = context_manager.FlyteContext.current_context()
-    python_val = python_val
     lt = transformer.get_literal_type(python_type)
 
     lv = transformer.to_literal(ctx, python_val, type(python_val), lt)  # type: ignore
-    assert lv.scalar.blob.metadata == BlobMetadata(
-        type=BlobType(
-            format=format,
-            dimensionality=BlobType.BlobDimensionality.SINGLE,
-        )
-    )
-    assert lv.scalar.blob.uri is not None
-
     output = transformer.to_python_value(ctx, lv, python_type)
-    if isinstance(python_val, tf.keras.Model):
+
+    if isinstance(python_type, tf.keras.Model):
+        assert lv.scalar.blob.metadata == BlobMetadata(
+            type=BlobType(
+                format=format,
+                dimensionality=BlobType.BlobDimensionality.SINGLE,
+            )
+        )
+        assert lv.scalar.blob.uri is not None
         for w1, w2 in zip(output.weights, python_val.weights):
             np.testing.assert_allclose(w1.numpy(), w2.numpy())
-        assert True
-    else:
-        assert isinstance(output, dict)
+
+    elif isinstance(python_type, tf.keras.layers.Layer):
+        assert bool(lv.scalar.primitive.string_value)
+        json.loads(lv.scalar.primitive.string_value)
+        assert output.get_config() == python_val.get_config()
 
 
 def test_example_model():
@@ -78,3 +87,12 @@ def test_example_model():
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
     assert task_spec.template.interface.outputs["o0"].type.blob.format is TensorflowModelTransformer.TENSORFLOW_FORMAT
+
+
+def test_example_layer():
+    @task
+    def t1() -> tf.keras.layers.Layer:
+        return tf.keras.layers.Dense(10)
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    assert task_spec.template.interface.outputs["o0"].type == LiteralType(simple=SimpleType.STRING)

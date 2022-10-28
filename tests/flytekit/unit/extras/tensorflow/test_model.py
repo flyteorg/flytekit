@@ -1,5 +1,3 @@
-from typing import List
-
 import tensorflow as tf
 
 from flytekit import task, workflow
@@ -39,16 +37,17 @@ def generate_sequential_model() -> tf.keras.Model:
 
 
 @task
-def get_model_layers(model: tf.keras.Model) -> List[tf.keras.layers.Layer]:
-    return model.layers
+def model_forward_pass(model: tf.keras.Model) -> tf.Tensor:
+    x: tf.Tensor = tf.ones((1, 32))
+    return model(x)
 
 
 @workflow
 def wf():
     model1 = generate_model()
     model2 = generate_sequential_model()
-    get_model_layers(model=model1)
-    get_model_layers(model=model2)
+    model_forward_pass(model=model1)
+    model_forward_pass(model=model2)
 
 
 @workflow
