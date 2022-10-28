@@ -217,7 +217,7 @@ class Task(object):
         """
         return None
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         """
         This function is used only in the local execution path and is responsible for calling dispatch execute.
         Use this function when calling a task with native values (or Promises containing Flyte literals derived from

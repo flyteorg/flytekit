@@ -256,7 +256,7 @@ def transform_interface_to_list_interface(interface: Interface) -> Interface:
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
+def _change_unrecognized_type_to_pickle(t: Type[T]) -> typing.Union[Tuple[Type[T]], Type[T], Annotated]:
     try:
         if hasattr(t, "__origin__") and hasattr(t, "__args__"):
             if get_origin(t) is list:
@@ -294,9 +294,9 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
-        outputs[k] = _change_unrecognized_type_to_pickle(v)
+        outputs[k] = _change_unrecognized_type_to_pickle(v)  # type: ignore
     inputs = OrderedDict()
-    for k, v in signature.parameters.items():
+    for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future

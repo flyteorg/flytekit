@@ -99,8 +99,8 @@ class MapPythonTask(PythonTask):
             return self._cmd_prefix + container_args
         return container_args
 
-    def set_command_prefix(self, cmd: typing.List[str]):
-        self._cmd_prefix = cmd
+    def set_command_prefix(self, cmd: typing.Optional[typing.List[str]]):
+        self._cmd_prefix = cmd  # type: ignore
 
     @contextmanager
     def prepare_target(self):
@@ -128,7 +128,7 @@ class MapPythonTask(PythonTask):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio).to_dict()
 
-    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         return self._run_task.get_config(settings)
 
     @property
