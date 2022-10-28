@@ -153,3 +153,15 @@ def test_create_node_dynamic_local():
         return dynamic_wf()
 
     assert wf() == "hello"
+
+
+def test_dynamic_return_dict():
+    @dynamic
+    def dynamic_return_dictionary(v: str) -> typing.Dict[str, str]:
+        return {"a": v}
+
+    @workflow
+    def wf():
+        dynamic_return_dictionary(v="hello")
+
+    wf()
