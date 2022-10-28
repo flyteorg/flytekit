@@ -19,7 +19,7 @@ def generate_model() -> tf.keras.Model:
 
 
 @task
-def generate_sequential_model() -> tf.keras.Model:
+def generate_sequential_model() -> tf.keras.Sequential:
     model = tf.keras.Sequential(
         [
             tf.keras.layers.Input(shape=(32,)),
@@ -42,7 +42,6 @@ def model_forward_pass(model: tf.keras.Model) -> tf.Tensor:
     return model(x)
 
 
-@workflow
 def wf():
     model1 = generate_model()
     model2 = generate_sequential_model()

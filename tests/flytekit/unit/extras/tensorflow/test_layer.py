@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import List
 
 import tensorflow as tf
 
@@ -31,11 +31,10 @@ def generate_sequential_model() -> List[tf.keras.layers.Layer]:
 
 
 @task
-def get_layers_weights(layers: List[tf.keras.layers.Layer]) -> List[Any]:
+def get_layers_weights(layers: List[tf.keras.layers.Layer]) -> List[tf.Variable]:
     return layers[-1].weights
 
 
-@workflow
 def wf():
     dense_layer = get_layer()
     layers = generate_sequential_model()

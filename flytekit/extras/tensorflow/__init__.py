@@ -19,8 +19,8 @@ except (ImportError, OSError):
 
 if _tensorflow_installed:
     from .layer import TensorFlowLayerTransformer
-    from .model import TensorFlowModelTransformer
+    from .model import TensorFlowModelTransformer, TensorFlowSequentialTransformer
 else:
     logger.info(
-        "Unable to register TensorFlowModelTransformer, TensorFlowLayerTransformer because tensorflow is not installed."
+        "Unable to register TensorFlowModelTransformer, TensorFlowSequentialTransformer, TensorFlowLayerTransformer because tensorflow is not installed."
     )

@@ -37,7 +37,7 @@ class TensorFlowLayerTransformer(TypeTransformer[tf.keras.layers.Layer]):
         return tf.keras.layers.deserialize(layer_config)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[tf.keras.layers.Layer]:
-        if literal_type.simple == literal_type.simple.STRUCT:
+        if literal_type is not None and literal_type.simple == SimpleType.STRING:
             return tf.keras.layers.Layer
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
