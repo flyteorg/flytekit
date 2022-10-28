@@ -157,11 +157,21 @@ def test_create_node_dynamic_local():
 
 def test_dynamic_return_dict():
     @dynamic
-    def dynamic_return_dictionary(v: str) -> typing.Dict[str, str]:
+    def t1(v: str) -> typing.Dict[str, str]:
         return {"a": v}
+
+    @dynamic
+    def t2(v: str) -> typing.Dict[str, typing.Dict[str, str]]:
+        return {"a": {"b": v}}
+
+    @dynamic
+    def t3(v: str) -> tuple[str, typing.Dict[str, typing.Dict[str, str]]]:
+        return v, {"a": {"b": v}}
 
     @workflow
     def wf():
-        dynamic_return_dictionary(v="hello")
+        t1(v="a")
+        t2(v="b")
+        t3(v="c")
 
     wf()
