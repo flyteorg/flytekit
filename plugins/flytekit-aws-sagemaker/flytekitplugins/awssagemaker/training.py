@@ -71,7 +71,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
         ):
             raise ValueError("TaskConfig, algorithm_specification, training_job_resource_config are required")
 
-        input_type = typing.Annotated[
+        input_type = Annotated[
             str, FileExt(self._content_type_to_blob_format(task_config.algorithm_specification.input_content_type))
         ]
 
