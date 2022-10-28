@@ -165,7 +165,7 @@ def test_dynamic_return_dict():
         return {"a": {"b": v}}
 
     @dynamic
-    def t3(v: str) -> tuple[str, typing.Dict[str, typing.Dict[str, str]]]:
+    def t3(v: str) -> (str, typing.Dict[str, typing.Dict[str, str]]):
         return v, {"a": {"b": v}}
 
     @workflow
