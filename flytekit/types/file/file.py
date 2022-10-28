@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
-from typing_extensions import Annotated
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
@@ -150,16 +149,13 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return ""
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
+        from . import FileExt
+
         if item is None:
             return cls
 
-        if typing.get_origin(item) is Annotated:
-            if typing.get_args(item)[0] == str:
-                item = typing.get_args(item)[1]
-            else:
-                raise ValueError("Underlying type of File Extension must be of type <str>")
+        item_string = FileExt.check_and_convert_to_str(item)
 
-        item_string = str(item)
         item_string = item_string.strip().lstrip("~").lstrip(".")
         if item == "":
             return cls

@@ -20,17 +20,19 @@ This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.
    PythonNotebook
    SVGImageFile
 """
+import typing
 
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_args, get_origin
 
 from .file import FlyteFile
 
 
 class FileExt:
-    """Used for annotating types for file extensions for FlyteFile
-    This is usefule for extensions that have periods in them, i.e. "tar.gz"
+    """
+    Used for annotating file extension types of FlyteFile.
+    This is useful for extensions that have periods in them, e.g., "tar.gz".
 
-    Uses:
+    Example:
     TAR_GZ = Annotated[str, FileExt("tar.gz")]
     """
 
@@ -42,6 +44,14 @@ class FileExt:
 
     def __repr__(self):
         return self._ext
+
+    @staticmethod
+    def check_and_convert_to_str(item: typing.Union[typing.Type, str]) -> str:
+        if not get_origin(item) is Annotated:
+            return str(item)
+        if get_args(item)[0] == str:
+            return str(get_args(item)[1])
+        raise ValueError("Underlying type of File Extension must be of type <str>")
 
 
 # The following section provides some predefined aliases for commonly used FlyteFile formats.
