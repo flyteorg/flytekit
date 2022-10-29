@@ -147,6 +147,7 @@ class DBTRunOutput(BaseDBTOutput):
 
     raw_run_result: str
     raw_manifest: str
+    logs: List[str]
 
 
 @dataclass_json

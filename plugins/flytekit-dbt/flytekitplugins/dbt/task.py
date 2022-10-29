@@ -111,6 +111,7 @@ class DBTRun(PythonInstanceTask):
             exit_code=exit_code,
             raw_run_result=run_result,
             raw_manifest=manifest,
+            logs=logs,
         )
 
 
