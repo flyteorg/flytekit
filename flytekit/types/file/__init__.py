@@ -19,6 +19,8 @@ This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.
    PythonPickledFile
    PythonNotebook
    SVGImageFile
+   TFRecordFile
+   TFRecordsDirectory
 """
 
 import typing
@@ -80,3 +82,8 @@ onnx = typing.TypeVar("onnx")
 #: Can be used to receive or return an ONNXFile. The underlying type is a FlyteFile type. This is just a
 #: decoration and useful for attaching content type information with the file and automatically documenting code.
 ONNXFile = FlyteFile[onnx]
+
+tfrecords_file = typing.TypeVar("tfrecords_file")
+#: Can be used to receive or return an TFRecordFile. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
+TFRecordFile = FlyteFile[tfrecords_file]

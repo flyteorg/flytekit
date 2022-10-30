@@ -1,0 +1,129 @@
+import os
+from dataclasses import dataclass
+from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar
+
+import tensorflow as tf
+from dataclasses_json import dataclass_json
+from typing_extensions import Annotated, get_args, get_origin
+
+from flytekit.core.context_manager import FlyteContext
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.models.core import types as _core_types
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.types import LiteralType
+from flytekit.types.directory import TFRecordsDirectory
+from flytekit.types.file import TFRecordFile
+
+T = TypeVar("T")
+
+
+@dataclass_json
+@dataclass
+class TFRecordDatasetConfig:
+    """
+    TFRecordDatasetConfig is the config used during the creating tf.data.TFRecordDataset comprising
+    record of one or more TFRecord files.
+
+    Args:
+      compression_type:A scalar evaluating to one of "" (no compression), "ZLIB", or "GZIP".
+      buffer_size:the number of bytes in the read buffer.If None, a sensible default for both local and remote file systems is used.
+      num_parallel_reads:the number of files to read in parallel. If greater than one, the records of files read in parallel are outputted in an interleaved order.
+      name:A name for the operation.
+    """
+
+    compression_type: Optional[str] = None
+    buffer_size: Optional[int] = None
+    num_parallel_reads: Optional[int] = None
+    name: Optional[str] = None
+
+
+def extract_metadata(t: Type[tf.data.TFRecordDataset]) -> Tuple[tf.data.TFRecordDataset, Dict[str, Any]]:
+    metadata = None
+    if get_origin(t) is Annotated:
+        base_type, metadata = get_args(t)
+        if isinstance(metadata, TFRecordDatasetConfig):
+            return base_type, metadata
+        else:
+            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type TFRecordDatasetConfig")
+    return t, metadata
+
+
+class TensorflowRecordsTransformer(TypeTransformer, Generic[T]):
+    """
+    TypeTransformer that supports serialising and deserialising to and from TFRecord file.
+    https://www.tensorflow.org/tutorials/load_data/tfrecord
+    """
+
+    TENSORFLOW_FORMAT = "TensorflowRecord"
+
+    def __init__(self):
+        super().__init__(name="Tensorflow Record", t=T)
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        return LiteralType(
+            blob=_core_types.BlobType(
+                format=self.TENSORFLOW_FORMAT,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            )
+        )
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        meta = BlobMetadata(
+            type=_core_types.BlobType(
+                format=self.TENSORFLOW_FORMAT,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            )
+        )
+        local_dir = ctx.file_access.get_random_local_directory()
+        remote_path = ctx.file_access.get_random_remote_directory()
+        if isinstance(python_val, TFRecordsDirectory):
+            for i, val in enumerate(python_val):
+                local_path = f"{local_dir}/part_{i}"
+                with tf.io.TFRecordWriter(local_path) as writer:
+                    writer.write(val.SerializeToString())
+        elif isinstance(python_val, TFRecordFile):
+            local_path = os.path.join(local_dir, "0000.tfrecord")
+            with tf.io.TFRecordWriter(local_path) as writer:
+                writer.write(python_val.SerializeToString())
+        else:
+            raise AssertionError(
+                f"TensorflowRecordsTransformer can only return TFRecordFile or TFRecordsDirectory types from a task, "
+                f"returned object type provided is {type(python_val)}"
+            )
+        ctx.file_access.upload_directory(local_dir, remote_path)
+        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
+
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[tf.data.TFRecordDataset]
+    ) -> tf.data.TFRecordDataset:
+        try:
+            uri = lv.scalar.blob.uri
+        except AttributeError:
+            TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+
+        _, metadata = extract_metadata(expected_python_type)
+        local_dir = ctx.file_access.get_random_local_directory()
+        files = os.scandir(uri)
+        filenames = [f.name for f in files if os.path.getsize(f) > 0]
+        ctx.file_access.get_data(uri, local_dir, is_multipart=True if len(filenames) > 1 else False)
+        # load .tfrecord into tf.data.TFRecordDataset
+        return tf.data.TFRecordDataset(
+            filenames=filenames,
+            compression_type=metadata.get("compression_type", None),
+            buffer_size=metadata.get("buffer_size=", None),
+            num_parallel_reads=metadata.get("num_parallel_reads", None),
+            name=metadata.get("name", None),
+        )
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == self.TENSORFLOW_FORMAT
+        ):
+            return T
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+
+TypeEngine.register(TensorflowRecordsTransformer())
