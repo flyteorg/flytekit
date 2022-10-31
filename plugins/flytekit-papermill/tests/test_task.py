@@ -22,20 +22,34 @@ def _get_nb_path(name: str, suffix: str = "", abs: bool = True, ext: str = ".ipy
     return os.path.abspath(path) if abs else path
 
 
+nb_name = "nb-simple"
+nb_simple = NotebookTask(
+    name="test",
+    notebook_path=_get_nb_path(nb_name, abs=False),
+    inputs=kwtypes(pi=float),
+    outputs=kwtypes(square=float),
+)
+
+
 def test_notebook_task_simple():
-    nb_name = "nb-simple"
-    nb = NotebookTask(
-        name="test",
-        notebook_path=_get_nb_path(nb_name, abs=False),
-        inputs=kwtypes(pi=float),
-        outputs=kwtypes(square=float),
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
     )
-    sqr, out, render = nb.execute(pi=4)
+
+    sqr, out, render = nb_simple.execute(pi=4)
     assert sqr == 16.0
-    assert nb.python_interface.inputs == {"pi": float}
-    assert nb.python_interface.outputs.keys() == {"square", "out_nb", "out_rendered_nb"}
-    assert nb.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
-    assert nb.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
+    assert nb_simple.python_interface.inputs == {"pi": float}
+    assert nb_simple.python_interface.outputs.keys() == {"square", "out_nb", "out_rendered_nb"}
+    assert nb_simple.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
+    assert nb_simple.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
+    assert (
+        nb_simple.get_command(settings=serialization_settings)
+        == nb_simple.get_container(settings=serialization_settings).args
+    )
 
 
 def test_notebook_task_multi_values():
