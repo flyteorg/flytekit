@@ -1423,3 +1423,26 @@ def test_guess_of_dataclass():
     lr = LiteralsResolver(lit_dict)
     assert lr.get("a", Foo) == foo
     assert hasattr(lr.get("a", Foo), "hello") is True
+
+
+def test_flyte_dir_in_union():
+    pt = typing.Union[str, FlyteDirectory, FlyteFile]
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContext.current_context()
+    tf = UnionTransformer()
+
+    pv = tempfile.mkdtemp()
+    lv = tf.to_literal(ctx, pv, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
+
+    tmp = tempfile.NamedTemporaryFile()
+    pv = tmp.name
+    lv = tf.to_literal(ctx, pv, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
+
+    pv = "hello"
+    lv = tf.to_literal(ctx, pv, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot == "hello"
