@@ -1431,12 +1431,12 @@ def test_flyte_dir_in_union():
     ctx = FlyteContext.current_context()
     tf = UnionTransformer()
 
-    pv = tempfile.mkdtemp()
+    pv = tempfile.mkdtemp(prefix="flyte-")
     lv = tf.to_literal(ctx, FlyteDirectory(pv), pt, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
     assert ot is not None
 
-    tmp = tempfile.NamedTemporaryFile()
+    tmp = tempfile.NamedTemporaryFile(prefix="flyte-")
     pv = tmp.name
     lv = tf.to_literal(ctx, FlyteFile(pv), pt, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
