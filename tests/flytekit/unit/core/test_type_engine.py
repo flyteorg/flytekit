@@ -47,7 +47,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollect
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
-from flytekit.types.file import JPEGImageFile
+from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
@@ -1423,3 +1423,34 @@ def test_guess_of_dataclass():
     lr = LiteralsResolver(lit_dict)
     assert lr.get("a", Foo) == foo
     assert hasattr(lr.get("a", Foo), "hello") is True
+
+
+def test_file_ext_with_flyte_file_existing_file():
+    assert JPEGImageFile.extension() == "jpeg"
+
+
+def test_file_ext_convert_static_method():
+    TAR_GZ = Annotated[str, FileExt("tar.gz")]
+    item = FileExt.check_and_convert_to_str(TAR_GZ)
+    assert item == "tar.gz"
+
+    str_item = FileExt.check_and_convert_to_str("csv")
+    assert str_item == "csv"
+
+
+def test_file_ext_with_flyte_file_new_file():
+    TAR_GZ = Annotated[str, FileExt("tar.gz")]
+    flyte_file = FlyteFile[TAR_GZ]
+    assert flyte_file.extension() == "tar.gz"
+
+
+class WrongType:
+    def __init__(self, num: int):
+        self.num = num
+
+
+def test_file_ext_with_flyte_file_wrong_type():
+    WRONG_TYPE = Annotated[int, WrongType(2)]
+    with pytest.raises(ValueError) as e:
+        FlyteFile[WRONG_TYPE]
+    assert str(e.value) == "Underlying type of File Extension must be of type <str>"
