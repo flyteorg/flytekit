@@ -15,10 +15,10 @@ class TensorFlowTensorTransformer(TypeTransformer[tf.Tensor]):
     TypeTransformer that supports tf.tensor as a native type
     """
 
-    TENSORFLOW_FORMAT = "TensorflowTensor"
+    TENSORFLOW_FORMAT = "TensorFlowTensor"
 
     def __init__(self):
-        super().__init__(name="Tensorflow Tensor", t=tf.Tensor)
+        super().__init__(name="TensorFlow Tensor", t=tf.Tensor)
 
     def get_literal_type(self, t: Type[tf.Tensor]) -> LiteralType:
         return LiteralType(
@@ -44,7 +44,7 @@ class TensorFlowTensorTransformer(TypeTransformer[tf.Tensor]):
 
         local_path = ctx.file_access.get_random_local_path()
 
-        # Save the `tf.tensor` as a file on disk
+        # Save `tf.tensor` to a file
         local_path = os.path.join(local_path, "tensor_data")
         tf.io.write_file(local_path, tf.io.serialize_tensor(python_val))
 
@@ -73,9 +73,9 @@ class TensorFlowTensorTransformer(TypeTransformer[tf.Tensor]):
         ctx.file_access.get_data(uri, local_path, is_multipart=False)
         tensor_dtype = tf.dtypes.as_dtype(lv.collection.literals[1].scalar.primitive.string_value)
 
-        read_serial = tf.io.read_file(local_path)
+        serialized_tensor = tf.io.read_file(local_path)
 
-        return tf.io.parse_tensor(read_serial, out_type=tensor_dtype)
+        return tf.io.parse_tensor(serialized_tensor, out_type=tensor_dtype)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[tf.Tensor]:
         if (
