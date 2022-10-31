@@ -1436,13 +1436,10 @@ def test_flyte_dir_in_union():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
     assert ot is not None
 
-    tmp = tempfile.NamedTemporaryFile(prefix="flyte-")
-    with tmp as f:
-        f.write(b"hello")
-        pv = tmp.name
-        lv = tf.to_literal(ctx, FlyteFile(pv), pt, lt)
-        ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
-        assert ot is not None
+    pv = "s3://bucket/key"
+    lv = tf.to_literal(ctx, FlyteFile(pv), pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
 
     pv = "hello"
     lv = tf.to_literal(ctx, pv, pt, lt)
