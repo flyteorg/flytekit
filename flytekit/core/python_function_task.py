@@ -100,7 +100,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         task_function: Callable,
         task_type="python-task",
         ignore_input_vars: Optional[List[str]] = None,
-        execution_mode: Optional[ExecutionBehavior] = ExecutionBehavior.DEFAULT,
+        execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
         **kwargs,
     ):
