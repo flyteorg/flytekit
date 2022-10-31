@@ -101,4 +101,6 @@ class ContainerTask(PythonTask):
             memory_limit=self.resources.limits.mem,
             ephemeral_storage_request=self.resources.requests.ephemeral_storage,
             ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
+            gpu_request=self.resources.requests.gpu,
+            gpu_limit=self.resources.limits.gpu,
         )

@@ -27,7 +27,7 @@ T = typing.TypeVar("T")
 @dataclass_json
 @dataclass
 class FlyteFile(os.PathLike, typing.Generic[T]):
-    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -167,7 +167,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return _SpecificFormatClass
 
     def __init__(
-        self, path: typing.Union[str, os.PathLike], downloader: typing.Callable = noop, remote_path: os.PathLike = None
+        self,
+        path: typing.Union[str, os.PathLike],
+        downloader: typing.Callable = noop,
+        remote_path: typing.Optional[os.PathLike] = None,
     ):
         """
         :param path: The source path that users are expected to call open() on
@@ -205,7 +208,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return self._downloaded
 
     @property
-    def remote_path(self) -> os.PathLike:
+    def remote_path(self) -> typing.Optional[os.PathLike]:
         return self._remote_path
 
     @property

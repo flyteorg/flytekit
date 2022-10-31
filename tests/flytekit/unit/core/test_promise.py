@@ -27,7 +27,7 @@ def test_create_and_link_node():
     assert len(p.ref.node.bindings) == 1
 
     @task
-    def t2(a: typing.Optional[int] = None) -> typing.Union[int]:
+    def t2(a: typing.Optional[int] = None) -> typing.Optional[int]:
         return a
 
     p = create_and_link_node(ctx, t2)
