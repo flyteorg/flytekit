@@ -364,8 +364,8 @@ class FlyteRemote(object):
     def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
         ident = Identifier(
             resource_type=t,
-            project=ss.project or self.default_project if ss else self.default_project,
-            domain=ss.domain or self.default_domain if ss else self.default_domain,
+            project=ss.project if ss and ss.project else self.default_project,
+            domain=ss.domain if ss and ss.domain else self.default_domain,
             name=name,
             version=version or ss.version,
         )
@@ -379,7 +379,7 @@ class FlyteRemote(object):
     def raw_register(
         self,
         cp_entity: FlyteControlPlaneEntity,
-        settings: typing.Optional[SerializationSettings],
+        settings: SerializationSettings,
         version: str,
         create_default_launchplan: bool = True,
         options: Options = None,
@@ -424,6 +424,8 @@ class FlyteRemote(object):
             return None
 
         if isinstance(cp_entity, task_models.TaskSpec):
+            if isinstance(cp_entity, FlyteTask):
+                version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
             try:
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)
@@ -432,6 +434,8 @@ class FlyteRemote(object):
             return ident
 
         if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
+            if isinstance(cp_entity, FlyteWorkflow):
+                version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.WORKFLOW, cp_entity.template.id.name, version, settings)
             try:
                 self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)

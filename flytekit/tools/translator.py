@@ -21,13 +21,13 @@ from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import security
-from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import TaskNodeOverrides
+from flytekit.models.task import TaskSpec, TaskTemplate
 from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
 FlyteLocalEntity = Union[
@@ -42,7 +42,7 @@ FlyteLocalEntity = Union[
     ReferenceEntity,
 ]
 FlyteControlPlaneEntity = Union[
-    task_models.TaskSpec,
+    TaskSpec,
     _launch_plan_models.LaunchPlan,
     admin_workflow_models.WorkflowSpec,
     workflow_model.Node,
@@ -153,10 +153,9 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
-    entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
-) -> task_models.TaskSpec:
+) -> TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
         settings.project,
@@ -196,7 +195,7 @@ def get_serializable_task(
                 pod = entity.get_k8s_pod(settings)
                 entity.reset_command_fn()
 
-    tt = task_models.TaskTemplate(
+    tt = TaskTemplate(
         id=task_id,
         type=entity.task_type,
         metadata=entity.metadata.to_taskmetadata_model(),
@@ -211,7 +210,7 @@ def get_serializable_task(
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
-    return task_models.TaskSpec(template=tt)
+    return TaskSpec(template=tt)
 
 
 def get_serializable_workflow(
@@ -220,15 +219,19 @@ def get_serializable_workflow(
     entity: WorkflowBase,
     options: Optional[Options] = None,
 ) -> admin_workflow_models.WorkflowSpec:
-    # Get node models
-    upstream_node_models = [
-        get_serializable(entity_mapping, settings, n, options)
-        for n in entity.nodes
-        if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
-    ]
-
+    # Serialize all nodes
+    serialized_nodes = []
     sub_wfs = []
     for n in entity.nodes:
+        # Ignore start nodes
+        if n.id == _common_constants.GLOBAL_INPUT_NODE_ID:
+            continue
+
+        # Recursively serialize the node
+        serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
+
+        # If the node is workflow Node or Branch node, we need to handle it specially, to extract all subworkflows,
+        # so that they can be added to the workflow being serialized
         if isinstance(n.flyte_entity, WorkflowBase):
             # We are currently not supporting reference workflows since these will
             # require a network call to flyteadmin to populate the WorkflowTemplate
@@ -246,17 +249,14 @@ def get_serializable_workflow(
             sub_wfs.extend(sub_wf_spec.sub_workflows)
 
         if isinstance(n.flyte_entity, FlyteWorkflow):
-            main_wf = get_serializable(entity_mapping, settings, n.flyte_entity, options)
-            sub_wfs.append(main_wf.template)
-            # TODO understand why we need to add subworkflows even when should_register is false
+            print(f"------- In [Workflow] {entity.name} translator")
+            import pdb; pdb.set_trace()
             for swf in n.flyte_entity.flyte_sub_workflows:
                 sub_wf = get_serializable(entity_mapping, settings, swf, options)
                 sub_wfs.append(sub_wf.template)
-            if n.flyte_entity.should_register:
-                # We only add the tasks if the should register flag is set. This is to avoid adding
-                # unnecessary tasks to the registrable list.
-                for t in n.flyte_entity.flyte_tasks:
-                    get_serializable(entity_mapping, settings, t, options)
+            main_wf = get_serializable(entity_mapping, settings, n.flyte_entity, options)
+            sub_wfs.append(main_wf.template)
+            # TODO understand why we need to add subworkflows even when should_register is false
 
         if isinstance(n.flyte_entity, BranchNode):
             if_else: workflow_model.IfElseBlock = n.flyte_entity._ifelse_block
@@ -276,6 +276,7 @@ def get_serializable_workflow(
                     sub_wfs.append(sub_wf_spec.template)
                     sub_wfs.extend(sub_wf_spec.sub_workflows)
                 elif isinstance(leaf_node.flyte_entity, FlyteWorkflow):
+                    print(f"------- In [Workflow.Branch] {entity.name} translator")
                     get_serializable(entity_mapping, settings, leaf_node.flyte_entity, options)
                     sub_wfs.append(leaf_node.flyte_entity)
                     sub_wfs.extend([s for s in leaf_node.flyte_entity.sub_workflows.values()])
@@ -292,7 +293,7 @@ def get_serializable_workflow(
         metadata=entity.workflow_metadata.to_flyte_model(),
         metadata_defaults=entity.workflow_metadata_defaults.to_flyte_model(),
         interface=entity.interface,
-        nodes=upstream_node_models,
+        nodes=serialized_nodes,
         outputs=entity.output_bindings,
     )
     return admin_workflow_models.WorkflowSpec(
@@ -380,7 +381,7 @@ def get_serializable_node(
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
 
-    upstream_sdk_nodes = [
+    upstream_nodes = [
         get_serializable(entity_mapping, settings, n, options=options)
         for n in entity.upstream_nodes
         if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
@@ -394,7 +395,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
         )
         if ref_template.resource_type == _identifier_model.ResourceType.TASK:
@@ -415,7 +416,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=task_spec.template.id, overrides=TaskNodeOverrides(resources=entity._resources)
@@ -430,7 +431,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.template.id),
         )
@@ -440,7 +441,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             branch_node=get_serializable(entity_mapping, settings, entity.flyte_entity, options=options),
         )
@@ -458,7 +459,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=node_input,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
         )
@@ -470,13 +471,14 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=entity.flyte_entity.id, overrides=TaskNodeOverrides(resources=entity._resources)
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
+        print(f"------- In [Node] {entity.name} of {entity.flyte_entity.name} translator")
         wf_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         for sub_wf in entity.flyte_entity.flyte_sub_workflows:
             get_serializable(entity_mapping, settings, sub_wf, options=options)
@@ -484,7 +486,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.id),
         )
@@ -501,7 +503,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=node_input,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
         )
@@ -617,7 +619,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(entity_mapping, settings, entity)
+        cp_entity = get_serializable_task(settings, entity)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
@@ -632,10 +634,16 @@ def get_serializable(
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow):
+        print(f"------- In [base] {entity.name} translator")
         if entity.should_register:
             if isinstance(entity, FlyteTask):
                 cp_entity = get_serializable_flyte_task(entity, settings)
             else:
+                if entity.should_register:
+                    # We only add the tasks if the should register flag is set. This is to avoid adding
+                    # unnecessary tasks to the registrable list.
+                    for t in entity.flyte_tasks:
+                        get_serializable(entity_mapping, settings, t, options)
                 cp_entity = get_serializable_flyte_workflow(entity, settings)
         else:
             cp_entity = entity
@@ -654,7 +662,7 @@ def get_serializable(
 def gather_dependent_entities(
     serialized: OrderedDict,
 ) -> Tuple[
-    Dict[_identifier_model.Identifier, task_models.TaskTemplate],
+    Dict[_identifier_model.Identifier, TaskTemplate],
     Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec],
     Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec],
 ]:
@@ -667,12 +675,12 @@ def gather_dependent_entities(
     :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
     :return:
     """
-    task_templates: Dict[_identifier_model.Identifier, task_models.TaskTemplate] = {}
+    task_templates: Dict[_identifier_model.Identifier, TaskTemplate] = {}
     workflow_specs: Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec] = {}
     launch_plan_specs: Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec] = {}
 
     for cp_entity in serialized.values():
-        if isinstance(cp_entity, task_models.TaskSpec):
+        if isinstance(cp_entity, TaskSpec):
             task_templates[cp_entity.template.id] = cp_entity.template
         elif isinstance(cp_entity, _launch_plan_models.LaunchPlan):
             launch_plan_specs[cp_entity.id] = cp_entity.spec
