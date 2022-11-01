@@ -249,14 +249,11 @@ def get_serializable_workflow(
             sub_wfs.extend(sub_wf_spec.sub_workflows)
 
         if isinstance(n.flyte_entity, FlyteWorkflow):
-            print(f"------- In [Workflow] {entity.name} translator")
-            import pdb; pdb.set_trace()
             for swf in n.flyte_entity.flyte_sub_workflows:
                 sub_wf = get_serializable(entity_mapping, settings, swf, options)
                 sub_wfs.append(sub_wf.template)
             main_wf = get_serializable(entity_mapping, settings, n.flyte_entity, options)
             sub_wfs.append(main_wf.template)
-            # TODO understand why we need to add subworkflows even when should_register is false
 
         if isinstance(n.flyte_entity, BranchNode):
             if_else: workflow_model.IfElseBlock = n.flyte_entity._ifelse_block
@@ -276,7 +273,6 @@ def get_serializable_workflow(
                     sub_wfs.append(sub_wf_spec.template)
                     sub_wfs.extend(sub_wf_spec.sub_workflows)
                 elif isinstance(leaf_node.flyte_entity, FlyteWorkflow):
-                    print(f"------- In [Workflow.Branch] {entity.name} translator")
                     get_serializable(entity_mapping, settings, leaf_node.flyte_entity, options)
                     sub_wfs.append(leaf_node.flyte_entity)
                     sub_wfs.extend([s for s in leaf_node.flyte_entity.sub_workflows.values()])
@@ -478,7 +474,6 @@ def get_serializable_node(
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
-        print(f"------- In [Node] {entity.name} of {entity.flyte_entity.name} translator")
         wf_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         for sub_wf in entity.flyte_entity.flyte_sub_workflows:
             get_serializable(entity_mapping, settings, sub_wf, options=options)
@@ -634,7 +629,6 @@ def get_serializable(
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow):
-        print(f"------- In [base] {entity.name} translator")
         if entity.should_register:
             if isinstance(entity, FlyteTask):
                 cp_entity = get_serializable_flyte_task(entity, settings)

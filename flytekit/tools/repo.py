@@ -24,10 +24,10 @@ class NoSerializableEntitiesError(Exception):
 
 
 def serialize(
-        pkgs: typing.List[str],
-        settings: SerializationSettings,
-        local_source_root: typing.Optional[str] = None,
-        options: typing.Optional[Options] = None,
+    pkgs: typing.List[str],
+    settings: SerializationSettings,
+    local_source_root: typing.Optional[str] = None,
+    options: typing.Optional[Options] = None,
 ) -> typing.List[FlyteControlPlaneEntity]:
     """
     See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
@@ -51,11 +51,11 @@ def serialize(
 
 
 def serialize_to_folder(
-        pkgs: typing.List[str],
-        settings: SerializationSettings,
-        local_source_root: typing.Optional[str] = None,
-        folder: str = ".",
-        options: typing.Optional[Options] = None,
+    pkgs: typing.List[str],
+    settings: SerializationSettings,
+    local_source_root: typing.Optional[str] = None,
+    folder: str = ".",
+    options: typing.Optional[Options] = None,
 ):
     """
     Serialize the given set of python packages to a folder
@@ -65,11 +65,11 @@ def serialize_to_folder(
 
 
 def package(
-        serializable_entities: typing.List[FlyteControlPlaneEntity],
-        source: str = ".",
-        output: str = "./flyte-package.tgz",
-        fast: bool = False,
-        deref_symlinks: bool = False,
+    serializable_entities: typing.List[FlyteControlPlaneEntity],
+    source: str = ".",
+    output: str = "./flyte-package.tgz",
+    fast: bool = False,
+    deref_symlinks: bool = False,
 ):
     """
     Package the given entities and the source code (if fast is enabled) into a package with the given name in output
@@ -101,13 +101,13 @@ def package(
 
 
 def serialize_and_package(
-        pkgs: typing.List[str],
-        settings: SerializationSettings,
-        source: str = ".",
-        output: str = "./flyte-package.tgz",
-        fast: bool = False,
-        deref_symlinks: bool = False,
-        options: typing.Optional[Options] = None,
+    pkgs: typing.List[str],
+    settings: SerializationSettings,
+    source: str = ".",
+    output: str = "./flyte-package.tgz",
+    fast: bool = False,
+    deref_symlinks: bool = False,
+    options: typing.Optional[Options] = None,
 ):
     """
     Fist serialize and then package all entities
@@ -117,7 +117,7 @@ def serialize_and_package(
 
 
 def find_common_root(
-        pkgs_or_mods: typing.Union[typing.Tuple[str], typing.List[str]],
+    pkgs_or_mods: typing.Union[typing.Tuple[str], typing.List[str]],
 ) -> Path:
     """
     Given an arbitrary list of folders and files, this function will use the script mode function to walk up
@@ -142,10 +142,10 @@ def find_common_root(
 
 
 def load_packages_and_modules(
-        ss: SerializationSettings,
-        project_root: Path,
-        pkgs_or_mods: typing.List[str],
-        options: typing.Optional[Options] = None,
+    ss: SerializationSettings,
+    project_root: Path,
+    pkgs_or_mods: typing.List[str],
+    options: typing.Optional[Options] = None,
 ) -> typing.List[FlyteControlPlaneEntity]:
     """
     The project root is added as the first entry to sys.path, and then all the specified packages and modules
@@ -181,7 +181,7 @@ def load_packages_and_modules(
     return registrable_entities
 
 
-def secho(i: Identifier, state: str = 'success', reason: str = None):
+def secho(i: Identifier, state: str = "success", reason: str = None):
     state_ind = "[ ]"
     fg = "white"
     nl = False
@@ -196,24 +196,26 @@ def secho(i: Identifier, state: str = 'success', reason: str = None):
         fg = "red"
         nl = True
         reason = f"skipped!"
-    click.secho(click.style(f"{state_ind}", fg=fg) + f" Registration {i.name} type {i.resource_type_name()} {reason}",
-                dim=True,
-                nl=nl)
+    click.secho(
+        click.style(f"{state_ind}", fg=fg) + f" Registration {i.name} type {i.resource_type_name()} {reason}",
+        dim=True,
+        nl=nl,
+    )
 
 
 def register(
-        project: str,
-        domain: str,
-        image_config: ImageConfig,
-        output: str,
-        destination_dir: str,
-        service_account: str,
-        raw_data_prefix: str,
-        version: typing.Optional[str],
-        deref_symlinks: bool,
-        fast: bool,
-        package_or_module: typing.Tuple[str],
-        remote: FlyteRemote,
+    project: str,
+    domain: str,
+    image_config: ImageConfig,
+    output: str,
+    destination_dir: str,
+    service_account: str,
+    raw_data_prefix: str,
+    version: typing.Optional[str],
+    deref_symlinks: bool,
+    fast: bool,
+    package_or_module: typing.Tuple[str],
+    remote: FlyteRemote,
 ):
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
