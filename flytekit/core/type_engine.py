@@ -1046,24 +1046,23 @@ class UnionTransformer(TypeTransformer[T]):
         if get_origin(python_type) is Annotated:
             python_type = get_args(python_type)[0]
 
-        found_res = False
+        found_res = 0
         res = None
         res_type = None
         for t in get_args(python_type):
             try:
                 trans = TypeEngine.get_transformer(t)
-
                 res = trans.to_literal(ctx, python_val, t, expected)
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
-                if found_res:
-                    # Should really never happen, sanity check
-                    raise TypeError("Ambiguous choice of variant for union type")
-                found_res = True
-            except (TypeTransformerFailedError, AttributeError, ValueError, AssertionError) as e:
+                found_res += 1
+            except Exception as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
                 continue
+            if found_res > 1:
+                # Should really never happen, sanity check
+                raise TypeError("Ambiguous choice of variant for union type")
 
-        if found_res:
+        if found_res == 1:
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
 
         raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
@@ -1079,7 +1078,7 @@ class UnionTransformer(TypeTransformer[T]):
             if union_type.structure is not None:
                 union_tag = union_type.structure.tag
 
-        found_res = False
+        found_res = 0
         res = None
         res_tag = None
         for v in get_args(expected_python_type):
@@ -1095,28 +1094,20 @@ class UnionTransformer(TypeTransformer[T]):
 
                     assert lv.scalar is not None  # type checker
                     assert lv.scalar.union is not None  # type checker
-
                     res = trans.to_python_value(ctx, lv.scalar.union.value, v)
-                    res_tag = trans.name
-                    if found_res:
-                        raise TypeError(
-                            "Ambiguous choice of variant for union type. "
-                            + f"Both {res_tag} and {trans.name} transformers match"
-                        )
-                    found_res = True
                 else:
                     res = trans.to_python_value(ctx, lv, v)
-                    if found_res:
-                        raise TypeError(
-                            "Ambiguous choice of variant for union type. "
-                            + f"Both {res_tag} and {trans.name} transformers match"
-                        )
-                    res_tag = trans.name
-                    found_res = True
-            except (TypeTransformerFailedError, AttributeError) as e:
+                res_tag = trans.name
+                found_res += 1
+            except Exception as e:
                 logger.debug(f"Failed to convert from {lv} to {v}", e)
+            if found_res > 1:
+                raise TypeError(
+                    "Ambiguous choice of variant for union type. "
+                    + f"Both {res_tag} and {trans.name} transformers match"
+                )
 
-        if found_res:
+        if found_res == 1:
             return res
 
         raise TypeError(f"Cannot convert from {lv} to {expected_python_type} (using tag {union_tag})")

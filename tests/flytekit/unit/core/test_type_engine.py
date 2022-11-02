@@ -1047,6 +1047,17 @@ def test_union_custom_transformer_sanity_check():
     with pytest.raises(TypeError, match="Ambiguous choice of variant for union type"):
         TypeEngine.to_literal(ctx, 3, pt, lt)
 
+    pt = typing.Union[str, UnsignedInt]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="UnsignedInt")),
+    ]
+    assert union_type_tags_unique(lt)
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    pv = TypeEngine.to_python_value(ctx, lv, pt)
+    assert pv == UnsignedInt(3)
+
     del TypeEngine._REGISTRY[UnsignedInt]
 
 
