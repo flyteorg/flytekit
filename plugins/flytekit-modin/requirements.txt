@@ -224,7 +224,7 @@ virtualenv==20.14.1
     # via ray
 websocket-client==1.3.2
     # via docker
-wheel==0.37.1
+wheel==0.38.0
     # via flytekit
 wrapt==1.14.0
     # via
