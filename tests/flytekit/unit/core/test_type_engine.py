@@ -1425,6 +1425,28 @@ def test_guess_of_dataclass():
     assert hasattr(lr.get("a", Foo), "hello") is True
 
 
+def test_flyte_dir_in_union():
+    pt = typing.Union[str, FlyteDirectory, FlyteFile]
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContext.current_context()
+    tf = UnionTransformer()
+
+    pv = tempfile.mkdtemp(prefix="flyte-")
+    lv = tf.to_literal(ctx, FlyteDirectory(pv), pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
+
+    pv = "s3://bucket/key"
+    lv = tf.to_literal(ctx, FlyteFile(pv), pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
+
+    pv = "hello"
+    lv = tf.to_literal(ctx, pv, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot == "hello"
+
+
 def test_file_ext_with_flyte_file_existing_file():
     assert JPEGImageFile.extension() == "jpeg"
 
