@@ -502,7 +502,7 @@ websocket-client==0.59.0
     #   -c requirements.txt
     #   docker
     #   docker-compose
-wheel==0.37.1
+wheel==0.38.0
     # via
     #   -c requirements.txt
     #   flytekit
