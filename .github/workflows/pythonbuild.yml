@@ -54,7 +54,7 @@ jobs:
         uses: codecov/codecov-action@v3.1.0
         with:
           fail_ci_if_error: false
-          
+
   build-plugins:
     runs-on: ubuntu-latest
     strategy:
