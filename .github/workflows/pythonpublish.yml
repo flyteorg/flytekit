@@ -24,10 +24,11 @@ jobs:
           pip install setuptools wheel twine
       - name: Autobump version
         id: bump
+        # TODO: remove, hardcoding version
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          echo "::set-output name=version::$VERSION"
+          echo "::set-output name=version::1.2.3"
           VERSION=$VERSION make update_version
         shell: bash
       # - name: Build and publish
@@ -101,7 +102,7 @@ jobs:
           tags: ${{ steps.flytekit-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-            DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
+            DOCKER_IMAGE=ghcr.io/${{ github.repository_owner }}/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
             PYTHON_VERSION=${{ matrix.python-version }}
           file: Dockerfile
           cache-from: type=gha
