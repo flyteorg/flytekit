@@ -30,31 +30,31 @@ jobs:
           echo "::set-output name=version::$VERSION"
           VERSION=$VERSION make update_version
         shell: bash
-      - name: Build and publish
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          python setup.py sdist bdist_wheel
-          twine upload dist/*
-      - name: Autobump plugin version
-        run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          VERSION=$VERSION make -C plugins update_all_versions
-        shell: bash
-      - name: Build all Plugins and publish
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          make -C plugins build_all_plugins
-          make -C plugins publish_all_plugins
-      # Added sleep because PYPI take some time in publish
-      - name: Sleep for 180 seconds
-        uses: jakejarvis/wait-action@master
-        with:
-          time: '180s'
+      # - name: Build and publish
+      #   env:
+      #     TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+      #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      #   run: |
+      #     python setup.py sdist bdist_wheel
+      #     twine upload dist/*
+      # - name: Autobump plugin version
+      #   run: |
+      #     # from refs/tags/v1.2.3 get 1.2.3
+      #     VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+      #     VERSION=$VERSION make -C plugins update_all_versions
+      #   shell: bash
+      # - name: Build all Plugins and publish
+      #   env:
+      #     TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+      #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      #   run: |
+      #     make -C plugins build_all_plugins
+      #     make -C plugins publish_all_plugins
+      # # Added sleep because PYPI take some time in publish
+      # - name: Sleep for 180 seconds
+      #   uses: jakejarvis/wait-action@master
+      #   with:
+      #     time: '180s'
     outputs:
       version: ${{ steps.bump.outputs.version }}
 
