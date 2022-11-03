@@ -99,10 +99,14 @@ jobs:
           platforms: linux/arm64, linux/amd64
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.flytekit-names.outputs.tags }}
-          build-args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }} --build-arg=PYTHON_VERSION=${{ matrix.python-version }}"
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+            DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
+            PYTHON_VERSION=${{ matrix.python-version }}"
           file: Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # TODO: compression=gzip?
       - name: Prepare SQLAlchemy Image Names
         id: sqlalchemy-names
         uses: docker/metadata-action@v3
@@ -120,7 +124,9 @@ jobs:
           platforms: linux/arm64, linux/amd64
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.sqlalchemy-names.outputs.tags }}
-          build-args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }}"
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
           file: Dockerfile.py${{ matrix.python-version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # TODO: compression=gzip?
