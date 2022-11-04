@@ -876,7 +876,7 @@ websocket-client==1.4.1
     #   kubernetes
 werkzeug==2.2.2
     # via tensorboard
-wheel==0.37.1
+wheel==0.38.0
     # via
     #   astunparse
     #   flytekit
