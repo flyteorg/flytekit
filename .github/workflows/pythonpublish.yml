@@ -1,9 +1,6 @@
 name: Publish Python Package
 
 on:
-  # TODO: remove, used for testing manually
-  workflow_dispatch:
-
   release:
     types: [published]
 
@@ -24,10 +21,10 @@ jobs:
           pip install setuptools wheel twine
       - name: Autobump version
         id: bump
-        # TODO: remove, hardcoding version
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          # echo "::set-output name=version::$VERSION"
           echo "::set-output name=version::1.2.3"
           VERSION=$VERSION make update_version
         shell: bash
@@ -126,6 +123,6 @@ jobs:
           tags: ${{ steps.sqlalchemy-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: Dockerfile.py${{ matrix.python-version }}
+          file: ./plugins/flytekit-sqlalchemy/Dockerfile.py${{ matrix.python-version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
