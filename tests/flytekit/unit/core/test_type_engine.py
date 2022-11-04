@@ -35,6 +35,7 @@ from flytekit.core.type_engine import (
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
+    UnionTransformer,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
@@ -46,7 +47,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollect
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
-from flytekit.types.file import JPEGImageFile
+from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
@@ -143,10 +144,36 @@ def test_list_of_dict_getting_python_value():
     assert isinstance(pv, list)
 
 
+def test_list_of_single_dataclass():
+    @dataclass_json
+    @dataclass()
+    class Bar(object):
+        v: typing.Optional[typing.List[int]]
+        w: typing.Optional[typing.List[float]]
+
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        a: typing.Optional[typing.List[str]]
+        b: Bar
+
+    foo = Foo(a=["abc", "def"], b=Bar(v=[1, 2, 99], w=[3.1415, 2.7182]))
+    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
+    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert pv[0].a == ["abc", "def"]
+    assert pv[0].b == Bar(v=[1, 2, 99], w=[3.1415, 2.7182])
+
+
 def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Bar(object):
+        v: typing.Union[int, None]
         w: typing.Optional[str]
         x: float
         y: str
@@ -155,12 +182,14 @@ def test_list_of_dataclass_getting_python_value():
     @dataclass_json
     @dataclass()
     class Foo(object):
+        u: typing.Optional[int]
+        v: typing.Optional[int]
         w: int
         x: typing.List[int]
         y: typing.Dict[str, str]
         z: Bar
 
-    foo = Foo(w=1, x=[1], y={"hello": "10"}, z=Bar(w=None, x=1.0, y="hello", z={"world": False}))
+    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}))
     generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
@@ -170,16 +199,24 @@ def test_list_of_dataclass_getting_python_value():
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
     foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
 
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
-    assert isinstance(pv, list)
-    assert pv[0].w == foo.w
-    assert pv[0].x == foo.x
-    assert pv[0].y == foo.y
-    assert pv[0].z.x == foo.z.x
-    assert type(pv[0].z.x) == float
-    assert pv[0].z.y == foo.z.y
-    assert pv[0].z.z == foo.z.z
-    assert foo == dataclass_from_dict(Foo, asdict(pv[0]))
+    guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert isinstance(guessed_pv, list)
+    assert guessed_pv[0].u == pv[0].u
+    assert guessed_pv[0].v == pv[0].v
+    assert guessed_pv[0].w == pv[0].w
+    assert guessed_pv[0].x == pv[0].x
+    assert guessed_pv[0].y == pv[0].y
+    assert guessed_pv[0].z.x == pv[0].z.x
+    assert type(guessed_pv[0].u) == int
+    assert guessed_pv[0].v is None
+    assert type(guessed_pv[0].w) == int
+    assert type(guessed_pv[0].z.v) == int
+    assert type(guessed_pv[0].z.x) == float
+    assert guessed_pv[0].z.v == pv[0].z.v
+    assert guessed_pv[0].z.y == pv[0].z.y
+    assert guessed_pv[0].z.z == pv[0].z.z
+    assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
 
 
 def test_file_no_downloader_default():
@@ -425,8 +462,8 @@ class TestStruct(object):
 class TestStructB(object):
     s: InnerStruct
     m: typing.Dict[int, str]
-    n: typing.List[typing.List[int]] = None
-    o: typing.Dict[int, typing.Dict[int, int]] = None
+    n: typing.Optional[typing.List[typing.List[int]]] = None
+    o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
 
 
 @dataclass_json
@@ -782,6 +819,43 @@ def test_union_type():
     assert v == "hello"
 
 
+def test_assert_dataclass_type():
+    @dataclass_json
+    @dataclass
+    class Args(object):
+        x: int
+        y: typing.Optional[str]
+
+    @dataclass_json
+    @dataclass
+    class Schema(object):
+        x: typing.Optional[Args] = None
+
+    pt = Schema
+    lt = TypeEngine.to_literal_type(pt)
+    gt = TypeEngine.guess_python_type(lt)
+    pv = Schema(x=Args(x=3, y="hello"))
+    DataclassTransformer().assert_type(gt, pv)
+    DataclassTransformer().assert_type(Schema, pv)
+
+    @dataclass_json
+    @dataclass
+    class Bar(object):
+        x: int
+
+    pv = Bar(x=3)
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+    ):
+        DataclassTransformer().assert_type(gt, pv)
+
+
+def test_union_transformer():
+    assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert not UnionTransformer.is_optional_type(str)
+    assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
+
+
 def test_union_type_with_annotated():
     pt = typing.Union[
         Annotated[str, FlyteAnnotation({"hello": "world"})], Annotated[int, FlyteAnnotation({"test": 123})]
@@ -955,9 +1029,9 @@ def test_union_custom_transformer_sanity_check():
 
             return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
 
-        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> T:
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> Literal:
             val = lv.scalar.primitive.integer
-            return UnsignedInt(0 if val < 0 else val)
+            return UnsignedInt(0 if val < 0 else val)  # type: ignore
 
     TypeEngine.register(UnsignedIntTransformer())
 
@@ -1174,6 +1248,7 @@ def test_pass_annotated_to_downstream_tasks():
     """
     Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
     """
+
     # pandas dataframe hash function
     def hash_pandas_dataframe(df: pd.DataFrame) -> str:
         return str(pd.util.hash_pandas_object(df))
@@ -1197,24 +1272,23 @@ def test_pass_annotated_to_downstream_tasks():
 
         # We should have a cache miss in the first call to downstream_t
         v_1 = downstream_t(a=v, df=df)
-        v_2 = downstream_t(a=v, df=df)
+        downstream_t(a=v, df=df)
 
-        return v_1 + v_2
+        return v_1
 
-    assert t1(a=3) == (6 + 6 + 6)
+    assert t1(a=3) == 9
 
 
-def test_literal_hash_int_not_set():
+def test_literal_hash_int_can_be_set():
     """
-    Test to confirm that annotating an integer with `HashMethod` does not force the literal to have its
-    hash set.
+    Test to confirm that annotating an integer with `HashMethod` is allowed.
     """
     ctx = FlyteContext.current_context()
     lv = TypeEngine.to_literal(
         ctx, 42, Annotated[int, HashMethod(str)], LiteralType(simple=model_types.SimpleType.INTEGER)
     )
     assert lv.scalar.primitive.integer == 42
-    assert lv.hash is None
+    assert lv.hash == "42"
 
 
 def test_literal_hash_to_python_value():
@@ -1349,3 +1423,56 @@ def test_guess_of_dataclass():
     lr = LiteralsResolver(lit_dict)
     assert lr.get("a", Foo) == foo
     assert hasattr(lr.get("a", Foo), "hello") is True
+
+
+def test_flyte_dir_in_union():
+    pt = typing.Union[str, FlyteDirectory, FlyteFile]
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContext.current_context()
+    tf = UnionTransformer()
+
+    pv = tempfile.mkdtemp(prefix="flyte-")
+    lv = tf.to_literal(ctx, FlyteDirectory(pv), pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
+
+    pv = "s3://bucket/key"
+    lv = tf.to_literal(ctx, FlyteFile(pv), pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
+
+    pv = "hello"
+    lv = tf.to_literal(ctx, pv, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot == "hello"
+
+
+def test_file_ext_with_flyte_file_existing_file():
+    assert JPEGImageFile.extension() == "jpeg"
+
+
+def test_file_ext_convert_static_method():
+    TAR_GZ = Annotated[str, FileExt("tar.gz")]
+    item = FileExt.check_and_convert_to_str(TAR_GZ)
+    assert item == "tar.gz"
+
+    str_item = FileExt.check_and_convert_to_str("csv")
+    assert str_item == "csv"
+
+
+def test_file_ext_with_flyte_file_new_file():
+    TAR_GZ = Annotated[str, FileExt("tar.gz")]
+    flyte_file = FlyteFile[TAR_GZ]
+    assert flyte_file.extension() == "tar.gz"
+
+
+class WrongType:
+    def __init__(self, num: int):
+        self.num = num
+
+
+def test_file_ext_with_flyte_file_wrong_type():
+    WRONG_TYPE = Annotated[int, WrongType(2)]
+    with pytest.raises(ValueError) as e:
+        FlyteFile[WRONG_TYPE]
+    assert str(e.value) == "Underlying type of File Extension must be of type <str>"

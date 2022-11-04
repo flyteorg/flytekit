@@ -194,7 +194,12 @@ def test_promise_chaining():
         c >> a
         return b
 
+    @workflow
+    def wf1(x: int):
+        task_a(x=x) >> task_b(x=x) >> task_c(x=x)
+
     wf(x=3)
+    wf1(x=3)
 
 
 def test_resource_request_override():
@@ -372,3 +377,27 @@ def test_interruptible_override(interruptible):
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.interruptible == interruptible
+
+
+def test_void_promise_override():
+    @task
+    def t1(a: str):
+        print(f"*~*~*~{a}*~*~*~")
+
+    @workflow
+    def my_wf(a: str):
+        t1(a=a).with_overrides(requests=Resources(cpu="1", mem="100"))
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
+    ]

@@ -62,13 +62,10 @@ class TypeTransformer(typing.Generic[T]):
     Base transformer type that should be implemented for every python native type that can be handled by flytekit
     """
 
-    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True, hash_overridable: bool = False):
+    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True):
         self._t = t
         self._name = name
         self._type_assertions_enabled = enable_type_assertions
-        # `hash_overridable` indicates that the literals produced by this type transformer can set their hashes if needed.
-        # See (link to documentation where this feature is explained).
-        self._hash_overridable = hash_overridable
 
     @property
     def name(self):
@@ -87,10 +84,6 @@ class TypeTransformer(typing.Generic[T]):
         Indicates if the transformer wants type assertions to be enabled at the core type engine layer
         """
         return self._type_assertions_enabled
-
-    @property
-    def hash_overridable(self) -> bool:
-        return self._hash_overridable
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, t):
@@ -270,6 +263,46 @@ class DataclassTransformer(TypeTransformer[object]):
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
 
+    def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+        # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
+        if type(v) == expected_type:
+            return
+
+        # @dataclass_json
+        # @dataclass
+        # class Foo(object):
+        #     a: int = 0
+        #
+        # @task
+        # def t1(a: Foo):
+        #     ...
+        #
+        # In above example, the type of v may not equal to the expected_type in some cases
+        # For example,
+        # 1. The input of t1 is another dataclass (bar), then we should raise an error
+        # 2. when using flyte remote to execute the above task, the expected_type is guess_python_type (FooSchema) by default.
+        # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
+        # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
+
+        expected_fields_dict = {}
+        for f in dataclasses.fields(expected_type):
+            expected_fields_dict[f.name] = f.type
+
+        for f in dataclasses.fields(type(v)):
+            original_type = f.type
+            expected_type = expected_fields_dict[f.name]
+
+            if UnionTransformer.is_optional_type(original_type):
+                original_type = UnionTransformer.get_sub_type_in_optional(original_type)
+            if UnionTransformer.is_optional_type(expected_type):
+                expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+
+            val = v.__getattribute__(f.name)
+            if dataclasses.is_dataclass(val):
+                self.assert_type(expected_type, val)
+            elif original_type != expected_type:
+                raise TypeTransformerFailedError(f"Type of Val '{original_type}' is not an instance of {expected_type}")
+
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         """
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
@@ -372,10 +405,10 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is list:
-            return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]
+            return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]  # type: ignore
 
         if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is dict:
-            return {k: self._deserialize_flyte_type(v, expected_python_type.__args__[1]) for k, v in python_val.items()}
+            return {k: self._deserialize_flyte_type(v, expected_python_type.__args__[1]) for k, v in python_val.items()}  # type: ignore
 
         if not dataclasses.is_dataclass(expected_python_type):
             return python_val
@@ -449,6 +482,16 @@ class DataclassTransformer(TypeTransformer[object]):
             return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
+        if val is None:
+            return val
+
+        if get_origin(t) is typing.Union and type(None) in get_args(t):
+            # Handle optional type. e.g. Optional[int], Optional[dataclass]
+            # Marshmallow doesn't support union type, so the type here is always an optional type.
+            # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
+            # Note: Union[None, int] is also an optional type, but Marshmallow does not support it.
+            t = get_args(t)[0]
+
         if t == int:
             return int(val)
 
@@ -608,14 +651,13 @@ class TypeEngine(typing.Generic[T]):
             find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
 
         Step 3:
-            if v is of type data class, use the dataclass transformer
-
-        Step 4:
             Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
             This is potentially non-deterministic - will depend on the registration pattern.
 
             TODO lets make this deterministic by using an ordered dict
 
+        Step 4:
+            if v is of type data class, use the dataclass transformer
         """
 
         # Step 1
@@ -638,9 +680,6 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
         # Step 3
-        if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
-
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
         for base_type in cls._REGISTRY.keys():
@@ -655,6 +694,11 @@ class TypeEngine(typing.Generic[T]):
                 # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
+
+        # Step 4
+        if dataclasses.is_dataclass(python_type):
+            return cls._DATACLASS_TRANSFORMER
+
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
@@ -693,7 +737,7 @@ class TypeEngine(typing.Generic[T]):
 
         # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
         hash = None
-        if transformer.hash_overridable and get_origin(python_type) is Annotated:
+        if get_origin(python_type) is Annotated:
             # We are now dealing with one of two cases:
             # 1. The annotated type is a `HashMethod`, which indicates that we should we should produce the hash using
             #    the method indicated in the annotation.
@@ -836,7 +880,6 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
-
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
             # Annotated[typing.List[int], 'foo']
@@ -975,6 +1018,17 @@ class UnionTransformer(TypeTransformer[T]):
     def __init__(self):
         super().__init__("Typed Union", typing.Union)
 
+    @staticmethod
+    def is_optional_type(t: Type[T]) -> bool:
+        return get_origin(t) is typing.Union and type(None) in get_args(t)
+
+    @staticmethod
+    def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
+        """
+        Return the generic Type T of the Optional type
+        """
+        return get_args(t)[0]
+
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         if get_origin(t) is Annotated:
             t = get_args(t)[0]
@@ -1005,7 +1059,7 @@ class UnionTransformer(TypeTransformer[T]):
                     # Should really never happen, sanity check
                     raise TypeError("Ambiguous choice of variant for union type")
                 found_res = True
-            except (TypeTransformerFailedError, AttributeError) as e:
+            except (TypeTransformerFailedError, AttributeError, ValueError, AssertionError) as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
                 continue
 
@@ -1069,7 +1123,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
         if literal_type.union_type is not None:
-            return typing.Union[tuple(TypeEngine.guess_python_type(v.type) for v in literal_type.union_type.variants)]
+            return typing.Union[tuple(TypeEngine.guess_python_type(v.type) for v in literal_type.union_type.variants)]  # type: ignore
 
         raise ValueError(f"Union transformer cannot reverse {literal_type}")
 
@@ -1098,7 +1152,7 @@ class DictTransformer(TypeTransformer[dict]):
                         parsed."
                 )
             if _origin is dict and _args is not None:
-                return _args
+                return _args  # type: ignore
         return None, None
 
     @staticmethod
@@ -1165,14 +1219,14 @@ class DictTransformer(TypeTransformer[dict]):
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Union[Type[dict], typing.Dict[Type, Type]]:
         if literal_type.map_value_type:
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
         if literal_type.simple == SimpleType.STRUCT:
             if literal_type.metadata is None:
-                return dict
+                return dict  # type: ignore
 
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
@@ -1306,9 +1360,14 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, str]) -> Type[T]:
+def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
     element_type = element_property["type"]
     element_format = element_property["format"] if "format" in element_property else None
+
+    if type(element_type) == list:
+        # Element type of Optional[int] is [integer, None]
+        return typing.Optional[_get_element_type({"type": element_type[0]})]  # type: ignore
+
     if element_type == "string":
         return str
     elif element_type == "integer":

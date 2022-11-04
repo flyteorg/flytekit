@@ -18,15 +18,14 @@ from flytekit.tools.script_mode import tar_strip_file_attributes
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
 
-file_access = FlyteContextManager.current_context().file_access
 
-
-def fast_package(source: os.PathLike, output_dir: os.PathLike) -> os.PathLike:
+def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: bool = False) -> os.PathLike:
     """
     Takes a source directory and packages everything not covered by common ignores into a tarball
     named after a hexdigest of the included files.
     :param os.PathLike source:
     :param os.PathLike output_dir:
+    :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
     ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, StandardIgnore])
@@ -41,7 +40,7 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike) -> os.PathLike:
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tar_path = os.path.join(tmp_dir, "tmp.tar")
-        with tarfile.open(tar_path, "w") as tar:
+        with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
             tar.add(source, arcname="", filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)))
         with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
@@ -104,10 +103,15 @@ def download_distribution(additional_distribution: str, destination: str):
     :param Text additional_distribution:
     :param os.PathLike destination:
     """
-    file_access.get_data(additional_distribution, destination)
+    if not os.path.isdir(destination):
+        raise ValueError("Destination path is required to download distribution and it should be a directory")
+    # NOTE the os.path.join(destination, ''). This is to ensure that the given path is infact a directory and all
+    # downloaded data should be copied into this directory. We do this to account for a difference in behavior in
+    # fsspec, which requires a trailing slash in case of pre-existing directory.
+    FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))
     tarfile_name = os.path.basename(additional_distribution)
     if not tarfile_name.endswith(".tar.gz"):
-        raise ValueError("Unrecognized additional distribution format for {}".format(additional_distribution))
+        raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.
     result = _subprocess.run(

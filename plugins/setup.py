@@ -13,6 +13,7 @@ SOURCES = {
     "flytekitplugins-awssagemaker": "flytekit-aws-sagemaker",
     "flytekitplugins-bigquery": "flytekit-bigquery",
     "flytekitplugins-fsspec": "flytekit-data-fsspec",
+    "flytekitplugins-dbt": "flytekit-dbt",
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
     "flytekitplugins-hive": "flytekit-hive",
@@ -26,9 +27,11 @@ SOURCES = {
     "flytekitplugins-onnxpytorch": "flytekit-onnx-pytorch",
     "flytekitplugins-pandera": "flytekit-pandera",
     "flytekitplugins-papermill": "flytekit-papermill",
+    "flytekitplugins-ray": "flytekit-ray",
     "flytekitplugins-snowflake": "flytekit-snowflake",
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
+    "flytekitplugins-whylogs": "flytekit-whylogs",
 }
 
 

@@ -6,13 +6,14 @@ import click
 
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.loggers import cli_logger
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.repo import find_common_root, load_packages_and_modules
 from flytekit.tools.repo import register as repo_register
+from flytekit.tools.script_mode import hash_file
 from flytekit.tools.translator import Options
 
 _register_help = """
@@ -99,6 +100,18 @@ Note: This command only works on regular Python packages, not namespace packages
     type=str,
     help="Version the package or module is registered with",
 )
+@click.option(
+    "--deref-symlinks",
+    default=False,
+    is_flag=True,
+    help="Enables symlink dereferencing when packaging files in fast registration",
+)
+@click.option(
+    "--non-fast",
+    default=False,
+    is_flag=True,
+    help="Enables to skip zipping and uploading the package",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -111,6 +124,8 @@ def register(
     service_account: str,
     raw_data_prefix: str,
     version: typing.Optional[str],
+    deref_symlinks: bool,
+    non_fast: bool,
     package_or_module: typing.Tuple[str],
 ):
     """
@@ -122,31 +137,47 @@ def register(
     if pkgs:
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
+    if non_fast and not version:
+        raise ValueError("Version is a required parameter in case --non-fast is specified.")
+
     if len(package_or_module) == 0:
         display_help_with_error(
             ctx,
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
         )
 
+    # Use extra images in the config file if that file exists
+    config_file = ctx.obj.get(constants.CTX_CONFIG_FILE)
+    if config_file:
+        image_config = patch_image_config(config_file, image_config)
+
     cli_logger.debug(
         f"Running pyflyte register from {os.getcwd()} "
         f"with images {image_config} "
-        f"and image destinationfolder {destination_dir} "
+        f"and image destination folder {destination_dir} "
         f"on {len(package_or_module)} package(s) {package_or_module}"
     )
 
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
 
-    # Todo: add switch for non-fast - skip the zipping and uploading and no fastserializationsettings
-    # Create a zip file containing all the entries.
     detected_root = find_common_root(package_or_module)
     cli_logger.debug(f"Using {detected_root} as root folder for project")
-    zip_file = fast_package(detected_root, output)
 
-    # Upload zip file to Admin using FlyteRemote.
-    md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
-    cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
+    # Create a zip file containing all the entries.
+    zip_file = fast_package(detected_root, output, deref_symlinks)
+    md5_bytes, _ = hash_file(pathlib.Path(zip_file))
+
+    fast_serialization_settings = None
+    if non_fast is False:
+        # Upload zip file to Admin using FlyteRemote.
+        md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
+        cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
+        fast_serialization_settings = FastSerializationSettings(
+            enabled=not non_fast,
+            destination_dir=destination_dir,
+            distribution_location=native_url,
+        )
 
     # Create serialization settings
     # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
@@ -154,11 +185,7 @@ def register(
         project=project,
         domain=domain,
         image_config=image_config,
-        fast_serialization_settings=FastSerializationSettings(
-            enabled=True,
-            destination_dir=destination_dir,
-            distribution_location=native_url,
-        ),
+        fast_serialization_settings=fast_serialization_settings,
     )
 
     options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
@@ -174,6 +201,10 @@ def register(
     if not version:
         version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
         cli_logger.info(f"Computed version is {version}")
+
+    click.echo(
+        f"Registering entities under version {version} using the following serialization settings = {serialization_settings}"
+    )
 
     # Register using repo code
     repo_register(registerable_entities, project, domain, version, remote.client)

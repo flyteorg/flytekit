@@ -1,13 +1,8 @@
 import mock
 import pandas as pd
+from typing_extensions import Annotated
 
 from flytekit import StructuredDataset, kwtypes, task, workflow
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 
 pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 my_cols = kwtypes(Name=str, Age=int)

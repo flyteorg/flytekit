@@ -1,27 +1,22 @@
+import tempfile
 import typing
 
+import pandas as pd
+import pyarrow as pa
 import pytest
+from typing_extensions import Annotated
 
 import flytekit.configuration
+from flytekit import kwtypes, task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
-import pandas as pd
-import pyarrow as pa
-
-from flytekit import kwtypes, task
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -47,7 +42,7 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 
 def test_protocol():
     assert protocol_prefix("s3://my-s3-bucket/file") == "s3"
-    assert protocol_prefix("/file") == "/"
+    assert protocol_prefix("/file") == "file"
 
 
 def generate_pandas() -> pd.DataFrame:
@@ -119,10 +114,10 @@ def test_types_sd():
 
 
 def test_retrieving():
-    assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "/", PARQUET) is not None
+    assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET) is not None
     with pytest.raises(ValueError):
         # We don't have a default "" format encoder
-        StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "/", "")
+        StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", "")
 
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self, protocol):
@@ -134,6 +129,11 @@ def test_retrieving():
     StructuredDatasetTransformerEngine.register(TempEncoder("gs"), default_for_type=False)
     with pytest.raises(ValueError):
         StructuredDatasetTransformerEngine.register(TempEncoder("gs://"), default_for_type=False)
+
+    with pytest.raises(ValueError, match="Use None instead"):
+        e = TempEncoder("")
+        e._protocol = ""
+        StructuredDatasetTransformerEngine.register(e)
 
     class TempEncoder:
         pass
@@ -207,6 +207,24 @@ def test_fill_in_literal_type():
     assert res is empty_format_temp_encoder
 
 
+def test_slash_register():
+    class TempEncoder(StructuredDatasetEncoder):
+        def __init__(self, fmt: str):
+            super().__init__(MyDF, None, supported_format=fmt)
+
+        def encode(
+            self,
+            ctx: FlyteContext,
+            structured_dataset: StructuredDataset,
+            structured_dataset_type: StructuredDatasetType,
+        ) -> literals.StructuredDataset:
+            return literals.StructuredDataset(uri="")
+
+    # Check that registering with a / triggers the file protocol instead.
+    StructuredDatasetTransformerEngine.register(TempEncoder("/"))
+    assert StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("file") is not None
+
+
 def test_sd():
     sd = StructuredDataset(dataframe="hi")
     sd.uri = "my uri"
@@ -270,6 +288,9 @@ def test_convert_schema_type_to_structured_dataset_type():
     assert convert_schema_type_to_structured_dataset_type(schema_ct.BOOLEAN) == SimpleType.BOOLEAN
     with pytest.raises(AssertionError, match="Unrecognized SchemaColumnType"):
         convert_schema_type_to_structured_dataset_type(int)
+
+    with pytest.raises(AssertionError, match="Unrecognized SchemaColumnType"):
+        convert_schema_type_to_structured_dataset_type(20)
 
 
 def test_to_python_value_with_incoming_columns():
@@ -336,7 +357,7 @@ def test_to_python_value_without_incoming_columns():
 def test_format_correct():
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self):
-            super().__init__(pd.DataFrame, S3, "avro")
+            super().__init__(pd.DataFrame, "/", "avro")
 
         def encode(
             self,
@@ -375,3 +396,36 @@ def test_format_correct():
         return StructuredDataset(dataframe=df)
 
     assert t1().file_format == "avro"
+
+
+def test_protocol_detection():
+    # We've don't register defaults to the transformer engine
+    assert pd.DataFrame not in StructuredDatasetTransformerEngine.DEFAULT_PROTOCOLS
+    e = StructuredDatasetTransformerEngine()
+    ctx = FlyteContextManager.current_context()
+    protocol = e._protocol_from_type_or_prefix(ctx, pd.DataFrame)
+    assert protocol == "file"
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fs = FileAccessProvider(local_sandbox_dir=tmp_dir, raw_output_prefix="s3://fdsa")
+        ctx2 = ctx.with_file_access(fs).build()
+        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame)
+        assert protocol == "s3"
+
+        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame, "bq://foo")
+        assert protocol == "bq"
+
+
+def test_register_renderers():
+    class DummyRenderer:
+        def to_html(self, input: str) -> str:
+            return "hello " + input
+
+    renderers = StructuredDatasetTransformerEngine.Renderers
+    StructuredDatasetTransformerEngine.register_renderer(str, DummyRenderer())
+    assert renderers[str].to_html("flyte") == "hello flyte"
+    assert pd.DataFrame in renderers
+    assert pa.Table in renderers
+
+    with pytest.raises(NotImplementedError, match="Could not find a renderer for <class 'int'> in"):
+        StructuredDatasetTransformerEngine().to_html(FlyteContextManager.current_context(), 3, int)

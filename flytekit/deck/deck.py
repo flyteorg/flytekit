@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
@@ -30,26 +30,26 @@ class Deck:
 
         This feature is in beta.
 
-        .. code-block:: python
+    .. code-block:: python
 
-            iris_df = px.data.iris()
+        iris_df = px.data.iris()
 
-            @task()
-            def t1() -> str:
-                md_text = "#Hello Flyte\n##Hello Flyte\n###Hello Flyte"
-                m = MarkdownRenderer()
-                s = BoxRenderer("sepal_length")
-                deck = flytekit.Deck("demo", s.to_html(iris_df))
-                deck.append(m.to_html(md_text))
-                default_deck = flytekit.current_context().default_deck
-                default_deck.append(m.to_html(md_text))
-                return md_text
+        @task()
+        def t1() -> str:
+            md_text = '#Hello Flyte##Hello Flyte###Hello Flyte'
+            m = MarkdownRenderer()
+            s = BoxRenderer("sepal_length")
+            deck = flytekit.Deck("demo", s.to_html(iris_df))
+            deck.append(m.to_html(md_text))
+            default_deck = flytekit.current_context().default_deck
+            default_deck.append(m.to_html(md_text))
+            return md_text
 
 
-            # Use Annotated to override default renderer
-            @task()
-            def t2() -> Annotated[pd.DataFrame, TopFrameRenderer(10)]:
-                return iris_df
+        # Use Annotated to override default renderer
+        @task()
+        def t2() -> Annotated[pd.DataFrame, TopFrameRenderer(10)]:
+            return iris_df
 
     """
 
@@ -111,5 +111,13 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
 
 root = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.join(root, "html")
-env = Environment(loader=FileSystemLoader(templates_dir))
+env = Environment(
+    loader=FileSystemLoader(templates_dir),
+    # 🔥 include autoescaping for security purposes
+    # sources:
+    # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
+    # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
+    # - https://stackoverflow.com/a/68826578/8474894
+    autoescape=select_autoescape(enabled_extensions=("html",)),
+)
 template = env.get_template("template.html")

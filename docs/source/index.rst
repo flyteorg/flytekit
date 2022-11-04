@@ -76,6 +76,7 @@ Expected output:
    remote
    testing
    extend
+   deck
    plugins/index
    tasks.extend
    types.extend

@@ -12,15 +12,18 @@ sphinx-copybutton
 sphinx_fontawesome
 sphinx-panels
 sphinxcontrib-yt
-grpcio
+grpcio==1.43.0
+grpcio-status==1.43.0
 cryptography
+google-api-core[grpc]==2.8.2
+scikit-learn==1.1.1
 
 # Packages for Plugin docs
 # Package name              Plugin needing it
 botocore                    # fsspec
 fsspec                      # fsspec
 google-cloud                # bigquery
-google-cloud-bigquery       # bigquery
+google-cloud-bigquery==3.1.0 # bigquery
 markdown                    # deck
 plotly                      # deck
 pandas_profiling            # deck
@@ -34,3 +37,9 @@ jupyter                     # papermill
 pyspark                     # spark
 sqlalchemy                  # sqlalchemy
 torch                       # pytorch
+skl2onnx                    # onnxscikitlearn
+tf2onnx                     # onnxtensorflow
+tensorflow==2.9.0           # onnxtensorflow
+whylogs                     # whylogs
+whylabs-client              # whylogs
+ray                         # ray

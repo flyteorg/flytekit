@@ -25,12 +25,14 @@ __all__ = [
 import importlib
 
 from flytekit import StructuredDatasetTransformerEngine, logger
-from flytekit.configuration import internal
-from flytekit.types.structured.structured_dataset import GCS, S3
 
 from .arrow import ArrowToParquetEncodingHandler, ParquetToArrowDecodingHandler
 from .pandas import PandasToParquetEncodingHandler, ParquetToPandasDecodingHandler
 from .persist import FSSpecPersistence
+
+S3 = "s3"
+ABFS = "abfs"
+GCS = "gs"
 
 
 def _register(protocol: str):
@@ -40,6 +42,9 @@ def _register(protocol: str):
     StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(protocol), True, True)
     StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(protocol), True, True)
 
+
+if importlib.util.find_spec("adlfs"):
+    _register(ABFS)
 
 if importlib.util.find_spec("s3fs"):
     _register(S3)

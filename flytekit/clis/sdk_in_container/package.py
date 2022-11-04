@@ -77,8 +77,16 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     default="/root",
     help="Filesystem path to where the code is copied into within the Dockerfile. look for `COPY . /root` like command.",
 )
+@click.option(
+    "--deref-symlinks",
+    default=False,
+    is_flag=True,
+    help="Enables symlink dereferencing when packaging files in fast registration",
+)
 @click.pass_context
-def package(ctx, image_config, source, output, force, fast, in_container_source_path, python_interpreter):
+def package(
+    ctx, image_config, source, output, force, fast, in_container_source_path, python_interpreter, deref_symlinks
+):
     """
     This command produces a Flyte backend registrable package of all entities in Flyte.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -103,6 +111,6 @@ def package(ctx, image_config, source, output, force, fast, in_container_source_
         display_help_with_error(ctx, "No packages to scan for flyte entities. Aborting!")
 
     try:
-        serialize_and_package(pkgs, serialization_settings, source, output, fast)
+        serialize_and_package(pkgs, serialization_settings, source, output, fast, deref_symlinks)
     except NoSerializableEntitiesError:
         click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")

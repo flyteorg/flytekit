@@ -1,7 +1,6 @@
-import base64
 from typing import Optional
 
-import cloudpickle
+import joblib
 from diskcache import Cache
 
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap
@@ -34,9 +33,11 @@ def _calculate_cache_key(task_name: str, cache_version: str, input_literal_map: 
     for key, literal in input_literal_map.literals.items():
         literal_map_overridden[key] = _recursive_hash_placement(literal)
 
-    # Pickle the literal map and use base64 encoding to generate a representation of it
-    b64_encoded = base64.b64encode(cloudpickle.dumps(LiteralMap(literal_map_overridden)))
-    return f"{task_name}-{cache_version}-{b64_encoded}"
+    # Generate a stable representation of the underlying protobuf by passing `deterministic=True` to the
+    # protobuf library.
+    hashed_inputs = LiteralMap(literal_map_overridden).to_flyte_idl().SerializeToString(deterministic=True)
+    # Use joblib to hash the string representation of the literal into a fixed length string
+    return f"{task_name}-{cache_version}-{joblib.hash(hashed_inputs)}"
 
 
 class LocalTaskCache(object):

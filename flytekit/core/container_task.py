@@ -81,7 +81,8 @@ class ContainerTask(PythonTask):
         return None
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {**settings.env, **self.environment} if self.environment else settings.env
+        env = settings.env or {}
+        env = {**env, **self.environment} if self.environment else env
         return _get_container_definition(
             image=self._image,
             command=self._cmd,
@@ -100,4 +101,6 @@ class ContainerTask(PythonTask):
             memory_limit=self.resources.limits.mem,
             ephemeral_storage_request=self.resources.requests.ephemeral_storage,
             ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
+            gpu_request=self.resources.requests.gpu,
+            gpu_limit=self.resources.limits.gpu,
         )

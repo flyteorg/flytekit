@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from flytekit import FlyteContext, kwtypes
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
@@ -79,6 +79,7 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         task_config: typing.Optional[SQLite3Config] = None,
         output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+        container_image: typing.Optional[str] = None,
         **kwargs,
     ):
         if task_config is None or task_config.uri is None:
@@ -87,8 +88,8 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
         super().__init__(
             name=name,
             task_config=task_config,
-            # If you make changes to this task itself, you'll have to bump this image to what the release _will_ be.
-            container_image="ghcr.io/flyteorg/flytekit:v0.19.0",
+            # if you use your own image, keep in mind to specify the container image here
+            container_image=container_image or DefaultImages.default_image(),
             executor_type=SQLite3TaskExecutor,
             task_type=self._SQLITE_TASK_TYPE,
             query_template=query_template,

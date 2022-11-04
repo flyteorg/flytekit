@@ -171,6 +171,10 @@ class DataPersistencePlugins(object):
         """
         return protocol in cls._PLUGINS
 
+    @classmethod
+    def supported_protocols(cls) -> typing.List[str]:
+        return [k for k in cls._PLUGINS.keys()]
+
 
 class DiskPersistence(DataPersistence):
     """
@@ -317,6 +321,10 @@ class FileAccessProvider(object):
         )
         self._raw_output_prefix = raw_output_prefix
         self._data_config = data_config if data_config else DataConfig.auto()
+
+    @property
+    def raw_output_prefix(self) -> str:
+        return self._raw_output_prefix
 
     @property
     def data_config(self) -> DataConfig:
