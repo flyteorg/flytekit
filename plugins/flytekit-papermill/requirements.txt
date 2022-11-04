@@ -117,7 +117,7 @@ jupyter-client==7.3.4
     # via
     #   ipykernel
     #   nbclient
-jupyter-core==4.10.0
+jupyter-core==4.11.2
     # via
     #   jupyter-client
     #   nbconvert
