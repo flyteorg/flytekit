@@ -16,7 +16,8 @@ RUN apt-get update && apt-get install build-essential -y
 RUN pip install -U flytekit==$VERSION \
 	flytekitplugins-pod==$VERSION \
 	flytekitplugins-deck-standard==$VERSION \
-	flytekitplugins-data-fsspec==$VERSION \
+	flytekitplugins-data-fsspec[aws]==$VERSION \
+	flytekitplugins-data-fsspec[gcp]==$VERSION \
 	scikit-learn
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
