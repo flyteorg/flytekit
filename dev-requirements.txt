@@ -539,9 +539,7 @@ websocket-client==0.59.0
     #   -c requirements.txt
     #   docker
     #   docker-compose
-werkzeug==2.2.2
-    # via tensorboard
-wheel==0.37.1
+wheel==0.38.0
     # via
     #   -c requirements.txt
     #   astunparse

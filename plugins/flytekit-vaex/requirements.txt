@@ -229,7 +229,7 @@ vaex-core==4.13.0
     # via flytekitplugins-vaex
 websocket-client==0.59.0
     # via docker
-wheel==0.37.1
+wheel==0.38.0
     # via flytekit
 wrapt==1.14.1
     # via
