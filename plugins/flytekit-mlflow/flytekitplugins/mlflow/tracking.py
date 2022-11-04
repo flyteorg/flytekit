@@ -22,7 +22,7 @@ def metric_to_df(metrics: typing.List[Metric]) -> pd.DataFrame:
     for m in metrics:
         t.append(m.timestamp)
         v.append(m.value)
-    return pd.DataFrame(list(zip(t, v)), columns =['timestamp', 'value'])
+    return pd.DataFrame(list(zip(t, v)), columns=['timestamp', 'value'])
 
 
 def get_run_metrics(c: MlflowClient, run_id: str) -> typing.Dict[str, pandas.DataFrame]:
