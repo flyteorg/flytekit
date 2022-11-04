@@ -51,6 +51,7 @@ jobs:
         run: |
           pytest tests/flytekit/unit -m "not sandbox_test" --cov=./ --cov-report=xml
       - name: Codecov
+        if: ${{ matrix.python-version == '3.9' }}
         uses: codecov/codecov-action@v3.1.0
         with:
           fail_ci_if_error: true # optional (default = false)
@@ -134,7 +135,12 @@ jobs:
       - name: Test with coverage
         run: |
           cd plugins/${{ matrix.plugin-names }}
-          coverage run -m pytest tests
+          coverage run -m pytest tests --cov=./ --cov-report=xml
+      - name: Codecov
+          if: ${{ matrix.python-version == '3.9' }}
+          uses: codecov/codecov-action@v3.1.0
+          with:
+            fail_ci_if_error: true # optional (default = false)
   lint:
     runs-on: ubuntu-latest
     steps:
