@@ -4,6 +4,7 @@ from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar
 
 import tensorflow as tf
 from dataclasses_json import dataclass_json
+from tensorflow.python.data.ops.readers import TFRecordDatasetV2
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext
@@ -37,7 +38,7 @@ class TFRecordDatasetConfig:
     name: Optional[str] = None
 
 
-def extract_metadata(t: Type[tf.data.TFRecordDataset]) -> Tuple[tf.data.TFRecordDataset, Dict[str, Any]]:
+def extract_metadata(t: Type[TFRecordDatasetV2]) -> Tuple[TFRecordDatasetV2, Dict[str, Any]]:
     metadata = None
     if get_origin(t) is Annotated:
         base_type, metadata = get_args(t)
@@ -94,8 +95,8 @@ class TensorflowRecordsTransformer(TypeTransformer, Generic[T]):
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[tf.data.TFRecordDataset]
-    ) -> tf.data.TFRecordDataset:
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordDatasetV2]
+    ) -> TFRecordDatasetV2:
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:
