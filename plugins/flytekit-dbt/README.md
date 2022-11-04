@@ -1,6 +1,6 @@
 # Flytekit dbt plugin
 
-Flytekit plugin for performing DBT tasks. Currently it supports both `dbt run` and `dbt test` tasks.
+Flytekit plugin for performing DBT tasks. Currently it supports  `dbt run` , `dbt test`, `dbt source freshness` tasks.
 
 To install the plugin, run the following command:
 
