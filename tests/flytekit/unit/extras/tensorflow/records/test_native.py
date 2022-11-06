@@ -36,7 +36,7 @@ def generate_tf_record_dir() -> TFRecordsDirectory:
 
 
 @task
-def consume(dataset: Annotated[tf.data.TFRecordDataset, TFRecordDatasetConfig]):
+def consume(dataset: Annotated[tf.data.TFRecordDataset, TFRecordDatasetConfig(name="testing")]):
     for batch in dataset.map(decode_fn):
         print("x = {x:.4f},  y = {y:.4f}".format(**batch))
 
@@ -44,8 +44,9 @@ def consume(dataset: Annotated[tf.data.TFRecordDataset, TFRecordDatasetConfig]):
 @workflow
 def wf():
     file = generate_tf_record_file()
-    # files = generate_tf_record_dir()
-    consume(dataset=tf.data.TFRecordDataset(filenames=[file], name="t1"))
+    files = generate_tf_record_dir()
+    consume(dataset=file)
+    consume(dataset=files)
 
 
 @workflow

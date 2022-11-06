@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar
+from typing import Generic, Optional, Tuple, Type, TypeVar
 
 import tensorflow as tf
 from dataclasses_json import dataclass_json
@@ -38,14 +38,14 @@ class TFRecordDatasetConfig:
     name: Optional[str] = None
 
 
-def extract_metadata(t: Type[TFRecordDatasetV2]) -> Tuple[TFRecordDatasetV2, Dict[str, Any]]:
-    metadata = None
+def extract_metadata(t: Type[T]) -> Tuple[T, TFRecordDatasetConfig]:
+    metadata = TFRecordDatasetConfig()
     if get_origin(t) is Annotated:
         base_type, metadata = get_args(t)
         if isinstance(metadata, TFRecordDatasetConfig):
             return base_type, metadata
         else:
-            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type TFRecordDatasetConfig")
+            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type Dict")
     return t, metadata
 
 
@@ -110,10 +110,10 @@ class TensorflowRecordsTransformer(TypeTransformer, Generic[T]):
         # load .tfrecord into tf.data.TFRecordDataset
         return tf.data.TFRecordDataset(
             filenames=filenames,
-            compression_type=metadata.get("compression_type", None),
-            buffer_size=metadata.get("buffer_size=", None),
-            num_parallel_reads=metadata.get("num_parallel_reads", None),
-            name=metadata.get("name", None),
+            compression_type=metadata.compression_type,
+            buffer_size=metadata.buffer_size,
+            num_parallel_reads=metadata.num_parallel_read,
+            name=metadata.name,
         )
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
