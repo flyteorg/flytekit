@@ -66,7 +66,8 @@ def plot_metrics(metrics: typing.Dict[str, pandas.DataFrame]) -> typing.Optional
         fig.add_trace(go.Scatter(x=v["timestamp"], y=v["value"], name=k), row=row, col=1)
         row = row + 1
 
-    fig.update_layout(height=700, width=900, xaxis_title="Time (s)")
+    fig.update_xaxes(title_text="Time (s)")
+    fig.update_layout(height=700, width=900)
     return fig
 
 
