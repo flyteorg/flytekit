@@ -7,7 +7,7 @@ from mock import patch
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.gate import signal
+from flytekit.core.gate import approve, wait_for_input
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
@@ -32,24 +32,25 @@ def test_basic_signal():
         return a + 6
 
     @workflow
-    def wf(a: int) -> typing.Tuple[int, int]:
+    def wf(a: int) -> typing.Tuple[int, int, int]:
         x = t1(a=a)
-        s1 = signal("my-signal-name", timeout=timedelta(hours=1), expected_type=bool)
-        s2 = signal("my-signal-name-2", timeout=timedelta(hours=2), expected_type=int)
+        s1 = wait_for_input("my-signal-name", timeout=timedelta(hours=1), expected_type=bool)
+        s2 = wait_for_input("my-signal-name-2", timeout=timedelta(hours=2), expected_type=int)
         z = t1(a=5)
         y = t2(a=s2)
+        q = t2(a=approve(y, "approvalfory", timeout=timedelta(hours=2)))
         x >> s1
         s1 >> z
 
-        return y, z
+        return y, z, q
 
-    with patch("sys.stdin", StringIO("\n3\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
+    with patch("sys.stdin", StringIO("\n3\ny\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
         res = wf(a=5)
-        assert res == (9, 10)
+        assert res == (9, 10, 15)
         assert stdin.read() == ""  # all input consumed
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
-    assert len(wf_spec.template.nodes) == 5
+    assert len(wf_spec.template.nodes) == 7
     # The first t1 call
     assert wf_spec.template.nodes[0].task_node is not None
 
@@ -75,8 +76,14 @@ def test_basic_signal():
     assert wf_spec.template.nodes[4].upstream_node_ids == ["n2"]
     assert wf_spec.template.nodes[4].task_node is not None
 
+    assert wf_spec.template.nodes[5].gate_node is not None
+    assert wf_spec.template.nodes[5].upstream_node_ids == ["n4"]
+    assert wf_spec.template.nodes[6].inputs[0].binding.promise.node_id == "n5"
+    assert wf_spec.template.nodes[6].inputs[0].binding.promise.var == "o0"
+
     assert wf_spec.template.outputs[0].binding.promise.node_id == "n4"
     assert wf_spec.template.outputs[1].binding.promise.node_id == "n3"
+    assert wf_spec.template.outputs[2].binding.promise.node_id == "n6"
 
     #     c = conditional("use_gate").if_(x is True). \
     #             then(t1(y)). \
