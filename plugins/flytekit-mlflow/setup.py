@@ -4,7 +4,7 @@ PLUGIN_NAME = "mlflow"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0,<2.0.0", "google-cloud-bigquery"]
+plugin_requires = ["flytekit>=1.1.0,<2.0.0", "plotly", "mlflow"]
 
 __version__ = "0.0.0+develop"
 
