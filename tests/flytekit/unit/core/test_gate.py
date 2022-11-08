@@ -53,7 +53,6 @@ def test_basic_signal():
     assert len(wf_spec.template.nodes) == 7
     # The first t1 call
     assert wf_spec.template.nodes[0].task_node is not None
-    print(wf_spec.template)
 
     # The first signal s1, dependent on the first t1 call
     assert wf_spec.template.nodes[1].upstream_node_ids == ["n0"]
@@ -77,8 +76,13 @@ def test_basic_signal():
     assert wf_spec.template.nodes[4].upstream_node_ids == ["n2"]
     assert wf_spec.template.nodes[4].task_node is not None
 
+    # Approval node
     assert wf_spec.template.nodes[5].gate_node is not None
+    assert wf_spec.template.nodes[5].gate_node.approve is not None
     assert wf_spec.template.nodes[5].upstream_node_ids == ["n4"]
+    assert len(wf_spec.template.nodes[5].inputs) == 1
+    assert wf_spec.template.nodes[5].inputs[0].binding.promise.node_id == "n4"
+    assert wf_spec.template.nodes[5].inputs[0].binding.promise.var == "o0"
     assert wf_spec.template.nodes[6].inputs[0].binding.promise.node_id == "n5"
     assert wf_spec.template.nodes[6].inputs[0].binding.promise.var == "o0"
 

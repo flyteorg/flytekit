@@ -479,7 +479,7 @@ def get_serializable_node(
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
-            inputs=[],
+            inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_sdk_nodes],
             output_aliases=[],
             gate_node=gn,
