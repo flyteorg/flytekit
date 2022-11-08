@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import pandas
 import pyarrow
@@ -14,17 +14,22 @@ class Renderable(Protocol):
         raise NotImplementedError
 
 
+DEFAULT_MAX_ROWS = 10
+DEFAULT_MAX_COLS = 100
+
+
 class TopFrameRenderer:
     """
     Render a DataFrame as an HTML table.
     """
 
-    def __init__(self, max_rows: Optional[int] = None):
+    def __init__(self, max_rows: int = DEFAULT_MAX_ROWS, max_cols: int = DEFAULT_MAX_COLS):
         self._max_rows = max_rows
+        self._max_cols = max_cols
 
     def to_html(self, df: pandas.DataFrame) -> str:
         assert isinstance(df, pandas.DataFrame)
-        return df.to_html(max_rows=self._max_rows)
+        return df.to_html(max_rows=self._max_rows, max_cols=self._max_cols)
 
 
 class ArrowRenderer:

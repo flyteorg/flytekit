@@ -20,8 +20,7 @@ def init(template, project_name):
     }
     cookiecutter(
         "https://github.com/flyteorg/flytekit-python-template.git",
-        # TODO: remove this once we make the transition to cookie-cutter official.
-        checkout="cookie-cutter",
+        checkout="main",
         no_input=True,
         # We do not want to clobber existing files/directories.
         overwrite_if_exists=False,
