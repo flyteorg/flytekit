@@ -1613,14 +1613,14 @@ def test_error_messages():
 
     @task
     def foo2(a: int, b: str) -> typing.Tuple[int, str]:
-        return "hello", 10
+        return "hello", 10  # type: ignore
 
     @task
     def foo3(a: typing.Dict) -> typing.Dict:
         return a
 
     with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
-        foo(a="hello", b=10)
+        foo(a="hello", b=10)  # type: ignore
 
     with pytest.raises(
         TypeError,
@@ -1629,7 +1629,7 @@ def test_error_messages():
         foo2(a=10, b="hello")
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
-        foo3(a=[{"hello": 2}])
+        foo3(a=[{"hello": 2}])  # type: ignore
 
 
 def test_union_type():

@@ -15,8 +15,10 @@ from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
+from flytekit.types.file import FileExt
 
 T = typing.TypeVar("T")
+PathType = typing.Union[str, os.PathLike]
 
 
 def noop():
@@ -26,7 +28,7 @@ def noop():
 @dataclass_json
 @dataclass
 class FlyteDirectory(os.PathLike, typing.Generic[T]):
-    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     .. warning::
 
@@ -144,7 +146,9 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:
             return cls
-        item_string = str(item)
+
+        item_string = FileExt.check_and_convert_to_str(item)
+
         item_string = item_string.strip().lstrip("~").lstrip(".")
         if item_string == "":
             return cls

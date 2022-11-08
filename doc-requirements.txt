@@ -142,7 +142,7 @@ flatbuffers==1.12
     # via
     #   tensorflow
     #   tf2onnx
-flyteidl==1.1.17
+flyteidl==1.2.1
     # via flytekit
 fonttools==4.37.3
     # via matplotlib
@@ -296,7 +296,7 @@ jupyter-client==7.3.5
     #   qtconsole
 jupyter-console==6.4.4
     # via jupyter
-jupyter-core==4.11.1
+jupyter-core==4.11.2
     # via
     #   jupyter-client
     #   nbconvert
@@ -876,7 +876,7 @@ websocket-client==1.4.1
     #   kubernetes
 werkzeug==2.2.2
     # via tensorboard
-wheel==0.37.1
+wheel==0.38.0
     # via
     #   astunparse
     #   flytekit
