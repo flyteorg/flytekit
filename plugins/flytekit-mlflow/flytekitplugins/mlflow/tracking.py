@@ -1,6 +1,6 @@
 import math
 import typing
-from functools import wraps, partial
+from functools import partial, wraps
 
 import mlflow
 import pandas
@@ -11,6 +11,7 @@ from mlflow.entities.metric import Metric
 from plotly.subplots import make_subplots
 
 import flytekit
+from flytekit.deck import TopFrameRenderer
 
 
 def metric_to_df(metrics: typing.List[Metric]) -> pd.DataFrame:
@@ -22,7 +23,7 @@ def metric_to_df(metrics: typing.List[Metric]) -> pd.DataFrame:
     for m in metrics:
         t.append(m.timestamp)
         v.append(m.value)
-    return pd.DataFrame(list(zip(t, v)), columns=['timestamp', 'value'])
+    return pd.DataFrame(list(zip(t, v)), columns=["timestamp", "value"])
 
 
 def get_run_metrics(c: MlflowClient, run_id: str) -> typing.Dict[str, pandas.DataFrame]:
@@ -36,24 +37,37 @@ def get_run_metrics(c: MlflowClient, run_id: str) -> typing.Dict[str, pandas.Dat
     return metrics
 
 
-def plot_metrics(metrics: typing.Dict[str, pandas.DataFrame]) -> go.Figure:
+def get_run_params(c: MlflowClient, run_id: str) -> typing.Optional[pd.DataFrame]:
+    """
+    Extracts all parameters and returns a dictionary of metric name to the list of metric for the given run_id
+    """
+    r = c.get_run(run_id)
+    name = []
+    value = []
+    if r.data.params == {}:
+        return None
+    for k, v in r.data.params.items():
+        name.append(k)
+        value.append(v)
+    return pd.DataFrame(list(zip(name, value)), columns=["name", "value"])
+
+
+def plot_metrics(metrics: typing.Dict[str, pandas.DataFrame]) -> typing.Optional[go.Figure]:
     v = len(metrics)
+    if v == 0:
+        return None
+
     # Initialize figure with subplots
-    rows = math.ceil(v/3)
-    cols = 3
-    fig = make_subplots(rows=rows, cols=cols, subplot_titles=list(metrics.keys()))
+    fig = make_subplots(rows=v, cols=1, subplot_titles=list(metrics.keys()))
 
     # Add traces
-    row=1
-    col=1
+    row = 1
     for k, v in metrics.items():
-        fig.add_trace(go.Scatter(x=v['timestamp'], y=v['value'], name=k), row=row, col=col)
-        col = col + 1
-        if col > cols:
-            col = 1
-            row = row + 1
+        v["timestamp"] = (v["timestamp"] - v["timestamp"][0]) / 1000
+        fig.add_trace(go.Scatter(x=v["timestamp"], y=v["value"], name=k), row=row, col=1)
+        row = row + 1
 
-    fig.update_layout(height=rows*300)
+    fig.update_layout(height=700, width=900, xaxis_title="Time (s)")
     return fig
 
 
@@ -61,25 +75,20 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn):
     """
     This decorator can be used as a nested decorator for a ``@task`` and it will automatically enable mlflow autologging,
     for the given ``framework``. If framework is not provided then the autologging is enabled for ``sklearn``
-
     .. code-block::python
-
         @task
         @mlflow_autlog(framework=mlflow.tensorflow)
         def my_tensorflow_trainer():
             ...
-
     One benefit of doing so is that the mlflow metrics are then rendered inline using FlyteDecks and can be viewed
     in jupyter notebook, as well as in hosted Flyte environment
-
     .. code-block:: python
-
         with flytekit.new_context() as ctx:
             my_tensorflow_trainer()
             ctx.get_deck()  # IPython.display
-
     The decorator starts a new run, with mlflow for the task
     """
+
     @wraps(fn)
     def wrapper(*args, **kwargs):
         framework.autolog()
@@ -87,10 +96,15 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn):
             out = fn(*args, **kwargs)
             run = mlflow.active_run()
             if run is not None:
-                c = MlflowClient()
-                m = get_run_metrics(c, run.info.run_id)
-                f = plot_metrics(m)
-                flytekit.current_context().default_deck.append(f.to_html())
+                client = MlflowClient()
+                run_id = run.info.run_id
+                metrics = get_run_metrics(client, run_id)
+                figure = plot_metrics(metrics)
+                if figure:
+                    flytekit.Deck("mlflow metrics", figure.to_html())
+                params = get_run_params(client, run_id)
+                if params is not None:
+                    flytekit.Deck("mlflow params", TopFrameRenderer().to_html(params))
         return out
 
     if fn is None:

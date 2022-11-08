@@ -1,6 +1,7 @@
 import pytest
-from flytekit import task
 from flytekitplugins.mlflow import mlflow_autolog
+
+from flytekit import task
 
 
 @task

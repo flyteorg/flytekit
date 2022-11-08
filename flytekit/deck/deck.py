@@ -106,7 +106,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     deck_path = os.path.join(output_dir, DECK_FILE_NAME)
     with open(deck_path, "w") as f:
         f.write(_get_deck(new_user_params))
-    logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
+    print(f"{task_name} task creates flyte deck html to file://{deck_path}")
 
 
 root = os.path.dirname(os.path.abspath(__file__))
