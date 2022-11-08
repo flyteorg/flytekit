@@ -19,8 +19,9 @@ DEFAULT_TIMEOUT = datetime.timedelta(hours=1)
 
 class Gate(object):
     """
-    A gate needs to behave kind of like a task. Instead of running code however, it either needs to wait for user
-    input, or run a timer.
+    A node type that waits for user input before proceeding with a workflow.
+    A gate is a type of node that behaves like a task, but instead of running code, it either needs to wait
+    for user input to proceed or wait for a timer to complete running.
     """
 
     def __init__(
@@ -79,18 +80,7 @@ class Gate(object):
         if self._python_interface:
             return self._python_interface
 
-        # If this is a signaling node then the output should be of the type requested by the signal.
-        if not self._upstream_item or not isinstance(self._upstream_item, NodeOutput):
-            raise ValueError("You can't check for a Python interface for an approval node outside of compilation")
-
-        if not self._upstream_item.node.flyte_entity.python_interface:
-            raise ValueError(f"Upstream node doesn't have a Python interface. Node entity is: "
-                             f"{self._upstream_item.node.flyte_entity}")
-        # Saving the interface here is pointless for now, because the approve function is called from scratch each
-        # run. Unlike tasks. If you call t1(), no matter how many times you call it, t1 is the same Python object.
-        # Gate nodes do not have an associated Python object, unless we one day save them during workflow compile.
-        self._python_interface = self._upstream_item.node.flyte_entity.python_interface
-        return self._python_interface
+        raise ValueError("You can't check for a Python interface for an approval node outside of compilation")
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         # Part of SupportsNodeCreation interface
@@ -133,7 +123,8 @@ class Gate(object):
 
         # Assume this is an approval operation
         if self._upstream_item is None:
-            raise ValueError("upstreamm item should not be none")  # this is true right? need to check this.
+            # this is true right? need to check this. if nothing is returned it should still be a void promise
+            raise ValueError("upstream item should not be none")
         x = input(f"Pausing execution for {self.name}, value is: {self._upstream_item} approve [Y/n]: ")
         if x != "n":
             return self._upstream_item
@@ -158,7 +149,8 @@ def signal(name: str, timeout: datetime.timedelta, expected_type: typing.Type):
 
     return flyte_entity_call_handler(g)
 
-def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: str, timeout: datetime.timedelta, expected_type: typing.Type):
+
+def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: str, timeout: datetime.timedelta):
     """
     Create a Gate object. This object will function like a task. Note that unlike a task,
     each time this function is called, a new Python object is created. If a workflow
@@ -173,4 +165,35 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
     """
     g = Gate(name, upstream_item=upstream_item, timeout=timeout)
 
-    return flyte_entity_call_handler(g)
+    if upstream_item is None or isinstance(upstream_item, VoidPromise):
+        raise ValueError("You can't use approval on a task that doesn't return anything.")
+
+    # If we're compiling, the promise will not be ready
+    if not upstream_item.is_ready:
+        if not upstream_item.ref.node.flyte_entity.python_interface:
+            raise ValueError(f"Upstream node doesn't have a Python interface. Node entity is: "
+                             f"{upstream_item.ref.node.flyte_entity}")
+
+        # We have reach back up to the entity that this promise came from, to get the python type, since
+        # the approve function itself doesn't have a python interface.
+        io_type = upstream_item.ref.node.flyte_entity.python_interface.outputs[upstream_item.var]
+
+        io_var_name = upstream_item.var
+    else:
+        # We don't know the python type here. in local execution, downstream doesn't really use the type
+        # so we should be okay. But use None instead of type() so that errors are more obvious hopefully.
+        io_type = None
+        io_var_name = "o0"
+
+    # In either case, we need a python interface
+    g._python_interface = flyte_interface.Interface(
+        inputs={
+            io_var_name: io_type,
+        },
+        outputs={
+            io_var_name: io_type,
+        },
+    )
+    kwargs = {io_var_name: upstream_item}
+
+    return flyte_entity_call_handler(g, **kwargs)
