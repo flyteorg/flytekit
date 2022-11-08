@@ -259,13 +259,12 @@ def register(
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
 
-    # TODO add support for tqdm in the future.
     for cp_entity in serializable_entities:
         og_id = cp_entity.id if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id
         secho(og_id, "")
         try:
             i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
             secho(i)
-        except RegistrationSkipped:
+        except RegistrationSkipped as e:
             secho(og_id, "failed")
     click.secho(f"Successfully registered {len(serializable_entities)} entities", fg="green")

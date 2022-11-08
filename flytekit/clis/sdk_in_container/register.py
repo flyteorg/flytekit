@@ -156,6 +156,7 @@ def register(
 
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
+    click.secho(f"Registering against {remote.config.platform.endpoint}")
     try:
         repo.register(
             project,
