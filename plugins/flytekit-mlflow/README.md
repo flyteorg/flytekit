@@ -1,6 +1,7 @@
 # Flytekit MLflow Plugin
 
-BigQuery enables us to build data-intensive applications without operational burden. Flyte backend can be connected with the BigQuery service. Once enabled, it can allow you to query a BigQuery table.
+MLflow enables us to log parameters, code, and results in machine learning experiments and compare them using an interactive UI.
+This MLflow plugin enables seamless use of MLFlow within Flyte, and render the metrics and parameters on Flyte Deck.
 
 To install the plugin, run the following command:
 
@@ -8,4 +9,14 @@ To install the plugin, run the following command:
 pip install flytekitplugins-mlflow
 ```
 
-To configure BigQuery in the Flyte deployment's backend, follow the [configuration guide](https://docs.flyte.org/en/latest/deployment/plugin_setup/gcp/bigquery.html#deployment-plugin-setup-gcp-bigquery).
+Example
+```python
+from flytekit import task, workflow
+from flytekitplugins.mlflow import mlflow_autolog
+import mlflow
+
+@task(disable_deck=False)
+@mlflow_autolog(framework=mlflow.keras)
+def train_model():
+    ...
+```
