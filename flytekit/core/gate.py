@@ -6,13 +6,12 @@ from typing import Tuple, Union
 
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import FlyteContext
-from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handler
+from flytekit.core.promise import NodeOutput, Promise, VoidPromise, flyte_entity_call_handler
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.types import LiteralType
-from flytekit.core.promise import NodeOutput
-from flytekit.exceptions.user import FlyteValueException
 
 DEFAULT_TIMEOUT = datetime.timedelta(hours=1)
 
@@ -92,7 +91,7 @@ class Gate(object):
     # This is to satisfy the LocallyExecutable protocol
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         if self.sleep_duration:
-            print(f"Fake sleeping {self.name}")
+            print(f"Mock sleeping {self.name} for {self.sleep_duration}")
             return VoidPromise(self.name)
 
         # Trigger stdin
@@ -132,7 +131,7 @@ class Gate(object):
             raise FlyteValueException(f"User did not approve the transaction for gate node {self.name}")
 
 
-def signal(name: str, timeout: datetime.timedelta, expected_type: typing.Type):
+def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing.Type):
     """
     Create a Gate object. This object will function like a task. Note that unlike a task,
     each time this function is called, a new Python object is created. If a workflow
@@ -160,7 +159,6 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
     :param upstream_item:
     :param name:
     :param timeout:
-    :param expected_type:
     :return:
     """
     g = Gate(name, upstream_item=upstream_item, timeout=timeout)
@@ -171,8 +169,10 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
     # If we're compiling, the promise will not be ready
     if not upstream_item.is_ready:
         if not upstream_item.ref.node.flyte_entity.python_interface:
-            raise ValueError(f"Upstream node doesn't have a Python interface. Node entity is: "
-                             f"{upstream_item.ref.node.flyte_entity}")
+            raise ValueError(
+                f"Upstream node doesn't have a Python interface. Node entity is: "
+                f"{upstream_item.ref.node.flyte_entity}"
+            )
 
         # We have reach back up to the entity that this promise came from, to get the python type, since
         # the approve function itself doesn't have a python interface.

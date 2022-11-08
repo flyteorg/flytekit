@@ -7,7 +7,7 @@ from mock import patch
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.gate import signal, approve
+from flytekit.core.gate import approve, wait_for_input
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
@@ -34,8 +34,8 @@ def test_basic_signal():
     @workflow
     def wf(a: int) -> typing.Tuple[int, int, int]:
         x = t1(a=a)
-        s1 = signal("my-signal-name", timeout=timedelta(hours=1), expected_type=bool)
-        s2 = signal("my-signal-name-2", timeout=timedelta(hours=2), expected_type=int)
+        s1 = wait_for_input("my-signal-name", timeout=timedelta(hours=1), expected_type=bool)
+        s2 = wait_for_input("my-signal-name-2", timeout=timedelta(hours=2), expected_type=int)
         z = t1(a=5)
         y = t2(a=s2)
         q = t2(a=approve(y, "approvalfory", timeout=timedelta(hours=2)))
