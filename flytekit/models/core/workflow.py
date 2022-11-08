@@ -256,6 +256,26 @@ class SignalCondition(_common.FlyteIdlEntity):
         )
 
 
+class ApproveCondition(_common.FlyteIdlEntity):
+    def __init__(self, signal_id: str):
+        """
+        Represents a dependency on an signal from a user.
+        :param signal_id: The node id of the signal, also the signal name.
+        """
+        self._signal_id = signal_id
+
+    @property
+    def signal_id(self) -> str:
+        return self._signal_id
+
+    def to_flyte_idl(self) -> _core_workflow.ApproveCondition:
+        return _core_workflow.ApproveCondition(signal_id=self.signal_id)
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.ApproveCondition):
+        return cls(signal_id=pb2_object.signal_id)
+
+
 class SleepCondition(_common.FlyteIdlEntity):
     def __init__(self, duration: datetime.timedelta):
         """
@@ -278,9 +298,15 @@ class SleepCondition(_common.FlyteIdlEntity):
 
 
 class GateNode(_common.FlyteIdlEntity):
-    def __init__(self, signal: typing.Optional[SignalCondition] = None, sleep: typing.Optional[SleepCondition] = None):
+    def __init__(
+        self,
+        signal: typing.Optional[SignalCondition] = None,
+        sleep: typing.Optional[SleepCondition] = None,
+        approve: typing.Optional[ApproveCondition] = None,
+    ):
         self._signal = signal
         self._sleep = sleep
+        self._approve = approve
 
     @property
     def signal(self) -> typing.Optional[SignalCondition]:
@@ -291,13 +317,18 @@ class GateNode(_common.FlyteIdlEntity):
         return self._sleep
 
     @property
-    def condition(self) -> typing.Union[SignalCondition, SleepCondition]:
-        return self.signal or self.sleep
+    def approve(self) -> typing.Optional[ApproveCondition]:
+        return self._approve
+
+    @property
+    def condition(self) -> typing.Union[SignalCondition, SleepCondition, ApproveCondition]:
+        return self.signal or self.sleep or self.approve
 
     def to_flyte_idl(self) -> _core_workflow.GateNode:
         return _core_workflow.GateNode(
             signal=self.signal.to_flyte_idl() if self.signal else None,
             sleep=self.sleep.to_flyte_idl() if self.sleep else None,
+            approve=self.approve.to_flyte_idl() if self.approve else None,
         )
 
     @classmethod
@@ -305,6 +336,7 @@ class GateNode(_common.FlyteIdlEntity):
         return cls(
             signal=SignalCondition.from_flyte_idl(pb2_object.signal) if pb2_object.HasField("signal") else None,
             sleep=SleepCondition.from_flyte_idl(pb2_object.sleep) if pb2_object.HasField("sleep") else None,
+            approve=ApproveCondition.from_flyte_idl(pb2_object.approve) if pb2_object.HasField("approve") else None,
         )
 
 

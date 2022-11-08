@@ -27,6 +27,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
+from flytekit.models.core.workflow import ApproveCondition
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 
@@ -466,13 +467,15 @@ def get_serializable_node(
     elif isinstance(entity.flyte_entity, Gate):
         if entity.flyte_entity.sleep_duration:
             gn = GateNode(sleep=SleepCondition(duration=entity.flyte_entity.sleep_duration))
-        else:
+        elif entity.flyte_entity.input_type:
             output_name = list(entity.flyte_entity.python_interface.outputs.keys())[0]  # should be o0
             gn = GateNode(
                 signal=SignalCondition(
                     entity.flyte_entity.name, type=entity.flyte_entity.literal_type, output_variable_name=output_name
                 )
             )
+        else:
+            gn = GateNode(approve=ApproveCondition(entity.flyte_entity.name))
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,

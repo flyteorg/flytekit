@@ -53,6 +53,7 @@ def test_basic_signal():
     assert len(wf_spec.template.nodes) == 7
     # The first t1 call
     assert wf_spec.template.nodes[0].task_node is not None
+    print(wf_spec.template)
 
     # The first signal s1, dependent on the first t1 call
     assert wf_spec.template.nodes[1].upstream_node_ids == ["n0"]

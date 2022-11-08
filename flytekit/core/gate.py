@@ -36,9 +36,9 @@ class Gate(object):
         self._sleep_duration = sleep_duration
         self._timeout = timeout or DEFAULT_TIMEOUT
         self._upstream_item = upstream_item
-
         self._literal_type = TypeEngine.to_literal_type(input_type) if input_type else None
 
+        # Determine the python interface if we can
         if self._sleep_duration:
             # Just a sleep so there is no interface
             self._python_interface = flyte_interface.Interface()
@@ -50,7 +50,8 @@ class Gate(object):
                 }
             )
         else:
-            self._python_interface = None  # We don't know how to find the python interface
+            # We don't know how to find the python interface here, approve() sets it below, See the code.
+            self._python_interface = None
 
     @property
     def name(self) -> str:
@@ -177,7 +178,6 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
         # We have reach back up to the entity that this promise came from, to get the python type, since
         # the approve function itself doesn't have a python interface.
         io_type = upstream_item.ref.node.flyte_entity.python_interface.outputs[upstream_item.var]
-
         io_var_name = upstream_item.var
     else:
         # We don't know the python type here. in local execution, downstream doesn't really use the type
