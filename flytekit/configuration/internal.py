@@ -35,11 +35,6 @@ class Images(object):
             return cfg.yaml_config.get("images", images)
 
 
-class Deck(object):
-    SECTION = "deck"
-    DISABLE_DECK = ConfigEntry(LegacyConfigEntry(SECTION, "disable_deck", bool))
-
-
 class AWS(object):
     SECTION = "aws"
     S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint"), YamlConfigEntry("storage.connection.endpoint"))
@@ -112,6 +107,7 @@ class Platform(object):
     INSECURE_SKIP_VERIFY = ConfigEntry(
         LegacyConfigEntry(SECTION, "insecure_skip_verify", bool), YamlConfigEntry("admin.insecureSkipVerify", bool)
     )
+    CONSOLE_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "console_endpoint"), YamlConfigEntry("console.endpoint"))
 
 
 class LocalSDK(object):

@@ -89,7 +89,7 @@ def task(
     secret_requests: Optional[List[Secret]] = None,
     execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     task_resolver: Optional[TaskResolverMixin] = None,
-    disable_deck: bool = False,
+    disable_deck: bool = True,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -227,7 +227,7 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
         super().__init__(TaskReference(project, domain, name, version), inputs, outputs)
 
         # Reference tasks shouldn't call the parent constructor, but the parent constructor is what sets the resolver
-        self._task_resolver = None
+        self._task_resolver = None  # type: ignore
 
 
 def reference_task(

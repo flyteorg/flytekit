@@ -34,6 +34,8 @@ Pyflyte
 
 Unlike ``flytectl``, think of this CLI as code-aware, which is responsible for the serialization (compilation) step in the registration flow. It will parse through the user code, looking for tasks, workflows, and launch plans, and compile them to `protobuf files <https://github.com/flyteorg/flyteidl/blob/0b20c5c99f9e964370d4f4ca663990ed56a14c7c/protos/flyteidl/core/workflow_closure.proto#L11-L18>`__.
 
+.. _pyflyte-run:
+
 What is ``pyflyte run``?
 ========================
 
@@ -44,6 +46,8 @@ It is not a fully featured production scale mode of operation, because it is des
 Suppose you execute a script that defines 10 tasks and a workflow that calls only 2 out of the 10 tasks. The remaining 8 tasks don’t get registered at that point.
 
 It is considered fast registration because when a script is executed using ``pyflyte run``, the script is bundled up and uploaded to FlyteAdmin. When the task is executed in the backend, this zipped file is extracted and used.
+
+.. _pyflyte-register:
 
 What is ``pyflyte register``?
 =============================

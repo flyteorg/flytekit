@@ -60,7 +60,7 @@ class StructuredDataset(object):
     def __init__(
         self,
         dataframe: typing.Optional[typing.Any] = None,
-        uri: Optional[str] = None,
+        uri: Optional[str, os.PathLike] = None,
         metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
         **kwargs,
     ):
@@ -73,10 +73,10 @@ class StructuredDataset(object):
         # This is not for users to set, the transformer will set this.
         self._literal_sd: Optional[literals.StructuredDataset] = None
         # Not meant for users to set, will be set by an open() call
-        self._dataframe_type = None
+        self._dataframe_type: Optional[Type[DF]] = None
 
     @property
-    def dataframe(self) -> Type[typing.Any]:
+    def dataframe(self) -> Optional[Type[DF]]:
         return self._dataframe
 
     @property
@@ -363,21 +363,18 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if isinstance(h, StructuredDatasetEncoder):
             top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
-            top_level = cls.DECODERS
+            top_level = cls.DECODERS  # type: ignore
         else:
             raise TypeError(f"We don't support this type of handler {h}")
         if h.python_type not in top_level:
             top_level[h.python_type] = {}
         if protocol not in top_level[h.python_type]:
             top_level[h.python_type][protocol] = {}
-        return top_level[h.python_type][protocol]
+        return top_level[h.python_type][protocol]  # type: ignore
 
     def __init__(self):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
         self._type_assertions_enabled = False
-
-        # Instances of StructuredDataset opt-in to the ability of being cached.
-        self._hash_overridable = True
 
     @classmethod
     def register_renderer(cls, python_type: Type, renderer: Renderable):
@@ -572,7 +569,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         sd_model.metadata._structured_dataset_type.format = handler.supported_format
         return Literal(scalar=Scalar(structured_dataset=sd_model))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
         """
         The only tricky thing with converting a Literal (say the output of an earlier task), to a Python value at
         the start of a task execution, is the column subsetting behavior. For example, if you have,
@@ -787,7 +786,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         """
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[StructuredDataset]:
         # todo: technically we should return the dataframe type specified in the constructor, but to do that,
         #   we'd have to store that, which we don't do today. See possibly #1363
         if literal_type.structured_dataset_type is not None:

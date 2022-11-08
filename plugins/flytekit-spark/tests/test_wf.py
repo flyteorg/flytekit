@@ -1,15 +1,11 @@
 import pandas as pd
 import pyspark
 from flytekitplugins.spark.task import Spark
+from typing_extensions import Annotated
 
 import flytekit
 from flytekit import kwtypes, task, workflow
 from flytekit.types.schema import FlyteSchema
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
 
 
 def test_wf1_with_spark():

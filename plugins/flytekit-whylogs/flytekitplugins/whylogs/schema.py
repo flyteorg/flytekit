@@ -1,6 +1,7 @@
 from typing import Type
 
 from whylogs.core import DatasetProfileView
+from whylogs.viz.extensions.reports.profile_summary import ProfileSummaryReport
 
 from flytekit import BlobType, FlyteContext
 from flytekit.extend import T, TypeEngine, TypeTransformer
@@ -42,9 +43,8 @@ class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
     def to_html(
         self, ctx: FlyteContext, python_val: DatasetProfileView, expected_python_type: Type[DatasetProfileView]
     ) -> str:
-        pandas_profile = str(python_val.to_pandas().to_html())
-        header = str("<h1>Profile View</h1> \n")
-        return header + pandas_profile
+        report = ProfileSummaryReport(target_view=python_val)
+        return report.report().data
 
 
 TypeEngine.register(WhylogsDatasetProfileTransformer())

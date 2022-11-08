@@ -63,3 +63,42 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
         result = runner.invoke(pyflyte.main, ["register", "core"])
         assert "Output given as None, using a temporary directory at" in result.output
         shutil.rmtree("core")
+
+
+@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_non_fast_register(mock_client, mock_remote):
+    mock_remote._client = mock_client
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value._upload_file.return_value = "dummy_md5_bytes", "dummy_native_url"
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        out = subprocess.run(["git", "init"], capture_output=True)
+        assert out.returncode == 0
+        os.makedirs("core", exist_ok=True)
+        with open(os.path.join("core", "sample.py"), "w") as f:
+            f.write(sample_file_contents)
+            f.close()
+        result = runner.invoke(pyflyte.main, ["register", "--non-fast", "--version", "a-version", "core"])
+        assert "Output given as None, using a temporary directory at" in result.output
+        shutil.rmtree("core")
+
+
+@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_non_fast_register_require_version(mock_client, mock_remote):
+    mock_remote._client = mock_client
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value._upload_file.return_value = "dummy_md5_bytes", "dummy_native_url"
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        out = subprocess.run(["git", "init"], capture_output=True)
+        assert out.returncode == 0
+        os.makedirs("core", exist_ok=True)
+        with open(os.path.join("core", "sample.py"), "w") as f:
+            f.write(sample_file_contents)
+            f.close()
+        result = runner.invoke(pyflyte.main, ["register", "--non-fast", "core"])
+        assert result.exit_code == 1
+        assert str(result.exception) == "Version is a required parameter in case --non-fast is specified."
+        shutil.rmtree("core")
