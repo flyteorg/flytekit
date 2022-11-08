@@ -52,21 +52,18 @@ docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.15
     # via flytekit
-flyteidl==1.2.3
+flyteidl==1.2.4
     # via flytekit
 googleapis-common-protos==1.56.4
     # via
     #   flyteidl
     #   grpcio-status
-grpcio==1.47.0
+grpcio==1.48.2
     # via
-    #   -r requirements.in
     #   flytekit
     #   grpcio-status
-grpcio-status==1.47.0
-    # via
-    #   -r requirements.in
-    #   flytekit
+grpcio-status==1.48.2
+    # via flytekit
 idna==3.4
     # via requests
 importlib-metadata==5.0.0
@@ -91,7 +88,7 @@ joblib==1.2.0
     # via flytekit
 jsonschema==3.2.0
     # via -r requirements.in
-keyring==23.9.3
+keyring==23.11.0
     # via flytekit
 markupsafe==2.1.1
     # via jinja2
@@ -217,7 +214,7 @@ websocket-client==0.59.0
     # via
     #   -r requirements.in
     #   docker
-wheel==0.38.1
+wheel==0.38.3
     # via flytekit
 wrapt==1.14.1
     # via
