@@ -200,6 +200,7 @@ class ReferenceEntity(object):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
+            print("compile reference entity")
             return self.compile(ctx, *args, **kwargs)
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
