@@ -602,6 +602,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         """
         print("compile flyte workflow")
         ctx = FlyteContextManager.current_context()
+        if ctx.execution_state.mode == ctx.execution_state.Mode.TASK_EXECUTION:
+            return
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
         prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""

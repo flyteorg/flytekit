@@ -51,7 +51,7 @@ class RemoteEntity(ABC):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-            print("compile flyte task")
+            print("compile flyte remote task")
             return self.compile(ctx, *args, **kwargs)
         elif (
             ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
