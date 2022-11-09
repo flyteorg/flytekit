@@ -29,6 +29,7 @@ import tempfile
 import typing
 from abc import abstractmethod
 from distutils import dir_util
+from functools import cache
 from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
@@ -138,6 +139,7 @@ class DataPersistencePlugins(object):
         cls._PLUGINS[protocol] = plugin
 
     @staticmethod
+    @cache
     def get_protocol(url: str):
         # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
         parts = re.split(r"(\:\:|\://)", url, 1)

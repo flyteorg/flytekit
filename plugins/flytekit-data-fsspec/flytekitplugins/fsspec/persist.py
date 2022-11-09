@@ -1,5 +1,6 @@
 import os
 import typing
+from functools import cache
 
 import fsspec
 from fsspec.registry import known_implementations
@@ -48,6 +49,7 @@ class FSSpecPersistence(DataPersistence):
         self._data_cfg = data_config if data_config else DataConfig.auto()
 
     @staticmethod
+    @cache
     def get_protocol(path: typing.Optional[str] = None):
         if path:
             return DataPersistencePlugins.get_protocol(path)
