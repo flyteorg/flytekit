@@ -15,7 +15,7 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import _dnsify
-from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
+from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, PythonFunctionWorkflow
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -578,6 +578,8 @@ def get_serializable(
         cp_entity = get_serializable_task(entity_mapping, settings, entity)
 
     elif isinstance(entity, WorkflowBase):
+        if isinstance(entity, PythonFunctionWorkflow):
+            entity.compile()
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, Node):

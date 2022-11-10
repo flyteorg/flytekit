@@ -734,7 +734,6 @@ def workflow(
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
         )
-        workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
 
