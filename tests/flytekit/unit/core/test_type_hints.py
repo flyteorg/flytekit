@@ -184,13 +184,11 @@ def test_wf1():
     assert my_wf._output_bindings[0].var == "o0"
     assert my_wf._output_bindings[0].binding.promise.var == "t1_int_output"
 
-    nt = typing.NamedTuple("SingleNT", t1_int_output=float)
+    nt = typing.NamedTuple("SingleNT", [("t1_int_output", float)])
 
     @task
     def t3(a: int) -> nt:
-        return nt(
-            a + 2,
-        )
+        return nt(a + 2)
 
     assert t3.python_interface.output_tuple_name == "SingleNT"
     assert t3.interface.outputs["t1_int_output"] is not None

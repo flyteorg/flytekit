@@ -227,10 +227,10 @@ class FlyteSchema(object):
 
     def __init__(
         self,
-        local_path: os.PathLike = None,
-        remote_path: os.PathLike = None,
+        local_path: typing.Optional[os.PathLike] = None,
+        remote_path: typing.Optional[os.PathLike] = None,
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
-        downloader: typing.Callable[[str, os.PathLike], None] = None,
+        downloader: typing.Optional[typing.Callable] = None,
     ):
 
         if supported_mode == SchemaOpenMode.READ and remote_path is None:
@@ -286,6 +286,7 @@ class FlyteSchema(object):
                     raise AssertionError("downloader cannot be None in read mode!")
                 # Only for readable objects if they are not downloaded already, we should download them
                 # Write objects should already have everything written to
+                assert self.remote_path is not None
                 self._downloader(self.remote_path, self.local_path)
                 self._downloaded = True
             if mode == SchemaOpenMode.WRITE:
@@ -303,7 +304,7 @@ class FlyteSchema(object):
         s = FlyteSchema.__class_getitem__(self.columns(), self.format())(
             local_path=self.local_path,
             # Dummy path is ok, as we will assume data is already downloaded and will not download again
-            remote_path=self.remote_path if self.remote_path else "",
+            remote_path=self.remote_path,
             supported_mode=SchemaOpenMode.READ,
         )
         s._downloaded = True

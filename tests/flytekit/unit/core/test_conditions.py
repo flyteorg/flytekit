@@ -283,7 +283,7 @@ def test_no_output_condition():
 
 
 def test_subworkflow_condition_named_tuple():
-    nt = typing.NamedTuple("SampleNamedTuple", b=int, c=str)
+    nt = typing.NamedTuple("SampleNamedTuple", [("b", int), ("c", str)])
 
     @task
     def t() -> nt:
@@ -302,13 +302,11 @@ def test_subworkflow_condition_named_tuple():
 
 
 def test_subworkflow_condition_single_named_tuple():
-    nt = typing.NamedTuple("SampleNamedTuple", b=int)
+    nt = typing.NamedTuple("SampleNamedTuple", [("b", int)])
 
     @task
     def t() -> nt:
-        return nt(
-            5,
-        )
+        return nt(5)
 
     @workflow
     def wf1() -> nt:

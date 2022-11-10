@@ -96,14 +96,12 @@ def test_normal_task():
 
 
 def test_more_normal_task():
-    nt = typing.NamedTuple("OneOutput", t1_str_output=str)
+    nt = typing.NamedTuple("OneOutput", [("t1_str_output", str)])
 
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return nt(
-            f"{a + 2}",
-        )
+        return nt(f"{a + 2}")
 
     @task
     def t1_nt(a: int) -> nt:
@@ -126,14 +124,12 @@ def test_more_normal_task():
 
 
 def test_reserved_keyword():
-    nt = typing.NamedTuple("OneOutput", outputs=str)
+    nt = typing.NamedTuple("OneOutput", [("outputs", str)])
 
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return nt(
-            f"{a + 2}",
-        )
+        return nt(f"{a + 2}")
 
     # Test that you can't name an output "outputs"
     with pytest.raises(FlyteAssertion):

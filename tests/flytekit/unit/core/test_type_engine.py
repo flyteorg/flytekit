@@ -17,7 +17,7 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
-from typing_extensions import Annotated
+from typing_extensions import Annotated, TypeAlias
 
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation
@@ -1374,21 +1374,21 @@ def test_multiple_annotations():
         TypeEngine.to_literal_type(t)
 
 
-TestSchema = FlyteSchema[kwtypes(some_str=str)]
+TestSchema = FlyteSchema[kwtypes(some_str=str)]  # type: ignore
 
 
 @dataclass_json
 @dataclass
 class InnerResult:
     number: int
-    schema: TestSchema
+    schema: TestSchema  # type: ignore
 
 
 @dataclass_json
 @dataclass
 class Result:
     result: InnerResult
-    schema: TestSchema
+    schema: TestSchema  # type: ignore
 
 
 def test_schema_in_dataclass():

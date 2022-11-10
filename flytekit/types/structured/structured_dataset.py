@@ -44,7 +44,7 @@ class StructuredDataset(object):
     class (that is just a model, a Python class representation of the protobuf).
     """
 
-    uri: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    uri: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     file_format: typing.Optional[str] = field(default=PARQUET, metadata=config(mm_field=fields.String()))
 
     DEFAULT_FILE_FORMAT = PARQUET
@@ -60,23 +60,23 @@ class StructuredDataset(object):
     def __init__(
         self,
         dataframe: typing.Optional[typing.Any] = None,
-        uri: Optional[str, os.PathLike] = None,
+        uri: typing.Optional[typing.Union[str, os.PathLike]] = None,
         metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
         **kwargs,
     ):
         self._dataframe = dataframe
         # Make these fields public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
-        self.uri = uri
+        self.uri = str(uri)
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._metadata = metadata
         # This is not for users to set, the transformer will set this.
         self._literal_sd: Optional[literals.StructuredDataset] = None
         # Not meant for users to set, will be set by an open() call
-        self._dataframe_type: Optional[Type[DF]] = None
+        self._dataframe_type: Optional[DF] = None
 
     @property
-    def dataframe(self) -> Optional[Type[DF]]:
+    def dataframe(self) -> Optional[DF]:
         return self._dataframe
 
     @property
@@ -381,7 +381,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         cls.Renderers[python_type] = renderer
 
     @classmethod
-    def register(cls, h: Handlers, default_for_type: Optional[bool] = False, override: Optional[bool] = False):
+    def register(cls, h: Handlers, default_for_type: bool = False, override: bool = False):
         """
         Call this with any Encoder or Decoder to register it with the flytekit type system. If your handler does not
         specify a protocol (e.g. s3, gs, etc.) field, then
@@ -691,6 +691,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 # Here we only render column information by default instead of opening the structured dataset.
                 col = typing.cast(StructuredDataset, python_val).columns()
                 df = pd.DataFrame(col, ["column type"])
+                assert hasattr(df, "to_html")
                 return df.to_html()
         else:
             df = python_val

@@ -105,7 +105,7 @@ def test_diabetes():
         # We will fake train test split. Just return the same dataset multiple times
         return x, x, y, y
 
-    nt = typing.NamedTuple("Outputs", model=FlyteFile[MODELSER_JOBLIB])
+    nt = typing.NamedTuple("Outputs", [("model", FlyteFile[MODELSER_JOBLIB])])
 
     @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def fit(x: FlyteSchema[FEATURE_COLUMNS], y: FlyteSchema[CLASSES_COLUMNS], hyperparams: dict) -> nt:

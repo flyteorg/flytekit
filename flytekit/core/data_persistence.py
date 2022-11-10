@@ -94,7 +94,7 @@ class DataPersistence(object):
         pass
 
     @abstractmethod
-    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths: str) -> str:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths: str) -> os.PathLike:
         """
         if add_protocol is true then <protocol> is prefixed else
         Constructs a path in the format <base><delim>*args
@@ -138,7 +138,7 @@ class DataPersistencePlugins(object):
         cls._PLUGINS[protocol] = plugin
 
     @staticmethod
-    def get_protocol(url: str):
+    def get_protocol(url: str) -> str:
         # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
         parts = re.split(r"(\:\:|\://)", url, 1)
         if len(parts) > 1:
@@ -350,7 +350,7 @@ class FileAccessProvider(object):
 
     def construct_random_path(
         self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
-    ) -> str:
+    ) -> os.PathLike:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
@@ -363,7 +363,7 @@ class FileAccessProvider(object):
                 logger.warning(f"No filename detected in {file_path_or_file_name}, generating random path")
         return persist.construct_path(False, True, key)
 
-    def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
+    def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> os.PathLike:
         """
         Constructs a randomized path on the configured raw_output_prefix (persistence layer). the random bit is a UUID
         and allows for disambiguating paths within the same directory.
@@ -375,7 +375,7 @@ class FileAccessProvider(object):
     def get_random_remote_directory(self):
         return self.get_random_remote_path(None)
 
-    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
+    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> os.PathLike:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
