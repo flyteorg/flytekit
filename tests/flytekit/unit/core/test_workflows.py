@@ -325,10 +325,14 @@ def test_structured_dataset_wf():
 
 def test_compile_wf_at_compile_time():
     ctx = FlyteContextManager.current_context()
-    ctx.with_execution_state(ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION))
+    with FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.new_execution_state().with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ):
 
-    @workflow
-    def wf():
-        t4()
+        @workflow
+        def wf():
+            t4()
 
-    assert len(wf.nodes) == 0
+        assert len(wf.nodes) == 0

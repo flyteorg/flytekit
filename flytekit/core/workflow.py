@@ -733,7 +733,7 @@ def workflow(
         )
 
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state.mode == ctx.execution_state.Mode.TASK_EXECUTION:
+        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
             workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
