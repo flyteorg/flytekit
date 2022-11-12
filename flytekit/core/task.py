@@ -87,7 +87,7 @@ def task(
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
     secret_requests: Optional[List[Secret]] = None,
-    execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
+    execution_mode: PythonFunctionTask.ExecutionBehavior = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     task_resolver: Optional[TaskResolverMixin] = None,
     disable_deck: bool = True,
 ) -> Union[Callable, PythonFunctionTask]:
@@ -222,7 +222,7 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):
     """
 
     def __init__(
-        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, Type], outputs: Dict[str, Type]
+        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, type], outputs: Dict[str, Type]
     ):
         super().__init__(TaskReference(project, domain, name, version), inputs, outputs)
 

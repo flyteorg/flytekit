@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict, Optional, Tuple, Type, TypeVar
 
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
@@ -22,10 +22,10 @@ class SQLTask(PythonTask[T]):
         self,
         name: str,
         query_template: str,
+        task_config: T,
         task_type="sql_task",
-        inputs: Optional[Dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
         metadata: Optional[TaskMetadata] = None,
-        task_config: Optional[T] = None,
         outputs: Dict[str, Type] = None,
         **kwargs,
     ):

@@ -51,13 +51,13 @@ class SchemaReader(typing.Generic[T]):
     Use the simplified base LocalIOSchemaReader for non distributed dataframes
     """
 
-    def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, from_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         self._from_path = from_path
         self._fmt = fmt
         self._columns = cols
 
     @property
-    def from_path(self) -> str:
+    def from_path(self) -> os.PathLike:
         return self._from_path
 
     @property
@@ -76,7 +76,7 @@ class SchemaReader(typing.Generic[T]):
 
 
 class SchemaWriter(typing.Generic[T]):
-    def __init__(self, to_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, to_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         self._to_path = to_path
         self._fmt = fmt
         self._columns = cols
@@ -84,7 +84,7 @@ class SchemaWriter(typing.Generic[T]):
         self._file_name_gen = generate_ordered_files(Path(self._to_path), 1024)
 
     @property
-    def to_path(self) -> str:
+    def to_path(self) -> os.PathLike:
         return self._to_path
 
     @property
@@ -100,31 +100,37 @@ class SchemaWriter(typing.Generic[T]):
 
 class LocalIOSchemaReader(SchemaReader[T]):
     def __init__(self, from_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
-        super().__init__(str(from_path), cols, fmt)
+        super().__init__(from_path, cols, fmt)
 
     @abstractmethod
     def _read(self, *path: os.PathLike, **kwargs) -> T:
         pass
 
     def iter(self, **kwargs) -> typing.Generator[T, None, None]:
-        with os.scandir(self._from_path) as it:
+        with os.scandir(self._from_path) as it:  # type: ignore
             for entry in it:
-                if not entry.name.startswith(".") and entry.is_file():
-                    yield self._read(Path(entry.path), **kwargs)
+                if (
+                    not typing.cast(os.DirEntry, entry).name.startswith(".")
+                    and typing.cast(os.DirEntry, entry).is_file()
+                ):
+                    yield self._read(Path(typing.cast(os.DirEntry, entry).path), **kwargs)
 
     def all(self, **kwargs) -> T:
         files: typing.List[os.PathLike] = []
-        with os.scandir(self._from_path) as it:
+        with os.scandir(self._from_path) as it:  # type: ignore
             for entry in it:
-                if not entry.name.startswith(".") and entry.is_file():
-                    files.append(Path(entry.path))
+                if (
+                    not typing.cast(os.DirEntry, entry).name.startswith(".")
+                    and typing.cast(os.DirEntry, entry).is_file()
+                ):
+                    files.append(Path(typing.cast(os.DirEntry, entry).path))
 
         return self._read(*files, **kwargs)
 
 
 class LocalIOSchemaWriter(SchemaWriter[T]):
     def __init__(self, to_local_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
-        super().__init__(str(to_local_path), cols, fmt)
+        super().__init__(to_local_path, cols, fmt)
 
     @abstractmethod
     def _write(self, df: T, path: os.PathLike, **kwargs):
@@ -290,10 +296,11 @@ class FlyteSchema(object):
                 self._downloader(self.remote_path, self.local_path)
                 self._downloaded = True
             if mode == SchemaOpenMode.WRITE:
-                return h.writer(typing.cast(str, self.local_path), self.columns(), self.format())
-            return h.reader(typing.cast(str, self.local_path), self.columns(), self.format())
+                return h.writer(self.local_path, self.columns(), self.format())
+            return h.reader(self.local_path, self.columns(), self.format())
 
         # Remote IO is handled. So we will just pass the remote reference to the object
+        assert self.remote_path is not None
         if mode == SchemaOpenMode.WRITE:
             return h.writer(self.remote_path, self.columns(), self.format())
         return h.reader(self.remote_path, self.columns(), self.format())

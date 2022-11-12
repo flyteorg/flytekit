@@ -21,10 +21,16 @@ import collections
 import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
 from flytekit.configuration import SerializationSettings
-from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
+from flytekit.core.context_manager import (
+    ExecutionParameters,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+)
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
@@ -168,7 +174,7 @@ class Task(object):
         FlyteEntities.entities.append(self)
 
     @property
-    def interface(self) -> Optional[_interface_models.TypedInterface]:
+    def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
     @property
@@ -232,8 +238,8 @@ class Task(object):
         kwargs = translate_inputs_to_literals(
             ctx,
             incoming_values=kwargs,
-            flyte_interface_types=self.interface.inputs,  # type: ignore
-            native_types=self.get_input_types(),
+            flyte_interface_types=self.interface.inputs,
+            native_types=self.get_input_types(),  # type: ignore
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
@@ -258,8 +264,8 @@ class Task(object):
             else:
                 logger.info("Cache hit")
         else:
-            es = ctx.execution_state
-            b = es.user_space_params.with_task_sandbox()
+            es = cast(ExecutionState, ctx.execution_state)
+            b = cast(ExecutionParameters, es.user_space_params).with_task_sandbox()
             ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
             outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
@@ -279,8 +285,8 @@ class Task(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
-    def __call__(self, *args, **kwargs):
-        return flyte_entity_call_handler(self, *args, **kwargs)
+    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
@@ -406,19 +412,19 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         return self._task_config
 
-    def get_type_for_input_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+    def get_type_for_input_var(self, k: str, v: Any) -> Type[Any]:
         """
         Returns the python type for an input variable by name.
         """
         return self._python_interface.inputs[k]
 
-    def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+    def get_type_for_output_var(self, k: str, v: Any) -> Type[Any]:
         """
         Returns the python type for the specified output variable by name.
         """
         return self._python_interface.outputs[k]
 
-    def get_input_types(self) -> Optional[Dict[str, type]]:
+    def get_input_types(self) -> Dict[str, type]:
         """
         Returns the names and python types as a dictionary for the inputs of this task.
         """
@@ -464,7 +470,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
+            ctx.with_execution_state(
+                cast(ExecutionState, ctx.execution_state).with_params(user_space_params=new_user_params)
+            )
             # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
@@ -544,7 +552,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # After the execute has been successfully completed
             return outputs_literal_map
 
-    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+    def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
         """
         This is the method that will be invoked directly before executing the task method and before all the inputs
         are converted. One particular case where this is useful is if the context is to be modified for the user process
@@ -562,7 +570,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         pass
 
-    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
+    def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
         """
         Post execute is called after the execution has completed, with the user_params and can be used to clean-up,
         or alter the outputs to match the intended tasks outputs. If not overridden, then this function is a No-op

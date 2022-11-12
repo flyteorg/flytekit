@@ -35,12 +35,12 @@ fmt: ## Format code with black and isort
 
 .PHONY: lint
 lint: ## Run linters
-	# mypy flytekit/core || true
-	mypy flytekit/types || true
-	# mypy tests/flytekit/unit/core || true
+	mypy flytekit/core
+	mypy flytekit/types
+	mypy tests/flytekit/unit/core
 	# Exclude setup.py to fix error: Duplicate module named "setup"
 	# mypy plugins --exclude setup.py || true
-	# pre-commit run --all-files
+	pre-commit run --all-files
 
 .PHONY: spellcheck
 spellcheck:  ## Runs a spellchecker over all code and documentation

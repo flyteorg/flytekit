@@ -192,7 +192,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             self._wf.compile(**kwargs)
 
             wf = self._wf
-            model_entities = OrderedDict()
+            model_entities: OrderedDict = OrderedDict()
             # See comment on reference entity checking a bit down below in this function.
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.

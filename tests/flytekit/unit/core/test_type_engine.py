@@ -17,7 +17,7 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
-from typing_extensions import Annotated, TypeAlias
+from typing_extensions import Annotated
 
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation

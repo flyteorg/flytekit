@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
@@ -175,9 +175,9 @@ class WorkflowBase(object):
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
         self._interface = transform_interface_to_typed_interface(python_interface)
-        self._inputs = {}
-        self._unbound_inputs = set()
-        self._nodes = []
+        self._inputs: Dict[str, Promise] = {}
+        self._unbound_inputs: set = set()
+        self._nodes: List[Node] = []
         self._output_bindings: List[_literal_models.Binding] = []
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)
@@ -191,11 +191,11 @@ class WorkflowBase(object):
         return extract_obj_name(self._name)
 
     @property
-    def workflow_metadata(self) -> Optional[WorkflowMetadata]:
+    def workflow_metadata(self) -> WorkflowMetadata:
         return self._workflow_metadata
 
     @property
-    def workflow_metadata_defaults(self):
+    def workflow_metadata_defaults(self) -> WorkflowMetadataDefaults:
         return self._workflow_metadata_defaults
 
     @property
@@ -228,7 +228,7 @@ class WorkflowBase(object):
             interruptible=self.workflow_metadata_defaults.interruptible,
         )
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
         """
         Workflow needs to fill in default arguments before invoking the call handler.
         """
@@ -489,7 +489,7 @@ class ImperativeWorkflow(WorkflowBase):
                     self._unbound_inputs.remove(input_value)
             return n  # type: ignore
 
-    def add_workflow_input(self, input_name: str, python_type: Type) -> Interface:
+    def add_workflow_input(self, input_name: str, python_type: Type) -> Promise:
         """
         Adds an input to the workflow.
         """
@@ -516,7 +516,8 @@ class ImperativeWorkflow(WorkflowBase):
                     f"If specifying a list or dict of Promises, you must specify the python_type type for {output_name}"
                     f" starting with the container type (e.g. List[int]"
                 )
-            python_type = p.ref.node.flyte_entity.python_interface.outputs[p.var]
+            promise = cast(Promise, p)
+            python_type = promise.ref.node.flyte_entity.python_interface.outputs[promise.var]
             logger.debug(f"Inferring python type for wf output {output_name} from Promise provided {python_type}")
 
         flyte_type = TypeEngine.to_literal_type(python_type=python_type)
@@ -569,8 +570,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         workflow_function: Callable,
-        metadata: Optional[WorkflowMetadata],
-        default_metadata: Optional[WorkflowMetadataDefaults],
+        metadata: WorkflowMetadata,
+        default_metadata: WorkflowMetadataDefaults,
         docstring: Docstring = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
@@ -592,7 +593,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def function(self):
         return self._workflow_function
 
-    def task_name(self, t: PythonAutoContainerTask) -> str:
+    def task_name(self, t: PythonAutoContainerTask) -> str:  # type: ignore
         return f"{self.name}.{t.__module__}.{t.name}"
 
     def compile(self, **kwargs):
@@ -741,7 +742,7 @@ def workflow(
         return wrapper
 
 
-class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):
+class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):  # type: ignore
     """
     A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This
     object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.

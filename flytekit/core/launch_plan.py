@@ -74,7 +74,7 @@ class LaunchPlan(object):
 
     # The reason we cache is simply because users may get the default launch plan twice for a single Workflow. We
     # don't want to create two defaults, could be confusing.
-    CACHE = {}
+    CACHE: typing.Dict[str, LaunchPlan] = {}
 
     @staticmethod
     def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.WorkflowBase) -> LaunchPlan:
@@ -130,7 +130,7 @@ class LaunchPlan(object):
         temp_inputs = {}
         for k, v in default_inputs.items():
             temp_inputs[k] = (workflow.python_interface.inputs[k], v)
-        temp_interface = Interface(inputs=temp_inputs, outputs={})
+        temp_interface = Interface(inputs=temp_inputs, outputs={})  # type: ignore
         temp_signature = transform_inputs_to_parameters(ctx, temp_interface)
         wf_signature_parameters._parameters.update(temp_signature.parameters)
 
@@ -313,7 +313,7 @@ class LaunchPlan(object):
         self._parameters = _interface_models.ParameterMap(parameters=parameters)
         self._fixed_inputs = fixed_inputs
         # See create() for additional information
-        self._saved_inputs = {}
+        self._saved_inputs: Dict[str, Any] = {}
 
         self._schedule = schedule
         self._notifications = notifications or []
@@ -335,7 +335,6 @@ class LaunchPlan(object):
         labels: _common_models.Labels = None,
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
         security_context: typing.Optional[security.SecurityContext] = None,
     ) -> LaunchPlan:
@@ -349,7 +348,6 @@ class LaunchPlan(object):
             labels=labels or self.labels,
             annotations=annotations or self.annotations,
             raw_output_data_config=raw_output_data_config or self.raw_output_data_config,
-            auth_role=auth_role or self._auth_role,
             max_parallelism=max_parallelism or self.max_parallelism,
             security_context=security_context or self.security_context,
         )

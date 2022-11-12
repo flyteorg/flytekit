@@ -33,5 +33,5 @@ class Resources(object):
 
 @dataclass
 class ResourceSpec(object):
-    requests: Optional[Resources] = None
-    limits: Optional[Resources] = None
+    requests: Resources
+    limits: Resources

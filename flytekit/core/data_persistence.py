@@ -54,7 +54,7 @@ class DataPersistence(object):
     Base abstract type for all DataPersistence operations. This can be extended using the flytekitplugins architecture
     """
 
-    def __init__(self, name: str, default_prefix: typing.Optional[str] = None, **kwargs):
+    def __init__(self, name: str = "", default_prefix: typing.Optional[str] = None, **kwargs):
         self._name = name
         self._default_prefix = default_prefix
 
@@ -94,7 +94,7 @@ class DataPersistence(object):
         pass
 
     @abstractmethod
-    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths: str) -> os.PathLike:
+    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths: str) -> str:
         """
         if add_protocol is true then <protocol> is prefixed else
         Constructs a path in the format <base><delim>*args
@@ -350,7 +350,7 @@ class FileAccessProvider(object):
 
     def construct_random_path(
         self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
-    ) -> os.PathLike:
+    ) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
@@ -363,7 +363,7 @@ class FileAccessProvider(object):
                 logger.warning(f"No filename detected in {file_path_or_file_name}, generating random path")
         return persist.construct_path(False, True, key)
 
-    def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> os.PathLike:
+    def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
         Constructs a randomized path on the configured raw_output_prefix (persistence layer). the random bit is a UUID
         and allows for disambiguating paths within the same directory.
@@ -375,7 +375,7 @@ class FileAccessProvider(object):
     def get_random_remote_directory(self):
         return self.get_random_remote_path(None)
 
-    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> os.PathLike:
+    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
@@ -437,7 +437,7 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             )
 
-    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart=False):
+    def put_data(self, local_path: str, remote_path: str, is_multipart=False):
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
         we don't use the true local proxy if the remote path is a file://

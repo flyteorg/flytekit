@@ -50,8 +50,8 @@ def _dnsify(value: str) -> str:
 
 def _get_container_definition(
     image: str,
-    command: List[str],
-    args: List[str],
+    command: Optional[List[str]] = None,
+    args: Optional[List[str]] = None,
     data_loading_config: Optional[_task_models.DataLoadingConfig] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,

@@ -73,7 +73,7 @@ class StructuredDataset(object):
         # This is not for users to set, the transformer will set this.
         self._literal_sd: Optional[literals.StructuredDataset] = None
         # Not meant for users to set, will be set by an open() call
-        self._dataframe_type: Optional[DF] = None
+        self._dataframe_type: Optional[DF] = None  # type: ignore
 
     @property
     def dataframe(self) -> Optional[DF]:
@@ -254,7 +254,7 @@ class StructuredDatasetDecoder(ABC):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> Union[DF, Generator[DF, None, None]]:
+    ) -> Union[DF, typing.Iterator[DF]]:
         """
         This is code that will be called by the dataset transformer engine to ultimately translate from a Flyte Literal
         value into a Python instance.
@@ -561,7 +561,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # least as good as the type of the interface.
         if sd_model.metadata is None:
             sd_model._metadata = StructuredDatasetMetadata(structured_literal_type)
-        if sd_model.metadata.structured_dataset_type is None:
+        if sd_model.metadata and sd_model.metadata.structured_dataset_type is None:
             sd_model.metadata._structured_dataset_type = structured_literal_type
         # Always set the format here to the format of the handler.
         # Note that this will always be the same as the incoming format except for when the fallback handler
@@ -691,8 +691,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 # Here we only render column information by default instead of opening the structured dataset.
                 col = typing.cast(StructuredDataset, python_val).columns()
                 df = pd.DataFrame(col, ["column type"])
-                assert hasattr(df, "to_html")
-                return df.to_html()
+                if hasattr(df, "to_html"):
+                    return df.to_html()  # type: ignore
+                return ""
         else:
             df = python_val
 
@@ -728,10 +729,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         sd: literals.StructuredDataset,
         df_type: Type[DF],
         updated_metadata: StructuredDatasetMetadata,
-    ) -> Generator[DF, None, None]:
+    ) -> typing.Iterator[DF]:
         protocol = protocol_prefix(sd.uri)
         decoder = self.DECODERS[df_type][protocol][sd.metadata.structured_dataset_type.format]
-        result = decoder.decode(ctx, sd, updated_metadata)
+        result: Union[DF, typing.Iterator[DF]] = decoder.decode(ctx, sd, updated_metadata)
         if not isinstance(result, types.GeneratorType):
             raise ValueError(f"Decoder {decoder} didn't return iterator {result} but should have from {sd}")
         return result
@@ -746,7 +747,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 
     def _convert_ordered_dict_of_columns_to_list(
-        self, column_map: typing.OrderedDict[str, Type]
+        self, column_map: typing.Optional[typing.OrderedDict[str, Type]]
     ) -> typing.List[StructuredDatasetType.DatasetColumn]:
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         if column_map is None or len(column_map) == 0:
@@ -757,10 +758,12 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return converted_cols
 
     def _get_dataset_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
-        original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)
+        original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)  # type: ignore
 
         # Get the column information
-        converted_cols = self._convert_ordered_dict_of_columns_to_list(column_map)
+        converted_cols: typing.List[
+            StructuredDatasetType.DatasetColumn
+        ] = self._convert_ordered_dict_of_columns_to_list(column_map)
 
         # Get the format
         default_format = (

@@ -21,7 +21,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 
-@dataclass
+@dataclass  # type: ignore
 class Reference(ABC):
     project: str
     domain: str
@@ -66,7 +66,7 @@ class ReferenceEntity(object):
     def __init__(
         self,
         reference: Union[WorkflowReference, TaskReference, LaunchPlanReference],
-        inputs: Optional[Dict[str, Union[Type[Any], Tuple[Type[Any], Any]]]],
+        inputs: Dict[str, type],
         outputs: Dict[str, Type],
     ):
         if (

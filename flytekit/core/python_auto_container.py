@@ -3,8 +3,7 @@ from __future__ import annotations
 import importlib
 import re
 from abc import ABC
-from types import ModuleType
-from typing import Callable, Dict, List, Optional, TypeVar, Union
+from typing import Callable, Dict, List, Optional, TypeVar
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
@@ -99,7 +98,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self._get_command_fn = self.get_default_command
 
     @property
-    def task_resolver(self) -> Optional[TaskResolverMixin]:
+    def task_resolver(self) -> TaskResolverMixin:
         return self._task_resolver
 
     @property
@@ -188,14 +187,14 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "DefaultTaskResolver"
 
-    def load_task(self, loader_args: List[Union[T, ModuleType]]) -> PythonAutoContainerTask:
+    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 
-        task_module = importlib.import_module(task_module)
+        task_module = importlib.import_module(name=task_module)  # type: ignore
         task_def = getattr(task_module, task_name)
         return task_def
 
-    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
         from flytekit.core.python_function_task import PythonFunctionTask
 
         if isinstance(task, PythonFunctionTask):
@@ -205,7 +204,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
             _, m, t, _ = extract_task_module(task)
             return ["task-module", m, "task-name", t]
 
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
         raise Exception("should not be needed")
 
 

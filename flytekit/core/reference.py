@@ -15,7 +15,7 @@ def get_reference_entity(
     domain: str,
     name: str,
     version: str,
-    inputs: Dict[str, Type],
+    inputs: Dict[str, type],
     outputs: Dict[str, Type],
 ):
     """
