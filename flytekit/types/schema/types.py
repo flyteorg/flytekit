@@ -292,7 +292,6 @@ class FlyteSchema(object):
                     raise AssertionError("downloader cannot be None in read mode!")
                 # Only for readable objects if they are not downloaded already, we should download them
                 # Write objects should already have everything written to
-                assert self.remote_path is not None
                 self._downloader(self.remote_path, self.local_path)
                 self._downloaded = True
             if mode == SchemaOpenMode.WRITE:
@@ -300,7 +299,6 @@ class FlyteSchema(object):
             return h.reader(self.local_path, self.columns(), self.format())
 
         # Remote IO is handled. So we will just pass the remote reference to the object
-        assert self.remote_path is not None
         if mode == SchemaOpenMode.WRITE:
             return h.writer(self.remote_path, self.columns(), self.format())
         return h.reader(self.remote_path, self.columns(), self.format())

@@ -691,9 +691,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 # Here we only render column information by default instead of opening the structured dataset.
                 col = typing.cast(StructuredDataset, python_val).columns()
                 df = pd.DataFrame(col, ["column type"])
-                if hasattr(df, "to_html"):
-                    return df.to_html()  # type: ignore
-                return ""
+                return df.to_html()  # type: ignore
         else:
             df = python_val
 

@@ -364,11 +364,15 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if hasattr(python_type, "__origin__"):
             ot = getattr(python_type, "__origin__")
-            args = getattr(python_type, "__args__")
             if ot is list:
-                return [self._serialize_flyte_type(v, args[0]) for v in cast(list, python_val)]
+                return [
+                    self._serialize_flyte_type(v, getattr(python_type, "__args__")[0]) for v in cast(list, python_val)
+                ]
             if ot is dict:
-                return {k: self._serialize_flyte_type(v, args[1]) for k, v in cast(dict, python_val).items()}
+                return {
+                    k: self._serialize_flyte_type(v, getattr(python_type, "__args__")[1])
+                    for k, v in cast(dict, python_val).items()
+                }
 
         if not dataclasses.is_dataclass(python_type):
             return python_val
@@ -1182,7 +1186,7 @@ class DictTransformer(TypeTransformer[dict]):
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
         """
         tp = self.get_dict_types(t)
-        if tp is not None:
+        if tp:
             if tp[0] == str:
                 try:
                     sub_type = TypeEngine.to_literal_type(cast(type, tp[1]))
