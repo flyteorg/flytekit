@@ -362,14 +362,13 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.schema.types import FlyteSchema
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
-        has_attr = hasattr(python_type, "__origin__")
-        ot = getattr(python_type, "__origin__")
-        args = getattr(python_type, "__args__")
-        if has_attr and ot is list:
-            return [self._serialize_flyte_type(v, args[0]) for v in cast(list, python_val)]
-
-        if has_attr and ot is dict:
-            return {k: self._serialize_flyte_type(v, args[1]) for k, v in cast(dict, python_val).items()}
+        if hasattr(python_type, "__origin__"):
+            ot = getattr(python_type, "__origin__")
+            args = getattr(python_type, "__args__")
+            if ot is list:
+                return [self._serialize_flyte_type(v, args[0]) for v in cast(list, python_val)]
+            if ot is dict:
+                return {k: self._serialize_flyte_type(v, args[1]) for k, v in cast(dict, python_val).items()}
 
         if not dataclasses.is_dataclass(python_type):
             return python_val
