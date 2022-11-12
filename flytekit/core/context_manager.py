@@ -27,13 +27,14 @@ from datetime import datetime
 from enum import Enum
 from typing import Generator, List, Optional, Union
 
-from flytekit import LaunchPlan
 from flytekit.clients import friendly as friendly_client  # noqa
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
+from flytekit.core.workflow import WorkflowBase
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
 from flytekit.loggers import logger, user_space_logger
@@ -49,7 +50,7 @@ if typing.TYPE_CHECKING:
 flyte_context_Var: ContextVar[typing.List[FlyteContext]] = ContextVar("", default=[])
 
 if typing.TYPE_CHECKING:
-    from flytekit.core.base_task import TaskResolverMixin
+    from flytekit.core.base_task import Task, TaskResolverMixin
 
 
 # Identifier fields use placeholders for registration-time substitution.
@@ -853,7 +854,7 @@ class FlyteEntities(object):
      registration process
     """
 
-    entities: LaunchPlan = []
+    entities: List[LaunchPlan | Task | WorkflowBase] = []
 
 
 FlyteContextManager.initialize()
