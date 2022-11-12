@@ -76,7 +76,7 @@ class SchemaReader(typing.Generic[T]):
 
 
 class SchemaWriter(typing.Generic[T]):
-    def __init__(self, to_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, to_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         self._to_path = to_path
         self._fmt = fmt
         self._columns = cols
@@ -84,7 +84,7 @@ class SchemaWriter(typing.Generic[T]):
         self._file_name_gen = generate_ordered_files(Path(self._to_path), 1024)
 
     @property
-    def to_path(self) -> os.PathLike:
+    def to_path(self) -> str:
         return self._to_path
 
     @property
@@ -129,7 +129,7 @@ class LocalIOSchemaReader(SchemaReader[T]):
 
 
 class LocalIOSchemaWriter(SchemaWriter[T]):
-    def __init__(self, to_local_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, to_local_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(to_local_path, cols, fmt)
 
     @abstractmethod
@@ -233,8 +233,8 @@ class FlyteSchema(object):
 
     def __init__(
         self,
-        local_path: typing.Optional[os.PathLike] = None,
-        remote_path: typing.Optional[os.PathLike] = None,
+        local_path: typing.Optional[str] = None,
+        remote_path: typing.Optional[str] = None,
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
         downloader: typing.Optional[typing.Callable] = None,
     ):
@@ -259,7 +259,7 @@ class FlyteSchema(object):
         self._downloader = downloader
 
     @property
-    def local_path(self) -> os.PathLike:
+    def local_path(self) -> str:
         return self._local_path
 
     @property
@@ -309,7 +309,7 @@ class FlyteSchema(object):
         s = FlyteSchema.__class_getitem__(self.columns(), self.format())(
             local_path=self.local_path,
             # Dummy path is ok, as we will assume data is already downloaded and will not download again
-            remote_path=self.remote_path,
+            remote_path=self.remote_path if self.remote_path else "",
             supported_mode=SchemaOpenMode.READ,
         )
         s._downloaded = True

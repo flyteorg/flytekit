@@ -81,7 +81,8 @@ def numpy_type():
             structured_dataset: StructuredDataset,
             structured_dataset_type: StructuredDatasetType,
         ) -> literals.StructuredDataset:
-            path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+            path = structured_dataset.uri or ctx.file_access.get_random_remote_directory()
+            print("numpy", path)
             df = typing.cast(np.ndarray, structured_dataset.dataframe)
             name = ["col" + str(i) for i in range(len(df))]
             table = pa.Table.from_arrays(df, name)
@@ -218,19 +219,19 @@ def wf():
     df = generate_pandas()
     np_array = generate_numpy()
     arrow_df = generate_arrow()
-    t1(dataframe=df)
-    t1a(dataframe=df)
-    t2(dataframe=df)
-    t3(dataset=StructuredDataset(uri=PANDAS_PATH))
-    t3a(dataset=StructuredDataset(uri=PANDAS_PATH))
-    t4(dataset=StructuredDataset(uri=PANDAS_PATH))
-    t5(dataframe=df)
-    t6(dataset=StructuredDataset(uri=BQ_PATH))
-    t7(df1=df, df2=df)
-    t8(dataframe=arrow_df)
-    t8a(dataframe=arrow_df)
+    # t1(dataframe=df)
+    # t1a(dataframe=df)
+    # t2(dataframe=df)
+    # t3(dataset=StructuredDataset(uri=PANDAS_PATH))
+    # t3a(dataset=StructuredDataset(uri=PANDAS_PATH))
+    # t4(dataset=StructuredDataset(uri=PANDAS_PATH))
+    # t5(dataframe=df)
+    # t6(dataset=StructuredDataset(uri=BQ_PATH))
+    # t7(df1=df, df2=df)
+    # t8(dataframe=arrow_df)
+    # t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
-    t10(dataset=StructuredDataset(uri=NUMPY_PATH))
+    # t10(dataset=StructuredDataset(uri=NUMPY_PATH))
 
 
 def test_structured_dataset_wf():
