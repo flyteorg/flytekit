@@ -43,7 +43,7 @@ class Interface(object):
             primarily used when handling one-element NamedTuples.
         :param docstring: Docstring of the annotated @task or @workflow from which the interface derives from.
         """
-        self._inputs: Dict[str, Tuple[Type, Any]] | Dict[str, Type]
+        self._inputs: Dict[str, Tuple[Type, Any]] | Dict[str, Type] = {}  # type: ignore
         if inputs:
             for k, v in inputs.items():
                 if type(v) is tuple and len(cast(Tuple, v)) > 1:

@@ -32,9 +32,7 @@ from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
-from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
-from flytekit.core.workflow import WorkflowBase
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
 from flytekit.loggers import logger, user_space_logger
@@ -854,7 +852,7 @@ class FlyteEntities(object):
      registration process
     """
 
-    entities: List[LaunchPlan | Task | WorkflowBase] = []
+    entities: List["LaunchPlan" | Task | "WorkflowBase"] = []  # type: ignore
 
 
 FlyteContextManager.initialize()
