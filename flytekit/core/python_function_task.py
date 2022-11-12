@@ -269,7 +269,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 ctx.with_execution_state(updated_exec_state).with_serialization_settings(_LOCAL_ONLY_SS)
             ) as ctx:
                 logger.debug(f"Running compilation for {self} as part of local run as check")
-                self.compile_into_workflow(ctx, task_function, **kwargs)
+                # self.compile_into_workflow(ctx, task_function, **kwargs)
                 logger.info("Executing Dynamic workflow, using raw inputs")
                 return exception_scopes.user_entry_point(task_function)(**kwargs)
 

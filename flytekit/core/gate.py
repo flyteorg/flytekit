@@ -12,6 +12,8 @@ from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.types import LiteralType
+from flytekit.core.context_manager import FlyteContextManager
+
 
 DEFAULT_TIMEOUT = datetime.timedelta(hours=1)
 
@@ -92,7 +94,7 @@ class Gate(object):
     # This is to satisfy the LocallyExecutable protocol
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         if self.sleep_duration:
-            print(f"Mock sleeping {self.name} for {self.sleep_duration}")
+            print(f"Mock sleeping for {self.sleep_duration}")
             return VoidPromise(self.name)
 
         # Trigger stdin
@@ -127,7 +129,8 @@ class Gate(object):
             raise ValueError("upstream item should not be none")
         x = input(f"Pausing execution for {self.name}, value is: {self._upstream_item} approve [Y/n]: ")
         if x != "n":
-            return self._upstream_item
+            # Think we need to return a promise here.
+            return [self._upstream_item]
         else:
             raise FlyteValueException(f"User did not approve the transaction for gate node {self.name}")
 
@@ -150,6 +153,16 @@ def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing
     return flyte_entity_call_handler(g)
 
 
+def sleep(duration: datetime.timedelta):
+    """
+    :param duration:
+    :return:
+    """
+    g = Gate("sleep-gate", sleep_duration=duration)
+
+    return flyte_entity_call_handler(g)
+
+
 def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: str, timeout: datetime.timedelta):
     """
     Create a Gate object. This object will function like a task. Note that unlike a task,
@@ -167,8 +180,8 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
     if upstream_item is None or isinstance(upstream_item, VoidPromise):
         raise ValueError("You can't use approval on a task that doesn't return anything.")
 
-    # If we're compiling, the promise will not be ready
-    if not upstream_item.is_ready:
+    ctx = FlyteContextManager.current_context()
+    if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         if not upstream_item.ref.node.flyte_entity.python_interface:
             raise ValueError(
                 f"Upstream node doesn't have a Python interface. Node entity is: "
