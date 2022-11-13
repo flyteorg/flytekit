@@ -6,7 +6,7 @@ import tensorflow as tf
 import flytekit
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.extras.tensorflow.records import TensorflowRecordsTransformer, TFRecordDatasetConfig
+from flytekit.extras.tensorflow.records import TensorflowExampleRecordsTransformer, TFRecordDatasetConfig
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -37,8 +37,12 @@ def write_to_tfrecord(path):
 @pytest.mark.parametrize(
     "transformer,python_type,format",
     [
-        (TensorflowRecordsTransformer(), TFRecordFile, TensorflowRecordsTransformer.TENSORFLOW_FORMAT),
-        (TensorflowRecordsTransformer(), TFRecordsDirectory, TensorflowRecordsTransformer.TENSORFLOW_FORMAT),
+        (TensorflowExampleRecordsTransformer(), TFRecordFile, TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT),
+        (
+            TensorflowExampleRecordsTransformer(),
+            TFRecordsDirectory,
+            TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT,
+        ),
     ],
 )
 def test_get_literal_type(transformer, python_type, format):
@@ -51,15 +55,15 @@ def test_get_literal_type(transformer, python_type, format):
     "transformer,python_type,format,python_val",
     [
         (
-            TensorflowRecordsTransformer(),
+            TensorflowExampleRecordsTransformer(),
             Type[TFRecordFile],
-            TensorflowRecordsTransformer.TENSORFLOW_FORMAT,
+            TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT,
             TFRecordFile,
         ),
         (
-            TensorflowRecordsTransformer(),
+            TensorflowExampleRecordsTransformer(),
             Type[TFRecordsDirectory],
-            TensorflowRecordsTransformer.TENSORFLOW_FORMAT,
+            TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT,
             TFRecordsDirectory,
         ),
     ],
@@ -82,9 +86,9 @@ def test_to_literal(transformer, python_type, format, python_val):
     "transformer,python_type,format,python_val",
     [
         (
-            TensorflowRecordsTransformer(),
+            TensorflowExampleRecordsTransformer(),
             TFRecordDatasetConfig(name="example_test"),
-            TensorflowRecordsTransformer.TENSORFLOW_FORMAT,
+            TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT,
             tf.data.TFRecordDataset,
         )
     ],

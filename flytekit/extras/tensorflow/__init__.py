@@ -23,6 +23,6 @@ except (ImportError, OSError):
 
 
 if _tensorflow_installed:
-    from .records import TensorflowRecordsTransformer
+    from .records import TensorflowExampleRecordsTransformer
 else:
     logger.info("We won't register TensorflowRecordsTransformer because tensorflow is not installed.")

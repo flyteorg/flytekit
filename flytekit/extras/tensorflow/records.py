@@ -4,6 +4,7 @@ from typing import Generic, Optional, Tuple, Type, TypeVar
 
 import tensorflow as tf
 from dataclasses_json import dataclass_json
+from tensorflow.core.example import example_pb2
 from tensorflow.python.data.ops.readers import TFRecordDatasetV2
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -49,16 +50,11 @@ def extract_metadata(t: Type[T]) -> Tuple[T, TFRecordDatasetConfig]:
     return t, metadata
 
 
-class TensorflowRecordsTransformer(TypeTransformer, Generic[T]):
+class TensorflowRecordsTransformerBase(TypeTransformer, Generic[T]):
     """
     TypeTransformer that supports serialising and deserialising to and from TFRecord file.
     https://www.tensorflow.org/tutorials/load_data/tfrecord
     """
-
-    TENSORFLOW_FORMAT = "TensorflowRecord"
-
-    def __init__(self):
-        super().__init__(name="Tensorflow Record", t=T)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(
@@ -127,4 +123,11 @@ class TensorflowRecordsTransformer(TypeTransformer, Generic[T]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-TypeEngine.register(TensorflowRecordsTransformer())
+class TensorflowExampleRecordsTransformer(TensorflowRecordsTransformerBase[example_pb2.Example]):
+    TENSORFLOW_FORMAT = "TensorflowRecord"
+
+    def __init__(self):
+        super().__init__(name="Tensorflow Record", t=example_pb2.Example)
+
+
+TypeEngine.register(TensorflowExampleRecordsTransformer())
