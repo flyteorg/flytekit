@@ -77,8 +77,10 @@ def _handle_invalid_create_request(fn):
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
                 cli_logger.error("Error creating Flyte entity because of invalid arguments. Create request: ")
                 cli_logger.error(_MessageToJson(create_request))
-
-            # In any case, re-raise since we're not truly handling the error here
+                cli_logger.error("Details returned from the flyte admin: ")
+                cli_logger.error(e.details)
+                e.details += "create_request: " + _MessageToJson(create_request)
+            # Re-raise since we're not  handling the error here and add the create_request details
             raise e
 
     return handler

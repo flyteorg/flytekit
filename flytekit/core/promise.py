@@ -673,7 +673,7 @@ class VoidPromise(object):
         """
 
     @property
-    def ref(self) -> NodeOutput:
+    def ref(self) -> typing.Optional[NodeOutput]:
         return self._ref
 
     def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
