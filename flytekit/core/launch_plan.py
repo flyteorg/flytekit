@@ -303,7 +303,7 @@ class LaunchPlan(object):
         labels: _common_models.Labels = None,
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        max_parallelism: int = None,
+        max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
     ):
         self._name = name
@@ -375,7 +375,7 @@ class LaunchPlan(object):
         return self._fixed_inputs
 
     @property
-    def workflow(self) -> _annotated_workflow.PythonFunctionWorkflow:
+    def workflow(self) -> _annotated_workflow.WorkflowBase:
         return self._workflow
 
     @property
@@ -407,7 +407,7 @@ class LaunchPlan(object):
         return self._raw_output_data_config
 
     @property
-    def max_parallelism(self) -> int:
+    def max_parallelism(self) -> typing.Optional[int]:
         return self._max_parallelism
 
     @property

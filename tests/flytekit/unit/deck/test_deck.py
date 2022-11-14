@@ -77,6 +77,10 @@ def test_deck_in_jupyter(mock_ipython_check):
 
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
+    v = ctx.get_deck()
+    from IPython.core.display import HTML
+
+    assert isinstance(v, HTML)
     _output_deck("test_task", ctx.user_space_params)
 
     @task()

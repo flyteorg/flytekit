@@ -2,6 +2,8 @@ import os
 import typing
 from typing import Dict, List
 
+from typing_extensions import Annotated  # type: ignore
+
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
@@ -15,11 +17,6 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Void
 from flytekit.types.file import FlyteFile
 from flytekit.types.pickle import FlytePickle
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
 
 
 def test_extract_only():
