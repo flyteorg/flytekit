@@ -149,9 +149,13 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return ""
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
+        from . import FileExt
+
         if item is None:
             return cls
-        item_string = str(item)
+
+        item_string = FileExt.check_and_convert_to_str(item)
+
         item_string = item_string.strip().lstrip("~").lstrip(".")
         if item == "":
             return cls
