@@ -33,11 +33,12 @@ result_tensor = tf.matmul(a, b)
 def test_get_literal_type(transformer, python_type, format):
     tf = transformer
     lt = tf.get_literal_type(python_type)
+    # print(vars(lt))
     assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE))
 
 
 @pytest.mark.parametrize(
-    "transformer,python_type,format,python_val",
+    "transformer, python_type, format, python_val",
     [
         (
             TensorFlowTensorTransformer(),
@@ -53,12 +54,12 @@ def test_to_python_value_and_literal(transformer, python_type, format, python_va
     lt = tf.get_literal_type(python_type)
 
     lv = tf.to_literal(ctx, python_val, type(python_val), lt)  # type: ignore
-    assert lv.collection.literals[0].scalar.blob.metadata == BlobMetadata(
+    assert lv.scalar.blob.metadata == BlobMetadata(
         type=BlobType(
             format=format,
             dimensionality=BlobType.BlobDimensionality.SINGLE,
         )
     )
-    assert lv.collection.literals[0].scalar.blob.uri is not None
+    assert lv.scalar.blob.uri is not None
     output = tf.to_python_value(ctx, lv, python_type)
     assert (output.numpy() == python_val.numpy()).all()
