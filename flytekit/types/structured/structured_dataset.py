@@ -67,7 +67,7 @@ class StructuredDataset(object):
         self._dataframe = dataframe
         # Make these fields public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
-        self.uri = str(uri)
+        self.uri = uri
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._metadata = metadata
         # This is not for users to set, the transformer will set this.

@@ -354,7 +354,7 @@ class Promise(object):
         return hash(id(self))
 
     def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
-        if not self.is_ready:
+        if not self.is_ready and other.ref:
             self.ref.node.runs_before(other.ref.node)
         return other
 
