@@ -246,16 +246,4 @@ class DBTFreshnessInput(BaseDBTInput):
 @dataclass_json
 @dataclass
 class DBTFreshnessOutput(BaseDBTOutput):
-    """
-    Output of DBT Freshness task.
-
-    Attributes
-    ----------
-    raw_run_result : str
-        Raw value of DBT's ``run_result.json``.
-    raw_manifest : str
-        Raw value of DBT's ``manifest.json``.
-    """
-
-    raw_run_result: str
-    raw_manifest: str
+    pass
