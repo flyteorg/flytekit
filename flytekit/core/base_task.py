@@ -367,7 +367,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self,
         task_type: str,
         name: str,
-        task_config: T,
+        task_config: Optional[T],
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
         disable_deck: bool = True,
@@ -406,7 +406,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self._python_interface
 
     @property
-    def task_config(self) -> T:
+    def task_config(self) -> Optional[T]:
         """
         Returns the user-specified task config which is used for plugin-specific handling of the task.
         """

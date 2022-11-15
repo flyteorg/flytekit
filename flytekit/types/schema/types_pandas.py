@@ -56,7 +56,7 @@ class ParquetIO(object):
 
 
 class PandasSchemaReader(LocalIOSchemaReader[pandas.DataFrame]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, local_dir: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(local_dir, cols, fmt)
         self._parquet_engine = ParquetIO()
 
@@ -65,7 +65,7 @@ class PandasSchemaReader(LocalIOSchemaReader[pandas.DataFrame]):
 
 
 class PandasSchemaWriter(LocalIOSchemaWriter[pandas.DataFrame]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, local_dir: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(local_dir, cols, fmt)
         self._parquet_engine = ParquetIO()
 

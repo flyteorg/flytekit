@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import os
 import types
 import typing
 from abc import ABC, abstractmethod
@@ -60,7 +59,7 @@ class StructuredDataset(object):
     def __init__(
         self,
         dataframe: typing.Optional[typing.Any] = None,
-        uri: typing.Optional[typing.Union[str, os.PathLike]] = None,
+        uri: typing.Optional[str] = None,
         metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
         **kwargs,
     ):

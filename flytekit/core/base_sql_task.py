@@ -22,7 +22,7 @@ class SQLTask(PythonTask[T]):
         self,
         name: str,
         query_template: str,
-        task_config: T,
+        task_config: Optional[T] = None,
         task_type="sql_task",
         inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
         metadata: Optional[TaskMetadata] = None,

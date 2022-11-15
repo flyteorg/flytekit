@@ -51,13 +51,13 @@ class SchemaReader(typing.Generic[T]):
     Use the simplified base LocalIOSchemaReader for non distributed dataframes
     """
 
-    def __init__(self, from_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         self._from_path = from_path
         self._fmt = fmt
         self._columns = cols
 
     @property
-    def from_path(self) -> os.PathLike:
+    def from_path(self) -> str:
         return self._from_path
 
     @property
@@ -99,7 +99,7 @@ class SchemaWriter(typing.Generic[T]):
 
 
 class LocalIOSchemaReader(SchemaReader[T]):
-    def __init__(self, from_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(from_path, cols, fmt)
 
     @abstractmethod
@@ -181,7 +181,7 @@ class SchemaEngine(object):
 @dataclass_json
 @dataclass
 class FlyteSchema(object):
-    remote_path: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
@@ -300,8 +300,8 @@ class FlyteSchema(object):
 
         # Remote IO is handled. So we will just pass the remote reference to the object
         if mode == SchemaOpenMode.WRITE:
-            return h.writer(self.remote_path, self.columns(), self.format())
-        return h.reader(self.remote_path, self.columns(), self.format())
+            return h.writer(typing.cast(str, self.remote_path), self.columns(), self.format())
+        return h.reader(typing.cast(str, self.remote_path), self.columns(), self.format())
 
     def as_readonly(self) -> FlyteSchema:
         if self._supported_mode == SchemaOpenMode.READ:
@@ -309,7 +309,7 @@ class FlyteSchema(object):
         s = FlyteSchema.__class_getitem__(self.columns(), self.format())(
             local_path=self.local_path,
             # Dummy path is ok, as we will assume data is already downloaded and will not download again
-            remote_path=self.remote_path if self.remote_path else "",
+            remote_path=typing.cast(str, self.remote_path) if self.remote_path else "",
             supported_mode=SchemaOpenMode.READ,
         )
         s._downloaded = True
