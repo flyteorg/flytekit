@@ -109,7 +109,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
                     container.resources = resource_requirements
 
                 container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()] + (
-                    container.env if container.env else []
+                    container.env or []
                 )
 
             final_containers.append(container)
