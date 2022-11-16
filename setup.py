@@ -50,7 +50,7 @@ setup(
         "python-dateutil>=2.1",
         # Restrict grpcio and grpcio-status.  The 1.49.1 version pulls in a version of protobuf that is not compatible.
         # More details in https://github.com/flyteorg/flyte/issues/3006
-        "grpcio>=1.43.0,!=1.45.0,<1.49.1,<2.0",
+        "grpcio>=1.43.0,!=1.45.0,<1.49.1",
         "grpcio-status>=1.43,!=1.45.0,<1.49.1",
         "importlib-metadata",
         "pyopenssl",
