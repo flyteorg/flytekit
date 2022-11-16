@@ -8,6 +8,7 @@ from click.testing import CliRunner
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.core import context_manager
 from flytekit.remote.remote import FlyteRemote
 
 sample_file_contents = """
@@ -70,16 +71,17 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
 def test_non_fast_register(mock_client, mock_remote):
     mock_remote._client = mock_client
     runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
     with runner.isolated_filesystem():
         out = subprocess.run(["git", "init"], capture_output=True)
         assert out.returncode == 0
-        os.makedirs("core", exist_ok=True)
-        with open(os.path.join("core", "sample.py"), "w") as f:
+        os.makedirs("core2", exist_ok=True)
+        with open(os.path.join("core2", "sample.py"), "w") as f:
             f.write(sample_file_contents)
             f.close()
-        result = runner.invoke(pyflyte.main, ["register", "--non-fast", "--version", "a-version", "core"])
+        result = runner.invoke(pyflyte.main, ["register", "--non-fast", "--version", "a-version", "core2"])
         assert "Successfully registered 4 entities" in result.output
-        shutil.rmtree("core")
+        shutil.rmtree("core2")
 
 
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
