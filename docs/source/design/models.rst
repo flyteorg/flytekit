@@ -1,8 +1,10 @@
 .. _design-models:
 
-######################
+###########
 Model Files
-######################
+###########
+
+.. tags:: Basic, Design
 
 ***********
 Description

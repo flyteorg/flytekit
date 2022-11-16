@@ -2,9 +2,11 @@
 Custom Tasks
 ############
 
+.. tags:: Intermediate, Extensibility
+
 Flytekit ships with an extensible task system, which makes it easy for anyone to extend and add new task types.
 
-Refer to :doc:`cookbook <prebuilt_container>` and :doc:`cookbook <user_container>` if you'd like to contribute a new task type.
+Refer to the :ref:`cookbook:prebuilt_container` and :ref:`cookbook:user_container` guides if you'd like to contribute a new task type.
 
 .. automodule:: flytekit.core.base_task
    :no-members:

@@ -4,6 +4,8 @@
 Flytekit Contribution Guide
 ###########################
 
+.. tags:: Basic, Contribute
+
 First off, thank you for thinking about contributing! Below you'll find instructions that will hopefully guide you through how to fix, improve, and extend Flytekit.
 
 Please also take some time to read through the :std:ref:`design guides <design>`, which describe the various parts of Flytekit and should make contributing easier.

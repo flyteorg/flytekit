@@ -4,6 +4,8 @@
 Pandera API reference
 ###################################################
 
+.. tags:: Intermediate, Integration, DataFrame
+
 .. automodule:: flytekitplugins.pandera
    :no-members:
    :no-inherited-members:

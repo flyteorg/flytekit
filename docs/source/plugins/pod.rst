@@ -4,6 +4,8 @@
 Pod API reference
 ###################################################
 
+.. tags:: Advanced, Integration, Kubernetes, KubernetesOperator
+
 .. automodule:: flytekitplugins.pod
    :no-members:
    :no-inherited-members:

@@ -4,6 +4,8 @@
 Command Line Interfaces and Clients
 ###################################
 
+.. tags:: Basic, CLI
+
 Flytekit currently ships with two CLIs, both of which rely on the same client implementation code.
 
 *******
@@ -67,7 +69,7 @@ The ``pyflyte register`` command bridges the gap between ``pyflyte package`` + `
 
 .. note ::
 
-   You can’t use ``pyflyte register`` if you are unaware of the run-time options yet (IAM role, service account, and so on).
+   You can't use ``pyflyte register`` if you are unaware of the run-time options yet (IAM role, service account, and so on).
 
 Usage
 =====
@@ -79,7 +81,7 @@ Usage
 In a broad way, ``pyflyte register`` is equivalent to ``pyflyte run`` minus launching workflows, with the exception that ``pyflyte run`` can only register a single workflow, whereas ``pyflyte register`` can register all workflows in a repository.
 
 What is the difference between ``pyflyte package + flytectl register`` and ``pyflyte register``?
-==============================================================================================
+================================================================================================
 
 ``pyflyte package + flytectl register`` works well with multiple FlyteAdmins since it produces a portable package. You can also use it to run scripts in CI.
 
