@@ -4,7 +4,7 @@
 Model Files
 ###########
 
-.. tags:: Basic, Design
+.. tags:: Design, Basic
 
 ***********
 Description

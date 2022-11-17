@@ -4,7 +4,7 @@
 Flytekit Contribution Guide
 ###########################
 
-.. tags:: Basic, Contribute
+.. tags:: Contribute, Basic
 
 First off, thank you for thinking about contributing! Below you'll find instructions that will hopefully guide you through how to fix, improve, and extend Flytekit.
 

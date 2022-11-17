@@ -2,7 +2,7 @@
 SQLite3 Task
 ############
 
-.. tags:: SQL
+.. tags:: SQL, Basic
 
 .. automodule:: flytekit.extras.sqlite3
    :no-members:

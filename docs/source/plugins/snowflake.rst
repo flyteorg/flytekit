@@ -4,7 +4,7 @@
 Snowflake API reference
 ###################################################
 
-.. tags:: Advanced, Integration, Data
+.. tags:: Integration, Data
 
 .. automodule:: flytekitplugins.snowflake
    :no-members:

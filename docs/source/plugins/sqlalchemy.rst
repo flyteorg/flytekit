@@ -4,7 +4,7 @@
 Sqlalchemy Plugin API reference
 ###################################################
 
-.. tags:: Intermediate, Integration, Data, SQL
+.. tags:: Integration, Data, SQL
 
 .. automodule:: flytekitplugins.sqlalchemy
    :no-members:

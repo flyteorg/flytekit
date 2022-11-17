@@ -4,7 +4,7 @@
 Google Bigquery Plugin API reference
 ###################################################
 
-.. tags:: Intermediate, GCP, Data, Integration
+.. tags:: GCP, Data, Integration
 
 .. automodule:: flytekitplugins.bigquery
    :no-members:

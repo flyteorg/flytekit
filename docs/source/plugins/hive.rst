@@ -4,7 +4,7 @@
 Hive API reference
 ###################################################
 
-.. tags:: Advanced, Integration, Data
+.. tags:: Integration, Data
 
 .. automodule:: flytekitplugins.hive
    :no-members:

@@ -4,7 +4,7 @@
 Deck standard Plugin API reference
 ###################################################
 
-.. tags:: Basic, UI
+.. tags:: UI
 
 .. automodule:: flytekitplugins.deck
    :no-members:

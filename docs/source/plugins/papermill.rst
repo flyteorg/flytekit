@@ -4,7 +4,7 @@
 Papermill API reference
 ###################################################
 
-.. tags:: Intermediate, Integration, Jupyter
+.. tags:: Integration, Jupyter
 
 .. automodule:: flytekitplugins.papermill
    :no-members:

@@ -4,7 +4,7 @@
 Spark API reference
 ###################################################
 
-.. tags:: Intermediate, Spark, Integration, DistributedComputing
+.. tags:: Spark, Integration, DistributedComputing
 
 .. automodule:: flytekitplugins.spark
    :no-members:

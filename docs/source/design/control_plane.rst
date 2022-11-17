@@ -4,7 +4,7 @@
 FlyteRemote: A Programmatic Control Plane Interface
 ###################################################
 
-.. tags:: Basic, Remote
+.. tags:: Remote, Basic
 
 For those who require programmatic access to the control plane, the :mod:`~flytekit.remote` module enables you to perform
 certain operations in a Python runtime environment.

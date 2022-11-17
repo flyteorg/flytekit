@@ -4,7 +4,7 @@
 DBT Plugin API reference
 ###################################################
 
-.. tags:: Intermediate, Data
+.. tags:: Data
 
 .. automodule:: flytekitplugins.dbt
    :no-members:

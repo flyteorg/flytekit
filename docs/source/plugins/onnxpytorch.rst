@@ -4,7 +4,7 @@
 PyTorch ONNX API reference
 ##########################
 
-.. tags:: Intermediate, Integration, MachineLearning
+.. tags:: Integration, MachineLearning
 
 .. automodule:: flytekitplugins.onnxpytorch
    :no-members:

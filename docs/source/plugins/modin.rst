@@ -4,7 +4,7 @@
 Modin API reference
 ###################################################
 
-.. tags:: Intermediate, Integration, DataFrame
+.. tags:: Integration, DataFrame
 
 .. automodule:: flytekitplugins.modin
    :no-members:

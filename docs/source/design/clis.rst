@@ -4,7 +4,7 @@
 Command Line Interfaces and Clients
 ###################################
 
-.. tags:: Basic, CLI
+.. tags:: CLI, Basic
 
 Flytekit currently ships with two CLIs, both of which rely on the same client implementation code.
 

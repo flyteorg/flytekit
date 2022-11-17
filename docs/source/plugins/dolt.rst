@@ -4,7 +4,7 @@
 Dolt standard Plugin API reference
 ###################################################
 
-.. tags:: Intermediate, Integration, Data, SQL
+.. tags:: Integration, Data, SQL
 
 .. automodule:: flytekitplugins.dolt
    :no-members:

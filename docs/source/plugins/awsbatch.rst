@@ -4,7 +4,7 @@
 AWS Batch Plugin API reference
 ###################################################
 
-.. tags:: Advanced, Data, Integration, AWS
+.. tags:: Data, Integration, AWS
 
 .. automodule:: flytekitplugins.awsbatch
    :no-inherited-members:

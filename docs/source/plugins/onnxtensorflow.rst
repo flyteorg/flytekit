@@ -4,7 +4,7 @@
 TensorFlow ONNX API reference
 #############################
 
-.. tags:: Intermediate, Integration, MachineLearning
+.. tags:: Integration, MachineLearning
 
 .. automodule:: flytekitplugins.onnxtensorflow
    :no-members:

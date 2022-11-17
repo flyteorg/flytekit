@@ -4,7 +4,7 @@
 AWS Sagemaker API reference
 ###################################################
 
-.. tags:: Advanced, Integration, MachineLearning, AWS
+.. tags:: Integration, MachineLearning, AWS
 
 .. automodule:: flytekitplugins.awssagemaker
    :no-members:

@@ -2,7 +2,7 @@
 Data Persistence Layer
 ######################
 
-.. tags:: Intermediate, Data, AWS, GCP
+.. tags:: Data, AWS, GCP, Intermediate
 
 Flytekit provides a data persistence layer, which is used for recording metadata that is shared with the Flyte backend. This persistence layer is available for various types to store raw user data and is designed to be cross-cloud compatible.
 Moreover, it is designed to be extensible and users can bring their own data persistence plugins by following the persistence interface.

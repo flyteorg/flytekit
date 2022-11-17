@@ -4,7 +4,7 @@
 FS Spec API reference
 ###################################################
 
-.. tags:: Intermediate, Data, AWS, GCP
+.. tags:: Data, AWS, GCP
 
 .. automodule:: flytekitplugins.fsspec
    :no-members:

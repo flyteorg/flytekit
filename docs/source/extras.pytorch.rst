@@ -2,7 +2,7 @@
 PyTorch Type
 ############
 
-.. tags:: MachineLearning
+.. tags:: MachineLearning, Basic
 
 .. automodule:: flytekit.extras.pytorch
    :no-members:
