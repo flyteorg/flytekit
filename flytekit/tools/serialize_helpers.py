@@ -5,9 +5,6 @@ import typing
 from collections import OrderedDict
 
 import click
-from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
-from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
-from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
 
 from flytekit import LaunchPlan
 from flytekit.core import context_manager as flyte_context
@@ -17,10 +14,10 @@ from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier
-from flytekit.tools.translator import Options, get_serializable
-
-RegistrableEntity = typing.Union[_idl_admin_TaskSpec, _idl_admin_LaunchPlan, _idl_admin_WorkflowSpec]
+from flytekit.models.task import TaskSpec
+from flytekit.tools.translator import FlyteControlPlaneEntity, Options, get_serializable
 
 
 def _determine_text_chars(length):
@@ -62,7 +59,7 @@ def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Se
 
 def get_registrable_entities(
     ctx: flyte_context.FlyteContext, options: typing.Optional[Options] = None
-) -> typing.List[RegistrableEntity]:
+) -> typing.List[FlyteControlPlaneEntity]:
     """
     Returns all entities that can be serialized and should be sent over to Flyte backend. This will filter any entities
     that are not known to Admin
@@ -94,10 +91,10 @@ def get_registrable_entities(
             f"Multiple definitions of the following tasks were found: {duplicate_task_names}"
         )
 
-    return [v.to_flyte_idl() for v in entities_to_be_serialized]
+    return entities_to_be_serialized
 
 
-def persist_registrable_entities(entities: typing.List[RegistrableEntity], folder: str):
+def persist_registrable_entities(entities: typing.List[FlyteControlPlaneEntity], folder: str):
     """
     For protobuf serializable list of entities, writes a file with the name if the entity and
     enumeration order to the specified folder
@@ -113,13 +110,13 @@ def persist_registrable_entities(entities: typing.List[RegistrableEntity], folde
     zero_padded_length = _determine_text_chars(len(entities))
     for i, entity in enumerate(entities):
         fname_index = str(i).zfill(zero_padded_length)
-        if isinstance(entity, _idl_admin_TaskSpec):
+        if isinstance(entity, TaskSpec):
             name = entity.template.id.name
             fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, _idl_admin_WorkflowSpec):
+        elif isinstance(entity, WorkflowSpec):
             name = entity.template.id.name
             fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, _idl_admin_LaunchPlan):
+        elif isinstance(entity, _launch_plan_models.LaunchPlan):
             name = entity.id.name
             fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
         else:
@@ -128,4 +125,4 @@ def persist_registrable_entities(entities: typing.List[RegistrableEntity], folde
         click.secho(f"  Packaging {name} -> {fname}", dim=True)
         fname = _os.path.join(folder, fname)
         with open(fname, "wb") as writer:
-            writer.write(entity.SerializeToString())
+            writer.write(entity.serialize_to_string())
