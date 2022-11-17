@@ -128,19 +128,19 @@ class TensorflowRecordTransformerBase(TypeTransformer, Generic[T]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-class TensorflowRecordsDirTransformer(TensorflowRecordTransformerBase[TFRecordsDirectory]):
+class TensorFlowRecordsDirTransformer(TensorflowRecordTransformerBase[TFRecordsDirectory]):
     TENSORFLOW_FORMAT = "TensorflowRecord"
 
     def __init__(self):
         super().__init__(name="Tensorflow Record", t=TFRecordsDirectory)
 
 
-class TensorflowRecordFileTransformer(TensorflowRecordTransformerBase[TFRecordFile]):
+class TensorFlowRecordFileTransformer(TensorflowRecordTransformerBase[TFRecordFile]):
     TENSORFLOW_FORMAT = "TensorflowRecord"
 
     def __init__(self):
         super().__init__(name="Tensorflow Record", t=TFRecordFile)
 
 
-TypeEngine.register(TensorflowRecordsDirTransformer())
-TypeEngine.register(TensorflowRecordFileTransformer())
+TypeEngine.register(TensorFlowRecordsDirTransformer())
+TypeEngine.register(TensorFlowRecordFileTransformer())

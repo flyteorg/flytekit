@@ -143,14 +143,10 @@ google-auth==2.14.1
     #   google-api-core
     #   google-auth-oauthlib
     #   google-cloud-core
-<<<<<<< HEAD
     #   tensorboard
 google-auth-oauthlib==0.4.6
     # via tensorboard
-google-cloud-bigquery==3.3.5
-=======
 google-cloud-bigquery==3.3.6
->>>>>>> d53ebc6b8b1e59206f4fe6bdf43fd7ac60ae353f
     # via -r dev-requirements.in
 google-cloud-bigquery-storage==2.16.2
     # via
@@ -177,25 +173,17 @@ grpcio==1.48.2
     #   google-api-core
     #   google-cloud-bigquery
     #   grpcio-status
-<<<<<<< HEAD
     #   tensorboard
     #   tensorflow
-grpcio-status==1.47.0
-=======
 grpcio-status==1.48.2
->>>>>>> d53ebc6b8b1e59206f4fe6bdf43fd7ac60ae353f
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in
     #   flytekit
     #   google-api-core
-<<<<<<< HEAD
 h5py==3.7.0
     # via tensorflow
-identify==2.5.6
-=======
 identify==2.5.8
->>>>>>> d53ebc6b8b1e59206f4fe6bdf43fd7ac60ae353f
     # via pre-commit
 idna==3.4
     # via
@@ -236,15 +224,11 @@ jsonschema==3.2.0
     # via
     #   -c requirements.txt
     #   docker-compose
-<<<<<<< HEAD
 keras==2.8.0
     # via tensorflow
 keras-preprocessing==1.1.2
     # via tensorflow
-keyring==23.9.3
-=======
 keyring==23.11.0
->>>>>>> d53ebc6b8b1e59206f4fe6bdf43fd7ac60ae353f
     # via
     #   -c requirements.txt
     #   flytekit
