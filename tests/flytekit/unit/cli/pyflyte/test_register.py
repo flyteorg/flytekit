@@ -54,16 +54,17 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
     mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
     mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
     runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
     with runner.isolated_filesystem():
         out = subprocess.run(["git", "init"], capture_output=True)
         assert out.returncode == 0
-        os.makedirs("core", exist_ok=True)
-        with open(os.path.join("core", "sample.py"), "w") as f:
+        os.makedirs("core1", exist_ok=True)
+        with open(os.path.join("core1", "sample.py"), "w") as f:
             f.write(sample_file_contents)
             f.close()
-        result = runner.invoke(pyflyte.main, ["register", "core"])
+        result = runner.invoke(pyflyte.main, ["register", "core1"])
         assert "Successfully registered 4 entities" in result.output
-        shutil.rmtree("core")
+        shutil.rmtree("core1")
 
 
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
