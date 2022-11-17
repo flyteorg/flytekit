@@ -7,6 +7,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition
 from flytekit.models import task as _task_model
+from flytekit.models.security import Secret, SecurityContext
 
 
 class ContainerTask(PythonTask):
@@ -44,14 +45,22 @@ class ContainerTask(PythonTask):
         output_data_dir: str = None,
         metadata_format: MetadataFormat = MetadataFormat.JSON,
         io_strategy: IOStrategy = None,
+        secret_requests: Optional[List[Secret]] = None,
         **kwargs,
     ):
+        sec_ctx = None
+        if secret_requests:
+            for s in secret_requests:
+                if not isinstance(s, Secret):
+                    raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
+            sec_ctx = SecurityContext(secrets=secret_requests)
         super().__init__(
             task_type="raw-container",
             name=name,
             interface=Interface(inputs, outputs),
             metadata=metadata,
             task_config=None,
+            security_ctx=sec_ctx,
             **kwargs,
         )
         self._image = image
