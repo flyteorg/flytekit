@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Generic, Optional, Tuple, Type, TypeVar
+from typing import Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 import tensorflow as tf
 from dataclasses_json import dataclass_json
@@ -64,21 +64,20 @@ class TensorflowRecordTransformerBase(TypeTransformer, Generic[T]):
             )
         )
 
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        meta = BlobMetadata(
-            type=_core_types.BlobType(
-                format=self.TENSORFLOW_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
-            )
-        )
+    def to_literal(
+        self, ctx: FlyteContext, python_val: Union[T, List[T]], python_type: Type[T], expected: LiteralType
+    ) -> Literal:
         local_dir = ctx.file_access.get_random_local_directory()
         remote_path = ctx.file_access.get_random_remote_directory()
-        if isinstance(python_val, TFRecordsDirectory):
-            for i, val in enumerate(python_val):
-                local_path = f"{local_dir}/part_{i}"
-                with tf.io.TFRecordWriter(local_path) as writer:
-                    writer.write(val.SerializeToString())
-        elif isinstance(python_val, TFRecordFile):
+        if isinstance(python_val, List):
+            dimensionality = _core_types.BlobType.BlobDimensionality.MULTIPART
+            if all(isinstance(x, example_pb2.Example) for x in python_val):
+                for i, val in enumerate(python_val):
+                    local_path = f"{local_dir}/part_{i}"
+                    with tf.io.TFRecordWriter(local_path) as writer:
+                        writer.write(val.SerializeToString())
+        elif isinstance(python_val, example_pb2.Example):
+            dimensionality = _core_types.BlobType.BlobDimensionality.SINGLE
             local_path = os.path.join(local_dir, "0000.tfrecord")
             with tf.io.TFRecordWriter(local_path) as writer:
                 writer.write(python_val.SerializeToString())
@@ -87,6 +86,12 @@ class TensorflowRecordTransformerBase(TypeTransformer, Generic[T]):
                 f"TensorflowRecordsTransformer can only return TFRecordFile or TFRecordsDirectory types from a task, "
                 f"returned object type provided is {type(python_val)}"
             )
+        meta = BlobMetadata(
+            type=_core_types.BlobType(
+                format=self.TENSORFLOW_FORMAT,
+                dimensionality=dimensionality,
+            )
+        )
         ctx.file_access.upload_directory(local_dir, remote_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
@@ -123,11 +128,19 @@ class TensorflowRecordTransformerBase(TypeTransformer, Generic[T]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-class TensorflowExampleRecordsTransformer(TensorflowRecordTransformerBase[example_pb2.Example]):
+class TensorflowRecordsDirTransformer(TensorflowRecordTransformerBase[TFRecordsDirectory]):
     TENSORFLOW_FORMAT = "TensorflowRecord"
 
     def __init__(self):
-        super().__init__(name="Tensorflow Record", t=example_pb2.Example)
+        super().__init__(name="Tensorflow Record", t=TFRecordsDirectory)
 
 
-TypeEngine.register(TensorflowExampleRecordsTransformer())
+class TensorflowRecordFileTransformer(TensorflowRecordTransformerBase[TFRecordFile]):
+    TENSORFLOW_FORMAT = "TensorflowRecord"
+
+    def __init__(self):
+        super().__init__(name="Tensorflow Record", t=TFRecordFile)
+
+
+TypeEngine.register(TensorflowRecordsDirTransformer())
+TypeEngine.register(TensorflowRecordFileTransformer())

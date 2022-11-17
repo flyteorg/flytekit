@@ -6,7 +6,11 @@ import tensorflow as tf
 import flytekit
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.extras.tensorflow.record import TensorflowExampleRecordsTransformer, TFRecordDatasetConfig
+from flytekit.extras.tensorflow.record import (
+    TensorflowRecordFileTransformer,
+    TensorflowRecordsDirTransformer,
+    TFRecordDatasetConfig,
+)
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -37,11 +41,11 @@ def write_to_tfrecord(path):
 @pytest.mark.parametrize(
     "transformer,python_type,format",
     [
-        (TensorflowExampleRecordsTransformer(), TFRecordFile, TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT),
+        (TensorflowRecordFileTransformer(), TFRecordFile, TensorflowRecordFileTransformer.TENSORFLOW_FORMAT),
         (
-            TensorflowExampleRecordsTransformer(),
+            TensorflowRecordsDirTransformer(),
             TFRecordsDirectory,
-            TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT,
+            TensorflowRecordsDirTransformer.TENSORFLOW_FORMAT,
         ),
     ],
 )
@@ -52,23 +56,25 @@ def test_get_literal_type(transformer, python_type, format):
 
 
 @pytest.mark.parametrize(
-    "transformer,python_type,format,python_val",
+    "transformer,python_type,format,python_val,dimension",
     [
         (
-            TensorflowExampleRecordsTransformer(),
+            TensorflowRecordFileTransformer(),
             Type[TFRecordFile],
-            TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT,
+            TensorflowRecordFileTransformer.TENSORFLOW_FORMAT,
             TFRecordFile,
+            BlobType.BlobDimensionality.SINGLE,
         ),
         (
-            TensorflowExampleRecordsTransformer(),
+            TensorflowRecordsDirTransformer(),
             Type[TFRecordsDirectory],
-            TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT,
+            TensorflowRecordsDirTransformer.TENSORFLOW_FORMAT,
             TFRecordsDirectory,
+            BlobType.BlobDimensionality.MULTIPART,
         ),
     ],
 )
-def test_to_literal(transformer, python_type, format, python_val):
+def test_to_literal(transformer, python_type, format, python_val, dimension):
     ctx = context_manager.FlyteContext.current_context()
     tf = transformer
     lt = tf.get_literal_type(python_type)
@@ -76,7 +82,7 @@ def test_to_literal(transformer, python_type, format, python_val):
     assert lv.scalar.blob.metadata == BlobMetadata(
         type=BlobType(
             format=format,
-            dimensionality=BlobType.BlobDimensionality.SINGLE,
+            dimensionality=dimension,
         )
     )
     assert lv.scalar.blob.uri is not None
@@ -86,9 +92,9 @@ def test_to_literal(transformer, python_type, format, python_val):
     "transformer,python_type,format,python_val",
     [
         (
-            TensorflowExampleRecordsTransformer(),
+            TensorflowRecordFileTransformer(),
             TFRecordDatasetConfig(name="example_test"),
-            TensorflowExampleRecordsTransformer.TENSORFLOW_FORMAT,
+            TensorflowRecordFileTransformer().TENSORFLOW_FORMAT,
             tf.data.TFRecordDataset,
         )
     ],
