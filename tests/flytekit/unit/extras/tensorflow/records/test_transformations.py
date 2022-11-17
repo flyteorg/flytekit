@@ -6,7 +6,7 @@ import tensorflow as tf
 import flytekit
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.extras.tensorflow.records import TensorflowExampleRecordsTransformer, TFRecordDatasetConfig
+from flytekit.extras.tensorflow.record import TensorflowExampleRecordsTransformer, TFRecordDatasetConfig
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType

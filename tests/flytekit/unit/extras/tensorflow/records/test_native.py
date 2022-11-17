@@ -3,7 +3,7 @@ from typing import Annotated
 import tensorflow as tf
 
 from flytekit import task, workflow
-from flytekit.extras.tensorflow.records import TFRecordDatasetConfig
+from flytekit.extras.tensorflow.record import TFRecordDatasetConfig
 from flytekit.types.directory import TFRecordsDirectory
 from flytekit.types.file import TFRecordFile
 

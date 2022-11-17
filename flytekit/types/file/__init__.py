@@ -112,7 +112,7 @@ onnx = Annotated[str, FileExt("onnx")]
 #: decoration and useful for attaching content type information with the file and automatically documenting code.
 ONNXFile = FlyteFile[onnx]
 
-tfrecords_file = typing.TypeVar("tfrecords_file")
+tfrecords_file = Annotated[str, FileExt("tfrecords_file")]
 #: Can be used to receive or return an TFRecordFile. The underlying type is a FlyteFile type. This is just a
 #: decoration and useful for attaching content type information with the file and automatically documenting code.
 TFRecordFile = FlyteFile[tfrecords_file]

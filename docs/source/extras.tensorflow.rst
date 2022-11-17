@@ -1,5 +1,5 @@
 ############
-Tensorflow Type
+TensorFlow Type
 ############
 .. automodule:: flytekit.extras.tensorflow
    :no-members:

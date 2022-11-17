@@ -23,14 +23,14 @@ T = TypeVar("T")
 @dataclass
 class TFRecordDatasetConfig:
     """
-    TFRecordDatasetConfig is the config used during the creating tf.data.TFRecordDataset comprising
+    TFRecordDatasetConfig can be used while creating tf.data.TFRecordDataset comprising
     record of one or more TFRecord files.
 
     Args:
-      compression_type:A scalar evaluating to one of "" (no compression), "ZLIB", or "GZIP".
-      buffer_size:the number of bytes in the read buffer.If None, a sensible default for both local and remote file systems is used.
-      num_parallel_reads:the number of files to read in parallel. If greater than one, the records of files read in parallel are outputted in an interleaved order.
-      name:A name for the operation.
+      compression_type: A scalar evaluating to one of "" (no compression), "ZLIB", or "GZIP".
+      buffer_size: The number of bytes in the read buffer. If None, a sensible default for both local and remote file systems is used.
+      num_parallel_reads: The number of files to read in parallel. If greater than one, the records of files read in parallel are outputted in an interleaved order.
+      name: A name for the operation.
     """
 
     compression_type: Optional[str] = None
@@ -46,11 +46,11 @@ def extract_metadata(t: Type[T]) -> Tuple[T, TFRecordDatasetConfig]:
         if isinstance(metadata, TFRecordDatasetConfig):
             return base_type, metadata
         else:
-            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type Dict")
+            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type TFRecordDatasetConfig")
     return t, metadata
 
 
-class TensorflowRecordsTransformerBase(TypeTransformer, Generic[T]):
+class TensorflowRecordTransformerBase(TypeTransformer, Generic[T]):
     """
     TypeTransformer that supports serialising and deserialising to and from TFRecord file.
     https://www.tensorflow.org/tutorials/load_data/tfrecord
@@ -123,7 +123,7 @@ class TensorflowRecordsTransformerBase(TypeTransformer, Generic[T]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-class TensorflowExampleRecordsTransformer(TensorflowRecordsTransformerBase[example_pb2.Example]):
+class TensorflowExampleRecordsTransformer(TensorflowRecordTransformerBase[example_pb2.Example]):
     TENSORFLOW_FORMAT = "TensorflowRecord"
 
     def __init__(self):

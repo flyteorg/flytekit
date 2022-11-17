@@ -1,5 +1,5 @@
 """
-Flytekit Tensorflow
+Flytekit TensorFlow
 =========================================
 .. currentmodule:: flytekit.extras.tensorflow
 
@@ -7,7 +7,7 @@ Flytekit Tensorflow
    :template: custom.rst
    :toctree: generated/
 
-    TensorflowRecord
+    TensorFlowRecord
 """
 from flytekit.loggers import logger
 
@@ -23,6 +23,6 @@ except (ImportError, OSError):
 
 
 if _tensorflow_installed:
-    from .records import TensorflowExampleRecordsTransformer
+    from .record import TensorflowExampleRecordsTransformer
 else:
-    logger.info("We won't register TensorflowRecordsTransformer because tensorflow is not installed.")
+    logger.info("We won't register TensorflowRecordTransformer because tensorflow is not installed.")
