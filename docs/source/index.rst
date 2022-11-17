@@ -7,6 +7,8 @@
 Flytekit Python Reference
 *************************
 
+`All Tags <_tags/tagsindex.html>`__
+
 This section of the documentation provides detailed descriptions of the high-level design of ``Flytekit`` and an
 API reference for specific usage details of Python functions, classes, and decorators that you import to specify tasks,
 build workflows, and extend ``Flytekit``.
