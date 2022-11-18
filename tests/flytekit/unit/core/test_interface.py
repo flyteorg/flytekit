@@ -148,6 +148,7 @@ def test_sig_files():
 
 
 def test_file_types():
+
     def t1() -> FlyteFile[typing.TypeVar("svg")]:
         ...
 

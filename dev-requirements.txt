@@ -122,7 +122,7 @@ exceptiongroup==1.0.1
     # via pytest
 filelock==3.8.0
     # via virtualenv
-flyteidl==1.2.4
+flyteidl==1.2.5
     # via
     #   -c requirements.txt
     #   flytekit
