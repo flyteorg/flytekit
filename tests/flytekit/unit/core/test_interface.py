@@ -95,13 +95,13 @@ def test_extract_only():
 
 
 def test_named_tuples():
-    nt1 = typing.NamedTuple("NT1", [("x_str", str), ("y_int", int)])
+    nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
 
-    def x(a: int, b: str) -> typing.NamedTuple("NT1", [("x_str", str), ("y_int", int)]):
-        return "hello world", 5
+    def x(a: int, b: str) -> typing.NamedTuple("NT1", x_str=str, y_int=int):
+        return ("hello world", 5)
 
     def y(a: int, b: str) -> nt1:
-        return nt1("hello world", 5)
+        return nt1("hello world", 5)  # type: ignore
 
     result = transform_variable_map(extract_return_annotation(typing.get_type_hints(x).get("return", None)))
     assert result["x_str"].type.simple == 3

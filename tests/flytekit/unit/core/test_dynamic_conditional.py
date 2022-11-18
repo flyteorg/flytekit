@@ -15,7 +15,7 @@ seed(datetime.now().microsecond)
 
 def test_dynamic_conditional():
     @task
-    def split(in1: typing.List[int]) -> tuple[list[int], list[int], float]:
+    def split(in1: typing.List[int]) -> (typing.List[int], typing.List[int], int):
         return in1[0 : int(len(in1) / 2)], in1[int(len(in1) / 2) + 1 :], len(in1) / 2
 
     # One sample implementation for merging. In a more real world example, this might merge file streams and only load

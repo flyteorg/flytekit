@@ -155,12 +155,12 @@ def test_ref_plain_no_outputs():
 
     inner_test()
 
-    nt1 = typing.NamedTuple("DummyNamedTuple", [("t1_int_output", int), ("c", str)])
+    nt1 = typing.NamedTuple("DummyNamedTuple", t1_int_output=int, c=str)
 
     @task
     def t1(a: int) -> nt1:
         a = a + 2
-        return nt1(a, "world-" + str(a))
+        return nt1(a, "world-" + str(a))  # type: ignore
 
     @workflow
     def wf2(a: int):
