@@ -416,6 +416,7 @@ class FlyteRemote(object):
         if isinstance(cp_entity, task_models.TaskSpec):
             ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
             try:
+                self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
                 remote_logger.info(f" {ident} Already Exists!")
@@ -424,6 +425,7 @@ class FlyteRemote(object):
         if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
             ident = self._resolve_identifier(ResourceType.WORKFLOW, cp_entity.template.id.name, version, settings)
             try:
+                self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
                 self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
                 remote_logger.info(f" {ident} Already Exists!")
@@ -498,39 +500,13 @@ class FlyteRemote(object):
                     settings,
                     f"No serialization settings set, but workflow contains entities that need to be registered. {cp_entity.id.name}",
                 )
-            try:
-                if isinstance(cp_entity, task_models.TaskSpec):
-                    ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
-                    self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
-                    self.client.create_task(task_identifer=ident, task_spec=cp_entity)
-                elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
-                    ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
-                    try:
-                        self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
-                        self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
-                    except FlyteEntityAlreadyExistsException:
-                        remote_logger.info(f"{entity.name} already exists")
-                    # Let us also create a default launch-plan, ideally the default launchplan should be added
-                    # to the orderedDict, but we do not.
-                    default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
-                    lp_entity = get_serializable_launch_plan(
-                        OrderedDict(),
-                        settings or serialization_settings,
-                        default_lp,
-                        recurse_downstream=False,
-                        options=options,
-                    )
-                    self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
-                elif isinstance(cp_entity, launch_plan_models.LaunchPlan):
-                    ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, settings)
-                    self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
-                else:
-                    raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
-            except FlyteEntityAlreadyExistsException:
-                remote_logger.info(f"{entity.name} already exists")
-            except Exception as e:
-                remote_logger.info(f"Failed to register entity {entity.name} with error {e}")
-                raise
+            # if isinstance(cp_entity, task_models.TaskSpec):
+            #     ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
+            #     self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
+            #     self.client.create_task(task_identifer=ident, task_spec=cp_entity)
+            # elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
+            #     ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
+            #     self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
 
             ident = self.raw_register(
                 cp_entity,
