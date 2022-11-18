@@ -26,7 +26,7 @@ class SQLTask(PythonTask[T]):
         task_type="sql_task",
         inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
         metadata: Optional[TaskMetadata] = None,
-        outputs: Dict[str, Type] = None,
+        outputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """

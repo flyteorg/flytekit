@@ -90,7 +90,7 @@ class StructuredDataset(object):
         self._dataframe_type = dataframe_type
         return self
 
-    def all(self) -> DF:
+    def all(self) -> DF:  # type: ignore
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()

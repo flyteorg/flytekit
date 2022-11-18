@@ -107,16 +107,16 @@ class LaunchPlan(object):
         cls,
         name: str,
         workflow: _annotated_workflow.WorkflowBase,
-        default_inputs: Dict[str, Any] = None,
-        fixed_inputs: Dict[str, Any] = None,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        max_parallelism: int = None,
-        security_context: typing.Optional[security.SecurityContext] = None,
-        auth_role: _common_models.AuthRole = None,
+        default_inputs: Optional[Dict[str, Any]] = None,
+        fixed_inputs: Optional[Dict[str, Any]] = None,
+        schedule: Optional[_schedule_model.Schedule] = None,
+        notifications: Optional[List[_common_models.Notification]] = None,
+        labels: Optional[_common_models.Labels] = None,
+        annotations: Optional[_common_models.Annotations] = None,
+        raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
+        auth_role: Optional[_common_models.AuthRole] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -185,16 +185,16 @@ class LaunchPlan(object):
         cls,
         workflow: _annotated_workflow.WorkflowBase,
         name: Optional[str] = None,
-        default_inputs: Dict[str, Any] = None,
-        fixed_inputs: Dict[str, Any] = None,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        max_parallelism: int = None,
-        security_context: typing.Optional[security.SecurityContext] = None,
-        auth_role: _common_models.AuthRole = None,
+        default_inputs: Optional[Dict[str, Any]] = None,
+        fixed_inputs: Optional[Dict[str, Any]] = None,
+        schedule: Optional[_schedule_model.Schedule] = None,
+        notifications: Optional[List[_common_models.Notification]] = None,
+        labels: Optional[_common_models.Labels] = None,
+        annotations: Optional[_common_models.Annotations] = None,
+        raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
+        auth_role: Optional[_common_models.AuthRole] = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -298,13 +298,13 @@ class LaunchPlan(object):
         workflow: _annotated_workflow.WorkflowBase,
         parameters: _interface_models.ParameterMap,
         fixed_inputs: _literal_models.LiteralMap,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        max_parallelism: typing.Optional[int] = None,
-        security_context: typing.Optional[security.SecurityContext] = None,
+        schedule: Optional[_schedule_model.Schedule] = None,
+        notifications: Optional[List[_common_models.Notification]] = None,
+        labels: Optional[_common_models.Labels] = None,
+        annotations: Optional[_common_models.Annotations] = None,
+        raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -328,15 +328,15 @@ class LaunchPlan(object):
     def clone_with(
         self,
         name: str,
-        parameters: _interface_models.ParameterMap = None,
-        fixed_inputs: _literal_models.LiteralMap = None,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        max_parallelism: int = None,
-        security_context: typing.Optional[security.SecurityContext] = None,
+        parameters: Optional[_interface_models.ParameterMap] = None,
+        fixed_inputs: Optional[_literal_models.LiteralMap] = None,
+        schedule: Optional[_schedule_model.Schedule] = None,
+        notifications: Optional[List[_common_models.Notification]] = None,
+        labels: Optional[_common_models.Labels] = None,
+        annotations: Optional[_common_models.Annotations] = None,
+        raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
     ) -> LaunchPlan:
         return LaunchPlan(
             name=name,
@@ -405,11 +405,11 @@ class LaunchPlan(object):
         return self._raw_output_data_config
 
     @property
-    def max_parallelism(self) -> typing.Optional[int]:
+    def max_parallelism(self) -> Optional[int]:
         return self._max_parallelism
 
     @property
-    def security_context(self) -> typing.Optional[security.SecurityContext]:
+    def security_context(self) -> Optional[security.SecurityContext]:
         return self._security_context
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:

@@ -37,7 +37,7 @@ fmt: ## Format code with black and isort
 lint: ## Run linters
 	mypy flytekit/core
 	mypy flytekit/types
-	mypy tests/flytekit/unit/core
+	mypy --allow-empty-bodies --allow-redefinition tests/flytekit/unit/core
 	pre-commit run --all-files
 
 .PHONY: spellcheck

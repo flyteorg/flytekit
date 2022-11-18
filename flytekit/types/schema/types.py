@@ -267,7 +267,7 @@ class FlyteSchema(object):
         return self._supported_mode
 
     def open(
-        self, dataframe_fmt: type = pandas.DataFrame, override_mode: SchemaOpenMode = None
+        self, dataframe_fmt: type = pandas.DataFrame, override_mode: typing.Optional[SchemaOpenMode] = None
     ) -> typing.Union[SchemaReader, SchemaWriter]:
         """
         Returns a reader or writer depending on the mode of the object when created. This mode can be

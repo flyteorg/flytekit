@@ -123,7 +123,7 @@ class ExecutionParameters(object):
             )
 
     @staticmethod
-    def new_builder(current: ExecutionParameters = None) -> Builder:
+    def new_builder(current: Optional[ExecutionParameters] = None) -> Builder:
         return ExecutionParameters.Builder(current=current)
 
     def with_task_sandbox(self) -> Builder:

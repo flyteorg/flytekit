@@ -880,7 +880,7 @@ def test_lp_serialize():
         return b + a
 
     @workflow
-    def my_subwf(a: int) -> (str, str):
+    def my_subwf(a: int) -> typing.Tuple[str, str]:
         x, y = t1(a=a)
         u, v = t1(a=x)
         return y, v
@@ -1404,7 +1404,7 @@ def test_nested_dynamic():
         return b + a
 
     @workflow
-    def my_wf(a: int, b: str) -> (str, typing.List[str]):
+    def my_wf(a: int, b: str) -> typing.Tuple[str, typing.List[str]]:
         @dynamic
         def my_subwf(a: int) -> typing.List[str]:
             s = []
@@ -1444,7 +1444,7 @@ def test_workflow_named_tuple():
         return "Hello"
 
     @workflow
-    def wf() -> typing.NamedTuple("OP", a=str, b=str):
+    def wf() -> typing.NamedTuple("OP", [("a", str), ("b", str)]):  # type: ignore
         return t1(), t1()
 
     assert wf() == ("Hello", "Hello")

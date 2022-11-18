@@ -345,7 +345,7 @@ def transform_variable_map(
     return res
 
 
-def transform_type(x: type, description: str = None) -> _interface_models.Variable:
+def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
     return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=description)
 
 

@@ -44,12 +44,12 @@ def test_default_metadata_values():
 
 def test_workflow_values():
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", [("t1_int_output", int), ("c", str)]):
         a = a + 2
         return a, "world-" + str(a)
 
     @workflow(interruptible=True, failure_policy=WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
-    def wf(a: int) -> (str, str):
+    def wf(a: int) -> typing.Tuple[str, str]:
         x, y = t1(a=a)
         u, v = t1(a=x)
         return y, v

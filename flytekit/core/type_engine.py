@@ -162,7 +162,7 @@ class SimpleTransformer(TypeTransformer[T]):
         self._to_literal_transformer = to_literal_transformer
         self._from_literal_transformer = from_literal_transformer
 
-    def get_literal_type(self, t: Type[T] = None) -> LiteralType:
+    def get_literal_type(self, t: Optional[Type[T]] = None) -> LiteralType:
         return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
@@ -207,7 +207,7 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
     def __init__(self, name: str, t: Type[T]):
         super().__init__(name, t)
 
-    def get_literal_type(self, t: Type[T] = None) -> LiteralType:
+    def get_literal_type(self, t: Optional[Type[T]] = None) -> LiteralType:
         raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:

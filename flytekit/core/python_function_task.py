@@ -43,7 +43,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 T = TypeVar("T")
 
 
-class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
+class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
     """
     This class should be used as the base class for all Tasks that do not have a user defined function body, but have
     a platform defined execute method. (Execute needs to be overridden). This base class ensures that the module loader
@@ -72,7 +72,7 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
 
-class PythonFunctionTask(PythonAutoContainerTask[T]):
+class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     """
     A Python Function task should be used as the base for all extensions that have a python function. It will
     automatically detect interface of the python function and when serialized on the hosted Flyte platform handles the

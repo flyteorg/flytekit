@@ -392,7 +392,7 @@ class ImperativeWorkflow(WorkflowBase):
             raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
 
         # Create a map that holds the outputs of each node.
-        intermediate_node_outputs = {GLOBAL_START_NODE: {}}  # type: Dict[Node, Dict[str, Promise]]
+        intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
@@ -572,7 +572,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         workflow_function: Callable,
         metadata: WorkflowMetadata,
         default_metadata: WorkflowMetadataDefaults,
-        docstring: Docstring = None,
+        docstring: Optional[Docstring] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function

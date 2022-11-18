@@ -36,8 +36,8 @@ class MapPythonTask(PythonTask):
     def __init__(
         self,
         python_function_task: PythonFunctionTask,
-        concurrency: int = None,
-        min_success_ratio: float = None,
+        concurrency: Optional[int] = None,
+        min_success_ratio: Optional[float] = None,
         **kwargs,
     ):
         """

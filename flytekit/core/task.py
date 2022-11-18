@@ -214,7 +214,7 @@ def task(
         return wrapper
 
 
-class ReferenceTask(ReferenceEntity, PythonFunctionTask):
+class ReferenceTask(ReferenceEntity, PythonFunctionTask):  # type: ignore
     """
     This is a reference task, the body of the function passed in through the constructor will never be used, only the
     signature of the function will be. The signature should also match the signature of the task you're referencing,
