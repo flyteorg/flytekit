@@ -265,16 +265,6 @@ numpy==1.21.6
     #   flytekit
     #   pandas
     #   pyarrow
-nvidia-cublas-cu11==11.10.3.66
-    # via
-    #   nvidia-cudnn-cu11
-    #   torch
-nvidia-cuda-nvrtc-cu11==11.7.99
-    # via torch
-nvidia-cuda-runtime-cu11==11.7.99
-    # via torch
-nvidia-cudnn-cu11==8.5.0.96
-    # via torch
 packaging==21.3
     # via
     #   -c requirements.txt
@@ -385,7 +375,7 @@ python-json-logger==2.0.4
     # via
     #   -c requirements.txt
     #   flytekit
-python-slugify==6.1.2
+python-slugify==7.0.0
     # via
     #   -c requirements.txt
     #   cookiecutter
@@ -471,7 +461,7 @@ tomli==2.0.1
     #   coverage
     #   mypy
     #   pytest
-torch==1.13.0
+torch==1.12.1
     # via -r dev-requirements.in
 traitlets==5.5.0
     # via
@@ -517,8 +507,6 @@ wheel==0.38.4
     # via
     #   -c requirements.txt
     #   flytekit
-    #   nvidia-cublas-cu11
-    #   nvidia-cuda-runtime-cu11
 wrapt==1.14.1
     # via
     #   -c requirements.txt

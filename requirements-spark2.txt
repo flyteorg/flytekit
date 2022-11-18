@@ -150,7 +150,7 @@ python-dateutil==2.8.2
     #   pandas
 python-json-logger==2.0.4
     # via flytekit
-python-slugify==6.1.2
+python-slugify==7.0.0
     # via cookiecutter
 pytimeparse==1.1.8
     # via flytekit
