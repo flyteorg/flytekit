@@ -135,7 +135,7 @@ def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[N
             val=_literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals)),
         )
     elif binding_data.map is not None:
-        literals = {}
+        literals = {}  # type: ignore
         for k, bd in binding_data.map.bindings.items():
             p = get_promise(bd, outputs_cache)
             literals[k] = p.val
@@ -180,7 +180,7 @@ class WorkflowBase(object):
         self._inputs = {}
         self._unbound_inputs = set()
         self._nodes = []
-        self._output_bindings: Optional[List[_literal_models.Binding]] = []
+        self._output_bindings: List[_literal_models.Binding] = []
         self._docs = docs
 
         if self._python_interface.docstring:
@@ -260,7 +260,7 @@ class WorkflowBase(object):
     def execute(self, **kwargs):
         raise Exception("Should not be called")
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
         for k, v in kwargs.items():
@@ -507,7 +507,7 @@ class ImperativeWorkflow(WorkflowBase):
             for input_value in filter(lambda x: isinstance(x, Promise), all_input_values):
                 if input_value in self._unbound_inputs:
                     self._unbound_inputs.remove(input_value)
-            return n
+            return n  # type: ignore
 
     def add_workflow_input(self, input_name: str, python_type: Type) -> Interface:
         """

@@ -54,7 +54,7 @@ jobs:
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:
-          fail_ci_if_error: true # optional (default = false)
+          fail_ci_if_error: false
 
   build-plugins:
     runs-on: ubuntu-latest
@@ -89,6 +89,7 @@ jobs:
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
+          - flytekit-vaex
           - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.10 wheel yet.

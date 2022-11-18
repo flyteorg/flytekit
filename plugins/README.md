@@ -21,7 +21,7 @@ All the Flytekit plugins maintained by the core team are added here. It is not n
 | Great Expectations           | ```bash pip install flytekitplugins-great-expectations``` | Enforce data quality for various data types within Flyte                                                                   | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-great-expectations.svg)](https://pypi.python.org/pypi/flytekitplugins-great-expectations/) | Flytekit-only |
 | Snowflake                    | ```bash pip install flytekitplugins-snowflake```          | Use Snowflake as a 'data warehouse-as-a-service' within Flyte                                                              | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-snowflake.svg)](https://pypi.python.org/pypi/flytekitplugins-snowflake/)                   | Backend       |
 | dbt                          | ```bash pip install flytekitplugins-dbt```                | Run dbt within Flyte                                                                                                       | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-dbt.svg)](https://pypi.python.org/pypi/flytekitplugins-dbt/)                               | Flytekit-only |
-
+| Huggingface                  | ```bash pip install flytekitplugins-huggingface```        | Read & write Hugginface Datasets as Flyte StructuredDatasets                                                               | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-huggingface.svg)](https://pypi.python.org/pypi/flytekitplugins-huggingface/)               | Flytekit-only |
 
 ## Have a Plugin Idea? 💡
 Please [file an issue](https://github.com/flyteorg/flyte/issues/new?assignees=&labels=untriaged%2Cplugins&template=backend-plugin-request.md&title=%5BPlugin%5D).
@@ -72,7 +72,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 # microlib_name = f"flytekitplugins-data-{PLUGIN_NAME}"
 
 # TODO add additional requirements
-plugin_requires = ["flytekit>=0.21.3,<1.0.0", "<other requirements>"]
+plugin_requires = ["flytekit>=1.1.0b0,<2.0.0, "<other requirements>"]
 
 __version__ = "0.0.0+develop"
 

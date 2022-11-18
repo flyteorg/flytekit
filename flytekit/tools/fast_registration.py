@@ -18,8 +18,6 @@ from flytekit.tools.script_mode import tar_strip_file_attributes
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
 
-file_access = FlyteContextManager.current_context().file_access
-
 
 def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: bool = False) -> os.PathLike:
     """
@@ -36,7 +34,7 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
 
     if output_dir is None:
         output_dir = tempfile.mkdtemp()
-        click.secho(f"Output given as {None}, using a temporary directory at {output_dir} instead", fg="yellow")
+        click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
 
     archive_fname = os.path.join(output_dir, archive_fname)
 
@@ -105,10 +103,15 @@ def download_distribution(additional_distribution: str, destination: str):
     :param Text additional_distribution:
     :param os.PathLike destination:
     """
-    file_access.get_data(additional_distribution, destination)
+    if not os.path.isdir(destination):
+        raise ValueError("Destination path is required to download distribution and it should be a directory")
+    # NOTE the os.path.join(destination, ''). This is to ensure that the given path is infact a directory and all
+    # downloaded data should be copied into this directory. We do this to account for a difference in behavior in
+    # fsspec, which requires a trailing slash in case of pre-existing directory.
+    FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))
     tarfile_name = os.path.basename(additional_distribution)
     if not tarfile_name.endswith(".tar.gz"):
-        raise ValueError("Unrecognized additional distribution format for {}".format(additional_distribution))
+        raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.
     result = _subprocess.run(

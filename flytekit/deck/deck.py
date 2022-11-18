@@ -1,4 +1,5 @@
 import os
+import typing
 from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -89,12 +90,20 @@ def _ipython_check() -> bool:
     return is_ipython
 
 
-def _get_deck(new_user_params: ExecutionParameters) -> str:
+def _get_deck(
+    new_user_params: ExecutionParameters, ignore_jupyter: bool = False
+) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
     """
     Get flyte deck html string
+    If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
-    return template.render(metadata=deck_map)
+    raw_html = template.render(metadata=deck_map)
+    if not ignore_jupyter and _ipython_check():
+        from IPython.core.display import HTML
+
+        return HTML(raw_html)
+    return raw_html
 
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
@@ -105,7 +114,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
         output_dir = ctx.file_access.get_random_local_directory()
     deck_path = os.path.join(output_dir, DECK_FILE_NAME)
     with open(deck_path, "w") as f:
-        f.write(_get_deck(new_user_params))
+        f.write(_get_deck(new_user_params, ignore_jupyter=True))
     logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
 
 
