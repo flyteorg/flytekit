@@ -277,7 +277,8 @@ class Task(object):
             return VoidPromise(self.name)
 
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
-        return create_task_output(vals, self.python_interface)
+        x = create_task_output(vals, self.python_interface)
+        return x
 
     def __call__(self, *args, **kwargs):
         return flyte_entity_call_handler(self, *args, **kwargs)
@@ -476,6 +477,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             try:
                 native_outputs = self.execute(**native_inputs)
+                print(native_outputs)
             except Exception as e:
                 logger.exception(f"Exception when executing {e}")
                 raise e
@@ -487,6 +489,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
+            # TODO: Make dynamic_execute return a literal map in local execute so that this gets triggered.
             if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
                 native_outputs, _dynamic_job.DynamicJobSpec
             ):

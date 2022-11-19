@@ -18,7 +18,7 @@ from abc import ABC
 from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
-
+from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.configuration import SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core.base_task import Task, TaskResolverMixin
@@ -39,6 +39,8 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.core.promise import VoidPromise, translate_inputs_to_literals, Promise, create_task_output
+from flytekit.core.context_manager import ExecutionState
 
 T = TypeVar("T")
 
@@ -145,6 +147,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
+        self._wf = None  # For dynamic tasks
 
     @property
     def execution_mode(self) -> ExecutionBehavior:
@@ -264,14 +267,58 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         _LOCAL_ONLY_SS = SerializationSettings.for_image(DefaultImages.default_image(), "v", "p", "d")
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+            # updated_exec_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
             with FlyteContextManager.with_context(
-                ctx.with_execution_state(updated_exec_state).with_serialization_settings(_LOCAL_ONLY_SS)
+                ctx.with_serialization_settings(_LOCAL_ONLY_SS)
             ) as ctx:
-                logger.debug(f"Running compilation for {self} as part of local run as check")
-                self.compile_into_workflow(ctx, task_function, **kwargs)
-                logger.info("Executing Dynamic workflow, using raw inputs")
-                return exception_scopes.user_entry_point(task_function)(**kwargs)
+                if self._wf is None:
+                    logger.debug(f"Running compilation for {self} as part of local run as check")
+                    self.compile_into_workflow(ctx, task_function, **kwargs)
+
+            # Need to run in a way where the initial inputs are Python native values. So if promises, they need to be
+            # unwrapped. Outputs need to be Promises - so preserving the buggy behavior after making the first change.
+            logger.info("Executing Dynamic workflow, using raw inputs")
+
+            # xx = exception_scopes.user_entry_point(task_function)(**kwargs)
+            # return xx
+            function_outputs = self._wf.execute(**kwargs)
+            print(function_outputs)
+
+            if isinstance(function_outputs, VoidPromise) or function_outputs is None:
+                return VoidPromise(self.name)
+
+            if len(self._wf.python_interface.outputs) == 0:
+                raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
+
+            expected_output_names = list(self.python_interface.outputs.keys())
+            if len(expected_output_names) == 1:
+                # Here we have to handle the fact that the wf could've been declared with a typing.NamedTuple of
+                # length one. That convention is used for naming outputs - and single-length-NamedTuples are
+                # particularly troublesome but elegant handling of them is not a high priority
+                # Again, we're using the output_tuple_name as a proxy.
+                if self.python_interface.output_tuple_name and isinstance(function_outputs, tuple):
+                    wf_outputs_as_map = {expected_output_names[0]: function_outputs[0]}
+                else:
+                    wf_outputs_as_map = {expected_output_names[0]: function_outputs}
+            else:
+                wf_outputs_as_map = {expected_output_names[i]: function_outputs[i] for i, _ in
+                                     enumerate(function_outputs)}
+
+            # Basically we need to repackage the promises coming from the tasks into Promises that match the workflow's
+            # interface. We do that by extracting out the literals, and creating new Promises
+            wf_outputs_as_literal_dict = translate_inputs_to_literals(
+                ctx,
+                wf_outputs_as_map,
+                flyte_interface_types=self.interface.outputs,
+                native_types=self.python_interface.outputs,
+            )
+            return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)
+            # Recreate new promises that use the workflow's output names.
+            # new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
+            #
+            # return create_task_output(new_promises, self.python_interface)
+
+            # return exception_scopes.user_entry_point(task_function)(**kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self.compile_into_workflow(ctx, task_function, **kwargs)

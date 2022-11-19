@@ -176,6 +176,7 @@ def test_dynamic_return_dict():
 
     wf()
 
+
 def test_nested_dynamic_locals():
     @task
     def t1(a: int) -> str:
@@ -183,18 +184,37 @@ def test_nested_dynamic_locals():
         return "fast-" + str(a)
 
     @task
-    def t2(b: str):
-        print(f"In t2 string is {b}")
+    def t2(b: str) -> str:
+        return f"In t2 string is {b}"
+
+    @task
+    def t3(b: str) -> str:
+        return f"In t3 string is {b}"
+
+    @workflow()
+    def normalwf(a: int) -> str:
+        x = t1(a=a)
+        return x
 
     @dynamic
-    def split_and_print(ss: str) -> typing.List[str]:
-        for s in ss:
-        return s
+    def dt(ss: str) -> typing.List[str]:
+        if ss == "hello":
+            bb = t2(b=ss)
+            bbb = t3(b=bb)
+        else:
+            bb = t2(b=ss + "hi again")
+            bbb = "static"
+        return [bb, bbb]
 
     @workflow
-    def wf(a: int, b: int) -> typing.List[str]:
-        x = t1(a=a)
-        return add_and_range(a=a, b=b)
+    def wf(wf_in: str) -> typing.List[str]:
+        x = dt(ss=wf_in)
+        return x
 
-    res = wf(a=2, b=3)
-    assert res == ["fast-2", "fast-3", "fast-4", "fast-5", "fast-6"]
+    # xx = dt(ss="hi")
+    # print(xx)
+
+    res = wf(wf_in="hello")
+    print(res)
+
+    # res = normalwf(a=5)
