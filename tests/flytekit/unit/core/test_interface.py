@@ -2,9 +2,9 @@ import os
 import typing
 from typing import Dict, List
 
-from flytekit import task
 from typing_extensions import Annotated  # type: ignore
 
+from flytekit import task
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
@@ -148,7 +148,6 @@ def test_sig_files():
 
 
 def test_file_types():
-
     def t1() -> FlyteFile[typing.TypeVar("svg")]:
         ...
 
