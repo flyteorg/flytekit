@@ -34,7 +34,7 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
 
     if output_dir is None:
         output_dir = tempfile.mkdtemp()
-        click.secho(f"Output given as {None}, using a temporary directory at {output_dir} instead", fg="yellow")
+        click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
 
     archive_fname = os.path.join(output_dir, archive_fname)
 
