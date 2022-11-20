@@ -267,8 +267,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         _LOCAL_ONLY_SS = SerializationSettings.for_image(DefaultImages.default_image(), "v", "p", "d")
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            with FlyteContextManager.with_context(ctx.with_serialization_settings(_LOCAL_ONLY_SS)) as ctx:
-                if self._wf is None:
+            if self._wf is None:
+                with FlyteContextManager.with_context(ctx.with_serialization_settings(_LOCAL_ONLY_SS)) as ctx:
                     logger.debug(f"Running compilation for {self} as part of local run as check")
                     self.compile_into_workflow(ctx, task_function, **kwargs)
 
@@ -283,6 +283,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             if len(self._wf.python_interface.outputs) == 0:
                 raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
 
+            # TODO: This will need to be cleaned up when we revisit top-level tuple support.
             expected_output_names = list(self.python_interface.outputs.keys())
             if len(expected_output_names) == 1:
                 # Here we have to handle the fact that the wf could've been declared with a typing.NamedTuple of
