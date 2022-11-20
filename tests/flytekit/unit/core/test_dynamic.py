@@ -250,4 +250,4 @@ def test_nested_dynamic_locals():
         return x
 
     res = wf(wf_in="hello")
-    assert res == ['In t2 string is hello', 'In t3 string is In t2 string is hello']
+    assert res == ["In t2 string is hello", "In t3 string is In t2 string is hello"]

@@ -18,13 +18,14 @@ from abc import ABC
 from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
-from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
+
 from flytekit.configuration import SerializationSettings
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
+from flytekit.core.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
@@ -34,13 +35,12 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.exceptions import scopes as exception_scopes
+from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.core.promise import VoidPromise, translate_inputs_to_literals, Promise, create_task_output
-from flytekit.core.context_manager import ExecutionState
 
 T = TypeVar("T")
 
@@ -267,9 +267,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         _LOCAL_ONLY_SS = SerializationSettings.for_image(DefaultImages.default_image(), "v", "p", "d")
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            with FlyteContextManager.with_context(
-                ctx.with_serialization_settings(_LOCAL_ONLY_SS)
-            ) as ctx:
+            with FlyteContextManager.with_context(ctx.with_serialization_settings(_LOCAL_ONLY_SS)) as ctx:
                 if self._wf is None:
                     logger.debug(f"Running compilation for {self} as part of local run as check")
                     self.compile_into_workflow(ctx, task_function, **kwargs)
@@ -296,8 +294,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 else:
                     wf_outputs_as_map = {expected_output_names[0]: function_outputs}
             else:
-                wf_outputs_as_map = {expected_output_names[i]: function_outputs[i] for i, _ in
-                                     enumerate(function_outputs)}
+                wf_outputs_as_map = {
+                    expected_output_names[i]: function_outputs[i] for i, _ in enumerate(function_outputs)
+                }
 
             # In a normal workflow, we'd repackage the promises coming from tasks into new Promises matching the
             # workflow's interface. For a dynamic workflow, just return the literal map.
