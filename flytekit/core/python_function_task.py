@@ -275,7 +275,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                     self.compile_into_workflow(ctx, task_function, **kwargs)
 
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
-            # local_execute directly though since that converts inputs into
+            # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             function_outputs = self._wf.execute(**kwargs)
 
