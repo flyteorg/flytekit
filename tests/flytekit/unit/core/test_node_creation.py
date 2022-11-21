@@ -87,6 +87,7 @@ def test_normal_task():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
     assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
     assert wf_spec.template.nodes[0].id == "n0"
+    assert wf_spec.template.nodes[0].metadata.name == "t2"
 
     with pytest.raises(FlyteAssertion):
 
@@ -398,17 +399,14 @@ def test_void_promise_override():
     ]
 
 
-@pytest.mark.parametrize(
-    "name,expected", [(None, "t1"), ("foo", "foo")],
-)
-def test_name_override(name, expected):
+def test_name_override():
     @task
     def t1(a: str) -> str:
         return f"*~*~*~{a}*~*~*~"
 
     @workflow
     def my_wf(a: str) -> str:
-        return t1(a=a).with_overrides(name=name)
+        return t1(a=a).with_overrides(name="foo")
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
@@ -419,4 +417,4 @@ def test_name_override(name, expected):
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].metadata.name == expected
+    assert wf_spec.template.nodes[0].metadata.name == "foo"
