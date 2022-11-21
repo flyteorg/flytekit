@@ -10,6 +10,7 @@ from mlflow.entities.metric import Metric
 from plotly.subplots import make_subplots
 
 import flytekit
+from flytekit import FlyteContextManager
 from flytekit.deck import TopFrameRenderer
 
 
@@ -77,7 +78,7 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn):
     for the given ``framework``. If framework is not provided then the autologging is enabled for ``sklearn``
     .. code-block::python
         @task
-        @mlflow_autlog(framework=mlflow.tensorflow)
+        @mlflow_autolog(framework=mlflow.tensorflow)
         def my_tensorflow_trainer():
             ...
     One benefit of doing so is that the mlflow metrics are then rendered inline using FlyteDecks and can be viewed
@@ -92,7 +93,12 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         framework.autolog()
+        ctx = FlyteContextManager.current_context()
+        task_id = ctx.user_space_params.task_id
+        mlflow.set_experiment(fn.__name__)
         with mlflow.start_run():
+            # Get execution id and flyte console link from propeller.
+            mlflow.log_param("Flyte Console", "http://flyte:30081/console/projects/flytesnacks/domains/development/executions/a4xlbh7wxtc2skdt2vjc?duration=all")
             out = fn(*args, **kwargs)
             run = mlflow.active_run()
             if run is not None:
