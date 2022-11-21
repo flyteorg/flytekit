@@ -353,7 +353,14 @@ class DBTFreshness(PythonInstanceTask):
         if exit_code == UNHANDLED_ERROR_CODE:
             raise DBTUnhandledError(f"unhandled error while executing {full_command}", logs)
 
+        output_dir = os.path.join(task_input.project_dir, task_input.output_path)
+        sources_path = os.path.join(output_dir, "sources.json")
+        with open(sources_path) as file:
+            sources = file.read()
+
+
         return DBTFreshnessOutput(
             command=full_command,
-            exit_code=exit_code
+            exit_code=exit_code,
+            raw_sources=sources
         )

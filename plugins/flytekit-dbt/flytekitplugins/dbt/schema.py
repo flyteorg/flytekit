@@ -246,4 +246,13 @@ class DBTFreshnessInput(BaseDBTInput):
 @dataclass_json
 @dataclass
 class DBTFreshnessOutput(BaseDBTOutput):
-    pass
+    """
+    Output of DBT test task.
+
+    Attributes
+    ----------
+    raw_sources : str
+        Raw value of DBT's ``sources.json``.
+    """
+
+    raw_sources: str

@@ -219,3 +219,7 @@ class TestDBTFreshness:
             == f"dbt --log-format json source freshness --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR} --profile {DBT_PROFILE}"
         )
 
+        with open(f"{DBT_PROJECT_DIR}/target/sources.json", "r") as fp:
+            exp_sources = fp.read()
+
+        assert output.raw_sources == exp_sources
