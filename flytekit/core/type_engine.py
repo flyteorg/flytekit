@@ -1052,7 +1052,6 @@ class UnionTransformer(TypeTransformer[T]):
         for t in get_args(python_type):
             try:
                 trans = TypeEngine.get_transformer(t)
-
                 res = trans.to_literal(ctx, python_val, t, expected)
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 if found_res:

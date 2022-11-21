@@ -115,7 +115,11 @@ class FSSpecPersistence(DataPersistence):
             from fsspec.utils import other_paths
 
             lfs = LocalFileSystem()
-            lpaths = lfs.expand_path(from_path, recursive=recursive)
+            try:
+                lpaths = lfs.expand_path(from_path, recursive=recursive)
+            except FileNotFoundError:
+                # In some cases, there is no file in the original directory, so we just skip copying the file to the remote path
+                return
             rpaths = other_paths(lpaths, to_path)
             for l, r in zip(lpaths, rpaths):
                 fs.put_file(l, r)
