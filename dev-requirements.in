@@ -13,3 +13,5 @@ google-cloud-bigquery
 google-cloud-bigquery-storage
 IPython
 torch
+tensorflow
+grpcio-status<1.49.0
