@@ -56,7 +56,7 @@ def test_to_python_value_and_literal(transformer, python_type, format, python_va
     lv = tf.to_literal(ctx, python_val, type(python_val), lt)  # type: ignore
     assert lv.scalar.blob.metadata == BlobMetadata(
         type=BlobType(
-            format=format,
+            format=python_val.dtype.name,
             dimensionality=BlobType.BlobDimensionality.SINGLE,
         )
     )

@@ -17,8 +17,6 @@ class TensorFlowTensorTransformer(TypeTransformer[tf.Tensor]):
 
     TENSORFLOW_FORMAT = "TensorFlowTensor"
 
-    tensor_dtype = None
-
     def __init__(self):
         super().__init__(name="TensorFlow Tensor", t=tf.Tensor)
 
@@ -39,7 +37,7 @@ class TensorFlowTensorTransformer(TypeTransformer[tf.Tensor]):
     ) -> Literal:
         meta = BlobMetadata(
             type=_core_types.BlobType(
-                format=self.TENSORFLOW_FORMAT,
+                format=python_val.dtype.name,
                 dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
@@ -49,8 +47,6 @@ class TensorFlowTensorTransformer(TypeTransformer[tf.Tensor]):
         # Save `tf.tensor` to a file
         local_path = os.path.join(local_path, "tensor_data")
         tf.io.write_file(local_path, tf.io.serialize_tensor(python_val))
-
-        self.tensor_dtype = python_val.dtype.name
 
         remote_path = ctx.file_access.get_random_remote_path(local_path)
         ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
@@ -66,10 +62,11 @@ class TensorFlowTensorTransformer(TypeTransformer[tf.Tensor]):
 
         local_path = ctx.file_access.get_random_local_path()
         ctx.file_access.get_data(uri, local_path, is_multipart=False)
+        tensor_dtype = tf.dtypes.as_dtype(lv.scalar.blob.metadata.type.format)
 
         serialized_tensor = tf.io.read_file(local_path)
 
-        return tf.io.parse_tensor(serialized_tensor, out_type=self.tensor_dtype)
+        return tf.io.parse_tensor(serialized_tensor, out_type=tensor_dtype)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[tf.Tensor]:
         if (
