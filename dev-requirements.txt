@@ -118,11 +118,11 @@ docstring-parser==0.15
     # via
     #   -c requirements.txt
     #   flytekit
-exceptiongroup==1.0.1
+exceptiongroup==1.0.4
     # via pytest
 filelock==3.8.0
     # via virtualenv
-flyteidl==1.2.4
+flyteidl==1.2.5
     # via
     #   -c requirements.txt
     #   flytekit
@@ -135,7 +135,7 @@ google-auth==2.14.1
     # via
     #   google-api-core
     #   google-cloud-core
-google-cloud-bigquery==3.3.6
+google-cloud-bigquery==3.4.0
     # via -r dev-requirements.in
 google-cloud-bigquery-storage==2.16.2
     # via
@@ -147,7 +147,7 @@ google-crc32c==1.5.0
     # via google-resumable-media
 google-resumable-media==2.4.0
     # via google-cloud-bigquery
-googleapis-common-protos==1.56.4
+googleapis-common-protos==1.57.0
     # via
     #   -c requirements.txt
     #   flyteidl
@@ -165,7 +165,7 @@ grpcio-status==1.48.2
     #   -c requirements.txt
     #   flytekit
     #   google-api-core
-identify==2.5.8
+identify==2.5.9
     # via pre-commit
 idna==3.4
     # via
@@ -224,7 +224,7 @@ markupsafe==2.1.1
     # via
     #   -c requirements.txt
     #   jinja2
-marshmallow==3.18.0
+marshmallow==3.19.0
     # via
     #   -c requirements.txt
     #   dataclasses-json
@@ -246,7 +246,7 @@ more-itertools==9.0.0
     # via
     #   -c requirements.txt
     #   jaraco-classes
-mypy==0.990
+mypy==0.991
     # via -r dev-requirements.in
 mypy-extensions==0.4.3
     # via
@@ -284,7 +284,7 @@ pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-platformdirs==2.5.3
+platformdirs==2.5.4
     # via virtualenv
 pluggy==1.0.0
     # via pytest
@@ -318,7 +318,7 @@ py==1.11.0
     # via
     #   -c requirements.txt
     #   retry
-pyarrow==6.0.1
+pyarrow==10.0.0
     # via
     #   -c requirements.txt
     #   flytekit
@@ -375,7 +375,7 @@ python-json-logger==2.0.4
     # via
     #   -c requirements.txt
     #   flytekit
-python-slugify==6.1.2
+python-slugify==7.0.0
     # via
     #   -c requirements.txt
     #   cookiecutter
@@ -469,7 +469,7 @@ traitlets==5.5.0
     #   matplotlib-inline
 typed-ast==1.5.4
     # via mypy
-types-toml==0.10.8
+types-toml==0.10.8.1
     # via
     #   -c requirements.txt
     #   responses
@@ -494,7 +494,7 @@ urllib3==1.26.12
     #   flytekit
     #   requests
     #   responses
-virtualenv==20.16.6
+virtualenv==20.16.7
     # via pre-commit
 wcwidth==0.2.5
     # via prompt-toolkit
@@ -503,7 +503,7 @@ websocket-client==0.59.0
     #   -c requirements.txt
     #   docker
     #   docker-compose
-wheel==0.38.3
+wheel==0.38.4
     # via
     #   -c requirements.txt
     #   flytekit
