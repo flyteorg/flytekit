@@ -108,7 +108,7 @@ class Node(object):
             )
         if "interruptible" in kwargs:
             self._metadata._interruptible = kwargs["interruptible"]
-        if "name" in kwargs and kwargs["name"] is not None:
+        if kwargs.get("name") is not None:
             self._metadata._name = kwargs["name"]
         return self
 
