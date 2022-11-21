@@ -8,6 +8,7 @@ from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.core.node_creation import create_node
+from flytekit.core.resources import Resources
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
@@ -167,7 +168,7 @@ def test_dynamic_local_rshift():
 
     @dynamic
     def dynamic_wf() -> str:
-        to1 = task1(s="hello")
+        to1 = task1(s="hello").with_overrides(requests=Resources(cpu=f"3", mem=f"5Gi"))
         to2 = task2(s="world")
         to1 >> to2  # noqa
 
@@ -191,6 +192,8 @@ def test_dynamic_local_rshift():
         ) as ctx:
             dynamic_job_spec = dynamic_wf.dispatch_execute(ctx, LiteralMap(literals={}))
             assert dynamic_job_spec.nodes[1].upstream_node_ids == ["dn0"]
+            assert dynamic_job_spec.nodes[0].task_node.overrides.resources.requests[0].value == "3"
+            assert dynamic_job_spec.nodes[0].task_node.overrides.resources.requests[1].value == "5Gi"
 
 
 def test_dynamic_return_dict():
