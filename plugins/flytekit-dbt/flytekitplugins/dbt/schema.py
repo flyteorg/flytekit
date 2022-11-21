@@ -247,7 +247,7 @@ class DBTFreshnessInput(BaseDBTInput):
 @dataclass
 class DBTFreshnessOutput(BaseDBTOutput):
     """
-    Output of DBT test task.
+    Output of DBT Freshness task.
 
     Attributes
     ----------
