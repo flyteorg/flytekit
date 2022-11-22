@@ -137,7 +137,8 @@ def _convert_resource_overrides(
     if resources.ephemeral_storage is not None:
         resource_entries.append(
             _resources_model.ResourceEntry(
-                _resources_model.ResourceName.EPHEMERAL_STORAGE, resources.ephemeral_storage,
+                _resources_model.ResourceName.EPHEMERAL_STORAGE,
+                resources.ephemeral_storage,
             )
         )
 
