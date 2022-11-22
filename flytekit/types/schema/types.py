@@ -238,7 +238,6 @@ class FlyteSchema(object):
         if (
             supported_mode == SchemaOpenMode.WRITE
             and local_path is None
-            and FlyteContextManager.current_context().file_access is None
         ):
             raise ValueError("To create a FlyteSchema in write mode, local_path is required")
 
@@ -361,6 +360,8 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             remote_path = python_val.remote_path
             if remote_path is None or remote_path == "":
                 remote_path = ctx.file_access.get_random_remote_path()
+            print("python_val.local_path", python_val.local_path)
+            print("remote_path", remote_path)
             ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
