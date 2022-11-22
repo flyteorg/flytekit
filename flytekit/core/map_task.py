@@ -14,12 +14,33 @@ from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
-from flytekit.core.interface import transform_interface_to_list_interface
+from flytekit.core.interface import transform_interface_to_list_interface, Interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql
+
+
+class PartialPythonFunctionTask:
+    task: PythonFunctionTask
+    fixed_inputs: Dict[str, Any]
+
+    def __init__(self, base_task: PythonFunctionTask, **kwargs):
+        self.task = base_task
+        self.fixed_inputs = kwargs
+
+    @property
+    def python_interface(self):
+        iface = typing.Dict[str, typing.Tuple[Type, Any]]()
+        for key in self.task.python_interface.inputs:
+            iface[key] = typing.Tuple[Type, Any]((self.task.python_interface.inputs[key],))
+        for key in self.fixed_inputs:
+            iface[key] = typing.Tuple[Type, Any]((self.task.python_interface.inputs[key], self.fixed_inputs[key]))
+        return Interface(inputs=iface,
+                         outputs=self.task.python_interface.outputs,
+                         output_tuple_name=self.task.python_interface.output_tuple_name,
+                         docstring=self.task.python_interface.docstring)
 
 
 class MapPythonTask(PythonTask):
@@ -34,11 +55,11 @@ class MapPythonTask(PythonTask):
     _ids = count(0)
 
     def __init__(
-        self,
-        python_function_task: PythonFunctionTask,
-        concurrency: int = None,
-        min_success_ratio: float = None,
-        **kwargs,
+            self,
+            python_function_task: typing.Union[PythonFunctionTask, PartialPythonFunctionTask],
+            concurrency: int = None,
+            min_success_ratio: float = None,
+            **kwargs,
     ):
         """
         :param python_function_task: This argument is implicitly passed and represents the repeatable function
@@ -192,6 +213,9 @@ class MapPythonTask(PythonTask):
         map_task_inputs = {}
         for k in self.interface.inputs.keys():
             map_task_inputs[k] = kwargs[k][task_index]
+        if self._run_task is PartialPythonFunctionTask:
+            for k in self._run_task.fixed_inputs:
+                map_task_inputs[k] = self._run_task.fixed_inputs[k]
         return exception_scopes.user_entry_point(self._run_task.execute)(**map_task_inputs)
 
     def _raw_execute(self, **kwargs) -> Any:
@@ -214,6 +238,10 @@ class MapPythonTask(PythonTask):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 single_instance_inputs[k] = kwargs[k][i]
+            if self._run_task is PartialPythonFunctionTask:
+                for k in self._run_task.fixed_inputs:
+                    single_instance_inputs[k] = self._run_task.fixed_inputs[k]
+
             o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
             if outputs_expected:
                 outputs.append(o)
@@ -221,7 +249,12 @@ class MapPythonTask(PythonTask):
         return outputs
 
 
-def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_success_ratio: float = 1.0, **kwargs):
+def partial_task(task_function: PythonFunctionTask, **kwargs) -> PartialPythonFunctionTask:
+    return PartialPythonFunctionTask(task_function, **kwargs)
+
+
+def map_task(task_function: typing.Union[PythonFunctionTask, partial_task], concurrency: int = 0,
+             min_success_ratio: float = 1.0, **kwargs):
     """
     Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.

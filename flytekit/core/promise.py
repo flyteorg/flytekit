@@ -27,10 +27,10 @@ from flytekit.models.types import SimpleType
 
 
 def translate_inputs_to_literals(
-    ctx: FlyteContext,
-    incoming_values: Dict[str, Any],
-    flyte_interface_types: Dict[str, _interface_models.Variable],
-    native_types: Dict[str, type],
+        ctx: FlyteContext,
+        incoming_values: Dict[str, Any],
+        flyte_interface_types: Dict[str, _interface_models.Variable],
+        native_types: Dict[str, type],
 ) -> Dict[str, _literal_models.Literal]:
     """
     The point of this function is to extract out Literals from a collection of either Python native values (which would
@@ -65,7 +65,7 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+            ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
     ) -> _literal_models.Literal:
 
         if isinstance(input_val, list):
@@ -257,10 +257,10 @@ class ConjunctionExpression(object):
     """
 
     def __init__(
-        self,
-        lhs: Union[ComparisonExpression, "ConjunctionExpression"],
-        op: ConjunctionOps,
-        rhs: Union[ComparisonExpression, "ConjunctionExpression"],
+            self,
+            lhs: Union[ComparisonExpression, "ConjunctionExpression"],
+            op: ConjunctionOps,
+            rhs: Union[ComparisonExpression, "ConjunctionExpression"],
     ):
         self._lhs = lhs
         self._rhs = rhs
@@ -454,7 +454,7 @@ class Promise(object):
 
 
 def create_native_named_tuple(
-    ctx: FlyteContext, promises: Optional[Union[Promise, typing.List[Promise]]], entity_interface: Interface
+        ctx: FlyteContext, promises: Optional[Union[Promise, typing.List[Promise]]], entity_interface: Interface
 ) -> Optional[Tuple]:
     """
     Creates and returns a Named tuple with all variables that match the expected named outputs. this makes
@@ -501,7 +501,7 @@ def create_native_named_tuple(
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
 def create_task_output(
-    promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
+        promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
 ) -> Optional[Union[Tuple[Promise], Promise]]:
     # TODO: Add VoidPromise here to simplify things at call site. Consider returning for [] below as well instead of
     #   raising an exception.
@@ -569,20 +569,20 @@ def create_task_output(
 
 
 def binding_from_flyte_std(
-    ctx: _flyte_context.FlyteContext,
-    var_name: str,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+        ctx: _flyte_context.FlyteContext,
+        var_name: str,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type=None)
     return _literals_models.Binding(var=var_name, binding=binding_data)
 
 
 def binding_data_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: Optional[type] = None,
+        ctx: _flyte_context.FlyteContext,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: Optional[type] = None,
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
@@ -609,8 +609,8 @@ def binding_data_from_python_std(
 
     elif isinstance(t_value, dict):
         if (
-            expected_literal_type.map_value_type is None
-            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
+                expected_literal_type.map_value_type is None
+                and expected_literal_type.simple != _type_models.SimpleType.STRUCT
         ):
             raise AssertionError(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
@@ -642,11 +642,11 @@ def binding_data_from_python_std(
 
 
 def binding_from_python_std(
-    ctx: _flyte_context.FlyteContext,
-    var_name: str,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: type,
+        ctx: _flyte_context.FlyteContext,
+        var_name: str,
+        expected_literal_type: _type_models.LiteralType,
+        t_value: typing.Any,
+        t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     return _literals_models.Binding(var=var_name, binding=binding_data)
@@ -800,9 +800,9 @@ def extract_obj_name(name: str) -> str:
 
 
 def create_and_link_node_from_remote(
-    ctx: FlyteContext,
-    entity: HasFlyteInterface,
-    **kwargs,
+        ctx: FlyteContext,
+        entity: HasFlyteInterface,
+        **kwargs,
 ):
     """
     This method is used to generate a node with bindings. This is not used in the execution path.
@@ -882,9 +882,9 @@ def create_and_link_node_from_remote(
 
 
 def create_and_link_node(
-    ctx: FlyteContext,
-    entity: SupportsNodeCreation,
-    **kwargs,
+        ctx: FlyteContext,
+        entity: SupportsNodeCreation,
+        **kwargs,
 ) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
     This method is used to generate a node with bindings. This is not used in the execution path.
@@ -1017,8 +1017,8 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
     elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
         if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
             if (
-                len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
-                or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
+                    len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
+                    or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
             ):
                 output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
                 if len(output_names) == 0:
@@ -1030,9 +1030,9 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
         return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
-            )
+                ctx.with_execution_state(
+                    ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+                )
         ) as child_ctx:
             cast(FlyteContext, child_ctx).user_space_params._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
