@@ -168,7 +168,7 @@ def test_dynamic_local_rshift():
 
     @dynamic
     def dynamic_wf() -> str:
-        to1 = task1(s="hello").with_overrides(requests=Resources(cpu=f"3", mem=f"5Gi"))
+        to1 = task1(s="hello").with_overrides(requests=Resources(cpu="3", mem="5Gi"))
         to2 = task2(s="world")
         to1 >> to2  # noqa
 

@@ -25,7 +25,7 @@ from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
-from flytekit.core.promise import Promise, VoidPromise, create_task_output, translate_inputs_to_literals
+from flytekit.core.promise import VoidPromise, translate_inputs_to_literals
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
@@ -35,7 +35,7 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.exceptions import scopes as exception_scopes
-from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -265,10 +265,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         representing that newly generated workflow, instead of executing it.
         """
         ctx = FlyteContextManager.current_context()
-        # This is a placeholder SerializationSettings placeholder and is only used to test compilation for dynamic tasks
-        # when run locally. The output of the compilation should never actually be used anywhere.
-        _LOCAL_ONLY_SS = SerializationSettings.for_image(DefaultImages.default_image(), "v", "p", "d")
-
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
             # local_execute directly though since that converts inputs into Promises.
