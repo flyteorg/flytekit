@@ -17,6 +17,7 @@ grpcio-status==1.43.0
 cryptography
 google-api-core[grpc]==2.8.2
 scikit-learn==1.1.1
+sphinx-tags
 
 # Packages for Plugin docs
 # Package name              Plugin needing it

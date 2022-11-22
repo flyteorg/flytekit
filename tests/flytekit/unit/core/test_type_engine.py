@@ -47,7 +47,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollect
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
-from flytekit.types.file import JPEGImageFile
+from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
@@ -462,8 +462,8 @@ class TestStruct(object):
 class TestStructB(object):
     s: InnerStruct
     m: typing.Dict[int, str]
-    n: typing.List[typing.List[int]] = None
-    o: typing.Dict[int, typing.Dict[int, int]] = None
+    n: typing.Optional[typing.List[typing.List[int]]] = None
+    o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
 
 
 @dataclass_json
@@ -1029,9 +1029,9 @@ def test_union_custom_transformer_sanity_check():
 
             return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
 
-        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> T:
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> Literal:
             val = lv.scalar.primitive.integer
-            return UnsignedInt(0 if val < 0 else val)
+            return UnsignedInt(0 if val < 0 else val)  # type: ignore
 
     TypeEngine.register(UnsignedIntTransformer())
 
@@ -1423,3 +1423,56 @@ def test_guess_of_dataclass():
     lr = LiteralsResolver(lit_dict)
     assert lr.get("a", Foo) == foo
     assert hasattr(lr.get("a", Foo), "hello") is True
+
+
+def test_flyte_dir_in_union():
+    pt = typing.Union[str, FlyteDirectory, FlyteFile]
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContext.current_context()
+    tf = UnionTransformer()
+
+    pv = tempfile.mkdtemp(prefix="flyte-")
+    lv = tf.to_literal(ctx, FlyteDirectory(pv), pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
+
+    pv = "s3://bucket/key"
+    lv = tf.to_literal(ctx, FlyteFile(pv), pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot is not None
+
+    pv = "hello"
+    lv = tf.to_literal(ctx, pv, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    assert ot == "hello"
+
+
+def test_file_ext_with_flyte_file_existing_file():
+    assert JPEGImageFile.extension() == "jpeg"
+
+
+def test_file_ext_convert_static_method():
+    TAR_GZ = Annotated[str, FileExt("tar.gz")]
+    item = FileExt.check_and_convert_to_str(TAR_GZ)
+    assert item == "tar.gz"
+
+    str_item = FileExt.check_and_convert_to_str("csv")
+    assert str_item == "csv"
+
+
+def test_file_ext_with_flyte_file_new_file():
+    TAR_GZ = Annotated[str, FileExt("tar.gz")]
+    flyte_file = FlyteFile[TAR_GZ]
+    assert flyte_file.extension() == "tar.gz"
+
+
+class WrongType:
+    def __init__(self, num: int):
+        self.num = num
+
+
+def test_file_ext_with_flyte_file_wrong_type():
+    WRONG_TYPE = Annotated[int, WrongType(2)]
+    with pytest.raises(ValueError) as e:
+        FlyteFile[WRONG_TYPE]
+    assert str(e.value) == "Underlying type of File Extension must be of type <str>"

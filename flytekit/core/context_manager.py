@@ -80,15 +80,15 @@ class ExecutionParameters(object):
     @dataclass(init=False)
     class Builder(object):
         stats: taggable.TaggableStats
-        execution_date: datetime
-        logging: _logging.Logger
-        execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier]
         attrs: typing.Dict[str, typing.Any]
-        working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
-        checkpoint: typing.Optional[Checkpoint]
         decks: List[Deck]
-        raw_output_prefix: str
-        task_id: typing.Optional[_identifier.Identifier]
+        raw_output_prefix: Optional[str] = None
+        execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier] = None
+        working_dir: typing.Optional[utils.AutoDeletingTempDir] = None
+        checkpoint: typing.Optional[Checkpoint] = None
+        execution_date: typing.Optional[datetime] = None
+        logging: Optional[_logging.Logger] = None
+        task_id: typing.Optional[_identifier.Identifier] = None
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -617,7 +617,26 @@ class FlyteContext(object):
         """
         return FlyteContextManager.current_context()
 
-    def get_deck(self) -> str:
+    def get_deck(self) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
+        """
+        Returns the deck that was created as part of the last execution.
+
+        The return value depends on the execution environment. In a notebook, the return value is compatible with
+        IPython.display and should be rendered in the notebook.
+
+        .. code-block:: python
+
+            with flytekit.new_context() as ctx:
+                my_task(...)
+            ctx.get_deck()
+
+        OR if you wish to explicity display
+
+        .. code-block:: python
+
+            from IPython import display
+            display(ctx.get_deck())
+        """
         from flytekit.deck.deck import _get_deck
 
         return _get_deck(self.execution_state.user_space_params)

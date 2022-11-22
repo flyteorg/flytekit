@@ -32,6 +32,7 @@ def str2bool(str):
     return not str.lower() in ["false", "0", "off", "no"]
 
 
+# TODO Deprecated delete after deleting flyte_cli register
 def _hydrate_identifier(
     project: str, domain: str, version: str, identifier: _identifier_pb2.Identifier
 ) -> _identifier_pb2.Identifier:
@@ -46,6 +47,7 @@ def _hydrate_identifier(
     return identifier
 
 
+# TODO Deprecated delete after deleting flyte_cli register
 def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.Node) -> _workflow_pb2.Node:
     if node.HasField("task_node"):
         task_node = node.task_node
@@ -79,6 +81,7 @@ def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.N
     return node
 
 
+# TODO Deprecated delete after deleting flyte_cli register
 def _hydrate_workflow_template_nodes(
     project: str, domain: str, version: str, template: _workflow_pb2.WorkflowTemplate
 ) -> _workflow_pb2.WorkflowTemplate:
@@ -92,6 +95,7 @@ def _hydrate_workflow_template_nodes(
     return template
 
 
+# TODO Deprecated delete after deleting flyte_cli register
 def hydrate_registration_parameters(
     resource_type: int,
     project: str,
