@@ -167,6 +167,14 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
 
+    def _create_and_cache_dynamic_workflow(self):
+        if self._wf is None:
+            workflow_meta = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
+            defaults = WorkflowMetadataDefaults(
+                interruptible=self.metadata.interruptible if self.metadata.interruptible is not None else False
+            )
+            self._wf = PythonFunctionWorkflow(self._task_function, metadata=workflow_meta, default_metadata=defaults)
+
     def compile_into_workflow(
         self, ctx: FlyteContext, task_function: Callable, **kwargs
     ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
@@ -185,13 +193,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         with FlyteContextManager.with_context(ctx.with_compilation_state(cs)):
             # TODO: Resolve circular import
             from flytekit.tools.translator import get_serializable
-
-            workflow_metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
-            defaults = WorkflowMetadataDefaults(
-                interruptible=self.metadata.interruptible if self.metadata.interruptible is not None else False
-            )
-
-            self._wf = PythonFunctionWorkflow(task_function, metadata=workflow_metadata, default_metadata=defaults)
+            self._create_and_cache_dynamic_workflow()
             self._wf.compile(**kwargs)
 
             wf = self._wf
@@ -275,6 +277,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
+            self._create_and_cache_dynamic_workflow()
             function_outputs = self._wf.execute(**kwargs)
 
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
