@@ -1649,7 +1649,7 @@ def test_union_type():
     assert wf(a=2.0) == 2.0
     file = tempfile.NamedTemporaryFile(delete=False)
     tmpDir = tempfile.TemporaryDirectory()
-    with open(tmpDir.name+"/0000", "w") as f:
+    with open(tmpDir.name + "/0000", "w") as f:
         f.write("hello world")
     assert isinstance(wf(a=FlyteSchema(local_path=tmpDir.name)), FlyteSchema)
     assert wf(a=[1, 2, 3]) == [1, 2, 3]
