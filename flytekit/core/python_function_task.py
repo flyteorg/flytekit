@@ -269,11 +269,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
         _LOCAL_ONLY_SS = SerializationSettings.for_image(DefaultImages.default_image(), "v", "p", "d")
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            if self._wf is None:
-                with FlyteContextManager.with_context(ctx.with_serialization_settings(_LOCAL_ONLY_SS)) as ctx:
-                    logger.debug(f"Running compilation for {self} as part of local run as check")
-                    self.compile_into_workflow(ctx, task_function, **kwargs)
-
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
