@@ -1648,10 +1648,10 @@ def test_union_type():
     assert wf(a="2") == "2"
     assert wf(a=2.0) == 2.0
     file = tempfile.NamedTemporaryFile(delete=False)
-    tmpDir = tempfile.TemporaryDirectory()
-    with open(tmpDir.name + "/0000", "w") as f:
-        f.write("hello world")
-    assert isinstance(wf(a=FlyteSchema(local_path=tmpDir.name)), FlyteSchema)
+    assert isinstance(wf(a=FlyteFile(file.name)), FlyteFile)
+    flyteSchema = FlyteSchema()
+    flyteSchema.open().write(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [1, 22]}))
+    assert isinstance(wf(a=flyteSchema), FlyteSchema)
     assert wf(a=[1, 2, 3]) == [1, 2, 3]
     assert wf(a={"a": 1}) == {"a": 1}
 
