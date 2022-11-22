@@ -25,6 +25,7 @@ simple implementation that ships with the core.
 import os
 import pathlib
 import re
+import shutil
 import tempfile
 import typing
 from abc import abstractmethod
@@ -224,14 +225,14 @@ class DiskPersistence(DataPersistence):
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
-                dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+                shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
             else:
                 copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
-                dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+                shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
             else:
                 # Emulate s3's flat storage by automatically creating directory path
                 self._make_local_path(os.path.dirname(self.strip_file_header(to_path)))

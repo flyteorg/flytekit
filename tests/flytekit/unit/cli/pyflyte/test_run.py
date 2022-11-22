@@ -50,46 +50,46 @@ def test_imperative_wf():
     assert result.exit_code == 0
 
 
-# def test_pyflyte_run_cli():
-#     runner = CliRunner()
-#     result = runner.invoke(
-#         pyflyte.main,
-#         [
-#             "run",
-#             WORKFLOW_FILE,
-#             "my_wf",
-#             "--a",
-#             "1",
-#             "--b",
-#             "Hello",
-#             "--c",
-#             "1.1",
-#             "--d",
-#             '{"i":1,"a":["h","e"]}',
-#             "--e",
-#             "[1,2,3]",
-#             "--f",
-#             '{"x":1.0, "y":2.0}',
-#             "--g",
-#             os.path.join(DIR_NAME, "testdata/df.parquet"),
-#             "--i",
-#             "2020-05-01",
-#             "--j",
-#             "20H",
-#             "--k",
-#             "RED",
-#             "--l",
-#             '{"hello": "world"}',
-#             "--remote",
-#             os.path.join(DIR_NAME, "testdata"),
-#             "--image",
-#             os.path.join(DIR_NAME, "testdata"),
-#             "--h",
-#         ],
-#         catch_exceptions=False,
-#     )
-#     print(result.stdout)
-#     assert result.exit_code == 0
+def test_pyflyte_run_cli():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            WORKFLOW_FILE,
+            "my_wf",
+            "--a",
+            "1",
+            "--b",
+            "Hello",
+            "--c",
+            "1.1",
+            "--d",
+            '{"i":1,"a":["h","e"]}',
+            "--e",
+            "[1,2,3]",
+            "--f",
+            '{"x":1.0, "y":2.0}',
+            "--g",
+            os.path.join(DIR_NAME, "testdata/df.parquet"),
+            "--i",
+            "2020-05-01",
+            "--j",
+            "20H",
+            "--k",
+            "RED",
+            "--l",
+            '{"hello": "world"}',
+            "--remote",
+            os.path.join(DIR_NAME, "testdata"),
+            "--image",
+            os.path.join(DIR_NAME, "testdata"),
+            "--h",
+        ],
+        catch_exceptions=False,
+    )
+    print(result.stdout)
+    assert result.exit_code == 0
 
 
 @pytest.mark.parametrize(
