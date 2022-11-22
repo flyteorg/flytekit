@@ -29,7 +29,6 @@ import shutil
 import tempfile
 import typing
 from abc import abstractmethod
-from distutils import dir_util
 from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
