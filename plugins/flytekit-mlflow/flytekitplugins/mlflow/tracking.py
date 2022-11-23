@@ -72,7 +72,7 @@ def plot_metrics(metrics: typing.Dict[str, pandas.DataFrame]) -> typing.Optional
     return fig
 
 
-def mlflow_autolog(fn=None, *, framework=mlflow.sklearn):
+def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing.Optional[str] = None):
     """
     This decorator can be used as a nested decorator for a ``@task`` and it will automatically enable mlflow autologging,
     for the given ``framework``. If framework is not provided then the autologging is enabled for ``sklearn``
@@ -94,8 +94,8 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn):
     def wrapper(*args, **kwargs):
         framework.autolog()
         ctx = FlyteContextManager.current_context()
-        task_id = ctx.user_space_params.task_id
-        mlflow.set_experiment(fn.__name__)
+        wf_name = experiment_name or ctx.user_space_params.execution_id.name
+        mlflow.set_experiment(wf_name)
         with mlflow.start_run():
             # Get execution id and flyte console link from propeller.
             mlflow.log_param("Flyte Console", "http://flyte:30081/console/projects/flytesnacks/domains/development/executions/a4xlbh7wxtc2skdt2vjc?duration=all")
