@@ -3,7 +3,7 @@ from typing import Annotated
 import tensorflow as tf
 
 from flytekit import task, workflow
-from flytekit.extras.tensorflow.record import TFRecordDatasetConfig
+from flytekit.extras.tensorflow.record import TFRecordDatasetConfig, TFRecordDatasetV2
 from flytekit.types.directory import TFRecordsDirectory
 from flytekit.types.file import TFRecordFile
 
@@ -36,7 +36,7 @@ def generate_tf_record_dir() -> TFRecordsDirectory:
 
 
 @task
-def consume(dataset: Annotated[tf.data.TFRecordDataset, TFRecordDatasetConfig(name="testing")]):
+def consume(dataset: Annotated[TFRecordDatasetV2, TFRecordDatasetConfig(name="testing")]):
     for batch in dataset.map(decode_fn):
         print("x = {x:.4f},  y = {y:.4f}".format(**batch))
 
@@ -49,6 +49,5 @@ def wf():
     consume(dataset=files)
 
 
-@workflow
 def test_wf():
     wf()

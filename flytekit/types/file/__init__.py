@@ -19,8 +19,6 @@ This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.
    PythonPickledFile
    PythonNotebook
    SVGImageFile
-   TFRecordFile
-   TFRecordsDirectory
 """
 import typing
 

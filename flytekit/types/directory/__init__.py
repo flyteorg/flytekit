@@ -16,10 +16,6 @@ Similar to :py:class:`flytekit.types.file.FlyteFile` there are some 'preformatte
 
 import typing
 
-from typing_extensions import Annotated
-
-from flytekit.types.file import tfrecords_file
-
 from .types import FlyteDirectory
 
 # The following section provides some predefined aliases for commonly used FlyteDirectory formats.
