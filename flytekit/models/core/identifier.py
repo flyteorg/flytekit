@@ -90,6 +90,12 @@ class Identifier(_common_models.FlyteIdlEntity):
             version=p.version,
         )
 
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return f"{self.resource_type_name()}:{self.project}:{self.domain}:{self.name}:{self.version}"
+
 
 class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
     def __init__(self, project, domain, name):
