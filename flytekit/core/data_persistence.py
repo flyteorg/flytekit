@@ -26,6 +26,7 @@ import os
 import pathlib
 import re
 import shutil
+import sys
 import tempfile
 import typing
 from abc import abstractmethod
@@ -38,6 +39,9 @@ from flytekit.core.utils import PerformanceTimer
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
+
+CURRENT_PYTHON = sys.version_info[:2]
+THREE_SEVEN = (3, 7)
 
 
 class UnsupportedPersistenceOp(Exception):
@@ -221,17 +225,33 @@ class DiskPersistence(DataPersistence):
     def exists(self, path: str):
         return os.path.exists(self.strip_file_header(path))
 
+    def copy_tree(self, from_path: str, to_path: str):
+        # TODO: Remove this code after support for 3.7 is dropped and inline this function back
+        #    3.7 doesn't have dirs_exist_ok
+        if CURRENT_PYTHON == THREE_SEVEN:
+            tp = pathlib.Path(self.strip_file_header(to_path))
+            if tp.exists() and not tp.is_dir():
+                raise ValueError("not a dir")
+            files = os.listdir(tp)
+            if len(files) != 0:
+                # rmdir also raises
+                raise ValueError("not empty dir")
+            os.rmdir(tp)
+            shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+        else:
+            shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
+
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
-                shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
+                self.copy_tree(from_path, to_path)
             else:
                 copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
-                shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
+                self.copy_tree(from_path, to_path)
             else:
                 # Emulate s3's flat storage by automatically creating directory path
                 self._make_local_path(os.path.dirname(self.strip_file_header(to_path)))
