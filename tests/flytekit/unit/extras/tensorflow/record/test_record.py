@@ -1,9 +1,10 @@
 from typing import Annotated
 
 import tensorflow as tf
+from tensorflow.python.data.ops.readers import TFRecordDatasetV2
 
 from flytekit import task, workflow
-from flytekit.extras.tensorflow.record import TFRecordDatasetConfig, TFRecordDatasetV2
+from flytekit.extras.tensorflow.record import TFRecordDatasetConfig
 from flytekit.types.directory import TFRecordsDirectory
 from flytekit.types.file import TFRecordFile
 

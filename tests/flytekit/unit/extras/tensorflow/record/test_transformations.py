@@ -3,6 +3,7 @@ from typing import Annotated
 import pytest
 import tensorflow
 import tensorflow as tf
+from tensorflow.python.data.ops.readers import TFRecordDatasetV2
 
 import flytekit
 from flytekit.configuration import Image, ImageConfig
@@ -11,7 +12,6 @@ from flytekit.extras.tensorflow.record import (
     TensorFlowRecordFileTransformer,
     TensorFlowRecordsDirTransformer,
     TFRecordDatasetConfig,
-    TFRecordDatasetV2,
 )
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata

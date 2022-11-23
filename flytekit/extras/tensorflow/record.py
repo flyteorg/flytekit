@@ -39,7 +39,7 @@ class TFRecordDatasetConfig:
     name: Optional[str] = None
 
 
-def extract_metadata(t: Type[T]) -> Tuple[T, TFRecordDatasetConfig]:
+def extract_metadata(t: Type[TFRecordDatasetV2]) -> Tuple[TFRecordDatasetV2, TFRecordDatasetConfig]:
     metadata = TFRecordDatasetConfig()
     if get_origin(t) is Annotated:
         base_type, metadata = get_args(t)
@@ -50,7 +50,7 @@ def extract_metadata(t: Type[T]) -> Tuple[T, TFRecordDatasetConfig]:
     return t, metadata
 
 
-def literal_to_python_val(
+def to_tf_record_dataset(
     ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordDatasetV2]
 ) -> TFRecordDatasetV2:
     try:
@@ -88,7 +88,7 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
     def __init__(self):
         super().__init__(name="TensorFlow Record", t=TFRecordFile)
 
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
+    def get_literal_type(self, t: Type[TFRecordFile]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
                 format=self.TENSORFLOW_FORMAT,
@@ -96,7 +96,9 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
             )
         )
 
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: TFRecordFile, python_type: Type[TFRecordFile], expected: LiteralType
+    ) -> Literal:
         meta = BlobMetadata(
             type=_core_types.BlobType(
                 format=self.TENSORFLOW_FORMAT,
@@ -114,15 +116,15 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordDatasetV2]
     ) -> TFRecordDatasetV2:
-        return literal_to_python_val(ctx, lv, expected_python_type)
+        return to_tf_record_dataset(ctx, lv, expected_python_type)
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[TFRecordFile]:
         if (
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             and literal_type.blob.format == self.TENSORFLOW_FORMAT
         ):
-            return T
+            return TFRecordFile
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
@@ -138,7 +140,7 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
     def __init__(self):
         super().__init__(name="TensorFlow Record", t=TFRecordsDirectory)
 
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
+    def get_literal_type(self, t: Type[TFRecordsDirectory]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
                 format=self.TENSORFLOW_FORMAT,
@@ -146,7 +148,13 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
             )
         )
 
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: TFRecordsDirectory,
+        python_type: Type[TFRecordsDirectory],
+        expected: LiteralType,
+    ) -> Literal:
         meta = BlobMetadata(
             type=_core_types.BlobType(
                 format=self.TENSORFLOW_FORMAT,
@@ -165,15 +173,15 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordDatasetV2]
     ) -> TFRecordDatasetV2:
-        return literal_to_python_val(ctx, lv, expected_python_type)
+        return to_tf_record_dataset(ctx, lv, expected_python_type)
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[TFRecordsDirectory]:
         if (
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
             and literal_type.blob.format == self.TENSORFLOW_FORMAT
         ):
-            return T
+            return TFRecordsDirectory
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
