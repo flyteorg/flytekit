@@ -230,13 +230,14 @@ class DiskPersistence(DataPersistence):
         #    3.7 doesn't have dirs_exist_ok
         if CURRENT_PYTHON == THREE_SEVEN:
             tp = pathlib.Path(self.strip_file_header(to_path))
-            if tp.exists() and not tp.is_dir():
-                raise ValueError("not a dir")
-            files = os.listdir(tp)
-            if len(files) != 0:
-                # rmdir also raises
-                raise ValueError("not empty dir")
-            os.rmdir(tp)
+            if tp.exists():
+                if not tp.is_dir():
+                    raise ValueError("not a dir")
+                files = os.listdir(tp)
+                if len(files) != 0:
+                    # rmdir also raises but throw a better error
+                    raise ValueError("not empty dir")
+                os.rmdir(tp)
             shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path))
         else:
             shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
