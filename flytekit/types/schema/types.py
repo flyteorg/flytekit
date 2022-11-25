@@ -361,7 +361,11 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             remote_path = python_val.remote_path
             if remote_path is None or remote_path == "":
                 remote_path = ctx.file_access.get_random_remote_path()
-            ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
+            if python_val.supported_mode == SchemaOpenMode.READ and not python_val._downloaded:
+                # This means the local path is empty. Don't try to overwrite the remote data
+                print("skipping")
+            else:
+                ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
         schema = python_type(
