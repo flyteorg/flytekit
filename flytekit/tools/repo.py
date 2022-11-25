@@ -195,7 +195,7 @@ def secho(i: Identifier, state: str = "success", reason: str = None):
         state_ind = "\r[x]"
         fg = "red"
         nl = True
-        reason = f"skipped!"
+        reason = "skipped!"
     click.secho(
         click.style(f"{state_ind}", fg=fg) + f" Registration {i.name} type {i.resource_type_name()} {reason}",
         dim=True,
@@ -265,6 +265,6 @@ def register(
         try:
             i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
             secho(i)
-        except RegistrationSkipped as e:
+        except RegistrationSkipped:
             secho(og_id, "failed")
     click.secho(f"Successfully registered {len(serializable_entities)} entities", fg="green")

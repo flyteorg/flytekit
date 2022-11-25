@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple, Union
 
-from flyteidl.core.identifier_pb2 import Identifier
-
 from flytekit.core import constants as _constants
 from flytekit.core import hash as _hash_mixin
 from flytekit.core import hash as hash_mixin
