@@ -235,11 +235,11 @@ class DiskPersistence(DataPersistence):
                     raise ValueError("not a dir")
                 files = os.listdir(tp)
                 if len(files) != 0:
-                    # rmdir also raises but throw a better error
-                    raise ValueError("not empty dir")
-                os.rmdir(tp)
+                    logger.debug(f"Deleting existing target dir {tp} with files {files}")
+                shutil.rmtree(tp)
             shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path))
         else:
+            # copytree will overwrite existing files in the to_path
             shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
