@@ -14,9 +14,8 @@ from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.task import TaskSpec
-from flytekit.remote import FlyteLaunchPlan, FlyteTask
+from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 from flytekit.remote.interface import TypedInterface
-from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
