@@ -1,7 +1,6 @@
 import tensorflow as tf
 
 from flytekit import task, workflow
-from flytekit.extras import tensorflow
 
 
 @task
@@ -27,9 +26,8 @@ def create_rank3_tensor() -> tf.Tensor:
 
 
 @task
-def task1(tensor: tf.Tensor) -> tf.Tensor:
+def task1(tensor: tf.Tensor):
     assert tensor.dtype == tf.int32
-    return tensor
 
 
 @task
@@ -38,17 +36,16 @@ def task2(tensor: tf.Tensor) -> tf.Tensor:
 
 
 @task
-def task3(tensor: tf.Tensor) -> tf.Tensor:
+def task3(tensor: tf.Tensor):
     assert tensor.dtype == tf.float64
-    return tensor
 
 
+@workflow
 def wf():
     task1(tensor=create_rank1_tensor())
     task2(tensor=create_rank2_tensor())
     task3(tensor=create_rank3_tensor())
 
 
-@workflow
 def test_wf():
     wf()

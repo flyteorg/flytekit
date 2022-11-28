@@ -20,8 +20,7 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 
 a = tf.constant([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 b = tf.constant([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-
-result_tensor = tf.matmul(a, b)
+tf_tensor = tf.matmul(a, b)
 
 
 @pytest.mark.parametrize(
@@ -33,7 +32,6 @@ result_tensor = tf.matmul(a, b)
 def test_get_literal_type(transformer, python_type, format):
     tf = transformer
     lt = tf.get_literal_type(python_type)
-    # print(vars(lt))
     assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE))
 
 
@@ -43,12 +41,11 @@ def test_get_literal_type(transformer, python_type, format):
         (
             TensorFlowTensorTransformer(),
             tf.Tensor,
-            TensorFlowTensorTransformer.TENSORFLOW_FORMAT,
-            result_tensor,
+            tf_tensor,
         )
     ],
 )
-def test_to_python_value_and_literal(transformer, python_type, format, python_val):
+def test_to_python_value_and_literal(transformer, python_type, python_val):
     ctx = context_manager.FlyteContext.current_context()
     tf = transformer
     lt = tf.get_literal_type(python_type)
