@@ -36,7 +36,7 @@ from uuid import UUID
 
 from flytekit.configuration import DataConfig
 from flytekit.core.utils import PerformanceTimer
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -232,7 +232,7 @@ class DiskPersistence(DataPersistence):
             tp = pathlib.Path(self.strip_file_header(to_path))
             if tp.exists():
                 if not tp.is_dir():
-                    raise ValueError("not a dir")
+                    raise FlyteValueException(tp, f"Target {tp} exists but is not a dir")
                 files = os.listdir(tp)
                 if len(files) != 0:
                     logger.debug(f"Deleting existing target dir {tp} with files {files}")

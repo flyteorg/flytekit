@@ -316,7 +316,6 @@ def schema_to_sd_wf() -> (pd.DataFrame, pd.DataFrame):
 
 
 def test_structured_dataset_wf():
-    # res = sd_to_schema_wf()
     assert_frame_equal(sd_wf(), subset_df)
     assert_frame_equal(sd_to_schema_wf(), superset_df)
     assert_frame_equal(schema_to_sd_wf()[0], subset_df)
