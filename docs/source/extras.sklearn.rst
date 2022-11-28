@@ -1,10 +1,7 @@
 ############
-PyTorch Type
+Sklearn Type
 ############
-
-.. tags:: MachineLearning, Basic
-
-.. automodule:: flytekit.extras.pytorch
+.. automodule:: flytekit.extras.sklearn
    :no-members:
    :no-inherited-members:
    :no-special-members:
