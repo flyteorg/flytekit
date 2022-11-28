@@ -1,7 +1,7 @@
 import os
 import pathlib
 from dataclasses import dataclass
-from typing import Optional, Tuple, Type, TypeVar
+from typing import Optional, Tuple, Type, TypeVar, Union, overload
 
 import tensorflow as tf
 from dataclasses_json import dataclass_json
@@ -39,7 +39,19 @@ class TFRecordDatasetConfig:
     name: Optional[str] = None
 
 
-def extract_metadata(t: Type[TFRecordDatasetV2]) -> Tuple[TFRecordDatasetV2, TFRecordDatasetConfig]:
+@overload
+def extract_metadata(t: TFRecordFile) -> Tuple[TFRecordFile, TFRecordDatasetConfig]:
+    ...
+
+
+@overload
+def extract_metadata(t: TFRecordsDirectory) -> Tuple[TFRecordsDirectory, TFRecordDatasetConfig]:
+    ...
+
+
+def extract_metadata(
+    t: Type[Union[TFRecordFile, TFRecordsDirectory]]
+) -> Tuple[Union[TFRecordFile, TFRecordsDirectory], TFRecordDatasetConfig]:
     metadata = TFRecordDatasetConfig()
     if get_origin(t) is Annotated:
         base_type, metadata = get_args(t)
@@ -51,7 +63,7 @@ def extract_metadata(t: Type[TFRecordDatasetV2]) -> Tuple[TFRecordDatasetV2, TFR
 
 
 def to_tf_record_dataset(
-    ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordDatasetV2]
+    ctx: FlyteContext, lv: Literal, expected_python_type: Union[Type[TFRecordFile], Type[TFRecordsDirectory]]
 ) -> TFRecordDatasetV2:
     try:
         uri = lv.scalar.blob.uri
@@ -114,7 +126,7 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordDatasetV2]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordFile]
     ) -> TFRecordDatasetV2:
         return to_tf_record_dataset(ctx, lv, expected_python_type)
 
@@ -171,7 +183,7 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordDatasetV2]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordsDirectory]
     ) -> TFRecordDatasetV2:
         return to_tf_record_dataset(ctx, lv, expected_python_type)
 

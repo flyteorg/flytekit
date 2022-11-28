@@ -78,7 +78,7 @@ def test_to_python_value_and_literal(transformer, python_type, format, python_va
         )
     )
     assert lv.scalar.blob.uri is not None
-    output = tf.to_python_value(ctx, lv, Annotated[TFRecordDatasetV2, TFRecordDatasetConfig(name="example_test")])
+    output = tf.to_python_value(ctx, lv, Annotated[python_type, TFRecordDatasetConfig(name="example_test")])
     assert isinstance(output, TFRecordDatasetV2)
     example = tensorflow.train.Example()
     for raw_record in output:
