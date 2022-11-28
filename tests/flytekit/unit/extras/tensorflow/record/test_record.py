@@ -11,18 +11,21 @@ from flytekit.types.file import TFRecordFile
 a = tf.train.Feature(bytes_list=tf.train.BytesList(value=[b"foo", b"bar"]))
 b = tf.train.Feature(float_list=tf.train.FloatList(value=[1.0, 2.0]))
 c = tf.train.Feature(int64_list=tf.train.Int64List(value=[3, 4]))
+d = tf.train.Feature(bytes_list=tf.train.BytesList(value=[b"ham", b"spam"]))
+e = tf.train.Feature(float_list=tf.train.FloatList(value=[8.0, 9.0]))
+f = tf.train.Feature(int64_list=tf.train.Int64List(value=[22, 23]))
+features1 = tf.train.Features(feature=dict(a=a, b=b, c=c))
+features2 = tf.train.Features(feature=dict(a=d, b=e, c=f))
 
 
 @task
 def generate_tf_record_file() -> TFRecordFile:
-    features = tf.train.Features(feature=dict(a=a, b=b, c=c))
-    return tf.train.Example(features=features)
+    return tf.train.Example(features=features1)
 
 
 @task
 def generate_tf_record_dir() -> TFRecordsDirectory:
-    features = tf.train.Features(feature=dict(a=a, b=b, c=c))
-    return [tf.train.Example(features=features)] * 2
+    return [tf.train.Example(features=features1), tf.train.Example(features=features2)]
 
 
 @task
@@ -48,14 +51,23 @@ def t2(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(name="production",
 
 @task
 def t3(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(name="testing")]) -> Dict[str, np.ndarray]:
-    example = tf.train.Example()
+    examples_list = []
+    # parse serialised tensors https://www.tensorflow.org/tutorials/load_data/tfrecord#reading_a_tfrecord_file_2
     for batch in list(dataset.as_numpy_iterator()):
+        example = tf.train.Example()
         example.ParseFromString(batch)
-
+        examples_list.append(example)
     result = {}
-    for key, feature in example.features.feature.items():
-        kind = feature.WhichOneof("kind")
-        result[key] = np.array(getattr(feature, kind).value)
+    for a in examples_list:
+        # convert example to dict of numpy arrays
+        # https://www.tensorflow.org/tutorials/load_data/tfrecord#reading_a_tfrecord_file_2
+        for key, feature in a.features.feature.items():
+            kind = feature.WhichOneof("kind")
+            val = np.array(getattr(feature, kind).value)
+            if key not in result.keys():
+                result[key] = val
+            else:
+                result.update({key: np.concatenate((result[key], val))})
 
     return result
 
@@ -75,6 +87,6 @@ def test_wf():
     assert np.array_equal(file_res["b"], np.array([1.0, 2.0]))
     assert np.array_equal(file_res["c"], np.array([3, 4]))
 
-    assert np.array_equal(dir_res["a"], np.array([b"foo", b"bar"]))
-    assert np.array_equal(dir_res["b"], np.array([1.0, 2.0]))
-    assert np.array_equal(dir_res["c"], np.array([3, 4]))
+    assert np.array_equal(np.sort(dir_res["a"]), np.array([b"bar", b"foo", b"ham", b"spam"]))
+    assert np.array_equal(np.sort(dir_res["b"]), np.array([1.0, 2.0, 8.0, 9.0]))
+    assert np.array_equal(np.sort(dir_res["c"]), np.array([3, 4, 22, 23]))
