@@ -185,12 +185,11 @@ def secho(i: Identifier, state: str = "success", reason: str = None):
     state_ind = "[ ]"
     fg = "white"
     nl = False
-    reason = ""
     if state == "success":
         state_ind = "\r[✔]"
         fg = "green"
         nl = True
-        reason = f"successful with version {i.version}"
+        reason = f"successful with version {i.version}" if not reason else reason
     elif state == "failed":
         state_ind = "\r[x]"
         fg = "red"
@@ -216,6 +215,7 @@ def register(
     fast: bool,
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
+    dry_run: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
@@ -263,8 +263,11 @@ def register(
         og_id = cp_entity.id if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id
         secho(og_id, "")
         try:
-            i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
-            secho(i)
+            if not dry_run:
+                i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
+                secho(i)
+            else:
+                secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:
             secho(og_id, "failed")
     click.secho(f"Successfully registered {len(serializable_entities)} entities", fg="green")

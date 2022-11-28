@@ -107,6 +107,12 @@ Note: This command only works on regular Python packages, not namespace packages
     is_flag=True,
     help="Enables to skip zipping and uploading the package",
 )
+@click.option(
+    "--dry-run",
+    default=False,
+    is_flag=True,
+    help="Execute registration in dry-run mode. Skips actual registration to remote",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -122,6 +128,7 @@ def register(
     deref_symlinks: bool,
     non_fast: bool,
     package_or_module: typing.Tuple[str],
+    dry_run: bool,
 ):
     """
     see help
@@ -171,6 +178,7 @@ def register(
             fast=not non_fast,
             package_or_module=package_or_module,
             remote=remote,
+            dry_run=dry_run,
         )
     except Exception as e:
         raise e
