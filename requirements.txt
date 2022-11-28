@@ -72,10 +72,6 @@ importlib-metadata==5.0.0
     #   keyring
 jaraco-classes==3.2.3
     # via keyring
-jeepney==0.8.0
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.1.2
     # via
     #   cookiecutter
@@ -173,8 +169,6 @@ responses==0.22.0
     # via flytekit
 retry==0.9.2
     # via flytekit
-secretstorage==3.3.3
-    # via keyring
 singledispatchmethod==1.0
     # via flytekit
 six==1.16.0
