@@ -8,12 +8,16 @@
     # via
     #   -r requirements-spark2.in
     #   -r requirements.in
+appnope==0.1.3
+    # via ipython
 arrow==1.2.3
     # via jinja2-time
 attrs==20.3.0
     # via
     #   -r requirements.in
     #   jsonschema
+backcall==0.2.0
+    # via ipython
 binaryornot==0.4.4
     # via cookiecutter
 certifi==2022.9.24
@@ -39,7 +43,9 @@ cryptography==38.0.4
 dataclasses-json==0.5.7
     # via flytekit
 decorator==5.1.1
-    # via retry
+    # via
+    #   ipython
+    #   retry
 deprecated==1.2.13
     # via flytekit
 diskcache==5.4.0
@@ -68,8 +74,12 @@ importlib-metadata==5.1.0
     # via
     #   flytekit
     #   keyring
+ipython==7.34.0
+    # via -r requirements.in
 jaraco-classes==3.2.3
     # via keyring
+jedi==0.18.2
+    # via ipython
 jinja2==3.1.2
     # via
     #   cookiecutter
@@ -93,6 +103,8 @@ marshmallow-enum==1.5.1
     # via dataclasses-json
 marshmallow-jsonschema==0.13.0
     # via flytekit
+matplotlib-inline==0.1.6
+    # via ipython
 more-itertools==9.0.0
     # via jaraco-classes
 mypy-extensions==0.4.3
@@ -112,6 +124,14 @@ pandas==1.3.5
     # via
     #   -r requirements.in
     #   flytekit
+parso==0.8.3
+    # via jedi
+pexpect==4.8.0
+    # via ipython
+pickleshare==0.7.5
+    # via ipython
+prompt-toolkit==3.0.33
+    # via ipython
 protobuf==3.19.6
     # via
     #   -r requirements.in
@@ -122,12 +142,16 @@ protobuf==3.19.6
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
     # via flyteidl
+ptyprocess==0.7.0
+    # via pexpect
 py==1.11.0
     # via retry
 pyarrow==10.0.1
     # via flytekit
 pycparser==2.21
     # via cffi
+pygments==2.13.0
+    # via ipython
 pyopenssl==22.1.0
     # via flytekit
 pyparsing==3.0.9
@@ -181,6 +205,10 @@ text-unidecode==1.3
     # via python-slugify
 toml==0.10.2
     # via responses
+traitlets==5.5.0
+    # via
+    #   ipython
+    #   matplotlib-inline
 types-toml==0.10.8.1
     # via responses
 typing-extensions==4.4.0
@@ -195,6 +223,8 @@ urllib3==1.26.13
     #   flytekit
     #   requests
     #   responses
+wcwidth==0.2.5
+    # via prompt-toolkit
 websocket-client==0.59.0
     # via
     #   -r requirements.in

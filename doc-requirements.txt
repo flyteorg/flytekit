@@ -87,6 +87,8 @@ cloudpickle==2.2.0
     # via flytekit
 colorama==0.4.6
     # via great-expectations
+comm==0.1.1
+    # via ipykernel
 contourpy==1.0.6
     # via matplotlib
 cookiecutter==2.1.1
@@ -242,7 +244,7 @@ importlib-metadata==5.1.0
     #   markdown
     #   nbconvert
     #   sphinx
-ipykernel==6.17.1
+ipykernel==6.18.1
     # via
     #   ipywidgets
     #   jupyter
@@ -250,7 +252,7 @@ ipykernel==6.17.1
     #   nbclassic
     #   notebook
     #   qtconsole
-ipython==8.6.0
+ipython==8.7.0
     # via
     #   great-expectations
     #   ipykernel
@@ -314,7 +316,7 @@ jupyter-client==7.4.7
     #   qtconsole
 jupyter-console==6.4.4
     # via jupyter
-jupyter-core==5.0.0
+jupyter-core==5.1.0
     # via
     #   jupyter-client
     #   jupyter-server
@@ -867,6 +869,7 @@ tqdm==4.64.1
     #   papermill
 traitlets==5.5.0
     # via
+    #   comm
     #   ipykernel
     #   ipython
     #   ipywidgets
