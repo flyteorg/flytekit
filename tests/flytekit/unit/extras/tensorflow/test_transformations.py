@@ -36,7 +36,7 @@ def test_get_literal_type(transformer, python_type, format):
 
 
 @pytest.mark.parametrize(
-    "transformer, python_type, format, python_val",
+    "transformer, python_type, python_val",
     [
         (
             TensorFlowTensorTransformer(),
