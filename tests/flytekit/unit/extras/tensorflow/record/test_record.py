@@ -2,6 +2,7 @@ from typing import Annotated, Dict, Tuple
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.data.ops.readers import TFRecordDatasetV2
 
 from flytekit import task, workflow
 from flytekit.extras.tensorflow.record import TFRecordDatasetConfig
@@ -16,6 +17,27 @@ e = tf.train.Feature(float_list=tf.train.FloatList(value=[8.0, 9.0]))
 f = tf.train.Feature(int64_list=tf.train.Int64List(value=[22, 23]))
 features1 = tf.train.Features(feature=dict(a=a, b=b, c=c))
 features2 = tf.train.Features(feature=dict(a=d, b=e, c=f))
+
+
+def decode_fn(dataset: TFRecordDatasetV2) -> Dict[str, np.ndarray]:
+    examples_list = []
+    # parse serialised tensors https://www.tensorflow.org/tutorials/load_data/tfrecord#reading_a_tfrecord_file_2
+    for batch in list(dataset.as_numpy_iterator()):
+        example = tf.train.Example()
+        example.ParseFromString(batch)
+        examples_list.append(example)
+    result = {}
+    for a in examples_list:
+        # convert example to dict of numpy arrays
+        # https://www.tensorflow.org/tutorials/load_data/tfrecord#reading_a_tfrecord_file_2
+        for key, feature in a.features.feature.items():
+            kind = feature.WhichOneof("kind")
+            val = np.array(getattr(feature, kind).value)
+            if key not in result.keys():
+                result[key] = val
+            else:
+                result.update({key: np.concatenate((result[key], val))})
+    return result
 
 
 @task
@@ -51,25 +73,12 @@ def t2(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(name="production",
 
 @task
 def t3(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(name="testing")]) -> Dict[str, np.ndarray]:
-    examples_list = []
-    # parse serialised tensors https://www.tensorflow.org/tutorials/load_data/tfrecord#reading_a_tfrecord_file_2
-    for batch in list(dataset.as_numpy_iterator()):
-        example = tf.train.Example()
-        example.ParseFromString(batch)
-        examples_list.append(example)
-    result = {}
-    for a in examples_list:
-        # convert example to dict of numpy arrays
-        # https://www.tensorflow.org/tutorials/load_data/tfrecord#reading_a_tfrecord_file_2
-        for key, feature in a.features.feature.items():
-            kind = feature.WhichOneof("kind")
-            val = np.array(getattr(feature, kind).value)
-            if key not in result.keys():
-                result[key] = val
-            else:
-                result.update({key: np.concatenate((result[key], val))})
+    return decode_fn(dataset)
 
-    return result
+
+@task
+def t4(dataset: Annotated[TFRecordsDirectory, TFRecordDatasetConfig(name="testing")]) -> Dict[str, np.ndarray]:
+    return decode_fn(dataset)
 
 
 @workflow
@@ -78,7 +87,9 @@ def wf() -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
     files = generate_tf_record_dir()
     t1(dataset=file)
     t2(dataset=file)
-    return t3(dataset=file), t3(dataset=files)
+    files_res = t3(dataset=file)
+    dir_res = t4(dataset=files)
+    return files_res, dir_res
 
 
 def test_wf():

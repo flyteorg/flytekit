@@ -1,5 +1,4 @@
 import os
-import pathlib
 from dataclasses import dataclass
 from typing import Optional, Tuple, Type, TypeVar, Union, overload
 
@@ -40,46 +39,56 @@ class TFRecordDatasetConfig:
 
 
 @overload
-def extract_metadata(t: TFRecordFile) -> Tuple[TFRecordFile, TFRecordDatasetConfig]:
+def extract_metadata_and_uri(t: TFRecordFile) -> Tuple[TFRecordFile, TFRecordDatasetConfig]:
     ...
 
 
 @overload
-def extract_metadata(t: TFRecordsDirectory) -> Tuple[TFRecordsDirectory, TFRecordDatasetConfig]:
+def extract_metadata_and_uri(t: TFRecordsDirectory) -> Tuple[TFRecordsDirectory, TFRecordDatasetConfig]:
     ...
 
 
-def extract_metadata(
-    t: Type[Union[TFRecordFile, TFRecordsDirectory]]
+def extract_metadata_and_uri(
+    lv: Literal, t: Type[Union[TFRecordFile, TFRecordsDirectory]]
 ) -> Tuple[Union[TFRecordFile, TFRecordsDirectory], TFRecordDatasetConfig]:
-    metadata = TFRecordDatasetConfig()
-    if get_origin(t) is Annotated:
-        base_type, metadata = get_args(t)
-        if isinstance(metadata, TFRecordDatasetConfig):
-            return base_type, metadata
-        else:
-            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type TFRecordDatasetConfig")
-    return t, metadata
-
-
-def to_tf_record_dataset(
-    ctx: FlyteContext, lv: Literal, expected_python_type: Union[Type[TFRecordFile], Type[TFRecordsDirectory]]
-) -> TFRecordDatasetV2:
     try:
         uri = lv.scalar.blob.uri
     except AttributeError:
-        TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
-    _, metadata = extract_metadata(expected_python_type)
-    if pathlib.Path(uri).is_dir():
-        local_dir = ctx.file_access.get_random_local_directory()
-        files = os.scandir(uri)
-        filenames = [os.path.join(local_dir, f.name) for f in files]
-        ctx.file_access.get_data(uri, local_dir, is_multipart=True)
-    else:
-        local_path = ctx.file_access.get_random_local_path()
-        ctx.file_access.get_data(uri, local_path, is_multipart=False)
-        filenames = [local_path]
-    # load .tfrecord into tf.data.TFRecordDataset
+        TypeTransformerFailedError(f"Cannot convert from {lv} to {t}")
+    metadata = TFRecordDatasetConfig()
+    if get_origin(t) is Annotated:
+        _, metadata = get_args(t)
+        if isinstance(metadata, TFRecordDatasetConfig):
+            return uri, metadata
+        else:
+            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type TFRecordDatasetConfig")
+    return uri, metadata
+
+
+def to_tf_record_dataset_from_dir(
+    ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordsDirectory]
+) -> TFRecordDatasetV2:
+    uri, metadata = extract_metadata_and_uri(lv, expected_python_type)
+    local_dir = ctx.file_access.get_random_local_directory()
+    files = os.scandir(uri)
+    filenames = [os.path.join(local_dir, f.name) for f in files]
+    ctx.file_access.get_data(uri, local_dir, is_multipart=True)
+    return tf.data.TFRecordDataset(
+        filenames=filenames,
+        compression_type=metadata.compression_type,
+        buffer_size=metadata.buffer_size,
+        num_parallel_reads=metadata.num_parallel_reads,
+        name=metadata.name,
+    )
+
+
+def to_tf_record_dataset_from_file(
+    ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordFile]
+) -> TFRecordDatasetV2:
+    uri, metadata = extract_metadata_and_uri(lv, expected_python_type)
+    local_path = ctx.file_access.get_random_local_path()
+    ctx.file_access.get_data(uri, local_path, is_multipart=False)
+    filenames = [local_path]
     return tf.data.TFRecordDataset(
         filenames=filenames,
         compression_type=metadata.compression_type,
@@ -98,7 +107,7 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
     TENSORFLOW_FORMAT = "TensorFlowRecord"
 
     def __init__(self):
-        super().__init__(name="TensorFlow Record", t=TFRecordFile)
+        super().__init__(name="TensorFlow Record Directory", t=TFRecordFile)
 
     def get_literal_type(self, t: Type[TFRecordFile]) -> LiteralType:
         return LiteralType(
@@ -128,7 +137,7 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordFile]
     ) -> TFRecordDatasetV2:
-        return to_tf_record_dataset(ctx, lv, expected_python_type)
+        return to_tf_record_dataset_from_file(ctx, lv, expected_python_type)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[TFRecordFile]:
         if (
@@ -150,7 +159,7 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
     TENSORFLOW_FORMAT = "TensorFlowRecord"
 
     def __init__(self):
-        super().__init__(name="TensorFlow Record", t=TFRecordsDirectory)
+        super().__init__(name="TensorFlow Record File", t=TFRecordsDirectory)
 
     def get_literal_type(self, t: Type[TFRecordsDirectory]) -> LiteralType:
         return LiteralType(
@@ -185,7 +194,7 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordsDirectory]
     ) -> TFRecordDatasetV2:
-        return to_tf_record_dataset(ctx, lv, expected_python_type)
+        return to_tf_record_dataset_from_dir(ctx, lv, expected_python_type)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[TFRecordsDirectory]:
         if (
