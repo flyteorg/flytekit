@@ -119,6 +119,7 @@ class FSSpecPersistence(DataPersistence):
                 lpaths = lfs.expand_path(from_path, recursive=recursive)
             except FileNotFoundError:
                 # In some cases, there is no file in the original directory, so we just skip copying the file to the remote path
+                logger.debug(f"there is no file in the {from_path}")
                 return
             rpaths = other_paths(lpaths, to_path)
             for l, r in zip(lpaths, rpaths):
