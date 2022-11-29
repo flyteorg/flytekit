@@ -55,30 +55,31 @@ def generate_tf_record_dir() -> TFRecordsDirectory:
 def t1(
     dataset: Annotated[
         TFRecordFile,
-        TFRecordDatasetConfig(name="testing", buffer_size=1024, num_parallel_reads=3, compression_type="GZIP"),
+        TFRecordDatasetConfig(buffer_size=1024, num_parallel_reads=3, compression_type="GZIP"),
     ]
 ):
-    assert dataset._filenames._name == "testing"
+    assert isinstance(dataset, TFRecordDatasetV2)
     assert dataset._compression_type == "GZIP"
     assert dataset._buffer_size == 1024
     assert dataset._num_parallel_reads == 3
 
 
 @task
-def t2(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(name="production", buffer_size=512)]):
-    assert dataset._filenames._name == "production"
+def t2(dataset: TFRecordFile):
+    # if not annotated with TFRecordDatasetConfig, all attributes should default to None
+    assert isinstance(dataset, TFRecordDatasetV2)
     assert dataset._compression_type is None
-    assert dataset._buffer_size == 512
+    assert dataset._buffer_size is None
     assert dataset._num_parallel_reads is None
 
 
 @task
-def t3(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(name="testing")]) -> Dict[str, np.ndarray]:
+def t3(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(buffer_size=1024)]) -> Dict[str, np.ndarray]:
     return decode_fn(dataset)
 
 
 @task
-def t4(dataset: Annotated[TFRecordsDirectory, TFRecordDatasetConfig(name="testing")]) -> Dict[str, np.ndarray]:
+def t4(dataset: Annotated[TFRecordsDirectory, TFRecordDatasetConfig(buffer_size=1024)]) -> Dict[str, np.ndarray]:
     return decode_fn(dataset)
 
 
