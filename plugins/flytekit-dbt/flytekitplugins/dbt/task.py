@@ -358,9 +358,4 @@ class DBTFreshness(PythonInstanceTask):
         with open(sources_path) as file:
             sources = file.read()
 
-
-        return DBTFreshnessOutput(
-            command=full_command,
-            exit_code=exit_code,
-            raw_sources=sources
-        )
+        return DBTFreshnessOutput(command=full_command, exit_code=exit_code, raw_sources=sources)
