@@ -1,10 +1,9 @@
-from typing import Annotated
-
 import pytest
 import tensorflow
 import tensorflow as tf
 from tensorflow.core.example.example_pb2 import Example
 from tensorflow.python.data.ops.readers import TFRecordDatasetV2
+from typing_extensions import Annotated
 
 import flytekit
 from flytekit.configuration import Image, ImageConfig

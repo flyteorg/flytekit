@@ -1,8 +1,9 @@
-from typing import Annotated, Dict, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.data.ops.readers import TFRecordDatasetV2
+from typing_extensions import Annotated
 
 from flytekit import task, workflow
 from flytekit.extras.tensorflow.record import TFRecordDatasetConfig
