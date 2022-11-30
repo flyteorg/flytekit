@@ -464,7 +464,9 @@ class BindingData(_common.FlyteIdlEntity):
                 )
             )
         elif self.map:
-            return Literal(map=LiteralMap(literals={k: binding.to_literal_model() for k, binding in self.map.bindings}))
+            return Literal(
+                map=LiteralMap(literals={k: binding.to_literal_model() for k, binding in self.map.bindings.items()})
+            )
 
 
 class Binding(_common.FlyteIdlEntity):

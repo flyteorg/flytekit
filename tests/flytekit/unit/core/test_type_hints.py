@@ -1613,14 +1613,14 @@ def test_error_messages():
 
     @task
     def foo2(a: int, b: str) -> typing.Tuple[int, str]:
-        return "hello", 10
+        return "hello", 10  # type: ignore
 
     @task
     def foo3(a: typing.Dict) -> typing.Dict:
         return a
 
     with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
-        foo(a="hello", b=10)
+        foo(a="hello", b=10)  # type: ignore
 
     with pytest.raises(
         TypeError,
@@ -1629,7 +1629,7 @@ def test_error_messages():
         foo2(a=10, b="hello")
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
-        foo3(a=[{"hello": 2}])
+        foo3(a=[{"hello": 2}])  # type: ignore
 
 
 def test_union_type():
@@ -1811,11 +1811,11 @@ def test_union_type_ambiguity_resolution():
     del TypeEngine._REGISTRY[MyInt]
 
 
-def test_task_annotate_primitive_type_has_no_effect():
+def test_task_annotate_primitive_type_is_allowed():
     @task
     def plus_two(
         a: int,
-    ) -> Annotated[int, HashMethod(str)]:  # Note the use of `str` as the hash function for ints. This has no effect.
+    ) -> Annotated[int, HashMethod(lambda x: str(x + 1))]:
         return a + 2
 
     assert plus_two(a=1) == 3
@@ -1832,7 +1832,7 @@ def test_task_annotate_primitive_type_has_no_effect():
         ),
     )
     assert output_lm.literals["o0"].scalar.primitive.integer == 5
-    assert output_lm.literals["o0"].hash is None
+    assert output_lm.literals["o0"].hash == "6"
 
 
 def test_task_hash_return_pandas_dataframe():

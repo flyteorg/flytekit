@@ -61,12 +61,15 @@ extensions = [
     "sphinx_fontawesome",
     "sphinx_panels",
     "sphinxcontrib.yt",
+    "sphinx_tags",
 ]
 
 # build the templated autosummary files
 autosummary_generate = True
 
 autodoc_typehints = "description"
+
+suppress_warnings = ["autosectionlabel.*"]
 
 # autosectionlabel throws warnings if section names are duplicated.
 # The following tells autosectionlabel to not throw a warning for
@@ -224,3 +227,8 @@ inheritance_edge_attrs = {
 }
 
 autoclass_content = "both"
+
+# Tags config
+tags_create_tags = True
+tags_page_title = "Tag"
+tags_overview_title = "All Tags"

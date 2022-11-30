@@ -1,5 +1,6 @@
 import typing
 
+import pandas as pd
 import polars as pl
 
 from flytekit import FlyteContext
@@ -7,11 +8,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    ABFS,
-    GCS,
-    LOCAL,
     PARQUET,
-    S3,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -19,9 +16,20 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
+class PolarsDataFrameRenderer:
+    """
+    The Polars DataFrame summary statistics are rendered as an HTML table.
+    """
+
+    def to_html(self, df: pl.DataFrame) -> str:
+        assert isinstance(df, pl.DataFrame)
+        describe_df = df.describe()
+        return pd.DataFrame(describe_df.transpose(), columns=describe_df.columns).to_html(index=False)
+
+
 class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, protocol: str):
-        super().__init__(pl.DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(pl.DataFrame, None, PARQUET)
 
     def encode(
         self,
@@ -45,8 +53,8 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
 
 
 class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self, protocol: str):
-        super().__init__(pl.DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(pl.DataFrame, None, PARQUET)
 
     def decode(
         self,
@@ -63,10 +71,6 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         return pl.read_parquet(path)
 
 
-for protocol in [LOCAL, S3, GCS, ABFS]:
-    StructuredDatasetTransformerEngine.register(
-        PolarsDataFrameToParquetEncodingHandler(protocol), default_for_type=False
-    )
-    StructuredDatasetTransformerEngine.register(
-        ParquetToPolarsDataFrameDecodingHandler(protocol), default_for_type=False
-    )
+StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToPolarsDataFrameDecodingHandler())
+StructuredDatasetTransformerEngine.register_renderer(pl.DataFrame, PolarsDataFrameRenderer())

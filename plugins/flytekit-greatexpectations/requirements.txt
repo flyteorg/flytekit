@@ -151,7 +151,7 @@ jupyter-client==7.3.4
     #   ipykernel
     #   nbclient
     #   notebook
-jupyter-core==4.10.0
+jupyter-core==4.11.2
     # via
     #   jupyter-client
     #   nbconvert
@@ -235,7 +235,7 @@ prometheus-client==0.14.1
     # via notebook
 prompt-toolkit==3.0.30
     # via ipython
-protobuf==3.20.1
+protobuf==3.20.2
     # via
     #   flyteidl
     #   flytekit
@@ -397,7 +397,7 @@ webencodings==0.5.1
     #   tinycss2
 websocket-client==1.3.3
     # via docker
-wheel==0.37.1
+wheel==0.38.0
     # via flytekit
 wrapt==1.14.1
     # via

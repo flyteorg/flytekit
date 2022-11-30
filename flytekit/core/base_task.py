@@ -24,7 +24,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
 from flytekit.configuration import SerializationSettings
-from flytekit.configuration import internal as _internal
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
@@ -218,7 +217,7 @@ class Task(object):
         """
         return None
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         """
         This function is used only in the local execution path and is responsible for calling dispatch execute.
         Use this function when calling a task with native values (or Promises containing Flyte literals derived from
@@ -365,7 +364,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: T,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        disable_deck: bool = False,
+        disable_deck: bool = True,
         **kwargs,
     ):
         """
@@ -488,6 +487,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
+            # dynamic_execute returns a literal map in local execute so this also gets triggered.
             if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
                 native_outputs, _dynamic_job.DynamicJobSpec
             ):
@@ -527,18 +527,18 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
                     ) from e
 
-            INPUT = "input"
-            OUTPUT = "output"
+            if self._disable_deck is False:
+                INPUT = "input"
+                OUTPUT = "output"
 
-            input_deck = Deck(INPUT)
-            for k, v in native_inputs.items():
-                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+                input_deck = Deck(INPUT)
+                for k, v in native_inputs.items():
+                    input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            output_deck = Deck(OUTPUT)
-            for k, v in native_outputs_as_map.items():
-                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+                output_deck = Deck(OUTPUT)
+                for k, v in native_outputs_as_map.items():
+                    output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
-            if _internal.Deck.DISABLE_DECK.read() is not True and self.disable_deck is False:
                 _output_deck(self.name.split(".")[-1], new_user_params)
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)

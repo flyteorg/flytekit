@@ -4,6 +4,7 @@ import inspect
 import inspect as _inspect
 import os
 import typing
+from types import ModuleType
 from typing import Callable, Tuple, Union
 
 from flytekit.configuration.feature_flags import FeatureFlags
@@ -228,17 +229,24 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         mod_name = mod.__name__
         name = f.lhs
         # We cannot get the sourcefile for an instance, so we replace it with the module
-        f = mod
+        g = mod
+        inspect_file = inspect.getfile(g)
     else:
-        mod = inspect.getmodule(f)
+        mod = inspect.getmodule(f)  # type: ignore
         if mod is None:
             raise AssertionError(f"Unable to determine module of {f}")
         mod_name = mod.__name__
         name = f.__name__.split(".")[-1]
+        inspect_file = inspect.getfile(f)
 
     if mod_name == "__main__":
-        return name, "", name, os.path.abspath(inspect.getfile(f))
+        return name, "", name, os.path.abspath(inspect_file)
 
+    mod_name = get_full_module_path(mod, mod_name)
+    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))
+
+
+def get_full_module_path(mod: ModuleType, mod_name: str) -> str:
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (
             FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto" else None
@@ -247,4 +255,4 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         # We only replace the mod_name if it is more specific, else we already have a fully resolved path
         if len(new_mod_name) > len(mod_name):
             mod_name = new_mod_name
-    return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))
+    return mod_name

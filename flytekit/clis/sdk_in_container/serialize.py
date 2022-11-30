@@ -155,16 +155,22 @@ def fast(ctx):
 
 
 @click.command("workflows")
+@click.option(
+    "--deref-symlinks",
+    default=False,
+    is_flag=True,
+    help="Enables symlink dereferencing when packaging files in fast registration",
+)
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
-def fast_workflows(ctx, folder=None):
+def fast_workflows(ctx, folder=None, deref_symlinks=False):
 
     if folder:
         click.echo(f"Writing output to {folder}")
 
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
     # Write using gzip
-    archive_fname = fast_package(source_dir, folder)
+    archive_fname = fast_package(source_dir, folder, deref_symlinks)
     click.echo(f"Wrote compressed archive to {archive_fname}")
 
     pkgs = ctx.obj[CTX_PACKAGES]

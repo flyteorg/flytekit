@@ -6,7 +6,7 @@ PLUGIN_NAME = "dolt"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<1.2.0", "dolt_integrations>=0.1.5"]
+plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "dolt_integrations>=0.1.5"]
 dev_requires = ["pytest-mock>=3.6.1"]
 
 __version__ = "0.0.0+develop"

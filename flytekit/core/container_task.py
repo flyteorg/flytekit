@@ -7,6 +7,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition
 from flytekit.models import task as _task_model
+from flytekit.models.security import Secret, SecurityContext
 
 
 class ContainerTask(PythonTask):
@@ -44,14 +45,22 @@ class ContainerTask(PythonTask):
         output_data_dir: str = None,
         metadata_format: MetadataFormat = MetadataFormat.JSON,
         io_strategy: IOStrategy = None,
+        secret_requests: Optional[List[Secret]] = None,
         **kwargs,
     ):
+        sec_ctx = None
+        if secret_requests:
+            for s in secret_requests:
+                if not isinstance(s, Secret):
+                    raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
+            sec_ctx = SecurityContext(secrets=secret_requests)
         super().__init__(
             task_type="raw-container",
             name=name,
             interface=Interface(inputs, outputs),
             metadata=metadata,
             task_config=None,
+            security_ctx=sec_ctx,
             **kwargs,
         )
         self._image = image
@@ -81,7 +90,8 @@ class ContainerTask(PythonTask):
         return None
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {**settings.env, **self.environment} if self.environment else settings.env
+        env = settings.env or {}
+        env = {**env, **self.environment} if self.environment else env
         return _get_container_definition(
             image=self._image,
             command=self._cmd,
@@ -94,10 +104,14 @@ class ContainerTask(PythonTask):
                 io_strategy=self._io_strategy.value if self._io_strategy else None,
             ),
             environment=env,
-            cpu_request=self.resources.requests.cpu,
-            cpu_limit=self.resources.limits.cpu,
-            memory_request=self.resources.requests.mem,
-            memory_limit=self.resources.limits.mem,
+            storage_request=self.resources.requests.storage,
             ephemeral_storage_request=self.resources.requests.ephemeral_storage,
+            cpu_request=self.resources.requests.cpu,
+            gpu_request=self.resources.requests.gpu,
+            memory_request=self.resources.requests.mem,
+            storage_limit=self.resources.limits.storage,
             ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
+            cpu_limit=self.resources.limits.cpu,
+            gpu_limit=self.resources.limits.gpu,
+            memory_limit=self.resources.limits.mem,
         )

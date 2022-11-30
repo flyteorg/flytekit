@@ -1,8 +1,8 @@
 .. _design:
 
-############################
+########
 Overview
-############################
+########
 
 Flytekit is comprised of a handful of different logical components, each discusssed in greater detail below:
 
@@ -19,6 +19,6 @@ Flytekit is comprised of a handful of different logical components, each discuss
 
    models
    authoring
-   Control Plane <control_plane>
+   Control Plane: FlyteRemote <control_plane>
    execution
    clis

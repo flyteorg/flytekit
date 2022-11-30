@@ -41,7 +41,7 @@ class SQLTask(PythonTask[T]):
             task_config=task_config,
             **kwargs,
         )
-        self._query_template = query_template
+        self._query_template = query_template.replace("\n", "\\n").replace("\t", "\\t")
 
     @property
     def query_template(self) -> str:
