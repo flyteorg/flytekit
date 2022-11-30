@@ -66,6 +66,7 @@ def t1(
 
 @task
 def t2(dataset: TFRecordFile):
+
     # if not annotated with TFRecordDatasetConfig, all attributes should default to None
     assert isinstance(dataset, TFRecordDatasetV2)
     assert dataset._compression_type is None

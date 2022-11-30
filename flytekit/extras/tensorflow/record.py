@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Optional, Tuple, Type, TypeVar, Union, overload
+from typing import Optional, Tuple, Type, Union, overload
 
 import tensorflow as tf
 from dataclasses_json import dataclass_json
@@ -14,8 +14,6 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.directory import TFRecordsDirectory
 from flytekit.types.file import TFRecordFile
-
-T = TypeVar("T")
 
 
 @dataclass_json
@@ -65,39 +63,6 @@ def extract_metadata_and_uri(
     return uri, metadata
 
 
-def to_tf_record_dataset_from_dir(
-    ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordsDirectory]
-) -> TFRecordDatasetV2:
-    uri, metadata = extract_metadata_and_uri(lv, expected_python_type)
-    local_dir = ctx.file_access.get_random_local_directory()
-    files = os.scandir(uri)
-    filenames = [os.path.join(local_dir, f.name) for f in files]
-    ctx.file_access.get_data(uri, local_dir, is_multipart=True)
-    return tf.data.TFRecordDataset(
-        filenames=filenames,
-        compression_type=metadata.compression_type,
-        buffer_size=metadata.buffer_size,
-        num_parallel_reads=metadata.num_parallel_reads,
-        name=metadata.name,
-    )
-
-
-def to_tf_record_dataset_from_file(
-    ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordFile]
-) -> TFRecordDatasetV2:
-    uri, metadata = extract_metadata_and_uri(lv, expected_python_type)
-    local_path = ctx.file_access.get_random_local_path()
-    ctx.file_access.get_data(uri, local_path, is_multipart=False)
-    filenames = [local_path]
-    return tf.data.TFRecordDataset(
-        filenames=filenames,
-        compression_type=metadata.compression_type,
-        buffer_size=metadata.buffer_size,
-        num_parallel_reads=metadata.num_parallel_reads,
-        name=metadata.name,
-    )
-
-
 class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
     """
     TypeTransformer that supports serialising and deserialising to and from TFRecord file.
@@ -107,7 +72,7 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
     TENSORFLOW_FORMAT = "TensorFlowRecord"
 
     def __init__(self):
-        super().__init__(name="TensorFlow Record Directory", t=TFRecordFile)
+        super().__init__(name="TensorFlow Record File", t=TFRecordFile)
 
     def get_literal_type(self, t: Type[TFRecordFile]) -> LiteralType:
         return LiteralType(
@@ -137,7 +102,17 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordFile]
     ) -> TFRecordDatasetV2:
-        return to_tf_record_dataset_from_file(ctx, lv, expected_python_type)
+        uri, metadata = extract_metadata_and_uri(lv, expected_python_type)
+        local_path = ctx.file_access.get_random_local_path()
+        ctx.file_access.get_data(uri, local_path, is_multipart=False)
+        filenames = [local_path]
+        return tf.data.TFRecordDataset(
+            filenames=filenames,
+            compression_type=metadata.compression_type,
+            buffer_size=metadata.buffer_size,
+            num_parallel_reads=metadata.num_parallel_reads,
+            name=metadata.name,
+        )
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[TFRecordFile]:
         if (
@@ -159,7 +134,7 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
     TENSORFLOW_FORMAT = "TensorFlowRecord"
 
     def __init__(self):
-        super().__init__(name="TensorFlow Record File", t=TFRecordsDirectory)
+        super().__init__(name="TensorFlow Record Directory", t=TFRecordsDirectory)
 
     def get_literal_type(self, t: Type[TFRecordsDirectory]) -> LiteralType:
         return LiteralType(
@@ -194,7 +169,19 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordsDirectory]
     ) -> TFRecordDatasetV2:
-        return to_tf_record_dataset_from_dir(ctx, lv, expected_python_type)
+
+        uri, metadata = extract_metadata_and_uri(lv, expected_python_type)
+        local_dir = ctx.file_access.get_random_local_directory()
+        files = os.scandir(uri)
+        filenames = [os.path.join(local_dir, f.name) for f in files]
+        ctx.file_access.get_data(uri, local_dir, is_multipart=True)
+        return tf.data.TFRecordDataset(
+            filenames=filenames,
+            compression_type=metadata.compression_type,
+            buffer_size=metadata.buffer_size,
+            num_parallel_reads=metadata.num_parallel_reads,
+            name=metadata.name,
+        )
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[TFRecordsDirectory]:
         if (
