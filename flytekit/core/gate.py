@@ -4,11 +4,14 @@ import datetime
 import typing
 from typing import Tuple, Union
 
+import click
+
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handler
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteDisapprovalException
+from flytekit.interaction.parse_stdin import parse_stdin_to_literal
 from flytekit.loggers import logger
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.types import LiteralType
@@ -97,32 +100,21 @@ class Gate(object):
 
         # Trigger stdin
         if self.input_type:
+            msg = f"Execution stopped for gate {self.name}"
             if issubclass(self.input_type, bool):
-                input(f"Pausing execution for gate {self.name}, press enter to continue...\n")
-                l = TypeEngine.to_literal(ctx, True, bool, TypeEngine.to_literal_type(bool))  # noqa
-                p = Promise(var="o0", val=l)
-                return p
-            elif issubclass(self.input_type, int):
-                x = input(f"Pausing execution for {self.name}, enter integer: ")
-                ii = int(x)
-                logger.debug(f"Parsed {x} to {ii} from gate node {self.name}")
-                l = TypeEngine.to_literal(ctx, ii, int, TypeEngine.to_literal_type(int))  # noqa
-                p = Promise(var="o0", val=l)
-                return p
-            elif issubclass(self.input_type, float):
-                x = input(f"Pausing execution for {self.name}, enter float: ")
-                ff = float(x)
-                logger.debug(f"Parsed {x} to {ff} from gate node {self.name}")
-                l = TypeEngine.to_literal(ctx, ff, float, TypeEngine.to_literal_type(float))  # noqa
-                p = Promise(var="o0", val=l)
-                return p
+                msg += ", press Enter to continue..."
             else:
-                # Todo: We should implement the rest by way of importing the code in pyflyte run
-                #   that parses text from the command line
-                raise Exception("only bool or int/float")
+                msg += ", please enter value..."
+            literal = parse_stdin_to_literal(ctx, self.input_type, msg)
+            p = Promise(var="o0", val=literal)
+            return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        x = input(f"Pausing execution for {self.name}, value is: {self._upstream_item} approve [Y/n]: ")
+        msg = f"Pausing execution for {self.name}, literal value is:\n"
+        click.secho(msg, bold=True, fg="yellow")
+        click.secho(str(self._upstream_item.val))
+        click.secho("approve [Y/n]: ", bold=True, fg="yellow")
+        x = input()
         if x != "n":
             # We need to return a promise here, and a promise is what should've been passed in by the call in approve()
             # Only one element should be in this map. Rely on kwargs instead of the stored _upstream_item even though
