@@ -15,3 +15,4 @@ IPython
 # Newer versions of torch bring in nvidia dependencies that are not present in windows, so
 # we put this constraint while we do not have per-environment requirements files
 torch<=1.12.1
+scikit-learn
