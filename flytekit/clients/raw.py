@@ -79,7 +79,6 @@ def _handle_invalid_create_request(fn):
                 cli_logger.error(_MessageToJson(create_request))
                 cli_logger.error("Details returned from the flyte admin: ")
                 cli_logger.error(e.details)
-                e.details += "create_request: " + _MessageToJson(create_request)
             # Re-raise since we're not  handling the error here and add the create_request details
             raise e
 

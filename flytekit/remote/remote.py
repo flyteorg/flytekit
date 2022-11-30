@@ -204,19 +204,11 @@ class FlyteRemote(object):
         """
         if name is None:
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
-        task_id = _get_entity_identifier(
-            self.client.list_tasks_paginated,
-            ResourceType.TASK,
-            project or self.default_project,
-            domain or self.default_domain,
-            name,
-            version,
-        )
 
         def _fetch():
             return self.fetch_task(project, domain, name, version)
 
-        return LazyEntity(id=task_id, getter=_fetch)
+        return LazyEntity(name=name, getter=_fetch)
 
     def fetch_task(self, project: str = None, domain: str = None, name: str = None, version: str = None) -> FlyteTask:
         """Fetch a task entity from flyte admin.
@@ -252,19 +244,11 @@ class FlyteRemote(object):
         """
         if name is None:
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
-        workflow_id = _get_entity_identifier(
-            self.client.list_workflows_paginated,
-            ResourceType.WORKFLOW,
-            project or self.default_project,
-            domain or self.default_domain,
-            name,
-            version,
-        )
 
         def _fetch():
             return self.fetch_workflow(project, domain, name, version)
 
-        return LazyEntity(id=workflow_id, getter=_fetch)
+        return LazyEntity(name=name, getter=_fetch)
 
     def fetch_workflow(
         self, project: str = None, domain: str = None, name: str = None, version: str = None

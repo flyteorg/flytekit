@@ -13,15 +13,15 @@ class LazyEntity(RemoteEntity, typing.Generic[T]):
     The entity is derived from RemoteEntity so that it behaves exactly like the mimiced entity.
     """
 
-    def __init__(self, id: Identifier, getter: typing.Callable[[], T], *args, **kwargs):
+    def __init__(self, name: str, getter: typing.Callable[[], T], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._entity = None
         self._getter = getter
-        self._identifier = id
+        self._name = name
 
     @property
     def name(self) -> str:
-        return self._identifier.name
+        return self._name
 
     def entity_fetched(self) -> bool:
         return self._entity is not None
@@ -41,13 +41,6 @@ class LazyEntity(RemoteEntity, typing.Generic[T]):
         """
         return getattr(self.entity, item)
 
-    @property
-    def identifier(self) -> Identifier:
-        """
-        Returns the identifier for the entity that will be fetched
-        """
-        return self._identifier
-
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         return self.entity.compile(ctx, *args, **kwargs)
 
@@ -61,4 +54,4 @@ class LazyEntity(RemoteEntity, typing.Generic[T]):
         return str(self)
 
     def __str__(self) -> str:
-        return f"Promise for entity [{self._identifier}]"
+        return f"Promise for entity [{self._name}]"
