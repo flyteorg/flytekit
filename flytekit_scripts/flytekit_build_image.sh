@@ -65,7 +65,7 @@ fi
 DOCKER_PLATFORM_OPT=()
 # Check if the user set the target build architecture, if not use the default instead.
 if [ -n "$TARGET_PLATFORM_BUILD" ]; then
-  DOCKER_PLATFORM_OPT=(--platform $TARGET_PLATFORM_BUILD)
+  DOCKER_PLATFORM_OPT=(--platform "$TARGET_PLATFORM_BUILD")
 else
   TARGET_PLATFORM_BUILD="default"
 fi
