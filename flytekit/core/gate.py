@@ -125,9 +125,9 @@ def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing
     calls a subworkflow twice, and the subworkflow has a signal, then two Gate
     objects are created. This shouldn't be a problem as long as the objects are identical.
 
-    :param name:
-    :param timeout:
-    :param expected_type:
+    :param name: The name of the gate node.
+    :param timeout: How long to wait for before Flyte fails the workflow.
+    :param expected_type: What is the type that the user will be inputting?
     :return:
     """
 
@@ -138,7 +138,7 @@ def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing
 
 def sleep(duration: datetime.timedelta):
     """
-    :param duration:
+    :param duration: How long to sleep for
     :return:
     """
     g = Gate("sleep-gate", sleep_duration=duration)
@@ -153,9 +153,10 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
     calls a subworkflow twice, and the subworkflow has a signal, then two Gate
     objects are created. This shouldn't be a problem as long as the objects are identical.
 
-    :param upstream_item:
-    :param name:
-    :param timeout:
+    :param upstream_item: This should be the output, one output, of a previous task, that you want to gate execution
+      on. This is the value that you want a human to check before moving on.
+    :param name: The name of the gate node.
+    :param timeout: How long to wait before Flyte fails the workflow.
     :return:
     """
     g = Gate(name, upstream_item=upstream_item, timeout=timeout)
