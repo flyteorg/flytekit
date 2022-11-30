@@ -5,15 +5,13 @@ import typing
 from typing import Tuple, Union
 
 from flytekit.core import interface as flyte_interface
-from flytekit.core.context_manager import FlyteContext
-from flytekit.core.promise import NodeOutput, Promise, VoidPromise, flyte_entity_call_handler
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handler
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions.user import FlyteValueException, FlyteDisapprovalException
+from flytekit.exceptions.user import FlyteDisapprovalException
 from flytekit.loggers import logger
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.types import LiteralType
-from flytekit.core.context_manager import FlyteContextManager
-
 
 DEFAULT_TIMEOUT = datetime.timedelta(hours=1)
 

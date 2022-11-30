@@ -7,9 +7,9 @@ from mock import patch
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.gate import approve, wait_for_input, sleep
-from flytekit.core.task import task
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.gate import approve, sleep, wait_for_input
+from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
 
@@ -36,7 +36,6 @@ def test_basic_sleep():
         return b
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, wf_sleep)
-    x = wf_spec.template
     assert len(wf_spec.template.nodes) == 2
     wf_spec.template.nodes[0].gate_node is not None
     wf_spec.template.nodes[0].gate_node.sleep.duration == timedelta(seconds=10)
@@ -177,9 +176,8 @@ def test_dyn_signal_no_approve():
         return y, z
 
     with patch("sys.stdin", StringIO("\n3\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
-        res = wf_dyn(a=5)
+        wf_dyn(a=5)
         assert stdin.read() == ""  # all input consumed
-
 
     #     c = conditional("use_gate").if_(x is True). \
     #             then(t1(y)). \
