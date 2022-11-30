@@ -73,7 +73,7 @@ fi
 echo "Building: $FLYTE_INTERNAL_IMAGE using $TARGET_PLATFORM_BUILD architecture"
 
 # This build command is the raison d'etre of this script, it ensures that the version is injected into the image itself
-eval "$(docker build ${DOCKER_PLATFORM_OPT} . --build-arg tag=${FLYTE_INTERNAL_IMAGE} -t ${FLYTE_INTERNAL_IMAGE} -f ${DOCKERFILE_PATH})"
+docker build ${DOCKER_PLATFORM_OPT} . --build-arg tag=${FLYTE_INTERNAL_IMAGE} -t ${FLYTE_INTERNAL_IMAGE} -f ${DOCKERFILE_PATH}
 
 echo "$IMAGE_NAME built locally."
 
