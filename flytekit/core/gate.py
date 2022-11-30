@@ -8,7 +8,7 @@ from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise, flyte_entity_call_handler
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions.user import FlyteValueException
+from flytekit.exceptions.user import FlyteValueException, FlyteDisapprovalException
 from flytekit.loggers import logger
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.types import LiteralType
@@ -123,16 +123,16 @@ class Gate(object):
                 #   that parses text from the command line
                 raise Exception("only bool or int/float")
 
-        # Assume this is an approval operation
-        if self._upstream_item is None:
-            # this is true right? need to check this. if nothing is returned it should still be a void promise
-            raise ValueError("upstream item should not be none")
+        # Assume this is an approval operation since that's the only remaining option.
         x = input(f"Pausing execution for {self.name}, value is: {self._upstream_item} approve [Y/n]: ")
         if x != "n":
-            # Think we need to return a promise here.
-            return self._upstream_item
+            # We need to return a promise here, and a promise is what should've been passed in by the call in approve()
+            # Only one element should be in this map. Rely on kwargs instead of the stored _upstream_item even though
+            # they should be the same to be cleaner
+            output_name = list(kwargs.keys())[0]
+            return kwargs[output_name]
         else:
-            raise FlyteValueException(f"User did not approve the transaction for gate node {self.name}")
+            raise FlyteDisapprovalException(f"User did not approve the transaction for gate node {self.name}")
 
 
 def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing.Type):

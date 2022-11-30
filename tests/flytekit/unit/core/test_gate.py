@@ -144,8 +144,8 @@ def test_dyn_signal():
         assert res == (9, 10, 15)
         assert stdin.read() == ""  # all input consumed
 
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
-    assert len(wf_spec.template.nodes) == 7
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf_dyn)
+    assert len(wf_spec.template.nodes) == 1
     # The first t1 call
     assert wf_spec.template.nodes[0].task_node is not None
 
