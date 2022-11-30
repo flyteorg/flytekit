@@ -100,22 +100,15 @@ class Gate(object):
 
         # Trigger stdin
         if self.input_type:
-            msg = f"Execution stopped for gate {self.name}"
-            if issubclass(self.input_type, bool):
-                msg += ", press Enter to continue..."
-            else:
-                msg += ", please enter value..."
+            msg = f"Execution stopped for gate {self.name}...\n"
             literal = parse_stdin_to_literal(ctx, self.input_type, msg)
             p = Promise(var="o0", val=literal)
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        msg = f"Pausing execution for {self.name}, literal value is:\n"
-        click.secho(msg, bold=True, fg="yellow")
-        click.secho(str(self._upstream_item.val))
-        click.secho("approve [Y/n]: ", bold=True, fg="yellow")
-        x = input()
-        if x != "n":
+        msg = f"Pausing execution for {self.name}, literal value is:\n{self._upstream_item.val}\nContinue?"
+        proceed = click.confirm(msg, default=True)
+        if proceed:
             # We need to return a promise here, and a promise is what should've been passed in by the call in approve()
             # Only one element should be in this map. Rely on kwargs instead of the stored _upstream_item even though
             # they should be the same to be cleaner
