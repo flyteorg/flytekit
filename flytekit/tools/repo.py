@@ -264,7 +264,9 @@ def register(
         secho(og_id, "")
         try:
             if not dry_run:
-                i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
+                i = remote.raw_register(
+                    cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                )
                 secho(i)
             else:
                 secho(og_id, reason="Dry run Mode!")
