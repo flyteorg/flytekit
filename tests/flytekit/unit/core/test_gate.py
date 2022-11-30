@@ -149,30 +149,6 @@ def test_dyn_signal():
     # The first t1 call
     assert wf_spec.template.nodes[0].task_node is not None
 
-    # The first signal s1, dependent on the first t1 call
-
-    #     c = conditional("use_gate").if_(x is True). \
-    #             then(t1(y)). \
-    #             else_(). \
-    #             fail("failure message") \
-    #
-    # (
-    #     conditional("fractions")
-    #         .if_((my_input > 0.1) & (my_input < 1.0))
-    #         .then(double(n=my_input))
-    #         .elif_((my_input > 1.0) & (my_input < 10.0))
-    #         .then(square(n=my_input))
-    #         .else_()
-    #         .fail("The input must be between 0 and 10")
-    # )
-
-    # @workflow
-    # def wf_sleep():
-    #     x = flyte.sleep("10s")
-    #     b = t1(a=a)
-    #
-    #     x >> b
-
 
 def test_dyn_signal_no_approve():
     @task
@@ -203,3 +179,26 @@ def test_dyn_signal_no_approve():
     with patch("sys.stdin", StringIO("\n3\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
         res = wf_dyn(a=5)
         assert stdin.read() == ""  # all input consumed
+
+
+    #     c = conditional("use_gate").if_(x is True). \
+    #             then(t1(y)). \
+    #             else_(). \
+    #             fail("failure message") \
+    #
+    # (
+    #     conditional("fractions")
+    #         .if_((my_input > 0.1) & (my_input < 1.0))
+    #         .then(double(n=my_input))
+    #         .elif_((my_input > 1.0) & (my_input < 10.0))
+    #         .then(square(n=my_input))
+    #         .else_()
+    #         .fail("The input must be between 0 and 10")
+    # )
+
+    # @workflow
+    # def wf_sleep():
+    #     x = flyte.sleep("10s")
+    #     b = t1(a=a)
+    #
+    #     x >> b

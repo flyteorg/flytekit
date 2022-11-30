@@ -130,7 +130,7 @@ class Gate(object):
         x = input(f"Pausing execution for {self.name}, value is: {self._upstream_item} approve [Y/n]: ")
         if x != "n":
             # Think we need to return a promise here.
-            return [self._upstream_item]
+            return self._upstream_item
         else:
             raise FlyteValueException(f"User did not approve the transaction for gate node {self.name}")
 
