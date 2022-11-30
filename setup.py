@@ -21,8 +21,8 @@ setup(
     maintainer="Flyte Contributors",
     maintainer_email="admin@flyte.org",
     packages=find_packages(
-        include=["flytekit", "flytekit_scripts", "plugins"],
-        exclude=["boilerplate", "docs", "tests*"],
+        include=["flytekit", "flytekit_scripts"],
+        exclude=["boilerplate", "docs", "plugins", "tests*"],
     ),
     include_package_data=True,
     url="https://github.com/flyteorg/flytekit",
