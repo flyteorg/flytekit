@@ -5,17 +5,18 @@ from io import StringIO
 
 from mock import patch
 
-import flytekit.configuration
-from flytekit.configuration import Image, ImageConfig
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.task import task
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = flytekit.configuration.SerializationSettings(
+serialization_settings = SerializationSettings(
     project="project",
     domain="domain",
     version="version",
@@ -148,6 +149,41 @@ def test_dyn_signal():
     assert len(wf_spec.template.nodes) == 1
     # The first t1 call
     assert wf_spec.template.nodes[0].task_node is not None
+
+    with FlyteContextManager.with_context(
+        FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
+    ) as ctx:
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 50})
+            dynamic_job_spec = dyn.dispatch_execute(ctx, input_literal_map)
+            print(dynamic_job_spec)
+
+        assert dynamic_job_spec.nodes[1].upstream_node_ids == ["dn0"]
+        assert dynamic_job_spec.nodes[1].gate_node is not None
+        assert dynamic_job_spec.nodes[1].gate_node.signal.signal_id == "my-signal-name"
+        assert dynamic_job_spec.nodes[1].gate_node.signal.type.simple == 4
+        assert dynamic_job_spec.nodes[1].gate_node.signal.output_variable_name == "o0"
+
+        assert dynamic_job_spec.nodes[2].upstream_node_ids == []
+        assert dynamic_job_spec.nodes[2].gate_node is not None
+        assert dynamic_job_spec.nodes[2].gate_node.signal.signal_id == "my-signal-name-2"
+        assert dynamic_job_spec.nodes[2].gate_node.signal.type.simple == 1
+        assert dynamic_job_spec.nodes[2].gate_node.signal.output_variable_name == "o0"
+
+        assert dynamic_job_spec.nodes[5].gate_node is not None
+        assert dynamic_job_spec.nodes[5].gate_node.approve is not None
+        assert dynamic_job_spec.nodes[5].upstream_node_ids == ["dn4"]
+        assert len(dynamic_job_spec.nodes[5].inputs) == 1
+        assert dynamic_job_spec.nodes[5].inputs[0].binding.promise.node_id == "dn4"
+        assert dynamic_job_spec.nodes[5].inputs[0].binding.promise.var == "o0"
+        assert dynamic_job_spec.nodes[6].inputs[0].binding.promise.node_id == "dn5"
+        assert dynamic_job_spec.nodes[6].inputs[0].binding.promise.var == "o0"
 
 
 def test_dyn_signal_no_approve():
