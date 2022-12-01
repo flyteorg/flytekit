@@ -1,3 +1,5 @@
+import base64
+import json
 import os
 import typing
 from dataclasses import dataclass
@@ -13,6 +15,23 @@ from flytekit.extend import ExecutionState, TaskPlugins
 
 from .models import SparkJob, SparkType
 
+_ = {
+    "name": "flytekit databricks plugin example",
+    "new_cluster": {
+        "spark_version": "11.0.x-scala2.12",
+        "node_type_id": "r3.xlarge",
+        "aws_attributes": {"availability": "ON_DEMAND"},
+        "num_workers": 4,
+        "docker_image": {"url": "pingsutw/databricks:latest"},
+    },
+    "timeout_seconds": 3600,
+    "max_retries": 1,
+    "spark_python_task": {
+        "python_file": "dbfs:///FileStore/tables/entrypoint-1.py",
+        "parameters": "ls",
+    },
+}
+
 
 @dataclass
 class Spark(object):
@@ -27,6 +46,7 @@ class Spark(object):
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
+    databricks_conf: typing.Optional[dict] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
@@ -34,6 +54,9 @@ class Spark(object):
 
         if self.hadoop_conf is None:
             self.hadoop_conf = {}
+
+        if self.databricks_conf is None:
+            self.databricks_conf = {}
 
 
 # This method does not reset the SparkSession since it's a bit hard to handle multiple
@@ -95,6 +118,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
+            databricks_conf=base64.b64encode(json.dumps(self.task_config.databricks_conf).encode()).decode(),
             application_file="local://" + settings.entrypoint_settings.path,
             executor_path=settings.python_interpreter,
             main_class="",

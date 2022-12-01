@@ -1,5 +1,5 @@
 import enum
-import typing
+from typing import Dict, Optional
 
 from flyteidl.plugins import spark_pb2 as _spark_task
 
@@ -22,6 +22,7 @@ class SparkJob(_common.FlyteIdlEntity):
         main_class,
         spark_conf,
         hadoop_conf,
+        databricks_conf,
         executor_path,
     ):
         """
@@ -37,9 +38,13 @@ class SparkJob(_common.FlyteIdlEntity):
         self._executor_path = executor_path
         self._spark_conf = spark_conf
         self._hadoop_conf = hadoop_conf
+        self._databricks_conf = databricks_conf
 
     def with_overrides(
-        self, new_spark_conf: typing.Dict[str, str] = None, new_hadoop_conf: typing.Dict[str, str] = None
+        self,
+        new_spark_conf: Optional[Dict[str, str]] = None,
+        new_hadoop_conf: Optional[Dict[str, str]] = None,
+        new_databricks_conf: Optional[str] = None,
     ) -> "SparkJob":
         if not new_spark_conf:
             new_spark_conf = self.spark_conf
@@ -47,12 +52,16 @@ class SparkJob(_common.FlyteIdlEntity):
         if not new_hadoop_conf:
             new_hadoop_conf = self.hadoop_conf
 
+        if not new_databricks_conf:
+            new_databricks_conf = self.databricks_conf
+
         return SparkJob(
             spark_type=self.spark_type,
             application_file=self.application_file,
             main_class=self.main_class,
             spark_conf=new_spark_conf,
             hadoop_conf=new_hadoop_conf,
+            databricks_conf=new_databricks_conf,
             executor_path=self.executor_path,
         )
 
@@ -104,6 +113,10 @@ class SparkJob(_common.FlyteIdlEntity):
         """
         return self._hadoop_conf
 
+    @property
+    def databricks_conf(self) -> str:
+        return self._databricks_conf
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
@@ -127,6 +140,7 @@ class SparkJob(_common.FlyteIdlEntity):
             executorPath=self.executor_path,
             sparkConf=self.spark_conf,
             hadoopConf=self.hadoop_conf,
+            databricksConf=self.databricks_conf,
         )
 
     @classmethod
@@ -145,10 +159,11 @@ class SparkJob(_common.FlyteIdlEntity):
             application_type = SparkType.R
 
         return cls(
-            type=application_type,
+            spark_type=application_type,
             spark_conf=pb2_object.sparkConf,
             application_file=pb2_object.mainApplicationFile,
             main_class=pb2_object.mainClass,
             hadoop_conf=pb2_object.hadoopConf,
             executor_path=pb2_object.executorPath,
+            databricks_conf=pb2_object.databricksConf,
         )
