@@ -179,6 +179,29 @@ def test_dyn_signal_no_approve():
         wf_dyn(a=5)
         assert stdin.read() == ""  # all input consumed
 
+
+def test_subwf():
+    nt = typing.NamedTuple("Multi", named1=int, named2=int)
+
+    @task
+    def nt1(a: int) -> nt:
+        a = a + 2
+        return nt(a, a)
+
+    @workflow
+    def subwf(a: int) -> nt:
+        return nt1(a=a)
+
+    @workflow
+    def parent_wf(b: int) -> nt:
+        out = subwf(a=b)
+        return nt1(a=approve(out.named1, "subwf approve", timeout=timedelta(hours=2)))
+
+    with patch("sys.stdin", StringIO("y\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
+        x = parent_wf(b=3)
+        assert stdin.read() == ""  # all input consumed
+        assert x == (7, 7)
+
     #     c = conditional("use_gate").if_(x is True). \
     #             then(t1(y)). \
     #             else_(). \

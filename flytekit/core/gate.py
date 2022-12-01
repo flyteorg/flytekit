@@ -12,7 +12,6 @@ from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handle
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteDisapprovalException
 from flytekit.interaction.parse_stdin import parse_stdin_to_literal
-from flytekit.loggers import logger
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.types import LiteralType
 
