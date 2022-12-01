@@ -7,6 +7,7 @@ from mock import patch
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core.condition import conditional
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.task import task
@@ -202,24 +203,27 @@ def test_subwf():
         assert stdin.read() == ""  # all input consumed
         assert x == (7, 7)
 
-    #     c = conditional("use_gate").if_(x is True). \
-    #             then(t1(y)). \
-    #             else_(). \
-    #             fail("failure message") \
-    #
-    # (
-    #     conditional("fractions")
-    #         .if_((my_input > 0.1) & (my_input < 1.0))
-    #         .then(double(n=my_input))
-    #         .elif_((my_input > 1.0) & (my_input < 10.0))
-    #         .then(square(n=my_input))
-    #         .else_()
-    #         .fail("The input must be between 0 and 10")
-    # )
 
-    # @workflow
-    # def wf_sleep():
-    #     x = flyte.sleep("10s")
-    #     b = t1(a=a)
-    #
-    #     x >> b
+def test_cond():
+    @task
+    def five() -> int:
+        return 5
+
+    @task
+    def square(n: float) -> float:
+        return n * n
+
+    @task
+    def double(n: float) -> float:
+        return 2 * n
+
+    @workflow
+    def cond_wf() -> float:
+        f = five()
+        # Because approve itself produces a node, call approve outside of the conditional.
+        app = approve(f, "jfdkl", timeout=timedelta(hours=2))
+        return conditional("fractions").if_(app == 5).then(double(n=f)).else_().then(square(n=f))
+
+    with patch("sys.stdin", StringIO("y\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
+        x = cond_wf()
+        assert x == 10.0
