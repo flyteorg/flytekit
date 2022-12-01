@@ -64,7 +64,7 @@ def test_basic_signal():
 
         return y, z, q
 
-    with patch("sys.stdin", StringIO("\n3\ny\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
+    with patch("sys.stdin", StringIO("y\n3\ny\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
         res = wf(a=5)
         assert res == (9, 10, 15)
         assert stdin.read() == ""  # all input consumed
@@ -138,7 +138,7 @@ def test_dyn_signal():
         y, z, q = dyn(a=a)
         return y, z, q
 
-    with patch("sys.stdin", StringIO("\n3\ny\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
+    with patch("sys.stdin", StringIO("y\n3\ny\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
         res = wf_dyn(a=5)
         assert res == (9, 10, 15)
         assert stdin.read() == ""  # all input consumed
@@ -175,7 +175,7 @@ def test_dyn_signal_no_approve():
         y, z = dyn(a=a)
         return y, z
 
-    with patch("sys.stdin", StringIO("\n3\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
+    with patch("sys.stdin", StringIO("y\n3\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
         wf_dyn(a=5)
         assert stdin.read() == ""  # all input consumed
 
