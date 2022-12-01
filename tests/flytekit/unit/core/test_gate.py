@@ -227,3 +227,30 @@ def test_cond():
     with patch("sys.stdin", StringIO("y\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
         x = cond_wf()
         assert x == 10.0
+        assert stdin.read() == ""
+
+
+def test_cond_wait():
+    @task
+    def square(n: float) -> float:
+        return n * n
+
+    @task
+    def double(n: float) -> float:
+        return 2 * n
+
+    @workflow
+    def cond_wf(a: int) -> float:
+        # Because approve itself produces a node, call approve outside of the conditional.
+        input_1 = wait_for_input("top-input", timeout=timedelta(hours=1), expected_type=int)
+        return conditional("fractions").if_(input_1 >= 5).then(double(n=a)).else_().then(square(n=a))
+
+    with patch("sys.stdin", StringIO("3\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
+        x = cond_wf(a=3)
+        assert x == 9
+        assert stdin.read() == ""
+
+    with patch("sys.stdin", StringIO("8\n")) as stdin, patch("sys.stdout", new_callable=StringIO):
+        x = cond_wf(a=3)
+        assert x == 6
+        assert stdin.read() == ""
