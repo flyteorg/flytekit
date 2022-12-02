@@ -159,7 +159,7 @@ class SparkJob(_common.FlyteIdlEntity):
             application_type = SparkType.R
 
         return cls(
-            spark_type=application_type,
+            type=application_type,
             spark_conf=pb2_object.sparkConf,
             application_file=pb2_object.mainApplicationFile,
             main_class=pb2_object.mainClass,
