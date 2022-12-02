@@ -75,12 +75,22 @@ def t2(dataset: TFRecordFile):
 
 
 @task
-def t3(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(buffer_size=1024)]) -> Dict[str, np.ndarray]:
+def t3(dataset: TFRecordsDirectory):
+
+    # if not annotated with TFRecordDatasetConfig, all attributes should default to None
+    assert isinstance(dataset, TFRecordDatasetV2)
+    assert dataset._compression_type is None
+    assert dataset._buffer_size is None
+    assert dataset._num_parallel_reads is None
+
+
+@task
+def t4(dataset: Annotated[TFRecordFile, TFRecordDatasetConfig(buffer_size=1024)]) -> Dict[str, np.ndarray]:
     return decode_fn(dataset)
 
 
 @task
-def t4(dataset: Annotated[TFRecordsDirectory, TFRecordDatasetConfig(buffer_size=1024)]) -> Dict[str, np.ndarray]:
+def t5(dataset: Annotated[TFRecordsDirectory, TFRecordDatasetConfig(buffer_size=1024)]) -> Dict[str, np.ndarray]:
     return decode_fn(dataset)
 
 
@@ -90,8 +100,9 @@ def wf() -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
     files = generate_tf_record_dir()
     t1(dataset=file)
     t2(dataset=file)
-    files_res = t3(dataset=file)
-    dir_res = t4(dataset=files)
+    t3(dataset=files)
+    files_res = t4(dataset=file)
+    dir_res = t5(dataset=files)
     return files_res, dir_res
 
 

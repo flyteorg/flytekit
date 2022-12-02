@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Optional, Tuple, Type, Union, overload
+from typing import Optional, Tuple, Type, Union
 
 import tensorflow as tf
 from dataclasses_json import dataclass_json
@@ -34,16 +34,6 @@ class TFRecordDatasetConfig:
     buffer_size: Optional[int] = None
     num_parallel_reads: Optional[int] = None
     name: Optional[str] = None
-
-
-@overload
-def extract_metadata_and_uri(t: TFRecordFile) -> Tuple[TFRecordFile, TFRecordDatasetConfig]:
-    ...
-
-
-@overload
-def extract_metadata_and_uri(t: TFRecordsDirectory) -> Tuple[TFRecordsDirectory, TFRecordDatasetConfig]:
-    ...
 
 
 def extract_metadata_and_uri(
