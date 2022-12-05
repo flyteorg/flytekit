@@ -162,9 +162,9 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
 
         uri, metadata = extract_metadata_and_uri(lv, expected_python_type)
         local_dir = ctx.file_access.get_random_local_directory()
-        files = os.scandir(uri)
-        filenames = [os.path.join(local_dir, f.name) for f in files]
         ctx.file_access.get_data(uri, local_dir, is_multipart=True)
+        files = os.scandir(local_dir)
+        filenames = [os.path.join(local_dir, f.name) for f in files]
         return tf.data.TFRecordDataset(
             filenames=filenames,
             compression_type=metadata.compression_type,
