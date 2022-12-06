@@ -108,7 +108,7 @@ mypy-extensions==0.4.3
     # via typing-inspect
 natsort==8.2.0
     # via flytekit
-numpy==1.21.6
+numpy==1.22.0
     # via
     #   flytekit
     #   matplotlib
