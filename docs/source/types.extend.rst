@@ -15,3 +15,4 @@ Refer to the :ref:`extensibility contribution guide <cookbook:advanced_custom_ty
    types.builtins.file
    types.builtins.directory
    extras.pytorch
+   extras.tensorflow
