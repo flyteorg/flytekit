@@ -156,5 +156,4 @@ How to setup SSL while using ``pyflyte run`` on gcloud cluster?
 
    cert-manager.io/cluster-issuer: "letsencrypt-production"
   
-  
 7. Completed and Continue.
