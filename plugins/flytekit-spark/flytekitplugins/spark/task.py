@@ -29,7 +29,7 @@ class Spark(object):
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
-    databricks_conf: typing.Optional[dict] = None
+    databricks_conf: typing.Optional[Dict[str, typing.Union[str, dict]]] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
