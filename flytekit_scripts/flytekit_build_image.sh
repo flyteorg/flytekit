@@ -61,10 +61,20 @@ if [ -n "$REGISTRY" ]; then
 else
   FLYTE_INTERNAL_IMAGE=${IMAGE_NAME}:${PREFIX}${TAG}
 fi
-echo "Building: $FLYTE_INTERNAL_IMAGE"
+
+DOCKER_PLATFORM_OPT=()
+# Check if the user set the target build architecture, if not use the default instead.
+if [ -n "$TARGET_PLATFORM_BUILD" ]; then
+  DOCKER_PLATFORM_OPT=(--platform "$TARGET_PLATFORM_BUILD")
+else
+  TARGET_PLATFORM_BUILD="default"
+fi
+
+echo "Building: $FLYTE_INTERNAL_IMAGE for $TARGET_PLATFORM_BUILD architecture"
 
 # This build command is the raison d'etre of this script, it ensures that the version is injected into the image itself
-docker build . --build-arg tag="$FLYTE_INTERNAL_IMAGE" -t "$FLYTE_INTERNAL_IMAGE" -f "${DOCKERFILE_PATH}"
+docker build . "${DOCKER_PLATFORM_OPT[@]}" --build-arg tag="${FLYTE_INTERNAL_IMAGE}" -t "${FLYTE_INTERNAL_IMAGE}" -f "${DOCKERFILE_PATH}"
+
 echo "$IMAGE_NAME built locally."
 
 # Create the appropriate tags
