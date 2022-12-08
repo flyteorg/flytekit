@@ -501,6 +501,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     print("pwd pwd pwd", p.stdout)
     p = subprocess.run(["ls", "/root"], capture_output=True)
     print("ls /root", p.stdout)
+    p = subprocess.run(["cd", "/root"], capture_output=True)
+    print("cd /root", p.stdout)
 
     # Insert the call to fast before the unbounded resolver args
     cmd = []

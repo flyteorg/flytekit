@@ -103,6 +103,7 @@ def fast_register_single_script(
     # Open a temp directory and dump the contents of the digest.
     with tempfile.TemporaryDirectory() as tmp_dir:
         archive_fname = os.path.join(tmp_dir, "script_mode.tar.gz")
+        print(module_name)
         mod = importlib.import_module(module_name)
         compress_single_script(source_path, archive_fname, get_full_module_path(mod, mod.__name__))
 
