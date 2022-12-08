@@ -72,14 +72,17 @@ def test_formats_make_sense():
         assert val.metadata.structured_dataset_type.format == "parquet"
 
 
-def test_fds():
+def test_setting_of_unset_formats():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-    xx = Annotated[StructuredDataset, "parquet"]
+    custom = Annotated[StructuredDataset, "parquet"]
+    example = custom(dataframe=df, uri="/path")
+    # It's okay that the annotation is not used here yet.
+    assert example.file_format == ""
 
     @task
-    def t2(path: str) -> xx:
-        sd = xx(dataframe=df, uri=path)
+    def t2(path: str) -> StructuredDataset:
+        sd = StructuredDataset(dataframe=df, uri=path)
         return sd
 
     @workflow
@@ -87,7 +90,8 @@ def test_fds():
         return t2(path=path)
 
     res = wf(path="/tmp/somewhere")
-    print(res)
+    # Now that it's passed through an encoder however, it should be set.
+    assert res.file_format == "parquet"
 
 
 def test_types_pandas():
