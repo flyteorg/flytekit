@@ -154,7 +154,6 @@ Common Flyte IDL Objects
    LiteralType
    BlobType
 """
-
 import sys
 from typing import Generator
 

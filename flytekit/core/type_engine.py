@@ -15,10 +15,10 @@ from typing import Dict, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
-from google.protobuf import reflection as _proto_reflection
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
+from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
@@ -551,11 +551,11 @@ class DataclassTransformer(TypeTransformer[object]):
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
 
-class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMessageType]):
+class ProtobufTransformer(TypeTransformer[Message]):
     PB_FIELD_KEY = "pb_type"
 
     def __init__(self):
-        super().__init__("Protobuf-Transformer", _proto_reflection.GeneratedProtocolMessageType)
+        super().__init__("Protobuf-Transformer", Message)
 
     @staticmethod
     def tag(expected_python_type: Type[T]) -> str:
