@@ -40,6 +40,7 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
     env={},
 )
+df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 
 def test_protocol():
@@ -73,7 +74,6 @@ def test_formats_make_sense():
 
 
 def test_setting_of_unset_formats():
-    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
     custom = Annotated[StructuredDataset, "parquet"]
     example = custom(dataframe=df, uri="/path")
@@ -92,6 +92,14 @@ def test_setting_of_unset_formats():
     res = wf(path="/tmp/somewhere")
     # Now that it's passed through an encoder however, it should be set.
     assert res.file_format == "parquet"
+
+
+def test_json():
+    sd = StructuredDataset(dataframe=df, uri="/some/path")
+    sd.file_format = "myformat"
+    json_str = sd.to_json()
+    new_sd = StructuredDataset.from_json(json_str)
+    assert new_sd.file_format == "myformat"
 
 
 def test_types_pandas():
