@@ -20,7 +20,7 @@ Pyflyte CLI
 
 .. click:: flytekit.clis.sdk_in_container.run:run
     :prog: pyflyte run
-    :nested: full
+    :nested: none
 
 .. click:: flytekit.clis.sdk_in_container.serialize:serialize
     :prog: pyflyte serialize
