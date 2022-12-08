@@ -1,6 +1,9 @@
-##############################
-Extend Data Persistence layer
-##############################
+######################
+Data Persistence Layer
+######################
+
+.. tags:: Data, AWS, GCP, Intermediate
+
 Flytekit provides a data persistence layer, which is used for recording metadata that is shared with the Flyte backend. This persistence layer is available for various types to store raw user data and is designed to be cross-cloud compatible.
 Moreover, it is designed to be extensible and users can bring their own data persistence plugins by following the persistence interface.
 
@@ -29,7 +32,7 @@ You can use the fsspec plugin implementation to utilize all its available plugin
 The data persistence layer helps store logs of metadata and raw user data.
 As a consequence of the implementation, an S3 driver can be installed using ``pip install s3fs``.
 
-`Here <https://github.com/fsspec/filesystem_spec/blob/ffe57d6eabe517b4c39c27487fc45b804d314b58/fsspec/registry.py#L87-L205>`_ is a code snippet that shows protocols mapped to the class it implements.
+`Here <https://github.com/fsspec/filesystem_spec/blob/ffe57d6eabe517b4c39c27487fc45b804d314b58/fsspec/registry.py#L87-L205>`__ is a code snippet that shows protocols mapped to the class it implements.
 
 Once you install the plugin, it overrides all default implementations of the `DataPersistencePlugins <https://github.com/flyteorg/flytekit/blob/5907e766a01058181697de2babd779588e5d48b0/flytekit/core/data_persistence.py#L107-L116>`_ and provides the ones supported by fsspec.
 

@@ -4,6 +4,7 @@ from collections import OrderedDict
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
+from typing_extensions import Annotated  # type: ignore
 
 import flytekit.configuration
 from flytekit import StructuredDataset, kwtypes
@@ -14,11 +15,6 @@ from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, Work
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.tools.translator import get_serializable
 from flytekit.types.schema import FlyteSchema
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
