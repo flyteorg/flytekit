@@ -395,7 +395,9 @@ class DataclassTransformer(TypeTransformer[object]):
             if issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory):
                 return python_type(path=lv.scalar.blob.uri)
             elif issubclass(python_type, StructuredDataset):
-                return python_type(uri=lv.scalar.structured_dataset.uri)
+                sd = python_type(uri=lv.scalar.structured_dataset.uri)
+                sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
+                return sd
             else:
                 return python_val
         else:
