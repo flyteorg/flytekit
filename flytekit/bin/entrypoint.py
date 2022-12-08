@@ -502,6 +502,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     p = subprocess.run(["ls", "/root"], capture_output=True)
     print("ls /root", p.stdout)
 
+    print("dest_dir dest_dir dest_dir", dest_dir)
     os.chdir(dest_dir)
     p = subprocess.run("pwd", capture_output=True)
     print("pwd pwd pwd", p.stdout)
