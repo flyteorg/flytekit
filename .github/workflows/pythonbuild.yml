@@ -177,4 +177,6 @@ jobs:
           python -m pip install --upgrade pip==21.2.4 setuptools wheel
           pip install -r doc-requirements.txt
       - name: Build the documentation
-        run: make -C docs html
+        run: |
+          # TODO: Remove after buf migration is done and packages updated
+          PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python make -C docs html
