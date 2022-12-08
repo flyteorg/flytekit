@@ -51,14 +51,15 @@ test: lint unit_test
 
 .PHONY: unit_test_codecov
 unit_test_codecov:
-	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml" unit_test
+	# Ensure coverage file
+	rm coverage.xml || true
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
 
 .PHONY: unit_test
 unit_test:
 	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	CODECOV_OPTS=${CODECOV_OPTS:-""}
-	pytest -m "not sandbox_test" tests/flytekit/unit/deck/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
+	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
 		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
 
 requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
