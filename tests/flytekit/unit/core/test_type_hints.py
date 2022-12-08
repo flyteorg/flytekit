@@ -487,8 +487,8 @@ def test_structured_dataset_in_dataclass():
         return t1(path=path)
 
     res = wf(path="/tmp/somewhere")
-    assert "" == res.a.file_format
-    assert "" == res.b.a.file_format
+    assert "parquet" == res.a.file_format
+    assert "parquet" == res.b.a.file_format
     assert_frame_equal(df, res.a.open(pd.DataFrame).all())
     assert_frame_equal(df, res.b.a.open(pd.DataFrame).all())
 
