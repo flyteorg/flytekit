@@ -103,8 +103,8 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
 
 StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(), default_format_for_type=True)
 StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(), default_format_for_type=True)
-StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(), default_format_for_type=False)
-StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(), default_format_for_type=False)
+StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(), default_format_for_type=True)
+StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(), default_format_for_type=True)
 
 StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
 StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())

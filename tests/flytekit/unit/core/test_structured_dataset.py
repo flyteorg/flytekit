@@ -7,11 +7,13 @@ import pytest
 from typing_extensions import Annotated
 
 import flytekit.configuration
-from flytekit import kwtypes, task
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
+from flytekit.core.workflow import workflow
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
@@ -68,6 +70,24 @@ def test_formats_make_sense():
         result = t1(a=generate_pandas())
         val = result.val.scalar.value
         assert val.metadata.structured_dataset_type.format == "parquet"
+
+
+def test_fds():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    xx = Annotated[StructuredDataset, "parquet"]
+
+    @task
+    def t2(path: str) -> xx:
+        sd = xx(dataframe=df, uri=path)
+        return sd
+
+    @workflow
+    def wf(path: str) -> StructuredDataset:
+        return t2(path=path)
+
+    res = wf(path="/tmp/somewhere")
+    print(res)
 
 
 def test_types_pandas():
@@ -140,8 +160,10 @@ def test_types_sd():
 
 def test_retrieving():
     assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET) is not None
-    with pytest.raises(ValueError, match="Failed to find a handler"):
-        StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", "")
+    # Asking for a generic means you're okay with any one registered for that type assuming there's just one.
+    assert StructuredDatasetTransformerEngine.get_encoder(
+        pd.DataFrame, "file", ""
+    ) is StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET)
 
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self, protocol):

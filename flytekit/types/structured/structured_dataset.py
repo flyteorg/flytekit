@@ -335,22 +335,41 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
     @classmethod
     def _finder(cls, handler_map, df_type: Type, protocol: str, format: str):
-        try:
-            return handler_map[df_type][protocol][format]
-        except KeyError:
+        # If the incoming format requested is a specific format (e.g. "avro"), then look for that specific handler
+        #   if missing, see if there's a generic format handler. Error if missing.
+        # If the incoming format requested is the generic format (""), then see if it's present,
+        #   if not, look to see if there is a default format for the df_type and a handler for that format.
+        #   if still missing, look to see if there's only _one_ handler for that type, if so then use that.
+        if format != GENERIC_FORMAT:
             try:
-                if format == GENERIC_FORMAT and df_type in cls.DEFAULT_FORMATS:
-                    fallback_fmt = cls.DEFAULT_FORMATS[df_type]
-                else:
-                    fallback_fmt = GENERIC_FORMAT
-                hh = handler_map[df_type][protocol][fallback_fmt]
-                logger.info(
-                    f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"
-                    f" using the generic handler {hh} instead."
-                )
-                return hh
+                return handler_map[df_type][protocol][format]
             except KeyError:
-                ...
+                try:
+                    return handler_map[df_type][protocol][GENERIC_FORMAT]
+                except KeyError:
+                    ...
+        else:
+            try:
+                return handler_map[df_type][protocol][GENERIC_FORMAT]
+            except KeyError:
+                if df_type in cls.DEFAULT_FORMATS and cls.DEFAULT_FORMATS[df_type] in handler_map[df_type][protocol]:
+                    hh = handler_map[df_type][protocol][cls.DEFAULT_FORMATS[df_type]]
+                    logger.debug(
+                        f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"
+                        f" using the generic handler {hh} instead."
+                    )
+                    return hh
+                if len(handler_map[df_type][protocol]) == 1:
+                    hh = list(handler_map[df_type][protocol].values())[0]
+                    logger.debug(
+                        f"Using {hh} with format {hh.supported_format} as it's the only one available for {df_type}"
+                    )
+                    return hh
+                else:
+                    logger.warning(
+                        f"Did not automatically pick a handler for {df_type},"
+                        f" more than one detected {handler_map[df_type][protocol].keys()}"
+                    )
         raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt |{format}|")
 
     @classmethod
@@ -502,7 +521,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # Check first to see if it's even an SD type. For backwards compatibility, we may be getting a FlyteSchema
         python_type, *attrs = extract_cols_and_format(python_type)
         # In case it's a FlyteSchema
-        sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, None))
+        sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, GENERIC_FORMAT))
 
         if expected and expected.structured_dataset_type:
             sdt = StructuredDatasetType(
