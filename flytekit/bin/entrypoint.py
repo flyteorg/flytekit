@@ -495,6 +495,11 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
             dest_dir = os.getcwd()
         _download_distribution(additional_distribution, dest_dir)
 
+    p = subprocess.run("ls", capture_output=True)
+    print("ls ls ls", p.stdout)
+    p = subprocess.run("pwd", capture_output=True)
+    print("pwd pwd pwd", p.stdout)
+
     # Insert the call to fast before the unbounded resolver args
     cmd = []
     for arg in task_execute_cmd:
