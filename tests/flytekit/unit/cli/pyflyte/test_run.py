@@ -78,6 +78,8 @@ def test_pyflyte_run_cli():
             "20H",
             "--k",
             "RED",
+            "--l",
+            '{"hello": "world"}',
             "--remote",
             os.path.join(DIR_NAME, "testdata"),
             "--image",

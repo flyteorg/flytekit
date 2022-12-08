@@ -5,7 +5,7 @@ Core Flytekit
 
 .. currentmodule:: flytekit
 
-This package contains all of the most common abstractions you'll need to write Flyte workflows, and extend Flytekit.
+This package contains all of the most common abstractions you'll need to write Flyte workflows and extend Flytekit.
 
 Basic Authoring
 ===============
@@ -25,6 +25,8 @@ These are the essentials needed to get started writing tasks and workflows. The 
    FlyteContext
    map_task
    ~core.workflow.ImperativeWorkflow
+   ~core.node_creation.create_node
+   FlyteContextManager
 
 Running Locally
 ------------------
@@ -152,7 +154,6 @@ Common Flyte IDL Objects
    LiteralType
    BlobType
 """
-
 import sys
 from typing import Generator
 
@@ -182,7 +183,7 @@ from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
-from flytekit.extras import pytorch
+from flytekit.extras import pytorch, tensorflow
 from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
 from flytekit.models.common import Annotations, AuthRole, Labels

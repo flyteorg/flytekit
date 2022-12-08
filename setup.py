@@ -21,8 +21,8 @@ setup(
     maintainer="Flyte Contributors",
     maintainer_email="admin@flyte.org",
     packages=find_packages(
-        include=["flytekit", "flytekit_scripts", "plugins"],
-        exclude=["boilerplate", "docs", "tests*"],
+        include=["flytekit", "flytekit_scripts"],
+        exclude=["boilerplate", "docs", "plugins", "tests*"],
     ),
     include_package_data=True,
     url="https://github.com/flyteorg/flytekit",
@@ -39,21 +39,22 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=1.1.3,<1.2.0",
+        "flyteidl>=1.3.0,<1.4.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
-        "pyarrow>=4.0.0,<7.0.0",
+        "pyarrow>=4.0.0,<11.0.0",
         "click>=6.6,<9.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
         "docker>=5.0.3,<7.0.0",
         "python-dateutil>=2.1",
-        "grpcio>=1.43.0,!=1.45.0,<2.0",
-        "grpcio-status>=1.43,!=1.45.0",
+        # Restrict grpcio and grpcio-status.  Version 1.50.0 pulls in a version of protobuf that is not compatible
+        # with the old protobuf library (as described in https://developers.google.com/protocol-buffers/docs/news/2022-05-06)
+        "grpcio>=1.50.0,<2.0",
+        "grpcio-status>=1.50.0,<2.0",
         "importlib-metadata",
         "pyopenssl",
         "joblib",
-        "protobuf>=3.6.1,<4",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
         "pytz",

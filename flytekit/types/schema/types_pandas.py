@@ -81,7 +81,6 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
     def __init__(self):
         super().__init__("PandasDataFrame<->GenericSchema", pandas.DataFrame)
         self._parquet_engine = ParquetIO()
-        self._hash_overridable = True
 
     @staticmethod
     def _get_schema_type() -> SchemaType:

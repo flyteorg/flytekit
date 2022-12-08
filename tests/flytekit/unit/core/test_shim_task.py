@@ -4,7 +4,7 @@ from collections import OrderedDict
 import mock
 
 import flytekit.configuration
-from flytekit import ContainerTask, kwtypes
+from flytekit import ContainerTask, Resources, kwtypes
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask, TaskTemplateResolver
 from flytekit.core.utils import write_proto_to_file
@@ -54,10 +54,17 @@ def test_serialize_to_model(mock_custom, mock_config):
     mock_custom.return_value = {"a": "custom"}
     mock_config.return_value = {"a": "config"}
     ct = PythonCustomizedContainerTask(
-        name="mytest", task_config=None, container_image="someimage", executor_type=Placeholder
+        name="mytest",
+        task_config=None,
+        container_image="someimage",
+        executor_type=Placeholder,
+        requests=Resources(ephemeral_storage="200Mi"),
+        limits=Resources(ephemeral_storage="300Mi"),
     )
     tt = ct.serialize_to_model(serialization_settings)
     assert tt.container.image == "someimage"
     assert len(tt.config) == 1
     assert tt.id.name == "mytest"
     assert len(tt.custom) == 1
+    assert tt.container.resources.requests[0].value == "200Mi"
+    assert tt.container.resources.limits[0].value == "300Mi"

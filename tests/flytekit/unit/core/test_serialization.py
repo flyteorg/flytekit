@@ -32,6 +32,7 @@ def test_serialization():
         inputs=kwtypes(val=int),
         outputs=kwtypes(out=int),
         image="alpine",
+        environment={"a": "b"},
         command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
     )
 

@@ -2,7 +2,7 @@ import os
 
 import mock
 
-from flytekit.configuration import get_config_file, read_file_if_exists
+from flytekit.configuration import PlatformConfig, get_config_file, read_file_if_exists
 from flytekit.configuration.internal import AWS, Credentials, Images
 
 
@@ -31,7 +31,20 @@ def test_client_secret_location():
         os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/creds_secret_location.yaml")
     )
     secret_location = Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(cfg)
-    assert secret_location == "../tests/flytekit/unit/configuration/configs/fake_secret"
+    assert secret_location == "configs/fake_secret"
+
+    # Modify the path to the secret inline
+    cfg._yaml_config["admin"]["clientSecretLocation"] = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "configs/fake_secret"
+    )
+
+    # Assert secret contains a newline
+    with open(cfg._yaml_config["admin"]["clientSecretLocation"], "rb") as f:
+        assert f.read().decode().endswith("\n") is True
+
+    # Assert that secret in platform config does not contain a newline
+    platform_cfg = PlatformConfig.auto(cfg)
+    assert platform_cfg.client_credentials_secret == "hello"
 
 
 def test_read_file_if_exists():

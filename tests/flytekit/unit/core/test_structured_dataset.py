@@ -7,11 +7,13 @@ import pytest
 from typing_extensions import Annotated
 
 import flytekit.configuration
-from flytekit import kwtypes, task
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.base_task import kwtypes
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
+from flytekit.core.workflow import workflow
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
@@ -38,6 +40,7 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
     env={},
 )
+df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 
 def test_protocol():
@@ -47,6 +50,56 @@ def test_protocol():
 
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+
+def test_formats_make_sense():
+    @task
+    def t1(a: pd.DataFrame) -> pd.DataFrame:
+        print(a)
+        return generate_pandas()
+
+    # this should be an empty string format
+    assert t1.interface.outputs["o0"].type.structured_dataset_type.format == ""
+    assert t1.interface.inputs["a"].type.structured_dataset_type.format == ""
+
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+        )
+    ):
+        result = t1(a=generate_pandas())
+        val = result.val.scalar.value
+        assert val.metadata.structured_dataset_type.format == "parquet"
+
+
+def test_setting_of_unset_formats():
+
+    custom = Annotated[StructuredDataset, "parquet"]
+    example = custom(dataframe=df, uri="/path")
+    # It's okay that the annotation is not used here yet.
+    assert example.file_format == ""
+
+    @task
+    def t2(path: str) -> StructuredDataset:
+        sd = StructuredDataset(dataframe=df, uri=path)
+        return sd
+
+    @workflow
+    def wf(path: str) -> StructuredDataset:
+        return t2(path=path)
+
+    res = wf(path="/tmp/somewhere")
+    # Now that it's passed through an encoder however, it should be set.
+    assert res.file_format == "parquet"
+
+
+def test_json():
+    sd = StructuredDataset(dataframe=df, uri="/some/path")
+    sd.file_format = "myformat"
+    json_str = sd.to_json()
+    new_sd = StructuredDataset.from_json(json_str)
+    assert new_sd.file_format == "myformat"
 
 
 def test_types_pandas():
@@ -119,6 +172,7 @@ def test_types_sd():
 
 def test_retrieving():
     assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET) is not None
+    # Asking for a generic means you're okay with any one registered for that type assuming there's just one.
     assert StructuredDatasetTransformerEngine.get_encoder(
         pd.DataFrame, "file", ""
     ) is StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET)
@@ -209,7 +263,7 @@ def test_fill_in_literal_type():
     StructuredDatasetTransformerEngine.register(empty_format_temp_encoder, default_for_type=False)
 
     res = StructuredDatasetTransformerEngine.get_encoder(MyDF, "tmpfs", "rando")
-    assert res is default_encoder
+    assert res is empty_format_temp_encoder
 
 
 def test_slash_register():
@@ -233,7 +287,7 @@ def test_slash_register():
 def test_sd():
     sd = StructuredDataset(dataframe="hi")
     sd.uri = "my uri"
-    assert sd.file_format == PARQUET
+    assert sd.file_format == ""
 
     with pytest.raises(ValueError, match="No dataframe type set"):
         sd.all()
@@ -388,9 +442,8 @@ def test_format_correct():
     assert df_literal_type.structured_dataset_type.format == "avro"
 
     sd = annotated_sd_type(df)
-    lt = TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
-    # We haven't registered avro encoder, so here use default parquet encoder instead
-    assert lt.scalar.structured_dataset.metadata.structured_dataset_type.format == PARQUET
+    with pytest.raises(ValueError, match="Failed to find a handler"):
+        TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
 
     StructuredDatasetTransformerEngine.register(TempEncoder(), default_for_type=False)
     sd2 = annotated_sd_type(df)

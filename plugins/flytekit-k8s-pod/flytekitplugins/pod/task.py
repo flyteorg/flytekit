@@ -19,6 +19,16 @@ def _sanitize_resource_name(resource: _task_models.Resources.ResourceEntry) -> s
 
 
 class Pod(object):
+    """
+    Pod is a platform-wide configuration that uses pod templates. By default, every task is launched as a container in a pod.
+    This plugin helps expose a fully modifiable Kubernetes pod spec to customize the task execution runtime.
+    To use pod tasks: (1) Define a pod spec, and (2) Specify the primary container name.
+    :param V1PodSpec pod_spec: Kubernetes pod spec. https://kubernetes.io/docs/concepts/workloads/pods
+    :param str primary_container_name: the primary container name
+    :param Optional[Dict[str, str]] labels: Labels are key/value pairs that are attached to pod spec
+    :param Optional[Dict[str, str]] annotations: Annotations are key/value pairs that are attached to arbitrary non-identifying metadata to pod spec.
+    """
+
     def __init__(
         self,
         pod_spec: V1PodSpec,
@@ -98,7 +108,9 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
                     # Important! Only copy over resource requirements if they are non-empty.
                     container.resources = resource_requirements
 
-                container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()]
+                container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()] + (
+                    container.env or []
+                )
 
             final_containers.append(container)
 
