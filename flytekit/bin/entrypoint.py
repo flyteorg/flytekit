@@ -506,6 +506,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     os.chdir(dest_dir)
     p = subprocess.run("pwd", capture_output=True)
     print("pwd pwd pwd", p.stdout)
+    p = subprocess.run(["cat", "example_databricks.py"], capture_output=True)
+    print("cat cat cat", p.stdout)
 
     # Insert the call to fast before the unbounded resolver args
     cmd = []
