@@ -25,15 +25,14 @@ def test_spark_task(reset_spark_session):
             "spark_version": "11.0.x-scala2.12",
             "node_type_id": "r3.xlarge",
             "aws_attributes": {"availability": "ON_DEMAND"},
-            "num_workers": 4,
-            "docker_image": {"url": "pingsutw/databricks:latest"},
+            "num_workers": 4
         },
         "timeout_seconds": 3600,
         "max_retries": 1,
         "spark_python_task": {
             "python_file": "dbfs:///FileStore/tables/entrypoint-1.py",
-            "parameters": "ls",
-        },
+            "parameters": "ls"
+        }
     }
 
     @task(task_config=Spark(spark_conf={"spark": "1"}, databricks_conf=databricks_conf))

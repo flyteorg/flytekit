@@ -201,6 +201,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         print(task_module)
         p = subprocess.run(["ls", "integration"], capture_output=True)
         print("auto integration integration", p.stdout)
+        importlib.invalidate_caches()
         task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)
         return task_def
