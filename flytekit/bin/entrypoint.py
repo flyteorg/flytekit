@@ -8,6 +8,7 @@ import traceback as _traceback
 from typing import List, Optional
 
 import click as _click
+import pyspark
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit import PythonFunctionTask
@@ -495,6 +496,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
             dest_dir = os.getcwd()
         _download_distribution(additional_distribution, dest_dir)
 
+    sess = pyspark.sql.SparkSession.builder.getOrCreate()
+    print(sess)
     # Insert the call to fast before the unbounded resolver args
     cmd = []
     for arg in task_execute_cmd:
