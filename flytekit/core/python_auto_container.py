@@ -4,6 +4,7 @@ import importlib
 import os
 import re
 import subprocess
+import sys
 from abc import ABC
 from types import ModuleType
 from typing import Callable, Dict, List, Optional, TypeVar, Union
@@ -197,6 +198,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         print("auto pwd pwd pwd", p.stdout)
         p = subprocess.run(["ls"], capture_output=True)
         print("ls", p.stdout)
+        print(sys.path)
         p = subprocess.run(["cat", "integration/workflow/databricks.py"], capture_output=True)
         print("auto cat cat cat", p.stdout)
         importlib.invalidate_caches()
