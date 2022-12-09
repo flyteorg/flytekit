@@ -95,5 +95,5 @@ def test_union():
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
     variants = task_spec.template.interface.inputs["data"].type.union_type.variants
     assert variants[0].blob.format == "NumpyArray"
-    assert variants[1].structured_dataset_type.format == "parquet"
+    assert variants[1].structured_dataset_type.format == ""
     assert variants[2].blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT

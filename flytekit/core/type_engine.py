@@ -388,7 +388,9 @@ class DataclassTransformer(TypeTransformer[object]):
             if issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory):
                 return python_type(path=lv.scalar.blob.uri)
             elif issubclass(python_type, StructuredDataset):
-                return python_type(uri=lv.scalar.structured_dataset.uri)
+                sd = python_type(uri=lv.scalar.structured_dataset.uri)
+                sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
+                return sd
             else:
                 return python_val
         else:
@@ -534,7 +536,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"serialized correctly"
             )
 
-        dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
+        json_str = _json_format.MessageToJson(lv.scalar.generic)
+        dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
