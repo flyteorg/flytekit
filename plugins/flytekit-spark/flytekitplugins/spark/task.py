@@ -115,7 +115,8 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         ctx = FlyteContextManager.current_context()
         sess_builder = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}")
         print("self.task_config.spark_conf", self.task_config.spark_conf)
-        if self.task_config.spark_conf and not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION):
+        if self.task_config.spark_conf and not (
+                ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION):
             # If either of above cases is not true, then we are in local execution of this task
             # Add system spark-conf for local/notebook based execution.
             spark_conf = _pyspark.SparkConf()
@@ -130,8 +131,9 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             sess_builder = sess_builder.config(conf=spark_conf)
             print("sess_builder sess_builder", sess_builder)
 
-        self.sess = sess_builder.getOrCreate()
-        print(self.sess.conf.get("spark.master"))
+        print("spark master spark master", os.environ.get("SPARK_MASTER"))
+        self.sess = sess_builder.config("spark.master", os.environ.get("SPARK_MASTER", "local[*]")).getOrCreate()
+        print("spark.master spark.master", self.sess.conf.get("spark.master"))
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
 
