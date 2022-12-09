@@ -19,7 +19,6 @@ google-api-core[grpc]==2.8.2
 scikit-learn==1.1.1
 sphinx-tags
 sphinx-click
-flyteidl==1.2.5
 
 # Packages for Plugin docs
 # Package name              Plugin needing it
