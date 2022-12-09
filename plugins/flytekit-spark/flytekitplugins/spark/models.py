@@ -31,6 +31,7 @@ class SparkJob(_common.FlyteIdlEntity):
         :param application_file: The main application file to execute.
         :param dict[Text, Text] spark_conf: A definition of key-value pairs for spark config for the job.
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
+        :param dict[Text, dict] databricks_conf: A definition of key-value pairs for databricks config for the job. Refer to https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit.
         """
         self._application_file = application_file
         self._spark_type = spark_type
