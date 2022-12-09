@@ -199,6 +199,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         p = subprocess.run(["ls"], capture_output=True)
         print("ls", p.stdout)
         print(sys.path)
+        sys.path.append(".")
         p = subprocess.run(["cat", "integration/workflow/databricks.py"], capture_output=True)
         print("auto cat cat cat", p.stdout)
         importlib.invalidate_caches()
