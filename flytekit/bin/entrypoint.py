@@ -495,13 +495,6 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
         if not dest_dir:
             dest_dir = os.getcwd()
         _download_distribution(additional_distribution, dest_dir)
-
-    spark_conf = pyspark.SparkConf()
-    print("spark.master", spark_conf.get("spark.master"))
-    print(spark_conf.getAll())
-    spark_conf.set("spark.master", "local[*]")
-    sess = pyspark.sql.SparkSession.builder.config(conf=spark_conf).appName("test").getOrCreate()
-    print("spark.master", sess.conf.get("spark.master"))
     # Insert the call to fast before the unbounded resolver args
     cmd = []
     for arg in task_execute_cmd:
