@@ -7,6 +7,9 @@ try:
     import tensorflow
 
     _tensorflow_installed = True
+except TypeError as e:
+    logger.warn(f"Unsupported version of tensorflow installed. Error message from protobuf library: {e}")
+    _tensorflow_installed = False
 except (ImportError, OSError):
     _tensorflow_installed = False
 
