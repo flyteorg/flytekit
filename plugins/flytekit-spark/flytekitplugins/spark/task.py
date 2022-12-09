@@ -130,7 +130,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             sess_builder = sess_builder.config(conf=spark_conf)
             print("sess_builder sess_builder", sess_builder)
 
-        self.sess = _pyspark.sql.SparkSession.builder.config("spark.master", "local[*]").getOrCreate()
+        self.sess = sess_builder.config("spark.master", "local[*]").getOrCreate()
         print(self.sess.conf.get("spark.master"))
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
