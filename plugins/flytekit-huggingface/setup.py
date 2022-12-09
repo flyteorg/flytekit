@@ -5,7 +5,7 @@ PLUGIN_NAME = "huggingface"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "flytekit>=1.1.0b0,<2.0.0",
+    "flytekit>=1.3.0b2,<2.0.0",
     "datasets>=2.4.0",
 ]
 

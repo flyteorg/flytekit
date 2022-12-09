@@ -4,7 +4,7 @@ PLUGIN_NAME = "whylogs"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["protobuf>=3.15,<4.0.0", "whylogs[viz]>=1.0.8"]
+plugin_requires = ["flytekit<1.3.0b2", "protobuf>=3.15,<4.0.0", "whylogs[viz]>=1.1.16"]
 
 __version__ = "0.0.0+develop"
 
