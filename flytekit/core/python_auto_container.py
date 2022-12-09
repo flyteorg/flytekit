@@ -197,6 +197,8 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         print("auto pwd pwd pwd", p.stdout)
         p = subprocess.run(["ls"], capture_output=True)
         print("ls", p.stdout)
+        p = subprocess.run(["cat", "integration/workflow/databricks.py"], capture_output=True)
+        print("auto cat cat cat", p.stdout)
         importlib.invalidate_caches()
         task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)
