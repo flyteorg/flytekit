@@ -198,6 +198,9 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         os.chdir("/root")
         p = subprocess.run("pwd", capture_output=True)
         print("auto pwd pwd pwd", p.stdout)
+        print(task_module)
+        p = subprocess.run(["ls", "integration"], capture_output=True)
+        print("auto integration integration", p.stdout)
         task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)
         return task_def

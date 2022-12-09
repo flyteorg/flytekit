@@ -107,6 +107,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             main_class="",
             spark_type=SparkType.PYTHON,
         )
+        print(base64.b64encode(json.dumps(self.task_config.databricks_conf).encode()).decode())
         return MessageToDict(job.to_flyte_idl())
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
