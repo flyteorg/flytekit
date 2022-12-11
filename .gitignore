@@ -31,4 +31,4 @@ docs/source/plugins/generated/
 htmlcov
 *.ipynb
 *dat
-source/_tags/
+docs/source/_tags/
