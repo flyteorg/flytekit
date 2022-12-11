@@ -92,22 +92,13 @@ class DaskJob(_common.FlyteIdlEntity):
     """
     Configuration for the custom dask job to run
 
-    :param namespace: Optional namespace to use for the cluster
     :param job_pod_spec: Configuration for the job runner pod
     :param dask_cluster: Configuration for the dask cluster
     """
 
-    def __init__(self, namespace: Optional[str], job_pod_spec: JobPodSpec, dask_cluster: DaskCluster):
-        self._namespace = namespace
+    def __init__(self, job_pod_spec: JobPodSpec, dask_cluster: DaskCluster):
         self._job_pod_spec = job_pod_spec
         self._dask_cluster = dask_cluster
-
-    @property
-    def namespace(self) -> Optional[str]:
-        """
-        :return: The optional namespace to use for the dask pods
-        """
-        return self._namespace
 
     @property
     def job_pod_spec(self) -> JobPodSpec:
@@ -128,7 +119,6 @@ class DaskJob(_common.FlyteIdlEntity):
         :return: The dask job serialized to protobuf
         """
         return _dask_task.DaskJob(
-            namespace=self.namespace,
             jobPodSpec=self.job_pod_spec.to_flyte_idl(),
             cluster=self.dask_cluster.to_flyte_idl(),
         )

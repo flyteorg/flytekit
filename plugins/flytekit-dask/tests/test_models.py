@@ -80,23 +80,13 @@ def test_dask_cluster_property_access(image: str, resources: _task.Resources):
 
 
 def test_dask_job_to_flyte_idl_no_optional(job_pod_spec: models.JobPodSpec, dask_cluster: models.DaskCluster):
-    namespace = "foobar"
-    job = models.DaskJob(namespace=namespace, job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
+    job = models.DaskJob(job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
     idl_object = job.to_flyte_idl()
-    assert idl_object.namespace == namespace
     assert idl_object.jobPodSpec == job_pod_spec.to_flyte_idl()
     assert idl_object.cluster == dask_cluster.to_flyte_idl()
 
 
-def test_dask_job_to_flyte_idl_all_optional(job_pod_spec: models.JobPodSpec, dask_cluster: models.DaskCluster):
-    job = models.DaskJob(namespace=None, job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
-    idl_object = job.to_flyte_idl()
-    assert idl_object.namespace == ""
-
-
 def test_dask_job_property_access(job_pod_spec: models.JobPodSpec, dask_cluster: models.DaskCluster):
-    namespace = "foobar"
-    job = models.DaskJob(namespace=namespace, job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
-    assert job.namespace == namespace
+    job = models.DaskJob(job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
     assert job.job_pod_spec == job_pod_spec
     assert job.dask_cluster == dask_cluster

@@ -46,7 +46,6 @@ def test_dask_task_with_default_config(serialization_settings: SerializationSett
 
 def test_dask_task_get_custom(serialization_settings: SerializationSettings):
     task_config = Dask(
-        namespace="foobar",
         job_pod_spec=JobPodSpec(
             image="job_pod_spec:latest",
             requests=Resources(cpu="1"),
@@ -68,7 +67,6 @@ def test_dask_task_get_custom(serialization_settings: SerializationSettings):
     dask_task: PythonFunctionTask[Dask]
 
     expected_custom_dict = {
-        "namespace": "foobar",
         "jobPodSpec": {
             "image": "job_pod_spec:latest",
             "resources": {

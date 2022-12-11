@@ -53,14 +53,11 @@ class Dask:
     """
     Configuration for the dask task
 
-    :param namespace: Custom namespace to run the dask pods in. If ``None`` will use the default namespace. Optional,
-        defaults to ``None``.
     :param job_pod_spec: Configuration for the job runner pod. Optional, defaults to ``JobPodSpec()``
     :param cluster: Configuration for the dask cluster pods (scheduler and workers). Optional, defaults to
         ``DaskCluster()``
     """
 
-    namespace: Optional[str] = None
     job_pod_spec: JobPodSpec = JobPodSpec()
     cluster: DaskCluster = DaskCluster()
 
@@ -102,7 +99,7 @@ class DaskTask(PythonFunctionTask[Dask]):
                 limits=self.task_config.cluster.limits,
             ),
         )
-        job = models.DaskJob(namespace=self.task_config.namespace, job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
+        job = models.DaskJob(job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
         return MessageToDict(job.to_flyte_idl())
 
 
