@@ -83,4 +83,5 @@ Expected output:
    tasks.extend
    types.extend
    data.extend
+   pyflyte
    contributing
