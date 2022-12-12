@@ -34,11 +34,11 @@ class VaexDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
         ctx.file_access.upload_directory(local_dir, path)
         return literals.StructuredDataset(
             uri=path,
-            metadata=StructuredDatasetMetadata(structured_dataset_type=StructuredDatasetType(structured_dataset_type)),
+            metadata=StructuredDatasetMetadata(structured_dataset_type=structured_dataset_type),
         )
 
 
-class ParquetToVaxDataFrameDecodingHandler(StructuredDatasetDecoder):
+class ParquetToVaexDataFrameDecodingHandler(StructuredDatasetDecoder):
     def __init__(self):
         super().__init__(vaex.dataframe.DataFrameLocal, None, PARQUET)
 
@@ -69,5 +69,5 @@ class VaexDataFrameRenderer:
 
 
 StructuredDatasetTransformerEngine.register(VaexDataFrameToParquetEncodingHandler())
-StructuredDatasetTransformerEngine.register(ParquetToVaxDataFrameDecodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToVaexDataFrameDecodingHandler())
 StructuredDatasetTransformerEngine.register_renderer(vaex.dataframe.DataFrameLocal, VaexDataFrameRenderer())

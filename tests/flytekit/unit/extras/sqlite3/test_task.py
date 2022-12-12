@@ -1,4 +1,5 @@
 import pandas
+import pytest
 
 from flytekit import kwtypes, task, workflow
 from flytekit.configuration import DefaultImages
@@ -108,3 +109,36 @@ def test_task_serialization():
     sql_task._container_image = image
     tt = sql_task.serialize_to_model(sql_task.SERIALIZE_SETTINGS)
     assert tt.container.image == image
+
+
+@pytest.mark.parametrize(
+    "query_template, expected_query",
+    [
+        (
+            """
+select *
+from tracks
+limit {{.inputs.limit}}""",
+            " select * from tracks limit {{.inputs.limit}}",
+        ),
+        (
+            """ \
+select * \
+from tracks \
+limit {{.inputs.limit}}""",
+            " select * from tracks limit {{.inputs.limit}}",
+        ),
+        ("select * from abc", "select * from abc"),
+    ],
+)
+def test_query_sanitization(query_template, expected_query):
+    sql_task = SQLite3Task(
+        "test",
+        query_template=query_template,
+        inputs=kwtypes(limit=int),
+        task_config=SQLite3Config(
+            uri=EXAMPLE_DB,
+            compressed=True,
+        ),
+    )
+    assert sql_task.query_template == expected_query
