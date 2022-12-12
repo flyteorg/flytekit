@@ -16,7 +16,8 @@ class JobPodSpec:
     Configuration for the dask job runner pod
 
     :param image: Custom image to use. If ``None``, will use the same image the task was registered with. Optional,
-        defaults to ``None``.
+        defaults to ``None``. The image must have ``dask[distributed]`` installed and should have the same Python
+        environment as the cluster (scheduler + worker pods).
     :param requests: Resources to request for the job runner pod. If ``None``, the requests passed into the task will be
         used. Optional, defaults to ``None``
     :param limits: Resource limits for the job runner pod. If ``None``, the limits passed into the task will be used.
@@ -34,7 +35,8 @@ class DaskCluster:
     Configuration for the dask cluster pods
 
     :param image: Custom image to use. If ``None``, will use the same image the task was registered with. Optional,
-        defaults to ``None``.
+        defaults to ``None``. The image must have ``dask[distributed]`` installed. The provided image should have the
+        same Python environment as the job runner/driver.
     :param n_workers: Number of workers to use. Optional, defaults to 1.
     :param requests: Resources to request for the scheduler pod as well as the worker pods. If ``None``, the requests
         passed into the task will be used. Optional, defaults to ``None``
