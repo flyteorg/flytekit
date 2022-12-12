@@ -5,9 +5,9 @@ PLUGIN_NAME = "dask"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "flytekit>=1.0.0,<2.0.0",
-    "dask[distributed]>=2022.5.2",
-    "dask-kubernetes>=2022.5.2",
+    "flyteidl>=1.3.1",  # FIXME: Use whatever has the dask idl  # FIXME: Check this version
+    "flytekit>=1.2.5,<2.0.0",
+    "dask[distributed]>=2022.10.2",
 ]
 
 __version__ = "0.0.0+develop"
@@ -15,19 +15,21 @@ __version__ = "0.0.0+develop"
 setup(
     name=microlib_name,
     version=__version__,
-    author="Bernhard Stadlbauer",
-    author_email="bstadlbauer@gmx.net",
+    author="flyteorg",
+    author_email="admin@flyte.org",
     description="Dask plugin for flytekit",
+    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-dask",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.8",  # dask requires >= 3.8
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
