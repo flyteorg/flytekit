@@ -14,6 +14,7 @@ from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
+from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 from google.protobuf.json_format import MessageToJson as _MessageToJson
@@ -146,6 +147,7 @@ class RawSynchronousFlyteClient(object):
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._auth_stub = auth_service.AuthMetadataServiceStub(self._channel)
+        self._signal = signal_service.SignalServiceStub(self._channel)
         try:
             resp = self._auth_stub.GetPublicClientConfig(auth_pb2.PublicClientAuthConfigRequest())
             self._public_client_config = resp
@@ -407,6 +409,14 @@ class RawSynchronousFlyteClient(object):
         :raises: TODO
         """
         return self._stub.GetTask(get_object_request, metadata=self._metadata)
+
+    @_handle_rpc_error(retry=True)
+    def set_signal(self, signal_set_request):
+        """
+        This sets a signal
+        """
+        return self._signal.SetSignal(signal_set_request, metadata=self._metadata)
+
 
     ####################################################################################################################
     #
