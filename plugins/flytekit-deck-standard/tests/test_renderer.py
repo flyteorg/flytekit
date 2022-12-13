@@ -7,7 +7,7 @@ df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [1, 22]})
 
 def test_frame_profiling_renderer():
     renderer = FrameProfilingRenderer()
-    assert "Profile Report Generated With The `Pandas-Profiling`" in renderer.to_html(df).title()
+    assert "Pandas Profiling Report" in renderer.to_html(df).title()
 
 
 def test_markdown_renderer():
