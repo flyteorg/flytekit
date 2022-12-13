@@ -4,10 +4,6 @@
 #
 #    pip-compile requirements.in
 #
--e file:../../.#egg=flytekit
-    # via
-    #   -r requirements.in
-    #   flytekitplugins-ray
 -e file:.#egg=flytekitplugins-ray
     # via -r requirements.in
 aiohttp==3.8.3
@@ -86,6 +82,8 @@ flyteidl==1.3.0
     # via
     #   flytekit
     #   flytekitplugins-ray
+flytekit==1.3.0b2
+    # via flytekitplugins-ray
 frozenlist==1.3.3
     # via
     #   aiohttp
@@ -258,7 +256,7 @@ six==1.16.0
     #   google-auth
     #   gpustat
     #   python-dateutil
-smart-open==6.3.0
+smart-open==6.2.0
     # via ray
 sortedcontainers==2.4.0
     # via flytekit

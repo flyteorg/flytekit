@@ -4,10 +4,6 @@
 #
 #    pip-compile requirements.in
 #
--e file:../../.#egg=flytekit
-    # via
-    #   -r requirements.in
-    #   flytekitplugins-great-expectations
 -e file:.#egg=flytekitplugins-great_expectations
     # via -r requirements.in
 altair==4.2.0
@@ -97,13 +93,15 @@ fastjsonschema==2.16.2
     # via nbformat
 flyteidl==1.3.0
     # via flytekit
+flytekit==1.3.0b2
+    # via flytekitplugins-great-expectations
 fqdn==1.5.1
     # via jsonschema
 googleapis-common-protos==1.57.0
     # via
     #   flyteidl
     #   grpcio-status
-great-expectations==0.15.39
+great-expectations==0.15.37
     # via flytekitplugins-great-expectations
 greenlet==2.0.1
     # via sqlalchemy
@@ -411,7 +409,7 @@ sortedcontainers==2.4.0
     # via flytekit
 soupsieve==2.3.2.post1
     # via beautifulsoup4
-sqlalchemy==1.4.45
+sqlalchemy==1.4.44
     # via
     #   -r requirements.in
     #   flytekitplugins-great-expectations
@@ -443,7 +441,7 @@ tornado==6.2
     #   terminado
 tqdm==4.64.1
     # via great-expectations
-traitlets==5.7.1
+traitlets==5.7.0
     # via
     #   comm
     #   ipykernel

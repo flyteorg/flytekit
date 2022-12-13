@@ -4,9 +4,7 @@ PLUGIN_NAME = "onnxscikitlearn"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-# TODO: bump version of skl2onnx once https://github.com/onnx/sklearn-onnx/issues/949
-# is resolved.
-plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "skl2onnx>=1.10.3"]
+plugin_requires = ["flytekit<1.3.0b2,<2.0.0", "skl2onnx>=1.10.3"]
 
 __version__ = "0.0.0+develop"
 

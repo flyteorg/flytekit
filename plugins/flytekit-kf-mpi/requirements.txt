@@ -4,10 +4,6 @@
 #
 #    pip-compile requirements.in
 #
--e file:../../.#egg=flytekit
-    # via
-    #   -r requirements.in
-    #   flytekitplugins-kfmpi
 -e file:.#egg=flytekitplugins-kfmpi
     # via -r requirements.in
 arrow==1.2.3
@@ -54,6 +50,8 @@ flyteidl==1.3.0
     # via
     #   flytekit
     #   flytekitplugins-kfmpi
+flytekit==1.3.0b2
+    # via flytekitplugins-kfmpi
 googleapis-common-protos==1.57.0
     # via
     #   flyteidl
