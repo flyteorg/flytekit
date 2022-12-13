@@ -4,6 +4,10 @@
 #
 #    pip-compile requirements.in
 #
+-e file:../../.#egg=flytekit
+    # via
+    #   -r requirements.in
+    #   flytekitplugins-onnxpytorch
 -e file:.#egg=flytekitplugins-onnxpytorch
     # via -r requirements.in
 arrow==1.2.3
@@ -52,8 +56,6 @@ flatbuffers==22.12.6
     # via onnxruntime
 flyteidl==1.3.0
     # via flytekit
-flytekit==1.3.0b2
-    # via flytekitplugins-onnxpytorch
 googleapis-common-protos==1.57.0
     # via
     #   flyteidl

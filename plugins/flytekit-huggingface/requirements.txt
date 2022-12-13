@@ -4,6 +4,10 @@
 #
 #    pip-compile requirements.in
 #
+-e file:../../.#egg=flytekit
+    # via
+    #   -r requirements.in
+    #   flytekitplugins-huggingface
 -e file:.#egg=flytekitplugins-huggingface
     # via -r requirements.in
 aiohttp==3.8.3
@@ -68,8 +72,6 @@ filelock==3.8.2
     # via huggingface-hub
 flyteidl==1.3.0
     # via flytekit
-flytekit==1.3.0b2
-    # via flytekitplugins-huggingface
 frozenlist==1.3.3
     # via
     #   aiohttp

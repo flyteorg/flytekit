@@ -1,3 +1,4 @@
 .
+-e file:../../.#egg=flytekit
 -e file:.#egg=flytekitplugins-data-fsspec
 s3fs
