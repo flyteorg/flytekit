@@ -7,6 +7,7 @@ import tempfile
 import traceback as _traceback
 from typing import List, Optional
 
+import click
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
@@ -502,9 +503,13 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
             cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
         cmd.append(arg)
 
+    click_ctx = click.Context(click.Command("dummy"))
+    parser = execute_task_cmd.make_parser(click_ctx)
+    args, _, _ = parser.parse_args(cmd)
+    execute_task_cmd.callback(**args)
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    subprocess.run(cmd, check=True)
+    # subprocess.run(cmd, check=True)
 
 
 @_pass_through.command("pyflyte-map-execute")
