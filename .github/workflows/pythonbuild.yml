@@ -135,7 +135,13 @@ jobs:
       - name: Test with coverage
         run: |
           cd plugins/${{ matrix.plugin-names }}
-          coverage run -m pytest tests
+          # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
+          # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
+          if [[ ${{ matrix.plugin-names }} == *"onnx"* ]]; then
+             PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests
+          else
+             coverage run -m pytest tests
+          fi
   lint:
     runs-on: ubuntu-latest
     steps:
