@@ -91,11 +91,6 @@ jobs:
           - flytekit-vaex
           - flytekit-whylogs
         exclude:
-          # onnx-scikitlearn overspecifies requirements, including protobuf. This will be
-          # fixed soon, as per https://github.com/onnx/sklearn-onnx/issues/949.
-          - plugin-names: "flytekit-onnx-scikitlearn"
-          # TODO: leave a comment.
-          - plugin-names: "flytekit-onnx-tensorflow"
           # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/19116.
           - python-version: 3.10
