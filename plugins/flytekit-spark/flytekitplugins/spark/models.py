@@ -2,6 +2,8 @@ import enum
 from typing import Dict, Optional
 
 from flyteidl.plugins import spark_pb2 as _spark_task
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
@@ -45,7 +47,7 @@ class SparkJob(_common.FlyteIdlEntity):
         self,
         new_spark_conf: Optional[Dict[str, str]] = None,
         new_hadoop_conf: Optional[Dict[str, str]] = None,
-        new_databricks_conf: Optional[str] = None,
+        new_databricks_conf: Optional[Dict[str, Dict]] = None,
     ) -> "SparkJob":
         if not new_spark_conf:
             new_spark_conf = self.spark_conf
@@ -115,7 +117,7 @@ class SparkJob(_common.FlyteIdlEntity):
         return self._hadoop_conf
 
     @property
-    def databricks_conf(self) -> str:
+    def databricks_conf(self) -> Dict[str, Dict]:
         return self._databricks_conf
 
     def to_flyte_idl(self):
@@ -141,7 +143,7 @@ class SparkJob(_common.FlyteIdlEntity):
             executorPath=self.executor_path,
             sparkConf=self.spark_conf,
             hadoopConf=self.hadoop_conf,
-            databricksConf=self.databricks_conf,
+            databricksConf=Struct().update(self.databricks_conf),
         )
 
     @classmethod
@@ -166,5 +168,5 @@ class SparkJob(_common.FlyteIdlEntity):
             main_class=pb2_object.mainClass,
             hadoop_conf=pb2_object.hadoopConf,
             executor_path=pb2_object.executorPath,
-            databricks_conf=pb2_object.databricksConf,
+            databricks_conf=json_format.MessageToDict(pb2_object.databricksConf),
         )

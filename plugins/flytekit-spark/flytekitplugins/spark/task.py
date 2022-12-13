@@ -101,7 +101,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
-            databricks_conf=base64.b64encode(json.dumps(self.task_config.databricks_conf).encode()).decode(),
+            databricks_conf=self.task_config.databricks_conf,
             application_file="local://" + settings.entrypoint_settings.path,
             executor_path=settings.python_interpreter,
             main_class="",
