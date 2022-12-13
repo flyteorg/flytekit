@@ -62,6 +62,10 @@ class FlyteValidationException(FlyteAssertion):
     _ERROR_CODE = "USER:ValidationError"
 
 
+class FlyteDisapprovalException(FlyteAssertion):
+    _ERROR_CODE = "USER:ResultNotApproved"
+
+
 class FlyteEntityAlreadyExistsException(FlyteAssertion):
     _ERROR_CODE = "USER:EntityAlreadyExists"
 
