@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import re
 import sys
 from abc import ABC
@@ -192,7 +193,6 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[Union[T, ModuleType]]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 
-        sys.path.append(".")
         task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)
         return task_def
