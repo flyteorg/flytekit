@@ -3,6 +3,7 @@ import datetime as _datetime
 import os
 import pathlib
 import subprocess
+import sys
 import tempfile
 import traceback as _traceback
 from typing import List, Optional
@@ -446,7 +447,7 @@ def _pass_through():
 def execute_task_cmd(
         inputs,
         output_prefix,
-        raw_output_data_prefix,
+        raw_output_data_prefix=None,
         test=False,
         prev_checkpoint=None,
         checkpoint_path=None,
@@ -507,6 +508,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     parser = execute_task_cmd.make_parser(click_ctx)
     args, _, _ = parser.parse_args(cmd)
     execute_task_cmd.callback(**args)
+    sys.path.append(dest_dir)
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
     # subprocess.run(cmd, check=True)
