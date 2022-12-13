@@ -1,4 +1,2 @@
 .
 -e file:.#egg=flytekitplugins-papermill
--e file:../../.#egg=flytekitplugins-pod&subdirectory=plugins/flytekit-k8s-pod
--e file:../../.#egg=flytekitplugins-spark&subdirectory=plugins/flytekit-spark
