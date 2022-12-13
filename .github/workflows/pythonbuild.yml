@@ -129,15 +129,13 @@ jobs:
           make setup
           cd plugins/${{ matrix.plugin-names }}
           pip install -r requirements.txt
-          if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-          pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
           pip freeze
       - name: Test with coverage
         run: |
           cd plugins/${{ matrix.plugin-names }}
           # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
           # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
-          if [[ ${{ matrix.plugin-names }} == *"onnx"* ]]; then
+          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-whylogs" ]]; then
              PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests
           else
              coverage run -m pytest tests
