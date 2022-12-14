@@ -3,12 +3,10 @@ import datetime as _datetime
 import os
 import pathlib
 import subprocess
-import sys
 import tempfile
 import traceback as _traceback
 from typing import List, Optional
 
-import click
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
