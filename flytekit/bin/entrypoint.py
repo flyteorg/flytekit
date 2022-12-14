@@ -507,7 +507,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     click_ctx = click.Context(click.Command("dummy"))
     parser = execute_task_cmd.make_parser(click_ctx)
     args, _, _ = parser.parse_args(cmd[2:])
-    execute_task_cmd.callback(**args)
+    print(args)
+    # execute_task_cmd.callback(**args)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
