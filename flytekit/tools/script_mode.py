@@ -109,6 +109,7 @@ def fast_register_single_script(
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         md5, _ = hash_file(archive_fname)
         upload_location = create_upload_location_fn(content_md5=md5)
+        print(upload_location.signed_url)
         flyte_ctx.file_access.put_data(archive_fname, upload_location.signed_url)
 
         return upload_location, md5

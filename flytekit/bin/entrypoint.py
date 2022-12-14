@@ -64,10 +64,10 @@ def _compute_array_job_index():
 
 
 def _dispatch_execute(
-        ctx: FlyteContext,
-        task_def: PythonTask,
-        inputs_path: str,
-        output_prefix: str,
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs_path: str,
+    output_prefix: str,
 ):
     """
     Dispatches execute to PythonTask
@@ -179,11 +179,11 @@ def get_one_of(*args) -> str:
 
 @contextlib.contextmanager
 def setup_execution(
-        raw_output_data_prefix: str,
-        checkpoint_path: Optional[str] = None,
-        prev_checkpoint: Optional[str] = None,
-        dynamic_addl_distro: Optional[str] = None,
-        dynamic_dest_dir: Optional[str] = None,
+    raw_output_data_prefix: str,
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     """
 
@@ -282,10 +282,10 @@ def setup_execution(
 
 
 def _handle_annotated_task(
-        ctx: FlyteContext,
-        task_def: PythonTask,
-        inputs: str,
-        output_prefix: str,
+    ctx: FlyteContext,
+    task_def: PythonTask,
+    inputs: str,
+    output_prefix: str,
 ):
     """
     Entrypoint for all PythonTask extensions
@@ -295,16 +295,16 @@ def _handle_annotated_task(
 
 @_scopes.system_entry_point
 def _execute_task(
-        inputs: str,
-        output_prefix: str,
-        test: bool,
-        raw_output_data_prefix: str,
-        resolver: str,
-        resolver_args: List[str],
-        checkpoint_path: Optional[str] = None,
-        prev_checkpoint: Optional[str] = None,
-        dynamic_addl_distro: Optional[str] = None,
-        dynamic_dest_dir: Optional[str] = None,
+    inputs: str,
+    output_prefix: str,
+    test: bool,
+    raw_output_data_prefix: str,
+    resolver: str,
+    resolver_args: List[str],
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -333,11 +333,11 @@ def _execute_task(
         raise Exception("cannot be <1")
 
     with setup_execution(
-            raw_output_data_prefix,
-            checkpoint_path,
-            prev_checkpoint,
-            dynamic_addl_distro,
-            dynamic_dest_dir,
+        raw_output_data_prefix,
+        checkpoint_path,
+        prev_checkpoint,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
     ) as ctx:
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
@@ -352,17 +352,17 @@ def _execute_task(
 
 @_scopes.system_entry_point
 def _execute_map_task(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        resolver: str,
-        resolver_args: List[str],
-        checkpoint_path: Optional[str] = None,
-        prev_checkpoint: Optional[str] = None,
-        dynamic_addl_distro: Optional[str] = None,
-        dynamic_dest_dir: Optional[str] = None,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    resolver: str,
+    resolver_args: List[str],
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -385,7 +385,7 @@ def _execute_map_task(
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
-            raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+        raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
@@ -409,7 +409,7 @@ def _execute_map_task(
 
 
 def normalize_inputs(
-        raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
+    raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
 ):
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -445,16 +445,16 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix=None,
-        test=False,
-        prev_checkpoint=None,
-        checkpoint_path=None,
-        dynamic_addl_distro=None,
-        dynamic_dest_dir=None,
-        resolver=None,
-        resolver_args=None,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix=None,
+    test=False,
+    prev_checkpoint=None,
+    checkpoint_path=None,
+    dynamic_addl_distro=None,
+    dynamic_dest_dir=None,
+    resolver=None,
+    resolver_args=None,
 ):
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
@@ -504,15 +504,9 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
             cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
         cmd.append(arg)
 
-    click_ctx = click.Context(click.Command("dummy"))
-    parser = execute_task_cmd.make_parser(click_ctx)
-    args, _, _ = parser.parse_args(cmd[1:])
-    print(args)
-    execute_task_cmd.callback(**args)
-
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    # subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True)
 
 
 @_pass_through.command("pyflyte-map-execute")
@@ -532,17 +526,17 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     nargs=-1,
 )
 def map_execute_task_cmd(
-        inputs,
-        output_prefix,
-        raw_output_data_prefix,
-        max_concurrency,
-        test,
-        dynamic_addl_distro,
-        dynamic_dest_dir,
-        resolver,
-        resolver_args,
-        prev_checkpoint,
-        checkpoint_path,
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
+    resolver,
+    resolver_args,
+    prev_checkpoint,
+    checkpoint_path,
 ):
     logger.info(get_version_message())
 

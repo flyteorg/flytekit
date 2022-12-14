@@ -25,6 +25,7 @@ class SparkJob(_common.FlyteIdlEntity):
         spark_conf,
         hadoop_conf,
         databricks_conf,
+        databricks_token,
         executor_path,
     ):
         """
@@ -34,6 +35,7 @@ class SparkJob(_common.FlyteIdlEntity):
         :param dict[Text, Text] spark_conf: A definition of key-value pairs for spark config for the job.
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
         :param dict[Text, dict] databricks_conf: A definition of key-value pairs for databricks config for the job. Refer to https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit.
+        :param str databricks_token: databricks access token
         """
         self._application_file = application_file
         self._spark_type = spark_type
@@ -42,6 +44,7 @@ class SparkJob(_common.FlyteIdlEntity):
         self._spark_conf = spark_conf
         self._hadoop_conf = hadoop_conf
         self._databricks_conf = databricks_conf
+        self._databricks_token = databricks_token
 
     def with_overrides(
         self,
@@ -65,6 +68,7 @@ class SparkJob(_common.FlyteIdlEntity):
             spark_conf=new_spark_conf,
             hadoop_conf=new_hadoop_conf,
             databricks_conf=new_databricks_conf,
+            databricks_token=self.databricks_token,
             executor_path=self.executor_path,
         )
 
@@ -118,7 +122,20 @@ class SparkJob(_common.FlyteIdlEntity):
 
     @property
     def databricks_conf(self) -> Dict[str, Dict]:
+        """
+        databricks_conf: Databricks job configuration.
+        Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        :rtype: dict[Text, dict[Text, Text]]
+        """
         return self._databricks_conf
+
+    @property
+    def databricks_token(self) -> str:
+        """
+        Databricks access token
+        :rtype: str
+        """
+        return self._databricks_token
 
     def to_flyte_idl(self):
         """
@@ -147,6 +164,7 @@ class SparkJob(_common.FlyteIdlEntity):
             sparkConf=self.spark_conf,
             hadoopConf=self.hadoop_conf,
             databricksConf=databricks_conf,
+            databricksToken=self.databricks_token,
         )
 
     @classmethod
@@ -172,4 +190,5 @@ class SparkJob(_common.FlyteIdlEntity):
             hadoop_conf=pb2_object.hadoopConf,
             executor_path=pb2_object.executorPath,
             databricks_conf=json_format.MessageToDict(pb2_object.databricksConf),
+            databricks_token=pb2_object.databricksToken,
         )
