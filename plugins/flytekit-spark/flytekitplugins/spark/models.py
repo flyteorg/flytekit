@@ -136,8 +136,8 @@ class SparkJob(_common.FlyteIdlEntity):
         else:
             raise _user_exceptions.FlyteValidationException("Invalid Spark Application Type Specified")
 
-        s = Struct()
-        s.update(self.databricks_conf)
+        databricks_conf = Struct()
+        databricks_conf.update(self.databricks_conf)
 
         return _spark_task.SparkJob(
             applicationType=application_type,
@@ -146,7 +146,7 @@ class SparkJob(_common.FlyteIdlEntity):
             executorPath=self.executor_path,
             sparkConf=self.spark_conf,
             hadoopConf=self.hadoop_conf,
-            databricksConf=s,
+            databricksConf=databricks_conf,
         )
 
     @classmethod
