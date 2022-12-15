@@ -12,7 +12,7 @@ from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.remote import component_nodes as _component_nodes
+from flytekit.remote import component_nodes
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
@@ -28,28 +28,27 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         flyte_workflow: Optional["FlyteWorkflow"] = None,
         flyte_launch_plan: Optional["FlyteLaunchPlan"] = None,
         flyte_branch_node: Optional["FlyteBranchNode"] = None,
+        flyte_gate_node: Optional["FlyteGateNode"] = None,
     ):
-        # todo: flyte_branch_node is the only non-entity here, feels wrong, it should probably be a Condition
-        #   or the other ones changed.
         non_none_entities = list(filter(None, [flyte_task, flyte_workflow, flyte_launch_plan, flyte_branch_node]))
         if len(non_none_entities) != 1:
             raise _user_exceptions.FlyteAssertion(
                 "An Flyte node must have one underlying entity specified at once.  Received the following "
                 "entities: {}".format(non_none_entities)
             )
-        # todo: wip - flyte_branch_node is a hack, it should be a Condition, but backing out a Condition object from
-        #   the compiled IfElseBlock is cumbersome, shouldn't do it if we can get away with it.
+        # TODO: Revisit flyte_branch_node and flyte_gate_node, should they be another type like Condition instead
+        #       of a node?
         self._flyte_entity = flyte_task or flyte_workflow or flyte_launch_plan or flyte_branch_node
 
         workflow_node = None
         if flyte_workflow is not None:
-            workflow_node = _component_nodes.FlyteWorkflowNode(flyte_workflow=flyte_workflow)
+            workflow_node = component_nodes.FlyteWorkflowNode(flyte_workflow=flyte_workflow)
         elif flyte_launch_plan is not None:
-            workflow_node = _component_nodes.FlyteWorkflowNode(flyte_launch_plan=flyte_launch_plan)
+            workflow_node = component_nodes.FlyteWorkflowNode(flyte_launch_plan=flyte_launch_plan)
 
         task_node = None
         if flyte_task:
-            task_node = _component_nodes.FlyteTaskNode(flyte_task)
+            task_node = component_nodes.FlyteTaskNode(flyte_task)
 
         super(FlyteNode, self).__init__(
             id=id,
@@ -60,6 +59,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             task_node=task_node,
             workflow_node=workflow_node,
             branch_node=flyte_branch_node,
+            gate_node=flyte_gate_node,
         )
         self._upstream = upstream_nodes
 
@@ -81,20 +81,22 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             remote_logger.warning(f"Should not call promote from model on a start node or end node {model}")
             return None
 
-        flyte_task_node, flyte_workflow_node, flyte_branch_node = None, None, None
+        flyte_task_node, flyte_workflow_node, flyte_branch_node, flyte_gate_node = None, None, None, None
         if model.task_node is not None:
-            flyte_task_node = _component_nodes.FlyteTaskNode.promote_from_model(model.task_node, tasks)
+            flyte_task_node = component_nodes.FlyteTaskNode.promote_from_model(model.task_node, tasks)
         elif model.workflow_node is not None:
-            flyte_workflow_node = _component_nodes.FlyteWorkflowNode.promote_from_model(
+            flyte_workflow_node = component_nodes.FlyteWorkflowNode.promote_from_model(
                 model.workflow_node,
                 sub_workflows,
                 node_launch_plans,
                 tasks,
             )
         elif model.branch_node is not None:
-            flyte_branch_node = _component_nodes.FlyteBranchNode.promote_from_model(
+            flyte_branch_node = component_nodes.FlyteBranchNode.promote_from_model(
                 model.branch_node, sub_workflows, node_launch_plans, tasks
             )
+        elif model.gate_node is not None:
+            flyte_gate_node = component_nodes.FlyteGateNode.promote_from_model(model.gate_node)
         else:
             raise _system_exceptions.FlyteSystemException(
                 f"Bad Node model, neither task nor workflow detected, node: {model}"
@@ -137,6 +139,14 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 )
             raise _system_exceptions.FlyteSystemException(
                 "Bad FlyteWorkflowNode model, both launch plan and workflow are None"
+            )
+        elif flyte_gate_node is not None:
+            return cls(
+                id=node_model_id,
+                upstream_nodes=[],  # set downstream, model doesn't contain this information
+                bindings=model.inputs,
+                metadata=model.metadata,
+                flyte_gate_node=flyte_gate_node,
             )
         elif flyte_branch_node is not None:
             return cls(

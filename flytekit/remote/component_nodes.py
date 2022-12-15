@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.loggers import remote_logger
@@ -161,3 +161,9 @@ class FlyteBranchNode(_workflow_model.BranchNode):
         new_if_else_block = _workflow_model.IfElseBlock(block.case, block.other, else_node, block.error)
 
         return cls(new_if_else_block)
+
+
+class FlyteGateNode(_workflow_model.GateNode):
+    @classmethod
+    def promote_from_model(cls, model: _workflow_model.GateNode):
+        return cls(model.signal, model.sleep, model.approve)

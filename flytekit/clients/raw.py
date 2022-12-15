@@ -14,6 +14,7 @@ from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
+from flyteidl.admin.signal_pb2 import SignalSetRequest, SignalListRequest, SignalSetResponse, SignalList
 from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
@@ -411,11 +412,18 @@ class RawSynchronousFlyteClient(object):
         return self._stub.GetTask(get_object_request, metadata=self._metadata)
 
     @_handle_rpc_error(retry=True)
-    def set_signal(self, signal_set_request):
+    def set_signal(self, signal_set_request: SignalSetRequest) -> SignalSetResponse:
         """
         This sets a signal
         """
         return self._signal.SetSignal(signal_set_request, metadata=self._metadata)
+
+    @_handle_rpc_error(retry=True)
+    def list_signal(self, signal_list_request: SignalListRequest) -> SignalList:
+        """
+        This sets a signal
+        """
+        return self._signal.ListSignals(signal_list_request, metadata=self._metadata)
 
 
     ####################################################################################################################
