@@ -25,11 +25,16 @@ class Spark(object):
     Args:
         spark_conf: Dictionary of spark config. The variables should match what spark expects
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
+        databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
+        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
     databricks_conf: typing.Optional[Dict[str, typing.Union[str, dict]]] = None
+    databricks_token: Optional[str] = None
+    databricks_instance: Optional[str] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
@@ -101,7 +106,9 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
-            databricks_conf=base64.b64encode(json.dumps(self.task_config.databricks_conf).encode()).decode(),
+            databricks_conf=self.task_config.databricks_conf,
+            databricks_token=self.task_config.databricks_token,
+            databricks_instance=self.task_config.databricks_instance,
             application_file="local://" + settings.entrypoint_settings.path,
             executor_path=settings.python_interpreter,
             main_class="",
@@ -114,7 +121,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
         ctx = FlyteContextManager.current_context()
         sess_builder = _pyspark.sql.SparkSession.builder.appName(f"FlyteSpark: {user_params.execution_id}")
-        if self.task_config.spark_conf and not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION):
+        if not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION):
             # If either of above cases is not true, then we are in local execution of this task
             # Add system spark-conf for local/notebook based execution.
             spark_conf = _pyspark.SparkConf()
