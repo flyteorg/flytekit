@@ -32,7 +32,8 @@ class Spark(object):
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
     databricks_conf: typing.Optional[Dict[str, typing.Union[str, dict]]] = None
-    databricks_token: str = None
+    databricks_token: Optional[str] = None
+    databricks_instance: Optional[str] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
@@ -105,6 +106,8 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
             databricks_conf=self.task_config.databricks_conf,
+            databricks_token=self.task_config.databricks_token,
+            databricks_instance=self.task_config.databricks_instance,
             application_file="local://" + settings.entrypoint_settings.path,
             executor_path=settings.python_interpreter,
             main_class="",

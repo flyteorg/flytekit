@@ -26,6 +26,7 @@ class SparkJob(_common.FlyteIdlEntity):
         hadoop_conf,
         databricks_conf,
         databricks_token,
+        databricks_instance,
         executor_path,
     ):
         """
@@ -45,6 +46,7 @@ class SparkJob(_common.FlyteIdlEntity):
         self._hadoop_conf = hadoop_conf
         self._databricks_conf = databricks_conf
         self._databricks_token = databricks_token
+        self._databricks_instance = databricks_instance
 
     def with_overrides(
         self,
@@ -69,6 +71,7 @@ class SparkJob(_common.FlyteIdlEntity):
             hadoop_conf=new_hadoop_conf,
             databricks_conf=new_databricks_conf,
             databricks_token=self.databricks_token,
+            databricks_instance=self.databricks_instance,
             executor_path=self.executor_path,
         )
 
@@ -137,6 +140,14 @@ class SparkJob(_common.FlyteIdlEntity):
         """
         return self._databricks_token
 
+    @property
+    def databricks_instance(self) -> str:
+        """
+        Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+        :rtype: str
+        """
+        return self._databricks_instance
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
@@ -165,6 +176,7 @@ class SparkJob(_common.FlyteIdlEntity):
             hadoopConf=self.hadoop_conf,
             databricksConf=databricks_conf,
             databricksToken=self.databricks_token,
+            databricksInstance=self.databricks_instance,
         )
 
     @classmethod
@@ -191,4 +203,5 @@ class SparkJob(_common.FlyteIdlEntity):
             executor_path=pb2_object.executorPath,
             databricks_conf=json_format.MessageToDict(pb2_object.databricksConf),
             databricks_token=pb2_object.databricksToken,
+            databricks_instance=pb2_object.databricksInstance,
         )
