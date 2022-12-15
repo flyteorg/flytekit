@@ -36,7 +36,8 @@ class SparkJob(_common.FlyteIdlEntity):
         :param dict[Text, Text] spark_conf: A definition of key-value pairs for spark config for the job.
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
         :param dict[Text, dict] databricks_conf: A definition of key-value pairs for databricks config for the job. Refer to https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit.
-        :param str databricks_token: databricks access token
+        :param str databricks_token: databricks access token.
+        :param str databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
         """
         self._application_file = application_file
         self._spark_type = spark_type

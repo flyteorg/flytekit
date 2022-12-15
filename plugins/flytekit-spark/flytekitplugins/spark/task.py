@@ -26,7 +26,8 @@ class Spark(object):
         spark_conf: Dictionary of spark config. The variables should match what spark expects
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
         databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
-        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html
+        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
+        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
 
     spark_conf: Optional[Dict[str, str]] = None
