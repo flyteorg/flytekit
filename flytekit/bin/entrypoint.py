@@ -445,14 +445,14 @@ def _pass_through():
 def execute_task_cmd(
     inputs,
     output_prefix,
-    raw_output_data_prefix=None,
-    test=False,
-    prev_checkpoint=None,
-    checkpoint_path=None,
-    dynamic_addl_distro=None,
-    dynamic_dest_dir=None,
-    resolver=None,
-    resolver_args=None,
+    raw_output_data_prefix,
+    test,
+    prev_checkpoint,
+    checkpoint_path,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
+    resolver,
+    resolver_args,
 ):
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.

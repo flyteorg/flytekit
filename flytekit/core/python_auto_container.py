@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib
 import re
-import sys
 from abc import ABC
 from types import ModuleType
 from typing import Callable, Dict, List, Optional, TypeVar, Union
