@@ -481,11 +481,11 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         return self._duration
 
     @property
-    def created_at(self) -> datetime.datetime:
+    def created_at(self) -> typing.Optional[datetime.datetime]:
         return self._created_at
 
     @property
-    def updated_at(self) -> datetime.datetime:
+    def updated_at(self) -> typing.Optional[datetime.datetime]:
         return self._updated_at
 
     @property
