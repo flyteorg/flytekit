@@ -536,8 +536,12 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
             duration=pb2_object.duration.ToTimedelta(),
             abort_metadata=abort_metadata,
-            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_pytz.UTC) if pb2_object.HasField("created_at") else None,
-            updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_pytz.UTC) if pb2_object.HasField("updated_at") else None,
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_pytz.UTC)
+            if pb2_object.HasField("created_at")
+            else None,
+            updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_pytz.UTC)
+            if pb2_object.HasField("updated_at")
+            else None,
         )
 
 
