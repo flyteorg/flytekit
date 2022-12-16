@@ -842,6 +842,7 @@ class FlyteContextManager(object):
         default_context = default_context.with_execution_state(
             default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
         ).build()
+        logger.warning(f"This is the default context: {default_context}")
         default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
         flyte_context_Var.set([default_context])
 
