@@ -5,7 +5,7 @@ from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
-from flytekit.models import types as _types
+from flytekit.models import types as type_models
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
@@ -61,7 +61,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
         :param IfBlock case:
         :param list[IfBlock] other:
         :param Node else_node:
-        :param _types.Error error:
+        :param type_models.Error error:
         """
         self._case = case
         self._other = other
@@ -121,7 +121,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
             case=IfBlock.from_flyte_idl(pb2_object.case),
             other=[IfBlock.from_flyte_idl(a) for a in pb2_object.other],
             else_node=Node.from_flyte_idl(pb2_object.else_node) if pb2_object.HasField("else_node") else None,
-            error=_types.Error.from_flyte_idl(pb2_object.error) if pb2_object.HasField("error") else None,
+            error=type_models.Error.from_flyte_idl(pb2_object.error) if pb2_object.HasField("error") else None,
         )
 
 
@@ -219,6 +219,127 @@ class NodeMetadata(_common.FlyteIdlEntity):
         )
 
 
+class SignalCondition(_common.FlyteIdlEntity):
+    def __init__(self, signal_id: str, type: type_models.LiteralType, output_variable_name: str):
+        """
+        Represents a dependency on an signal from a user.
+        :param signal_id: The node id of the signal, also the signal name.
+        :param type:
+        """
+        self._signal_id = signal_id
+        self._type = type
+        self._output_variable_name = output_variable_name
+
+    @property
+    def signal_id(self) -> str:
+        return self._signal_id
+
+    @property
+    def type(self) -> type_models.LiteralType:
+        return self._type
+
+    @property
+    def output_variable_name(self) -> str:
+        return self._output_variable_name
+
+    def to_flyte_idl(self) -> _core_workflow.SignalCondition:
+        return _core_workflow.SignalCondition(
+            signal_id=self.signal_id, type=self.type.to_flyte_idl(), output_variable_name=self.output_variable_name
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.SignalCondition):
+        return cls(
+            signal_id=pb2_object.signal_id,
+            type=type_models.LiteralType.from_flyte_idl(pb2_object.type),
+            output_variable_name=pb2_object.output_variable_name,
+        )
+
+
+class ApproveCondition(_common.FlyteIdlEntity):
+    def __init__(self, signal_id: str):
+        """
+        Represents a dependency on an signal from a user.
+        :param signal_id: The node id of the signal, also the signal name.
+        """
+        self._signal_id = signal_id
+
+    @property
+    def signal_id(self) -> str:
+        return self._signal_id
+
+    def to_flyte_idl(self) -> _core_workflow.ApproveCondition:
+        return _core_workflow.ApproveCondition(signal_id=self.signal_id)
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.ApproveCondition):
+        return cls(signal_id=pb2_object.signal_id)
+
+
+class SleepCondition(_common.FlyteIdlEntity):
+    def __init__(self, duration: datetime.timedelta):
+        """
+        A sleep condition.
+        """
+        self._duration = duration
+
+    @property
+    def duration(self) -> datetime.timedelta:
+        return self._duration
+
+    def to_flyte_idl(self) -> _core_workflow.SleepCondition:
+        sc = _core_workflow.SleepCondition()
+        sc.duration.FromTimedelta(self.duration)
+        return sc
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.SignalCondition) -> "SleepCondition":
+        return cls(duration=pb2_object.duration.ToTimedelta())
+
+
+class GateNode(_common.FlyteIdlEntity):
+    def __init__(
+        self,
+        signal: typing.Optional[SignalCondition] = None,
+        sleep: typing.Optional[SleepCondition] = None,
+        approve: typing.Optional[ApproveCondition] = None,
+    ):
+        self._signal = signal
+        self._sleep = sleep
+        self._approve = approve
+
+    @property
+    def signal(self) -> typing.Optional[SignalCondition]:
+        return self._signal
+
+    @property
+    def sleep(self) -> typing.Optional[SignalCondition]:
+        return self._sleep
+
+    @property
+    def approve(self) -> typing.Optional[ApproveCondition]:
+        return self._approve
+
+    @property
+    def condition(self) -> typing.Union[SignalCondition, SleepCondition, ApproveCondition]:
+        return self.signal or self.sleep or self.approve
+
+    def to_flyte_idl(self) -> _core_workflow.GateNode:
+        return _core_workflow.GateNode(
+            signal=self.signal.to_flyte_idl() if self.signal else None,
+            sleep=self.sleep.to_flyte_idl() if self.sleep else None,
+            approve=self.approve.to_flyte_idl() if self.approve else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.GateNode) -> "GateNode":
+        return cls(
+            signal=SignalCondition.from_flyte_idl(pb2_object.signal) if pb2_object.HasField("signal") else None,
+            sleep=SleepCondition.from_flyte_idl(pb2_object.sleep) if pb2_object.HasField("sleep") else None,
+            approve=ApproveCondition.from_flyte_idl(pb2_object.approve) if pb2_object.HasField("approve") else None,
+        )
+
+
 class Node(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -230,6 +351,7 @@ class Node(_common.FlyteIdlEntity):
         task_node=None,
         workflow_node=None,
         branch_node=None,
+        gate_node: typing.Optional[GateNode] = None,
     ):
         """
         A Workflow graph Node. One unit of execution in the graph. Each node can be linked to a Task,
@@ -260,6 +382,7 @@ class Node(_common.FlyteIdlEntity):
         self._task_node = task_node
         self._workflow_node = workflow_node
         self._branch_node = branch_node
+        self._gate_node = gate_node
 
     @property
     def id(self):
@@ -332,6 +455,10 @@ class Node(_common.FlyteIdlEntity):
         return self._branch_node
 
     @property
+    def gate_node(self) -> typing.Optional[GateNode]:
+        return self._gate_node
+
+    @property
     def target(self):
         """
         :rtype: T
@@ -351,6 +478,7 @@ class Node(_common.FlyteIdlEntity):
             task_node=self.task_node.to_flyte_idl() if self.task_node is not None else None,
             workflow_node=self.workflow_node.to_flyte_idl() if self.workflow_node is not None else None,
             branch_node=self.branch_node.to_flyte_idl() if self.branch_node is not None else None,
+            gate_node=self.gate_node.to_flyte_idl() if self.gate_node else None,
         )
 
     @classmethod
@@ -372,6 +500,7 @@ class Node(_common.FlyteIdlEntity):
             branch_node=BranchNode.from_flyte_idl(pb2_object.branch_node)
             if pb2_object.HasField("branch_node")
             else None,
+            gate_node=GateNode.from_flyte_idl(pb2_object.gate_node) if pb2_object.HasField("gate_node") else None,
         )
 
 

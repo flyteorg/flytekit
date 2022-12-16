@@ -50,7 +50,7 @@ jobs:
           pip freeze
       - name: Test with coverage
         run: |
-          pytest tests/flytekit/unit -m "not sandbox_test" --cov=./ --cov-report=xml
+          make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:
@@ -81,7 +81,9 @@ jobs:
           - flytekit-modin
           - flytekit-onnx-pytorch
           - flytekit-onnx-scikitlearn
-          - flytekit-onnx-tensorflow
+          # onnxx-tensorflow needs a version of tensorflow that does not work with protobuf>4.
+          # The issue is being tracked on the tensorflow side in https://github.com/tensorflow/tensorflow/issues/53234#issuecomment-1330111693
+          # flytekit-onnx-tensorflow
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
@@ -133,11 +135,18 @@ jobs:
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install --no-deps -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
           pip install "git+https://github.com/flyteorg/flyteidl@databricks"
+          # pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
           pip freeze
       - name: Test with coverage
         run: |
           cd plugins/${{ matrix.plugin-names }}
-          coverage run -m pytest tests
+          # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
+          # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
+          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-whylogs" ]]; then
+             PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests
+          else
+             coverage run -m pytest tests
+          fi
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -181,4 +190,6 @@ jobs:
           pip install -r doc-requirements.txt
           pip install "git+https://github.com/flyteorg/flyteidl@databricks"
       - name: Build the documentation
-        run: make -C docs html
+        run: |
+          # TODO: Remove after buf migration is done and packages updated
+          PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python make -C docs html
