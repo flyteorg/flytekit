@@ -303,7 +303,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            print(f"serialization: {ctx.serialization_settings}")
+            print(f"This is serialization: {ctx.serialization_settings}")
+            logger.warning(f"This is serialization!!! {ctx.serialization_settings}")
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
