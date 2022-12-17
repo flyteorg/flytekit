@@ -1,7 +1,6 @@
 import typing
 
 from flytekit import FlyteContext
-from flytekit.models.core.identifier import Identifier
 from flytekit.remote.remote_callable import RemoteEntity
 
 T = typing.TypeVar("T")
