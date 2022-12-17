@@ -16,6 +16,7 @@ cryptography
 google-api-core[grpc]
 scikit-learn
 sphinx-tags
+sphinx-click
 
 # Packages for Plugin docs
 # Package name              Plugin needing it
@@ -44,3 +45,4 @@ whylogs                     # whylogs
 whylabs-client              # whylogs
 ray                         # ray
 scikit-learn                # scikit-learn
+vaex                        # vaex
