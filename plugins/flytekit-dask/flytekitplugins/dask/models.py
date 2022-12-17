@@ -46,12 +46,17 @@ class WorkerGroup(_common.FlyteIdlEntity):
     """
     Configuration for a dask worker group
 
+    :param number_of_workers:Number of workers in the group
     :param image: Optional image to use for the pods of the worker group
-    :param number_of_workers: Optional number of workers in the group
     :param resources: Optional resources to use for the pods of the worker group
     """
 
-    def __init__(self, number_of_workers: Optional[int], image: Optional[str], resources: Optional[_task.Resources]):
+    def __init__(self, number_of_workers: int, image: Optional[str], resources: Optional[_task.Resources]):
+        if number_of_workers < 1:
+            raise ValueError(
+                f"Each worker group needs to have at least one worker, but {number_of_workers} have been specified."
+            )
+
         self._number_of_workers = number_of_workers
         self._image = image
         self._resources = resources

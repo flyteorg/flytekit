@@ -58,16 +58,15 @@ def test_worker_group_to_flyte_idl_no_optional(image: str, resources: _task.Reso
     n_workers = 1234
     worker_group = models.WorkerGroup(number_of_workers=n_workers, image=image, resources=resources)
     idl_object = worker_group.to_flyte_idl()
-    assert idl_object.image == image
     assert idl_object.number_of_workers == n_workers
+    assert idl_object.image == image
     assert idl_object.resources == resources.to_flyte_idl()
 
 
 def test_worker_group_to_flyte_idl_all_optional(default_resources: _task.Resources):
-    worker_group = models.WorkerGroup(number_of_workers=None, image=None, resources=None)
+    worker_group = models.WorkerGroup(number_of_workers=1, image=None, resources=None)
     idl_object = worker_group.to_flyte_idl()
     assert idl_object.image == ""
-    assert idl_object.number_of_workers == 0
     assert idl_object.resources == default_resources.to_flyte_idl()
 
 
@@ -77,6 +76,11 @@ def test_worker_group_property_access(image: str, resources: _task.Resources):
     assert worker_group.image == image
     assert worker_group.number_of_workers == n_workers
     assert worker_group.resources == resources
+
+
+def test_worker_group_fails_for_less_than_one_worker():
+    with pytest.raises(ValueError, match=r"Each worker group needs to"):
+        models.WorkerGroup(number_of_workers=0, image=None, resources=None)
 
 
 def test_dask_job_to_flyte_idl_no_optional(scheduler: models.Scheduler, workers: models.WorkerGroup):
