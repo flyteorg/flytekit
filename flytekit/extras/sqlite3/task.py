@@ -97,6 +97,9 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
             outputs=outputs,
             **kwargs,
         )
+        # Sanitize query by removing the newlines at the end of the query. Keep in mind
+        # that the query can be a multiline string.
+        self._query_template = query_template.replace("\n", " ")
 
     @property
     def output_columns(self) -> typing.Optional[typing.List[str]]:
