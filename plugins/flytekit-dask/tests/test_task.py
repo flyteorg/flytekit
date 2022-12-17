@@ -1,6 +1,5 @@
 import pytest
-from flytekitplugins.dask import Dask
-from flytekitplugins.dask.task import DaskCluster, JobPodSpec
+from flytekitplugins.dask import Dask, Scheduler, WorkerGroup
 
 from flytekit import PythonFunctionTask, Resources, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -33,11 +32,11 @@ def test_dask_task_with_default_config(serialization_settings: SerializationSett
     assert dask_task.task_type == "dask"
 
     expected_dict = {
-        "jobPodSpec": {
+        "scheduler": {
             "resources": {},
         },
-        "cluster": {
-            "nWorkers": 1,
+        "workers": {
+            "numberOfWorkers": 1,
             "resources": {},
         },
     }
@@ -46,14 +45,14 @@ def test_dask_task_with_default_config(serialization_settings: SerializationSett
 
 def test_dask_task_get_custom(serialization_settings: SerializationSettings):
     task_config = Dask(
-        job_pod_spec=JobPodSpec(
-            image="job_pod_spec:latest",
+        scheduler=Scheduler(
+            image="scheduler:latest",
             requests=Resources(cpu="1"),
             limits=Resources(cpu="2"),
         ),
-        cluster=DaskCluster(
+        workers=WorkerGroup(
+            number_of_workers=123,
             image="dask_cluster:latest",
-            n_workers=123,
             requests=Resources(cpu="3"),
             limits=Resources(cpu="4"),
         ),
@@ -67,15 +66,15 @@ def test_dask_task_get_custom(serialization_settings: SerializationSettings):
     dask_task: PythonFunctionTask[Dask]
 
     expected_custom_dict = {
-        "jobPodSpec": {
-            "image": "job_pod_spec:latest",
+        "scheduler": {
+            "image": "scheduler:latest",
             "resources": {
                 "requests": [{"name": "CPU", "value": "1"}],
                 "limits": [{"name": "CPU", "value": "2"}],
             },
         },
-        "cluster": {
-            "nWorkers": 123,
+        "workers": {
+            "numberOfWorkers": 123,
             "image": "dask_cluster:latest",
             "resources": {
                 "requests": [{"name": "CPU", "value": "3"}],

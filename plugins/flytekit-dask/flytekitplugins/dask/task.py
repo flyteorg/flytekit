@@ -11,17 +11,17 @@ from flytekit.core.task import TaskPlugins
 
 
 @dataclass
-class JobPodSpec:
+class Scheduler:
     """
-    Configuration for the dask job runner pod
+    Configuration for the scheduler pod
 
     :param image: Custom image to use. If ``None``, will use the same image the task was registered with. Optional,
         defaults to ``None``. The image must have ``dask[distributed]`` installed and should have the same Python
-        environment as the cluster (scheduler + worker pods).
-    :param requests: Resources to request for the job runner pod. If ``None``, the requests passed into the task will be
-        used. Optional, defaults to ``None``
-    :param limits: Resource limits for the job runner pod. If ``None``, the limits passed into the task will be used.
-        Optional, defaults to ``None``
+        environment as the rest of the cluster (job runner pod + worker pods).
+    :param requests: Resources to request for the scheduler pod. If ``None``, the requests passed into the task will be
+        used. Optional, defaults to ``None``.
+    :param limits: Resource limits for the scheduler pod. If ``None``, the limits passed into the task will be used.
+        Optional, defaults to ``None``.
     """
 
     image: Optional[str] = None
@@ -30,22 +30,22 @@ class JobPodSpec:
 
 
 @dataclass
-class DaskCluster:
+class WorkerGroup:
     """
-    Configuration for the dask cluster pods
+    Configuration for a group of dask worker pods
 
+    :param number_of_workers: Number of workers to use. Optional, defaults to 1.
     :param image: Custom image to use. If ``None``, will use the same image the task was registered with. Optional,
         defaults to ``None``. The image must have ``dask[distributed]`` installed. The provided image should have the
-        same Python environment as the job runner/driver.
-    :param n_workers: Number of workers to use. Optional, defaults to 1.
-    :param requests: Resources to request for the scheduler pod as well as the worker pods. If ``None``, the requests
-        passed into the task will be used. Optional, defaults to ``None``
-    :param limits: Resource limits for the scheduler pod as well as the worker pods. If ``None``, the limits
-        passed into the task will be used. Optional, defaults to ``None``
+        same Python environment as the job runner/driver as well as the scheduler.
+    :param requests: Resources to request for the worker pods. If ``None``, the requests passed into the task will be
+        used. Optional, defaults to ``None``.
+    :param limits: Resource limits for the worker pods. If ``None``, the limits passed into the task will be used.
+        Optional, defaults to ``None``.
     """
 
+    number_of_workers: Optional[int] = 1
     image: Optional[str] = None
-    n_workers: Optional[int] = 1
     requests: Optional[Resources] = None
     limits: Optional[Resources] = None
 
@@ -55,13 +55,12 @@ class Dask:
     """
     Configuration for the dask task
 
-    :param job_pod_spec: Configuration for the job runner pod. Optional, defaults to ``JobPodSpec()``
-    :param cluster: Configuration for the dask cluster pods (scheduler and workers). Optional, defaults to
-        ``DaskCluster()``
+    :param scheduler: Configuration for the scheduler pod. Optional, defaults to ``Scheduler()``.
+    :param workers: Configuration for the pods of the default worker group. Optional, defaults to ``WorkerGroup()``.
     """
 
-    job_pod_spec: JobPodSpec = JobPodSpec()
-    cluster: DaskCluster = DaskCluster()
+    scheduler: Scheduler = Scheduler()
+    workers: WorkerGroup = WorkerGroup()
 
 
 class DaskTask(PythonFunctionTask[Dask]):
@@ -86,22 +85,22 @@ class DaskTask(PythonFunctionTask[Dask]):
         :param settings: Current serialization settings
         :return: Dictionary representation of the dask task config.
         """
-        job_pod_spec = models.JobPodSpec(
-            image=self.task_config.job_pod_spec.image,
+        scheduler = models.Scheduler(
+            image=self.task_config.scheduler.image,
             resources=convert_resources_to_resource_model(
-                requests=self.task_config.job_pod_spec.requests,
-                limits=self.task_config.job_pod_spec.limits,
+                requests=self.task_config.scheduler.requests,
+                limits=self.task_config.scheduler.limits,
             ),
         )
-        dask_cluster = models.DaskCluster(
-            image=self.task_config.cluster.image,
-            n_workers=self.task_config.cluster.n_workers,
+        workers = models.WorkerGroup(
+            number_of_workers=self.task_config.workers.number_of_workers,
+            image=self.task_config.workers.image,
             resources=convert_resources_to_resource_model(
-                requests=self.task_config.cluster.requests,
-                limits=self.task_config.cluster.limits,
+                requests=self.task_config.workers.requests,
+                limits=self.task_config.workers.limits,
             ),
         )
-        job = models.DaskJob(job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
+        job = models.DaskJob(scheduler=scheduler, workers=workers)
         return MessageToDict(job.to_flyte_idl())
 
 

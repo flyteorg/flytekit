@@ -1,1 +1,1 @@
-from flytekitplugins.dask.task import Dask, DaskCluster, JobPodSpec
+from flytekitplugins.dask.task import Dask, Scheduler, WorkerGroup
