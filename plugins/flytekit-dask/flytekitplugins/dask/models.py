@@ -6,9 +6,9 @@ from flytekit.models import common as _common
 from flytekit.models import task as _task
 
 
-class JobPodSpec(_common.FlyteIdlEntity):
+class Scheduler(_common.FlyteIdlEntity):
     """
-    Configuration for the job runner pod
+    Configuration for the scheduler pod
 
     :param image: Optional image to use.
     :param resources: Optional resources to use.
@@ -21,69 +21,69 @@ class JobPodSpec(_common.FlyteIdlEntity):
     @property
     def image(self) -> Optional[str]:
         """
-        :return: The optional image for the job runner pod
+        :return: The optional image for the scheduler pod
         """
         return self._image
 
     @property
     def resources(self) -> Optional[_task.Resources]:
         """
-        :return: Optional resources for the job runner pod
+        :return: Optional resources for the scheduler pod
         """
         return self._resources
 
-    def to_flyte_idl(self) -> _dask_task.JobPodSpec:
+    def to_flyte_idl(self) -> _dask_task.Scheduler:
         """
-        :return: The job pod spec serialized to protobuf
+        :return: The scheduler spec serialized to protobuf
         """
-        return _dask_task.JobPodSpec(
+        return _dask_task.Scheduler(
             image=self.image,
             resources=self.resources.to_flyte_idl() if self.resources else None,
         )
 
 
-class DaskCluster(_common.FlyteIdlEntity):
+class WorkerGroup(_common.FlyteIdlEntity):
     """
-    Configuration for the dask cluster the job runner connects to
+    Configuration for a dask worker group
 
-    :param image: Optional image to use for the cluster pods (scheduler and workers)
-    :param n_workers: Optional worker count to use for the dask cluster
-    :param resources: Optional resources to use for the cluster pods (scheduler and workers)
+    :param image: Optional image to use for the pods of the worker group
+    :param number_of_workers: Optional number of workers in the group
+    :param resources: Optional resources to use for the pods of the worker group
     """
 
-    def __init__(self, image: Optional[str], n_workers: Optional[int], resources: Optional[_task.Resources]):
+    def __init__(self, number_of_workers: Optional[int], image: Optional[str], resources: Optional[_task.Resources]):
+        self._number_of_workers = number_of_workers
         self._image = image
-        self._n_workers = n_workers
         self._resources = resources
+
+    @property
+    def number_of_workers(self) -> Optional[int]:
+        """
+        :return: Optional number of workers for the worker group
+        """
+        return self._number_of_workers
 
     @property
     def image(self) -> Optional[str]:
         """
-        :return: The optional image to use for the cluster pods
+        :return: The optional image to use for the worker pods
         """
         return self._image
 
     @property
-    def n_workers(self) -> Optional[int]:
-        """
-        :return: Optional number of workers for the cluster
-        """
-        return self._n_workers
-
-    @property
     def resources(self) -> Optional[_task.Resources]:
         """
-        :return: Optional resources for the pods of the cluster
+        :return: Optional resources to use for the worker pods
         """
         return self._resources
 
-    def to_flyte_idl(self) -> _dask_task.DaskCluster:
+    def to_flyte_idl(self) -> _dask_task.WorkerGroup:
         """
         :return: The dask cluster serialized to protobuf
         """
-        return _dask_task.DaskCluster(
+        return _dask_task.WorkerGroup(
+            number_of_workers=self.number_of_workers,
             image=self.image,
-            nWorkers=self.n_workers,
             resources=self.resources.to_flyte_idl() if self.resources else None,
         )
 
@@ -92,33 +92,33 @@ class DaskJob(_common.FlyteIdlEntity):
     """
     Configuration for the custom dask job to run
 
-    :param job_pod_spec: Configuration for the job runner pod
+    :param scheduler: Configuration for the scheduler
     :param dask_cluster: Configuration for the dask cluster
     """
 
-    def __init__(self, job_pod_spec: JobPodSpec, dask_cluster: DaskCluster):
-        self._job_pod_spec = job_pod_spec
-        self._dask_cluster = dask_cluster
+    def __init__(self, scheduler: Scheduler, workers: WorkerGroup):
+        self._scheduler = scheduler
+        self._workers = workers
 
     @property
-    def job_pod_spec(self) -> JobPodSpec:
+    def scheduler(self) -> Scheduler:
         """
-        :return: Configuration for the job runner pod
+        :return: Configuration for the scheduler pod
         """
-        return self._job_pod_spec
+        return self._scheduler
 
     @property
-    def dask_cluster(self) -> DaskCluster:
+    def workers(self) -> WorkerGroup:
         """
-        :return: Configuration for the dask cluster
+        :return: Configuration of the default worker group
         """
-        return self._dask_cluster
+        return self._workers
 
     def to_flyte_idl(self) -> _dask_task.DaskJob:
         """
         :return: The dask job serialized to protobuf
         """
         return _dask_task.DaskJob(
-            jobPodSpec=self.job_pod_spec.to_flyte_idl(),
-            cluster=self.dask_cluster.to_flyte_idl(),
+            scheduler=self.scheduler.to_flyte_idl(),
+            workers=self.workers.to_flyte_idl(),
         )

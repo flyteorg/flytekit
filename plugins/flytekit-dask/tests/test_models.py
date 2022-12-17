@@ -25,68 +25,68 @@ def default_resources() -> _task.Resources:
 
 
 @pytest.fixture
-def job_pod_spec(image: str, resources: _task.Resources) -> models.JobPodSpec:
-    return models.JobPodSpec(image=image, resources=resources)
+def scheduler(image: str, resources: _task.Resources) -> models.Scheduler:
+    return models.Scheduler(image=image, resources=resources)
 
 
 @pytest.fixture
-def dask_cluster(image: str, resources: _task.Resources) -> models.DaskCluster:
-    return models.DaskCluster(image=image, n_workers=123, resources=resources)
+def workers(image: str, resources: _task.Resources) -> models.WorkerGroup:
+    return models.WorkerGroup(number_of_workers=123, image=image, resources=resources)
 
 
-def test_create_job_pod_spec_to_flyte_idl_no_optional(image: str, resources: _task.Resources):
-    spec = models.JobPodSpec(image=image, resources=resources)
-    idl_object = spec.to_flyte_idl()
+def test_create_scheduler_to_flyte_idl_no_optional(image: str, resources: _task.Resources):
+    scheduler = models.Scheduler(image=image, resources=resources)
+    idl_object = scheduler.to_flyte_idl()
     assert idl_object.image == image
     assert idl_object.resources == resources.to_flyte_idl()
 
 
-def test_create_job_pod_spec_to_flyte_idl_all_optional(default_resources: _task.Resources):
-    spec = models.JobPodSpec(image=None, resources=None)
-    idl_object = spec.to_flyte_idl()
+def test_create_scheduler_to_flyte_idl_all_optional(default_resources: _task.Resources):
+    scheduler = models.Scheduler(image=None, resources=None)
+    idl_object = scheduler.to_flyte_idl()
     assert idl_object.image == ""
     assert idl_object.resources == default_resources.to_flyte_idl()
 
 
-def test_create_job_pod_spec_property_access(image: str, resources: _task.Resources):
-    spec = models.JobPodSpec(image=image, resources=resources)
-    assert spec.image == image
-    assert spec.resources == resources
+def test_create_scheduler_spec_property_access(image: str, resources: _task.Resources):
+    scheduler = models.Scheduler(image=image, resources=resources)
+    assert scheduler.image == image
+    assert scheduler.resources == resources
 
 
-def test_dask_cluster_to_flyte_idl_no_optional(image: str, resources: _task.Resources):
+def test_worker_group_to_flyte_idl_no_optional(image: str, resources: _task.Resources):
     n_workers = 1234
-    cluster = models.DaskCluster(image=image, n_workers=n_workers, resources=resources)
-    idl_object = cluster.to_flyte_idl()
+    worker_group = models.WorkerGroup(number_of_workers=n_workers, image=image, resources=resources)
+    idl_object = worker_group.to_flyte_idl()
     assert idl_object.image == image
-    assert idl_object.nWorkers == n_workers
+    assert idl_object.number_of_workers == n_workers
     assert idl_object.resources == resources.to_flyte_idl()
 
 
-def test_dask_cluster_to_flyte_idl_all_optional(default_resources: _task.Resources):
-    cluster = models.DaskCluster(image=None, n_workers=None, resources=None)
-    idl_object = cluster.to_flyte_idl()
+def test_worker_group_to_flyte_idl_all_optional(default_resources: _task.Resources):
+    worker_group = models.WorkerGroup(number_of_workers=None, image=None, resources=None)
+    idl_object = worker_group.to_flyte_idl()
     assert idl_object.image == ""
-    assert idl_object.nWorkers == 0
+    assert idl_object.number_of_workers == 0
     assert idl_object.resources == default_resources.to_flyte_idl()
 
 
-def test_dask_cluster_property_access(image: str, resources: _task.Resources):
+def test_worker_group_property_access(image: str, resources: _task.Resources):
     n_workers = 1234
-    cluster = models.DaskCluster(image=image, n_workers=n_workers, resources=resources)
-    assert cluster.image == image
-    assert cluster.n_workers == n_workers
-    assert cluster.resources == resources
+    worker_group = models.WorkerGroup(number_of_workers=n_workers, image=image, resources=resources)
+    assert worker_group.image == image
+    assert worker_group.number_of_workers == n_workers
+    assert worker_group.resources == resources
 
 
-def test_dask_job_to_flyte_idl_no_optional(job_pod_spec: models.JobPodSpec, dask_cluster: models.DaskCluster):
-    job = models.DaskJob(job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
+def test_dask_job_to_flyte_idl_no_optional(scheduler: models.Scheduler, workers: models.WorkerGroup):
+    job = models.DaskJob(scheduler=scheduler, workers=workers)
     idl_object = job.to_flyte_idl()
-    assert idl_object.jobPodSpec == job_pod_spec.to_flyte_idl()
-    assert idl_object.cluster == dask_cluster.to_flyte_idl()
+    assert idl_object.scheduler == scheduler.to_flyte_idl()
+    assert idl_object.workers == workers.to_flyte_idl()
 
 
-def test_dask_job_property_access(job_pod_spec: models.JobPodSpec, dask_cluster: models.DaskCluster):
-    job = models.DaskJob(job_pod_spec=job_pod_spec, dask_cluster=dask_cluster)
-    assert job.job_pod_spec == job_pod_spec
-    assert job.dask_cluster == dask_cluster
+def test_dask_job_property_access(scheduler: models.Scheduler, workers: models.WorkerGroup):
+    job = models.DaskJob(scheduler=scheduler, workers=workers)
+    assert job.scheduler == scheduler
+    assert job.workers == workers
