@@ -233,7 +233,7 @@ class FlyteRemote(object):
         )
         admin_task = self.client.get_task(task_id)
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
-        flyte_task._id = task_id
+        flyte_task.template._id = task_id
         return flyte_task
 
     def fetch_workflow_lazy(
