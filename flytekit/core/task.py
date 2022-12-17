@@ -72,8 +72,12 @@ class TaskPlugins(object):
         return PythonFunctionTask
 
 
+from typing import TypeVar, ParamSpec
+T = TypeVar('T')
+P = ParamSpec('P')
+
 def task(
-    _task_function: Optional[Callable] = None,
+    _task_function: Optional[Callable[P, T]],
     task_config: Optional[Any] = None,
     cache: bool = False,
     cache_serialize: bool = False,
@@ -90,7 +94,7 @@ def task(
     execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     task_resolver: Optional[TaskResolverMixin] = None,
     disable_deck: bool = True,
-) -> Union[Callable, PythonFunctionTask]:
+) -> Union[Callable[P, T], PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
 
