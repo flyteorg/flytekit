@@ -262,6 +262,7 @@ def setup_execution(
     cb = ctx.new_builder().with_file_access(file_access).with_execution_state(es)
 
     if compressed_serialization_settings:
+        print(f"Compressed SS detected ------------------------------------")
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
         ssb = ss.new_builder()
         ssb.project = exe_project
@@ -337,6 +338,7 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
+        print(f"This is the setup context: {ctx}")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
