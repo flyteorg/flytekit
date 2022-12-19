@@ -12,6 +12,7 @@ from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
+from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools.translator import Options
 
@@ -247,3 +248,16 @@ console:
             os.remove(temp_filename)
         except OSError:
             pass
+
+
+def test_fetch_lazy():
+    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    lw = remote.fetch_workflow_lazy(name="n1")
+    assert isinstance(lw, LazyEntity)
+    assert lw._getter
+    assert lw._entity is None
+
+    lt = remote.fetch_task_lazy(name="n1")
+    assert isinstance(lw, LazyEntity)
+    assert lt._getter
+    assert lw._entity is None
