@@ -741,6 +741,7 @@ def workflow(
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
+    :param docs: Description entity for the workflow
     """
 
     def wrapper(fn):

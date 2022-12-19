@@ -42,7 +42,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
     @property
     def docs(self):
         """
-        :rtype: Documentation
+        :rtype: Description entity for the workflow
         """
         return self._docs
 

@@ -499,7 +499,7 @@ class TaskSpec(_common.FlyteIdlEntity):
     @property
     def docs(self):
         """
-        :rtype: Documentation
+        :rtype: Description entity for the task
         """
         return self._docs
 
