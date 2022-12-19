@@ -79,6 +79,9 @@ setup(
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
         "numpy<1.22.0; python_version < '3.8.0'",
+        # TODO: We should remove mentions to the deprecated numpy
+        # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
+        "numpy<1.24.0",
     ],
     extras_require=extras_require,
     scripts=[
