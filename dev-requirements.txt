@@ -127,6 +127,8 @@ exceptiongroup==1.0.4
     # via pytest
 filelock==3.8.0
     # via virtualenv
+flatbuffers==22.12.6
+    # via tensorflow
 flyteidl==1.2.9
     # via
     #   -c requirements.txt

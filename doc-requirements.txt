@@ -178,10 +178,8 @@ filelock==3.8.0
     #   ray
     #   vaex-core
     #   virtualenv
-flatbuffers==1.12
-    # via
-    #   tensorflow
-    #   tf2onnx
+flatbuffers==22.12.6
+    # via tensorflow
 flyteidl==1.2.9
     # via flytekit
 fonttools==4.38.0
