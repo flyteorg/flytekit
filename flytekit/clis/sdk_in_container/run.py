@@ -644,7 +644,8 @@ class RunCommand(click.MultiCommand):
         return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
 
     def get_command(self, ctx, filename):
-        ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
+        if ctx.obj:
+            ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
         return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
 
 

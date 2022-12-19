@@ -28,6 +28,8 @@ def test_execution_closure_with_output():
         started_at=test_datetime,
         duration=test_timedelta,
         outputs=test_outputs,
+        created_at=None,
+        updated_at=test_datetime,
     )
     assert obj.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
     assert obj.started_at == test_datetime
@@ -39,6 +41,8 @@ def test_execution_closure_with_output():
     assert obj2.started_at == test_datetime
     assert obj2.duration == test_timedelta
     assert obj2.outputs == test_outputs
+    assert obj2.created_at is None
+    assert obj2.updated_at == test_datetime
 
 
 def test_execution_closure_with_error():
@@ -53,6 +57,8 @@ def test_execution_closure_with_error():
         started_at=test_datetime,
         duration=test_timedelta,
         error=test_error,
+        created_at=test_datetime,
+        updated_at=None,
     )
     assert obj.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
     assert obj.started_at == test_datetime
@@ -62,6 +68,8 @@ def test_execution_closure_with_error():
     assert obj2 == obj
     assert obj2.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
     assert obj2.started_at == test_datetime
+    assert obj2.created_at == test_datetime
+    assert obj2.updated_at is None
     assert obj2.duration == test_timedelta
     assert obj2.error == test_error
 

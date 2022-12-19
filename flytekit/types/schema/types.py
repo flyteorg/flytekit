@@ -16,6 +16,7 @@ from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 
@@ -361,7 +362,11 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             remote_path = python_val.remote_path
             if remote_path is None or remote_path == "":
                 remote_path = ctx.file_access.get_random_remote_path()
-            ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
+            if python_val.supported_mode == SchemaOpenMode.READ and not python_val._downloaded:
+                # This means the local path is empty. Don't try to overwrite the remote data
+                logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")
+            else:
+                ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
         schema = python_type(
