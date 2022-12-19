@@ -11,6 +11,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan
 from flytekit.remote import FlyteRemote
+from flytekit.remote.remote import _get_git_repo_url
 from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
@@ -210,6 +211,7 @@ def register(
         project=project,
         domain=domain,
         version=version,
+        git_repo=_get_git_repo_url(detected_root),
         image_config=image_config,
         fast_serialization_settings=fast_serialization_settings,
     )

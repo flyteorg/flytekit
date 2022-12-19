@@ -117,6 +117,13 @@ def _get_entity_identifier(
     )
 
 
+def _get_git_repo_url(source_path):
+    """
+    Get git repo URL from remote.origin.url
+    """
+    return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
+
+
 class FlyteRemote(object):
     """Main entrypoint for programmatically accessing a Flyte remote backend.
 
@@ -500,13 +507,6 @@ class FlyteRemote(object):
                     settings,
                     f"No serialization settings set, but workflow contains entities that need to be registered. {cp_entity.id.name}",
                 )
-            # if isinstance(cp_entity, task_models.TaskSpec):
-            #     ident = self._resolve_identifier(ResourceType.TASK, entity.name, version, settings)
-            #     self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
-            #     self.client.create_task(task_identifer=ident, task_spec=cp_entity)
-            # elif isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
-            #     ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, settings)
-            #     self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
 
             ident = self.raw_register(
                 cp_entity,
@@ -726,7 +726,7 @@ class FlyteRemote(object):
             project=project,
             domain=domain,
             image_config=image_config,
-            git_repo="github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1],
+            git_repo=_get_git_repo_url(source_path),
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
