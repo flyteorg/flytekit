@@ -68,3 +68,22 @@ def test_vaex_renderer():
     assert VaexDataFrameRenderer().to_html(vaex_df) == pd.DataFrame(
         vaex_df.describe().transpose(), columns=vaex_df.columns
     ).to_html(index=False)
+
+
+def test_vaex_type():
+    @task
+    def create_vaex_df() -> vaex.dataframe.DataFrameLocal:
+        return vaex.from_pandas(pd.DataFrame(data={"column_1": [-1, 2, -3], "column_2": [1.5, 2.21, 3.9]}))
+
+    @task
+    def consume_vaex_df(vaex_df: vaex.dataframe.DataFrameLocal) -> vaex.dataframe.DataFrameLocal:
+        df_negative = vaex_df[vaex_df.column_1 < 0]
+        return df_negative
+
+    @workflow
+    def wf() -> vaex.dataframe.DataFrameLocal:
+        return consume_vaex_df(vaex_df=create_vaex_df())
+
+    result = wf()
+    assert isinstance(result, vaex.dataframe.DataFrameLocal)
+    assert len(result) == 2

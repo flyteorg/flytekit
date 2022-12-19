@@ -1648,7 +1648,9 @@ def test_union_type():
     assert wf(a=2.0) == 2.0
     file = tempfile.NamedTemporaryFile(delete=False)
     assert isinstance(wf(a=FlyteFile(file.name)), FlyteFile)
-    assert isinstance(wf(a=FlyteSchema()), FlyteSchema)
+    flyteSchema = FlyteSchema()
+    flyteSchema.open().write(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [1, 22]}))
+    assert isinstance(wf(a=flyteSchema), FlyteSchema)
     assert wf(a=[1, 2, 3]) == [1, 2, 3]
     assert wf(a={"a": 1}) == {"a": 1}
 

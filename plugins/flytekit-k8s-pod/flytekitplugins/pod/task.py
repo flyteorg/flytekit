@@ -108,7 +108,9 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
                     # Important! Only copy over resource requirements if they are non-empty.
                     container.resources = resource_requirements
 
-                container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()]
+                container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()] + (
+                    container.env or []
+                )
 
             final_containers.append(container)
 

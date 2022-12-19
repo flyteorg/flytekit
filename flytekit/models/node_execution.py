@@ -1,3 +1,4 @@
+import datetime
 import typing
 
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
@@ -96,6 +97,8 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         error=None,
         workflow_node_metadata: typing.Optional[WorkflowNodeMetadata] = None,
         task_node_metadata: typing.Optional[TaskNodeMetadata] = None,
+        created_at: typing.Optional[datetime.datetime] = None,
+        updated_at: typing.Optional[datetime.datetime] = None,
     ):
         """
         :param int phase:
@@ -113,6 +116,8 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         self._workflow_node_metadata = workflow_node_metadata
         self._task_node_metadata = task_node_metadata
         # TODO: Add output_data field as well.
+        self._created_at = created_at
+        self._updated_at = updated_at
 
     @property
     def phase(self):
@@ -134,6 +139,14 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         :rtype: datetime.timedelta
         """
         return self._duration
+
+    @property
+    def created_at(self) -> typing.Optional[datetime.datetime]:
+        return self._created_at
+
+    @property
+    def updated_at(self) -> typing.Optional[datetime.datetime]:
+        return self._updated_at
 
     @property
     def output_uri(self):
@@ -184,6 +197,10 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         )
         obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
+        if self.created_at:
+            obj.created_at.FromDatetime(self.created_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        if self.updated_at:
+            obj.updated_at.FromDatetime(self.updated_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         return obj
 
     @classmethod
@@ -205,6 +222,8 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
             task_node_metadata=TaskNodeMetadata.from_flyte_idl(p.task_node_metadata)
             if p.HasField("task_node_metadata")
             else None,
+            created_at=p.created_at.ToDatetime().replace(tzinfo=_pytz.UTC) if p.HasField("created_at") else None,
+            updated_at=p.updated_at.ToDatetime().replace(tzinfo=_pytz.UTC) if p.HasField("updated_at") else None,
         )
 
 

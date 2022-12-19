@@ -8,7 +8,7 @@ This package contains things that are useful when extending Flytekit.
    :toctree: generated/
 
    VaexDataFrameToParquetEncodingHandler
-   ParParquetToVaxDataFrameDecodingHandler
+   ParquetToVaexDataFrameDecodingHandler
 """
 
-from .sd_transformers import ParquetToVaxDataFrameDecodingHandler, VaexDataFrameToParquetEncodingHandler
+from .sd_transformers import ParquetToVaexDataFrameDecodingHandler, VaexDataFrameToParquetEncodingHandler
