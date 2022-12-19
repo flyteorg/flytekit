@@ -82,6 +82,7 @@ setup(
         # TODO: We should remove mentions to the deprecated numpy
         # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
         "numpy<1.24.0",
+        "git",
     ],
     extras_require=extras_require,
     scripts=[
