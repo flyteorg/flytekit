@@ -1,9 +1,10 @@
 import typing
+from threading import Lock
 
 from flytekit import FlyteContext
 from flytekit.remote.remote_callable import RemoteEntity
 
-T = typing.TypeVar("T")
+T = typing.TypeVar("T", bound=RemoteEntity)
 
 
 class LazyEntity(RemoteEntity, typing.Generic[T]):
@@ -17,22 +18,27 @@ class LazyEntity(RemoteEntity, typing.Generic[T]):
         self._entity = None
         self._getter = getter
         self._name = name
+        if not self._getter:
+            raise ValueError("getter method is required to create a Lazy loadable Remote Entity.")
+        self._mutex = Lock()
 
     @property
     def name(self) -> str:
         return self._name
 
     def entity_fetched(self) -> bool:
-        return self._entity is not None
+        with self._mutex:
+            return self._entity is not None
 
     @property
     def entity(self) -> T:
         """
         If not already fetched / available, then the entity will be force fetched.
         """
-        if self._entity is None:
-            self._entity = self._getter()
-        return self._entity
+        with self._mutex:
+            if self._entity is None:
+                self._entity = self._getter()
+            return self._entity
 
     def __getattr__(self, item: str) -> typing.Any:
         """
