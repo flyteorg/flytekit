@@ -2,7 +2,7 @@ import pandas as pd
 import pyspark
 import pytest
 from flytekitplugins.spark import Spark
-from flytekitplugins.spark.task import new_spark_session
+from flytekitplugins.spark.task import Databricks, new_spark_session
 from pyspark.sql import SparkSession
 
 import flytekit
@@ -36,7 +36,7 @@ def test_spark_task(reset_spark_session):
         },
     }
 
-    @task(task_config=Spark(spark_conf={"spark": "1"}, databricks_conf=databricks_conf))
+    @task(task_config=Spark(spark_conf={"spark": "1"}))
     def my_spark(a: str) -> int:
         session = flytekit.current_context().spark_session
         assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
@@ -44,7 +44,6 @@ def test_spark_task(reset_spark_session):
 
     assert my_spark.task_config is not None
     assert my_spark.task_config.spark_conf == {"spark": "1"}
-    assert my_spark.task_config.databricks_conf == databricks_conf
 
     default_img = Image(name="default", fqn="test", tag="tag")
     settings = SerializationSettings(
@@ -70,6 +69,28 @@ def test_spark_task(reset_spark_session):
     configs = my_spark.sess.sparkContext.getConf().getAll()
     assert ("spark", "1") in configs
     assert ("spark.app.name", "FlyteSpark: ex:local:local:local") in configs
+
+    databricks_token = "token"
+    databricks_instance = "account.cloud.databricks.com"
+
+    @task(
+        task_config=Databricks(
+            spark_conf={"spark": "2"},
+            databricks_conf=databricks_conf,
+            databricks_instance="account.cloud.databricks.com",
+            databricks_token="token",
+        )
+    )
+    def my_databricks(a: str) -> int:
+        session = flytekit.current_context().spark_session
+        assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
+        return 10
+
+    assert my_databricks.task_config is not None
+    assert my_databricks.task_config.spark_conf == {"spark": "2"}
+    assert my_databricks.task_config.databricks_conf == databricks_conf
+    assert my_databricks.task_config.databricks_instance == databricks_instance
+    assert my_databricks.task_config.databricks_token == databricks_token
 
 
 def test_new_spark_session():

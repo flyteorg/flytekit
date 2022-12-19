@@ -19,15 +19,15 @@ class SparkType(enum.Enum):
 class SparkJob(_common.FlyteIdlEntity):
     def __init__(
         self,
-        spark_type,
-        application_file,
-        main_class,
-        spark_conf,
-        hadoop_conf,
-        databricks_conf,
-        databricks_token,
-        databricks_instance,
-        executor_path,
+        spark_type: SparkType,
+        application_file: str,
+        main_class: str,
+        spark_conf: Dict[str, str],
+        hadoop_conf: Dict[str, str],
+        executor_path: str,
+        databricks_conf: Dict[str, Dict[str, Dict]] = {},
+        databricks_token: Optional[str] = None,
+        databricks_instance: Optional[str] = None,
     ):
         """
         This defines a SparkJob target.  It will execute the appropriate SparkJob.
@@ -35,9 +35,9 @@ class SparkJob(_common.FlyteIdlEntity):
         :param application_file: The main application file to execute.
         :param dict[Text, Text] spark_conf: A definition of key-value pairs for spark config for the job.
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
-        :param dict[Text, dict] databricks_conf: A definition of key-value pairs for databricks config for the job. Refer to https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit.
-        :param str databricks_token: databricks access token.
-        :param str databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+        :param Optional[dict[Text, dict]] databricks_conf: A definition of key-value pairs for databricks config for the job. Refer to https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit.
+        :param Optional[str] databricks_token: databricks access token.
+        :param Optional[str] databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
         """
         self._application_file = application_file
         self._spark_type = spark_type

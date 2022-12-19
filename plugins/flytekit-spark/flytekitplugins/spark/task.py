@@ -23,16 +23,10 @@ class Spark(object):
     Args:
         spark_conf: Dictionary of spark config. The variables should match what spark expects
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
-        databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
-        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
-        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
-    databricks_conf: typing.Optional[Dict[str, typing.Union[str, dict]]] = None
-    databricks_token: Optional[str] = None
-    databricks_instance: Optional[str] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
@@ -41,8 +35,22 @@ class Spark(object):
         if self.hadoop_conf is None:
             self.hadoop_conf = {}
 
-        if self.databricks_conf is None:
-            self.databricks_conf = {}
+
+@dataclass
+class Databricks(Spark):
+    """
+    Use this to configure a Databricks task. Task's marked with this will automatically execute
+    natively onto databricks platform as a distributed execution of spark
+
+    Args:
+        databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
+        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+    """
+
+    databricks_conf: typing.Optional[Dict[str, typing.Union[str, dict]]] = None
+    databricks_token: Optional[str] = None
+    databricks_instance: Optional[str] = None
 
 
 # This method does not reset the SparkSession since it's a bit hard to handle multiple
@@ -104,14 +112,17 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
-            databricks_conf=self.task_config.databricks_conf,
-            databricks_token=self.task_config.databricks_token,
-            databricks_instance=self.task_config.databricks_instance,
             application_file="local://" + settings.entrypoint_settings.path,
             executor_path=settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,
         )
+        if isinstance(self.task_config, Databricks):
+            cfg = typing.cast(self.task_config, Databricks)
+            job._databricks_conf = cfg.databricks_conf
+            job._databricks_token = cfg.databricks_token
+            job._databricks_instance = cfg.databricks_instance
+
         return MessageToDict(job.to_flyte_idl())
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
