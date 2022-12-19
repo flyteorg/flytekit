@@ -175,6 +175,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         raw_output_data_config=None,
         max_parallelism=None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        overwrite_cache: bool = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -200,6 +201,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self.overwrite_cache = overwrite_cache
 
     @property
     def launch_plan(self):
@@ -283,6 +285,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             else None,
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            overwrite_cache=self.overwrite_cache,
         )
 
     @classmethod
@@ -306,6 +309,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             security_context=security.SecurityContext.from_flyte_idl(p.security_context)
             if p.security_context
             else None,
+            overwrite_cache=p.overwrite_cache,
         )
 
 
