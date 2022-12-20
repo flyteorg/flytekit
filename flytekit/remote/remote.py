@@ -756,7 +756,9 @@ class FlyteRemote(object):
         :param wait: if True, waits for execution to complete
         :param type_hints: map of python types to inputs so that the TypeEngine knows how to convert the input values
           into Flyte Literals.
-        :param overwrite_cache: execute entity by overwriting the existing cache (if there is any)
+        :param overwrite_cache: Allows for all cached values of a workflow and its tasks to be overwritten
+          for a single execution. If enabled, all calculations are performed even if cached results would
+          be available, overwriting the stored data once execution finishes successfully.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
@@ -910,7 +912,10 @@ class FlyteRemote(object):
           using the type engine, and then to ``type(v)``. Providing the correct Python types is particularly important
           if the inputs are containers like lists or maps, or if the Python type is one of the more complex Flyte
           provided classes (like a StructuredDataset that's annotated with columns).
-        :param overwrite_cache: execute entity by overwriting the existing cache (if there is any)
+        :param overwrite_cache: Allows for all cached values of a workflow and its tasks to be overwritten
+          for a single execution. If enabled, all calculations are performed even if cached results would
+          be available, overwriting the stored data once execution finishes successfully.
+
         .. note:
 
             The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
