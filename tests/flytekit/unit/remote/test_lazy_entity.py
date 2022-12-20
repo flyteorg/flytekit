@@ -24,14 +24,6 @@ dummy_task = FlyteTask(
 
 
 def test_lazy_loading():
-    o = FlyteTask(
-        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
-        type="t",
-        metadata=TaskMetadata().to_taskmetadata_model(),
-        interface=TypedInterface(inputs={}, outputs={}),
-        custom=None,
-    )
-
     once = True
 
     def _getter():
