@@ -20,4 +20,4 @@ from flytekit.configuration import internal as _internal
 from .pyspark_transformers import PySparkPipelineModelTransformer
 from .schema import SparkDataFrameSchemaReader, SparkDataFrameSchemaWriter, SparkDataFrameTransformer  # noqa
 from .sd_transformers import ParquetToSparkDecodingHandler, SparkToParquetEncodingHandler
-from .task import Spark, new_spark_session  # noqa
+from .task import Spark, Databricks, new_spark_session  # noqa
