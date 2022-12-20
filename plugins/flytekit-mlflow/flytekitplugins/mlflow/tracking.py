@@ -11,6 +11,7 @@ from plotly.subplots import make_subplots
 
 import flytekit
 from flytekit import FlyteContextManager
+from flytekit.core.context_manager import ExecutionState
 from flytekit.deck import TopFrameRenderer
 
 
@@ -93,12 +94,22 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
     @wraps(fn)
     def wrapper(*args, **kwargs):
         framework.autolog()
+        params = FlyteContextManager.current_context().user_space_params
         ctx = FlyteContextManager.current_context()
-        wf_name = experiment_name or ctx.user_space_params.execution_id.name
-        mlflow.set_experiment(wf_name)
-        with mlflow.start_run():
+
+        experiment = experiment_name or "local"
+        run_name = None  # MLflow will generate random name if value is None
+
+        if ctx.execution_state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            experiment = f"{params.task_id.project}.{params.task_id.domain}"
+            run_name = f"{params.execution_id.name}.{params.task_id.name.split('.')[-1]}"
+
+        mlflow.set_experiment(experiment)
+        with mlflow.start_run(run_name=run_name):
             # Get execution id and flyte console link from propeller.
-            mlflow.log_param("Flyte Console", "http://flyte:30081/console/projects/flytesnacks/domains/development/executions/a4xlbh7wxtc2skdt2vjc?duration=all")
+            if ctx.execution_state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                # TODO: Get Admin URL and port (flyteadmin:30080)
+                mlflow.log_param("Flyte Console", f"http://flyte:30081/console/project/{params.task_id.project}/domains/{params.task_id.domain}/executions/{params.execution_id.name}")
             out = fn(*args, **kwargs)
             run = mlflow.active_run()
             if run is not None:
@@ -110,10 +121,10 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
                     flytekit.Deck("mlflow metrics", figure.to_html())
                 params = get_run_params(client, run_id)
                 if params is not None:
-                    flytekit.Deck("mlflow params", TopFrameRenderer().to_html(params))
+                    flytekit.Deck("mlflow params", TopFrameRenderer(max_rows=10).to_html(params))
         return out
 
     if fn is None:
-        return partial(mlflow_autolog, framework=framework)
+        return partial(mlflow_autolog, framework=framework, experiment_name=experiment_name)
 
     return wrapper
