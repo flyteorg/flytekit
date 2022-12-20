@@ -34,12 +34,15 @@ def test_lazy_loading():
         return dummy_task
 
     e = LazyEntity("x", _getter)
+    assert e.__repr__() == "Promise for entity [x]"
     assert e.name == "x"
     assert e._entity is None
+    assert not e.entity_fetched()
     v = e.entity
     assert e._entity is not None
     assert v == dummy_task
     assert e.entity == dummy_task
+    assert e.entity_fetched()
 
 
 @patch("flytekit.remote.remote_callable.create_and_link_node_from_remote")
