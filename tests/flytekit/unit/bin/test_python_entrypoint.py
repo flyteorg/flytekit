@@ -292,7 +292,7 @@ def test_setup_cloud_prefix():
         assert isinstance(ctx.file_access._default_remote, GCSPersistence)
 
 
-def test_perkjlzxujoi():
+def test_persist_ss():
     default_img = Image(name="default", fqn="test", tag="tag")
     ss = SerializationSettings(
         project="proj1",
