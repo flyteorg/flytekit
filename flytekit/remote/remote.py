@@ -206,7 +206,7 @@ class FlyteRemote(object):
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
 
         def _fetch():
-            return self.fetch_task(project, domain, name, version)
+            return self.fetch_task(project=project, domain=domain, name=name, version=version)
 
         return LazyEntity(name=name, getter=_fetch)
 
