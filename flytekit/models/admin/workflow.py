@@ -65,7 +65,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         return cls(
             _core_workflow.WorkflowTemplate.from_flyte_idl(pb2_object.template),
             [_core_workflow.WorkflowTemplate.from_flyte_idl(s) for s in pb2_object.sub_workflows],
-            Documentation.from_flyte_idl(pb2_object.description_entity) if pb2_object.description_entity else None,
+            Documentation.from_flyte_idl(pb2_object.description) if pb2_object.description else None,
         )
 
 

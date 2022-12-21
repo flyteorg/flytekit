@@ -519,7 +519,7 @@ class TaskSpec(_common.FlyteIdlEntity):
         """
         return cls(
             TaskTemplate.from_flyte_idl(pb2_object.template),
-            Documentation.from_flyte_idl(pb2_object.description_entity) if pb2_object.description_entity else None,
+            Documentation.from_flyte_idl(pb2_object.description) if pb2_object.description else None,
         )
 
 
