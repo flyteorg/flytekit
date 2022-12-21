@@ -52,6 +52,10 @@ class Node(object):
         return other
 
     @property
+    def name(self) -> str:
+        return self._id
+
+    @property
     def outputs(self):
         if self._outputs is None:
             raise AssertionError("Cannot use outputs with all Nodes, node must've been created from create_node()")
