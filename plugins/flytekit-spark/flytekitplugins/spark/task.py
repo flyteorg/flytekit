@@ -151,4 +151,3 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 # Inject the Spark plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
 TaskPlugins.register_pythontask_plugin(Databricks, PysparkFunctionTask)
-
