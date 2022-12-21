@@ -10,8 +10,9 @@ from flytekit.configuration import FastSerializationSettings, ImageConfig, Seria
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan
+from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
-from flytekit.remote.remote import _get_git_repo_url
+from flytekit.remote.remote import _get_git_repo_url, RegistrationSkipped
 from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
@@ -180,6 +181,27 @@ def load_packages_and_modules(
     return registrable_entities
 
 
+def secho(i: Identifier, state: str = "success", reason: str = None):
+    state_ind = "[ ]"
+    fg = "white"
+    nl = False
+    if state == "success":
+        state_ind = "\r[✔]"
+        fg = "green"
+        nl = True
+        reason = f"successful with version {i.version}" if not reason else reason
+    elif state == "failed":
+        state_ind = "\r[x]"
+        fg = "red"
+        nl = True
+        reason = "skipped!"
+    click.secho(
+        click.style(f"{state_ind}", fg=fg) + f" Registration {i.name} type {i.resource_type_name()} {reason}",
+        dim=True,
+        nl=nl,
+    )
+
+
 def register(
     project: str,
     domain: str,
@@ -193,6 +215,7 @@ def register(
     fast: bool,
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
+    dry_run: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
@@ -236,11 +259,18 @@ def register(
     if len(serializable_entities) == 0:
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
-    click.secho(f"Found and serialized {len(serializable_entities)} entities")
 
     for cp_entity in serializable_entities:
-        name = cp_entity.id.name if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id.name
-        click.secho(f"  Registering {name}....", dim=True, nl=False)
-        i = remote.raw_register(cp_entity, serialization_settings, version=version, create_default_launchplan=False)
-        click.secho(f"done, {i.resource_type_name()} with version {i.version}.", dim=True)
+        og_id = cp_entity.id if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id
+        secho(og_id, "")
+        try:
+            if not dry_run:
+                i = remote.raw_register(
+                    cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                )
+                secho(i)
+            else:
+                secho(og_id, reason="Dry run Mode!")
+        except RegistrationSkipped:
+            secho(og_id, "failed")
     click.secho(f"Successfully registered {len(serializable_entities)} entities", fg="green")

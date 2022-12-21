@@ -63,10 +63,10 @@ class RemoteEntity(ABC):
             return self.execute(**kwargs)
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
-        raise Exception("Remotely fetched entities cannot be run locally. You have to mock this out.")
+        return self.execute(**kwargs)
 
     def execute(self, **kwargs) -> Any:
-        raise Exception("Remotely fetched entities cannot be run locally. You have to mock this out.")
+        raise AssertionError(f"Remotely fetched entities cannot be run locally. Please mock the {self.name}.execute.")
 
     @property
     def python_interface(self) -> Optional[Dict[str, Type]]:
