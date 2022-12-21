@@ -53,13 +53,11 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
+from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
-from flytekit.remote.launch_plan import FlyteLaunchPlan
-from flytekit.remote.nodes import FlyteNode
+from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
-from flytekit.remote.task import FlyteTask
-from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.script_mode import fast_register_single_script, hash_file
 from flytekit.tools.translator import (
@@ -73,6 +71,14 @@ from flytekit.tools.translator import (
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
+
+
+class RegistrationSkipped(Exception):
+    """
+    RegistrationSkipped error is raised when trying to register an entity that is not registrable.
+    """
+
+    pass
 
 
 @dataclass
@@ -190,6 +196,20 @@ class FlyteRemote(object):
             FlyteContextManager.current_context().with_file_access(self.file_access)
         )
 
+    def fetch_task_lazy(
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
+    ) -> LazyEntity:
+        """
+        Similar to fetch_task, just that it returns a LazyEntity, which will fetch the workflow lazily.
+        """
+        if name is None:
+            raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
+
+        def _fetch():
+            return self.fetch_task(project=project, domain=domain, name=name, version=version)
+
+        return LazyEntity(name=name, getter=_fetch)
+
     def fetch_task(self, project: str = None, domain: str = None, name: str = None, version: str = None) -> FlyteTask:
         """Fetch a task entity from flyte admin.
 
@@ -213,14 +233,28 @@ class FlyteRemote(object):
         )
         admin_task = self.client.get_task(task_id)
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
-        flyte_task._id = task_id
+        flyte_task.template._id = task_id
         return flyte_task
+
+    def fetch_workflow_lazy(
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
+    ) -> LazyEntity[FlyteWorkflow]:
+        """
+        Similar to fetch_workflow, just that it returns a LazyEntity, which will fetch the workflow lazily.
+        """
+        if name is None:
+            raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
+
+        def _fetch():
+            return self.fetch_workflow(project, domain, name, version)
+
+        return LazyEntity(name=name, getter=_fetch)
 
     def fetch_workflow(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> FlyteWorkflow:
-        """Fetch a workflow entity from flyte admin.
-
+        """
+        Fetch a workflow entity from flyte admin.
         :param project: fetch entity from this project. If None, uses the default_project attribute.
         :param domain: fetch entity from this domain. If None, uses the default_domain attribute.
         :param name: fetch entity with matching name.
@@ -237,6 +271,7 @@ class FlyteRemote(object):
             name,
             version,
         )
+
         admin_workflow = self.client.get_workflow(workflow_id)
         compiled_wf = admin_workflow.closure.compiled_workflow
 
@@ -359,8 +394,8 @@ class FlyteRemote(object):
     def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
         ident = Identifier(
             resource_type=t,
-            project=ss.project or self.default_project if ss else self.default_project,
-            domain=ss.domain or self.default_domain if ss else self.default_domain,
+            project=ss.project if ss and ss.project else self.default_project,
+            domain=ss.domain if ss and ss.domain else self.default_domain,
             name=name,
             version=version or ss.version,
         )
@@ -374,7 +409,7 @@ class FlyteRemote(object):
     def raw_register(
         self,
         cp_entity: FlyteControlPlaneEntity,
-        settings: typing.Optional[SerializationSettings],
+        settings: SerializationSettings,
         version: str,
         create_default_launchplan: bool = True,
         options: Options = None,
@@ -393,6 +428,15 @@ class FlyteRemote(object):
         :param og_entity: Pass in the original workflow (flytekit type) if create_default_launchplan is true
         :return: Identifier of the created entity
         """
+        if isinstance(cp_entity, RemoteEntity):
+            if isinstance(cp_entity, (FlyteWorkflow, FlyteTask)):
+                if not cp_entity.should_register:
+                    remote_logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
+                    raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
+            else:
+                remote_logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
+                raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
+
         if isinstance(
             cp_entity,
             (
@@ -410,6 +454,8 @@ class FlyteRemote(object):
             return None
 
         if isinstance(cp_entity, task_models.TaskSpec):
+            if isinstance(cp_entity, FlyteTask):
+                version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
             try:
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)
@@ -418,6 +464,8 @@ class FlyteRemote(object):
             return ident
 
         if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
+            if isinstance(cp_entity, FlyteWorkflow):
+                version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.WORKFLOW, cp_entity.template.id.name, version, settings)
             try:
                 self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
@@ -484,10 +532,6 @@ class FlyteRemote(object):
 
         ident = None
         for entity, cp_entity in m.items():
-            if isinstance(entity, RemoteEntity):
-                remote_logger.debug(f"Skipping registration of remote entity: {entity.name}")
-                continue
-
             if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and is_dummy_serialization_setting:
                 # Only in the case of workflows can we use the dummy serialization settings.
                 raise user_exceptions.FlyteValueException(
@@ -495,14 +539,17 @@ class FlyteRemote(object):
                     f"No serialization settings set, but workflow contains entities that need to be registered. {cp_entity.id.name}",
                 )
 
-            ident = self.raw_register(
-                cp_entity,
-                settings=settings,
-                version=version,
-                create_default_launchplan=True,
-                options=options,
-                og_entity=entity,
-            )
+            try:
+                ident = self.raw_register(
+                    cp_entity,
+                    settings=settings,
+                    version=version,
+                    create_default_launchplan=True,
+                    options=options,
+                    og_entity=entity,
+                )
+            except RegistrationSkipped:
+                pass
 
         return ident
 
@@ -602,7 +649,7 @@ class FlyteRemote(object):
             filename=to_upload.name,
         )
         self._ctx.file_access.put_data(str(to_upload), upload_location.signed_url)
-        remote_logger.warning(
+        remote_logger.debug(
             f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
         )
 
