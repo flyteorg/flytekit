@@ -66,11 +66,11 @@ def test_normal_task(mock_client):
     )
     admin_task = task_models.Task.from_flyte_idl(merge_sort_remotely)
     mock_client.get_task.return_value = admin_task
-    ft = rr.fetch_task(name="merge_sort_remotely", version="tst")
+    remote_task = rr.fetch_task(name="merge_sort_remotely", version="tst")
 
     @workflow
     def my_wf(numbers: typing.List[int], run_local_at_count: int) -> typing.List[int]:
-        t1_node = create_node(ft, numbers=numbers, run_local_at_count=run_local_at_count)
+        t1_node = create_node(remote_task, numbers=numbers, run_local_at_count=run_local_at_count)
         return t1_node.o0
 
     serialization_settings = flytekit.configuration.SerializationSettings(
