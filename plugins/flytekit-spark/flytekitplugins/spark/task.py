@@ -123,7 +123,6 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             job._databricks_token = cfg.databricks_token
             job._databricks_instance = cfg.databricks_instance
 
-        print("jobjobjobjobjobjob", job)
         return MessageToDict(job.to_flyte_idl())
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
