@@ -584,6 +584,7 @@ def test_optional_flytefile_in_dataclass():
         g: typing.Dict[str, typing.Optional[FlyteFile]]
         g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
         h: typing.Optional[FlyteFile] = None
+        h_prime: typing.Optional[FlyteFile] = None
 
     remote_path = "s3://tmp/file"
     f1 = FlyteFile(remote_path)
@@ -598,6 +599,7 @@ def test_optional_flytefile_in_dataclass():
         f={"a": f1},
         g={"a": f1},
         g_prime={"a": None},
+        h=f1,
     )
 
     ctx = FlyteContext.current_context()
@@ -616,7 +618,8 @@ def test_optional_flytefile_in_dataclass():
     assert o.f["a"].path == ot.f["a"].remote_source
     assert o.g["a"].path == ot.g["a"].remote_source
     assert o.g_prime == {"a": None}
-    assert ot.h is None
+    assert o.h.path == ot.h.remote_source
+    assert ot.h_prime is None
 
 
 def test_flyte_file_in_dataclass():
