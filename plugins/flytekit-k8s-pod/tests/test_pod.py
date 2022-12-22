@@ -12,6 +12,7 @@ from flytekit import Resources, TaskMetadata, dynamic, map_task, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import user
 from flytekit.extend import ExecutionState
 from flytekit.tools.translator import get_serializable
 
@@ -473,3 +474,32 @@ def test_fast():
             assert dynamic_job_spec.tasks[0].k8s_pod.pod_spec["containers"][0]["resources"]["requests"]["gpu"] == "1"
 
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_pod_config():
+    with pytest.raises(user.FlyteValidationException):
+        Pod(pod_spec=None)
+
+    with pytest.raises(user.FlyteValidationException):
+        Pod(pod_spec=V1PodSpec(containers=[]), primary_container_name=None)
+
+    selector = ({"node_group": "memory"},)
+
+    @task(
+        task_config=Pod(
+            pod_spec=V1PodSpec(
+                containers=[],
+                node_selector=selector,
+            ),
+        ),
+        requests=Resources(
+            mem="1G",
+        ),
+    )
+    def my_pod_task():
+        print("hello world")
+        time.sleep(30000)
+
+    assert my_pod_task.task_config
+    assert isinstance(my_pod_task.task_config, Pod)
+    assert my_pod_task.task_config.pod_spec.node_selector == selector
