@@ -104,12 +104,9 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
             experiment = f"{params.task_id.project}.{params.task_id.domain}"
             run_name = f"{params.execution_id.name}.{params.task_id.name.split('.')[-1]}"
 
+        print(experiment)
         mlflow.set_experiment(experiment)
         with mlflow.start_run(run_name=run_name):
-            # Get execution id and flyte console link from propeller.
-            if ctx.execution_state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                # TODO: Get Admin URL and port (flyteadmin:30080)
-                mlflow.log_param("Flyte Console", f"http://flyte:30081/console/project/{params.task_id.project}/domains/{params.task_id.domain}/executions/{params.execution_id.name}")
             out = fn(*args, **kwargs)
             run = mlflow.active_run()
             if run is not None:
