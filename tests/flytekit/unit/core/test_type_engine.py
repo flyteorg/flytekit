@@ -569,6 +569,56 @@ def test_dataclass_int_preserving():
     assert ot == o
 
 
+def test_optional_flytefile_in_dataclass():
+    @dataclass_json
+    @dataclass
+    class TestFileStruct(object):
+        a: FlyteFile
+        b: typing.Optional[FlyteFile]
+        b_prime: typing.Optional[FlyteFile]
+        c: typing.Union[FlyteFile, None]
+        d: typing.List[FlyteFile]
+        e: typing.List[typing.Optional[FlyteFile]]
+        e_prime: typing.List[typing.Optional[FlyteFile]]
+        f: typing.Dict[str, FlyteFile]
+        g: typing.Dict[str, typing.Optional[FlyteFile]]
+        g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
+        h: typing.Optional[FlyteFile] = None
+
+    remote_path = "s3://tmp/file"
+    f1 = FlyteFile(remote_path)
+    o = TestFileStruct(
+        a=f1,
+        b=f1,
+        b_prime=None,
+        c=f1,
+        d=[f1],
+        e=[f1],
+        e_prime=[None],
+        f={"a": f1},
+        g={"a": f1},
+        g_prime={"a": None},
+    )
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct)
+    lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+
+    assert o.a.path == ot.a.remote_source
+    assert o.b.path == ot.b.remote_source
+    assert ot.b_prime is None
+    assert o.c.path == ot.c.remote_source
+    assert o.d[0].path == ot.d[0].remote_source
+    assert o.e[0].path == ot.e[0].remote_source
+    assert o.e_prime == [None]
+    assert o.f["a"].path == ot.f["a"].remote_source
+    assert o.g["a"].path == ot.g["a"].remote_source
+    assert o.g_prime == {"a": None}
+    assert ot.h is None
+
+
 def test_flyte_file_in_dataclass():
     @dataclass_json
     @dataclass
