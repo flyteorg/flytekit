@@ -126,7 +126,11 @@ def _get_git_repo_url(source_path):
     """
     Get git repo URL from remote.origin.url
     """
-    return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
+    try:
+        return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
+    except Exception:
+        # If the file isn't in the git repo, we can't get the url from git config
+        return ""
 
 
 class FlyteRemote(object):
