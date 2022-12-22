@@ -572,6 +572,11 @@ def test_dataclass_int_preserving():
 def test_optional_flytefile_in_dataclass():
     @dataclass_json
     @dataclass
+    class A(object):
+        a: int
+
+    @dataclass_json
+    @dataclass
     class TestFileStruct(object):
         a: FlyteFile
         b: typing.Optional[FlyteFile]
@@ -585,6 +590,8 @@ def test_optional_flytefile_in_dataclass():
         g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
         h: typing.Optional[FlyteFile] = None
         h_prime: typing.Optional[FlyteFile] = None
+        i: typing.Optional[A] = None
+        i_prime: typing.Optional[A] = A(a=99)
 
     remote_path = "s3://tmp/file"
     f1 = FlyteFile(remote_path)
@@ -600,6 +607,7 @@ def test_optional_flytefile_in_dataclass():
         g={"a": f1},
         g_prime={"a": None},
         h=f1,
+        i=A(a=42),
     )
 
     ctx = FlyteContext.current_context()
@@ -620,6 +628,8 @@ def test_optional_flytefile_in_dataclass():
     assert o.g_prime == {"a": None}
     assert o.h.path == ot.h.remote_source
     assert ot.h_prime is None
+    assert o.i == ot.i
+    assert o.i_prime == A(a=99)
 
 
 def test_flyte_file_in_dataclass():
