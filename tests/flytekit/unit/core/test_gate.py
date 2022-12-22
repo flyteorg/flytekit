@@ -13,8 +13,8 @@ from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.tools.translator import get_serializable, gather_dependent_entities
-from flytekit.remote.workflow import FlyteWorkflow
+from flytekit.remote.entities import FlyteWorkflow
+from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = SerializationSettings(
@@ -322,3 +322,5 @@ def test_basic_sleefdsap():
     tts, wf_specs, lp_specs = gather_dependent_entities(entries)
 
     fwf = FlyteWorkflow.promote_from_model(wf_spec.template, tasks=tts)
+
+    print(fwf)

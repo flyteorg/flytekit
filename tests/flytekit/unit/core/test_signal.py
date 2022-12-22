@@ -1,9 +1,10 @@
-
 from flyteidl.admin.signal_pb2 import SignalSetRequest
-from flytekit.core.type_engine import TypeEngine
-from flytekit.core.context_manager import FlyteContextManager
+
 from flytekit.clients.raw import RawSynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
+
 
 def test_fjdska():
     ctx = FlyteContextManager.current_context()
@@ -16,4 +17,3 @@ def test_fjdska():
 
 def test_fdsdjfsd():
     SignalSetRequest()
-

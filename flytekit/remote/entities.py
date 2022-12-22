@@ -354,7 +354,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         branch_node: Optional[FlyteBranchNode] = None,
         gate_node: Optional[FlyteGateNode] = None,
     ):
-        if not task_node and not workflow_node and not branch_node:
+        if not task_node and not workflow_node and not branch_node and not gate_node:
             raise _user_exceptions.FlyteAssertion(
                 "An Flyte node must have one of task|workflow|branch entity specified at once"
             )

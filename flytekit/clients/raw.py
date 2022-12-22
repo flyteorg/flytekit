@@ -10,13 +10,13 @@ from typing import Optional
 import grpc
 import requests as _requests
 from flyteidl.admin.project_pb2 import ProjectListRequest
+from flyteidl.admin.signal_pb2 import SignalList, SignalListRequest, SignalSetRequest, SignalSetResponse
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
-from flyteidl.admin.signal_pb2 import SignalSetRequest, SignalListRequest, SignalSetResponse, SignalList
-from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
+from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 
@@ -417,12 +417,11 @@ class RawSynchronousFlyteClient(object):
         return self._signal.SetSignal(signal_set_request, metadata=self._metadata)
 
     @_handle_rpc_error(retry=True)
-    def list_signal(self, signal_list_request: SignalListRequest) -> SignalList:
+    def list_signals(self, signal_list_request: SignalListRequest) -> SignalList:
         """
         This sets a signal
         """
         return self._signal.ListSignals(signal_list_request, metadata=self._metadata)
-
 
     ####################################################################################################################
     #
@@ -450,6 +449,7 @@ class RawSynchronousFlyteClient(object):
             identical workflow is already registered.
         :raises grpc.RpcError:
         """
+        print(f"Here\n{workflow_create_request.spec.template}")
         return self._stub.CreateWorkflow(workflow_create_request, metadata=self._metadata)
 
     @_handle_rpc_error(retry=True)
