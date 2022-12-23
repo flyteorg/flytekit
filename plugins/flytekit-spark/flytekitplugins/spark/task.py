@@ -36,6 +36,23 @@ class Spark(object):
             self.hadoop_conf = {}
 
 
+@dataclass
+class Databricks(Spark):
+    """
+    Use this to configure a Databricks task. Task's marked with this will automatically execute
+    natively onto databricks platform as a distributed execution of spark
+
+    Args:
+        databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
+        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+    """
+
+    databricks_conf: typing.Optional[Dict[str, typing.Union[str, dict]]] = None
+    databricks_token: Optional[str] = None
+    databricks_instance: Optional[str] = None
+
+
 # This method does not reset the SparkSession since it's a bit hard to handle multiple
 # Spark sessions in a single application as it's described in:
 # https://stackoverflow.com/questions/41491972/how-can-i-tear-down-a-sparksession-and-create-a-new-one-within-one-application.
@@ -100,6 +117,12 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             main_class="",
             spark_type=SparkType.PYTHON,
         )
+        if isinstance(self.task_config, Databricks):
+            cfg = typing.cast(Databricks, self.task_config)
+            job._databricks_conf = cfg.databricks_conf
+            job._databricks_token = cfg.databricks_token
+            job._databricks_instance = cfg.databricks_instance
+
         return MessageToDict(job.to_flyte_idl())
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
@@ -127,3 +150,4 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
+TaskPlugins.register_pythontask_plugin(Databricks, PysparkFunctionTask)
