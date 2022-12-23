@@ -25,7 +25,6 @@ def train_model(epochs: int):
         optimizer="adam", loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), metrics=["accuracy"]
     )
     model.fit(train_images, train_labels, epochs=epochs)
-    # MLFLOW_BACKEND_STORE_URI="postgresql+psycopg2://postgres:@flyte:30089/flyteadmin"
 
 
 def test_local_exec():
