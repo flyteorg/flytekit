@@ -104,7 +104,6 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
             experiment = f"{params.task_id.project}.{params.task_id.domain}"
             run_name = f"{params.execution_id.name}.{params.task_id.name.split('.')[-1]}"
 
-        print(experiment)
         mlflow.set_experiment(experiment)
         with mlflow.start_run(run_name=run_name):
             out = fn(*args, **kwargs)
