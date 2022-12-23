@@ -310,10 +310,10 @@ class PlatformConfig(object):
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
     """
 
-    endpoint: str = "localhost:30081"
-    insecure: bool = False
+    endpoint: str = "localhost:30080"
+    insecure: bool = True
     insecure_skip_verify: bool = False
-    console_endpoint: typing.Optional[str] = None
+    console_endpoint: typing.Optional[str] = "http://localhost:30080"
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
@@ -557,7 +557,9 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(endpoint="localhost:30081", auth_mode="Pkce", insecure=True),
+            platform=PlatformConfig(
+                endpoint="localhost:30080", auth_mode="Pkce", insecure=True, console_endpoint="http://localhost:30080",
+            ),
             data_config=DataConfig(
                 s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
             ),
