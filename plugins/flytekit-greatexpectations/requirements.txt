@@ -502,3 +502,4 @@ wrapt==1.14.1
     #   flytekit
 zipp==3.11.0
     # via importlib-metadata
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
