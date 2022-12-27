@@ -65,6 +65,9 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         return self.short_string()
 
+    def serialize_to_string(self) -> str:
+        return self.to_flyte_idl().SerializeToString()
+
     @property
     def is_empty(self):
         return len(self.to_flyte_idl().SerializeToString()) == 0

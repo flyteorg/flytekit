@@ -251,11 +251,8 @@ class DBTFreshnessOutput(BaseDBTOutput):
 
     Attributes
     ----------
-    raw_run_result : str
-        Raw value of DBT's ``run_result.json``.
-    raw_manifest : str
-        Raw value of DBT's ``manifest.json``.
+    raw_sources : str
+        Raw value of DBT's ``sources.json``.
     """
 
-    raw_run_result: str
-    raw_manifest: str
+    raw_sources: str

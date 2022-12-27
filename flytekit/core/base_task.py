@@ -495,6 +495,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
+            # dynamic_execute returns a literal map in local execute so this also gets triggered.
             if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
                 native_outputs, _dynamic_job.DynamicJobSpec
             ):

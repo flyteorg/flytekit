@@ -71,7 +71,10 @@ def translate_inputs_to_literals(
     """
 
     def extract_value(
-        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
+        ctx: FlyteContext,
+        input_val: Any,
+        val_type: type,
+        flyte_literal_type: _type_models.LiteralType,
     ) -> _literal_models.Literal:
 
         if isinstance(input_val, list):
@@ -460,7 +463,9 @@ class Promise(object):
 
 
 def create_native_named_tuple(
-    ctx: FlyteContext, promises: Union[Tuple[Promise], Promise, VoidPromise, None], entity_interface: Interface
+    ctx: FlyteContext,
+    promises: Union[Tuple[Promise],Promise, VoidPromise, None],
+    entity_interface: Interface,
 ) -> Optional[Tuple]:
     """
     Creates and returns a Named tuple with all variables that match the expected named outputs. this makes
@@ -507,7 +512,8 @@ def create_native_named_tuple(
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
 def create_task_output(
-    promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
+    promises: Optional[Union[List[Promise], Promise]],
+    entity_interface: Optional[Interface] = None,
 ) -> Optional[Union[Tuple[Promise], Promise]]:
     # TODO: Add VoidPromise here to simplify things at call site. Consider returning for [] below as well instead of
     #   raising an exception.
@@ -625,7 +631,10 @@ def binding_data_from_python_std(
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            _, v_type = DictTransformer.get_dict_types(t_value_type) if t_value_type else None, None
+            _, v_type = (
+                DictTransformer.get_dict_types(t_value_type) if t_value_type else None,
+                None,
+            )
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type)
@@ -867,7 +876,6 @@ def create_and_link_node_from_remote(
     )
 
     flytekit_node = Node(
-        # TODO: Better naming, probably a derivative of the function name.
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
         metadata=entity.construct_node_metadata(),
         bindings=sorted(bindings, key=lambda b: b.var),
@@ -877,7 +885,7 @@ def create_and_link_node_from_remote(
     ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
-        return VoidPromise(entity.name)
+        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
 
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
@@ -935,7 +943,11 @@ def create_and_link_node(
         try:
             bindings.append(
                 binding_from_python_std(
-                    ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
+                    ctx,
+                    var_name=k,
+                    expected_literal_type=var.type,
+                    t_value=v,
+                    t_value_type=interface.inputs[k],
                 )
             )
             used_inputs.add(k)
@@ -987,9 +999,7 @@ class LocallyExecutable(Protocol):
         ...
 
 
-def flyte_entity_call_handler(
-    entity: Union[SupportsNodeCreation], *args, **kwargs
-) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+def flyte_entity_call_handler(entity: SupportsNodeCreation, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate

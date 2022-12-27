@@ -354,18 +354,8 @@ class DBTFreshness(PythonInstanceTask):
             raise DBTUnhandledError(f"unhandled error while executing {full_command}", logs)
 
         output_dir = os.path.join(task_input.project_dir, task_input.output_path)
-        run_result_path = os.path.join(output_dir, "run_results.json")
-        with open(run_result_path) as file:
-            run_result = file.read()
+        sources_path = os.path.join(output_dir, "sources.json")
+        with open(sources_path) as file:
+            sources = file.read()
 
-        # read manifest.json
-        manifest_path = os.path.join(output_dir, "manifest.json")
-        with open(manifest_path) as file:
-            manifest = file.read()
-
-        return DBTFreshnessOutput(
-            command=full_command,
-            exit_code=exit_code,
-            raw_run_result=run_result,
-            raw_manifest=manifest,
-        )
+        return DBTFreshnessOutput(command=full_command, exit_code=exit_code, raw_sources=sources)
