@@ -34,7 +34,7 @@ class Pod(object):
     """
 
     pod_spec: V1PodSpec
-    primary_container_name: str = _PRIMARY_CONTAINER_NAME_FIELD
+    primary_container_name: str = "primary"
     labels: Optional[Dict[str, str]] = None
     annotations: Optional[Dict[str, str]] = None
 

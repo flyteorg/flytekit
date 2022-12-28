@@ -483,7 +483,7 @@ def test_pod_config():
     with pytest.raises(user.FlyteValidationException):
         Pod(pod_spec=V1PodSpec(containers=[]), primary_container_name=None)
 
-    selector = ({"node_group": "memory"},)
+    selector = {"node_group": "memory"}
 
     @task(
         task_config=Pod(
