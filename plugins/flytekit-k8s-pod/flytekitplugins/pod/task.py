@@ -13,6 +13,7 @@ from flytekit.loggers import logger
 from flytekit.models import task as _task_models
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
+PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
 
 
 def _sanitize_resource_name(resource: _task_models.Resources.ResourceEntry) -> str:
@@ -34,7 +35,7 @@ class Pod(object):
     """
 
     pod_spec: V1PodSpec
-    primary_container_name: str = "primary"
+    primary_container_name: str = PRIMARY_CONTAINER_DEFAULT_NAME
     labels: Optional[Dict[str, str]] = None
     annotations: Optional[Dict[str, str]] = None
 
