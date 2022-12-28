@@ -53,6 +53,7 @@ Compilation (Serialization) Time Settings
    ~Image
    ~ImageConfig
    ~SerializationSettings
+   ~FastSerializationSettings
 
 .. _configuration-execution-time-settings:
 
