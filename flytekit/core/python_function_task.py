@@ -17,7 +17,7 @@
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -193,7 +193,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             from flytekit.tools.translator import get_serializable
 
             self._create_and_cache_dynamic_workflow()
-            self._wf.compile(**kwargs)
+            cast(PythonFunctionWorkflow, self._wf).compile(**kwargs)
 
             wf = self._wf
             model_entities: OrderedDict = OrderedDict()
@@ -263,12 +263,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
-            function_outputs = self._wf.execute(**kwargs)
+            function_outputs = cast(PythonFunctionWorkflow, self._wf).execute(**kwargs)
 
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
                 return VoidPromise(self.name)
 
-            if len(self._wf.python_interface.outputs) == 0:
+            if len(cast(PythonFunctionWorkflow, self._wf).python_interface.outputs) == 0:
                 raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
 
             # TODO: This will need to be cleaned up when we revisit top-level tuple support.

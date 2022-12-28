@@ -29,7 +29,7 @@ class Interface(object):
     def __init__(
         self,
         inputs: Optional[Dict[str, Type]] | Optional[Dict[str, Tuple[Type, Any]]] = None,
-        outputs: Optional[Dict[str, Type]] = None,
+        outputs: Optional[Dict[str, Type]] | Optional[Dict[str, Optional[Type]]] = None,
         output_tuple_name: Optional[str] = None,
         docstring: Optional[Docstring] = None,
     ):
@@ -50,7 +50,7 @@ class Interface(object):
                     self._inputs[k] = v  # type: ignore
                 else:
                     self._inputs[k] = (v, None)  # type: ignore
-        self._outputs = outputs if outputs else {}
+        self._outputs = outputs if outputs else {}  # type: ignore
         self._output_tuple_name = output_tuple_name
 
         if outputs:
@@ -120,7 +120,7 @@ class Interface(object):
 
     @property
     def outputs(self) -> typing.Dict[str, type]:
-        return self._outputs
+        return self._outputs  # type: ignore
 
     @property
     def docstring(self) -> Optional[Docstring]:

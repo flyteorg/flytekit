@@ -406,7 +406,14 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         cls.Renderers[python_type] = renderer
 
     @classmethod
-    def register(cls, h: Handlers, default_for_type: bool = False, override: bool = False, default_format_for_type: bool = False, default_storage_for_type: bool = False):
+    def register(
+        cls,
+        h: Handlers,
+        default_for_type: bool = False,
+        override: bool = False,
+        default_format_for_type: bool = False,
+        default_storage_for_type: bool = False,
+    ):
         """
         Call this with any Encoder or Decoder to register it with the flytekit type system. If your handler does not
         specify a protocol (e.g. s3, gs, etc.) field, then
