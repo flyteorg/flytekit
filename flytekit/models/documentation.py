@@ -21,9 +21,9 @@ class Description(_common_models.FlyteIdlEntity):
         HTML = 2
         RST = 3
 
-    value: Optional[str] = ""
-    uri: Optional[str] = ""
-    icon_link: Optional[str] = ""
+    value: Optional[str] = None
+    uri: Optional[str] = None
+    icon_link: Optional[str] = None
     format: DescriptionFormat = DescriptionFormat.RST
 
     def to_flyte_idl(self):
