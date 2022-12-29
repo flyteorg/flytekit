@@ -3,17 +3,17 @@ from __future__ import annotations
 import typing
 from typing import Any, Callable, Dict, List, Optional, Type
 
+from flyteidl.core import interface_pb2, literals_pb2, security_pb2, workflow_pb2
+
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_function_to_interface, transform_inputs_to_parameters
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
 from flytekit.models import common as _common_models
-from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
-from flytekit.models import security
-from flytekit.models.core import workflow as _workflow_model
+
+# from flytekit.models.core import workflow as _workflow_model
 
 
 class LaunchPlan(object):
@@ -96,7 +96,7 @@ class LaunchPlan(object):
             name=workflow.name,
             workflow=workflow,
             parameters=parameter_map,
-            fixed_inputs=_literal_models.LiteralMap(literals={}),
+            fixed_inputs=literals_pb2.LiteralMap(literals={}),
         )
 
         LaunchPlan.CACHE[workflow.name] = lp
@@ -115,7 +115,7 @@ class LaunchPlan(object):
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         max_parallelism: int = None,
-        security_context: typing.Optional[security.SecurityContext] = None,
+        security_context: typing.Optional[security_pb2.SecurityContext] = None,
         auth_role: _common_models.AuthRole = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
@@ -142,14 +142,14 @@ class LaunchPlan(object):
             flyte_interface_types=workflow.interface.inputs,
             native_types=workflow.python_interface.inputs,
         )
-        fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)
+        fixed_lm = literals_pb2.LiteralMap(literals=fixed_literals)
 
         if auth_role:
             if security_context:
                 raise ValueError("Use of AuthRole is deprecated. You cannot specify both AuthRole and SecurityContext")
 
-            security_context = security.SecurityContext(
-                run_as=security.Identity(
+            security_context = security_pb2.SecurityContext(
+                run_as=security_pb2.Identity(
                     iam_role=auth_role.assumable_iam_role,
                     k8s_service_account=auth_role.kubernetes_service_account,
                 ),
@@ -193,7 +193,7 @@ class LaunchPlan(object):
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         max_parallelism: int = None,
-        security_context: typing.Optional[security.SecurityContext] = None,
+        security_context: typing.Optional[security_pb2.SecurityContext] = None,
         auth_role: _common_models.AuthRole = None,
     ) -> LaunchPlan:
         """
@@ -246,8 +246,8 @@ class LaunchPlan(object):
             default_inputs.update(fixed_inputs)
 
             if auth_role and not security_context:
-                security_context = security.SecurityContext(
-                    run_as=security.Identity(
+                security_context = security_pb2.SecurityContext(
+                    run_as=security_pb2.Identity(
                         iam_role=auth_role.assumable_iam_role,
                         k8s_service_account=auth_role.kubernetes_service_account,
                     ),
@@ -296,21 +296,21 @@ class LaunchPlan(object):
         self,
         name: str,
         workflow: _annotated_workflow.WorkflowBase,
-        parameters: _interface_models.ParameterMap,
-        fixed_inputs: _literal_models.LiteralMap,
+        parameters: interface_pb2.ParameterMap,
+        fixed_inputs: literals_pb2.LiteralMap,
         schedule: _schedule_model.Schedule = None,
         notifications: List[_common_models.Notification] = None,
         labels: _common_models.Labels = None,
         annotations: _common_models.Annotations = None,
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         max_parallelism: typing.Optional[int] = None,
-        security_context: typing.Optional[security.SecurityContext] = None,
+        security_context: typing.Optional[security_pb2.SecurityContext] = None,
     ):
         self._name = name
         self._workflow = workflow
         # Ensure fixed inputs are not in parameter map
         parameters = {k: v for k, v in parameters.parameters.items() if k not in fixed_inputs.literals}
-        self._parameters = _interface_models.ParameterMap(parameters=parameters)
+        self._parameters = interface_pb2.ParameterMap(parameters=parameters)
         self._fixed_inputs = fixed_inputs
         # See create() for additional information
         self._saved_inputs = {}
@@ -328,8 +328,8 @@ class LaunchPlan(object):
     def clone_with(
         self,
         name: str,
-        parameters: _interface_models.ParameterMap = None,
-        fixed_inputs: _literal_models.LiteralMap = None,
+        parameters: interface_pb2.ParameterMap = None,
+        fixed_inputs: literals_pb2.LiteralMap = None,
         schedule: _schedule_model.Schedule = None,
         notifications: List[_common_models.Notification] = None,
         labels: _common_models.Labels = None,
@@ -337,7 +337,7 @@ class LaunchPlan(object):
         raw_output_data_config: _common_models.RawOutputDataConfig = None,
         auth_role: _common_models.AuthRole = None,
         max_parallelism: int = None,
-        security_context: typing.Optional[security.SecurityContext] = None,
+        security_context: typing.Optional[security_pb2.SecurityContext] = None,
     ) -> LaunchPlan:
         return LaunchPlan(
             name=name,
@@ -359,7 +359,7 @@ class LaunchPlan(object):
         return self.workflow.python_interface
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
+    def interface(self) -> interface_pb2.TypedInterface:
         return self.workflow.interface
 
     @property
@@ -367,11 +367,11 @@ class LaunchPlan(object):
         return self._name
 
     @property
-    def parameters(self) -> _interface_models.ParameterMap:
+    def parameters(self) -> interface_pb2.ParameterMap:
         return self._parameters
 
     @property
-    def fixed_inputs(self) -> _literal_models.LiteralMap:
+    def fixed_inputs(self) -> literals_pb2.LiteralMap:
         return self._fixed_inputs
 
     @property
@@ -411,10 +411,10 @@ class LaunchPlan(object):
         return self._max_parallelism
 
     @property
-    def security_context(self) -> typing.Optional[security.SecurityContext]:
+    def security_context(self) -> typing.Optional[security_pb2.SecurityContext]:
         return self._security_context
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+    def construct_node_metadata(self) -> workflow_pb2.NodeMetadata:
         return self.workflow.construct_node_metadata()
 
     def __call__(self, *args, **kwargs):
