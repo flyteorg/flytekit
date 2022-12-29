@@ -1,9 +1,11 @@
+import asyncio
 import contextlib
 import datetime as _datetime
 import os
 import pathlib
 import subprocess
 import tempfile
+import time
 import traceback as _traceback
 from typing import List, Optional
 
@@ -70,8 +72,9 @@ def _dispatch_execute(
     """
     Dispatches execute to PythonTask
         Step1: Download inputs and load into a literal map
-        Step2: Invoke task - dispatch_execute
-        Step3:
+        Step2: Install python dependencies if needed
+        Step3: Invoke task - dispatch_execute
+        Step4:
             a: [Optional] Record outputs to output_prefix
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
@@ -79,17 +82,38 @@ def _dispatch_execute(
     output_file_dict = {}
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
+        loop = asyncio.new_event_loop()
+
         # Step1
-        local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
-        ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-        idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+        async def load_input_proto():
+            start = time.time()
+            local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+            ctx.file_access.get_data(inputs_path, local_inputs_file)
+            input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+            idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+            end = time.time()
+            print(f"time elapsed in load_input_proto: {end-start}")
+            return idl_input_literals
 
         # Step2
+        async def install_dependencies():
+            start = time.time()
+            task_def.runtime_env.install_dependencies()
+            end = time.time()
+            print(f"time elapsed in install_dependencies: {end - start}")
+
+        idl_input_literals = loop.create_task(load_input_proto())
+        tasks = [idl_input_literals]
+        if task_def.runtime_env:
+            tasks.append(loop.create_task(install_dependencies()))
+
+        loop.run_until_complete(asyncio.wait(tasks))
+        loop.close()
+        # Step3
         # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
         # of the FlyteScopedExceptions
-        outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
-        # Step3a
+        outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals.result())
+        # Step4a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
@@ -139,7 +163,7 @@ def _dispatch_execute(
     # Interpret all other exceptions (some of which may be caused by the code in the try block outside of
     # dispatch_execute) as recoverable system exceptions.
     except Exception as e:
-        # Step 3c
+        # Step 4c
         exc_str = _traceback.format_exc()
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(

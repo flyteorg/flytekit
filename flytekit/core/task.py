@@ -7,6 +7,7 @@ from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.core.runtime_env import RuntimeEnv
 from flytekit.models.security import Secret
 
 
@@ -90,6 +91,7 @@ def task(
     execution_mode: Optional[PythonFunctionTask.ExecutionBehavior] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     task_resolver: Optional[TaskResolverMixin] = None,
     disable_deck: bool = True,
+    runtime_env: Optional[RuntimeEnv] = None,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -179,6 +181,7 @@ def task(
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: If true, this task will not output deck html file
+    :param runtime_env: define a runtime environment for the task
     """
 
     def wrapper(fn) -> PythonFunctionTask:
@@ -204,6 +207,7 @@ def task(
             execution_mode=execution_mode,
             task_resolver=task_resolver,
             disable_deck=disable_deck,
+            runtime_env=runtime_env,
         )
         update_wrapper(task_instance, fn)
         return task_instance
