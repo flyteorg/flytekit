@@ -9,6 +9,9 @@ from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional, Type
 
+from flyteidl.core.interface_pb2 import Variable
+from flyteidl.core.tasks_pb2 import Container, K8sPod, Sql
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask
@@ -18,8 +21,6 @@ from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
-from flytekit.models.interface import Variable
-from flytekit.models.task import Container, K8sPod, Sql
 
 
 class MapPythonTask(PythonTask):
