@@ -4,7 +4,7 @@ import datetime
 import typing
 from typing import Any, List
 
-from flyteidl.core import workflow_pb2
+from flyteidl.core import literals_pb2, tasks_pb2, workflow_pb2
 
 from flytekit.core.resources import Resources
 from flytekit.core.utils import _dnsify
@@ -20,7 +20,7 @@ class Node(object):
         self,
         id: str,
         metadata: workflow_pb2.NodeMetadata,
-        bindings: List[_literal_models.Binding],
+        bindings: List[literals_pb2.Binding],
         upstream_nodes: List[Node],
         flyte_entity: Any,
     ):
@@ -31,9 +31,9 @@ class Node(object):
         self._bindings = bindings
         self._upstream_nodes = upstream_nodes
         self._flyte_entity = flyte_entity
-        self._aliases: _workflow_model.Alias = None
+        self._aliases: workflow_pb2.Alias = None
         self._outputs = None
-        self._resources: typing.Optional[_resources_model] = None
+        self._resources: typing.Optional[tasks_pb2.Resources] = None
 
     def runs_before(self, other: Node):
         """
@@ -65,7 +65,7 @@ class Node(object):
         return self._id
 
     @property
-    def bindings(self) -> List[_literal_models.Binding]:
+    def bindings(self) -> List[literals_pb2.Binding]:
         return self._bindings
 
     @property
@@ -77,7 +77,7 @@ class Node(object):
         return self._flyte_entity
 
     @property
-    def metadata(self) -> _workflow_model.NodeMetadata:
+    def metadata(self) -> workflow_pb2.NodeMetadata:
         return self._metadata
 
     def with_overrides(self, *args, **kwargs):
@@ -89,11 +89,11 @@ class Node(object):
                 raise AssertionError("Aliases should be specified as dict[str, str]")
             self._aliases = []
             for k, v in alias_dict.items():
-                self._aliases.append(_workflow_model.Alias(var=k, alias=v))
+                self._aliases.append(workflow_pb2.Alias(var=k, alias=v))
         if "requests" in kwargs or "limits" in kwargs:
             requests = _convert_resource_overrides(kwargs.get("requests"), "requests")
             limits = _convert_resource_overrides(kwargs.get("limits"), "limits")
-            self._resources = _resources_model(requests=requests, limits=limits)
+            self._resources = tasks_pb2.Resources(requests=requests, limits=limits)
         if "timeout" in kwargs:
             timeout = kwargs["timeout"]
             if timeout is None:
@@ -107,7 +107,7 @@ class Node(object):
         if "retries" in kwargs:
             retries = kwargs["retries"]
             self._metadata._retries = (
-                _literal_models.RetryStrategy(0) if retries is None else _literal_models.RetryStrategy(retries)
+                literals_pb2.RetryStrategy(0) if retries is None else literals_pb2.RetryStrategy(retries)
             )
         if "interruptible" in kwargs:
             self._metadata._interruptible = kwargs["interruptible"]
@@ -118,29 +118,27 @@ class Node(object):
 
 def _convert_resource_overrides(
     resources: typing.Optional[Resources], resource_name: str
-) -> [_resources_model.ResourceEntry]:
+) -> List[tasks_pb2.Resources.ResourceEntry]:
     if resources is None:
         return []
     if not isinstance(resources, Resources):
         raise AssertionError(f"{resource_name} should be specified as flytekit.Resources")
     resource_entries = []
     if resources.cpu is not None:
-        resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.CPU, resources.cpu))
+        resource_entries.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.CPU, resources.cpu))
 
     if resources.mem is not None:
-        resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.MEMORY, resources.mem))
+        resource_entries.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.MEMORY, resources.mem))
 
     if resources.gpu is not None:
-        resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.GPU, resources.gpu))
+        resource_entries.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.GPU, resources.gpu))
 
     if resources.storage is not None:
-        resource_entries.append(
-            _resources_model.ResourceEntry(_resources_model.ResourceName.STORAGE, resources.storage)
-        )
+        resource_entries.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.STORAGE, resources.storage))
     if resources.ephemeral_storage is not None:
         resource_entries.append(
-            _resources_model.ResourceEntry(
-                _resources_model.ResourceName.EPHEMERAL_STORAGE,
+            tasks_pb2.Resources.ResourceEntry(
+                tasks_pb2.Resources.EPHEMERAL_STORAGE,
                 resources.ephemeral_storage,
             )
         )
