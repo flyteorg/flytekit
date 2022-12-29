@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from typing import Dict, Type
 
+from flyteidl.core import identifier_pb2
+
 from flytekit.core.launch_plan import ReferenceLaunchPlan
 from flytekit.core.task import ReferenceTask
 from flytekit.core.workflow import ReferenceWorkflow
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.models.core import identifier as _identifier_model
+
+# from flytekit.models.core import identifier as _identifier_model
 
 
 def get_reference_entity(
@@ -40,11 +43,11 @@ def get_reference_entity(
     :param outputs: An ordered dictionary of output names as strings to their Python types.
     :return:
     """
-    if resource_type == _identifier_model.ResourceType.TASK:
+    if resource_type == identifier_pb2.TASK:
         return ReferenceTask(project, domain, name, version, inputs, outputs)
-    elif resource_type == _identifier_model.ResourceType.WORKFLOW:
+    elif resource_type == identifier_pb2.WORKFLOW:
         return ReferenceWorkflow(project, domain, name, version, inputs, outputs)
-    elif resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
+    elif resource_type == identifier_pb2.LAUNCH_PLAN:
         return ReferenceLaunchPlan(project, domain, name, version, inputs, outputs)
     else:
         raise FlyteValidationException("Resource type must be one of task, workflow, or launch plan")
