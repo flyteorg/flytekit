@@ -6,8 +6,9 @@ from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from flyteidl.core import tasks_pb2
+
 from flytekit.loggers import logger
-from flytekit.models import task as _task_models
 
 
 def _dnsify(value: str) -> str:
@@ -52,7 +53,7 @@ def _get_container_definition(
     image: str,
     command: List[str],
     args: List[str],
-    data_loading_config: Optional[_task_models.DataLoadingConfig] = None,
+    data_loading_config: Optional[tasks_pb2.DataLoadingConfig] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
@@ -64,7 +65,7 @@ def _get_container_definition(
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-) -> _task_models.Container:
+) -> tasks_pb2.Container:
     storage_limit = storage_limit
     storage_request = storage_request
     ephemeral_storage_limit = ephemeral_storage_limit
@@ -78,51 +79,41 @@ def _get_container_definition(
 
     requests = []
     if storage_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
-        )
+        requests.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.STORAGE, storage_request))
     if ephemeral_storage_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
-            )
+            tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.EPHEMERAL_STORAGE, ephemeral_storage_request)
         )
     if cpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
+        requests.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.CPU, cpu_request))
     if gpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
+        requests.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.GPU, gpu_request))
     if memory_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
-        )
+        requests.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.MEMORY, memory_request))
 
     limits = []
     if storage_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit))
+        limits.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.STORAGE, storage_limit))
     if ephemeral_storage_limit:
-        limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
-            )
-        )
+        limits.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.EPHEMERAL_STORAGE, ephemeral_storage_limit))
     if cpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
+        limits.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.CPU, cpu_limit))
     if gpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
+        limits.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.GPU, gpu_limit))
     if memory_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit))
+        limits.append(tasks_pb2.Resources.ResourceEntry(tasks_pb2.Resources.MEMORY, memory_limit))
 
     if environment is None:
         environment = {}
 
-    return _task_models.Container(
+    return tasks_pb2.Container(
         image=image,
         command=command,
         args=args,
-        resources=_task_models.Resources(limits=limits, requests=requests),
+        resources=tasks_pb2.Resources(limits=limits, requests=requests),
         env=environment,
         config={},
-        data_loading_config=data_loading_config,
+        data_config=data_loading_config,
     )
 
 
