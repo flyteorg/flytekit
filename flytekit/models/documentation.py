@@ -37,10 +37,10 @@ class Description(_common_models.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object: description_entity_pb2.Description) -> "Description":
         return cls(
-            value=pb2_object.value,
-            uri=pb2_object.uri,
+            value=pb2_object.value if pb2_object.value else None,
+            uri=pb2_object.uri if pb2_object.uri else None,
             format=Description.DescriptionFormat(pb2_object.format),
-            icon_link=pb2_object.icon_link,
+            icon_link=pb2_object.icon_link if pb2_object.icon_link else None,
         )
 
 
