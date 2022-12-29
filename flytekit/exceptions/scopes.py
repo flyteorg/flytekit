@@ -1,12 +1,12 @@
 from sys import exc_info as _exc_info
 from traceback import format_tb as _format_tb
 
+from flyteidl.core import errors_pb2
 from wrapt import decorator as _decorator
 
 from flytekit.exceptions import base as _base_exceptions
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.exceptions import user as _user_exceptions
-from flytekit.models.core import errors as _error_model
 
 
 class FlyteScopedException(Exception):
@@ -88,10 +88,10 @@ class FlyteScopedException(Exception):
             return self._exc_value.kind
         elif isinstance(self._exc_value, _base_exceptions.FlyteRecoverableException):
             # If it is an exception that is recoverable, we return it as such.
-            return _error_model.ContainerError.Kind.RECOVERABLE
+            return errors_pb2.ContainerError.RECOVERABLE
         else:
             # The remaining exceptions are considered unrecoverable.
-            return _error_model.ContainerError.Kind.NON_RECOVERABLE
+            return errors_pb2.ContainerError.NON_RECOVERABLE
 
 
 class FlyteScopedSystemException(FlyteScopedException):
@@ -172,7 +172,7 @@ def system_entry_point(wrapped, instance, args, kwargs):
                 # This is why this function exists - arbitrary exceptions that we don't know what to do with are
                 # interpreted as system errors.
                 # System error, raise full stack-trace all the way up the chain.
-                raise FlyteScopedSystemException(*_exc_info(), kind=_error_model.ContainerError.Kind.RECOVERABLE)
+                raise FlyteScopedSystemException(*_exc_info(), kind=errors_pb2.ContainerError.RECOVERABLE)
     finally:
         _CONTEXT_STACK.pop()
 
