@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
+from flyteidl.core import identifier_pb2, interface_pb2, literals_pb2, workflow_pb2
+
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.promise import (
@@ -15,10 +17,6 @@ from flytekit.core.promise import (
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
-from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
-from flytekit.models.core import identifier as _identifier_model
-from flytekit.models.core import workflow as _workflow_model
 
 
 @dataclass
@@ -29,10 +27,10 @@ class Reference(ABC):
     version: str
 
     def __post_init__(self):
-        self._id = _identifier_model.Identifier(self.resource_type, self.project, self.domain, self.name, self.version)
+        self._id = identifier_pb2.Identifier(self.resource_type, self.project, self.domain, self.name, self.version)
 
     @property
-    def id(self) -> _identifier_model.Identifier:
+    def id(self) -> identifier_pb2.Identifier:
         return self._id
 
     @property
@@ -45,21 +43,21 @@ class Reference(ABC):
 class TaskReference(Reference):
     @property
     def resource_type(self) -> int:
-        return _identifier_model.ResourceType.TASK
+        return identifier_pb2.TASK
 
 
 @dataclass
 class LaunchPlanReference(Reference):
     @property
     def resource_type(self) -> int:
-        return _identifier_model.ResourceType.LAUNCH_PLAN
+        return identifier_pb2.LAUNCH_PLAN
 
 
 @dataclass
 class WorkflowReference(Reference):
     @property
     def resource_type(self) -> int:
-        return _identifier_model.ResourceType.WORKFLOW
+        return identifier_pb2.WORKFLOW
 
 
 class ReferenceEntity(object):
@@ -87,7 +85,7 @@ class ReferenceEntity(object):
         return self._native_interface
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
+    def interface(self) -> interface_pb2.TypedInterface:
         return self._interface
 
     @property
@@ -99,12 +97,12 @@ class ReferenceEntity(object):
         return self._reference.id.name
 
     @property
-    def id(self) -> _identifier_model.Identifier:
+    def id(self) -> identifier_pb2.Identifier:
         return self.reference.id
 
     def unwrap_literal_map_and_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> _literal_models.LiteralMap:
+        self, ctx: FlyteContext, input_literal_map: literals_pb2.LiteralMap
+    ) -> literals_pb2.LiteralMap:
         """
         Please see the implementation of the dispatch_execute function in the real task.
         """
@@ -138,7 +136,7 @@ class ReferenceEntity(object):
             if isinstance(v, tuple):
                 raise AssertionError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
             literals[k] = TypeEngine.to_literal(ctx, v, py_type, literal_type)
-        outputs_literal_map = _literal_models.LiteralMap(literals=literals)
+        outputs_literal_map = literals_pb2.LiteralMap(literals=literals)
         # After the execute has been successfully completed
         return outputs_literal_map
 
@@ -158,7 +156,7 @@ class ReferenceEntity(object):
             flyte_interface_types=self.interface.inputs,
             native_types=self.python_interface.inputs,
         )
-        input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+        input_literal_map = literals_pb2.LiteralMap(literals=kwargs)
 
         outputs_literal_map = self.unwrap_literal_map_and_execute(ctx, input_literal_map)
 
@@ -176,8 +174,8 @@ class ReferenceEntity(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
-        return _workflow_model.NodeMetadata(name=extract_obj_name(self.name))
+    def construct_node_metadata(self) -> workflow_pb2.NodeMetadata:
+        return workflow_pb2.NodeMetadata(name=extract_obj_name(self.name))
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         return create_and_link_node(ctx, entity=self, **kwargs)
@@ -215,7 +213,7 @@ class ReferenceEntity(object):
 # ReferenceEntity is not a registerable entity and therefore the below classes do not need to inherit from
 # flytekit.models.common.FlyteIdlEntity.
 class ReferenceTemplate(object):
-    def __init__(self, id: _identifier_model.Identifier, resource_type: int) -> None:
+    def __init__(self, id: identifier_pb2.Identifier, resource_type: int) -> None:
         """
         A reference template encapsulates all the information necessary to use reference entities within other
         workflows or dynamic tasks.
@@ -228,7 +226,7 @@ class ReferenceTemplate(object):
         self._resource_type = resource_type
 
     @property
-    def id(self) -> _identifier_model.Identifier:
+    def id(self) -> identifier_pb2.Identifier:
         """
         User-specified information that uniquely identifies this reference.
         :rtype: flytekit.models.core.identifier.Identifier
