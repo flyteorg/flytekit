@@ -19,6 +19,9 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union
 
+from flyteidl.admin import task_pb2, workflow_pb2
+from flyteidl.core import dynamic_job_pb2, literals_pb2
+
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -35,10 +38,6 @@ from flytekit.core.workflow import (
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
-from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import literals as _literal_models
-from flytekit.models import task as task_models
-from flytekit.models.admin import workflow as admin_workflow_models
 
 T = TypeVar("T")
 
@@ -175,7 +174,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
 
     def compile_into_workflow(
         self, ctx: FlyteContext, task_function: Callable, **kwargs
-    ) -> Union[_dynamic_job.DynamicJobSpec, _literal_models.LiteralMap]:
+    ) -> Union[dynamic_job_pb2.DynamicJobSpec, literals_pb2.LiteralMap]:
         """
         In the case of dynamic workflows, this function will produce a workflow definition at execution time which will
         then proceed to be executed.
@@ -200,15 +199,32 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # See comment on reference entity checking a bit down below in this function.
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
-            workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
-                model_entities, ctx.serialization_settings, wf
-            )
+            workflow_spec: workflow_pb2.WorkflowSpec = get_serializable(model_entities, ctx.serialization_settings, wf)
+
+            # TODO: move this utility function somewhere
+            def unwrap_literal(binding_data: literals_pb2.BindingData) -> literals_pb2.Literal:
+                if binding_data.scalar:
+                    return literals_pb2.Literal(scalar=binding_data.scalar)
+                elif binding_data.collection:
+                    return literals_pb2.Literal(
+                        collection=literals_pb2.LiteralCollection(
+                            literals=[unwrap_literal(binding) for binding in binding_data.collection.bindings]
+                        )
+                    )
+                elif binding_data.map:
+                    return literals_pb2.Literal(
+                        map=literals_pb2.LiteralMap(
+                            literals={k: unwrap_literal(binding) for k, binding in binding_data.map.bindings.items()}
+                        )
+                    )
+                else:
+                    raise Exception("binding data has to be set.")
 
             # If no nodes were produced, let's just return the strict outputs
             if len(workflow_spec.template.nodes) == 0:
-                return _literal_models.LiteralMap(
+                return literals_pb2.LiteralMap(
                     literals={
-                        binding.var: binding.binding.to_literal_model() for binding in workflow_spec.template.outputs
+                        binding.var: unwrap_literal(binding.binding) for binding in workflow_spec.template.outputs
                     }
                 )
 
@@ -217,7 +233,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             for entity, model in model_entities.items():
                 # We only care about gathering tasks here. Launch plans are handled by
                 # propeller. Subworkflows should already be in the workflow spec.
-                if not isinstance(entity, Task) and not isinstance(entity, task_models.TaskSpec):
+                if not isinstance(entity, Task) and not isinstance(entity, task_pb2.TaskSpec):
                     continue
 
                 # We are currently not supporting reference tasks since these will
@@ -226,16 +242,16 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 if isinstance(entity, ReferenceTask):
                     raise Exception("Reference tasks are currently unsupported within dynamic tasks")
 
-                if not isinstance(model, task_models.TaskSpec):
+                if not isinstance(model, task_pb2.TaskSpec):
                     raise TypeError(
-                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
+                        f"Unexpected type for serialized form of task. Expected {task_pb2.TaskSpec}, but got {type(model)}"
                     )
 
                 # Store the valid task template so that we can pass it to the
                 # DynamicJobSpec later
                 tts.append(model.template)
 
-            dj_spec = _dynamic_job.DynamicJobSpec(
+            dj_spec = dynamic_job_pb2.DynamicJobSpec(
                 min_successes=len(workflow_spec.template.nodes),
                 tasks=tts,
                 nodes=workflow_spec.template.nodes,
@@ -295,7 +311,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
                 flyte_interface_types=self.interface.outputs,
                 native_types=self.python_interface.outputs,
             )
-            return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)
+            return literals_pb2.LiteralMap(literals=wf_outputs_as_literal_dict)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return self.compile_into_workflow(ctx, task_function, **kwargs)
