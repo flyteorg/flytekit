@@ -146,7 +146,7 @@ Common Flyte IDL Objects
    AuthRole
    Labels
    Annotations
-   WorkflowExecutionPhase
+   WorkflowExecution
    Blob
    BlobMetadata
    Literal
@@ -161,6 +161,10 @@ if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
     from importlib.metadata import entry_points
+
+from flyteidl.core.execution_pb2 import WorkflowExecution
+from flyteidl.core.literals_pb2 import Blob, BlobMetadata, Literal, Scalar
+from flyteidl.core.types_pb2 import BlobType, LiteralType
 
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
@@ -188,10 +192,6 @@ from flytekit.extras import pytorch, tensorflow
 from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
 from flytekit.models.common import Annotations, AuthRole, Labels
-from flytekit.models.core.execution import WorkflowExecutionPhase
-from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, numpy, schema
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
