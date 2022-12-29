@@ -12,13 +12,13 @@ from typing import Type
 import numpy as _np
 import pandas
 from dataclasses_json import config, dataclass_json
+from flyteidl.core.literals_pb2 import Literal, Scalar, Schema
+from flyteidl.core.types_pb2 import LiteralType, SchemaType
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.loggers import logger
-from flytekit.models.literals import Literal, Scalar, Schema
-from flytekit.models.types import LiteralType, SchemaType
 
 T = typing.TypeVar("T")
 

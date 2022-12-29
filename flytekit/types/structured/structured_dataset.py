@@ -13,6 +13,9 @@ import numpy as _np
 import pandas as pd
 import pyarrow as pa
 from dataclasses_json import config, dataclass_json
+from flyteidl.core import literals_pb2, types_pb2
+from flyteidl.core.literals_pb2 import Literal, Scalar, StructuredDatasetMetadata
+from flyteidl.core.types_pb2 import LiteralType, SchemaType, StructuredDatasetType
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
@@ -21,10 +24,6 @@ from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersisten
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.deck.renderer import Renderable
 from flytekit.loggers import logger
-from flytekit.models import literals
-from flytekit.models import types as type_models
-from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
-from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
@@ -60,7 +59,7 @@ class StructuredDataset(object):
         self,
         dataframe: typing.Optional[typing.Any] = None,
         uri: Optional[str, os.PathLike] = None,
-        metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
+        metadata: typing.Optional[literals_pb2.StructuredDatasetMetadata] = None,
         **kwargs,
     ):
         self._dataframe = dataframe
@@ -72,7 +71,7 @@ class StructuredDataset(object):
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._metadata = metadata
         # This is not for users to set, the transformer will set this.
-        self._literal_sd: Optional[literals.StructuredDataset] = None
+        self._literal_sd: Optional[literals_pb2.StructuredDataset] = None
         # Not meant for users to set, will be set by an open() call
         self._dataframe_type: Optional[Type[DF]] = None
 
@@ -85,7 +84,7 @@ class StructuredDataset(object):
         return self._metadata
 
     @property
-    def literal(self) -> Optional[literals.StructuredDataset]:
+    def literal(self) -> Optional[literals_pb2.StructuredDataset]:
         return self._literal_sd
 
     def open(self, dataframe_type: Type[DF]):
@@ -194,7 +193,7 @@ class StructuredDatasetEncoder(ABC):
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
-    ) -> literals.StructuredDataset:
+    ) -> literals_pb2.StructuredDataset:
         """
         Even if the user code returns a plain dataframe instance, the dataset transformer engine will wrap the
         incoming dataframe with defaults set for that dataframe
@@ -206,7 +205,7 @@ class StructuredDatasetEncoder(ABC):
         :param structured_dataset: This is a StructuredDataset wrapper object. See more info above.
         :param structured_dataset_type: This the StructuredDatasetType, as found in the LiteralType of the interface
           of the task that invoked this encoding call. It is passed along to encoders so that authors of encoders
-          can include it in the returned literals.StructuredDataset. See the IDL for more information on why this
+          can include it in the returned literals_pb2.StructuredDataset. See the IDL for more information on why this
           literal in particular carries the type information along with it. If the encoder doesn't supply it, it will
           also be filled in after the encoder runs by the transformer engine.
         :return: This function should return a StructuredDataset literal object. Do not confuse this with the
@@ -253,7 +252,7 @@ class StructuredDatasetDecoder(ABC):
     def decode(
         self,
         ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
+        flyte_value: literals_pb2.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
     ) -> Union[DF, Generator[DF, None, None]]:
         """
@@ -280,17 +279,17 @@ def convert_schema_type_to_structured_dataset_type(
     column_type: int,
 ) -> int:
     if column_type == SchemaType.SchemaColumn.SchemaColumnType.INTEGER:
-        return type_models.SimpleType.INTEGER
+        return types_pb2.SimpleType.INTEGER
     if column_type == SchemaType.SchemaColumn.SchemaColumnType.FLOAT:
-        return type_models.SimpleType.FLOAT
+        return types_pb2.SimpleType.FLOAT
     if column_type == SchemaType.SchemaColumn.SchemaColumnType.STRING:
-        return type_models.SimpleType.STRING
+        return types_pb2.SimpleType.STRING
     if column_type == SchemaType.SchemaColumn.SchemaColumnType.DATETIME:
-        return type_models.SimpleType.DATETIME
+        return types_pb2.SimpleType.DATETIME
     if column_type == SchemaType.SchemaColumn.SchemaColumnType.DURATION:
-        return type_models.SimpleType.DURATION
+        return types_pb2.SimpleType.DURATION
     if column_type == SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN:
-        return type_models.SimpleType.BOOLEAN
+        return types_pb2.SimpleType.BOOLEAN
     else:
         raise AssertionError(f"Unrecognized SchemaColumnType: {column_type}")
 
@@ -307,24 +306,24 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     """
 
     _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {
-        _np.int32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        _np.int64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        _np.uint32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        _np.uint64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        int: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-        _np.float32: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        _np.float64: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        float: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-        _np.bool_: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),  # type: ignore
-        bool: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),
-        _np.datetime64: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
-        _datetime.datetime: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
-        _np.timedelta64: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
-        _datetime.timedelta: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
-        _np.string_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-        _np.str_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-        _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-        str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
+        _np.int32: types_pb2.LiteralType(simple=types_pb2.SimpleType.INTEGER),
+        _np.int64: types_pb2.LiteralType(simple=types_pb2.SimpleType.INTEGER),
+        _np.uint32: types_pb2.LiteralType(simple=types_pb2.SimpleType.INTEGER),
+        _np.uint64: types_pb2.LiteralType(simple=types_pb2.SimpleType.INTEGER),
+        int: types_pb2.LiteralType(simple=types_pb2.SimpleType.INTEGER),
+        _np.float32: types_pb2.LiteralType(simple=types_pb2.SimpleType.FLOAT),
+        _np.float64: types_pb2.LiteralType(simple=types_pb2.SimpleType.FLOAT),
+        float: types_pb2.LiteralType(simple=types_pb2.SimpleType.FLOAT),
+        _np.bool_: types_pb2.LiteralType(simple=types_pb2.SimpleType.BOOLEAN),  # type: ignore
+        bool: types_pb2.LiteralType(simple=types_pb2.SimpleType.BOOLEAN),
+        _np.datetime64: types_pb2.LiteralType(simple=types_pb2.SimpleType.DATETIME),
+        _datetime.datetime: types_pb2.LiteralType(simple=types_pb2.SimpleType.DATETIME),
+        _np.timedelta64: types_pb2.LiteralType(simple=types_pb2.SimpleType.DURATION),
+        _datetime.timedelta: types_pb2.LiteralType(simple=types_pb2.SimpleType.DURATION),
+        _np.string_: types_pb2.LiteralType(simple=types_pb2.SimpleType.STRING),
+        _np.str_: types_pb2.LiteralType(simple=types_pb2.SimpleType.STRING),
+        _np.object_: types_pb2.LiteralType(simple=types_pb2.SimpleType.STRING),
+        str: types_pb2.LiteralType(simple=types_pb2.SimpleType.STRING),
     }
 
     ENCODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetEncoder]]] = {}
@@ -536,7 +535,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             # There are three cases that we need to take care of here.
 
             # 1. A task returns a StructuredDataset that was just a passthrough input. If this happens
-            # then return the original literals.StructuredDataset without invoking any encoder
+            # then return the original literals_pb2.StructuredDataset without invoking any encoder
             #
             # Ex.
             #   def t1(dataset: Annotated[StructuredDataset, my_cols]) -> Annotated[StructuredDataset, my_cols]:
@@ -558,7 +557,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             if python_val.dataframe is None:
                 if not python_val.uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
-                sd_model = literals.StructuredDataset(
+                sd_model = literals_pb2.StructuredDataset(
                     uri=python_val.uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
                 )
@@ -686,8 +685,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 # Dataframe will always be serialized to parquet file by FlyteSchema transformer
                 new_sdt = StructuredDatasetType(columns=final_dataset_columns, format=PARQUET)
 
-            metad = literals.StructuredDatasetMetadata(structured_dataset_type=new_sdt)
-            sd_literal = literals.StructuredDataset(
+            metad = literals_pb2.StructuredDatasetMetadata(structured_dataset_type=new_sdt)
+            sd_literal = literals_pb2.StructuredDataset(
                 uri=lv.scalar.schema.uri,
                 metadata=metad,
             )
@@ -758,7 +757,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def open_as(
         self,
         ctx: FlyteContext,
-        sd: literals.StructuredDataset,
+        sd: literals_pb2.StructuredDataset,
         df_type: Type[DF],
         updated_metadata: StructuredDatasetMetadata,
     ) -> DF:
@@ -779,7 +778,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def iter_as(
         self,
         ctx: FlyteContext,
-        sd: literals.StructuredDataset,
+        sd: literals_pb2.StructuredDataset,
         df_type: Type[DF],
         updated_metadata: StructuredDatasetMetadata,
     ) -> Generator[DF, None, None]:
@@ -790,13 +789,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             raise ValueError(f"Decoder {decoder} didn't return iterator {result} but should have from {sd}")
         return result
 
-    def _get_dataset_column_literal_type(self, t: Type) -> type_models.LiteralType:
+    def _get_dataset_column_literal_type(self, t: Type) -> types_pb2.LiteralType:
         if t in self._SUPPORTED_TYPES:
             return self._SUPPORTED_TYPES[t]
         if hasattr(t, "__origin__") and t.__origin__ == list:
-            return type_models.LiteralType(collection_type=self._get_dataset_column_literal_type(t.__args__[0]))
+            return types_pb2.LiteralType(collection_type=self._get_dataset_column_literal_type(t.__args__[0]))
         if hasattr(t, "__origin__") and t.__origin__ == dict:
-            return type_models.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
+            return types_pb2.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
         raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 
     def _convert_ordered_dict_of_columns_to_list(

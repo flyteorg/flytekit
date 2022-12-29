@@ -7,14 +7,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from dataclasses_json import config, dataclass_json
+from flyteidl.core import types_pb2
+from flyteidl.core.literals_pb2 import Blob, BlobMetadata, Literal, Scalar
+from flyteidl.core.types_pb2 import LiteralType
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
-from flytekit.models import types as _type_models
-from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
 from flytekit.types.file import FileExt
 
 T = typing.TypeVar("T")
@@ -209,8 +208,8 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         return t.extension()
 
     @staticmethod
-    def _blob_type(format: str) -> _core_types.BlobType:
-        return _core_types.BlobType(format=format, dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART)
+    def _blob_type(format: str) -> types_pb2.BlobType:
+        return types_pb2.BlobType(format=format, dimensionality=types_pb2.BlobType.MULTIPART)
 
     def assert_type(self, t: typing.Type[FlyteDirectory], v: typing.Union[FlyteDirectory, os.PathLike, str]):
         if isinstance(v, FlyteDirectory) or isinstance(v, str) or isinstance(v, os.PathLike):
@@ -224,7 +223,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         )
 
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
-        return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
+        return LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
 
     def to_literal(
         self,
@@ -304,10 +303,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         return fd
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteDirectory[typing.Any]]:
-        if (
-            literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
-        ):
+        if literal_type.blob is not None and literal_type.blob.dimensionality == types_pb2.BlobType.MULTIPART:
             return FlyteDirectory.__class_getitem__(literal_type.blob.format)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 

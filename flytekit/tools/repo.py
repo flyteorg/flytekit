@@ -5,12 +5,12 @@ import typing
 from pathlib import Path
 
 import click
+from flyteidl.admin import launch_plan_pb2
+from flyteidl.core.identifier_pb2 import Identifier
 
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
-from flytekit.models import launch_plan
-from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped
 from flytekit.tools import fast_registration, module_loader
@@ -260,7 +260,7 @@ def register(
         return
 
     for cp_entity in serializable_entities:
-        og_id = cp_entity.id if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id
+        og_id = cp_entity.id if isinstance(cp_entity, launch_plan_pb2.LaunchPlan) else cp_entity.template.id
         secho(og_id, "")
         try:
             if not dry_run:

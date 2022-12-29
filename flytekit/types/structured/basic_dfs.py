@@ -5,13 +5,13 @@ from typing import TypeVar
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+from flyteidl.core import literals_pb2
+from flyteidl.core.literals_pb2 import StructuredDatasetMetadata
+from flyteidl.core.types_pb2 import StructuredDatasetType
 
 from flytekit import FlyteContext
 from flytekit.deck import TopFrameRenderer
 from flytekit.deck.renderer import ArrowRenderer
-from flytekit.models import literals
-from flytekit.models.literals import StructuredDatasetMetadata
-from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
     StructuredDataset,
@@ -32,7 +32,7 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
-    ) -> literals.StructuredDataset:
+    ) -> literals_pb2.StructuredDataset:
 
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
@@ -41,7 +41,7 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         df.to_parquet(local_path, coerce_timestamps="us", allow_truncated_timestamps=False)
         ctx.file_access.upload_directory(local_dir, path)
         structured_dataset_type.format = PARQUET
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+        return literals_pb2.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
@@ -51,7 +51,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
     def decode(
         self,
         ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
+        flyte_value: literals_pb2.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pd.DataFrame:
         path = flyte_value.uri
@@ -72,14 +72,14 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         ctx: FlyteContext,
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
-    ) -> literals.StructuredDataset:
+    ) -> literals_pb2.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_path()
         df = structured_dataset.dataframe
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = os.path.join(local_dir, f"{0:05}")
         pq.write_table(df, local_path)
         ctx.file_access.upload_directory(local_dir, path)
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+        return literals_pb2.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
@@ -89,7 +89,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
     def decode(
         self,
         ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
+        flyte_value: literals_pb2.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         path = flyte_value.uri
