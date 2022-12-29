@@ -16,17 +16,7 @@ from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from google.protobuf.duration_pb2 import Duration
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
-from flytekit.models import common as _common
-from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
-from flytekit.models import launch_plan as _launch_plan
-from flytekit.models import node_execution as _node_execution
-from flytekit.models import project as _project
-from flytekit.models import task as _task
-from flytekit.models.admin import common as _admin_common
-from flytekit.models.admin import task_execution as _task_execution
-from flytekit.models.admin import workflow as _workflow
-from flytekit.models.core import identifier as _identifier
 
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
@@ -114,10 +104,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
             )
         )
-        return (
-            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
-            str(identifier_list.token),
-        )
+        return (identifier_list.entities, str(identifier_list.token))
 
     def list_tasks_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
         """
@@ -679,16 +666,14 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def get_node_execution_data(self, node_execution_identifier) -> _execution.NodeExecutionGetDataResponse:
+    def get_node_execution_data(self, node_execution_identifier) -> _node_execution_pb2.NodeExecutionGetDataResponse:
         """
         Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
 
         :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
         """
-        return _execution.NodeExecutionGetDataResponse.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_node_execution_data(
-                _node_execution_pb2.NodeExecutionGetDataRequest(id=node_execution_identifier.to_flyte_idl())
-            )
+        return super(SynchronousFlyteClient, self).get_node_execution_data(
+            _node_execution_pb2.NodeExecutionGetDataRequest(id=node_execution_identifier.to_flyte_idl())
         )
 
     def list_node_executions(
@@ -696,9 +681,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         workflow_execution_identifier,
         limit: int = 100,
         token: typing.Optional[str] = None,
-        filters: typing.List[_filters.Filter] = None,
-        sort_by: _admin_common.Sort = None,
-        unique_parent_id: str = None,
+        filters: typing.Optional[typing.List[_filters.Filter]] = None,
+        sort_by: typing.Optional[_common_pb2.Sort] = None,
+        unique_parent_id: typing.Optional[str] = None,
     ):
         """Get node executions associated with a given workflow execution.
 
@@ -718,14 +703,11 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 limit=limit,
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
-                sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
+                sort_by=sort_by,
                 unique_parent_id=unique_parent_id,
             )
         )
-        return (
-            [_node_execution.NodeExecution.from_flyte_idl(e) for e in exec_list.node_executions],
-            str(exec_list.token),
-        )
+        return (exec_list.node_executions, str(exec_list.token))
 
     def list_node_executions_for_task_paginated(
         self,
