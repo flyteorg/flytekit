@@ -67,7 +67,7 @@ Note: This command only works on regular Python packages, not namespace packages
     help="Directory to write the output zip file containing the protobuf definitions",
 )
 @click.option(
-    "-d",
+    "-D",
     "--destination-dir",
     required=False,
     type=str,
