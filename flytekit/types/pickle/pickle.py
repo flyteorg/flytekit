@@ -3,12 +3,11 @@ import typing
 from typing import Type
 
 import cloudpickle
+from flyteidl.core.literals_pb2 import BlobMetadata, Literal
+from flyteidl.core.types_pb2 import BlobType, LiteralType
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
-from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
 
 T = typing.TypeVar("T")
 
@@ -61,11 +60,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         return data
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        meta = BlobMetadata(
-            type=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
-        )
+        meta = BlobMetadata(type=BlobType(format=self.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.SINGLE))
         # Dump the task output into pickle
         local_dir = ctx.file_access.get_random_local_directory()
         os.makedirs(local_dir, exist_ok=True)
@@ -81,7 +76,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlytePickle[typing.Any]]:
         if (
             literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.dimensionality == BlobType.SINGLE
             and literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
         ):
             return FlytePickle
@@ -89,11 +84,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return LiteralType(
-            blob=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
-        )
+        return LiteralType(blob=BlobType(format=self.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.SINGLE))
 
 
 TypeEngine.register(FlytePickleTransformer())
