@@ -14,6 +14,22 @@ from functools import lru_cache
 from typing import Dict, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from flyteidl.core import types_pb2
+from flyteidl.core.interface_pb2 import Variable, VariableMap
+from flyteidl.core.literals_pb2 import (
+    Blob,
+    BlobMetadata,
+    Literal,
+    LiteralCollection,
+    LiteralMap,
+    Primitive,
+    Scalar,
+    Schema,
+    StructuredDatasetMetadata,
+    Union,
+    Void,
+)
+from flyteidl.core.types_pb2 import BlobType, EnumType, LiteralType, StructuredDatasetType, TypeAnnotation, UnionType
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -30,24 +46,6 @@ from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
-from flytekit.models import interface as _interface_models
-from flytekit.models import types as _type_models
-from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
-from flytekit.models.core import types as _core_types
-from flytekit.models.literals import (
-    Blob,
-    BlobMetadata,
-    Literal,
-    LiteralCollection,
-    LiteralMap,
-    Primitive,
-    Scalar,
-    Schema,
-    StructuredDatasetMetadata,
-    Union,
-    Void,
-)
-from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -335,7 +333,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"evaluation doesn't work with json dataclasses"
             )
 
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema)
+        return LiteralType(simple=types_pb2.STRUCT, metadata=schema)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if not dataclasses.is_dataclass(python_val):
@@ -428,11 +426,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 Literal(
                     scalar=Scalar(
                         blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                                )
-                            ),
+                            metadata=BlobMetadata(type=BlobType(format="", dimensionality=BlobType.SINGLE)),
                             uri=python_val.path,
                         )
                     )
@@ -445,11 +439,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 Literal(
                     scalar=Scalar(
                         blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-                                )
-                            ),
+                            metadata=BlobMetadata(type=BlobType(format="", dimensionality=BlobType.MULTIPART)),
                             uri=python_val.path,
                         )
                     )
@@ -722,9 +712,7 @@ class TypeEngine(typing.Generic[T]):
                     )
                 data = x.data
         if data is not None:
-            idl_type_annotation = TypeAnnotationModel(annotations=data)
-            res = LiteralType.from_flyte_idl(res.to_flyte_idl())
-            res._annotation = idl_type_annotation
+            res = LiteralType(annotation=TypeAnnotation(annotations=data))
         return res
 
     @classmethod
@@ -779,15 +767,15 @@ class TypeEngine(typing.Generic[T]):
         return transformer.to_html(ctx, python_val, expected_python_type)
 
     @classmethod
-    def named_tuple_to_variable_map(cls, t: typing.NamedTuple) -> _interface_models.VariableMap:
+    def named_tuple_to_variable_map(cls, t: typing.NamedTuple) -> VariableMap:
         """
         Converts a python-native ``NamedTuple`` to a flyte-specific VariableMap of named literals.
         """
         variables = {}
         for idx, (var_name, var_type) in enumerate(t.__annotations__.items()):
             literal_type = cls.to_literal_type(var_type)
-            variables[var_name] = _interface_models.Variable(type=literal_type, description=f"{idx}")
-        return _interface_models.VariableMap(variables=variables)
+            variables[var_name] = Variable(type=literal_type, description=f"{idx}")
+        return VariableMap(variables=variables)
 
     @classmethod
     def literal_map_to_kwargs(
@@ -839,9 +827,7 @@ class TypeEngine(typing.Generic[T]):
         return cls._REGISTRY.keys()
 
     @classmethod
-    def guess_python_types(
-        cls, flyte_variable_dict: typing.Dict[str, _interface_models.Variable]
-    ) -> typing.Dict[str, type]:
+    def guess_python_types(cls, flyte_variable_dict: typing.Dict[str, Variable]) -> typing.Dict[str, type]:
         """
         Transforms a dictionary of flyte-specific ``Variable`` objects to a dictionary of regular python values.
         """
@@ -900,7 +886,7 @@ class ListTransformer(TypeTransformer[T]):
         """
         try:
             sub_type = TypeEngine.to_literal_type(self.get_sub_type(t))
-            return _type_models.LiteralType(collection_type=sub_type)
+            return LiteralType(collection_type=sub_type)
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
@@ -1041,7 +1027,7 @@ class UnionTransformer(TypeTransformer[T]):
             # must go through TypeEngine.to_literal_type instead of trans.get_literal_type
             # to handle Annotated
             variants = [_add_tag_to_type(TypeEngine.to_literal_type(x), t.name) for (t, x) in trans]
-            return _type_models.LiteralType(union_type=UnionType(variants))
+            return LiteralType(union_type=UnionType(variants))
         except Exception as e:
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
 
@@ -1174,10 +1160,10 @@ class DictTransformer(TypeTransformer[dict]):
             if tp[0] == str:
                 try:
                     sub_type = TypeEngine.to_literal_type(tp[1])
-                    return _type_models.LiteralType(map_value_type=sub_type)
+                    return LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return LiteralType(simple=types_pb2.STRUCT)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -1242,14 +1228,14 @@ class TextIOTransformer(TypeTransformer[typing.TextIO]):
     def __init__(self):
         super().__init__(name="TextIO", t=typing.TextIO)
 
-    def _blob_type(self) -> _core_types.BlobType:
-        return _core_types.BlobType(
+    def _blob_type(self) -> BlobType:
+        return BlobType(
             format=mimetypes.types_map[".txt"],
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            dimensionality=BlobType.SINGLE,
         )
 
     def get_literal_type(self, t: typing.TextIO) -> LiteralType:
-        return _type_models.LiteralType(
+        return LiteralType(
             blob=self._blob_type(),
         )
 
@@ -1276,14 +1262,14 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
     def __init__(self):
         super().__init__(name="BinaryIO", t=typing.BinaryIO)
 
-    def _blob_type(self) -> _core_types.BlobType:
-        return _core_types.BlobType(
+    def _blob_type(self) -> BlobType:
+        return BlobType(
             format=mimetypes.types_map[".bin"],
-            dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+            dimensionality=BlobType.SINGLE,
         )
 
     def get_literal_type(self, t: Type[typing.BinaryIO]) -> LiteralType:
-        return _type_models.LiteralType(
+        return LiteralType(
             blob=self._blob_type(),
         )
 
@@ -1320,7 +1306,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         values = [v.value for v in t]  # type: ignore
         if not isinstance(values[0], str):
             raise TypeTransformerFailedError("Only EnumTypes with value of string are supported")
-        return LiteralType(enum_type=_core_types.EnumType(values=values))
+        return LiteralType(enum_type=EnumType(values=values))
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if type(python_val).__class__ != enum.EnumMeta:
@@ -1420,7 +1406,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "int",
             int,
-            _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
+            LiteralType(simple=types_pb2.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
             lambda x: x.scalar.primitive.integer,
         )
@@ -1430,7 +1416,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "float",
             float,
-            _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
+            LiteralType(simple=types_pb2.FLOAT),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
             _check_and_covert_float,
         )
@@ -1440,7 +1426,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "bool",
             bool,
-            _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
+            LiteralType(simple=types_pb2.BOOLEAN),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
             lambda x: x.scalar.primitive.boolean,
         )
@@ -1450,7 +1436,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "str",
             str,
-            _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
+            LiteralType(simple=types_pb2.STRING),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
             lambda x: x.scalar.primitive.string_value,
         )
@@ -1460,7 +1446,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "datetime",
             _datetime.datetime,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
+            LiteralType(simple=types_pb2.DATETIME),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
             lambda x: x.scalar.primitive.datetime,
         )
@@ -1470,7 +1456,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "timedelta",
             _datetime.timedelta,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
+            LiteralType(simple=types_pb2.DURATION),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
             lambda x: x.scalar.primitive.duration,
         )
@@ -1480,7 +1466,7 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "none",
             type(None),
-            _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
+            LiteralType(simple=types_pb2.NONE),
             lambda x: Literal(scalar=Scalar(none_type=Void())),
             lambda x: _check_and_convert_void(x),
         ),
@@ -1517,7 +1503,7 @@ class LiteralsResolver(collections.UserDict):
     def __init__(
         self,
         literals: typing.Dict[str, Literal],
-        variable_map: Optional[Dict[str, _interface_models.Variable]] = None,
+        variable_map: Optional[Dict[str, Variable]] = None,
         ctx: Optional[FlyteContext] = None,
     ):
         """
@@ -1559,7 +1545,7 @@ class LiteralsResolver(collections.UserDict):
         return self._native_values
 
     @property
-    def variable_map(self) -> Optional[Dict[str, _interface_models.Variable]]:
+    def variable_map(self) -> Optional[Dict[str, Variable]]:
         return self._variable_map
 
     @property
