@@ -1,13 +1,14 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type
 
+from flyteidl.core import tasks_pb2
+from flyteidl.core.security_pb2 import Secret, SecurityContext
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition
-from flytekit.models import task as _task_model
-from flytekit.models.security import Secret, SecurityContext
 
 
 class ContainerTask(PythonTask):
@@ -18,17 +19,17 @@ class ContainerTask(PythonTask):
     """
 
     class MetadataFormat(Enum):
-        JSON = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_JSON
-        YAML = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_YAML
-        PROTO = _task_model.DataLoadingConfig.LITERALMAP_FORMAT_PROTO
+        JSON = tasks_pb2.DataLoadingConfig.JSON
+        YAML = tasks_pb2.DataLoadingConfig.YAML
+        PROTO = tasks_pb2.DataLoadingConfig.PROTO
 
     class IOStrategy(Enum):
-        DOWNLOAD_EAGER = _task_model.IOStrategy.DOWNLOAD_MODE_EAGER
-        DOWNLOAD_STREAM = _task_model.IOStrategy.DOWNLOAD_MODE_STREAM
-        DO_NOT_DOWNLOAD = _task_model.IOStrategy.DOWNLOAD_MODE_NO_DOWNLOAD
-        UPLOAD_EAGER = _task_model.IOStrategy.UPLOAD_MODE_EAGER
-        UPLOAD_ON_EXIT = _task_model.IOStrategy.UPLOAD_MODE_ON_EXIT
-        DO_NOT_UPLOAD = _task_model.IOStrategy.UPLOAD_MODE_NO_UPLOAD
+        DOWNLOAD_EAGER = tasks_pb2.IOStrategy.DOWNLOAD_EAGER
+        DOWNLOAD_STREAM = tasks_pb2.IOStrategy.DOWNLOAD_STREAM
+        DO_NOT_DOWNLOAD = tasks_pb2.IOStrategy.DO_NOT_DOWNLOAD
+        UPLOAD_EAGER = tasks_pb2.IOStrategy.UPLOAD_EAGER
+        UPLOAD_ON_EXIT = tasks_pb2.IOStrategy.UPLOAD_ON_EXIT
+        DO_NOT_UPLOAD = tasks_pb2.IOStrategy.DO_NOT_UPLOAD
 
     def __init__(
         self,
@@ -89,14 +90,14 @@ class ContainerTask(PythonTask):
         )
         return None
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> tasks_pb2.Container:
         env = settings.env or {}
         env = {**env, **self.environment} if self.environment else env
         return _get_container_definition(
             image=self._image,
             command=self._cmd,
             args=self._args,
-            data_loading_config=_task_model.DataLoadingConfig(
+            data_loading_config=tasks_pb2.DataLoadingConfig(
                 input_path=self._input_data_dir,
                 output_path=self._output_data_dir,
                 format=self._md_format.value,
