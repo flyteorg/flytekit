@@ -55,8 +55,9 @@ def print_all(
     j: datetime.timedelta,
     k: Color,
     l: dict,
+    m: dict,
 ):
-    print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}, {l}")
+    print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}, {l}, {m}")
 
 
 @task
@@ -85,9 +86,10 @@ def my_wf(
     l: dict,
     remote: pd.DataFrame,
     image: StructuredDataset,
+    m: dict = {"hello": "world"},
 ) -> Annotated[StructuredDataset, subset_cols]:
     x = get_subset_df(df=remote)  # noqa: shown for demonstration; users should use the same types between tasks
     show_sd(in_sd=x)
     show_sd(in_sd=image)
-    print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l)
+    print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l, m=m)
     return x
