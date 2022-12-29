@@ -5,6 +5,7 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
+from flyteidl.core import interface_pb2, literals_pb2, types_pb2, workflow_pb2
 from typing_extensions import Protocol, get_args
 
 from flytekit.core import constants as _common_constants
@@ -16,22 +17,14 @@ from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
 from flytekit.exceptions import user as _user_exceptions
-from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
-from flytekit.models import literals as _literals_models
-from flytekit.models import types as _type_models
-from flytekit.models import types as type_models
-from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.literals import Primitive
-from flytekit.models.types import SimpleType
 
 
 def translate_inputs_to_literals(
     ctx: FlyteContext,
     incoming_values: Dict[str, Any],
-    flyte_interface_types: Dict[str, _interface_models.Variable],
+    flyte_interface_types: Dict[str, interface_pb2.Variable],
     native_types: Dict[str, type],
-) -> Dict[str, _literal_models.Literal]:
+) -> Dict[str, literals_pb2.Literal]:
     """
     The point of this function is to extract out Literals from a collection of either Python native values (which would
     be converted into Flyte literals) or Promises (the literals in which would just get extracted).
@@ -68,8 +61,8 @@ def translate_inputs_to_literals(
         ctx: FlyteContext,
         input_val: Any,
         val_type: type,
-        flyte_literal_type: _type_models.LiteralType,
-    ) -> _literal_models.Literal:
+        flyte_literal_type: types_pb2.LiteralType,
+    ) -> literals_pb2.Literal:
 
         if isinstance(input_val, list):
             lt = flyte_literal_type
@@ -89,7 +82,7 @@ def translate_inputs_to_literals(
                     raise
                 sub_type = type(input_val[0])
             literal_list = [extract_value(ctx, v, sub_type, lt.collection_type) for v in input_val]
-            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
+            return literals_pb2.Literal(collection=literals_pb2.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
             lt = flyte_literal_type
             python_type = val_type
@@ -99,17 +92,17 @@ def translate_inputs_to_literals(
                     if variant.map_value_type:
                         lt = variant
                         python_type = get_args(val_type)[i]
-                    if variant.simple == _type_models.SimpleType.STRUCT:
+                    if variant.simple == types_pb2.STRUCT:
                         lt = variant
                         python_type = get_args(val_type)[i]
-            if lt.map_value_type is None and lt.simple != _type_models.SimpleType.STRUCT:
+            if lt.map_value_type is None and lt.simple != types_pb2.STRUCT:
                 raise TypeError(f"Not a map type {lt} but got a map {input_val}")
-            if lt.simple == _type_models.SimpleType.STRUCT:
+            if lt.simple == types_pb2.STRUCT:
                 return TypeEngine.to_literal(ctx, input_val, type(input_val), lt)
             else:
                 k_type, sub_type = DictTransformer.get_dict_types(python_type)  # type: ignore
                 literal_map = {k: extract_value(ctx, v, sub_type, lt.map_value_type) for k, v in input_val.items()}
-                return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literal_map))
+                return literals_pb2.Literal(map=literals_pb2.LiteralMap(literals=literal_map))
         elif isinstance(input_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
             return input_val.val
@@ -206,11 +199,11 @@ class ComparisonExpression(object):
             self._rhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), rhs, type(rhs), None)
 
     @property
-    def rhs(self) -> Union["Promise", _literal_models.Literal]:
+    def rhs(self) -> Union["Promise", literals_pb2.Literal]:
         return self._rhs
 
     @property
-    def lhs(self) -> Union["Promise", _literal_models.Literal]:
+    def lhs(self) -> Union["Promise", literals_pb2.Literal]:
         return self._lhs
 
     @property
@@ -338,7 +331,7 @@ class Promise(object):
 
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
-    def __init__(self, var: str, val: Union[NodeOutput, _literal_models.Literal]):
+    def __init__(self, var: str, val: Union[NodeOutput, literals_pb2.Literal]):
         self._var = var
         self._promise_ready = True
         self._val = val
@@ -375,7 +368,7 @@ class Promise(object):
         return self._promise_ready
 
     @property
-    def val(self) -> _literal_models.Literal:
+    def val(self) -> literals_pb2.Literal:
         """
         If the promise is ready then this holds the actual evaluate value in Flyte's type system
         """
@@ -577,23 +570,23 @@ def create_task_output(
 def binding_from_flyte_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
-    expected_literal_type: _type_models.LiteralType,
+    expected_literal_type: types_pb2.LiteralType,
     t_value: typing.Any,
-) -> _literals_models.Binding:
+) -> literals_pb2.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type=None)
-    return _literals_models.Binding(var=var_name, binding=binding_data)
+    return literals_pb2.Binding(var=var_name, binding=binding_data)
 
 
 def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
-    expected_literal_type: _type_models.LiteralType,
+    expected_literal_type: types_pb2.LiteralType,
     t_value: typing.Any,
     t_value_type: Optional[type] = None,
-) -> _literals_models.BindingData:
+) -> literals_pb2.BindingData:
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
-            return _literals_models.BindingData(promise=t_value.ref)
+            return literals_pb2.BindingData(promise=t_value.ref)
 
     elif isinstance(t_value, VoidPromise):
         raise AssertionError(
@@ -605,37 +598,34 @@ def binding_data_from_python_std(
             raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
 
         sub_type = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
-        collection = _literals_models.BindingDataCollection(
+        collection = literals_pb2.BindingDataCollection(
             bindings=[
                 binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
             ]
         )
 
-        return _literals_models.BindingData(collection=collection)
+        return literals_pb2.BindingData(collection=collection)
 
     elif isinstance(t_value, dict):
-        if (
-            expected_literal_type.map_value_type is None
-            and expected_literal_type.simple != _type_models.SimpleType.STRUCT
-        ):
+        if expected_literal_type.map_value_type is None and expected_literal_type.simple != types_pb2.STRUCT:
             raise AssertionError(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
             )
-        if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
+        if expected_literal_type.simple == types_pb2.STRUCT:
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
-            return _literals_models.BindingData(scalar=lit.scalar)
+            return literals_pb2.BindingData(scalar=lit.scalar)
         else:
             _, v_type = (
                 DictTransformer.get_dict_types(t_value_type) if t_value_type else None,
                 None,
             )
-            m = _literals_models.BindingDataMap(
+            m = literals_pb2.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type)
                     for k, v in t_value.items()
                 }
             )
-        return _literals_models.BindingData(map=m)
+        return literals_pb2.BindingData(map=m)
 
     elif isinstance(t_value, tuple):
         raise AssertionError(
@@ -647,22 +637,22 @@ def binding_data_from_python_std(
 
     # This is the scalar case - e.g. my_task(in1=5)
     scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
-    return _literals_models.BindingData(scalar=scalar)
+    return literals_pb2.BindingData(scalar=scalar)
 
 
 def binding_from_python_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
-    expected_literal_type: _type_models.LiteralType,
+    expected_literal_type: types_pb2.LiteralType,
     t_value: typing.Any,
     t_value_type: type,
-) -> _literals_models.Binding:
+) -> literals_pb2.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
-    return _literals_models.Binding(var=var_name, binding=binding_data)
+    return literals_pb2.Binding(var=var_name, binding=binding_data)
 
 
-def to_binding(p: Promise) -> _literals_models.Binding:
-    return _literals_models.Binding(var=p.var, binding=_literals_models.BindingData(promise=p.ref))
+def to_binding(p: Promise) -> literals_pb2.Binding:
+    return literals_pb2.Binding(var=p.var, binding=literals_pb2.BindingData(promise=p.ref))
 
 
 class VoidPromise(object):
@@ -742,14 +732,15 @@ class VoidPromise(object):
         raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
 
 
-class NodeOutput(type_models.OutputReference):
+# TODO; check uses of istance of this class.
+class NodeOutput(object):
     def __init__(self, node: Node, var: str):
         """
         :param node:
         :param var: The name of the variable this NodeOutput references
         """
         self._node = node
-        super(NodeOutput, self).__init__(self._node.id, var)
+        self._ref = types_pb2.OutputReference(self._node.id, var)
 
     @property
     def node_id(self):
@@ -766,7 +757,7 @@ class NodeOutput(type_models.OutputReference):
         return self._node
 
     def __repr__(self) -> str:
-        s = f"Node({self.node if self.node.id is not None else None}:{self.var})"
+        s = f"Node({self.node if self.node.id is not None else None}:{self._ref.var})"
         return s
 
 
@@ -779,7 +770,7 @@ class SupportsNodeCreation(Protocol):
     def python_interface(self) -> flyte_interface.Interface:
         ...
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+    def construct_node_metadata(self) -> workflow_pb2.NodeMetadata:
         ...
 
 
@@ -789,10 +780,10 @@ class HasFlyteInterface(Protocol):
         ...
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
+    def interface(self) -> interface_pb2.TypedInterface:
         ...
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+    def construct_node_metadata(self) -> workflow_pb2.NodeMetadata:
         ...
 
 
@@ -883,7 +874,7 @@ def create_and_link_node_from_remote(
 
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
-    for output_name, output_var_model in typed_interface.outputs.items():
+    for output_name, output_var_model in typed_interface.outputs.variables.items():
         node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
 
     return create_task_output(node_outputs)
@@ -914,7 +905,7 @@ def create_and_link_node(
             is_optional = False
             if var.type.union_type:
                 for variant in var.type.union_type.variants:
-                    if variant.simple == SimpleType.NONE:
+                    if variant.simple == types_pb2.NONE:
                         val, _default = interface.inputs_with_defaults[k]
                         if _default is not None:
                             raise ValueError(
@@ -981,7 +972,7 @@ def create_and_link_node(
 
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
-    for output_name, output_var_model in typed_interface.outputs.items():
+    for output_name, output_var_model in typed_interface.outputs.variables.items():
         node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
