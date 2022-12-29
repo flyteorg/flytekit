@@ -3,12 +3,12 @@ from typing import Generic, Type, TypeVar
 
 import joblib
 import sklearn
+from flyteidl.core import types_pb2
+from flyteidl.core.literals_pb2 import Blob, BlobMetadata, Literal, Scalar
+from flyteidl.core.types_pb2 import LiteralType
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
-from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
 
 T = TypeVar("T")
 
@@ -16,9 +16,9 @@ T = TypeVar("T")
 class SklearnTypeTransformer(TypeTransformer, Generic[T]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(
-            blob=_core_types.BlobType(
+            blob=types_pb2.BlobType(
                 format=self.SKLEARN_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                dimensionality=types_pb2.BlobType.SINGLE,
             )
         )
 
@@ -30,9 +30,9 @@ class SklearnTypeTransformer(TypeTransformer, Generic[T]):
         expected: LiteralType,
     ) -> Literal:
         meta = BlobMetadata(
-            type=_core_types.BlobType(
+            type=types_pb2.BlobType(
                 format=self.SKLEARN_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                dimensionality=types_pb2.BlobType.SINGLE,
             )
         )
 
@@ -61,7 +61,7 @@ class SklearnTypeTransformer(TypeTransformer, Generic[T]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if (
             literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.dimensionality == types_pb2.BlobType.SINGLE
             and literal_type.blob.format == self.SKLEARN_FORMAT
         ):
             return T
