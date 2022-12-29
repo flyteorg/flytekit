@@ -3,11 +3,11 @@ from __future__ import annotations
 import typing
 
 import click
+from flyteidl.core.literals_pb2 import Literal
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
-from flytekit.models.literals import Literal
 
 
 # TODO: Move the improved click parsing here. https://github.com/flyteorg/flyte/issues/3124
