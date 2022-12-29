@@ -4,11 +4,10 @@ import datetime
 import typing
 from typing import Any, List
 
+from flyteidl.core import workflow_pb2
+
 from flytekit.core.resources import Resources
 from flytekit.core.utils import _dnsify
-from flytekit.models import literals as _literal_models
-from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.task import Resources as _resources_model
 
 
 class Node(object):
@@ -20,7 +19,7 @@ class Node(object):
     def __init__(
         self,
         id: str,
-        metadata: _workflow_model.NodeMetadata,
+        metadata: workflow_pb2.NodeMetadata,
         bindings: List[_literal_models.Binding],
         upstream_nodes: List[Node],
         flyte_entity: Any,
