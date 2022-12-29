@@ -23,6 +23,10 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
 
+from flyteidl.core import dynamic_job_pb2, interface_pb2, literals_pb2, tasks_pb2, workflow_pb2
+from flyteidl.core.interface_pb2 import Variable
+from flyteidl.core.security_pb2 import SecurityContext
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
@@ -40,13 +44,6 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.deck.deck import Deck
 from flytekit.loggers import logger
-from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
-from flytekit.models import task as _task_model
-from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.interface import Variable
-from flytekit.models.security import SecurityContext
 
 
 def kwtypes(**kwargs) -> OrderedDict[str, Type]:
@@ -106,20 +103,18 @@ class TaskMetadata(object):
             raise ValueError("Cache serialize is enabled ``cache_serialize=True`` but ``cache`` is not enabled.")
 
     @property
-    def retry_strategy(self) -> _literal_models.RetryStrategy:
-        return _literal_models.RetryStrategy(self.retries)
+    def retry_strategy(self) -> literals_pb2.RetryStrategy:
+        return literals_pb2.RetryStrategy(self.retries)
 
-    def to_taskmetadata_model(self) -> _task_model.TaskMetadata:
+    def to_taskmetadata_model(self) -> tasks_pb2.TaskMetadata:
         """
-        Converts to _task_model.TaskMetadata
+        Converts to tasks_pb2.TaskMetadata
         """
         from flytekit import __version__
 
-        return _task_model.TaskMetadata(
+        return tasks_pb2.TaskMetadata(
             discoverable=self.cache,
-            runtime=_task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
-            ),
+            runtime=tasks_pb2.RuntimeMetadata(tasks_pb2.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"),
             timeout=self.timeout,
             retries=self.retry_strategy,
             interruptible=self.interruptible,
@@ -152,7 +147,7 @@ class Task(object):
         self,
         task_type: str,
         name: str,
-        interface: Optional[_interface_models.TypedInterface] = None,
+        interface: Optional[interface_pb2.TypedInterface] = None,
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
@@ -168,7 +163,7 @@ class Task(object):
         FlyteEntities.entities.append(self)
 
     @property
-    def interface(self) -> Optional[_interface_models.TypedInterface]:
+    def interface(self) -> Optional[interface_pb2.TypedInterface]:
         return self._interface
 
     @property
@@ -235,7 +230,7 @@ class Task(object):
             flyte_interface_types=self.interface.inputs,  # type: ignore
             native_types=self.get_input_types(),
         )
-        input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+        input_literal_map = literals_pb2.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
         if self.metadata.cache:
@@ -285,19 +280,19 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
+    def get_container(self, settings: SerializationSettings) -> Optional[tasks_pb2.Container]:
         """
         Returns the container definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_k8s_pod(self, settings: SerializationSettings) -> Optional[_task_model.K8sPod]:
+    def get_k8s_pod(self, settings: SerializationSettings) -> Optional[tasks_pb2.K8sPod]:
         """
         Returns the kubernetes pod definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
+    def get_sql(self, settings: SerializationSettings) -> Optional[tasks_pb2.Sql]:
         """
         Returns the Sql definition (if any) that is used to run the task on hosted Flyte.
         """
@@ -320,8 +315,8 @@ class Task(object):
     def dispatch_execute(
         self,
         ctx: FlyteContext,
-        input_literal_map: _literal_models.LiteralMap,
-    ) -> _literal_models.LiteralMap:
+        input_literal_map: literals_pb2.LiteralMap,
+    ) -> literals_pb2.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -424,11 +419,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         return self._python_interface.inputs
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+    def construct_node_metadata(self) -> workflow_pb2.NodeMetadata:
         """
         Used when constructing the node that encapsulates this task as part of a broader workflow definition.
         """
-        return _workflow_model.NodeMetadata(
+        return workflow_pb2.NodeMetadata(
             name=extract_obj_name(self.name),
             timeout=self.metadata.timeout,
             retries=self.metadata.retry_strategy,
@@ -446,8 +441,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self.interface.outputs  # type: ignore
 
     def dispatch_execute(
-        self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+        self, ctx: FlyteContext, input_literal_map: literals_pb2.LiteralMap
+    ) -> Union[literals_pb2.LiteralMap, dynamic_job_pb2.DynamicJobSpec]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -488,8 +483,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
             # dynamic_execute returns a literal map in local execute so this also gets triggered.
-            if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-                native_outputs, _dynamic_job.DynamicJobSpec
+            if isinstance(native_outputs, literals_pb2.LiteralMap) or isinstance(
+                native_outputs, dynamic_job_pb2.DynamicJobSpec
             ):
                 return native_outputs
 
@@ -541,7 +536,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
                 _output_deck(self.name.split(".")[-1], new_user_params)
 
-            outputs_literal_map = _literal_models.LiteralMap(literals=literals)
+            outputs_literal_map = literals_pb2.LiteralMap(literals=literals)
             # After the execute has been successfully completed
             return outputs_literal_map
 
