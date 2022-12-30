@@ -11,6 +11,7 @@ from typing import cast
 
 import click
 from dataclasses_json import DataClassJsonMixin
+from flyteidl.core import interface_pb2, literals_pb2, types_pb2
 from pytimeparse import parse
 from typing_extensions import get_args
 
@@ -35,10 +36,6 @@ from flytekit.core.context_manager import FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
-from flytekit.models import literals
-from flytekit.models.interface import Variable
-from flytekit.models.literals import Blob, BlobMetadata, Primitive, Union
-from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.script_mode import _find_project_root
@@ -122,7 +119,7 @@ class DefaultConverter(object):
 
     def convert(self, value: typing.Any, python_type_hint: typing.Optional[typing.Type] = None) -> Scalar:
         if self.primitive_type:
-            return Scalar(primitive=Primitive(**{self.primitive_type: value}))
+            return Scalar(primitive=literals_pb2.Primitive(**{self.primitive_type: value}))
         if self.scalar_type:
             return Scalar(**{self.scalar_type: value})
 
@@ -132,20 +129,22 @@ class DefaultConverter(object):
 class FlyteLiteralConverter(object):
     name = "literal_type"
 
-    SIMPLE_TYPE_CONVERTER: typing.Dict[SimpleType, DefaultConverter] = {
-        SimpleType.FLOAT: DefaultConverter(click.FLOAT, primitive_type="float_value"),
-        SimpleType.INTEGER: DefaultConverter(click.INT, primitive_type="integer"),
-        SimpleType.STRING: DefaultConverter(click.STRING, primitive_type="string_value"),
-        SimpleType.BOOLEAN: DefaultConverter(click.BOOL, primitive_type="boolean"),
-        SimpleType.DURATION: DefaultConverter(DurationParamType(), primitive_type="duration"),
-        SimpleType.DATETIME: DefaultConverter(click.DateTime(), primitive_type="datetime"),
+    # Protobuf enums are actually integers (as per https://github.com/protocolbuffers/protobuf/issues/9765#issuecomment-1119247779).
+    # One solution is to stringify the type.
+    SIMPLE_TYPE_CONVERTER: typing.Dict["types_pb2.SimpleType", DefaultConverter] = {
+        types_pb2.FLOAT: DefaultConverter(click.FLOAT, primitive_type="float_value"),
+        types_pb2.INTEGER: DefaultConverter(click.INT, primitive_type="integer"),
+        types_pb2.STRING: DefaultConverter(click.STRING, primitive_type="string_value"),
+        types_pb2.BOOLEAN: DefaultConverter(click.BOOL, primitive_type="boolean"),
+        types_pb2.DURATION: DefaultConverter(DurationParamType(), primitive_type="duration"),
+        types_pb2.DATETIME: DefaultConverter(click.DateTime(), primitive_type="datetime"),
     }
 
     def __init__(
         self,
         ctx: click.Context,
         flyte_ctx: FlyteContext,
-        literal_type: LiteralType,
+        literal_type: types_pb2.LiteralType,
         python_type: typing.Type,
         get_upload_url_fn: typing.Callable,
     ):
@@ -157,7 +156,7 @@ class FlyteLiteralConverter(object):
         self._click_type = click.UNPROCESSED
 
         if self._literal_type.simple:
-            if self._literal_type.simple == SimpleType.STRUCT:
+            if self._literal_type.simple == types_pb2.STRUCT:
                 self._click_type = JsonParamType()
                 self._click_type.name = f"JSON object {self._python_type.__name__}"
             elif self._literal_type.simple not in self.SIMPLE_TYPE_CONVERTER:
@@ -167,7 +166,7 @@ class FlyteLiteralConverter(object):
                 self._click_type = self._converter.click_type
 
         if self._literal_type.enum_type:
-            self._converter = self.SIMPLE_TYPE_CONVERTER[SimpleType.STRING]
+            self._converter = self.SIMPLE_TYPE_CONVERTER[types_pb2.STRING]
             self._click_type = click.Choice(self._literal_type.enum_type.values)
 
         if self._literal_type.structured_dataset_type:
@@ -181,7 +180,7 @@ class FlyteLiteralConverter(object):
                 self._click_type.name = "json dictionary"
 
         if self._literal_type.blob:
-            if self._literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
+            if self._literal_type.blob.dimensionality == BlobType.SINGLE:
                 self._click_type = FileParamType()
             else:
                 self._click_type = DirParamType()
@@ -192,7 +191,7 @@ class FlyteLiteralConverter(object):
 
     def is_bool(self) -> bool:
         if self._literal_type.simple:
-            return self._literal_type.simple == SimpleType.BOOLEAN
+            return self._literal_type.simple == types_pb2.BOOLEAN
         return False
 
     def get_uri_for_dir(self, value: Directory, remote_filename: typing.Optional[str] = None):
@@ -216,9 +215,9 @@ class FlyteLiteralConverter(object):
 
         lit = Literal(
             scalar=Scalar(
-                structured_dataset=literals.StructuredDataset(
+                structured_dataset=literals_pb2.StructuredDataset(
                     uri=uri,
-                    metadata=literals.StructuredDatasetMetadata(
+                    metadata=literals_pb2.StructuredDatasetMetadata(
                         structured_dataset_type=self._literal_type.structured_dataset_type
                     ),
                 ),
@@ -246,8 +245,8 @@ class FlyteLiteralConverter(object):
 
         lit = Literal(
             scalar=Scalar(
-                blob=Blob(
-                    metadata=BlobMetadata(type=self._literal_type.blob),
+                blob=literals_pb2.Blob(
+                    metadata=literals_pb2.BlobMetadata(type=self._literal_type.blob),
                     uri=uri,
                 ),
             ),
@@ -274,7 +273,7 @@ class FlyteLiteralConverter(object):
                 # and then use flyte converter to convert it to literal.
                 python_val = converter._click_type.convert(value, param, ctx)
                 literal = converter.convert_to_literal(ctx, param, python_val)
-                return Literal(scalar=Scalar(union=Union(literal, variant)))
+                return Literal(scalar=Scalar(union=literals_pb2.Union(literal, variant)))
             except (Exception or AttributeError) as e:
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
@@ -301,7 +300,7 @@ class FlyteLiteralConverter(object):
             return self.convert_to_union(ctx, param, value)
 
         if self._literal_type.simple or self._literal_type.enum_type:
-            if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
+            if self._literal_type.simple and self._literal_type.simple == types_pb2.STRUCT:
                 if self._python_type == dict:
                     o = json.loads(value)
                 elif type(value) != self._python_type:
@@ -329,7 +328,7 @@ def to_click_option(
     ctx: click.Context,
     flyte_ctx: FlyteContext,
     input_name: str,
-    literal_var: Variable,
+    literal_var: interface_pb2.Variable,
     python_type: typing.Type,
     default_val: typing.Any,
     get_upload_url_fn: typing.Callable,
