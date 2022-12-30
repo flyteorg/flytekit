@@ -5,13 +5,13 @@ from typing import Any, Callable, Dict, NamedTuple, Optional, Type, Union
 
 import torch
 from dataclasses_json import dataclass_json
+from flyteidl.core import types_pb2
+from flyteidl.core.literals_pb2 import Blob, BlobMetadata, Literal, Scalar
+from flyteidl.core.types_pb2 import LiteralType
 from typing_extensions import Protocol
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
-from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
 
 
 class IsDataclass(Protocol):
@@ -58,9 +58,7 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
 
     def get_literal_type(self, t: Type[PyTorchCheckpoint]) -> LiteralType:
         return LiteralType(
-            blob=_core_types.BlobType(
-                format=self.PYTORCH_CHECKPOINT_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            blob=types_pb2.BlobType(format=self.PYTORCH_CHECKPOINT_FORMAT, dimensionality=types_pb2.BlobType.SINGLE)
         )
 
     def to_literal(
@@ -71,9 +69,7 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
         expected: LiteralType,
     ) -> Literal:
         meta = BlobMetadata(
-            type=_core_types.BlobType(
-                format=self.PYTORCH_CHECKPOINT_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
+            type=types_pb2.BlobType(format=self.PYTORCH_CHECKPOINT_FORMAT, dimensionality=types_pb2.BlobType.SINGLE)
         )
 
         local_path = ctx.file_access.get_random_local_path() + ".pt"
@@ -126,7 +122,7 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[PyTorchCheckpoint]:
         if (
             literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.dimensionality == types_pb2.BlobType.SINGLE
             and literal_type.blob.format == self.PYTORCH_CHECKPOINT_FORMAT
         ):
             return PyTorchCheckpoint

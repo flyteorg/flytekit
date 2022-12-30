@@ -1,37 +1,20 @@
+from flyteidl.core import identifier_pb2
+from google.protobuf.message import Message
+
 from flytekit.exceptions import user as _user_exceptions
-from flytekit.models.core import identifier as _core_identifier
 
 
-class Identifier(_core_identifier.Identifier):
+class Identifier(Message):
 
     _STRING_TO_TYPE_MAP = {
-        "lp": _core_identifier.ResourceType.LAUNCH_PLAN,
-        "wf": _core_identifier.ResourceType.WORKFLOW,
-        "tsk": _core_identifier.ResourceType.TASK,
+        "lp": identifier_pb2.LAUNCH_PLAN,
+        "wf": identifier_pb2.WORKFLOW,
+        "tsk": identifier_pb2.TASK,
     }
     _TYPE_TO_STRING_MAP = {v: k for k, v in _STRING_TO_TYPE_MAP.items()}
 
     @classmethod
-    def promote_from_model(cls, base_model):
-        """
-        :param flytekit.models.core.identifier.Identifier base_model:
-        :rtype: Identifier
-        """
-        return cls(
-            base_model.resource_type,
-            base_model.project,
-            base_model.domain,
-            base_model.name,
-            base_model.version,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        base_model = super().from_flyte_idl(pb2_object)
-        return cls.promote_from_model(base_model)
-
-    @classmethod
-    def from_python_std(cls, string):
+    def from_python_std(cls, string) -> identifier_pb2.Identifier:
         """
         Parses a string in the correct format into an identifier
         :param Text string:
@@ -54,38 +37,22 @@ class Identifier(_core_identifier.Identifier):
             )
         resource_type = cls._STRING_TO_TYPE_MAP[resource_type]
 
-        return cls(resource_type, project, domain, name, version)
+        return identifier_pb2.Identifier(resource_type, project, domain, name, version)
 
-    def __str__(self):
-        return "{}:{}:{}:{}:{}".format(
-            type(self)._TYPE_TO_STRING_MAP.get(self.resource_type, "<unknown>"),
-            self.project,
-            self.domain,
-            self.name,
-            self.version,
-        )
+    # TODO: can I rely on the protobuf-generated __str__?
+    # def __str__(self):
+    #     return "{}:{}:{}:{}:{}".format(
+    #         type(self)._TYPE_TO_STRING_MAP.get(self.resource_type, "<unknown>"),
+    #         self.project,
+    #         self.domain,
+    #         self.name,
+    #         self.version,
+    #     )
 
 
-class TaskExecutionIdentifier(_core_identifier.TaskExecutionIdentifier):
+class TaskExecutionIdentifier(Message):
     @classmethod
-    def promote_from_model(cls, base_model):
-        """
-        :param flytekit.models.core.identifier.TaskExecutionIdentifier base_model:
-        :rtype: TaskExecutionIdentifier
-        """
-        return cls(
-            task_id=base_model.task_id,
-            node_execution_id=base_model.node_execution_id,
-            retry_attempt=base_model.retry_attempt,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        base_model = super().from_flyte_idl(pb2_object)
-        return cls.promote_from_model(base_model)
-
-    @classmethod
-    def from_python_std(cls, string):
+    def from_python_std(cls, string) -> identifier_pb2.TaskExecutionIdentifier:
         """
         Parses a string in the correct format into an identifier
         :param Text string:
@@ -107,49 +74,33 @@ class TaskExecutionIdentifier(_core_identifier.TaskExecutionIdentifier):
                 "The provided string could not be parsed. The first element of an execution identifier must be 'ex'.",
             )
 
-        return cls(
-            task_id=Identifier(_core_identifier.ResourceType.TASK, tp, td, tn, tv),
-            node_execution_id=_core_identifier.NodeExecutionIdentifier(
+        return identifier_pb2.TaskExecutionIdentifier(
+            task_id=identifier_pb2.Identifier(identifier_pb2.TASK, tp, td, tn, tv),
+            node_execution_id=identifier_pb2.NodeExecutionIdentifier(
                 node_id=node_id,
-                execution_id=_core_identifier.WorkflowExecutionIdentifier(ep, ed, en),
+                execution_id=identifier_pb2.WorkflowExecutionIdentifier(ep, ed, en),
             ),
             retry_attempt=int(retry),
         )
 
-    def __str__(self):
-        return "te:{ep}:{ed}:{en}:{node_id}:{tp}:{td}:{tn}:{tv}:{retry}".format(
-            ep=self.node_execution_id.execution_id.project,
-            ed=self.node_execution_id.execution_id.domain,
-            en=self.node_execution_id.execution_id.name,
-            node_id=self.node_execution_id.node_id,
-            tp=self.task_id.project,
-            td=self.task_id.domain,
-            tn=self.task_id.name,
-            tv=self.task_id.version,
-            retry=self.retry_attempt,
-        )
+    # TODO: auto-generated protobuf __str__ enough?
+    # def __str__(self):
+    #     return "te:{ep}:{ed}:{en}:{node_id}:{tp}:{td}:{tn}:{tv}:{retry}".format(
+    #         ep=self.node_execution_id.execution_id.project,
+    #         ed=self.node_execution_id.execution_id.domain,
+    #         en=self.node_execution_id.execution_id.name,
+    #         node_id=self.node_execution_id.node_id,
+    #         tp=self.task_id.project,
+    #         td=self.task_id.domain,
+    #         tn=self.task_id.name,
+    #         tv=self.task_id.version,
+    #         retry=self.retry_attempt,
+    #     )
 
 
-class WorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier):
+class WorkflowExecutionIdentifier(Message):
     @classmethod
-    def promote_from_model(cls, base_model):
-        """
-        :param flytekit.models.core.identifier.WorkflowExecutionIdentifier base_model:
-        :rtype: WorkflowExecutionIdentifier
-        """
-        return cls(
-            base_model.project,
-            base_model.domain,
-            base_model.name,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        base_model = super().from_flyte_idl(pb2_object)
-        return cls.promote_from_model(base_model)
-
-    @classmethod
-    def from_python_std(cls, string):
+    def from_python_std(cls, string) -> identifier_pb2.WorkflowExecutionIdentifier:
         """
         Parses a string in the correct format into an identifier
         :param Text string:
@@ -171,11 +122,12 @@ class WorkflowExecutionIdentifier(_core_identifier.WorkflowExecutionIdentifier):
                 "The provided string could not be parsed. The first element of an execution identifier must be 'ex'.",
             )
 
-        return cls(
+        return identifier_pb2.WorkflowExecutionIdentifier(
             project,
             domain,
             name,
         )
 
-    def __str__(self):
-        return "ex:{}:{}:{}".format(self.project, self.domain, self.name)
+    # TODO: auto-generated protobuf __str__ enough?
+    # def __str__(self):
+    #     return "ex:{}:{}:{}".format(self.project, self.domain, self.name)

@@ -5,6 +5,8 @@ import typing
 from typing import Tuple, Union
 
 import click
+from flyteidl.core import workflow_pb2
+from flyteidl.core.types_pb2 import LiteralType
 
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -12,8 +14,6 @@ from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handle
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteDisapprovalException
 from flytekit.interaction.parse_stdin import parse_stdin_to_literal
-from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.types import LiteralType
 
 DEFAULT_TIMEOUT = datetime.timedelta(hours=1)
 
@@ -84,9 +84,9 @@ class Gate(object):
 
         raise ValueError("You can't check for a Python interface for an approval node outside of compilation")
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+    def construct_node_metadata(self) -> workflow_pb2.NodeMetadata:
         # Part of SupportsNodeCreation interface
-        return _workflow_model.NodeMetadata(
+        return workflow_pb2.NodeMetadata(
             name=self.name,
             timeout=self._timeout,
         )

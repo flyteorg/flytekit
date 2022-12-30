@@ -3,11 +3,11 @@ import typing
 from typing import Type
 
 import pandas
+from flyteidl.core.literals_pb2 import Literal, Scalar, Schema
+from flyteidl.core.types_pb2 import LiteralType, SchemaType
 
 from flytekit import FlyteContext
 from flytekit.core.type_engine import T, TypeEngine, TypeTransformer
-from flytekit.models.literals import Literal, Scalar, Schema
-from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, SchemaEngine, SchemaFormat, SchemaHandler
 
 

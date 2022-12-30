@@ -2,13 +2,13 @@ import typing
 
 import pandas as pd
 import pytest
+from flyteidl.core import interface_pb2
+from flyteidl.core.literals_pb2 import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from typing_extensions import Annotated
 
 from flytekit import kwtypes
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.models import interface as interface_models
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
@@ -90,10 +90,10 @@ def test_interface():
     }
 
     variable_map = {
-        "my_map": interface_models.Variable(type=TypeEngine.to_literal_type(typing.Dict[str, str]), description=""),
-        "my_list": interface_models.Variable(type=TypeEngine.to_literal_type(typing.List[int]), description=""),
-        "val_a": interface_models.Variable(type=TypeEngine.to_literal_type(int), description=""),
-        "my_df": interface_models.Variable(type=df_literal_type, description=""),
+        "my_map": interface_pb2.Variable(type=TypeEngine.to_literal_type(typing.Dict[str, str]), description=""),
+        "my_list": interface_pb2.Variable(type=TypeEngine.to_literal_type(typing.List[int]), description=""),
+        "val_a": interface_pb2.Variable(type=TypeEngine.to_literal_type(int), description=""),
+        "my_df": interface_pb2.Variable(type=df_literal_type, description=""),
     }
 
     lr = LiteralsResolver(lm, variable_map=variable_map, ctx=ctx)

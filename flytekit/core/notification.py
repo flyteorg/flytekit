@@ -17,18 +17,19 @@ and Pagerduty is incumbent on those email API being set-up correctly.
 """
 from typing import List
 
+from flyteidl.core import execution_pb2
+
 from flytekit.models import common as _common_model
-from flytekit.models.core import execution as _execution_model
 
 
 # Duplicates flytekit.common.notifications.Notification to avoid using the ExtendedSdkType metaclass.
 class Notification(_common_model.Notification):
 
     VALID_PHASES = {
-        _execution_model.WorkflowExecutionPhase.ABORTED,
-        _execution_model.WorkflowExecutionPhase.FAILED,
-        _execution_model.WorkflowExecutionPhase.SUCCEEDED,
-        _execution_model.WorkflowExecutionPhase.TIMED_OUT,
+        execution_pb2.WorkflowExecution.ABORTED,
+        execution_pb2.WorkflowExecution.FAILED,
+        execution_pb2.WorkflowExecution.SUCCEEDED,
+        execution_pb2.WorkflowExecution.TIMED_OUT,
     }
 
     def __init__(

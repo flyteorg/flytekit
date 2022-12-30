@@ -2,8 +2,7 @@ from typing import Optional
 
 import joblib
 from diskcache import Cache
-
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap
+from flyteidl.core.literals_pb2 import Literal, LiteralCollection, LiteralMap
 
 # Location on the filesystem where serialized objects will be stored
 # TODO: read from config
@@ -35,7 +34,7 @@ def _calculate_cache_key(task_name: str, cache_version: str, input_literal_map: 
 
     # Generate a stable representation of the underlying protobuf by passing `deterministic=True` to the
     # protobuf library.
-    hashed_inputs = LiteralMap(literal_map_overridden).to_flyte_idl().SerializeToString(deterministic=True)
+    hashed_inputs = LiteralMap(literal_map_overridden).SerializeToString(deterministic=True)
     # Use joblib to hash the string representation of the literal into a fixed length string
     return f"{task_name}-{cache_version}-{joblib.hash(hashed_inputs)}"
 

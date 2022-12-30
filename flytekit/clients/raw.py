@@ -9,6 +9,8 @@ from typing import Optional
 
 import grpc
 import requests as _requests
+from flyteidl.admin.common_pb2 import NamedEntityIdentifierList
+from flyteidl.admin.node_execution_pb2 import NodeExecutionGetDataResponse
 from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
@@ -348,7 +350,7 @@ class RawSynchronousFlyteClient(object):
         return self._stub.CreateTask(task_create_request, metadata=self._metadata)
 
     @_handle_rpc_error(retry=True)
-    def list_task_ids_paginated(self, identifier_list_request):
+    def list_task_ids_paginated(self, identifier_list_request) -> NamedEntityIdentifierList:
         """
         This returns a page of identifiers for the tasks for a given project and domain. Filters can also be
         specified.
@@ -684,7 +686,7 @@ class RawSynchronousFlyteClient(object):
         return self._stub.GetNodeExecution(node_execution_request, metadata=self._metadata)
 
     @_handle_rpc_error(retry=True)
-    def get_node_execution_data(self, get_node_execution_data_request):
+    def get_node_execution_data(self, get_node_execution_data_request) -> NodeExecutionGetDataResponse:
         """
         Returns signed URLs to LiteralMap blobs for a node execution's inputs and outputs (when available).
 

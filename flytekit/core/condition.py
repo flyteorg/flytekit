@@ -4,6 +4,10 @@ import datetime
 import typing
 from typing import Optional, Tuple, Union, cast
 
+from flyteidl.core import condition_pb2, workflow_pb2
+from flyteidl.core.literals_pb2 import Binding, BindingData, Literal, RetryStrategy
+from flyteidl.core.types_pb2 import Error
+
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.node import Node
 from flytekit.core.promise import (
@@ -16,14 +20,10 @@ from flytekit.core.promise import (
     VoidPromise,
     create_task_output,
 )
-from flytekit.models.core import condition as _core_cond
-from flytekit.models.core import workflow as _core_wf
-from flytekit.models.literals import Binding, BindingData, Literal, RetryStrategy
-from flytekit.models.types import Error
 
 
 class BranchNode(object):
-    def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock):
+    def __init__(self, name: str, ifelse_block: workflow_pb2.IfElseBlock):
         self._name = name
         self._ifelse_block = ifelse_block
 
@@ -102,7 +102,7 @@ class ConditionalSection:
 
             n = Node(
                 id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",  # type: ignore
-                metadata=_core_wf.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
+                metadata=workflow_pb2.NodeMetadata(self._name, timeout=datetime.timedelta(), retries=RetryStrategy(0)),
                 bindings=sorted(bindings, key=lambda b: b.var),
                 upstream_nodes=list(upstream_nodes),  # type: ignore
                 flyte_entity=node,
@@ -328,16 +328,16 @@ class Condition(object):
 
 
 _logical_ops = {
-    ConjunctionOps.AND: _core_cond.ConjunctionExpression.LogicalOperator.AND,
-    ConjunctionOps.OR: _core_cond.ConjunctionExpression.LogicalOperator.OR,
+    ConjunctionOps.AND: condition_pb2.ConjunctionExpression.LogicalOperator.AND,
+    ConjunctionOps.OR: condition_pb2.ConjunctionExpression.LogicalOperator.OR,
 }
 _comparators = {
-    ComparisonOps.EQ: _core_cond.ComparisonExpression.Operator.EQ,
-    ComparisonOps.NE: _core_cond.ComparisonExpression.Operator.NEQ,
-    ComparisonOps.GT: _core_cond.ComparisonExpression.Operator.GT,
-    ComparisonOps.GE: _core_cond.ComparisonExpression.Operator.GTE,
-    ComparisonOps.LT: _core_cond.ComparisonExpression.Operator.LT,
-    ComparisonOps.LE: _core_cond.ComparisonExpression.Operator.LTE,
+    ComparisonOps.EQ: condition_pb2.ComparisonExpression.Operator.EQ,
+    ComparisonOps.NE: condition_pb2.ComparisonExpression.Operator.NEQ,
+    ComparisonOps.GT: condition_pb2.ComparisonExpression.Operator.GT,
+    ComparisonOps.GE: condition_pb2.ComparisonExpression.Operator.GTE,
+    ComparisonOps.LT: condition_pb2.ComparisonExpression.Operator.LT,
+    ComparisonOps.LE: condition_pb2.ComparisonExpression.Operator.LTE,
 }
 
 
@@ -375,11 +375,11 @@ def merge_promises(*args: Promise) -> typing.List[Promise]:
 
 def transform_to_conj_expr(
     expr: ConjunctionExpression,
-) -> Tuple[_core_cond.ConjunctionExpression, typing.List[Promise]]:
+) -> Tuple[condition_pb2.ConjunctionExpression, typing.List[Promise]]:
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
     return (
-        _core_cond.ConjunctionExpression(
+        condition_pb2.ConjunctionExpression(
             left_expression=left,
             right_expression=right,
             operator=_logical_ops[expr.op],
@@ -388,38 +388,40 @@ def transform_to_conj_expr(
     )
 
 
-def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[_core_cond.Operand, Optional[Promise]]:
+def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[condition_pb2.Operand, Optional[Promise]]:
     if isinstance(v, Promise):
-        return _core_cond.Operand(var=create_branch_node_promise_var(v.ref.node_id, v.var)), v
-    return _core_cond.Operand(primitive=v.scalar.primitive), None
+        return condition_pb2.Operand(var=create_branch_node_promise_var(v.ref.node_id, v.var)), v
+    return condition_pb2.Operand(primitive=v.scalar.primitive), None
 
 
-def transform_to_comp_expr(expr: ComparisonExpression) -> Tuple[_core_cond.ComparisonExpression, typing.List[Promise]]:
+def transform_to_comp_expr(
+    expr: ComparisonExpression,
+) -> Tuple[condition_pb2.ComparisonExpression, typing.List[Promise]]:
     o_lhs, b_lhs = transform_to_operand(expr.lhs)
     o_rhs, b_rhs = transform_to_operand(expr.rhs)
     return (
-        _core_cond.ComparisonExpression(left_value=o_lhs, right_value=o_rhs, operator=_comparators[expr.op]),
+        condition_pb2.ComparisonExpression(left_value=o_lhs, right_value=o_rhs, operator=_comparators[expr.op]),
         merge_promises(b_lhs, b_rhs),
     )
 
 
 def transform_to_boolexpr(
     expr: Union[ComparisonExpression, ConjunctionExpression]
-) -> Tuple[_core_cond.BooleanExpression, typing.List[Promise]]:
+) -> Tuple[condition_pb2.BooleanExpression, typing.List[Promise]]:
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)
-        return _core_cond.BooleanExpression(conjunction=cexpr), promises
+        return condition_pb2.BooleanExpression(conjunction=cexpr), promises
     cexpr, promises = transform_to_comp_expr(expr)
-    return _core_cond.BooleanExpression(comparison=cexpr), promises
+    return condition_pb2.BooleanExpression(comparison=cexpr), promises
 
 
-def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
+def to_case_block(c: Case) -> Tuple[Union[workflow_pb2.IfBlock], typing.List[Promise]]:
     expr, promises = transform_to_boolexpr(c.expr)
     n = c.output_promise.ref.node  # type: ignore
-    return _core_wf.IfBlock(condition=expr, then_node=n), promises
+    return workflow_pb2.IfBlock(condition=expr, then_node=n), promises
 
 
-def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfElseBlock, typing.List[Binding]]:
+def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[workflow_pb2.IfElseBlock, typing.List[Binding]]:
     if len(cs.cases) == 0:
         raise AssertionError("Illegal Condition block, with no if-else cases")
     if len(cs.cases) < 2:
@@ -427,7 +429,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
     all_promises: typing.List[Promise] = []
     first_case, promises = to_case_block(cs.cases[0])
     all_promises.extend(promises)
-    other_cases: Optional[typing.List[_core_wf.IfBlock]] = None
+    other_cases: Optional[typing.List[workflow_pb2.IfBlock]] = None
     if len(cs.cases) > 2:
         other_cases = []
         for c in cs.cases[1:-1]:
@@ -442,7 +444,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (
-        _core_wf.IfElseBlock(case=first_case, other=other_cases, else_node=node, error=err),
+        workflow_pb2.IfElseBlock(case=first_case, other=other_cases, else_node=node, error=err),
         merge_promises(*all_promises),
     )
 

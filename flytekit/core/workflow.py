@@ -5,6 +5,8 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
+from flyteidl.core import interface_pb2, literals_pb2, workflow_pb2
+
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -36,9 +38,8 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
-from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
-from flytekit.models.core import workflow as _workflow_model
+
+# from flytekit.models.core import workflow as _workflow_model
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -56,12 +57,10 @@ class WorkflowFailurePolicy(Enum):
     """
 
     #: Causes the entire workflow execution to fail once a component node fails.
-    FAIL_IMMEDIATELY = _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_IMMEDIATELY
+    FAIL_IMMEDIATELY = workflow_pb2.WorkflowMetadata.FAIL_IMMEDIATELY
 
     #: Will proceed to run any remaining runnable nodes once a component node fails.
-    FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = (
-        _workflow_model.WorkflowMetadata.OnFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
-    )
+    FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = workflow_pb2.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
 
 
 @dataclass
@@ -80,7 +79,7 @@ class WorkflowMetadata(object):
             on_failure = 0
         else:
             on_failure = 1
-        return _workflow_model.WorkflowMetadata(on_failure=on_failure)
+        return workflow_pb2.WorkflowMetadata(on_failure=on_failure)
 
 
 @dataclass
@@ -99,7 +98,7 @@ class WorkflowMetadataDefaults(object):
             raise FlyteValidationException(f"Interruptible must be boolean, {self.interruptible} invalid")
 
     def to_flyte_model(self):
-        return _workflow_model.WorkflowMetadataDefaults(interruptible=self.interruptible)
+        return workflow_pb2.WorkflowMetadataDefaults(interruptible=self.interruptible)
 
 
 def construct_input_promises(inputs: List[str]):
@@ -109,7 +108,7 @@ def construct_input_promises(inputs: List[str]):
     }
 
 
-def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[Node, Dict[str, Promise]]) -> Promise:
+def get_promise(binding_data: literals_pb2.BindingData, outputs_cache: Dict[Node, Dict[str, Promise]]) -> Promise:
     """
     This is a helper function that will turn a binding into a Promise object, using a lookup map. Please see
     get_promise_map for the rest of the details.
@@ -123,7 +122,7 @@ def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[N
         # binding_data.promise.var is the name of the upstream node's output we want
         return outputs_cache[binding_data.promise.node][binding_data.promise.var]
     elif binding_data.scalar is not None:
-        return Promise(var="placeholder", val=_literal_models.Literal(scalar=binding_data.scalar))
+        return Promise(var="placeholder", val=literals_pb2.Literal(scalar=binding_data.scalar))
     elif binding_data.collection is not None:
         literals = []
         for bd in binding_data.collection.bindings:
@@ -131,22 +130,20 @@ def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[N
             literals.append(p.val)
         return Promise(
             var="placeholder",
-            val=_literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals)),
+            val=literals_pb2.Literal(collection=literals_pb2.LiteralCollection(literals=literals)),
         )
     elif binding_data.map is not None:
         literals = {}  # type: ignore
         for k, bd in binding_data.map.bindings.items():
             p = get_promise(bd, outputs_cache)
             literals[k] = p.val
-        return Promise(
-            var="placeholder", val=_literal_models.Literal(map=_literal_models.LiteralMap(literals=literals))
-        )
+        return Promise(var="placeholder", val=literals_pb2.Literal(map=literals_pb2.LiteralMap(literals=literals)))
 
     raise FlyteValidationException("Binding type unrecognized.")
 
 
 def get_promise_map(
-    bindings: List[_literal_models.Binding], outputs_cache: Dict[Node, Dict[str, Promise]]
+    bindings: List[literals_pb2.Binding], outputs_cache: Dict[Node, Dict[str, Promise]]
 ) -> Dict[str, Promise]:
     """
     Local execution of imperatively defined workflows is done node by node. This function will fill in the node's
@@ -178,7 +175,7 @@ class WorkflowBase(object):
         self._inputs = {}
         self._unbound_inputs = set()
         self._nodes = []
-        self._output_bindings: List[_literal_models.Binding] = []
+        self._output_bindings: List[literals_pb2.Binding] = []
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)
 
@@ -203,11 +200,11 @@ class WorkflowBase(object):
         return self._python_interface
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
+    def interface(self) -> interface_pb2.TypedInterface:
         return self._interface
 
     @property
-    def output_bindings(self) -> List[_literal_models.Binding]:
+    def output_bindings(self) -> List[literals_pb2.Binding]:
         return self._output_bindings
 
     @property
@@ -222,8 +219,8 @@ class WorkflowBase(object):
             f"Output bindings: {self._output_bindings} && "
         )
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
-        return _workflow_model.NodeMetadata(
+    def construct_node_metadata(self) -> workflow_pb2.NodeMetadata:
+        return workflow_pb2.NodeMetadata(
             name=extract_obj_name(self.name),
             interruptible=self.workflow_metadata_defaults.interruptible,
         )

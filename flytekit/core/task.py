@@ -2,12 +2,13 @@ import datetime as _datetime
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Type, Union
 
+from flyteidl.core.security_pb2 import Secret
+
 from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
-from flytekit.models.security import Secret
 
 
 class TaskPlugins(object):

@@ -7,6 +7,8 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
+from flyteidl.core.interface_pb2 import Parameter, ParameterMap, TypedInterface, Variable
+from flyteidl.core.literals_pb2 import Literal, Scalar, Void
 from typing_extensions import Annotated, get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
@@ -14,8 +16,6 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
-from flytekit.models import interface as _interface_models
-from flytekit.models.literals import Void
 from flytekit.types.pickle import FlytePickle
 
 T = typing.TypeVar("T")
@@ -168,15 +168,13 @@ class Interface(object):
         return Interface(self._inputs, new_outputs)
 
 
-def transform_inputs_to_parameters(
-    ctx: context_manager.FlyteContext, interface: Interface
-) -> _interface_models.ParameterMap:
+def transform_inputs_to_parameters(ctx: context_manager.FlyteContext, interface: Interface) -> ParameterMap:
     """
     Transforms the given interface (with inputs) to a Parameter Map with defaults set
     :param interface: the interface object
     """
     if interface is None or interface.inputs_with_defaults is None:
-        return _interface_models.ParameterMap({})
+        return ParameterMap(parameters={})
     if interface.docstring is None:
         inputs_vars = transform_variable_map(interface.inputs)
     else:
@@ -186,22 +184,20 @@ def transform_inputs_to_parameters(
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
         if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
-            from flytekit import Literal, Scalar
-
             literal = Literal(scalar=Scalar(none_type=Void()))
-            params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
+            params[k] = Parameter(var=v, default=literal, required=False)
         else:
             required = _default is None
             default_lv = None
             if _default is not None:
                 default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
-            params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
-    return _interface_models.ParameterMap(params)
+            params[k] = Parameter(var=v, default=default_lv, required=required)
+    return ParameterMap(params)
 
 
 def transform_interface_to_typed_interface(
     interface: typing.Optional[Interface],
-) -> typing.Optional[_interface_models.TypedInterface]:
+) -> typing.Optional[TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
     """
@@ -218,7 +214,7 @@ def transform_interface_to_typed_interface(
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
-    return _interface_models.TypedInterface(inputs_map, outputs_map)
+    return TypedInterface(inputs_map, outputs_map)
 
 
 def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
@@ -317,7 +313,7 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 def transform_variable_map(
     variable_map: Dict[str, type],
     descriptions: Dict[str, str] = {},
-) -> Dict[str, _interface_models.Variable]:
+) -> Dict[str, Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
     Flyte Variable object with that type.
@@ -342,8 +338,8 @@ def transform_variable_map(
     return res
 
 
-def transform_type(x: type, description: str = None) -> _interface_models.Variable:
-    return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=description)
+def transform_type(x: type, description: str = None) -> Variable:
+    return Variable(type=TypeEngine.to_literal_type(x), description=description)
 
 
 def default_output_name(index: int = 0) -> str:

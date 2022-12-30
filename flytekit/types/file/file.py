@@ -6,14 +6,13 @@ import typing
 from dataclasses import dataclass, field
 
 from dataclasses_json import config, dataclass_json
+from flyteidl.core.literals_pb2 import Blob, BlobMetadata, Literal, Scalar
+from flyteidl.core.types_pb2 import BlobType, LiteralType
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.loggers import logger
-from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
