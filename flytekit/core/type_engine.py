@@ -363,6 +363,12 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.schema.types import FlyteSchema
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
+        # Handle Optional
+        if get_origin(python_type) is typing.Union and type(None) in get_args(python_type):
+            if python_val is None:
+                return None
+            return self._serialize_flyte_type(python_val, get_args(python_type)[0])
+
         if hasattr(python_type, "__origin__") and python_type.__origin__ is list:
             return [self._serialize_flyte_type(v, python_type.__args__[0]) for v in python_val]
 
@@ -402,11 +408,17 @@ class DataclassTransformer(TypeTransformer[object]):
                 python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
             return python_val
 
-    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> T:
+    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
         from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+
+        # Handle Optional
+        if get_origin(expected_python_type) is typing.Union and type(None) in get_args(expected_python_type):
+            if python_val is None:
+                return None
+            return self._deserialize_flyte_type(python_val, get_args(expected_python_type)[0])
 
         if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is list:
             return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]  # type: ignore
