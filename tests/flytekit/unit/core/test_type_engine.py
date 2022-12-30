@@ -142,7 +142,7 @@ def test_list_of_dict_getting_python_value():
     ctx = FlyteContext.current_context()
     lv = Literal(
         collection=LiteralCollection(
-            literals=[Literal(map=LiteralMap({"foo": Literal(scalar=Scalar(primitive=Primitive(integer=1)))}))]
+            literals=[Literal(map=LiteralMap(literals={"foo": Literal(scalar=Scalar(primitive=Primitive(integer=1)))}))]
         )
     )
 
@@ -269,7 +269,8 @@ def test_dict_transformer():
     def recursive_assert(lit: LiteralType, expected: LiteralType, expected_depth: int = 1, curr_depth: int = 0):
         assert curr_depth <= expected_depth
         assert lit is not None
-        if lit.map_value_type is None:
+        # if lit.map_value_type is None:
+        if lit.HasField("map_value_type") is False:
             assert lit == expected
             return
         recursive_assert(lit.map_value_type, expected, expected_depth, curr_depth + 1)
@@ -310,7 +311,7 @@ def test_dict_transformer():
 
     ctx = FlyteContext.current_context()
 
-    lit = d.to_literal(ctx, {}, typing.Dict, LiteralType(SimpleType.STRUCT))
+    lit = d.to_literal(ctx, {}, typing.Dict, LiteralType(simple=SimpleType.STRUCT))
     pv = d.to_python_value(ctx, lit, typing.Dict)
     assert pv == {}
 
@@ -1341,12 +1342,16 @@ def test_annotated_list():
     t = typing_extensions.Annotated[typing.List[int], FlyteAnnotation({"foo": "bar"})]
     lt = TypeEngine.to_literal_type(t)
     assert isinstance(lt.annotation, TypeAnnotation)
-    assert lt.annotation.annotations == {"foo": "bar"}
+    expected_struct = _struct.Struct()
+    expected_struct.update({"foo": "bar"})
+    assert lt.annotation.annotations == expected_struct
 
     t = typing.List[typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"})]]
     lt = TypeEngine.to_literal_type(t)
     assert isinstance(lt.collection_type.annotation, TypeAnnotation)
-    assert lt.collection_type.annotation.annotations == {"foo": "bar"}
+    expected_struct = _struct.Struct()
+    expected_struct.update({"foo": "bar"})
+    assert lt.collection_type.annotation.annotations == expected_struct
 
 
 def test_type_alias():

@@ -367,7 +367,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")
             else:
                 ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
-            return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
+            return Literal(scalar=Scalar(schema=Schema(uri=remote_path, type=self._get_schema_type(python_type))))
 
         schema = python_type(
             local_path=ctx.file_access.get_random_local_directory(),
@@ -389,14 +389,14 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)
 
-        if lv and lv.scalar and lv.scalar.structured_dataset:
+        if lv and lv.scalar and lv.scalar.WhichOneof("value") == "structured_dataset":
             return expected_python_type(
                 local_path=ctx.file_access.get_random_local_directory(),
                 remote_path=lv.scalar.structured_dataset.uri,
                 downloader=downloader,
                 supported_mode=SchemaOpenMode.READ,
             )
-        if not (lv and lv.scalar and lv.scalar.schema):
+        if not (lv and lv.scalar and lv.scalar.WhichOneof("value") == "schema"):
             raise AssertionError("Can only convert a literal schema to a FlyteSchema")
 
         return expected_python_type(
@@ -407,7 +407,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         )
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[FlyteSchema]:
-        if not literal_type.schema:
+        if literal_type.WhichOneof("type") != "schema":
             raise ValueError(f"Cannot reverse {literal_type}")
         columns: typing.Dict[str, Type] = {}
         for literal_column in literal_type.schema.columns:
