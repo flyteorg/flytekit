@@ -3,7 +3,7 @@ import typing
 from typing import Type
 
 import cloudpickle
-from flyteidl.core.literals_pb2 import BlobMetadata, Literal
+from flyteidl.core.literals_pb2 import Blob, BlobMetadata, Literal, Scalar
 from flyteidl.core.types_pb2 import BlobType, LiteralType
 
 from flytekit.core.context_manager import FlyteContext

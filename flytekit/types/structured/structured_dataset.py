@@ -620,7 +620,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # Always set the format here to the format of the handler.
         # Note that this will always be the same as the incoming format except for when the fallback handler
         # with a format of "" is used.
-        sd_model.metadata._structured_dataset_type.format = handler.supported_format
+        sd_model.metadata.structured_dataset_type.format = handler.supported_format
         return Literal(scalar=Scalar(structured_dataset=sd_model))
 
     def to_python_value(

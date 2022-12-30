@@ -41,7 +41,9 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         df.to_parquet(local_path, coerce_timestamps="us", allow_truncated_timestamps=False)
         ctx.file_access.upload_directory(local_dir, path)
         structured_dataset_type.format = PARQUET
-        return literals_pb2.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+        return literals_pb2.StructuredDataset(
+            uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type=structured_dataset_type)
+        )
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):

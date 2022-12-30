@@ -11,7 +11,18 @@ import pyarrow as pa
 import pytest
 import typing_extensions
 from dataclasses_json import DataClassJsonMixin, dataclass_json
-from flyteidl.core import errors_pb2
+from flyteidl.core import errors_pb2, types_pb2
+from flyteidl.core.literals_pb2 import (
+    Blob,
+    BlobMetadata,
+    Literal,
+    LiteralCollection,
+    LiteralMap,
+    Primitive,
+    Scalar,
+    Void,
+)
+from flyteidl.core.types_pb2 import BlobType, LiteralType, SimpleType, TypeAnnotation, TypeStructure
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
@@ -40,11 +51,6 @@ from flytekit.core.type_engine import (
     dataclass_from_dict,
 )
 from flytekit.exceptions import user as user_exceptions
-from flytekit.models import types as model_types
-from flytekit.models.annotation import TypeAnnotation
-from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
-from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FileExt, JPEGImageFile
@@ -61,18 +67,18 @@ T = typing.TypeVar("T")
 def test_type_engine():
     t = int
     lt = TypeEngine.to_literal_type(t)
-    assert lt.simple == model_types.SimpleType.INTEGER
+    assert lt.simple == types_pb2.INTEGER
 
     t = typing.Dict[str, typing.List[typing.Dict[str, timedelta]]]
     lt = TypeEngine.to_literal_type(t)
-    assert lt.map_value_type.collection_type.map_value_type.simple == model_types.SimpleType.DURATION
+    assert lt.map_value_type.collection_type.map_value_type.simple == types_pb2.DURATION
 
 
 def test_named_tuple():
     t = typing.NamedTuple("Outputs", [("x_str", str), ("y_int", int)])
     var_map = TypeEngine.named_tuple_to_variable_map(t)
-    assert var_map.variables["x_str"].type.simple == model_types.SimpleType.STRING
-    assert var_map.variables["y_int"].type.simple == model_types.SimpleType.INTEGER
+    assert var_map.variables["x_str"].type.simple == types_pb2.STRING
+    assert var_map.variables["y_int"].type.simple == types_pb2.INTEGER
 
 
 def test_type_resolution():
@@ -383,35 +389,35 @@ def test_protos():
 
 
 def test_guessing_basic():
-    b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
+    b = types_pb2.LiteralType(simple=types_pb2.BOOLEAN)
     pt = TypeEngine.guess_python_type(b)
     assert pt is bool
 
-    lt = model_types.LiteralType(simple=model_types.SimpleType.INTEGER)
+    lt = types_pb2.LiteralType(simple=types_pb2.INTEGER)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is int
 
-    lt = model_types.LiteralType(simple=model_types.SimpleType.STRING)
+    lt = types_pb2.LiteralType(simple=types_pb2.STRING)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is str
 
-    lt = model_types.LiteralType(simple=model_types.SimpleType.DURATION)
+    lt = types_pb2.LiteralType(simple=types_pb2.DURATION)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is timedelta
 
-    lt = model_types.LiteralType(simple=model_types.SimpleType.DATETIME)
+    lt = types_pb2.LiteralType(simple=types_pb2.DATETIME)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is datetime.datetime
 
-    lt = model_types.LiteralType(simple=model_types.SimpleType.FLOAT)
+    lt = types_pb2.LiteralType(simple=types_pb2.FLOAT)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is float
 
-    lt = model_types.LiteralType(simple=model_types.SimpleType.NONE)
+    lt = types_pb2.LiteralType(simple=types_pb2.NONE)
     pt = TypeEngine.guess_python_type(lt)
     assert pt is type(None)  # noqa: E721
 
-    lt = model_types.LiteralType(
+    lt = types_pb2.LiteralType(
         blob=BlobType(
             format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
         )
@@ -421,13 +427,13 @@ def test_guessing_basic():
 
 
 def test_guessing_containers():
-    b = model_types.LiteralType(simple=model_types.SimpleType.BOOLEAN)
-    lt = model_types.LiteralType(collection_type=b)
+    b = types_pb2.LiteralType(simple=types_pb2.BOOLEAN)
+    lt = types_pb2.LiteralType(collection_type=b)
     pt = TypeEngine.guess_python_type(lt)
     assert pt == typing.List[bool]
 
-    dur = model_types.LiteralType(simple=model_types.SimpleType.DURATION)
-    lt = model_types.LiteralType(map_value_type=dur)
+    dur = types_pb2.LiteralType(simple=types_pb2.DURATION)
+    lt = types_pb2.LiteralType(map_value_type=dur)
     pt = TypeEngine.guess_python_type(lt)
     assert pt == typing.Dict[str, timedelta]
 
@@ -1107,7 +1113,7 @@ def test_pickle_type():
 
     lt = TypeEngine.to_literal_type(FlytePickle)
     assert lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
-    assert lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+    assert lt.blob.dimensionality == BlobType.SINGLE
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, Foo(1), FlytePickle, lt)
@@ -1236,7 +1242,7 @@ def test_nested_annotated():
     """
     pt = Annotated[Annotated[int, "inner-annotation"], "outer-annotation"]
     lt = TypeEngine.to_literal_type(pt)
-    assert lt.simple == model_types.SimpleType.INTEGER
+    assert lt.simple == types_pb2.INTEGER
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 42, pt, lt)
@@ -1284,9 +1290,7 @@ def test_literal_hash_int_can_be_set():
     Test to confirm that annotating an integer with `HashMethod` is allowed.
     """
     ctx = FlyteContext.current_context()
-    lv = TypeEngine.to_literal(
-        ctx, 42, Annotated[int, HashMethod(str)], LiteralType(simple=model_types.SimpleType.INTEGER)
-    )
+    lv = TypeEngine.to_literal(ctx, 42, Annotated[int, HashMethod(str)], LiteralType(simple=types_pb2.INTEGER))
     assert lv.scalar.primitive.integer == 42
     assert lv.hash == "42"
 

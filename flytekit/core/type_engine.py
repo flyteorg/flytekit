@@ -160,7 +160,7 @@ class SimpleTransformer(TypeTransformer[T]):
         self._from_literal_transformer = from_literal_transformer
 
     def get_literal_type(self, t: Type[T] = None) -> LiteralType:
-        return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
+        return self._lt
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if type(python_val) != self._type:
@@ -555,7 +555,9 @@ class ProtobufTransformer(TypeTransformer[Message]):
         return f"{expected_python_type.__module__}.{expected_python_type.__name__}"
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
+        metadata = Struct()
+        metadata.update({ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
+        return LiteralType(simple=types_pb2.STRUCT, metadata=metadata)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         struct = Struct()
@@ -576,7 +578,7 @@ class ProtobufTransformer(TypeTransformer[Message]):
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if (
-            literal_type.simple == SimpleType.STRUCT
+            literal_type.simple == types_pb2.STRUCT
             and literal_type.metadata
             and literal_type.metadata.get(self.PB_FIELD_KEY, "")
         ):
