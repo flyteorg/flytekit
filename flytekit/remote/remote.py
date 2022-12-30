@@ -17,7 +17,10 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
-from flyteidl.core import literals_pb2 as literals_pb2
+from flyteidl.admin import common_pb2, execution_pb2, launch_plan_pb2, node_execution_pb2, task_pb2
+from flyteidl.admin import workflow_pb2 as admin_workflow_pb2
+from flyteidl.core import identifier_pb2, interface_pb2, literals_pb2
+from flyteidl.core import workflow_pb2 as core_workflow_pb2
 
 from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -37,25 +40,8 @@ from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEnt
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
-from flytekit.models import launch_plan as launch_plan_models
-from flytekit.models import literals as literal_models
-from flytekit.models import task as task_models
-from flytekit.models.admin import common as admin_common_models
-from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.admin.common import Sort
-from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
-from flytekit.models.core.workflow import NodeMetadata
-from flytekit.models.execution import (
-    ExecutionMetadata,
-    ExecutionSpec,
-    NodeExecutionGetDataResponse,
-    NotificationList,
-    WorkflowExecutionGetDataResponse,
-)
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
-from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.fast_registration import fast_package
@@ -68,9 +54,11 @@ from flytekit.tools.translator import (
     get_serializable_launch_plan,
 )
 
-ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
+ExecutionDataResponse = typing.Union[
+    execution_pb2.WorkflowExecutionGetDataResponse, node_execution_pb2.NodeExecutionGetDataResponse
+]
 
-MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
+MOST_RECENT_FIRST = common_pb2.Sort(key="created_at", direction=common_pb2.Sort.DESCENDING)
 
 
 class RegistrationSkipped(Exception):
@@ -94,7 +82,7 @@ def _get_latest_version(list_entities_method: typing.Callable, project: str, dom
     entity_list, _ = list_entities_method(
         named_entity,
         limit=1,
-        sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+        sort_by=common_pb2.Sort(key="created_at", direction=common_pb2.Sort.DESCENDING),
     )
     admin_entity = None if not entity_list else entity_list[0]
     if not admin_entity:
@@ -110,7 +98,8 @@ def _get_entity_identifier(
     name: str,
     version: typing.Optional[str] = None,
 ):
-    return Identifier(
+    return identifier_pb2.Identifier(
+        # TODO: this type was always wrong?
         resource_type,
         project,
         domain,
@@ -225,7 +214,7 @@ class FlyteRemote(object):
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
         task_id = _get_entity_identifier(
             self.client.list_tasks_paginated,
-            ResourceType.TASK,
+            identifier_pb2.TASK,
             project or self.default_project,
             domain or self.default_domain,
             name,
@@ -265,7 +254,7 @@ class FlyteRemote(object):
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
         workflow_id = _get_entity_identifier(
             self.client.list_workflows_paginated,
-            ResourceType.WORKFLOW,
+            identifier_pb2.WORKFLOW,
             project or self.default_project,
             domain or self.default_domain,
             name,
@@ -307,7 +296,7 @@ class FlyteRemote(object):
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
         launch_plan_id = _get_entity_identifier(
             self.client.list_launch_plans_paginated,
-            ResourceType.LAUNCH_PLAN,
+            identifier_pb2.LAUNCH_PLAN,
             project or self.default_project,
             domain or self.default_domain,
             name,
@@ -337,7 +326,7 @@ class FlyteRemote(object):
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
         execution = FlyteWorkflowExecution.promote_from_model(
             self.client.get_execution(
-                WorkflowExecutionIdentifier(
+                identifier_pb2.WorkflowExecutionIdentifier(
                     project or self.default_project,
                     domain or self.default_domain,
                     name,
@@ -391,8 +380,10 @@ class FlyteRemote(object):
     # Register Entities #
     #####################
 
-    def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
-        ident = Identifier(
+    def _resolve_identifier(
+        self, t: int, name: str, version: str, ss: SerializationSettings
+    ) -> identifier_pb2.Identifier:
+        ident = identifier_pb2.Identifier(
             resource_type=t,
             project=ss.project if ss and ss.project else self.default_project,
             domain=ss.domain if ss and ss.domain else self.default_domain,
@@ -414,7 +405,7 @@ class FlyteRemote(object):
         create_default_launchplan: bool = True,
         options: Options = None,
         og_entity: FlyteLocalEntity = None,
-    ) -> typing.Optional[Identifier]:
+    ) -> typing.Optional[identifier_pb2.Identifier]:
         """
         Raw register method, can be used to register control plane entities. Usually if you have a Flyte Entity like a
         WorkflowBase, Task, LaunchPlan then use other methods. This should be used only if you have already serialized entities
@@ -440,10 +431,10 @@ class FlyteRemote(object):
         if isinstance(
             cp_entity,
             (
-                workflow_model.Node,
-                workflow_model.WorkflowNode,
-                workflow_model.BranchNode,
-                workflow_model.TaskNode,
+                core_workflow_pb2.Node,
+                core_workflow_pb2.WorkflowNode,
+                core_workflow_pb2.BranchNode,
+                core_workflow_pb2.TaskNode,
             ),
         ):
             remote_logger.debug("Ignoring nodes for registration.")
@@ -453,20 +444,20 @@ class FlyteRemote(object):
             remote_logger.debug(f"Skipping registration of Reference entity, name: {cp_entity.template.id.name}")
             return None
 
-        if isinstance(cp_entity, task_models.TaskSpec):
+        if isinstance(cp_entity, task_pb2.TaskSpec):
             if isinstance(cp_entity, FlyteTask):
                 version = cp_entity.id.version
-            ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
+            ident = self._resolve_identifier(identifier_pb2.TASK, cp_entity.template.id.name, version, settings)
             try:
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
                 remote_logger.info(f" {ident} Already Exists!")
             return ident
 
-        if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
+        if isinstance(cp_entity, admin_workflow_pb2.WorkflowSpec):
             if isinstance(cp_entity, FlyteWorkflow):
                 version = cp_entity.id.version
-            ident = self._resolve_identifier(ResourceType.WORKFLOW, cp_entity.template.id.name, version, settings)
+            ident = self._resolve_identifier(identifier_pb2.WORKFLOW, cp_entity.template.id.name, version, settings)
             try:
                 self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
@@ -494,8 +485,8 @@ class FlyteRemote(object):
                     remote_logger.info(f" {lp_entity.id} Already Exists!")
             return ident
 
-        if isinstance(cp_entity, launch_plan_models.LaunchPlan):
-            ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, cp_entity.id.name, version, settings)
+        if isinstance(cp_entity, launch_plan_pb2.LaunchPlan):
+            ident = self._resolve_identifier(identifier_pb2.LAUNCH_PLAN, cp_entity.id.name, version, settings)
             try:
                 self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
             except FlyteEntityAlreadyExistsException:
@@ -510,7 +501,7 @@ class FlyteRemote(object):
         settings: typing.Optional[SerializationSettings],
         version: str,
         options: typing.Optional[Options] = None,
-    ) -> Identifier:
+    ) -> identifier_pb2.Identifier:
         """
         This method serializes and register the given Flyte entity
         :return: Identifier of the registered entity
@@ -532,7 +523,7 @@ class FlyteRemote(object):
 
         ident = None
         for entity, cp_entity in m.items():
-            if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and is_dummy_serialization_setting:
+            if not isinstance(cp_entity, admin_workflow_pb2.WorkflowSpec) and is_dummy_serialization_setting:
                 # Only in the case of workflows can we use the dummy serialization settings.
                 raise user_exceptions.FlyteValueException(
                     settings,
@@ -592,7 +583,7 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
-        ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
+        ident = self._resolve_identifier(identifier_pb2.WORKFLOW, entity.name, version, serialization_settings)
         if serialization_settings:
             b = serialization_settings.new_builder()
             b.project = ident.project
@@ -766,7 +757,7 @@ class FlyteRemote(object):
         """
         ss = SerializationSettings(image_config=ImageConfig(), project=project, domain=domain, version=version)
 
-        ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
+        ident = self._resolve_identifier(identifier_pb2.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
         idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)
         try:
@@ -815,9 +806,9 @@ class FlyteRemote(object):
             if options.disable_notifications:
                 notifications = None
             else:
-                notifications = NotificationList(options.notifications)
+                notifications = execution_pb2.NotificationList(options.notifications)
         else:
-            notifications = NotificationList([])
+            notifications = execution_pb2.NotificationList([])
 
         type_hints = type_hints or {}
         literal_map = {}
@@ -842,7 +833,7 @@ class FlyteRemote(object):
                     lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
                 literal_map[k] = lit
 
-            literal_inputs = literal_models.LiteralMap(literals=literal_map)
+            literal_inputs = literals_pb2.LiteralMap(literals=literal_map)
 
         try:
             # Currently, this will only execute the flyte entity referenced by
@@ -854,10 +845,10 @@ class FlyteRemote(object):
                 project or self.default_project,
                 domain or self.default_domain,
                 execution_name,
-                ExecutionSpec(
+                execution_pb2.ExecutionSpec(
                     entity.id,
-                    ExecutionMetadata(
-                        ExecutionMetadata.ExecutionMode.MANUAL,
+                    execution_pb2.ExecutionMetadata(
+                        execution_pb2.ExecutionMetadata.MANUAL,
                         "placeholder",  # Admin replaces this from oidc token if auth is enabled.
                         0,
                     ),
@@ -878,7 +869,7 @@ class FlyteRemote(object):
                 f"Execution with Execution ID {execution_name} already exists. "
                 f"Assuming this is the same execution, returning!"
             )
-            exec_id = WorkflowExecutionIdentifier(
+            exec_id = identifier_pb2.WorkflowExecutionIdentifier(
                 project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
             )
         execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
@@ -1357,7 +1348,7 @@ class FlyteRemote(object):
             ]
 
         # This condition is only true for single-task executions
-        if execution.spec.launch_plan.resource_type == ResourceType.TASK:
+        if execution.spec.launch_plan.resource_type == identifier_pb2.TASK:
             flyte_entity = self.fetch_task(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
             node_interface = flyte_entity.interface
             if sync_nodes:
@@ -1378,7 +1369,7 @@ class FlyteRemote(object):
                             id=flyte_entity.id,
                             upstream_nodes=[],
                             bindings=[],
-                            metadata=NodeMetadata(name=""),
+                            metadata=core_workflow_pb2.NodeMetadata(name=""),
                             flyte_task=flyte_entity,
                         )
                     }
@@ -1581,7 +1572,7 @@ class FlyteRemote(object):
         self,
         execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
         execution_data,
-        interface: TypedInterface,
+        interface: interface_pb2.TypedInterface,
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         input_literal_map = self._get_input_literal_map(execution_data)
@@ -1592,7 +1583,7 @@ class FlyteRemote(object):
             execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs, self.context)
         return execution
 
-    def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
+    def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literals_pb2.LiteralMap:
         # Inputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
         if bool(execution_data.full_inputs.literals):
             return execution_data.full_inputs
@@ -1600,12 +1591,12 @@ class FlyteRemote(object):
             with self.remote_context() as ctx:
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
                 ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
-                return literal_models.LiteralMap.from_flyte_idl(
+                return literals_pb2.LiteralMap.from_flyte_idl(
                     utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
-        return literal_models.LiteralMap({})
+        return literals_pb2.LiteralMap({})
 
-    def _get_output_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
+    def _get_output_literal_map(self, execution_data: ExecutionDataResponse) -> literals_pb2.LiteralMap:
         # Outputs are returned inline unless they are too big, in which case a url blob pointing to them is returned.
         if bool(execution_data.full_outputs.literals):
             return execution_data.full_outputs
@@ -1613,10 +1604,10 @@ class FlyteRemote(object):
             with self.remote_context() as ctx:
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
                 ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
-                return literal_models.LiteralMap.from_flyte_idl(
+                return literals_pb2.LiteralMap.from_flyte_idl(
                     utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
                 )
-        return literal_models.LiteralMap({})
+        return literals_pb2.LiteralMap({})
 
     def generate_console_http_domain(self) -> str:
         """

@@ -3,12 +3,11 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Dict, List, Optional, Union
 
+from flyteidl.admin import execution_pb2, node_execution_pb2, task_execution_pb2
+from flyteidl.core import execution_pb2 as core_execution_pb2
+
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.exceptions import user as user_exceptions
-from flytekit.models import execution as execution_models
-from flytekit.models import node_execution as node_execution_models
-from flytekit.models.admin import task_execution as admin_task_execution_models
-from flytekit.models.core import execution as core_execution_models
 from flytekit.remote.entities import FlyteTask, FlyteWorkflow
 
 
@@ -24,7 +23,7 @@ class RemoteExecutionBase(object):
 
     @property
     @abstractmethod
-    def error(self) -> core_execution_models.ExecutionError:
+    def error(self) -> core_execution_pb2.ExecutionError:
         ...
 
     @property
@@ -48,7 +47,8 @@ class RemoteExecutionBase(object):
         return self._outputs
 
 
-class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskExecution):
+# TODO: inherited from task_execution_pb2.TaskExecution
+class FlyteTaskExecution(RemoteExecutionBase):
     """A class encapsulating a task execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
@@ -63,13 +63,13 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
     def is_done(self) -> bool:
         """Whether or not the execution is complete."""
         return self.closure.phase in {
-            core_execution_models.TaskExecutionPhase.ABORTED,
-            core_execution_models.TaskExecutionPhase.FAILED,
-            core_execution_models.TaskExecutionPhase.SUCCEEDED,
+            core_execution_pb2.TaskExecution.ABORTED,
+            core_execution_pb2.TaskExecution.FAILED,
+            core_execution_pb2.TaskExecution.SUCCEEDED,
         }
 
     @property
-    def error(self) -> Optional[core_execution_models.ExecutionError]:
+    def error(self) -> Optional[core_execution_pb2.ExecutionError]:
         """
         If execution is in progress, raise an exception. Otherwise, return None if no error was present upon
         reaching completion.
@@ -81,7 +81,7 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
         return self.closure.error
 
     @classmethod
-    def promote_from_model(cls, base_model: admin_task_execution_models.TaskExecution) -> "FlyteTaskExecution":
+    def promote_from_model(cls, base_model: task_execution_pb2.TaskExecution) -> "FlyteTaskExecution":
         return cls(
             closure=base_model.closure,
             id=base_model.id,
@@ -90,7 +90,8 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
         )
 
 
-class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
+# TODO: inherited from execution_pb2.Execution
+class FlyteWorkflowExecution(RemoteExecutionBase):
     """A class encapsulating a workflow execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
@@ -108,7 +109,7 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         return self._node_executions or {}
 
     @property
-    def error(self) -> core_execution_models.ExecutionError:
+    def error(self) -> core_execution_pb2.ExecutionError:
         """
         If execution is in progress, raise an exception.  Otherwise, return None if no error was present upon
         reaching completion.
@@ -125,14 +126,14 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         Whether or not the execution is complete.
         """
         return self.closure.phase in {
-            core_execution_models.WorkflowExecutionPhase.ABORTED,
-            core_execution_models.WorkflowExecutionPhase.FAILED,
-            core_execution_models.WorkflowExecutionPhase.SUCCEEDED,
-            core_execution_models.WorkflowExecutionPhase.TIMED_OUT,
+            core_execution_pb2.WorkflowExecution.ABORTED,
+            core_execution_pb2.WorkflowExecution.FAILED,
+            core_execution_pb2.WorkflowExecution.SUCCEEDED,
+            core_execution_pb2.WorkflowExecution.TIMED_OUT,
         }
 
     @classmethod
-    def promote_from_model(cls, base_model: execution_models.Execution) -> "FlyteWorkflowExecution":
+    def promote_from_model(cls, base_model: execution_pb2.Execution) -> "FlyteWorkflowExecution":
         return cls(
             closure=base_model.closure,
             id=base_model.id,
@@ -140,7 +141,8 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         )
 
 
-class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecution):
+# TODO: inherited from node_execution_pb2.NodeExecution
+class FlyteNodeExecution(RemoteExecutionBase):
     """A class encapsulating a node execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
@@ -176,7 +178,7 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         return self.task_executions or self._underlying_node_executions or []
 
     @property
-    def error(self) -> core_execution_models.ExecutionError:
+    def error(self) -> core_execution_pb2.ExecutionError:
         """
         If execution is in progress, raise an exception. Otherwise, return None if no error was present upon
         reaching completion.
@@ -191,19 +193,20 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
     def is_done(self) -> bool:
         """Whether or not the execution is complete."""
         return self.closure.phase in {
-            core_execution_models.NodeExecutionPhase.ABORTED,
-            core_execution_models.NodeExecutionPhase.FAILED,
-            core_execution_models.NodeExecutionPhase.SKIPPED,
-            core_execution_models.NodeExecutionPhase.SUCCEEDED,
-            core_execution_models.NodeExecutionPhase.TIMED_OUT,
+            core_execution_pb2.NodeExecution.ABORTED,
+            core_execution_pb2.NodeExecution.FAILED,
+            core_execution_pb2.NodeExecution.SKIPPED,
+            core_execution_pb2.NodeExecution.SUCCEEDED,
+            core_execution_pb2.NodeExecution.TIMED_OUT,
         }
 
     @classmethod
-    def promote_from_model(cls, base_model: node_execution_models.NodeExecution) -> "FlyteNodeExecution":
+    def promote_from_model(cls, base_model: node_execution_pb2.NodeExecution) -> "FlyteNodeExecution":
         return cls(
             closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri, metadata=base_model.metadata
         )
 
+    # TODO: why this return type?
     @property
     def interface(self) -> "flytekit.remote.interface.TypedInterface":
         """
