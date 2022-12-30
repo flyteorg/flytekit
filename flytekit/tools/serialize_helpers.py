@@ -5,18 +5,15 @@ import typing
 from collections import OrderedDict
 
 import click
+from flyteidl.admin import launch_plan_pb2, task_pb2
+from flyteidl.admin import workflow_pb2 as admin_workflow_pb2
+from flyteidl.core import identifier_pb2
 
 from flytekit import LaunchPlan
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import task as task_models
-from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.admin.workflow import WorkflowSpec
-from flytekit.models.core import identifier as _identifier
-from flytekit.models.task import TaskSpec
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options, get_serializable
 
 
@@ -38,17 +35,15 @@ def _should_register_with_admin(entity) -> bool:
     This is used in the code below. The translator.py module produces lots of objects (namely nodes and BranchNodes)
     that do not/should not be written to .pb file to send to admin. This function filters them out.
     """
-    return isinstance(
-        entity, (task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
-    )
+    return isinstance(entity, (task_pb2.TaskSpec, launch_plan_pb2.LaunchPlan, admin_workflow_pb2.WorkflowSpec))
 
 
-def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Set[task_models.TaskSpec]:
+def _find_duplicate_tasks(tasks: typing.List[task_pb2.TaskSpec]) -> typing.Set[task_pb2.TaskSpec]:
     """
     Given a list of `TaskSpec`, this function returns a set containing the duplicated `TaskSpec` if any exists.
     """
-    seen: typing.Set[_identifier.Identifier] = set()
-    duplicate_tasks: typing.Set[task_models.TaskSpec] = set()
+    seen: typing.Set[identifier_pb2.Identifier] = set()
+    duplicate_tasks: typing.Set[task_pb2.TaskSpec] = set()
     for task in tasks:
         if task.template.id not in seen:
             seen.add(task.template.id)
@@ -77,8 +72,8 @@ def get_registrable_entities(
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
-    serializable_tasks: typing.List[task_models.TaskSpec] = [
-        entity for entity in entities_to_be_serialized if isinstance(entity, task_models.TaskSpec)
+    serializable_tasks: typing.List[task_pb2.TaskSpec] = [
+        entity for entity in entities_to_be_serialized if isinstance(entity, task_pb2.TaskSpec)
     ]
     # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same
     # metadata identifiers (see :py:class:`flytekit.common.core.identifier.Identifier`). Duplicate
@@ -110,13 +105,13 @@ def persist_registrable_entities(entities: typing.List[FlyteControlPlaneEntity],
     zero_padded_length = _determine_text_chars(len(entities))
     for i, entity in enumerate(entities):
         fname_index = str(i).zfill(zero_padded_length)
-        if isinstance(entity, TaskSpec):
+        if isinstance(entity, task_pb2.TaskSpec):
             name = entity.template.id.name
             fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, WorkflowSpec):
+        elif isinstance(entity, admin_workflow_pb2.WorkflowSpec):
             name = entity.template.id.name
             fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, _launch_plan_models.LaunchPlan):
+        elif isinstance(entity, launch_plan_pb2.LaunchPlan):
             name = entity.id.name
             fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
         else:
