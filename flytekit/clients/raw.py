@@ -449,7 +449,6 @@ class RawSynchronousFlyteClient(object):
             identical workflow is already registered.
         :raises grpc.RpcError:
         """
-        print(f"Here\n{workflow_create_request.spec.template}")
         return self._stub.CreateWorkflow(workflow_create_request, metadata=self._metadata)
 
     @_handle_rpc_error(retry=True)
