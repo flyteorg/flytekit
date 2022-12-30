@@ -659,7 +659,9 @@ def get_serializable(
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, GateNode):
-        import ipdb; ipdb.set_trace()
+        import ipdb
+
+        ipdb.set_trace()
 
     elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow):
         if entity.should_register:

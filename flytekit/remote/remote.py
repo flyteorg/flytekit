@@ -410,7 +410,7 @@ class FlyteRemote(object):
             lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
             remote_logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
 
-        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id.to_flyte_idl()), value=lit)
+        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl())
 
         # Response is empty currently, nothing to give back to the user.
         self.client.set_signal(req)
