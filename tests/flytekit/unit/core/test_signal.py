@@ -1,19 +1,42 @@
-from flyteidl.admin.signal_pb2 import SignalSetRequest
+from flyteidl.admin.signal_pb2 import Signal, SignalList
+from mock import MagicMock
 
-from flytekit.clients.raw import RawSynchronousFlyteClient
-from flytekit.configuration import PlatformConfig
+from flytekit.configuration import Config
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
+from flytekit.models.core.identifier import SignalIdentifier, WorkflowExecutionIdentifier
+from flytekit.remote.remote import FlyteRemote
 
 
-def test_fjdska():
+def test_remote_list_signals():
     ctx = FlyteContextManager.current_context()
-    literal = TypeEngine.to_literal(ctx, 42, int, TypeEngine.to_literal_type(int))
+    wfeid = WorkflowExecutionIdentifier("p", "d", "execid")
+    signal_id = SignalIdentifier(signal_id="sigid", execution_id=wfeid).to_flyte_idl()
+    lt = TypeEngine.to_literal_type(int)
+    signal = Signal(
+        id=signal_id,
+        type=lt.to_flyte_idl(),
+        value=TypeEngine.to_literal(ctx, 3, int, lt).to_flyte_idl(),
+    )
 
-    pc = PlatformConfig.auto(config_file="/Users/user/.flyte/config-file.yaml")
-    cl = RawSynchronousFlyteClient(pc)
-    ssr = SignalSetRequest(id="myid", value=literal)
+    mock_client = MagicMock()
+    mock_client.list_signals.return_value = SignalList(signals=[signal], token="")
+
+    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    remote._client = mock_client
+    res = remote.list_signals("execid", "p", "d", limit=10)
+    assert len(res) == 1
 
 
-def test_fdsdjfsd():
-    SignalSetRequest()
+def test_remote_set_signal():
+    mock_client = MagicMock()
+
+    def checker(request):
+        assert request.id.signal_id == "sigid"
+        assert request.value.scalar.primitive.integer == 3
+
+    mock_client.set_signal.side_effect = checker
+
+    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    remote._client = mock_client
+    remote.set_signal("sigid", "execid", 3)
