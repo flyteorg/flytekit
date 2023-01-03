@@ -118,7 +118,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             spark_type=SparkType.PYTHON,
         )
         if isinstance(self.task_config, Databricks):
-            cfg = typing.cast(self.task_config, Databricks)
+            cfg = typing.cast(Databricks, self.task_config)
             job._databricks_conf = cfg.databricks_conf
             job._databricks_token = cfg.databricks_token
             job._databricks_instance = cfg.databricks_instance
@@ -150,3 +150,4 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
+TaskPlugins.register_pythontask_plugin(Databricks, PysparkFunctionTask)
