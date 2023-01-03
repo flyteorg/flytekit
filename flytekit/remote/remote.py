@@ -122,7 +122,7 @@ def _get_entity_identifier(
     )
 
 
-def _get_git_repo_url(source_path):
+def get_git_repo_url(source_path):
     """
     Get git repo URL from remote.origin.url
     """
@@ -776,7 +776,7 @@ class FlyteRemote(object):
             project=project,
             domain=domain,
             image_config=image_config,
-            git_repo=_get_git_repo_url(source_path),
+            git_repo=get_git_repo_url(source_path),
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
