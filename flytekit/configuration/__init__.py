@@ -300,7 +300,7 @@ class PlatformConfig(object):
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
     :param insecure_skip_verify: Wether to skip SSL certificate verification
-    :param console_endpoint: endpoint for console if differenet than Flyte backend
+    :param console_endpoint: endpoint for console if different than Flyte backend
     :param command: This command is executed to return a token using an external process.
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -314,7 +314,7 @@ class PlatformConfig(object):
     endpoint: str = "localhost:30080"
     insecure: bool = True
     insecure_skip_verify: bool = False
-    console_endpoint: typing.Optional[str] = "http://localhost:30080"
+    console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
@@ -558,12 +558,7 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(
-                endpoint="localhost:30080",
-                auth_mode="Pkce",
-                insecure=True,
-                console_endpoint="http://localhost:30080",
-            ),
+            platform=PlatformConfig(endpoint="localhost:30080", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
                 s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
             ),
