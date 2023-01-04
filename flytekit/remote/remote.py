@@ -472,7 +472,6 @@ class FlyteRemote(object):
                 version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
             try:
-                self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
                 remote_logger.info(f" {ident} Already Exists!")
@@ -483,7 +482,6 @@ class FlyteRemote(object):
                 version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.WORKFLOW, cp_entity.template.id.name, version, settings)
             try:
-                self.update_description_entity(cp_entity.docs, settings, ident.project, ident.domain)
                 self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
                 remote_logger.info(f" {ident} Already Exists!")
@@ -568,37 +566,6 @@ class FlyteRemote(object):
                 pass
 
         return ident
-
-    def update_description_entity(
-        self, docs: Documentation, settings: typing.Optional[SerializationSettings], project: str, domain: str
-    ):
-        # 1. Offload the long description if the size > 4KB
-        # 2. Upload long description file if it's present locally, and override the uri in the entity
-        # 3. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
-        if docs and docs.long_description:
-            ctx = context_manager.FlyteContextManager.current_context()
-            if docs.long_description.value:
-                # Offload the long description if the size > 4KB
-                if sys.getsizeof(docs.long_description.value) > 4 * 1024 * 1024:
-                    local_path = ctx.file_access.get_random_local_path()
-                    with open(local_path, "w") as f:
-                        f.write(docs.long_description.value)
-                    docs.long_description.uri = local_path
-                    docs.long_description.value = None
-
-            # Upload long description file if it's present locally, and override the uri in the entity.
-            if docs.long_description.uri and not ctx.file_access.is_remote(docs.long_description.uri):
-                md5, _ = hash_file(docs.long_description.uri)
-                upload_location = self.client.get_upload_signed_url(
-                    content_md5=md5,
-                    project=project,
-                    domain=domain,
-                    filename=os.path.basename(docs.long_description.uri),
-                )
-                ctx.file_access.put_data(docs.long_description.uri, upload_location.signed_url)
-                docs.long_description.uri = upload_location.native_url
-
-            docs.source_code = SourceCode(link=settings.git_repo)
 
     def register_task(
         self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
