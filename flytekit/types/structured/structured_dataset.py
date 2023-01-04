@@ -483,9 +483,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         if (default_format_for_type or default_for_type) and h.supported_format != GENERIC_FORMAT:
             if h.python_type in cls.DEFAULT_FORMATS and not override:
-                logger.debug(
-                    f"Not using handler {h} with format {h.supported_format} as default for {h.python_type}, {cls.DEFAULT_FORMATS[h.python_type]} already specified."
-                )
+                if cls.DEFAULT_FORMATS[h.python_type] != h.supported_format:
+                    logger.debug(
+                        f"Not using handler {h} with format {h.supported_format} as default for {h.python_type}, {cls.DEFAULT_FORMATS[h.python_type]} already specified."
+                    )
             else:
                 logger.debug(
                     f"Setting format {h.supported_format} for dataframes of type {h.python_type} from handler {h}"
