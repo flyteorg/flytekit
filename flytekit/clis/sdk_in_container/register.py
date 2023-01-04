@@ -17,7 +17,7 @@ and then sent to the backend specified by your config file. Think of this as com
 and the flytectl register step in one command. This is why you see switches you'd normally use with flytectl
 like service account here.
 
-Note: This command runs "fast" register by default. Future work to come to add a non-fast version.
+Note: This command runs "fast" register by default.
 This means that a zip is created from the detected root of the packages given, and uploaded. Just like with
 pyflyte run, tasks registered from this command will download and unzip that code package before running.
 
