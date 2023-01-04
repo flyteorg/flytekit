@@ -690,7 +690,7 @@ def workflow(
     _workflow_function=None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
-):
+) -> PythonFunctionWorkflow:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
