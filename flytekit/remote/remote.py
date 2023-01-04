@@ -17,7 +17,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
-from flyteidl.admin.signal_pb2 import Signal, SignalList, SignalListRequest, SignalSetRequest, SignalSetResponse
+from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit import Literal
