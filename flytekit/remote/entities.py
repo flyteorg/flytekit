@@ -356,7 +356,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
     ):
         if not task_node and not workflow_node and not branch_node and not gate_node:
             raise _user_exceptions.FlyteAssertion(
-                "An Flyte node must have one of task|workflow|branch entity specified at once"
+                "An Flyte node must have one of task|workflow|branch|gate entity specified at once"
             )
         # TODO: Revisit flyte_branch_node and flyte_gate_node, should they be another type like Condition instead
         #       of a node?
