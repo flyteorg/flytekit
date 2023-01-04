@@ -54,7 +54,8 @@ class LegacyConfigEntry(object):
             return None
         try:
             v = cfg.get(self)
-            return transform(v) if transform else v
+            if v is not None:
+                return transform(v) if transform else v
         except configparser.Error:
             pass
         return None
@@ -63,7 +64,7 @@ class LegacyConfigEntry(object):
 @dataclass
 class YamlConfigEntry(object):
     """
-    Creates a record for the config entry. contains
+    Creates a record for the config entry.
     Args:
         switch: dot-delimited string that should match flytectl args. Leaving it as dot-delimited instead of a list
           of strings because it's easier to maintain alignment with flytectl.
@@ -80,10 +81,11 @@ class YamlConfigEntry(object):
             return None
         try:
             v = cfg.get(self)
-            if v:
+            if v is not None:
                 return transform(v) if transform else v
         except Exception:
             ...
+
         return None
 
 
@@ -224,7 +226,7 @@ class ConfigFile(object):
         return self._legacy_config
 
     @property
-    def yaml_config(self) -> typing.Dict[str, Any]:
+    def yaml_config(self) -> typing.Dict[str, typing.Any]:
         return self._yaml_config
 
 
@@ -273,7 +275,7 @@ def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
 
         The input dictionary ``d`` will be mutated.
     """
-    if v:
+    if v is not None:
         d[k] = v
     return d
 
