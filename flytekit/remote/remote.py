@@ -10,7 +10,6 @@ import functools
 import hashlib
 import os
 import pathlib
-import sys
 import time
 import typing
 import uuid
@@ -25,7 +24,7 @@ from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.core import constants, context_manager, utils
+from flytekit.core import constants, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -48,7 +47,6 @@ from flytekit.models.admin.common import Sort
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
-from flytekit.models.documentation import Documentation, SourceCode
 from flytekit.models.execution import (
     ExecutionMetadata,
     ExecutionSpec,
