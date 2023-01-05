@@ -102,7 +102,7 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
         run_name = None  # MLflow will generate random name if value is None
 
         if ctx.execution_state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            experiment = f"{get_one_of('FLYTE_INTERNAL_EXECUTION_WORKFLOW', '_F_WF')}"
+            experiment = experiment_name and f"{get_one_of('FLYTE_INTERNAL_EXECUTION_WORKFLOW', '_F_WF')}"
             run_name = f"{params.execution_id.name}.{params.task_id.name.split('.')[-1]}"
 
         mlflow.set_experiment(experiment)
