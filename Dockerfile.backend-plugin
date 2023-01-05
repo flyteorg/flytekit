@@ -1,0 +1,14 @@
+FROM python:3.9-slim-buster
+
+MAINTAINER Flyte Team <users@flyte.org>
+LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
+
+WORKDIR /root
+ENV PYTHONPATH /root
+
+RUN apt-get update && apt-get install -y git
+RUN pip install "git+https://github.com/flyteorg/flytekit@backend-plugin-system"
+RUN pip install fastapi uvicorn[standard]
+RUN pip install numpy==1.23.1
+
+CMD uvicorn flytekit.extend.backend.fastapi:app --host 0.0.0.0 --port 8002
