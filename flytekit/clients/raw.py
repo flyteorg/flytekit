@@ -419,7 +419,7 @@ class RawSynchronousFlyteClient(object):
     @_handle_rpc_error(retry=True)
     def list_signals(self, signal_list_request: SignalListRequest) -> SignalList:
         """
-        This sets a signal
+        This lists signals
         """
         return self._signal.ListSignals(signal_list_request, metadata=self._metadata)
 
