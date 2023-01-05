@@ -207,7 +207,6 @@ def transform_interface_to_typed_interface(
     """
     if interface is None:
         return None
-
     if interface.docstring is None:
         input_descriptions = output_descriptions = {}
     else:
