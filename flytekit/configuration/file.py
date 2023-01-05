@@ -18,6 +18,11 @@ from flytekit.loggers import logger
 FLYTECTL_CONFIG_ENV_VAR = "FLYTECTL_CONFIG"
 
 
+def _exists(v: typing.Any) -> bool:
+    """Check if a value is defined."""
+    return isinstance(v, bool) or (v is not None and v)
+
+
 @dataclass
 class LegacyConfigEntry(object):
     """
@@ -54,7 +59,7 @@ class LegacyConfigEntry(object):
             return None
         try:
             v = cfg.get(self)
-            if v is not None:
+            if _exists(v):
                 return transform(v) if transform else v
         except configparser.Error:
             pass
@@ -275,7 +280,7 @@ def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
 
         The input dictionary ``d`` will be mutated.
     """
-    if v is not None:
+    if _exists(v):
         d[k] = v
     return d
 
