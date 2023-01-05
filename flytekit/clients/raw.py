@@ -246,7 +246,7 @@ class RawSynchronousFlyteClient(object):
             raise FlyteAuthenticationException("No client credentials secret provided in the config")
         cli_logger.debug(f"Basic authorization flow with client id {self._cfg.client_id} scope {scopes}")
         authorization_header = get_basic_authorization_header(self._cfg.client_id, client_secret)
-        token, expires_in = get_token(token_endpoint, authorization_header, scopes)
+        token, expires_in = get_token(token_endpoint, authorization_header, scopes, audience=self._cfg.audience)
         cli_logger.info("Retrieved new token, expires in {}".format(expires_in))
         authorization_header_key = self.public_client_config.authorization_metadata_key or None
         self.set_access_token(token, authorization_header_key)
@@ -865,7 +865,7 @@ class RawSynchronousFlyteClient(object):
         return self._dataproxy_stub.CreateDownloadLocation(create_download_location_request, metadata=self._metadata)
 
 
-def get_token(token_endpoint, authorization_header, scope):
+def get_token(token_endpoint, authorization_header, scope, audience=None):
     """
     :param Text token_endpoint:
     :param Text authorization_header: This is the value for the "Authorization" key. (eg 'Bearer abc123')
@@ -884,6 +884,8 @@ def get_token(token_endpoint, authorization_header, scope):
     }
     if scope is not None:
         body["scope"] = scope
+    if audience is not None:
+        body["audience"] = audience
     response = _requests.post(token_endpoint, data=body, headers=headers)
     if response.status_code != 200:
         cli_logger.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))

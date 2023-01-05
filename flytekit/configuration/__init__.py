@@ -308,6 +308,7 @@ class PlatformConfig(object):
       allow the Flyte engine to read the password directly from the environment variable. Note that this is
       less secure! Please only use this if mounting the secret as a file is impossible.
     :param scopes: List of scopes to request. This is only applicable to the client credentials flow.
+    :param audience: The audience to request. This is only applicable to the client credentials flow.
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
     """
 
@@ -319,6 +320,7 @@ class PlatformConfig(object):
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
+    audience: typing.Optional[str] = None
     auth_mode: AuthType = AuthType.STANDARD
 
     @classmethod
@@ -352,6 +354,7 @@ class PlatformConfig(object):
             client_credentials_secret,
         )
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
+        kwargs = set_if_exists(kwargs, "audience", _internal.Credentials.AUDIENCE.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
