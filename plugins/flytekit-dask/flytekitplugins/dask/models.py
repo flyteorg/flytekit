@@ -32,11 +32,11 @@ class Scheduler(_common.FlyteIdlEntity):
         """
         return self._resources
 
-    def to_flyte_idl(self) -> _dask_task.Scheduler:
+    def to_flyte_idl(self) -> _dask_task.DaskScheduler:
         """
         :return: The scheduler spec serialized to protobuf
         """
-        return _dask_task.Scheduler(
+        return _dask_task.DaskScheduler(
             image=self.image,
             resources=self.resources.to_flyte_idl() if self.resources else None,
         )
@@ -82,11 +82,11 @@ class WorkerGroup(_common.FlyteIdlEntity):
         """
         return self._resources
 
-    def to_flyte_idl(self) -> _dask_task.WorkerGroup:
+    def to_flyte_idl(self) -> _dask_task.DaskWorkerGroup:
         """
         :return: The dask cluster serialized to protobuf
         """
-        return _dask_task.WorkerGroup(
+        return _dask_task.DaskWorkerGroup(
             number_of_workers=self.number_of_workers,
             image=self.image,
             resources=self.resources.to_flyte_idl() if self.resources else None,
@@ -98,7 +98,7 @@ class DaskJob(_common.FlyteIdlEntity):
     Configuration for the custom dask job to run
 
     :param scheduler: Configuration for the scheduler
-    :param dask_cluster: Configuration for the dask cluster
+    :param workers: Configuration of the default worker group
     """
 
     def __init__(self, scheduler: Scheduler, workers: WorkerGroup):
