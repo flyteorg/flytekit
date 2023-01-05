@@ -484,7 +484,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if (default_format_for_type or default_for_type) and h.supported_format != GENERIC_FORMAT:
             if h.python_type in cls.DEFAULT_FORMATS and not override:
                 if cls.DEFAULT_FORMATS[h.python_type] != h.supported_format:
-                    logger.warning(
+                    logger.info(
                         f"Not using handler {h} with format {h.supported_format} as default for {h.python_type}, {cls.DEFAULT_FORMATS[h.python_type]} already specified."
                     )
             else:
@@ -494,7 +494,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 cls.DEFAULT_FORMATS[h.python_type] = h.supported_format
         if default_storage_for_type or default_for_type:
             if h.protocol in cls.DEFAULT_PROTOCOLS and not override:
-                logger.warning(
+                logger.debug(
                     f"Not using handler {h} with storage protocol {h.protocol} as default for {h.python_type}, {cls.DEFAULT_PROTOCOLS[h.python_type]} already specified."
                 )
             else:
