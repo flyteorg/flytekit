@@ -12,11 +12,10 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
-from flytekit.models.core.workflow import WorkflowTemplate
-from flytekit.models.task import TaskTemplate
-from flytekit.remote import FlyteLaunchPlan, FlyteTask
+from flytekit.models.admin.workflow import WorkflowSpec
+from flytekit.models.task import TaskSpec
+from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 from flytekit.remote.interface import TypedInterface
-from flytekit.remote.workflow import FlyteWorkflow
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -63,7 +62,7 @@ def test_fetched_task():
     serialized = OrderedDict()
     wf_spec = get_serializable(serialized, serialization_settings, wf)
     vals = [v for v in serialized.values()]
-    tts = [f for f in filter(lambda x: isinstance(x, TaskTemplate), vals)]
+    tts = [f for f in filter(lambda x: isinstance(x, TaskSpec), vals)]
     assert len(tts) == 1
     assert wf_spec.template.nodes[0].id == "foobar"
     assert wf_spec.template.outputs[0].binding.promise.node_id == "foobar"
@@ -143,9 +142,11 @@ def test_dynamic():
 def test_calling_wf():
     # No way to fetch from Admin in unit tests so we serialize and then promote back
     serialized = OrderedDict()
-    wf_spec = get_serializable(serialized, serialization_settings, sub_wf)
+    wf_spec: WorkflowSpec = get_serializable(serialized, serialization_settings, sub_wf)
     task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
-    fwf = FlyteWorkflow.promote_from_model(wf_spec.template, tasks=task_templates)
+    fwf = FlyteWorkflow.promote_from_model(
+        wf_spec.template, tasks={k: FlyteTask.promote_from_model(t) for k, t in task_templates.items()}
+    )
 
     @workflow
     def parent_1(a: int, b: str) -> typing.Tuple[int, str]:
@@ -162,8 +163,14 @@ def test_calling_wf():
 
     # Pick out the subworkflow templates from the ordereddict. We can't use the output of the gather_dependent_entities
     # function because that only looks for WorkflowSpecs
-    subwf_templates = {x.id: x for x in list(filter(lambda x: isinstance(x, WorkflowTemplate), serialized.values()))}
-    fwf_p1 = FlyteWorkflow.promote_from_model(wf_spec.template, sub_workflows=subwf_templates, tasks=task_templates_p1)
+    subwf_templates = {
+        x.template.id: x.template for x in list(filter(lambda x: isinstance(x, WorkflowSpec), serialized.values()))
+    }
+    fwf_p1 = FlyteWorkflow.promote_from_model(
+        wf_spec.template,
+        sub_workflows=subwf_templates,
+        tasks={k: FlyteTask.promote_from_model(t) for k, t in task_templates_p1.items()},
+    )
 
     @workflow
     def parent_2(a: int, b: str) -> typing.Tuple[int, str]:

@@ -17,7 +17,7 @@ and then sent to the backend specified by your config file. Think of this as com
 and the flytectl register step in one command. This is why you see switches you'd normally use with flytectl
 like service account here.
 
-Note: This command runs "fast" register by default. Future work to come to add a non-fast version.
+Note: This command runs "fast" register by default.
 This means that a zip is created from the detected root of the packages given, and uploaded. Just like with
 pyflyte run, tasks registered from this command will download and unzip that code package before running.
 
@@ -67,7 +67,7 @@ Note: This command only works on regular Python packages, not namespace packages
     help="Directory to write the output zip file containing the protobuf definitions",
 )
 @click.option(
-    "-d",
+    "-D",
     "--destination-dir",
     required=False,
     type=str,
@@ -107,6 +107,12 @@ Note: This command only works on regular Python packages, not namespace packages
     is_flag=True,
     help="Enables to skip zipping and uploading the package",
 )
+@click.option(
+    "--dry-run",
+    default=False,
+    is_flag=True,
+    help="Execute registration in dry-run mode. Skips actual registration to remote",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -122,6 +128,7 @@ def register(
     deref_symlinks: bool,
     non_fast: bool,
     package_or_module: typing.Tuple[str],
+    dry_run: bool,
 ):
     """
     see help
@@ -156,6 +163,7 @@ def register(
 
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
+    click.secho(f"Registering against {remote.config.platform.endpoint}")
     try:
         repo.register(
             project,
@@ -170,6 +178,7 @@ def register(
             fast=not non_fast,
             package_or_module=package_or_module,
             remote=remote,
+            dry_run=dry_run,
         )
     except Exception as e:
         raise e
