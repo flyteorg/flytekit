@@ -293,7 +293,7 @@ def test_cond_wait():
         assert stdin.read() == ""
 
 
-def test_basic_sleefdsap():
+def test_promote():
     @task
     def t1(a: int) -> int:
         return a + 5
@@ -322,5 +322,4 @@ def test_basic_sleefdsap():
     tts, wf_specs, lp_specs = gather_dependent_entities(entries)
 
     fwf = FlyteWorkflow.promote_from_model(wf_spec.template, tasks=tts)
-
-    print(fwf)
+    assert fwf.template.nodes[2].gate_node is not None
