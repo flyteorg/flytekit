@@ -86,7 +86,7 @@ class YamlConfigEntry(object):
             return None
         try:
             v = cfg.get(self)
-            if v is not None:
+            if _exists(v):
                 return transform(v) if transform else v
         except Exception:
             ...
