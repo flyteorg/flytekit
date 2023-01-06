@@ -75,20 +75,25 @@ def plot_metrics(metrics: typing.Dict[str, pandas.DataFrame]) -> typing.Optional
 
 
 def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing.Optional[str] = None):
-    """
+    """MLFlow decorator to enable autologging of training metrics.
+
     This decorator can be used as a nested decorator for a ``@task`` and it will automatically enable mlflow autologging,
     for the given ``framework``. If framework is not provided then the autologging is enabled for ``sklearn``
+
     .. code-block::python
         @task
         @mlflow_autolog(framework=mlflow.tensorflow)
         def my_tensorflow_trainer():
             ...
+
     One benefit of doing so is that the mlflow metrics are then rendered inline using FlyteDecks and can be viewed
     in jupyter notebook, as well as in hosted Flyte environment
+
     .. code-block:: python
         with flytekit.new_context() as ctx:
             my_tensorflow_trainer()
             ctx.get_deck()  # IPython.display
+
     The decorator starts a new run, with mlflow for the task
     """
 
