@@ -78,23 +78,31 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
     """MLFlow decorator to enable autologging of training metrics.
 
     This decorator can be used as a nested decorator for a ``@task`` and it will automatically enable mlflow autologging,
-    for the given ``framework``. If framework is not provided then the autologging is enabled for ``sklearn``
+    for the given ``framework``. By default autologging is enabled for ``sklearn``.
 
-    .. code-block::python
+    .. code-block:: python
+
         @task
         @mlflow_autolog(framework=mlflow.tensorflow)
         def my_tensorflow_trainer():
             ...
 
     One benefit of doing so is that the mlflow metrics are then rendered inline using FlyteDecks and can be viewed
-    in jupyter notebook, as well as in hosted Flyte environment
+    in jupyter notebook, as well as in hosted Flyte environment:
 
     .. code-block:: python
+
+        # jupyter notebook cell
         with flytekit.new_context() as ctx:
             my_tensorflow_trainer()
             ctx.get_deck()  # IPython.display
 
-    The decorator starts a new run, with mlflow for the task
+    When the task is called in a Flyte backend, the decorator starts a new MLFlow run using the Flyte execution name
+    by default, or a user-provided ``experiment_name`` in the decorator.
+    
+    :param fn: Function to generate autologs for.
+    :param framework: The mlflow module to use for autologging
+    :param experiment_name: The MLFlow experiment name. If not provided, uses the Flyte execution name.
     """
 
     @wraps(fn)
