@@ -7,7 +7,7 @@ import pytest
 from pytimeparse.timeparse import timeparse
 
 from flytekit.configuration import ConfigEntry, get_config_file, set_if_exists
-from flytekit.configuration.file import LegacyConfigEntry
+from flytekit.configuration.file import LegacyConfigEntry, _exists
 
 
 def test_set_if_exists():
@@ -19,6 +19,25 @@ def test_set_if_exists():
     d = set_if_exists(d, "k", "x")
     assert len(d) == 1
     assert d["k"] == "x"
+
+
+@pytest.mark.parametrize(
+    "data, expected",
+    [
+        [1, True],
+        [1.0, True],
+        ["foo", True],
+        [True, True],
+        [False, True],
+        [[1], True],
+        [{"k": "v"}, True],
+        [None, False],
+        [[], False],
+        [{}, False],
+    ],
+)
+def test_exists(data, expected):
+    assert _exists(data) is expected
 
 
 def test_get_config_file():

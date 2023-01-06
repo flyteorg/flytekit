@@ -18,9 +18,9 @@ from flytekit.loggers import logger
 FLYTECTL_CONFIG_ENV_VAR = "FLYTECTL_CONFIG"
 
 
-def _exists(v: typing.Any) -> bool:
+def _exists(val: typing.Any) -> bool:
     """Check if a value is defined."""
-    return isinstance(v, bool) or (v is not None and v)
+    return isinstance(val, bool) or bool(val is not None and val)
 
 
 @dataclass
