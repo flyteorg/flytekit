@@ -140,7 +140,7 @@ def test_env_var_bool_transformer(mock_file_read):
     assert mock_file_read.call_count == 1
 
 
-def test_nossl():
+def test_use_ssl():
     config_file = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
     res = Platform.INSECURE.read(config_file)
     assert res is False
