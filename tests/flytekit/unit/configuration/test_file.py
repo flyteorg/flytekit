@@ -8,6 +8,7 @@ from pytimeparse.timeparse import timeparse
 
 from flytekit.configuration import ConfigEntry, get_config_file, set_if_exists
 from flytekit.configuration.file import LegacyConfigEntry, _exists
+from flytekit.configuration.internal import Platform
 
 
 def test_set_if_exists():
@@ -137,3 +138,9 @@ def test_env_var_bool_transformer(mock_file_read):
 
     # The last read should've triggered the file read since now the env var is no longer set.
     assert mock_file_read.call_count == 1
+
+
+def test_nossl():
+    config_file = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
+    res = Platform.INSECURE.read(config_file)
+    assert res is False

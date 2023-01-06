@@ -312,7 +312,7 @@ class PlatformConfig(object):
     """
 
     endpoint: str = "localhost:30080"
-    insecure: bool = True
+    insecure: bool = False
     insecure_skip_verify: bool = False
     console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
