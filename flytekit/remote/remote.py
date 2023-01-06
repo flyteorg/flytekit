@@ -17,7 +17,9 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
+from git import Repo
 
 from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -40,11 +42,12 @@ from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
 from flytekit.models import task as task_models
+from flytekit.models import types as type_models
 from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
+from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.execution import (
     ExecutionMetadata,
@@ -117,6 +120,17 @@ def _get_entity_identifier(
         name,
         version if version is not None else _get_latest_version(list_entities_method, project, domain, name),
     )
+
+
+def _get_git_repo_url(source_path):
+    """
+    Get git repo URL from remote.origin.url
+    """
+    try:
+        return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
+    except Exception:
+        # If the file isn't in the git repo, we can't get the url from git config
+        return ""
 
 
 class FlyteRemote(object):
@@ -349,6 +363,69 @@ class FlyteRemote(object):
     ######################
     #  Listing Entities  #
     ######################
+
+    def list_signals(
+        self,
+        execution_name: str,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        limit: int = 100,
+        filters: typing.Optional[typing.List[filter_models.Filter]] = None,
+    ) -> typing.List[Signal]:
+        """
+        :param execution_name: The name of the execution. This is the tailend of the URL when looking at the workflow execution.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        :param limit: The number of signals to fetch
+        :param filters: Optional list of filters
+        """
+        wf_exec_id = WorkflowExecutionIdentifier(
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+        )
+        req = SignalListRequest(workflow_execution_id=wf_exec_id.to_flyte_idl(), limit=limit, filters=filters)
+        resp = self.client.list_signals(req)
+        s = resp.signals
+        return s
+
+    def set_signal(
+        self,
+        signal_id: str,
+        execution_name: str,
+        value: typing.Union[literal_models.Literal, typing.Any],
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        python_type: typing.Optional[typing.Type] = None,
+        literal_type: typing.Optional[type_models.LiteralType] = None,
+    ):
+        """
+        :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
+        :param execution_name: The name of the execution. This is the tail-end of the URL when looking
+            at the workflow execution.
+        :param value: This is either a Literal or a Python value which FlyteRemote will invoke the TypeEngine to
+            convert into a Literal. This argument is only value for wait_for_input type signals.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        :param python_type: Provide a python type to help with conversion if the value you provided is not a Literal.
+        :param literal_type: Provide a Flyte literal type to help with conversion if the value you provided
+            is not a Literal
+        """
+        wf_exec_id = WorkflowExecutionIdentifier(
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+        )
+        if isinstance(value, Literal):
+            remote_logger.debug(f"Using provided {value} as existing Literal value")
+            lit = value
+        else:
+            lt = literal_type or (
+                TypeEngine.to_literal_type(python_type) if python_type else TypeEngine.to_literal_type(type(value))
+            )
+            lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
+            remote_logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
+
+        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl())
+
+        # Response is empty currently, nothing to give back to the user.
+        self.client.set_signal(req)
 
     def recent_executions(
         self,
@@ -725,11 +802,11 @@ class FlyteRemote(object):
                 filename="scriptmode.tar.gz",
             ),
         )
-
         serialization_settings = SerializationSettings(
             project=project,
             domain=domain,
             image_config=image_config,
+            git_repo=_get_git_repo_url(source_path),
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,

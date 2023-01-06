@@ -1,9 +1,10 @@
+import sys
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit import PythonFunctionTask
+from flytekit import PythonFunctionTask, SourceCode
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
@@ -23,6 +24,7 @@ from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
@@ -211,7 +213,8 @@ def get_serializable_task(
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
-    return TaskSpec(template=tt)
+
+    return TaskSpec(template=tt, docs=entity.docs)
 
 
 def get_serializable_workflow(
@@ -295,8 +298,9 @@ def get_serializable_workflow(
         nodes=serialized_nodes,
         outputs=entity.output_bindings,
     )
+
     return admin_workflow_models.WorkflowSpec(
-        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string())
+        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string()), docs=entity.docs
     )
 
 
@@ -658,6 +662,11 @@ def get_serializable(
     elif isinstance(entity, BranchNode):
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity, options)
 
+    elif isinstance(entity, GateNode):
+        import ipdb
+
+        ipdb.set_trace()
+
     elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow):
         if entity.should_register:
             if isinstance(entity, FlyteTask):
@@ -678,6 +687,16 @@ def get_serializable(
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 
+    if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
+        # 1. Check if the size of long description exceeds 16KB
+        # 2. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
+        if entity.docs and entity.docs.long_description:
+            if entity.docs.long_description.value:
+                if sys.getsizeof(entity.docs.long_description.value) > 16 * 1024 * 1024:
+                    raise ValueError(
+                        "Long Description of the flyte entity exceeds the 16KB size limit. Please specify the uri in the long description instead."
+                    )
+            entity.docs.source_code = SourceCode(link=settings.git_repo)
     # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
     entity_mapping[entity] = cp_entity
     return cp_entity
