@@ -64,13 +64,11 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
     ) -> pl.DataFrame:
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(flyte_value.uri, local_dir, is_multipart=True)
-        # Polars doesn't know the path is directory without "/*"
-        # https://github.com/pola-rs/polars/blob/5f3e332fb2a653064f083b02949c527e0ec0afda/py-polars/polars/internals/dataframe/frame.py#L649
-        local_dir = f"{local_dir}/*"
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pl.read_parquet(local_dir, columns=columns)
-        return pl.read_parquet(local_dir)
+        print("local_dir local_dir", local_dir)
+        return pl.read_parquet(local_dir, use_pyarrow=True)
 
 
 StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler())

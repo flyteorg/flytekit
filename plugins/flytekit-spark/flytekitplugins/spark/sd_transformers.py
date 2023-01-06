@@ -38,7 +38,8 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         df = typing.cast(DataFrame, structured_dataset.dataframe)
-        df.write.mode("overwrite").parquet(path)
+        sc = ctx.user_space_params.spark_session.sparkContext
+        df.write.mode("overwrite").parquet(path=path)
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
