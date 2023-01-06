@@ -51,9 +51,9 @@ Entities
    :toctree: generated/
    :nosignatures:
 
-   ~task.FlyteTask
-   ~workflow.FlyteWorkflow
-   ~launch_plan.FlyteLaunchPlan
+   ~entities.FlyteTask
+   ~entities.FlyteWorkflow
+   ~entities.FlyteLaunchPlan
 
 .. _remote-flyte-entity-components:
 
@@ -65,9 +65,9 @@ Entity Components
    :toctree: generated/
    :nosignatures:
 
-   ~nodes.FlyteNode
-   ~component_nodes.FlyteTaskNode
-   ~component_nodes.FlyteWorkflowNode
+   ~entities.FlyteNode
+   ~entities.FlyteTaskNode
+   ~entities.FlyteWorkflowNode
 
 .. _remote-flyte-execution-objects:
 
