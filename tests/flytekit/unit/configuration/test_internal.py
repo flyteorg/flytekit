@@ -78,6 +78,7 @@ def test_some_int(mocked):
     assert type(res) is int
     assert res == 5
 
+
 def test_default_platform_config_endpoint_insecure():
     platform_config = PlatformConfig()
     assert platform_config.endpoint == "localhost:30080"
