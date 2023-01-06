@@ -99,7 +99,7 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
 
     When the task is called in a Flyte backend, the decorator starts a new MLFlow run using the Flyte execution name
     by default, or a user-provided ``experiment_name`` in the decorator.
-    
+
     :param fn: Function to generate autologs for.
     :param framework: The mlflow module to use for autologging
     :param experiment_name: The MLFlow experiment name. If not provided, uses the Flyte execution name.
