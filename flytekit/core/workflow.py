@@ -39,6 +39,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.documentation import Description, Documentation
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -168,6 +169,7 @@ class WorkflowBase(object):
         workflow_metadata: WorkflowMetadata,
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
+        docs: Optional[Documentation] = None,
         **kwargs,
     ):
         self._name = name
@@ -179,12 +181,30 @@ class WorkflowBase(object):
         self._unbound_inputs = set()
         self._nodes = []
         self._output_bindings: List[_literal_models.Binding] = []
+        self._docs = docs
+
+        if self._python_interface.docstring:
+            if self.docs is None:
+                self._docs = Documentation(
+                    short_description=self._python_interface.docstring.short_description,
+                    long_description=Description(value=self._python_interface.docstring.long_description),
+                )
+            else:
+                if self._python_interface.docstring.short_description:
+                    self._docs.short_description = self._python_interface.docstring.short_description
+                if self._python_interface.docstring.long_description:
+                    self._docs = Description(value=self._python_interface.docstring.long_description)
+
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)
 
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def docs(self):
+        return self._docs
 
     @property
     def short_name(self) -> str:
@@ -571,7 +591,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         workflow_function: Callable,
         metadata: Optional[WorkflowMetadata],
         default_metadata: Optional[WorkflowMetadataDefaults],
-        docstring: Docstring = None,
+        docstring: Optional[Docstring] = None,
+        docs: Optional[Documentation] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
@@ -586,6 +607,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata=metadata,
             workflow_metadata_defaults=default_metadata,
             python_interface=native_interface,
+            docs=docs,
         )
 
     @property
@@ -690,6 +712,7 @@ def workflow(
     _workflow_function=None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
+    docs: Optional[Documentation] = None,
 ):
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -718,6 +741,7 @@ def workflow(
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
+    :param docs: Description entity for the workflow
     """
 
     def wrapper(fn):
@@ -730,6 +754,7 @@ def workflow(
             metadata=workflow_metadata,
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
+            docs=docs,
         )
         workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
