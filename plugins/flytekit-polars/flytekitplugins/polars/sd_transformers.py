@@ -67,7 +67,6 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pl.read_parquet(local_dir, columns=columns)
-        print("local_dir local_dir", local_dir)
         return pl.read_parquet(local_dir, use_pyarrow=True)
 
 
