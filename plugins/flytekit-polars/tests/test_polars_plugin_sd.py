@@ -78,4 +78,4 @@ def test_parquet_to_polars():
 
     sd = create_sd()
     polars_df = sd.open(pl.DataFrame).all()
-    assert polars_df == pl.DataFrame(data)
+    assert pl.DataFrame(data).frame_equal(polars_df)
