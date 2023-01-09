@@ -13,9 +13,9 @@ pip install flytekitplugins-dask
 ```
 
 To configure Dask in the Flyte deployment's backed, follow
-[step 1](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/k8s_dask/index.html#step-1-deploy-the-dask-plugin-in-the-flyte-backend)
+[step 1](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/kubernetes/k8s_dask/index.html#step-1-deploy-the-dask-plugin-in-the-flyte-backend)
 and
-[step 2](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/k8s_dask/index.html#step-2-environment-setup)
+[step 2](https://docs.flyte.org/projects/cookbook/en/latest/auto/auto/integrations/kubernetes/k8s_dask/index.html#step-2-environment-setup)
 
-An [example](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/k8s_dask/index.html)
+An [example](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/kubernetes/k8s_dask/index.html)
 can be found in the documentation.
