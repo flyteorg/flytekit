@@ -14,7 +14,7 @@ class Scheduler(_common.FlyteIdlEntity):
     :param resources: Optional resources to use.
     """
 
-    def __init__(self, image: Optional[str], resources: Optional[_task.Resources]):
+    def __init__(self, image: Optional[str] = None, resources: Optional[_task.Resources] = None):
         self._image = image
         self._resources = resources
 
@@ -51,7 +51,12 @@ class WorkerGroup(_common.FlyteIdlEntity):
     :param resources: Optional resources to use for the pods of the worker group
     """
 
-    def __init__(self, number_of_workers: int, image: Optional[str], resources: Optional[_task.Resources]):
+    def __init__(
+        self,
+        number_of_workers: int,
+        image: Optional[str] = None,
+        resources: Optional[_task.Resources] = None,
+    ):
         if number_of_workers < 1:
             raise ValueError(
                 f"Each worker group needs to have at least one worker, but {number_of_workers} have been specified."
