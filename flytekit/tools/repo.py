@@ -12,7 +12,7 @@ from flytekit.loggers import logger
 from flytekit.models import launch_plan
 from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
-from flytekit.remote.remote import RegistrationSkipped
+from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
 from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
@@ -162,7 +162,7 @@ def load_packages_and_modules(
     :param options:
     :return: The common detected root path, the output of _find_project_root
     """
-
+    ss.git_repo = _get_git_repo_url(project_root)
     pkgs_and_modules = []
     for pm in pkgs_or_mods:
         p = Path(pm).resolve()

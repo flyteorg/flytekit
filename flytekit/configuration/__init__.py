@@ -463,7 +463,7 @@ class GCSConfig(object):
     gsutil_parallelism: bool = False
 
     @classmethod
-    def auto(self, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "gsutil_parallelism", _internal.GCP.GSUTIL_PARALLELISM.read(config_file))
@@ -647,6 +647,7 @@ class SerializationSettings(object):
     domain: typing.Optional[str] = None
     version: typing.Optional[str] = None
     env: Optional[Dict[str, str]] = None
+    git_repo: Optional[str] = None
     python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
@@ -719,6 +720,7 @@ class SerializationSettings(object):
             version=self.version,
             image_config=self.image_config,
             env=self.env.copy() if self.env else None,
+            git_repo=self.git_repo,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
@@ -768,6 +770,7 @@ class SerializationSettings(object):
         version: str
         image_config: ImageConfig
         env: Optional[Dict[str, str]] = None
+        git_repo: Optional[str] = None
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
@@ -783,6 +786,7 @@ class SerializationSettings(object):
                 version=self.version,
                 image_config=self.image_config,
                 env=self.env,
+                git_repo=self.git_repo,
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,
