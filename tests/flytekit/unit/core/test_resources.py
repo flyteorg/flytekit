@@ -1,10 +1,10 @@
 from typing import Dict
 
 import pytest
-from flytekitplugins.dask.resources import convert_resources_to_resource_model
 
 import flytekit.models.task as _task_models
 from flytekit import Resources
+from flytekit.core.resources import convert_resources_to_resource_model
 
 _ResourceName = _task_models.Resources.ResourceName
 

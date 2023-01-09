@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 from flytekitplugins.dask import models
-from flytekitplugins.dask.resources import convert_resources_to_resource_model
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
+from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.core.task import TaskPlugins
 
 
