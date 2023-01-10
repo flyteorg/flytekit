@@ -300,7 +300,7 @@ class PlatformConfig(object):
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
     :param insecure_skip_verify: Wether to skip SSL certificate verification
-    :param console_endpoint: endpoint for console if differenet than Flyte backend
+    :param console_endpoint: endpoint for console if different than Flyte backend
     :param command: This command is executed to return a token using an external process.
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -311,7 +311,7 @@ class PlatformConfig(object):
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
     """
 
-    endpoint: str = "localhost:30081"
+    endpoint: str = "localhost:30080"
     insecure: bool = False
     insecure_skip_verify: bool = False
     console_endpoint: typing.Optional[str] = None
@@ -529,7 +529,7 @@ class Config(object):
         )
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
+    def auto(cls, config_file: typing.Union[str, ConfigFile, None] = None) -> Config:
         """
         Automatically constructs the Config Object. The order of precedence is as follows
           1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
@@ -558,9 +558,9 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(endpoint="localhost:30081", auth_mode="Pkce", insecure=True),
+            platform=PlatformConfig(endpoint="localhost:30080", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
-                s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
+                s3=S3Config(endpoint="http://localhost:30002", access_key_id="minio", secret_access_key="miniostorage")
             ),
         )
 

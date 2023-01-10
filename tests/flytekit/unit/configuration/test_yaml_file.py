@@ -14,6 +14,7 @@ def test_config_entry_file():
     assert c.read() is None
 
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
+    assert cfg.yaml_config is not None
     assert c.read(cfg) == "flyte.mycorp.io"
 
     c = ConfigEntry(LegacyConfigEntry("platform", "url2", str))  # Does not exist
@@ -26,6 +27,7 @@ def test_config_entry_file_normal():
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/no_images.yaml"))
     images_dict = Images.get_specified_images(cfg)
     assert images_dict == {}
+    assert cfg.yaml_config is not None
 
 
 @mock.patch("flytekit.configuration.file.getenv")
@@ -43,6 +45,7 @@ def test_config_entry_file_2(mock_get):
 
     cfg = get_config_file(sample_yaml_file_name)
     assert c.read(cfg) == "flyte.mycorp.io"
+    assert cfg.yaml_config is not None
 
     c = ConfigEntry(LegacyConfigEntry("platform", "url2", str))  # Does not exist
     assert c.read(cfg) is None
@@ -67,3 +70,9 @@ def test_real_config():
 
     res = Credentials.SCOPES.read(config_file)
     assert res == ["all"]
+
+
+def test_use_ssl():
+    config_file = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/nossl.yaml"))
+    res = Platform.INSECURE.read(config_file)
+    assert res is False
