@@ -529,7 +529,7 @@ class Config(object):
         )
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
+    def auto(cls, config_file: typing.Union[str, ConfigFile, None] = None) -> Config:
         """
         Automatically constructs the Config Object. The order of precedence is as follows
           1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
@@ -560,7 +560,7 @@ class Config(object):
         return Config(
             platform=PlatformConfig(endpoint="localhost:30080", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
-                s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
+                s3=S3Config(endpoint="http://localhost:30002", access_key_id="minio", secret_access_key="miniostorage")
             ),
         )
 
