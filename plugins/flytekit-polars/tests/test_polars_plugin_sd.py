@@ -66,3 +66,16 @@ def test_polars_renderer():
     assert PolarsDataFrameRenderer().to_html(df) == pd.DataFrame(
         df.describe().transpose(), columns=df.describe().columns
     ).to_html(index=False)
+
+
+def test_parquet_to_polars():
+    data = {"name": ["Alice"], "age": [5]}
+
+    @task
+    def create_sd() -> StructuredDataset:
+        df = pd.DataFrame(data=data)
+        return StructuredDataset(dataframe=df)
+
+    sd = create_sd()
+    polars_df = sd.open(pl.DataFrame).all()
+    assert pl.DataFrame(data).frame_equal(polars_df)
