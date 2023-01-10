@@ -28,10 +28,10 @@ def get_and_save_remote_with_click_context(
     cfg_file = get_config_file(cfg_file_location)
     if cfg_file is None:
         cfg_obj = Config.for_sandbox()
-        print(f"No config files found, creating remote with sandbox config")
+        cli_logger.info(f"No config files found, creating remote with sandbox config")
     else:
         cfg_obj = Config.auto(cfg_file_location)
-        print(
+        cli_logger.info(
             f"Creating remote with config {cfg_obj}" + (f" with file {cfg_file_location}" if cfg_file_location else "")
         )
     r = FlyteRemote(cfg_obj, default_project=project, default_domain=domain)
