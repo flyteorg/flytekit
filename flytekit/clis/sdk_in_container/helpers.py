@@ -28,7 +28,7 @@ def get_and_save_remote_with_click_context(
     cfg_file = get_config_file(cfg_file_location)
     if cfg_file is None:
         cfg_obj = Config.for_sandbox()
-        cli_logger.info(f"No config files found, creating remote with sandbox config")
+        cli_logger.info("No config files found, creating remote with sandbox config")
     else:
         cfg_obj = Config.auto(cfg_file_location)
         cli_logger.info(
