@@ -70,3 +70,9 @@ def test_real_config():
 
     res = Credentials.SCOPES.read(config_file)
     assert res == ["all"]
+
+
+def test_use_ssl():
+    config_file = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/nossl.yaml"))
+    res = Platform.INSECURE.read(config_file)
+    assert res is False

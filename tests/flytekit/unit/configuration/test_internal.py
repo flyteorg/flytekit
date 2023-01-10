@@ -82,4 +82,4 @@ def test_some_int(mocked):
 def test_default_platform_config_endpoint_insecure():
     platform_config = PlatformConfig()
     assert platform_config.endpoint == "localhost:30080"
-    assert platform_config.insecure
+    assert platform_config.insecure is False
