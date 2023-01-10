@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "spark"
+PLUGIN_NAME = "mlflow"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "pyspark>=3.0.0"]
+plugin_requires = ["flytekit>=1.1.0,<2.0.0", "plotly", "mlflow"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Spark 3 plugin for flytekit",
+    description="This package enables seamless use of MLFlow within Flyte",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
@@ -33,6 +33,4 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    scripts=["scripts/flytekit_install_spark3.sh"],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )

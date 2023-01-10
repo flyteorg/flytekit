@@ -13,6 +13,7 @@ from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.documentation import Documentation
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -480,11 +481,13 @@ class TaskTemplate(_common.FlyteIdlEntity):
 
 
 class TaskSpec(_common.FlyteIdlEntity):
-    def __init__(self, template):
+    def __init__(self, template: TaskTemplate, docs: typing.Optional[Documentation] = None):
         """
         :param TaskTemplate template:
+        :param Documentation docs:
         """
         self._template = template
+        self._docs = docs
 
     @property
     def template(self):
@@ -493,11 +496,20 @@ class TaskSpec(_common.FlyteIdlEntity):
         """
         return self._template
 
+    @property
+    def docs(self):
+        """
+        :rtype: Description entity for the task
+        """
+        return self._docs
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.tasks_pb2.TaskSpec
         """
-        return _admin_task.TaskSpec(template=self.template.to_flyte_idl())
+        return _admin_task.TaskSpec(
+            template=self.template.to_flyte_idl(), description=self.docs.to_flyte_idl() if self.docs else None
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -505,7 +517,10 @@ class TaskSpec(_common.FlyteIdlEntity):
         :param flyteidl.admin.tasks_pb2.TaskSpec pb2_object:
         :rtype: TaskSpec
         """
-        return cls(TaskTemplate.from_flyte_idl(pb2_object.template))
+        return cls(
+            TaskTemplate.from_flyte_idl(pb2_object.template),
+            Documentation.from_flyte_idl(pb2_object.description) if pb2_object.description else None,
+        )
 
 
 class Task(_common.FlyteIdlEntity):
