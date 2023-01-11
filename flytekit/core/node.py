@@ -116,9 +116,9 @@ class Node(object):
             self._metadata._name = kwargs["name"]
         if "task_config" in kwargs:
             new_task_config = kwargs["task_config"]
-            # if type(new_task_config) != type(self._task_config):
-            self._task_config = new_task_config
-            print("new task type", new_task_config)
+            if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
+                raise ValueError("can't change the type of the task config")
+            self.flyte_entity._task_config = new_task_config
         return self
 
 
