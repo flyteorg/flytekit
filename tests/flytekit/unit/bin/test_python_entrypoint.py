@@ -3,6 +3,7 @@ import typing
 from collections import OrderedDict
 
 import mock
+import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
 
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
@@ -108,6 +109,11 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
         mock_write_to_file.side_effect = verify_output
         _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 1
+
+        with pytest.raises(SystemExit) as cm:
+            os.environ["FLYTE_FAIL_ON_ERROR"] = "true"
+            _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+            pytest.assertEqual(cm.value.code, 1)
 
 
 # This function collects outputs instead of writing them to a file.
