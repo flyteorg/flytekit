@@ -441,3 +441,9 @@ def test_config_override():
         return t1(a=a).with_overrides(task_config=DummyConfig("flyte"))
 
     assert my_wf.nodes[0].flyte_entity.task_config.name == "flyte"
+
+    with pytest.raises(ValueError):
+
+        @workflow
+        def my_wf(a: str) -> str:
+            return t1(a=a).with_overrides(task_config=None)
