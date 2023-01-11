@@ -110,8 +110,34 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
         _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 1
 
+
+@mock.patch.dict(os.environ, {"FLYTE_FAIL_ON_ERROR": "True"})
+@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
+def test_dispatch_execute_return_error_code(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        python_task = mock.MagicMock()
+        python_task.dispatch_execute.side_effect = Exception("random")
+
+        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
+        mock_load_proto.return_value = empty_literal_map
+
+        def verify_output(*args, **kwargs):
+            assert isinstance(args[0], ErrorDocument)
+
+        mock_write_to_file.side_effect = verify_output
+
         with pytest.raises(SystemExit) as cm:
-            os.environ["FLYTE_FAIL_ON_ERROR"] = "true"
             _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
             pytest.assertEqual(cm.value.code, 1)
 
