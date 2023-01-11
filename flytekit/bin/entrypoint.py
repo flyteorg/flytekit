@@ -161,7 +161,8 @@ def _dispatch_execute(
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
     logger.debug("Finished _dispatch_execute")
 
-    if task_def.task_type == "aws-batch" and _constants.ERROR_FILE_NAME in output_file_dict:
+    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
+        # This env is set by the flytepropeller
         # AWS batch job get the status from the exit code, so once we catch the error,
         # we should return the error code here
         exit(1)
