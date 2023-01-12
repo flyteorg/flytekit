@@ -60,6 +60,7 @@ jobs:
           - flytekit-aws-batch
           - flytekit-aws-sagemaker
           - flytekit-bigquery
+          - flytekit-dask
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
