@@ -168,7 +168,7 @@ requests==2.28.1
     #   responses
 responses==0.22.0
     # via flytekit
-retry==0.9.2
+retry2==0.9.5
     # via flytekit
 secretstorage==3.3.3
     # via keyring
