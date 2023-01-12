@@ -35,15 +35,15 @@ class Resources(object):
 
 @dataclass
 class ResourceSpec(object):
-    requests: Optional[Resources] = None
-    limits: Optional[Resources] = None
+    requests: Resources
+    limits: Resources
 
 
 _ResourceName = task_models.Resources.ResourceName
 _ResourceEntry = task_models.Resources.ResourceEntry
 
 
-def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:
+def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:  # type: ignore
     resource_entries = []
     if resources.cpu is not None:
         resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=resources.cpu))
