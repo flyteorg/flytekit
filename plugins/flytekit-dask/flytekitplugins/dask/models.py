@@ -1,12 +1,12 @@
 from typing import Optional
 
-from flyteidl.plugins import dask_pb2 as _dask_task
+from flyteidl.plugins import dask_pb2 as dask_task
 
-from flytekit.models import common as _common
-from flytekit.models import task as _task
+from flytekit.models import common as common
+from flytekit.models import task as task
 
 
-class Scheduler(_common.FlyteIdlEntity):
+class Scheduler(common.FlyteIdlEntity):
     """
     Configuration for the scheduler pod
 
@@ -14,7 +14,7 @@ class Scheduler(_common.FlyteIdlEntity):
     :param resources: Optional resources to use.
     """
 
-    def __init__(self, image: Optional[str] = None, resources: Optional[_task.Resources] = None):
+    def __init__(self, image: Optional[str] = None, resources: Optional[task.Resources] = None):
         self._image = image
         self._resources = resources
 
@@ -26,23 +26,23 @@ class Scheduler(_common.FlyteIdlEntity):
         return self._image
 
     @property
-    def resources(self) -> Optional[_task.Resources]:
+    def resources(self) -> Optional[task.Resources]:
         """
         :return: Optional resources for the scheduler pod
         """
         return self._resources
 
-    def to_flyte_idl(self) -> _dask_task.DaskScheduler:
+    def to_flyte_idl(self) -> dask_task.DaskScheduler:
         """
         :return: The scheduler spec serialized to protobuf
         """
-        return _dask_task.DaskScheduler(
+        return dask_task.DaskScheduler(
             image=self.image,
             resources=self.resources.to_flyte_idl() if self.resources else None,
         )
 
 
-class WorkerGroup(_common.FlyteIdlEntity):
+class WorkerGroup(common.FlyteIdlEntity):
     """
     Configuration for a dask worker group
 
@@ -55,7 +55,7 @@ class WorkerGroup(_common.FlyteIdlEntity):
         self,
         number_of_workers: int,
         image: Optional[str] = None,
-        resources: Optional[_task.Resources] = None,
+        resources: Optional[task.Resources] = None,
     ):
         if number_of_workers < 1:
             raise ValueError(
@@ -81,24 +81,24 @@ class WorkerGroup(_common.FlyteIdlEntity):
         return self._image
 
     @property
-    def resources(self) -> Optional[_task.Resources]:
+    def resources(self) -> Optional[task.Resources]:
         """
         :return: Optional resources to use for the worker pods
         """
         return self._resources
 
-    def to_flyte_idl(self) -> _dask_task.DaskWorkerGroup:
+    def to_flyte_idl(self) -> dask_task.DaskWorkerGroup:
         """
         :return: The dask cluster serialized to protobuf
         """
-        return _dask_task.DaskWorkerGroup(
+        return dask_task.DaskWorkerGroup(
             number_of_workers=self.number_of_workers,
             image=self.image,
             resources=self.resources.to_flyte_idl() if self.resources else None,
         )
 
 
-class DaskJob(_common.FlyteIdlEntity):
+class DaskJob(common.FlyteIdlEntity):
     """
     Configuration for the custom dask job to run
 
@@ -124,11 +124,11 @@ class DaskJob(_common.FlyteIdlEntity):
         """
         return self._workers
 
-    def to_flyte_idl(self) -> _dask_task.DaskJob:
+    def to_flyte_idl(self) -> dask_task.DaskJob:
         """
         :return: The dask job serialized to protobuf
         """
-        return _dask_task.DaskJob(
+        return dask_task.DaskJob(
             scheduler=self.scheduler.to_flyte_idl(),
             workers=self.workers.to_flyte_idl(),
         )
