@@ -231,7 +231,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         remote = FlyteRemote(
             config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
         )
-        assert remote.generate_console_http_domain() == "http://localhost:30080"
+        assert remote.generate_console_http_domain() == "http://localhost:30081"
 
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.

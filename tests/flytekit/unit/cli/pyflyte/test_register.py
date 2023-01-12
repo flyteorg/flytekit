@@ -8,6 +8,7 @@ from click.testing import CliRunner
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.configuration import Config
 from flytekit.core import context_manager
 from flytekit.remote.remote import FlyteRemote
 
@@ -34,6 +35,7 @@ def test_saving_remote(mock_remote):
     mock_context.obj = {}
     get_and_save_remote_with_click_context(mock_context, "p", "d")
     assert mock_context.obj["flyte_remote"] is not None
+    mock_remote.assert_called_once_with(Config.for_sandbox(), default_project="p", default_domain="d")
 
 
 def test_register_with_no_package_or_module_argument():
