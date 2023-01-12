@@ -6,6 +6,7 @@ from typing import Any, List
 
 from flytekit.core.resources import Resources
 from flytekit.core.utils import _dnsify
+from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.task import Resources as _resources_model
@@ -115,6 +116,7 @@ class Node(object):
         if "name" in kwargs:
             self._metadata._name = kwargs["name"]
         if "task_config" in kwargs:
+            logger.warning("This override is beta. We may want to revisit this in the future.")
             new_task_config = kwargs["task_config"]
             if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
