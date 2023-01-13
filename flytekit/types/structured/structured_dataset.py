@@ -45,9 +45,7 @@ class StructuredDataset(object):
     """
 
     uri: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
-    file_format: typing.Optional[str] = field(default=PARQUET, metadata=config(mm_field=fields.String()))
-
-    DEFAULT_FILE_FORMAT = PARQUET
+    file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
