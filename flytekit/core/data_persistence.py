@@ -43,6 +43,27 @@ from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
 
+def s3_setup_args(s3_cfg: S3Config):
+    """
+    The reason this is necessary is because fsspec implementations should know how to read from environment
+    variables and we want to preserve the behavior of env vars having the highest precedence.
+    """
+    kwargs = {}
+    if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
+        if s3_cfg.access_key_id:
+            kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
+
+    if S3_SECRET_ACCESS_KEY_ENV_NAME not in os.environ:
+        if s3_cfg.secret_access_key:
+            kwargs[_FSSPEC_S3_SECRET] = s3_cfg.secret_access_key
+
+    # S3fs takes this as a special arg
+    if s3_cfg.endpoint is not None:
+        kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
+
+    return kwargs
+
+
 class FileAccessProvider(object):
     """
     This is the class that is available through the FlyteContext and can be used for persisting data to the remote
@@ -91,9 +112,9 @@ class FileAccessProvider(object):
     def get_filesystem(self, path: str) -> fsspec.AbstractFileSystem:
         protocol = FSSpecPersistence.get_protocol(path)
         kwargs = {}
-        if protocol == "file":
-            kwargs = {"auto_mkdir": True}
-        elif protocol == "s3":
+        # if protocol == "file":
+        #     kwargs = {"auto_mkdir": True}
+        if protocol == "s3":
             kwargs = s3_setup_args(self._data_cfg.s3)
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
