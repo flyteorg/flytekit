@@ -84,7 +84,7 @@ class ExecutionParameters(object):
         decks: List[Deck]
         raw_output_prefix: Optional[str] = None
         execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier] = None
-        working_dir: typing.Optional[utils.AutoDeletingTempDir] = None
+        working_dir: typing.Optional[str] = None
         checkpoint: typing.Optional[Checkpoint] = None
         execution_date: typing.Optional[datetime] = None
         logging: Optional[_logging.Logger] = None
@@ -128,8 +128,6 @@ class ExecutionParameters(object):
 
     def with_task_sandbox(self) -> Builder:
         prefix = self.working_directory
-        if isinstance(self.working_directory, utils.AutoDeletingTempDir):
-            prefix = self.working_directory.name
         task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)
         p = pathlib.Path(task_sandbox_dir)
         cp_dir = p.joinpath("__cp")
