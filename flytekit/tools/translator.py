@@ -1,13 +1,15 @@
+import sys
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit import PythonFunctionTask
+from flytekit import PythonFunctionTask, SourceCode
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
+from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.node import Node
@@ -21,13 +23,15 @@ from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import security
-from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
+from flytekit.models.core.workflow import ApproveCondition
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
-from flytekit.models.core.workflow import TaskNodeOverrides
+from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
+from flytekit.models.task import TaskSpec, TaskTemplate
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -41,7 +45,7 @@ FlyteLocalEntity = Union[
     ReferenceEntity,
 ]
 FlyteControlPlaneEntity = Union[
-    task_models.TaskSpec,
+    TaskSpec,
     _launch_plan_models.LaunchPlan,
     admin_workflow_models.WorkflowSpec,
     workflow_model.Node,
@@ -152,10 +156,9 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
-    entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
-) -> task_models.TaskSpec:
+) -> TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
         settings.project,
@@ -195,7 +198,7 @@ def get_serializable_task(
                 pod = entity.get_k8s_pod(settings)
                 entity.reset_command_fn()
 
-    tt = task_models.TaskTemplate(
+    tt = TaskTemplate(
         id=task_id,
         type=entity.task_type,
         metadata=entity.metadata.to_taskmetadata_model(),
@@ -210,7 +213,8 @@ def get_serializable_task(
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
-    return task_models.TaskSpec(template=tt)
+
+    return TaskSpec(template=tt, docs=entity.docs)
 
 
 def get_serializable_workflow(
@@ -219,18 +223,19 @@ def get_serializable_workflow(
     entity: WorkflowBase,
     options: Optional[Options] = None,
 ) -> admin_workflow_models.WorkflowSpec:
-    # TODO: Try to move up following config refactor - https://github.com/flyteorg/flyte/issues/2214
-    from flytekit.remote.workflow import FlyteWorkflow
-
-    # Get node models
-    upstream_node_models = [
-        get_serializable(entity_mapping, settings, n, options)
-        for n in entity.nodes
-        if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
-    ]
-
+    # Serialize all nodes
+    serialized_nodes = []
     sub_wfs = []
     for n in entity.nodes:
+        # Ignore start nodes
+        if n.id == _common_constants.GLOBAL_INPUT_NODE_ID:
+            continue
+
+        # Recursively serialize the node
+        serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
+
+        # If the node is workflow Node or Branch node, we need to handle it specially, to extract all subworkflows,
+        # so that they can be added to the workflow being serialized
         if isinstance(n.flyte_entity, WorkflowBase):
             # We are currently not supporting reference workflows since these will
             # require a network call to flyteadmin to populate the WorkflowTemplate
@@ -247,10 +252,14 @@ def get_serializable_workflow(
             sub_wfs.append(sub_wf_spec.template)
             sub_wfs.extend(sub_wf_spec.sub_workflows)
 
+        from flytekit.remote import FlyteWorkflow
+
         if isinstance(n.flyte_entity, FlyteWorkflow):
-            get_serializable(entity_mapping, settings, n.flyte_entity, options)
-            sub_wfs.append(n.flyte_entity)
-            sub_wfs.extend([s for s in n.flyte_entity.sub_workflows.values()])
+            for swf in n.flyte_entity.flyte_sub_workflows:
+                sub_wf = get_serializable(entity_mapping, settings, swf, options)
+                sub_wfs.append(sub_wf.template)
+            main_wf = get_serializable(entity_mapping, settings, n.flyte_entity, options)
+            sub_wfs.append(main_wf.template)
 
         if isinstance(n.flyte_entity, BranchNode):
             if_else: workflow_model.IfElseBlock = n.flyte_entity._ifelse_block
@@ -286,11 +295,12 @@ def get_serializable_workflow(
         metadata=entity.workflow_metadata.to_flyte_model(),
         metadata_defaults=entity.workflow_metadata_defaults.to_flyte_model(),
         interface=entity.interface,
-        nodes=upstream_node_models,
+        nodes=serialized_nodes,
         outputs=entity.output_bindings,
     )
+
     return admin_workflow_models.WorkflowSpec(
-        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string())
+        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string()), docs=entity.docs
     )
 
 
@@ -374,12 +384,7 @@ def get_serializable_node(
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
 
-    # TODO: Try to move back up following config refactor - https://github.com/flyteorg/flyte/issues/2214
-    from flytekit.remote.launch_plan import FlyteLaunchPlan
-    from flytekit.remote.task import FlyteTask
-    from flytekit.remote.workflow import FlyteWorkflow
-
-    upstream_sdk_nodes = [
+    upstream_nodes = [
         get_serializable(entity_mapping, settings, n, options=options)
         for n in entity.upstream_nodes
         if n.id != _common_constants.GLOBAL_INPUT_NODE_ID
@@ -393,7 +398,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
         )
         if ref_template.resource_type == _identifier_model.ResourceType.TASK:
@@ -408,13 +413,15 @@ def get_serializable_node(
             )
         return node_model
 
+    from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
+
     if isinstance(entity.flyte_entity, PythonTask):
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=task_spec.template.id, overrides=TaskNodeOverrides(resources=entity._resources)
@@ -429,7 +436,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.template.id),
         )
@@ -439,7 +446,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             branch_node=get_serializable(entity_mapping, settings, entity.flyte_entity, options=options),
         )
@@ -457,9 +464,30 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=node_input,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
+        )
+
+    elif isinstance(entity.flyte_entity, Gate):
+        if entity.flyte_entity.sleep_duration:
+            gn = GateNode(sleep=SleepCondition(duration=entity.flyte_entity.sleep_duration))
+        elif entity.flyte_entity.input_type:
+            output_name = list(entity.flyte_entity.python_interface.outputs.keys())[0]  # should be o0
+            gn = GateNode(
+                signal=SignalCondition(
+                    entity.flyte_entity.name, type=entity.flyte_entity.literal_type, output_variable_name=output_name
+                )
+            )
+        else:
+            gn = GateNode(approve=ApproveCondition(entity.flyte_entity.name))
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_nodes],
+            output_aliases=[],
+            gate_node=gn,
         )
 
     elif isinstance(entity.flyte_entity, FlyteTask):
@@ -469,23 +497,23 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=entity.flyte_entity.id, overrides=TaskNodeOverrides(resources=entity._resources)
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
-        wf_template = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
-        for _, sub_wf in entity.flyte_entity.sub_workflows.items():
+        wf_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        for sub_wf in entity.flyte_entity.flyte_sub_workflows:
             get_serializable(entity_mapping, settings, sub_wf, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_template.id),
+            workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.id),
         )
     elif isinstance(entity.flyte_entity, FlyteLaunchPlan):
         # Recursive call doesn't do anything except put the entity on the map.
@@ -500,7 +528,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=node_input,
-            upstream_node_ids=[n.id for n in upstream_sdk_nodes],
+            upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
         )
@@ -540,6 +568,54 @@ def get_reference_spec(
     return ReferenceSpec(template)
 
 
+def get_serializable_flyte_workflow(
+    entity: "FlyteWorkflow", settings: SerializationSettings
+) -> FlyteControlPlaneEntity:
+    """
+    TODO replace with deep copy
+    """
+
+    def _mutate_task_node(tn: workflow_model.TaskNode):
+        tn.reference_id._project = settings.project
+        tn.reference_id._domain = settings.domain
+
+    def _mutate_branch_node_task_ids(bn: workflow_model.BranchNode):
+        _mutate_node(bn.if_else.case.then_node)
+        for c in bn.if_else.other:
+            _mutate_node(c.then_node)
+        if bn.if_else.else_node:
+            _mutate_node(bn.if_else.else_node)
+
+    def _mutate_workflow_node(wn: workflow_model.WorkflowNode):
+        wn.sub_workflow_ref._project = settings.project
+        wn.sub_workflow_ref._domain = settings.domain
+
+    def _mutate_node(n: workflow_model.Node):
+        if n.task_node:
+            _mutate_task_node(n.task_node)
+        elif n.branch_node:
+            _mutate_branch_node_task_ids(n.branch_node)
+        elif n.workflow_node:
+            _mutate_workflow_node(n.workflow_node)
+
+    for n in entity.flyte_nodes:
+        _mutate_node(n)
+
+    entity.id._project = settings.project
+    entity.id._domain = settings.domain
+
+    return entity
+
+
+def get_serializable_flyte_task(entity: "FlyteTask", settings: SerializationSettings) -> FlyteControlPlaneEntity:
+    """
+    TODO replace with deep copy
+    """
+    entity.id._project = settings.project
+    entity.id._domain = settings.domain
+    return entity
+
+
 def get_serializable(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -563,19 +639,16 @@ def get_serializable(
     :return: The resulting control plane entity, in addition to being added to the mutable entity_mapping parameter
       is also returned.
     """
-    # TODO: Try to replace following config refactor - https://github.com/flyteorg/flyte/issues/2214
-    from flytekit.remote.launch_plan import FlyteLaunchPlan
-    from flytekit.remote.task import FlyteTask
-    from flytekit.remote.workflow import FlyteWorkflow
-
     if entity in entity_mapping:
         return entity_mapping[entity]
+
+    from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
     if isinstance(entity, ReferenceEntity):
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(entity_mapping, settings, entity)
+        cp_entity = get_serializable_task(settings, entity)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
@@ -589,12 +662,41 @@ def get_serializable(
     elif isinstance(entity, BranchNode):
         cp_entity = get_serializable_branch_node(entity_mapping, settings, entity, options)
 
-    elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow) or isinstance(entity, FlyteLaunchPlan):
+    elif isinstance(entity, GateNode):
+        import ipdb
+
+        ipdb.set_trace()
+
+    elif isinstance(entity, FlyteTask) or isinstance(entity, FlyteWorkflow):
+        if entity.should_register:
+            if isinstance(entity, FlyteTask):
+                cp_entity = get_serializable_flyte_task(entity, settings)
+            else:
+                if entity.should_register:
+                    # We only add the tasks if the should register flag is set. This is to avoid adding
+                    # unnecessary tasks to the registrable list.
+                    for t in entity.flyte_tasks:
+                        get_serializable(entity_mapping, settings, t, options)
+                cp_entity = get_serializable_flyte_workflow(entity, settings)
+        else:
+            cp_entity = entity
+
+    elif isinstance(entity, FlyteLaunchPlan):
         cp_entity = entity
 
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 
+    if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
+        # 1. Check if the size of long description exceeds 16KB
+        # 2. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
+        if entity.docs and entity.docs.long_description:
+            if entity.docs.long_description.value:
+                if sys.getsizeof(entity.docs.long_description.value) > 16 * 1024 * 1024:
+                    raise ValueError(
+                        "Long Description of the flyte entity exceeds the 16KB size limit. Please specify the uri in the long description instead."
+                    )
+            entity.docs.source_code = SourceCode(link=settings.git_repo)
     # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
     entity_mapping[entity] = cp_entity
     return cp_entity
@@ -603,7 +705,7 @@ def get_serializable(
 def gather_dependent_entities(
     serialized: OrderedDict,
 ) -> Tuple[
-    Dict[_identifier_model.Identifier, task_models.TaskTemplate],
+    Dict[_identifier_model.Identifier, TaskTemplate],
     Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec],
     Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec],
 ]:
@@ -616,12 +718,12 @@ def gather_dependent_entities(
     :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
     :return:
     """
-    task_templates: Dict[_identifier_model.Identifier, task_models.TaskTemplate] = {}
+    task_templates: Dict[_identifier_model.Identifier, TaskTemplate] = {}
     workflow_specs: Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec] = {}
     launch_plan_specs: Dict[_identifier_model.Identifier, _launch_plan_models.LaunchPlanSpec] = {}
 
     for cp_entity in serialized.values():
-        if isinstance(cp_entity, task_models.TaskSpec):
+        if isinstance(cp_entity, TaskSpec):
             task_templates[cp_entity.template.id] = cp_entity.template
         elif isinstance(cp_entity, _launch_plan_models.LaunchPlan):
             launch_plan_specs[cp_entity.id] = cp_entity.spec

@@ -5,24 +5,18 @@ import typing
 from pathlib import Path
 
 import click
-from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
-from flyteidl.admin.launch_plan_pb2 import LaunchPlanCreateRequest
-from flyteidl.admin.task_pb2 import TaskCreateRequest
-from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
-from flyteidl.admin.workflow_pb2 import WorkflowCreateRequest
-from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
-from flyteidl.core import identifier_pb2
 
-from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.clis.helpers import hydrate_registration_parameters
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.exceptions.user import FlyteEntityAlreadyExistsException
 from flytekit.loggers import logger
+from flytekit.models import launch_plan
+from flytekit.models.core.identifier import Identifier
+from flytekit.remote import FlyteRemote
+from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
 from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
-from flytekit.tools.serialize_helpers import RegistrableEntity, get_registrable_entities, persist_registrable_entities
-from flytekit.tools.translator import Options
+from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
+from flytekit.tools.translator import FlyteControlPlaneEntity, Options
 
 
 class NoSerializableEntitiesError(Exception):
@@ -34,7 +28,7 @@ def serialize(
     settings: SerializationSettings,
     local_source_root: typing.Optional[str] = None,
     options: typing.Optional[Options] = None,
-) -> typing.List[RegistrableEntity]:
+) -> typing.List[FlyteControlPlaneEntity]:
     """
     See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
     entity type.
@@ -71,7 +65,7 @@ def serialize_to_folder(
 
 
 def package(
-    registrable_entities: typing.List[RegistrableEntity],
+    serializable_entities: typing.List[FlyteControlPlaneEntity],
     source: str = ".",
     output: str = "./flyte-package.tgz",
     fast: bool = False,
@@ -79,17 +73,17 @@ def package(
 ):
     """
     Package the given entities and the source code (if fast is enabled) into a package with the given name in output
-    :param registrable_entities: Entities that can be serialized
+    :param serializable_entities: Entities that can be serialized
     :param source: source folder
     :param output: output package name with suffix
     :param fast: fast enabled implies source code is bundled
     :param deref_symlinks: if enabled then symlinks are dereferenced during packaging
     """
-    if not registrable_entities:
+    if not serializable_entities:
         raise NoSerializableEntitiesError("Nothing to package")
 
     with tempfile.TemporaryDirectory() as output_tmpdir:
-        persist_registrable_entities(registrable_entities, output_tmpdir)
+        persist_registrable_entities(serializable_entities, output_tmpdir)
 
         # If Fast serialization is enabled, then an archive is also created and packaged
         if fast:
@@ -103,7 +97,7 @@ def package(
         with tarfile.open(output, "w:gz") as tar:
             tar.add(output_tmpdir, arcname="")
 
-    click.secho(f"Successfully packaged {len(registrable_entities)} flyte objects into {output}", fg="green")
+    click.secho(f"Successfully packaged {len(serializable_entities)} flyte objects into {output}", fg="green")
 
 
 def serialize_and_package(
@@ -118,48 +112,8 @@ def serialize_and_package(
     """
     Fist serialize and then package all entities
     """
-    registrable_entities = serialize(pkgs, settings, source, options=options)
-    package(registrable_entities, source, output, fast, deref_symlinks)
-
-
-def register(
-    registrable_entities: typing.List[RegistrableEntity],
-    project: str,
-    domain: str,
-    version: str,
-    client: SynchronousFlyteClient,
-):
-    # The incoming registrable entities are already in base protobuf form, not model form, so we use the
-    # raw client's methods instead of the friendly client's methods by calling super
-    for admin_entity in registrable_entities:
-        try:
-            if isinstance(admin_entity, _idl_admin_TaskSpec):
-                ident, task_spec = hydrate_registration_parameters(
-                    identifier_pb2.TASK, project, domain, version, admin_entity
-                )
-                logger.debug(f"Creating task {ident}")
-                super(SynchronousFlyteClient, client).create_task(TaskCreateRequest(id=ident, spec=task_spec))
-            elif isinstance(admin_entity, _idl_admin_WorkflowSpec):
-                ident, wf_spec = hydrate_registration_parameters(
-                    identifier_pb2.WORKFLOW, project, domain, version, admin_entity
-                )
-                logger.debug(f"Creating workflow {ident}")
-                super(SynchronousFlyteClient, client).create_workflow(WorkflowCreateRequest(id=ident, spec=wf_spec))
-            elif isinstance(admin_entity, _idl_admin_LaunchPlan):
-                ident, admin_lp = hydrate_registration_parameters(
-                    identifier_pb2.LAUNCH_PLAN, project, domain, version, admin_entity
-                )
-                logger.debug(f"Creating launch plan {ident}")
-                super(SynchronousFlyteClient, client).create_launch_plan(
-                    LaunchPlanCreateRequest(id=ident, spec=admin_lp.spec)
-                )
-            else:
-                raise AssertionError(f"Unknown entity of type {type(admin_entity)}")
-        except FlyteEntityAlreadyExistsException:
-            logger.info(f"{admin_entity} already exists")
-        except Exception as e:
-            logger.info(f"Failed to register entity {admin_entity} with error {e}")
-            raise e
+    serializable_entities = serialize(pkgs, settings, source, options=options)
+    package(serializable_entities, source, output, fast, deref_symlinks)
 
 
 def find_common_root(
@@ -192,7 +146,7 @@ def load_packages_and_modules(
     project_root: Path,
     pkgs_or_mods: typing.List[str],
     options: typing.Optional[Options] = None,
-) -> typing.List[RegistrableEntity]:
+) -> typing.List[FlyteControlPlaneEntity]:
     """
     The project root is added as the first entry to sys.path, and then all the specified packages and modules
     given are loaded with all submodules. The reason for prepending the entry is to ensure that the name that
@@ -208,7 +162,7 @@ def load_packages_and_modules(
     :param options:
     :return: The common detected root path, the output of _find_project_root
     """
-
+    ss.git_repo = _get_git_repo_url(project_root)
     pkgs_and_modules = []
     for pm in pkgs_or_mods:
         p = Path(pm).resolve()
@@ -225,3 +179,97 @@ def load_packages_and_modules(
     registrable_entities = serialize(pkgs_and_modules, ss, str(project_root), options)
 
     return registrable_entities
+
+
+def secho(i: Identifier, state: str = "success", reason: str = None):
+    state_ind = "[ ]"
+    fg = "white"
+    nl = False
+    if state == "success":
+        state_ind = "\r[✔]"
+        fg = "green"
+        nl = True
+        reason = f"successful with version {i.version}" if not reason else reason
+    elif state == "failed":
+        state_ind = "\r[x]"
+        fg = "red"
+        nl = True
+        reason = "skipped!"
+    click.secho(
+        click.style(f"{state_ind}", fg=fg) + f" Registration {i.name} type {i.resource_type_name()} {reason}",
+        dim=True,
+        nl=nl,
+    )
+
+
+def register(
+    project: str,
+    domain: str,
+    image_config: ImageConfig,
+    output: str,
+    destination_dir: str,
+    service_account: str,
+    raw_data_prefix: str,
+    version: typing.Optional[str],
+    deref_symlinks: bool,
+    fast: bool,
+    package_or_module: typing.Tuple[str],
+    remote: FlyteRemote,
+    dry_run: bool = False,
+):
+    detected_root = find_common_root(package_or_module)
+    click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
+    fast_serialization_settings = None
+    if fast:
+        md5_bytes, native_url = remote.fast_package(detected_root, deref_symlinks, output)
+        fast_serialization_settings = FastSerializationSettings(
+            enabled=True,
+            destination_dir=destination_dir,
+            distribution_location=native_url,
+        )
+
+    # Create serialization settings
+    # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
+    serialization_settings = SerializationSettings(
+        project=project,
+        domain=domain,
+        version=version,
+        image_config=image_config,
+        fast_serialization_settings=fast_serialization_settings,
+    )
+
+    if not version and fast:
+        version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
+        click.secho(f"Computed version is {version}", fg="yellow")
+    elif not version:
+        click.secho("Version is required.", fg="red")
+        return
+
+    b = serialization_settings.new_builder()
+    b.version = version
+    serialization_settings = b.build()
+
+    options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
+
+    # Load all the entities
+    serializable_entities = load_packages_and_modules(
+        serialization_settings, detected_root, list(package_or_module), options
+    )
+    if len(serializable_entities) == 0:
+        click.secho("No Flyte entities were detected. Aborting!", fg="red")
+        return
+
+    for cp_entity in serializable_entities:
+        og_id = cp_entity.id if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id
+        secho(og_id, "")
+        try:
+            if not dry_run:
+                i = remote.raw_register(
+                    cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                )
+                secho(i)
+            else:
+                secho(og_id, reason="Dry run Mode!")
+        except RegistrationSkipped:
+            secho(og_id, "failed")
+    click.secho(f"Successfully registered {len(serializable_entities)} entities", fg="green")

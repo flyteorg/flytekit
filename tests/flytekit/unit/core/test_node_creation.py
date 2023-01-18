@@ -1,6 +1,7 @@
 import datetime
 import typing
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import pytest
 
@@ -87,6 +88,7 @@ def test_normal_task():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
     assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
     assert wf_spec.template.nodes[0].id == "n0"
+    assert wf_spec.template.nodes[0].metadata.name == "t2"
 
     with pytest.raises(FlyteAssertion):
 
@@ -334,7 +336,8 @@ def test_timeout_override_invalid_value():
 
 
 @pytest.mark.parametrize(
-    "retries,expected", [(None, _literal_models.RetryStrategy(0)), (3, _literal_models.RetryStrategy(3))]
+    "retries,expected",
+    [(None, _literal_models.RetryStrategy(0)), (3, _literal_models.RetryStrategy(3))],
 )
 def test_retries_override(retries, expected):
     @task
@@ -401,3 +404,46 @@ def test_void_promise_override():
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
     ]
+
+
+def test_name_override():
+    @task
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(name="foo")
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].metadata.name == "foo"
+
+
+def test_config_override():
+    @dataclass
+    class DummyConfig:
+        name: str
+
+    @task(task_config=DummyConfig(name="hello"))
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(task_config=DummyConfig("flyte"))
+
+    assert my_wf.nodes[0].flyte_entity.task_config.name == "flyte"
+
+    with pytest.raises(ValueError):
+
+        @workflow
+        def my_wf(a: str) -> str:
+            return t1(a=a).with_overrides(task_config=None)

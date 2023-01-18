@@ -28,8 +28,6 @@ for possible_plugin_dir in os.listdir(plugins_dir):
 sys.path.insert(0, flytekit_src_dir)
 sys.path.insert(0, flytekit_dir)
 
-print(sys.path)
-
 # -- Project information -----------------------------------------------------
 
 project = "Flytekit"
@@ -61,12 +59,16 @@ extensions = [
     "sphinx_fontawesome",
     "sphinx_panels",
     "sphinxcontrib.yt",
+    "sphinx_tags",
+    "sphinx_click",
 ]
 
 # build the templated autosummary files
 autosummary_generate = True
 
 autodoc_typehints = "description"
+
+suppress_warnings = ["autosectionlabel.*"]
 
 # autosectionlabel throws warnings if section names are duplicated.
 # The following tells autosectionlabel to not throw a warning for
@@ -224,3 +226,8 @@ inheritance_edge_attrs = {
 }
 
 autoclass_content = "both"
+
+# Tags config
+tags_create_tags = True
+tags_page_title = "Tag"
+tags_overview_title = "All Tags"

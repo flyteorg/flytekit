@@ -1,19 +1,19 @@
 from setuptools import setup
 
-PLUGIN_NAME = "onnxtensorflow"
+PLUGIN_NAME = "mlflow"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "tf2onnx>=1.9.3", "tensorflow>=2.7.0"]
+plugin_requires = ["flytekit>=1.1.0,<2.0.0", "plotly", "mlflow"]
 
 __version__ = "0.0.0+develop"
 
 setup(
-    name=f"flytekitplugins-{PLUGIN_NAME}",
+    name=microlib_name,
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="ONNX TensorFlow Plugin for Flytekit",
+    description="This package enables seamless use of MLFlow within Flyte",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

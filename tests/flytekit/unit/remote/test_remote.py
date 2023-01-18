@@ -3,6 +3,7 @@ import pathlib
 import tempfile
 
 import pytest
+from flyteidl.core import compiler_pb2 as _compiler_pb2
 from mock import MagicMock, patch
 
 import flytekit.configuration
@@ -10,10 +11,15 @@ from flytekit.configuration import Config, DefaultImages, ImageConfig
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models import security
-from flytekit.models.core.identifier import ResourceType, WorkflowExecutionIdentifier
+from flytekit.models.admin.workflow import Workflow, WorkflowClosure
+from flytekit.models.core.compiler import CompiledWorkflowClosure
+from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
+from flytekit.models.task import Task
+from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools.translator import Options
+from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
 CLIENT_METHODS = {
     ResourceType.WORKFLOW: "list_workflows_paginated",
@@ -225,7 +231,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         remote = FlyteRemote(
             config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
         )
-        assert remote.generate_console_http_domain() == "http://localhost:30080"
+        assert remote.generate_console_http_domain() == "http://localhost:30081"
 
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
@@ -247,3 +253,43 @@ console:
             os.remove(temp_filename)
         except OSError:
             pass
+
+
+def get_compiled_workflow_closure():
+    """
+    :rtype: flytekit.models.core.compiler.CompiledWorkflowClosure
+    """
+    cwc_pb = _compiler_pb2.CompiledWorkflowClosure()
+    # So that tests that use this work when run from any directory
+    basepath = os.path.dirname(__file__)
+    filepath = os.path.abspath(os.path.join(basepath, "responses", "CompiledWorkflowClosure.pb"))
+    with open(filepath, "rb") as fh:
+        cwc_pb.ParseFromString(fh.read())
+
+    return CompiledWorkflowClosure.from_flyte_idl(cwc_pb)
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_fetch_lazy(mock_client):
+    mock_client.get_task.return_value = Task(
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"), closure=LIST_OF_TASK_CLOSURES[0]
+    )
+
+    mock_client.get_workflow.return_value = Workflow(
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        closure=WorkflowClosure(compiled_workflow=get_compiled_workflow_closure()),
+    )
+
+    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    lw = remote.fetch_workflow_lazy(name="wn", version="v")
+    assert isinstance(lw, LazyEntity)
+    assert lw._getter
+    assert lw._entity is None
+    assert lw.entity
+
+    lt = remote.fetch_task_lazy(name="n", version="v")
+    assert isinstance(lw, LazyEntity)
+    assert lt._getter
+    assert lt._entity is None
+    tk = lt.entity
+    assert tk.name == "n"

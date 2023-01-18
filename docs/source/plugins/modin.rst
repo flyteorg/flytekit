@@ -4,6 +4,8 @@
 Modin API reference
 ###################################################
 
+.. tags:: Integration, DataFrame
+
 .. automodule:: flytekitplugins.modin
    :no-members:
    :no-inherited-members:

@@ -303,6 +303,9 @@ class FlyteLiteralConverter(object):
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
                 if self._python_type == dict:
+                    if type(value) != str:
+                        # The type of default value is dict, so we have to convert it to json string
+                        value = json.dumps(value)
                     o = json.loads(value)
                 elif type(value) != self._python_type:
                     o = cast(DataClassJsonMixin, self._python_type).from_json(value)
@@ -644,7 +647,8 @@ class RunCommand(click.MultiCommand):
         return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
 
     def get_command(self, ctx, filename):
-        ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
+        if ctx.obj:
+            ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
         return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
 
 

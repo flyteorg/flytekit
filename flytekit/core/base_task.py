@@ -45,6 +45,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
@@ -156,6 +157,7 @@ class Task(object):
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
+        docs: Optional[Documentation] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -164,6 +166,7 @@ class Task(object):
         self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
+        self._docs = docs
 
         FlyteEntities.entities.append(self)
 
@@ -194,6 +197,10 @@ class Task(object):
     @property
     def security_context(self) -> SecurityContext:
         return self._security_ctx
+
+    @property
+    def docs(self) -> Documentation:
+        return self._docs
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
@@ -390,6 +397,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._environment = environment if environment else {}
         self._task_config = task_config
         self._disable_deck = disable_deck
+        if self._python_interface.docstring:
+            if self.docs is None:
+                self._docs = Documentation(
+                    short_description=self._python_interface.docstring.short_description,
+                    long_description=Description(value=self._python_interface.docstring.long_description),
+                )
+            else:
+                if self._python_interface.docstring.short_description:
+                    self._docs.short_description = self._python_interface.docstring.short_description
+                if self._python_interface.docstring.long_description:
+                    self._docs.long_description = Description(value=self._python_interface.docstring.long_description)
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
@@ -487,6 +505,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
+            # dynamic_execute returns a literal map in local execute so this also gets triggered.
             if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
                 native_outputs, _dynamic_job.DynamicJobSpec
             ):

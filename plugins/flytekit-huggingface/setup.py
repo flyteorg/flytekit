@@ -5,7 +5,7 @@ PLUGIN_NAME = "huggingface"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "flytekit>=1.1.0b0,<1.2.0",
+    "flytekit>=1.3.0b2,<2.0.0",
     "datasets>=2.4.0",
 ]
 
@@ -16,6 +16,9 @@ setup(
     version=__version__,
     author="Evan Sadler",
     description="Hugging Face plugin for flytekit",
+    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-huggingface",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
@@ -35,4 +38,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )

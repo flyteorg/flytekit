@@ -40,12 +40,13 @@ def get_admin_stub_mock() -> mock.MagicMock:
     return auth_stub_mock
 
 
+@mock.patch("flytekit.clients.raw.signal_service")
 @mock.patch("flytekit.clients.raw.dataproxy_service")
 @mock.patch("flytekit.clients.raw.auth_service")
 @mock.patch("flytekit.clients.raw._admin_service")
 @mock.patch("flytekit.clients.raw.grpc.insecure_channel")
 @mock.patch("flytekit.clients.raw.grpc.secure_channel")
-def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_dataproxy):
+def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_dataproxy, mock_signal):
     mock_secure_channel.return_value = True
     mock_channel.return_value = True
     mock_admin.AdminServiceStub.return_value = True
@@ -73,6 +74,7 @@ def test_refresh_credentials_from_command(mock_call_to_external_process, mock_ad
     mock_set_access_token.assert_called_with(token, client.public_client_config.authorization_metadata_key)
 
 
+@mock.patch("flytekit.clients.raw.signal_service")
 @mock.patch("flytekit.clients.raw.dataproxy_service")
 @mock.patch("flytekit.clients.raw.get_basic_authorization_header")
 @mock.patch("flytekit.clients.raw.get_token")
@@ -88,6 +90,7 @@ def test_refresh_client_credentials_aka_basic(
     mock_get_token,
     mock_get_basic_header,
     mock_dataproxy,
+    mock_signal,
 ):
     mock_secure_channel.return_value = True
     mock_channel.return_value = True
@@ -112,12 +115,13 @@ def test_refresh_client_credentials_aka_basic(
     assert client._metadata[0][0] == "authorization"
 
 
+@mock.patch("flytekit.clients.raw.signal_service")
 @mock.patch("flytekit.clients.raw.dataproxy_service")
 @mock.patch("flytekit.clients.raw.auth_service")
 @mock.patch("flytekit.clients.raw._admin_service")
 @mock.patch("flytekit.clients.raw.grpc.insecure_channel")
 @mock.patch("flytekit.clients.raw.grpc.secure_channel")
-def test_raises(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_dataproxy):
+def test_raises(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_dataproxy, mock_signal):
     mock_secure_channel.return_value = True
     mock_channel.return_value = True
     mock_admin.AdminServiceStub.return_value = True
