@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
+
 from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
@@ -126,6 +127,7 @@ def _get_git_repo_url(source_path):
     """
     try:
         from git import Repo
+
         return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
     except ImportError:
         remote_logger.warning("Could not import git. is the git executable installed?")
