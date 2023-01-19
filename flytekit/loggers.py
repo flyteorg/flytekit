@@ -44,10 +44,10 @@ ch.setLevel(logging.DEBUG)
 flytekit_root_env_var = f"{LOGGING_ENV_VAR}_ROOT"
 level_from_env = os.getenv(LOGGING_ENV_VAR)
 root_level_from_env = os.getenv(flytekit_root_env_var)
-if level_from_env is not None:
-    logger.setLevel(int(level_from_env))
-elif root_level_from_env is not None:
+if root_level_from_env is not None:
     logger.setLevel(int(root_level_from_env))
+elif level_from_env is not None:
+    logger.setLevel(int(level_from_env))
 else:
     logger.setLevel(logging.WARNING)
 
