@@ -761,9 +761,10 @@ def workflow(
 
         ctx = FlyteContextManager.current_context()
 
-        print("ctx.execution_state", ctx.execution_state)
-        print("ctx.compilation_state", ctx.compilation_state)
-        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION or os.environ.get(SERIALIZED_CONTEXT_ENV_VAR) is not None:
+        if (
+            ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION
+            or os.environ.get(SERIALIZED_CONTEXT_ENV_VAR) is not None
+        ):
             workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
