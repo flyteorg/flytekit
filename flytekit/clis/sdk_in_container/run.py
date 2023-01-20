@@ -106,7 +106,7 @@ class FileParamType(click.ParamType):
 
 
 class DurationParamType(click.ParamType):
-    name = "timedelta"
+    name = "[1:24 | :22 | 1 minute | 10 days | ...]"
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
