@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
+from flytekit.configuration import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -758,11 +760,10 @@ def workflow(
         )
 
         ctx = FlyteContextManager.current_context()
-        from flytekit import PythonFunctionTask
 
-        print(ctx.execution_state)
-        print(ctx.compilation_state)
-        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION or ctx.compilation_state is not None:
+        print("ctx.execution_state", ctx.execution_state)
+        print("ctx.compilation_state", ctx.compilation_state)
+        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION or os.environ.get(SERIALIZED_CONTEXT_ENV_VAR) is not None:
             workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
