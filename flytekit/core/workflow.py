@@ -760,9 +760,9 @@ def workflow(
         ctx = FlyteContextManager.current_context()
         from flytekit import PythonFunctionTask
 
-        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION or (
-            ctx.compilation_state is not None and ctx.compilation_state.mode == 1
-        ):
+        print(ctx.execution_state)
+        print(ctx.compilation_state)
+        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION or ctx.compilation_state is not None:
             workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
