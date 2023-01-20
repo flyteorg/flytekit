@@ -19,7 +19,6 @@ from datetime import datetime, timedelta
 
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
-from git import Repo
 
 from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -127,9 +126,14 @@ def _get_git_repo_url(source_path):
     Get git repo URL from remote.origin.url
     """
     try:
+        from git import Repo
+
         return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
+    except ImportError:
+        remote_logger.warning("Could not import git. is the git executable installed?")
     except Exception:
         # If the file isn't in the git repo, we can't get the url from git config
+        remote_logger.debug(f"{source_path} is not a git repo.")
         return ""
 
 
