@@ -63,3 +63,16 @@ def test_lazy_loading_compile(create_and_link_node_from_remote_mock):
     e.compile(ctx)
     assert e._entity is not None
     assert e.entity == dummy_task
+
+
+def test_lazy_loading_exception():
+    def _getter():
+        raise AttributeError("Error")
+
+    e = LazyEntity("x", _getter)
+    assert e.name == "x"
+    assert e._entity is None
+    with pytest.raises(RuntimeError) as exc:
+        assert e.blah
+
+    assert isinstance(exc.value.__cause__, AttributeError)
