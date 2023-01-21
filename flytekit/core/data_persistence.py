@@ -35,6 +35,7 @@ from typing import Dict, Union
 from uuid import UUID
 
 import fsspec
+from fsspec.core import split_protocol
 
 from flytekit.configuration import DataConfig
 from flytekit.core.utils import PerformanceTimer
@@ -105,7 +106,9 @@ class FileAccessProvider(object):
     @staticmethod
     def get_protocol(path: typing.Optional[str] = None):
         if path:
-            return DataPersistencePlugins.get_protocol(path)
+            protocol, path = split_protocol(path)
+            if protocol:
+
         logger.info("Setting protocol to file")
         return "file"
 
@@ -131,7 +134,7 @@ class FileAccessProvider(object):
         """
         Deprecated. Lets find a replacement
         """
-        protocol, _ = fsspec.split_protocol(path)
+        protocol, _ = split_protocol(path)
         if protocol is None:
             return False
         return protocol != "file"
@@ -226,8 +229,17 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer(f"Copying ({remote_path} -> {local_path})"):
-                pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-                fs = self.get_filesystem(remote_path)
+                pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)  # shouldn't be needed
+                # fs = self.get_filesystem(remote_path)
+
+                protocol = FSSpecPersistence.get_protocol(path)
+                kwargs = {}
+                # if protocol == "file":
+                #     kwargs = {"auto_mkdir": True}
+                if protocol == "s3":
+                    kwargs = s3_setup_args(self._data_cfg.s3)
+                fs = fsspec.filesystem(protocol, **kwargs)  # type: ignore
+
                 fs.get(remote_path, lpath=local_path, recursive=is_multipart)
                 data_persistence_plugin(data_config=self.data_config).get(
                     remote_path, local_path, recursive=is_multipart
