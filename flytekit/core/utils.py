@@ -1,3 +1,4 @@
+import os
 import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
@@ -6,6 +7,7 @@ from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from flytekit.core.constants import ENABLE_BACKEND_SYSTEM_SERVICE
 from flytekit.loggers import logger
 from flytekit.models import task as _task_models
 
@@ -233,3 +235,7 @@ class PerformanceTimer(object):
                 end_process_time - self._start_process_time,
             )
         )
+
+
+def is_backend_plugin_service_enabled():
+    return os.environ.get(ENABLE_BACKEND_SYSTEM_SERVICE).lower() == "true"
