@@ -860,7 +860,8 @@ def create_and_link_node_from_remote(
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
         raise _user_exceptions.FlyteAssertion(
-            "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
+            f"Too many inputs for [{entity.name}] Expected inputs: {typed_interface.inputs.keys()} "
+            f"- extra inputs: {extra_inputs}"
         )
 
     # Detect upstream nodes

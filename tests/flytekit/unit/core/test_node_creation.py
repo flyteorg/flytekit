@@ -1,6 +1,7 @@
 import datetime
 import typing
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import pytest
 
@@ -420,3 +421,25 @@ def test_name_override():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.name == "foo"
+
+
+def test_config_override():
+    @dataclass
+    class DummyConfig:
+        name: str
+
+    @task(task_config=DummyConfig(name="hello"))
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(task_config=DummyConfig("flyte"))
+
+    assert my_wf.nodes[0].flyte_entity.task_config.name == "flyte"
+
+    with pytest.raises(ValueError):
+
+        @workflow
+        def my_wf(a: str) -> str:
+            return t1(a=a).with_overrides(task_config=None)
