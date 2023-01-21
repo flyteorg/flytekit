@@ -76,6 +76,8 @@ class TaskPlugins(object):
 def task(
     _task_function: Optional[Callable] = None,
     task_config: Optional[Any] = None,
+    # This will need to be piped through to the constructor of the task
+    pod_template: Optional[PodTemplate] = None,
     cache: bool = False,
     cache_serialize: bool = False,
     cache_version: str = "",

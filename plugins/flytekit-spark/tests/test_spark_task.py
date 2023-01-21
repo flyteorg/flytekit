@@ -18,6 +18,10 @@ def reset_spark_session() -> None:
     pyspark.sql.SparkSession.builder.getOrCreate().stop()
 
 
+# Will need to test that this also works for Spark Tasks.
+# Will need to do an end to end test on a Flyte backend as well.
+
+
 def test_spark_task(reset_spark_session):
     databricks_conf = {
         "name": "flytekit databricks plugin example",

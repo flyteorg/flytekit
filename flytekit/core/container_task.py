@@ -35,6 +35,8 @@ class ContainerTask(PythonTask):
         name: str,
         image: str,
         command: List[str],
+        # the PodTemplate object here is the one copied and renamed from the plugin
+        pod_template: Optional[PodTemplate] = None,
         inputs: Optional[Dict[str, Type]] = None,
         metadata: Optional[TaskMetadata] = None,
         arguments: List[str] = None,
@@ -89,6 +91,7 @@ class ContainerTask(PythonTask):
         )
         return None
 
+    # Make this function return None if pod_template is specified.
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = settings.env or {}
         env = {**env, **self.environment} if self.environment else env
@@ -115,3 +118,8 @@ class ContainerTask(PythonTask):
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
         )
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> Optional[_task_model.K8sPod]:
+        # Implement this function, make it return None usually, but return a K8sPod object when
+        # a pod template has been specified in the container
+        ...

@@ -20,6 +20,9 @@ def _sanitize_resource_name(resource: _task_models.Resources.ResourceEntry) -> s
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
+# Copy this dataclass somewhere into flytekit's core folder
+# But name it "PodTemplate" instead of just "Pod"
+# Leave this plugin as is though and delete this comment.
 @dataclass
 class Pod(object):
     """
@@ -101,6 +104,8 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
         return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
 
+    # This function should be more of less what goes into the get_k8s_pod functions in the
+    # PythonAutoContainerTask and ContainerTask objects.
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_models.K8sPod:
         return _task_models.K8sPod(
             pod_spec=self._serialize_pod_spec(settings),

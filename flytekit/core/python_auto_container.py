@@ -34,6 +34,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         name: str,
         task_config: T,
         task_type="python-task",
+        # the PodTemplate object here is the one copied and renamed from the plugin
+        pod_template: Optional[PodTemplate] = None,
         container_image: Optional[str] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
@@ -156,6 +158,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         return self._get_command_fn(settings)
 
+    # Make this function return None if pod_template is specified.
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {}
         for elem in (settings.env, self.environment):
@@ -178,6 +181,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
         )
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> Optional[_task_model.K8sPod]:
+        # Implement this function, make it return None usually, but return a K8sPod object when
+        # a pod template has been specified in the container
+        ...
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
