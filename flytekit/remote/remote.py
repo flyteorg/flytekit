@@ -17,6 +17,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+from croniter import croniter
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
@@ -32,7 +33,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.workflow import WorkflowBase, ImperativeWorkflow
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 from flytekit.loggers import remote_logger
@@ -73,6 +74,14 @@ from flytekit.tools.translator import (
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
+
+
+def ignore_extra_print(*args, **kwargs):
+    if "fg" in kwargs:
+        del kwargs["fg"]
+    if "nl" in kwargs:
+        del kwargs["nl"]
+    print(*args, **kwargs)
 
 
 class RegistrationSkipped(Exception):
@@ -1720,3 +1729,49 @@ class FlyteRemote(object):
         self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
     ):
         return f"{self.generate_console_http_domain()}/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
+
+    @staticmethod
+    def create_backfiller(start_date: datetime, end_date: datetime, for_lp: typing.Union[LaunchPlan, FlyteLaunchPlan],
+                          parallel: bool = False, per_node_timeout: timedelta = None,
+                          per_node_retries: int = 0, output: typing.Any = ignore_extra_print) -> WorkflowBase:
+        """
+        Generates a new imperative workflow for the launchplan that can be used to backfill the given launchplan.
+        This can only be used to generate  backfilling workflow only for schedulable launchplans
+        """
+        if not for_lp:
+            raise RuntimeError("Launch plan is required!")
+
+        if start_date >= end_date:
+            raise ValueError(
+                f"for a backfill start date should be earlier than end date. Received {start_date} -> {end_date}")
+
+        schedule = for_lp.entity_metadata.schedule if isinstance(for_lp, FlyteLaunchPlan) else for_lp.schedule
+
+        if schedule is None:
+            raise ValueError("Backfill can only be created for scheduled launch plans")
+
+        if schedule.cron_schedule is not None:
+            cron_schedule = schedule.cron_schedule
+        else:
+            raise NotImplementedError("Currently backfilling only supports cron schedules.")
+
+        output(f"Generating backfill from {start_date} -> {end_date}. Parallel?[{parallel}]", fg="yellow")
+        wf = ImperativeWorkflow(name=f"backfill-{for_lp.name}")
+        date_iter = croniter(cron_schedule.schedule, start_time=start_date, ret_type=datetime)
+        prev_node = None
+        while True:
+            next_start_date = date_iter.get_next()
+            if next_start_date >= end_date:
+                break
+            next_node = wf.add_launch_plan(for_lp, t=next_start_date)
+            next_node = next_node.with_overrides(name=f"b-{next_start_date}", retries=per_node_retries,
+                                                 timeout=per_node_timeout)
+            if not parallel:
+                if prev_node:
+                    prev_node.runs_before(next_node)
+                output(f"-> {next_node.name}", nl=False)
+            else:
+                output(f"  -> {next_node.name}")
+            prev_node = next_node
+
+        return wf
