@@ -71,6 +71,7 @@ jobs:
           - flytekit-dbt
           - flytekit-deck-standard
           - flytekit-dolt
+          - flytekit-duckdb
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-k8s-pod
