@@ -70,7 +70,7 @@ def test_task_schema(sql_server):
     assert df is not None
 
 
-@pytest.mark(
+@pytest.mark.parametrize(
     "query_template",
     [
         "select * from tracks limit {{.inputs.limit}}",
