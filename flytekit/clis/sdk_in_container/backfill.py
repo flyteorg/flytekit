@@ -1,13 +1,9 @@
-import base64
-import hashlib
 from datetime import datetime, timedelta
 
 import click
 
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
-from flytekit.clis.sdk_in_container.run import DurationParamType, DateTimeType
-from flytekit.configuration import SerializationSettings, ImageConfig
-from flytekit.remote import FlyteRemote
+from flytekit.clis.sdk_in_container.run import DateTimeType, DurationParamType
 
 _backfill_help = """
 Backfill command generates, registers a new workflow based on the input launchplan, that can be used to run an
@@ -96,7 +92,7 @@ is implicitly cached.
     type=DurationParamType(),
     default=None,
     help="Timedelta for number of days, minutes hours given either a from-date or end-date to compute the"
-         " backfills between",
+    " backfills between",
 )
 @click.argument(
     "launchplan",
@@ -113,14 +109,27 @@ is implicitly cached.
     #      "(by registration time) will be used",
 )
 @click.pass_context
-def backfill(ctx: click.Context, project: str, domain: str, from_date: datetime, to_date: datetime,
-             duration: timedelta, launchplan: str, launchplan_version: str,
-             dry_run: bool, no_execute: bool, parallel: bool, execution_name: str, version: str):
+def backfill(
+    ctx: click.Context,
+    project: str,
+    domain: str,
+    from_date: datetime,
+    to_date: datetime,
+    duration: timedelta,
+    launchplan: str,
+    launchplan_version: str,
+    dry_run: bool,
+    no_execute: bool,
+    parallel: bool,
+    execution_name: str,
+    version: str,
+):
     if from_date and to_date and duration:
         raise click.BadParameter("Cannot use from-date, to-date and duration. Use any two")
     if not (from_date or to_date):
         raise click.BadParameter(
-            "One of following pairs are required -> (from-date, to-date) | (from-date, duration) | (to-date, duration)")
+            "One of following pairs are required -> (from-date, to-date) | (from-date, duration) | (to-date, duration)"
+        )
     if from_date and to_date:
         pass
     elif not duration:
@@ -131,34 +140,19 @@ def backfill(ctx: click.Context, project: str, domain: str, from_date: datetime,
         from_date = to_date - duration
 
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    lp = remote.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
-    wf = FlyteRemote.create_backfiller(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel,
-                                       output=click.secho)
-    if dry_run:
-        click.secho("\n Dry Run enabled. Workflow will not be registered and or executed.", fg="yellow")
-        return
-
-    unique_fingerprint = f"{from_date}-{to_date}-{launchplan}-{launchplan_version}"
-    h = hashlib.md5()
-    h.update(unique_fingerprint.encode('utf-8'))
-    unique_fingerprint_encoded = base64.urlsafe_b64encode(h.digest()).decode("ascii")
-    if not version:
-        version = unique_fingerprint_encoded
-    ss = SerializationSettings(
-        image_config=ImageConfig.auto(),
+    exe = remote.launch_backfill(
         project=project,
         domain=domain,
+        from_date=from_date,
+        to_date=to_date,
+        launchplan=launchplan,
+        launchplan_version=launchplan_version,
+        execution_name=execution_name,
         version=version,
+        dry_run=dry_run,
+        no_execute=no_execute,
+        parallel=parallel,
+        output=click.secho,
     )
-    remote_wf = remote.register_workflow(wf, serialization_settings=ss)
-
-    if no_execute:
-        click.secho(
-            f"\n Execution disabled! Workflow registered successfully. URL:"
-            f" {remote.generate_console_url_for_entity(remote_wf)}", fg="green")
-        return
-
-    exe = remote.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
-
     console_url = remote.generate_console_url(exe)
     click.secho(f"\n Execution can be seen at {console_url} to see execution in the console.", fg="green")
