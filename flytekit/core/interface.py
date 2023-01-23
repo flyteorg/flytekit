@@ -28,8 +28,8 @@ class Interface(object):
 
     def __init__(
         self,
-        inputs: Optional[Dict[str, Type]] | Optional[Dict[str, Tuple[Type, Any]]] = None,
-        outputs: Optional[Dict[str, Type]] | Optional[Dict[str, Optional[Type]]] = None,
+        inputs: Union[Optional[Dict[str, Type]], Optional[Dict[str, Tuple[Type, Any]]]] = None,
+        outputs: Union[Optional[Dict[str, Type]], Optional[Dict[str, Optional[Type]]]] = None,
         output_tuple_name: Optional[str] = None,
         docstring: Optional[Docstring] = None,
     ):

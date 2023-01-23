@@ -10,7 +10,7 @@ from flytekit.loggers import logger
 
 
 @contextmanager
-def task_mock(t: PythonTask) -> typing.Iterator[MagicMock]:
+def task_mock(t: PythonTask) -> typing.Generator[MagicMock, None, None]:
     """
     Use this method to mock a task declaration. It can mock any Task in Flytekit as long as it has a python native
     interface associated with it.

@@ -159,7 +159,7 @@ class Task(object):
         self,
         task_type: str,
         name: str,
-        interface: Optional[_interface_models.TypedInterface] = None,
+        interface: _interface_models.TypedInterface,
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,

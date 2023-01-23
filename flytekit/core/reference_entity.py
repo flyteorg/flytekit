@@ -66,7 +66,7 @@ class ReferenceEntity(object):
     def __init__(
         self,
         reference: Union[WorkflowReference, TaskReference, LaunchPlanReference],
-        inputs: Dict[str, type],
+        inputs: Dict[str, Type],
         outputs: Dict[str, Type],
     ):
         if (
