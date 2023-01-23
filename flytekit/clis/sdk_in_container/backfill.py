@@ -1,9 +1,12 @@
+import base64
+import hashlib
 from datetime import datetime, timedelta
 
 import click
 
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.run import DurationParamType, DateTimeType
+from flytekit.configuration import SerializationSettings, ImageConfig
 from flytekit.remote import FlyteRemote
 
 _backfill_help = """
@@ -29,6 +32,22 @@ is implicitly cached.
     type=str,
     default="development",
     help="Domain to register and run this workflow in",
+)
+@click.option(
+    "-v",
+    "--version",
+    required=False,
+    type=str,
+    default=None,
+    help="Version for the registered workflow. If not specified it is auto-derived using the start and end date",
+)
+@click.option(
+    "-n",
+    "--execution-name",
+    required=False,
+    type=str,
+    default=None,
+    help="Create a named execution for the backfill. This can prevent launching multiple executions.",
 )
 @click.option(
     "--dry-run",
@@ -96,7 +115,7 @@ is implicitly cached.
 @click.pass_context
 def backfill(ctx: click.Context, project: str, domain: str, from_date: datetime, to_date: datetime,
              duration: timedelta, launchplan: str, launchplan_version: str,
-             dry_run: bool, no_execute: bool, parallel: bool):
+             dry_run: bool, no_execute: bool, parallel: bool, execution_name: str, version: str):
     if from_date and to_date and duration:
         raise click.BadParameter("Cannot use from-date, to-date and duration. Use any two")
     if not (from_date or to_date):
@@ -115,3 +134,31 @@ def backfill(ctx: click.Context, project: str, domain: str, from_date: datetime,
     lp = remote.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
     wf = FlyteRemote.create_backfiller(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel,
                                        output=click.secho)
+    if dry_run:
+        click.secho("\n Dry Run enabled. Workflow will not be registered and or executed.", fg="yellow")
+        return
+
+    unique_fingerprint = f"{from_date}-{to_date}-{launchplan}-{launchplan_version}"
+    h = hashlib.md5()
+    h.update(unique_fingerprint.encode('utf-8'))
+    unique_fingerprint_encoded = base64.urlsafe_b64encode(h.digest()).decode("ascii")
+    if not version:
+        version = unique_fingerprint_encoded
+    ss = SerializationSettings(
+        image_config=ImageConfig.auto(),
+        project=project,
+        domain=domain,
+        version=version,
+    )
+    remote_wf = remote.register_workflow(wf, serialization_settings=ss)
+
+    if no_execute:
+        click.secho(
+            f"\n Execution disabled! Workflow registered successfully. URL:"
+            f" {remote.generate_console_url_for_entity(remote_wf)}", fg="green")
+        return
+
+    exe = remote.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
+
+    console_url = remote.generate_console_url(exe)
+    click.secho(f"\n Execution can be seen at {console_url} to see execution in the console.", fg="green")
