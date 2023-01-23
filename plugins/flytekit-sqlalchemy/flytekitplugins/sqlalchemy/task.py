@@ -97,9 +97,7 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
             task_config=task_config,
             executor_type=SQLAlchemyTaskExecutor,
             task_type=self._SQLALCHEMY_TASK_TYPE,
-            # Sanitize query by removing the newlines at the end of the query. Keep in mind
-            # that the query can be a multiline string.
-            query_template=query_template.replace("\n", " "),
+            query_template=query_template,
             container_image=container_image,
             inputs=inputs,
             outputs=outputs,
