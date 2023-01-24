@@ -1761,14 +1761,28 @@ class FlyteRemote(object):
         no_execute: bool = False,
         parallel: bool = False,
         output: typing.Any = ignore_extra_print,
-    ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow]:
+    ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
+        """
+        Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
+        then the latest launchplan is retrieved.
+        The from_date is exclusive and end_date is inclusive and backfill run for all instances in between.
+            -> (start_date - exclusive, end_date inclusive)
+        If dry_run is specified, the workflow is created and returned
+        if no_execute is specified then the workflow is created and registered
+        in the last case, the workflow is created, registered and executed.
+
+        The `parallel` flag can be used to generate a workflow where all launchplans can be run in parallel. Default
+        is that execute backfill is run sequentially
+
+        output is a way to override the output writer.
+        """
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
         wf = FlyteRemote.create_backfiller(
             start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel, output=output
         )
         if dry_run:
             output("\n Dry Run enabled. Workflow will not be registered and or executed.", fg="yellow")
-            return None
+            return wf
 
         unique_fingerprint = f"{from_date}-{to_date}-{launchplan}-{launchplan_version}"
         h = hashlib.md5()
@@ -1802,6 +1816,8 @@ class FlyteRemote(object):
         """
         Generates a new imperative workflow for the launchplan that can be used to backfill the given launchplan.
         This can only be used to generate  backfilling workflow only for schedulable launchplans
+
+        the Backfill plan is generated as (start_date - exclusive, end_date inclusive)
         """
         if not for_lp:
             raise RuntimeError("Launch plan is required!")

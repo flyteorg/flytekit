@@ -1,21 +1,16 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from flytekit import CronSchedule, LaunchPlan, task, workflow
+import click
+import pytest
 
-
-@task
-def tk(t: datetime, v: int):
-    print(f"Invoked at {t} with v {v}")
+from flytekit.clis.sdk_in_container.backfill import resolve_backfill_window
 
 
-@workflow
-def example_wf(t: datetime, v: int):
-    tk(t=t, v=v)
-
-
-daily_lp = LaunchPlan.get_or_create(
-    workflow=example_wf,
-    name="daily",
-    fixed_inputs={"v": 10},
-    schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
-)
+def test_resolve_backfill_window():
+    dt = datetime(2022, 12, 1, 8)
+    window = timedelta(days=10)
+    assert resolve_backfill_window(None, dt + window, window) == (dt, dt + window)
+    assert resolve_backfill_window(dt, None, window) == (dt, dt + window)
+    assert resolve_backfill_window(dt, dt + window) == (dt, dt + window)
+    with pytest.raises(click.BadParameter):
+        resolve_backfill_window()

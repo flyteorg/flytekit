@@ -13,8 +13,8 @@ is implicitly cached.
 """
 
 
-def _resolve_backfill_window(
-    from_date: datetime, to_date: datetime, window: timedelta
+def resolve_backfill_window(
+    from_date: datetime = None, to_date: datetime = None, window: timedelta = None,
 ) -> typing.Tuple[datetime, datetime]:
     """
     Resolves the from_date -> to_date
@@ -148,7 +148,7 @@ def backfill(
     execution_name: str,
     version: str,
 ):
-    from_date, to_date = _resolve_backfill_window(from_date, to_date, backfill_window)
+    from_date, to_date = resolve_backfill_window(from_date, to_date, backfill_window)
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
     entity = remote.launch_backfill(
         project=project,
