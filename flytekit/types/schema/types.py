@@ -180,7 +180,7 @@ class FlyteSchema(object):
     """
     This is the main schema class that users should use.
     """
-    logger.warning("FlyteSchema is deprecated in 1.4.0, use Structured Dataset instead.")
+    logger.warning("FlyteSchema is deprecated, use Structured Dataset instead.")
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
