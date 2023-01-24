@@ -37,7 +37,7 @@ class DummyPlugin(BackendPluginBase):
     async def poll(self, poll_request: PollRequest) -> PollResponse:
         x = randint(0, 100)
         state = RUNNING
-        if x < 20:
+        if x < 50:
             ctx = FlyteContextManager.current_context()
             output_file_dict = {
                 constants.OUTPUT_FILE_NAME: literals.LiteralMap(
@@ -46,7 +46,7 @@ class DummyPlugin(BackendPluginBase):
                             ctx,
                             StructuredDataset(uri="fake_uri"),
                             StructuredDataset,
-                            LiteralType(structured_dataset_type=StructuredDatasetType),
+                            LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
                         )
                     }
                 )
