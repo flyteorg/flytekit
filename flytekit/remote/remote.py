@@ -55,7 +55,7 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
-from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteWorkflow
+from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
@@ -1460,7 +1460,7 @@ class FlyteRemote(object):
                             upstream_nodes=[],
                             bindings=[],
                             metadata=NodeMetadata(name=""),
-                            flyte_task=flyte_entity,
+                            task_node=FlyteTaskNode(flyte_entity),
                         )
                     }
                     if len(task_node_exec) >= 1
