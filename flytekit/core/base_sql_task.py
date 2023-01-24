@@ -1,9 +1,7 @@
-import os
 import re
 from typing import Any, Dict, Optional, Type, TypeVar
 
 from flytekit.core.base_task import PythonTask, TaskMetadata
-from flytekit.core.constants import ENABLE_BACKEND_SYSTEM_SERVICE
 from flytekit.core.interface import Interface
 
 T = TypeVar("T")

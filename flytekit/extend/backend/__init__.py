@@ -1,1 +1,1 @@
-from .bigquey import BigQueryPlugin
+from .dummy_plugin import DummyPlugin

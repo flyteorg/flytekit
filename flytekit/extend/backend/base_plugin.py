@@ -1,37 +1,40 @@
-import typing
 from abc import abstractmethod
+from typing import List, Optional
 
 from pydantic import BaseModel
+
+PENDING = "pending"
+SUCCEEDED = "succeeded"
+RUNNING = "running"
 
 
 class CreateRequest(BaseModel):
     inputs_path: str
-    output_prefix: str
     task_template_path: str
-    bq_token_name: str  # token should be saved in the k8s secret
 
 
 class CreateResponse(BaseModel):
     job_id: str
+    message: Optional[str]
+
+
+class PollRequest(BaseModel):
+    job_id: str
+    output_prefix: str
 
 
 class PollResponse(BaseModel):
-    job_id: str
     state: str
+    message: Optional[str]
 
 
 class BackendPluginBase:
-    def __init__(self, task_type: str, version: str = "v1"):
+    def __init__(self, task_type: str):
         self._task_type = task_type
-        self._version = version
 
     @property
     def task_type(self) -> str:
         return self._task_type
-
-    @property
-    def version(self) -> str:
-        return self._version
 
     @abstractmethod
     async def initialize(self):
@@ -42,7 +45,7 @@ class BackendPluginBase:
         pass
 
     @abstractmethod
-    async def poll(self, job_id: str) -> PollResponse:
+    async def poll(self, poll_request: PollRequest) -> PollResponse:
         pass
 
     @abstractmethod
@@ -58,15 +61,15 @@ class BackendPluginRegistry(object):
         BackendPluginRegistry._REGISTRY.append(plugin)
 
     @staticmethod
-    def list_registered_plugins() -> typing.List[BackendPluginBase]:
+    def list_registered_plugins() -> List[BackendPluginBase]:
         return BackendPluginRegistry._REGISTRY
 
 
 def convert_to_flyte_state(state: str):
-    if state.lower() in ["pending"]:
-        return "pending"
-    if state.lower() in ["done", "succeeded"]:
-        return "succeeded"
-    if state.lower() in ["running"]:
-        return "running"
+    if state.lower() in [PENDING]:
+        return PENDING
+    if state.lower() in ["done", SUCCEEDED]:
+        return SUCCEEDED
+    if state.lower() in [RUNNING]:
+        return RUNNING
     raise ValueError("Unrecognize state")

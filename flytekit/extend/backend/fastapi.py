@@ -4,21 +4,23 @@ from http import HTTPStatus
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
+from flytekit import __version__
 from flytekit.extend.backend.base_plugin import (
     BackendPluginBase,
     BackendPluginRegistry,
     CreateRequest,
     CreateResponse,
+    PollRequest,
     PollResponse,
 )
 
-PLUGINS_V1 = "/plugins/v1"
+PLUGINS_V1 = "plugins/v1"
 
 
 def _create_root_welcome(app: FastAPI, plugins: typing.List[BackendPluginBase]):
     l = ""
     for p in plugins:
-        l += f"<li>TaskType: {p.task_type}, Version: {p.version}</li>"
+        l += f"<li>TaskType: {p.task_type}, Version: {__version__}</li>"
 
     @app.get("/", response_class=HTMLResponse)
     def root():
@@ -45,17 +47,17 @@ def _create_health_check(app: FastAPI):
 
 
 def _serve_plugin(app: FastAPI, plugin: BackendPluginBase):
-    @app.post(f"{PLUGINS_V1}/{plugin.task_type}/{plugin.version}/", response_model=CreateResponse)
+    @app.post(f"/{PLUGINS_V1}/{plugin.task_type}", response_model=CreateResponse)
     async def create(create_request: CreateRequest):
         return await plugin.create(create_request)
 
-    @app.delete(f"{PLUGINS_V1}/{plugin.task_type}/{plugin.version}/")
+    @app.delete(f"/{PLUGINS_V1}/{plugin.task_type}")
     async def terminate(job_id: str):
         return await plugin.terminate(job_id)
 
-    @app.get(f"{PLUGINS_V1}/{plugin.task_type}/{plugin.version}/", response_model=PollResponse)
-    async def poll(job_id: str):
-        return await plugin.poll(job_id)
+    @app.get(f"/{PLUGINS_V1}/{plugin.task_type}", response_model=PollResponse)
+    async def poll(poll_request: PollRequest):
+        return await plugin.poll(poll_request)
 
 
 def serve_all_registered_plugins(app: FastAPI):
@@ -63,6 +65,7 @@ def serve_all_registered_plugins(app: FastAPI):
     _create_root_welcome(app, plugins)
     _create_health_check(app)
     for plugin in plugins:
+        plugin.initialize()
         _serve_plugin(app, plugin)
 
 
