@@ -1726,11 +1726,20 @@ class FlyteRemote(object):
         return protocol + f"://{endpoint}"
 
     def generate_console_url(
-        self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+        self,
+        entity: typing.Union[
+            FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflow, FlyteTask, FlyteLaunchPlan
+        ],
     ):
-        return f"{self.generate_console_http_domain()}/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
+        """
+        Generate a Flyteconsole URL for the given Flyte remote endpoint.
+        This will automatically determine if this is an execution or an entity and change the type automatically
+        """
+        if isinstance(entity, (FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution)):
+            return f"{self.generate_console_http_domain()}/console/projects/{entity.id.project}/domains/{entity.id.domain}/executions/{entity.id.name}"  # noqa
 
-    def generate_console_url_for_entity(self, entity: typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan]):
+        if not isinstance(entity, (FlyteWorkflow, FlyteTask, FlyteLaunchPlan)):
+            raise ValueError(f"Only remote entities can be looked at in the console, got type {type(entity)}")
         rt = "workflow"
         if entity.id.resource_type == ResourceType.TASK:
             rt = "task"
@@ -1752,14 +1761,14 @@ class FlyteRemote(object):
         no_execute: bool = False,
         parallel: bool = False,
         output: typing.Any = ignore_extra_print,
-    ) -> typing.Optional[FlyteWorkflowExecution]:
+    ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow]:
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
         wf = FlyteRemote.create_backfiller(
             start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel, output=output
         )
         if dry_run:
             output("\n Dry Run enabled. Workflow will not be registered and or executed.", fg="yellow")
-            return
+            return None
 
         unique_fingerprint = f"{from_date}-{to_date}-{launchplan}-{launchplan_version}"
         h = hashlib.md5()
@@ -1776,12 +1785,7 @@ class FlyteRemote(object):
         remote_wf = self.register_workflow(wf, serialization_settings=ss)
 
         if no_execute:
-            output(
-                f"\n Execution disabled! Workflow registered successfully. URL:"
-                f" {self.generate_console_url_for_entity(remote_wf)}",
-                fg="green",
-            )
-            return
+            return remote_wf
 
         return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
 
