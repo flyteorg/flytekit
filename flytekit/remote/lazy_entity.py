@@ -37,7 +37,12 @@ class LazyEntity(RemoteEntity, typing.Generic[T]):
         """
         with self._mutex:
             if self._entity is None:
-                self._entity = self._getter()
+                try:
+                    self._entity = self._getter()
+                except AttributeError as e:
+                    raise RuntimeError(
+                        f"Error downloading the entity {self._name}, (check original exception...)"
+                    ) from e
             return self._entity
 
     def __getattr__(self, item: str) -> typing.Any:
