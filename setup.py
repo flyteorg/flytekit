@@ -25,6 +25,7 @@ setup(
         exclude=["boilerplate", "docs", "plugins", "tests*"],
     ),
     include_package_data=True,
+    package_data={'flytekit': ['py.typed']},
     url="https://github.com/flyteorg/flytekit",
     description="Flyte SDK for Python",
     long_description=open("README.md", encoding="utf-8").read(),
