@@ -70,7 +70,23 @@ def test_task_schema(sql_server):
     assert df is not None
 
 
-def test_workflow(sql_server):
+@pytest.mark.parametrize(
+    "query_template",
+    [
+        "select * from tracks limit {{.inputs.limit}}",
+        """
+        select * from tracks
+        limit {{.inputs.limit}}
+        """,
+        """select * from tracks
+        limit {{.inputs.limit}}
+        """,
+        """
+        select * from tracks
+        limit {{.inputs.limit}}""",
+    ],
+)
+def test_workflow(sql_server, query_template):
     @task
     def my_task(df: pandas.DataFrame) -> int:
         return len(df[df.columns[0]])
@@ -84,7 +100,7 @@ def test_workflow(sql_server):
 
     sql_task = SQLAlchemyTask(
         "test",
-        query_template="select * from tracks limit {{.inputs.limit}}",
+        query_template=query_template,
         inputs=kwtypes(limit=int),
         task_config=SQLAlchemyConfig(uri=sql_server),
     )
