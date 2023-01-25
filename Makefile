@@ -3,6 +3,17 @@ export REPOSITORY=flytekit
 PIP_COMPILE = pip-compile --upgrade --verbose
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
 
+# Detect if it is running on a Mac M1.
+# We need to special-case M1's because of tensorflow. More details in  https://github.com/flyteorg/flyte/issues/3264
+ifeq (0,$(and $($(shell uname -p), arm64), $($(shell uname -s), Darwin)))
+	DEV_REQUIREMENTS_SUFFIX="-mac_arm64"
+else
+	DEV_REQUIREMENTS_SUFFIX=""
+endif
+
+os-platform:
+	echo $(DEV_REQUIREMENTS_SUFFIX)
+
 .SILENT: help
 .PHONY: help
 help:
@@ -22,7 +33,7 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip-sync requirements.txt dev-requirements.txt
+	pip-sync requirements.txt dev-requirements${DEV_REQUIREMENTS_SUFFIX}.txt
 
 .PHONY: setup-spark2
 setup-spark2: install-piptools ## Install requirements
@@ -72,7 +83,7 @@ requirements.txt: requirements.in install-piptools
 
 dev-requirements.txt: export CUSTOM_COMPILE_COMMAND := make dev-requirements.txt
 dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
-	$(PIP_COMPILE) $<
+	$(PIP_COMPILE) $< -o dev-requirements${DEV_REQUIREMENTS_SUFFIX}.txt
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
