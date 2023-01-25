@@ -1,0 +1,22 @@
+-c requirements.txt
+
+git+https://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
+coverage[toml]
+joblib
+mock
+pytest
+pytest-cov
+mypy
+pre-commit
+codespell
+google-cloud-bigquery
+google-cloud-bigquery-storage
+IPython
+# Newer versions of torch bring in nvidia dependencies that are not present in windows, so
+# we put this constraint while we do not have per-environment requirements files
+torch<=1.12.1
+scikit-learn
+# We maintain a separate requirements files for arm64 Macs, as per
+# https://developer.apple.com/metal/tensorflow-plugin/
+tensorflow-macos
+tensorflow-metal

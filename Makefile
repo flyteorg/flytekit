@@ -5,14 +5,14 @@ MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
 
 # Detect if it is running on a Mac M1.
 # We need to special-case M1's because of tensorflow. More details in  https://github.com/flyteorg/flyte/issues/3264
-ifeq (0,$(and $($(shell uname -p), arm64), $($(shell uname -s), Darwin)))
+ifneq (,$(and $(findstring Darwin, $(shell uname -s)), $(findstring arm, $(shell uname -p))))
 	DEV_REQUIREMENTS_SUFFIX="-mac_arm64"
 else
 	DEV_REQUIREMENTS_SUFFIX=""
 endif
 
 os-platform:
-	echo $(DEV_REQUIREMENTS_SUFFIX)
+	@echo $(DEV_REQUIREMENTS_SUFFIX)
 
 .SILENT: help
 .PHONY: help
@@ -82,7 +82,7 @@ requirements.txt: requirements.in install-piptools
 	$(PIP_COMPILE) $<
 
 dev-requirements.txt: export CUSTOM_COMPILE_COMMAND := make dev-requirements.txt
-dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
+dev-requirements.txt: dev-requirements${DEV_REQUIREMENTS_SUFFIX}.in requirements.txt install-piptools
 	$(PIP_COMPILE) $< -o dev-requirements${DEV_REQUIREMENTS_SUFFIX}.txt
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
