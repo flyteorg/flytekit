@@ -37,7 +37,7 @@ class DummyPlugin(BackendPluginBase):
     async def poll(self, poll_request: PollRequest) -> PollResponse:
         x = randint(0, 100)
         state = RUNNING
-        if x < 50:
+        if x < 90:
             ctx = FlyteContextManager.current_context()
             output_file_dict = {
                 constants.OUTPUT_FILE_NAME: literals.LiteralMap(
