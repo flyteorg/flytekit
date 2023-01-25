@@ -221,6 +221,7 @@ def test_fetch_execute_task_convert_dict(flyteclient, flyte_workflows_register):
     flyte_task = remote.fetch_task(name="workflows.basic.dict_str_wf.convert_to_string", version=f"v{VERSION}")
     d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
     execution = remote.execute(flyte_task, {"d": d}, wait=True)
+    remote.sync_execution(execution, sync_nodes=True)
     assert json.loads(execution.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
 
 
