@@ -5,7 +5,7 @@ MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
 
 # Detect if it is running on a Mac M1.
 # We need to special-case M1's because of tensorflow. More details in  https://github.com/flyteorg/flyte/issues/3264
-ifneq (,$(and $(findstring Linux, $(shell uname -s)), $(findstring x86_64, $(shell uname -p))))
+ifneq (,$(and $(findstring Darwin, $(shell uname -s)), $(findstring arm, $(shell uname -p))))
 	DEV_REQUIREMENTS_SUFFIX=-mac_arm64
 else
 	DEV_REQUIREMENTS_SUFFIX=
