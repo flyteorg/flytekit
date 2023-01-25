@@ -14,7 +14,9 @@ is implicitly cached.
 
 
 def resolve_backfill_window(
-    from_date: datetime = None, to_date: datetime = None, window: timedelta = None,
+    from_date: datetime = None,
+    to_date: datetime = None,
+    window: timedelta = None,
 ) -> typing.Tuple[datetime, datetime]:
     """
     Resolves the from_date -> to_date

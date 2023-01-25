@@ -1820,7 +1820,7 @@ class FlyteRemote(object):
         the Backfill plan is generated as (start_date - exclusive, end_date inclusive)
         """
         if not for_lp:
-            raise RuntimeError("Launch plan is required!")
+            raise ValueError("Launch plan is required!")
 
         if start_date >= end_date:
             raise ValueError(

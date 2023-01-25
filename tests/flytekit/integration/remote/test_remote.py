@@ -8,7 +8,7 @@ import typing
 import joblib
 import pytest
 
-from flytekit import kwtypes, LaunchPlan, CronSchedule, task, workflow
+from flytekit import CronSchedule, LaunchPlan, kwtypes, task, workflow
 from flytekit.configuration import Config
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
@@ -89,7 +89,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
             break
 
         with pytest.raises(
-                FlyteAssertion, match="Please wait until the node execution has completed before requesting the outputs"
+            FlyteAssertion, match="Please wait until the node execution has completed before requesting the outputs"
         ):
             execution.outputs
 

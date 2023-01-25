@@ -1,13 +1,17 @@
 import os
 import pathlib
 import tempfile
+from collections import OrderedDict
+from datetime import datetime, timedelta
 
 import pytest
 from flyteidl.core import compiler_pb2 as _compiler_pb2
 from mock import MagicMock, patch
 
 import flytekit.configuration
+from flytekit import CronSchedule, FixedRate, LaunchPlan, task, workflow
 from flytekit.configuration import Config, DefaultImages, ImageConfig
+from flytekit.core.base_task import PythonTask
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models import security
@@ -18,7 +22,7 @@ from flytekit.models.execution import Execution
 from flytekit.models.task import Task
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote import FlyteRemote
-from flytekit.tools.translator import Options
+from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan, get_serializable_workflow
 from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
 CLIENT_METHODS = {
@@ -293,3 +297,129 @@ def test_fetch_lazy(mock_client):
     assert lt._entity is None
     tk = lt.entity
     assert tk.name == "n"
+
+
+@task
+def tk(t: datetime, v: int):
+    print(f"Invoked at {t} with v {v}")
+
+
+@workflow
+def example_wf(t: datetime, v: int):
+    tk(t=t, v=v)
+
+
+def test_create_backfiller_error():
+    no_schedule = LaunchPlan.get_or_create(
+        workflow=example_wf,
+        name="nos",
+        fixed_inputs={"v": 10},
+    )
+    rate_schedule = LaunchPlan.get_or_create(
+        workflow=example_wf,
+        name="rate",
+        fixed_inputs={"v": 10},
+        schedule=FixedRate(duration=timedelta(days=1)),
+    )
+    start_date = datetime(2022, 12, 1, 8)
+    end_date = start_date + timedelta(days=10)
+
+    with pytest.raises(ValueError):
+        FlyteRemote.create_backfiller(start_date, end_date, no_schedule)
+
+    with pytest.raises(ValueError):
+        FlyteRemote.create_backfiller(end_date, start_date, no_schedule)
+
+    with pytest.raises(ValueError):
+        FlyteRemote.create_backfiller(end_date, start_date, None)
+
+    with pytest.raises(NotImplementedError):
+        FlyteRemote.create_backfiller(start_date, end_date, rate_schedule)
+
+
+def test_create_backfiller():
+    daily_lp = LaunchPlan.get_or_create(
+        workflow=example_wf,
+        name="daily",
+        fixed_inputs={"v": 10},
+        schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
+    )
+
+    start_date = datetime(2022, 12, 1, 8)
+    end_date = start_date + timedelta(days=10)
+
+    wf = FlyteRemote.create_backfiller(start_date, end_date, daily_lp)
+    assert isinstance(wf.nodes[0].flyte_entity, LaunchPlan)
+    b0, b1 = wf.nodes[0].bindings[0], wf.nodes[0].bindings[1]
+    assert b0.var == "t"
+    assert b0.binding.scalar.primitive.datetime.day == 2
+    assert b1.var == "v"
+    assert b1.binding.scalar.primitive.integer == 10
+    assert len(wf.nodes) == 9
+    assert len(wf.nodes[0].upstream_nodes) == 0
+    assert len(wf.nodes[1].upstream_nodes) == 1
+    assert wf.nodes[1].upstream_nodes[0] == wf.nodes[0]
+
+
+def test_create_backfiller_parallel():
+    daily_lp = LaunchPlan.get_or_create(
+        workflow=example_wf,
+        name="daily",
+        fixed_inputs={"v": 10},
+        schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
+    )
+
+    start_date = datetime(2022, 12, 1, 8)
+    end_date = start_date + timedelta(days=10)
+
+    wf = FlyteRemote.create_backfiller(start_date, end_date, daily_lp, parallel=True)
+    assert isinstance(wf.nodes[0].flyte_entity, LaunchPlan)
+    b0, b1 = wf.nodes[0].bindings[0], wf.nodes[0].bindings[1]
+    assert b0.var == "t"
+    assert b0.binding.scalar.primitive.datetime.day == 2
+    assert b1.var == "v"
+    assert b1.binding.scalar.primitive.integer == 10
+    assert len(wf.nodes) == 9
+    assert len(wf.nodes[0].upstream_nodes) == 0
+    assert len(wf.nodes[1].upstream_nodes) == 0
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_launch_backfill(mock_client):
+    daily_lp = LaunchPlan.get_or_create(
+        workflow=example_wf,
+        name="daily",
+        fixed_inputs={"v": 10},
+        schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
+    )
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+
+    start_date = datetime(2022, 12, 1, 8)
+    end_date = start_date + timedelta(days=10)
+
+    ser_lp = get_serializable_launch_plan(OrderedDict(), serialization_settings, daily_lp, recurse_downstream=False)
+    m = OrderedDict()
+    ser_wf = get_serializable(m, serialization_settings, example_wf)
+    tasks = []
+    for k, v in m.items():
+        if isinstance(k, PythonTask):
+            tasks.append(v)
+    mock_client.get_launch_plan.return_value = ser_lp
+    mock_client.get_workflow.return_value = Workflow(
+        id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily", "v"),
+        closure=WorkflowClosure(
+            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
+        ),
+    )
+    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    remote._client = mock_client
+
+    wf = remote.launch_backfill("p", "d", start_date, end_date, "daily", "v1", dry_run=True)
+    assert wf
