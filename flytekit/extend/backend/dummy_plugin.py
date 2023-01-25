@@ -35,24 +35,21 @@ class DummyPlugin(BackendPluginBase):
         return CreateResponse(job_id="fake_id")
 
     async def poll(self, poll_request: PollRequest) -> PollResponse:
-        x = randint(0, 100)
-        state = RUNNING
-        if x < 90:
-            ctx = FlyteContextManager.current_context()
-            output_file_dict = {
-                constants.OUTPUT_FILE_NAME: literals.LiteralMap(
-                    {
-                        "results": TypeEngine.to_literal(
-                            ctx,
-                            StructuredDataset(uri="fake_uri"),
-                            StructuredDataset,
-                            LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
-                        )
-                    }
-                )
-            }
-            upload_output_file(output_file_dict, poll_request.output_prefix)
-            state = SUCCEEDED
+        ctx = FlyteContextManager.current_context()
+        output_file_dict = {
+            constants.OUTPUT_FILE_NAME: literals.LiteralMap(
+                {
+                    "results": TypeEngine.to_literal(
+                        ctx,
+                        StructuredDataset(uri="fake_uri"),
+                        StructuredDataset,
+                        LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
+                    )
+                }
+            )
+        }
+        upload_output_file(output_file_dict, poll_request.output_prefix)
+        state = SUCCEEDED
 
         return PollResponse(state=state)
 
