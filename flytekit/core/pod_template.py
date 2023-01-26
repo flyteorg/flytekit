@@ -3,7 +3,6 @@ from kubernetes.client.models import V1PodSpec
 from typing import Dict, Optional
 from flytekit.exceptions import user as _user_exceptions
 
-# TODO: update requirement.txt
 PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
 
 @dataclass

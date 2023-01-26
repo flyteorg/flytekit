@@ -198,7 +198,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
-        comment
         """
         self._discoverable = discoverable
         self._runtime = runtime

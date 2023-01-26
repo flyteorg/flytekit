@@ -187,7 +187,6 @@ def task(
     :param docs: Documentation about this task
     :param pod_template: custom PodTemplate.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
-    comment
     """
 
     def wrapper(fn) -> PythonFunctionTask:
