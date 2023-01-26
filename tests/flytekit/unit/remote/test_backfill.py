@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from flytekit import CronSchedule, FixedRate, LaunchPlan, task, workflow
-from flytekit.tools.backfill import create_backfill_workflow
+from flytekit.remote.backfill import create_backfill_workflow
 
 
 @task
