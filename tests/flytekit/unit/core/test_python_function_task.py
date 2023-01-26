@@ -142,7 +142,7 @@ def test_pod_template():
                 ]
             ),
         ),
-        pod_template_name="podTemplateA",
+        pod_template_name="A",
     )
     def func_with_pod_template(i: str):
         print(i + 3)
@@ -193,9 +193,15 @@ def test_pod_template():
     ]
 
     #################
+    # Test pod_teamplte_name
+    #################
+    assert func_with_pod_template.metadata.pod_template_name == "A"
+
+    #################
     # Test Serialization
     #################
     ts = get_serializable_task(default_serialization_settings, func_with_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
+    assert ts.template.metadata.pod_template_name == "A"
