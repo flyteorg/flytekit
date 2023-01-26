@@ -1,9 +1,12 @@
 from dataclasses import dataclass
-from kubernetes.client.models import V1PodSpec
 from typing import Dict, Optional
+
+from kubernetes.client.models import V1PodSpec
+
 from flytekit.exceptions import user as _user_exceptions
 
 PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
+
 
 @dataclass
 class PodTemplate(object):

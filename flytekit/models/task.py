@@ -319,6 +319,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
+            pod_template_name=pb2_object.pod_template_name,
         )
 
 
