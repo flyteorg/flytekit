@@ -11,7 +11,7 @@ from kubernetes.client import ApiClient
 from kubernetes.client.models import V1EnvVar, V1ResourceRequirements
 
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.core.base_task import PythonTask, TaskResolverMixin
+from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
@@ -86,8 +86,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             sec_ctx = SecurityContext(secrets=secret_requests)
 
         # pod_template_name overwrites the metedata.pod_template_name
-        if "metadata" in kwargs:
-            kwargs["metadata"].pod_template_name = pod_template_name
+        kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
+        kwargs["metadata"].pod_template_name = pod_template_name
 
         super().__init__(
             task_type=task_type,
