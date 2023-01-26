@@ -61,6 +61,7 @@ from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, F
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
+from flytekit.tools.backfill import create_backfill_workflow
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.script_mode import fast_register_single_script, hash_file
 from flytekit.tools.translator import (
@@ -74,14 +75,6 @@ from flytekit.tools.translator import (
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
-
-
-def ignore_extra_print(*args, **kwargs):
-    if "fg" in kwargs:
-        del kwargs["fg"]
-    if "nl" in kwargs:
-        del kwargs["nl"]
-    print(*args, **kwargs)
 
 
 class RegistrationSkipped(Exception):
@@ -1760,7 +1753,6 @@ class FlyteRemote(object):
         dry_run: bool = False,
         no_execute: bool = False,
         parallel: bool = False,
-        output: typing.Any = ignore_extra_print,
     ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
         """
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
@@ -1774,17 +1766,26 @@ class FlyteRemote(object):
         The `parallel` flag can be used to generate a workflow where all launchplans can be run in parallel. Default
         is that execute backfill is run sequentially
 
-        output is a way to override the output writer.
+        :param project: str project name
+        :param domain: str domain name
+        :param from_date: datetime generate a backfill starting at this datetime (exclusive)
+        :param to_date:  datetime generate a backfill ending at this datetime (inclusive)
+        :param launchplan: str launchplan name in the flyte backend
+        :param launchplan_version: str (optional) version for the launchplan. If not specified the most recent will be retrieved
+        :param execution_name: str (optional) the generated execution will be named so. this can help in ensuring idempotency
+        :param version: str (optional) version to be used for the newly created workflow.
+        :param dry_run: bool do not register or execute the workflow
+        :param no_execute: bool Only register but do not execute the workflow
+        :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially
+        :return:
         """
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
-        wf = FlyteRemote.create_backfiller(
-            start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel, output=output
-        )
+        wf, start, end = create_backfill_workflow(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel)
         if dry_run:
-            output("\n Dry Run enabled. Workflow will not be registered and or executed.", fg="yellow")
+            remote_logger.warning("Dry Run enabled. Workflow will not be registered and or executed.")
             return wf
 
-        unique_fingerprint = f"{from_date}-{to_date}-{launchplan}-{launchplan_version}"
+        unique_fingerprint = f"{start}-{end}-{launchplan}-{launchplan_version}"
         h = hashlib.md5()
         h.update(unique_fingerprint.encode("utf-8"))
         unique_fingerprint_encoded = base64.urlsafe_b64encode(h.digest()).decode("ascii")
@@ -1802,59 +1803,3 @@ class FlyteRemote(object):
             return remote_wf
 
         return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
-
-    @staticmethod
-    def create_backfiller(
-        start_date: datetime,
-        end_date: datetime,
-        for_lp: typing.Union[LaunchPlan, FlyteLaunchPlan],
-        parallel: bool = False,
-        per_node_timeout: timedelta = None,
-        per_node_retries: int = 0,
-        output: typing.Any = ignore_extra_print,
-    ) -> WorkflowBase:
-        """
-        Generates a new imperative workflow for the launchplan that can be used to backfill the given launchplan.
-        This can only be used to generate  backfilling workflow only for schedulable launchplans
-
-        the Backfill plan is generated as (start_date - exclusive, end_date inclusive)
-        """
-        if not for_lp:
-            raise ValueError("Launch plan is required!")
-
-        if start_date >= end_date:
-            raise ValueError(
-                f"for a backfill start date should be earlier than end date. Received {start_date} -> {end_date}"
-            )
-
-        schedule = for_lp.entity_metadata.schedule if isinstance(for_lp, FlyteLaunchPlan) else for_lp.schedule
-
-        if schedule is None:
-            raise ValueError("Backfill can only be created for scheduled launch plans")
-
-        if schedule.cron_schedule is not None:
-            cron_schedule = schedule.cron_schedule
-        else:
-            raise NotImplementedError("Currently backfilling only supports cron schedules.")
-
-        output(f"Generating backfill from {start_date} -> {end_date}. Parallel?[{parallel}]", fg="yellow")
-        wf = ImperativeWorkflow(name=f"backfill-{for_lp.name}")
-        date_iter = croniter(cron_schedule.schedule, start_time=start_date, ret_type=datetime)
-        prev_node = None
-        while True:
-            next_start_date = date_iter.get_next()
-            if next_start_date >= end_date:
-                break
-            next_node = wf.add_launch_plan(for_lp, t=next_start_date)
-            next_node = next_node.with_overrides(
-                name=f"b-{next_start_date}", retries=per_node_retries, timeout=per_node_timeout
-            )
-            if not parallel:
-                if prev_node:
-                    prev_node.runs_before(next_node)
-                output(f"-> {next_node.name}", nl=False)
-            else:
-                output(f"  -> {next_node.name}")
-            prev_node = next_node
-
-        return wf

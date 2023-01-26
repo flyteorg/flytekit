@@ -7,34 +7,34 @@ from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_clic
 from flytekit.clis.sdk_in_container.run import DateTimeType, DurationParamType
 
 _backfill_help = """
-Backfill command generates, registers a new workflow based on the input launchplan, that can be used to run an
-automated backfill. The workflow can be managed using the Flyte UI and can be canceled, relaunched, recovered and
-is implicitly cached. 
+The backfill command generates and registers a new workflow based on the input launchplan to run an
+automated backfill. The workflow can be managed using the Flyte UI and can be canceled, relaunched, and recovered.
 """
 
 
 def resolve_backfill_window(
     from_date: datetime = None,
     to_date: datetime = None,
-    window: timedelta = None,
+    backfill_window: timedelta = None,
 ) -> typing.Tuple[datetime, datetime]:
     """
     Resolves the from_date -> to_date
     """
-    if from_date and to_date and window:
-        raise click.BadParameter("Cannot use from-date, to-date and duration. Use any two")
+    if from_date and to_date and backfill_window:
+        raise click.BadParameter("Cannot use from-date, to-date and backfill_window. Use any two")
     if not (from_date or to_date):
         raise click.BadParameter(
-            "One of following pairs are required -> (from-date, to-date) | (from-date, duration) | (to-date, duration)"
+            "One of following pairs are required -> (from-date, to-date) | (from-date, backfill_window) |"
+            " (to-date, backfill_window)"
         )
     if from_date and to_date:
         pass
-    elif not window:
+    elif not backfill_window:
         raise click.BadParameter("One of start-date and end-date are needed with duration")
     elif from_date:
-        to_date = from_date + window
+        to_date = from_date + backfill_window
     else:
-        from_date = to_date - window
+        from_date = to_date - backfill_window
     return from_date, to_date
 
 
@@ -152,23 +152,25 @@ def backfill(
 ):
     from_date, to_date = resolve_backfill_window(from_date, to_date, backfill_window)
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    entity = remote.launch_backfill(
-        project=project,
-        domain=domain,
-        from_date=from_date,
-        to_date=to_date,
-        launchplan=launchplan,
-        launchplan_version=launchplan_version,
-        execution_name=execution_name,
-        version=version,
-        dry_run=dry_run,
-        no_execute=no_execute,
-        parallel=parallel,
-        output=click.secho,
-    )
-    if entity:
-        console_url = remote.generate_console_url(entity)
-        if no_execute:
-            click.secho(f"\n No Execution mode: Workflow registered at {console_url}", fg="green")
-        else:
-            click.secho(f"\n Execution can be seen at {console_url} to see execution in the console.", fg="green")
+    try:
+        entity = remote.launch_backfill(
+            project=project,
+            domain=domain,
+            from_date=from_date,
+            to_date=to_date,
+            launchplan=launchplan,
+            launchplan_version=launchplan_version,
+            execution_name=execution_name,
+            version=version,
+            dry_run=dry_run,
+            no_execute=no_execute,
+            parallel=parallel,
+        )
+        if entity:
+            console_url = remote.generate_console_url(entity)
+            if no_execute:
+                click.secho(f"\n No Execution mode: Workflow registered at {console_url}", fg="green")
+            else:
+                click.secho(f"\n Execution can be seen at {console_url} to see execution in the console.", fg="green")
+    except StopIteration as e:
+        click.secho(f"{e.value}", fg="red")
