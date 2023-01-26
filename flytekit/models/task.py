@@ -177,6 +177,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         discovery_version,
         deprecated_error_message,
         cache_serializable,
+        pod_template_name,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -196,6 +197,8 @@ class TaskMetadata(_common.FlyteIdlEntity):
             receive deprecation warnings.
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
+        :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
+        comment
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -205,6 +208,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._discovery_version = discovery_version
         self._deprecated_error_message = deprecated_error_message
         self._cache_serializable = cache_serializable
+        self._pod_template_name = pod_template_name
 
     @property
     def discoverable(self):
@@ -274,6 +278,15 @@ class TaskMetadata(_common.FlyteIdlEntity):
         """
         return self._cache_serializable
 
+    @property
+    def pod_template_name(self):
+        """
+        The name of the existing PodTemplate resource which will be used in this task.
+        :rtype: Text
+        """
+        # TODO: comment
+        return self._pod_template_name
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskMetadata
@@ -286,6 +299,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=self.discovery_version,
             deprecated_error_message=self.deprecated_error_message,
             cache_serializable=self.cache_serializable,
+            pod_template_name=self.pod_template_name,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)

@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import transform_function_to_interface
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
@@ -92,6 +93,8 @@ def task(
     task_resolver: Optional[TaskResolverMixin] = None,
     docs: Optional[Documentation] = None,
     disable_deck: bool = True,
+    pod_template: Optional[PodTemplate] = None,
+    pod_template_name: Optional[str] = None,
 ) -> Union[Callable, PythonFunctionTask]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -182,6 +185,9 @@ def task(
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: If true, this task will not output deck html file
     :param docs: Documentation about this task
+    :param pod_template: custom PodTemplate.
+    :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
+    comment
     """
 
     def wrapper(fn) -> PythonFunctionTask:
@@ -208,6 +214,8 @@ def task(
             task_resolver=task_resolver,
             disable_deck=disable_deck,
             docs=docs,
+            pod_template=pod_template,
+            pod_template_name=pod_template_name,
         )
         update_wrapper(task_instance, fn)
         return task_instance
