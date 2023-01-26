@@ -335,4 +335,4 @@ def test_compile_wf_at_compile_time():
         def wf():
             t4()
 
-        assert len(wf.nodes) == 0
+        assert ctx.compilation_state is None
