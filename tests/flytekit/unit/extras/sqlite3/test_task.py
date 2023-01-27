@@ -119,14 +119,14 @@ def test_task_serialization():
 select *
 from tracks
 limit {{.inputs.limit}}""",
-            " select * from tracks limit {{.inputs.limit}}",
+            "select * from tracks limit {{.inputs.limit}}",
         ),
         (
             """ \
 select * \
 from tracks \
 limit {{.inputs.limit}}""",
-            " select * from tracks limit {{.inputs.limit}}",
+            "select * from tracks limit {{.inputs.limit}}",
         ),
         ("select * from abc", "select * from abc"),
     ],
