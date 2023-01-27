@@ -1,11 +1,11 @@
 """
-Flytekit Sklearn
-=========================================
 .. currentmodule:: flytekit.extras.sklearn
 
 .. autosummary::
    :template: custom.rst
    :toctree: generated/
+
+   SklearnEstimatorTransformer
 """
 from flytekit.loggers import logger
 
