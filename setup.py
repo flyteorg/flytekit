@@ -83,6 +83,7 @@ setup(
         # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
         "numpy<1.24.0",
         "gitpython",
+        "kubernetes>=12.0.1"
     ],
     extras_require=extras_require,
     scripts=[
