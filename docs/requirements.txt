@@ -1,0 +1,7 @@
+# TODO: Remove after buf migration is done and packages updated, see doc-requirements.in
+# skl2onnx and tf2onnx added here so that the plugin API reference is rendered,
+# with the caveat that the docs build environment has the environment variable
+# PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python set so that protobuf can be parsed
+# using Python, which is acceptable for docs building.
+skl2onnx
+tf2onnx
