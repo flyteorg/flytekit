@@ -313,7 +313,7 @@ def example_wf(t: datetime, v: int):
 def test_launch_backfill(mock_client):
     daily_lp = LaunchPlan.get_or_create(
         workflow=example_wf,
-        name="daily",
+        name="daily2",
         fixed_inputs={"v": 10},
         schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
     )
@@ -338,7 +338,7 @@ def test_launch_backfill(mock_client):
             tasks.append(v)
     mock_client.get_launch_plan.return_value = ser_lp
     mock_client.get_workflow.return_value = Workflow(
-        id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily", "v"),
+        id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily2", "v"),
         closure=WorkflowClosure(
             compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
         ),
@@ -346,5 +346,5 @@ def test_launch_backfill(mock_client):
     remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     remote._client = mock_client
 
-    wf = remote.launch_backfill("p", "d", start_date, end_date, "daily", "v1", dry_run=True)
+    wf = remote.launch_backfill("p", "d", start_date, end_date, "daily2", "v1", dry_run=True)
     assert wf
