@@ -9,7 +9,7 @@ from flyteidl.core import compiler_pb2 as _compiler_pb2
 from mock import MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, FixedRate, LaunchPlan, task, workflow
+from flytekit import CronSchedule, LaunchPlan, task, workflow
 from flytekit.configuration import Config, DefaultImages, ImageConfig
 from flytekit.core.base_task import PythonTask
 from flytekit.exceptions import user as user_exceptions
@@ -22,7 +22,7 @@ from flytekit.models.execution import Execution
 from flytekit.models.task import Task
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote import FlyteRemote
-from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan, get_serializable_workflow
+from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
 from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
 CLIENT_METHODS = {
