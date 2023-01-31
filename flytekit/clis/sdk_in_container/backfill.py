@@ -9,6 +9,9 @@ from flytekit.clis.sdk_in_container.run import DateTimeType, DurationParamType
 _backfill_help = """
 The backfill command generates and registers a new workflow based on the input launchplan to run an
 automated backfill. The workflow can be managed using the Flyte UI and can be canceled, relaunched, and recovered.
+
+- launchplan refers to the name of the launchplan
+- launchplan_version is optional and should be a valid version for a launchplan version.
 """
 
 
@@ -21,7 +24,7 @@ def resolve_backfill_window(
     Resolves the from_date -> to_date
     """
     if from_date and to_date and backfill_window:
-        raise click.BadParameter("Cannot use from-date, to-date and backfill_window. Use any two")
+        raise click.BadParameter("Setting from-date, to-date and backfill_window at the same time is not allowed.")
     if not (from_date or to_date):
         raise click.BadParameter(
             "One of following pairs are required -> (from-date, to-date) | (from-date, backfill_window) |"
@@ -87,7 +90,8 @@ def resolve_backfill_window(
     is_flag=True,
     default=False,
     show_default=True,
-    help="All backfill can be run in parallel - with max-parallelism",
+    help="All backfill steps can be run in parallel (limited by max-parallelism), if using --parallel."
+    " Else all steps will be run sequentially [--serial].",
 )
 @click.option(
     "--no-execute",
@@ -117,22 +121,20 @@ def resolve_backfill_window(
     required=False,
     type=DurationParamType(),
     default=None,
-    help="Timedelta for number of days, minutes hours after the from-date or before the to-date to compute the"
-    " backfills between. This is needed with from-date / to-date. Optional if both from-date and to-date are provided",
+    help="Timedelta for number of days, minutes hours after the from-date or before the to-date to compute the "
+    "backfills between. This is needed with from-date / to-date. Optional if both from-date and to-date are "
+    "provided",
 )
 @click.argument(
     "launchplan",
     required=True,
     type=str,
-    # help="Name of launchplan to be backfilled.",
 )
 @click.argument(
     "launchplan-version",
     required=False,
     type=str,
     default=None,
-    # help="Version of the launchplan to be backfilled, if not specified, the latest version "
-    #      "(by registration time) will be used",
 )
 @click.pass_context
 def backfill(

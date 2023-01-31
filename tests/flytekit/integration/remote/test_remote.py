@@ -319,30 +319,3 @@ def test_fetch_not_exist_launch_plan(flyteclient):
     remote = FlyteRemote(Config.auto(), PROJECT, "development")
     with pytest.raises(FlyteEntityNotExistException):
         remote.fetch_launch_plan(name="workflows.basic.list_float_wf.fake_wf", version=f"v{VERSION}")
-
-
-@task
-def tk(t: datetime, v: int):
-    print(f"Invoked at {t} with v {v}")
-
-
-@workflow
-def example_wf(t: datetime, v: int):
-    tk(t=t, v=v)
-
-
-def test_create_backfiller():
-    daily_lp = LaunchPlan.get_or_create(
-        workflow=example_wf,
-        name="daily",
-        fixed_inputs={"v": 10},
-        schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
-    )
-
-    start_date = datetime.datetime(2022, 12, 1, 8)
-    end_date = start_date + datetime.timedelta(days=10)
-
-    wf = FlyteRemote.create_backfiller(start_date, end_date, daily_lp)
-    assert isinstance(wf.nodes[0].flyte_entity, LaunchPlan)
-    print(wf.nodes[0].bindings)
-    assert len(wf.nodes) == 9

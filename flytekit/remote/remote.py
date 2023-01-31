@@ -1776,7 +1776,8 @@ class FlyteRemote(object):
         :param dry_run: bool do not register or execute the workflow
         :param no_execute: bool Only register but do not execute the workflow
         :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially
-        :return:
+        :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
+                 case return a FlyteWorkflowExecution
         """
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
         wf, start, end = create_backfill_workflow(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel)
