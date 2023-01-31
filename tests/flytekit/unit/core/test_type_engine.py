@@ -40,6 +40,7 @@ from flytekit.core.type_engine import (
     convert_json_schema_to_python_class,
     dataclass_from_dict,
 )
+from flytekit.core.workflow import workflow
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
@@ -1561,3 +1562,23 @@ def test_file_ext_with_flyte_file_wrong_type():
     with pytest.raises(ValueError) as e:
         FlyteFile[WRONG_TYPE]
     assert str(e.value) == "Underlying type of File Extension must be of type <str>"
+
+
+@pytest.mark.parametrize("dict_type", [typing.Dict, dict])
+def test_untyped_dict_with_integers(dict_type):
+    @task
+    def t1(x: dict_type) -> dict_type:
+        return x
+
+    @workflow
+    def wf(x: dict_type) -> dict_type:
+        return t1(x=x)
+
+    data = {"a": 100, "b": "foo", "c": 100.1}
+    t1_output = t1(x=data)
+    wf_output = wf(x=data)
+
+    for out in (t1_output, wf_output):
+        assert isinstance(out["a"], int)
+        assert isinstance(out["b"], str)
+        assert isinstance(out["c"], float)

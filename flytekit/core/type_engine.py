@@ -1149,6 +1149,8 @@ class DictTransformer(TypeTransformer[dict]):
     transforms a untyped dictionary to a JSON (struct/Generic)
     """
 
+    INT_FIELD_KEY = "__INT_FIELDS__"
+
     def __init__(self):
         super().__init__("Typed Dict", dict)
 
@@ -1177,6 +1179,17 @@ class DictTransformer(TypeTransformer[dict]):
         """
         return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
 
+    @staticmethod
+    def generic_literal_to_python_value(ctx: FlyteContext, lv: Literal) -> dict:
+        output = _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+
+        if DictTransformer.INT_FIELD_KEY in output:
+            # handle case where INT_FIELD_KEY is defined in the serialized dictionary
+            for field in output.pop(DictTransformer.INT_FIELD_KEY):
+                output[field] = int(output[field])
+
+        return output
+
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
@@ -1198,6 +1211,10 @@ class DictTransformer(TypeTransformer[dict]):
             raise TypeTransformerFailedError("Expected a dict")
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
+            # explicitly handle integer literals by storing a list of strings in the value
+            int_fields = [k for k, v in python_val.items() if isinstance(v, int)]
+            if int_fields:
+                python_val[DictTransformer.INT_FIELD_KEY] = int_fields
             return self.dict_to_generic_literal(python_val)
 
         lit_map = {}
@@ -1205,7 +1222,7 @@ class DictTransformer(TypeTransformer[dict]):
             if type(k) != str:
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
-            k_type, v_type = self.get_dict_types(python_type)
+            _, v_type = self.get_dict_types(python_type)
             lit_map[k] = TypeEngine.to_literal(ctx, v, v_type, expected.map_value_type)
         return Literal(map=LiteralMap(literals=lit_map))
 
@@ -1229,7 +1246,7 @@ class DictTransformer(TypeTransformer[dict]):
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
             try:
-                return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                return self.generic_literal_to_python_value(ctx, lv)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
