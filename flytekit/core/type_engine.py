@@ -7,6 +7,7 @@ import enum
 import inspect
 import json as _json
 import mimetypes
+import re
 import textwrap
 import typing
 from abc import ABC, abstractmethod
@@ -1182,10 +1183,9 @@ class DictTransformer(TypeTransformer[dict]):
         output = _json.loads(_json_format.MessageToJson(lv.scalar.generic))
         for k, v in lv.scalar.generic.fields.items():
             # infer integer type from string representation of protobuf Value
-            field_name, value = str(v).strip().split(": ")
-            if field_name != "number_value":
-                continue
-            if "." not in value:  # if decimal point is not in the value, consider it an integer
+            match = re.match("number_value\: (\d+\.?\d+)", str(v).strip())
+            if match and "." not in match.group(1):
+                # if decimal point is not in the matched value, consider it an integer
                 output[k] = int(output[k])
 
         return output
