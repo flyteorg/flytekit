@@ -1180,13 +1180,15 @@ class DictTransformer(TypeTransformer[dict]):
         return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
 
     @staticmethod
-    def generic_literal_to_python_value(ctx: FlyteContext, lv: Literal) -> dict:
+    def generic_literal_to_dict(ctx: FlyteContext, lv: Literal) -> dict:
         output = _json.loads(_json_format.MessageToJson(lv.scalar.generic))
-
-        if DictTransformer.INT_FIELD_KEY in output:
-            # handle case where INT_FIELD_KEY is defined in the serialized dictionary
-            for field in output.pop(DictTransformer.INT_FIELD_KEY):
-                output[field] = int(output[field])
+        for k, v in lv.scalar.generic.fields.items():
+            # infer integer type from string representation of protobuf Value
+            field_name, value = str(v).strip().split(": ")
+            if field_name != "number_value":
+                continue
+            if "." not in value:  # if decimal point is not in the value, consider it an integer
+                output[k] = int(output[k])
 
         return output
 
@@ -1211,10 +1213,6 @@ class DictTransformer(TypeTransformer[dict]):
             raise TypeTransformerFailedError("Expected a dict")
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            # explicitly handle integer literals by storing a list of strings in the value
-            int_fields = [k for k, v in python_val.items() if isinstance(v, int)]
-            if int_fields:
-                python_val[DictTransformer.INT_FIELD_KEY] = int_fields
             return self.dict_to_generic_literal(python_val)
 
         lit_map = {}
@@ -1246,7 +1244,7 @@ class DictTransformer(TypeTransformer[dict]):
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
             try:
-                return self.generic_literal_to_python_value(ctx, lv)
+                return self.generic_literal_to_dict(ctx, lv)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
