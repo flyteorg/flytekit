@@ -1149,8 +1149,6 @@ class DictTransformer(TypeTransformer[dict]):
     transforms a untyped dictionary to a JSON (struct/Generic)
     """
 
-    INT_FIELD_KEY = "__INT_FIELDS__"
-
     def __init__(self):
         super().__init__("Typed Dict", dict)
 
