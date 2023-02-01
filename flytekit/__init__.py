@@ -58,7 +58,7 @@ Customizing Tasks & Workflows
    TaskMetadata - Wrapper object that allows users to specify Task
    Resources - Things like CPUs/Memory, etc.
    WorkflowFailurePolicy - Customizes what happens when a workflow fails.
-
+   PodTemplate - Custom PodTemplate for a task.
 
 Dynamic and Nested Workflows
 ==============================
@@ -175,6 +175,7 @@ from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, WorkflowReference

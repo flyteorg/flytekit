@@ -130,7 +130,7 @@ task_with_pod_template = DummyAutoContainerTask(
                     env=[V1EnvVar(name="eKeyC", value="eValC"), V1EnvVar(name="eKeyD", value="eValD")],
                 ),
             ],
-            volumes=V1Volume(name="volume"),
+            volumes=[V1Volume(name="volume")],
         ),
     ),
     pod_template_name="podTemplateA",
@@ -196,13 +196,20 @@ def test_pod_template(default_serialization_settings):
     ]
 
     # To test not overwritten attributes
-    assert pod_spec["volumes"] == {"name": "volume"}
+    assert pod_spec["volumes"][0] == {"name": "volume"}
 
     #################
     # Test pod_teamplte_name
     #################
     assert task_with_pod_template.metadata.pod_template_name == "podTemplateA"
     assert task_with_pod_template.metadata.retries == 3
+
+    config = task_with_minimum_pod_template.get_config(default_serialization_settings)
+
+    #################
+    # Test config
+    #################
+    assert config == {"primary_container_name": "primary"}
 
     #################
     # Test Serialization
@@ -214,6 +221,7 @@ def test_pod_template(default_serialization_settings):
 
     assert ts.template.metadata.pod_template_name == "podTemplateA"
     assert ts.template.metadata.retries.retries == 3
+    assert ts.template.config is not None
 
 
 task_with_minimum_pod_template = DummyAutoContainerTask(
@@ -226,11 +234,7 @@ task_with_minimum_pod_template = DummyAutoContainerTask(
         labels={"lKeyA": "lValA"},
         annotations={"aKeyA": "aValA"},
         pod_spec=V1PodSpec(
-            containers=[
-                V1Container(
-                    name="primary",
-                ),
-            ]
+            volumes=[V1Volume(name="volume")],
         ),
     ),
     pod_template_name="A",
@@ -278,6 +282,12 @@ def test_minimum_pod_template(default_serialization_settings):
         "task_with_minimum_pod_template",
     ]
 
+    volume = k8s_pod.pod_spec["volumes"][0]
+    assert volume == {"name": "volume"}
+
+    config = task_with_minimum_pod_template.get_config(default_serialization_settings)
+    assert config == {"primary_container_name": "primary"}
+
     #################
     # Test pod_teamplte_name
     #################
@@ -291,3 +301,4 @@ def test_minimum_pod_template(default_serialization_settings):
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
     assert ts.template.metadata.pod_template_name == "A"
+    assert ts.template.config is not None

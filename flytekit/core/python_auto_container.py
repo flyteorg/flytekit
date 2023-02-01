@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
 from kubernetes.client import ApiClient
-from kubernetes.client.models import V1EnvVar, V1ResourceRequirements
+from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
@@ -23,6 +23,7 @@ from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
+_PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 
 
 def _sanitize_resource_name(resource: _task_model.Resources.ResourceEntry) -> str:
@@ -208,15 +209,17 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         )
 
     def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
-        containers = self.pod_template.pod_spec.containers
+        containers = self.pod_template.pod_spec.containers if self.pod_template.pod_spec.containers is not None else []
         primary_exists = False
+
         for container in containers:
             if container.name == self.pod_template.primary_container_name:
                 primary_exists = True
                 break
+
         if not primary_exists:
             # insert a placeholder primary container if it is not defined in the pod spec.
-            containers.append(_task_model.Container(name=self.pod_template.primary_container_name))
+            containers.append(V1Container(name=self.pod_template.primary_container_name))
         final_containers = []
         for container in containers:
             # In the case of the primary container, we overwrite specific container attributes
@@ -256,6 +259,12 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 annotations=self.pod_template.annotations,
             ),
         )
+
+    # need to call super in all its children tasks
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
+        if self.pod_template is None:
+            return {}
+        return {_PRIMARY_CONTAINER_NAME_FIELD: self.pod_template.primary_container_name}
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
