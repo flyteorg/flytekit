@@ -209,7 +209,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         )
 
     def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
-        containers = self.pod_template.pod_spec.containers if self.pod_template.pod_spec.containers is not None else []
+        containers = self.pod_template.pod_spec.containers
         primary_exists = False
 
         for container in containers:

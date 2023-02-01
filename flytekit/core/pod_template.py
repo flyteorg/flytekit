@@ -8,19 +8,9 @@ from flytekit.exceptions import user as _user_exceptions
 PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
 
 
-# overwrite setter to bypass unnecessary validation
-# https://github.com/kubernetes-client/python/blob/master/kubernetes/client/models/v1_pod_spec.py#L323
-@V1PodSpec.containers.setter
-def custom_containers_setter(self, containers):
-    self._containers = containers
-
-
-V1PodSpec.containers = custom_containers_setter
-
-
 @dataclass
 class PodTemplate(object):
-    pod_spec: V1PodSpec = V1PodSpec()
+    pod_spec: V1PodSpec = V1PodSpec(containers=[])
     primary_container_name: str = PRIMARY_CONTAINER_DEFAULT_NAME
     labels: Optional[Dict[str, str]] = None
     annotations: Optional[Dict[str, str]] = None

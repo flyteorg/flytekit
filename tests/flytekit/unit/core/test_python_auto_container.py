@@ -233,9 +233,7 @@ task_with_minimum_pod_template = DummyAutoContainerTask(
         primary_container_name="primary",
         labels={"lKeyA": "lValA"},
         annotations={"aKeyA": "aValA"},
-        pod_spec=V1PodSpec(
-            volumes=[V1Volume(name="volume")],
-        ),
+        pod_spec=V1PodSpec(volumes=[V1Volume(name="volume")], containers=[]),
     ),
     pod_template_name="A",
 )
