@@ -7,7 +7,6 @@ import enum
 import inspect
 import json as _json
 import mimetypes
-import re
 import textwrap
 import typing
 from abc import ABC, abstractmethod
@@ -1172,23 +1171,18 @@ class DictTransformer(TypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_generic_literal(v: dict) -> Literal:
+    def dict_to_generic_literal(d: dict) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
-
-    @staticmethod
-    def generic_literal_to_dict(ctx: FlyteContext, lv: Literal) -> dict:
-        output = _json.loads(_json_format.MessageToJson(lv.scalar.generic))
-        for k, v in lv.scalar.generic.fields.items():
-            # infer integer type from string representation of protobuf Value
-            match = re.match("number_value\: (\d+\.?\d+)", str(v).strip())
-            if match and "." not in match.group(1):
-                # if decimal point is not in the matched value, consider it an integer
-                output[k] = int(output[k])
-
-        return output
+        # Traverse the dictionary and in case we find any integer value we cast it to a string but prefix it with a
+        # special code that we can use when deserializing it.
+        ret = {}
+        for k, v in d.items():
+            if isinstance(v, int):
+                v = f"encoded-{v}"
+            ret[k] = v
+        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(ret), _struct.Struct())))
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
@@ -1218,7 +1212,7 @@ class DictTransformer(TypeTransformer[dict]):
             if type(k) != str:
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
-            _, v_type = self.get_dict_types(python_type)
+            k_type, v_type = self.get_dict_types(python_type)
             lit_map[k] = TypeEngine.to_literal(ctx, v, v_type, expected.map_value_type)
         return Literal(map=LiteralMap(literals=lit_map))
 
@@ -1242,7 +1236,14 @@ class DictTransformer(TypeTransformer[dict]):
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
             try:
-                return self.generic_literal_to_dict(ctx, lv)
+                d = _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                # Traverse resulting dictionary and convert values back in case they contain the encoding prefix
+                ret = {}
+                for k, v in d.items():
+                    if isinstance(v, str) and v.startswith("encoded-"):
+                        v = int(v[8:])
+                    ret[k] = v
+                return ret
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
