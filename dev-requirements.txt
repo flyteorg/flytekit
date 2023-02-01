@@ -133,7 +133,7 @@ filelock==3.9.0
     # via virtualenv
 flatbuffers==23.1.21
     # via tensorflow
-flyteidl==1.3.4
+flyteidl==1.3.5
     # via
     #   -c requirements.txt
     #   flytekit
@@ -197,7 +197,7 @@ grpcio-status==1.51.1
     #   google-api-core
 h5py==3.8.0
     # via tensorflow
-identify==2.5.15
+identify==2.5.17
     # via pre-commit
 idna==3.4
     # via
@@ -443,7 +443,7 @@ python-json-logger==2.0.4
     # via
     #   -c requirements.txt
     #   flytekit
-python-slugify==7.0.0
+python-slugify==8.0.0
     # via
     #   -c requirements.txt
     #   cookiecutter
@@ -568,7 +568,7 @@ tomli==2.0.1
     #   pytest
 torch==1.12.1
     # via -r dev-requirements.in
-traitlets==5.8.1
+traitlets==5.9.0
     # via
     #   ipython
     #   matplotlib-inline
