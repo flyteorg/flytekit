@@ -69,7 +69,7 @@ def test_create_and_link_node_from_remote_ignore():
     def wf(i: int, j: int):
         ...
 
-    lp = LaunchPlan.get_or_create(wf, name="test", fixed_inputs={"i": 1}, default_inputs={"j": 10})
+    lp = LaunchPlan.get_or_create(wf, name="promise-test", fixed_inputs={"i": 1}, default_inputs={"j": 10})
     ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
 
     # without providing the _inputs_not_allowed or _ignorable_inputs, all inputs to lp become required,
