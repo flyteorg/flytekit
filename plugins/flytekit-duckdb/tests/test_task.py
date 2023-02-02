@@ -1,8 +1,9 @@
-from typing import Union, Annotated
+from typing import Union
 
 import pandas as pd
 import pyarrow as pa
 from flytekitplugins.duckdb import DuckDBQuery
+from typing_extensions import Annotated
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import StructuredDataset
@@ -61,9 +62,11 @@ def test_arrow():
     assert isinstance(arrow_wf(arrow_table=get_arrow_table()), pa.Table)
 
 
-def test_structured_dataset():
+def test_structured_dataset_arrow_table():
     duckdb_task = DuckDBQuery(
-        name="duckdb_sd", query="SELECT * FROM arrow_table WHERE i = 2", inputs=kwtypes(arrow_table=StructuredDataset)
+        name="duckdb_sd_table",
+        query="SELECT * FROM arrow_table WHERE i = 2",
+        inputs=kwtypes(arrow_table=StructuredDataset),
     )
 
     @task
@@ -77,6 +80,26 @@ def test_structured_dataset():
         return duckdb_task(arrow_table=arrow_table)
 
     assert isinstance(arrow_wf(arrow_table=get_arrow_table()), pa.Table)
+
+
+def test_structured_dataset_pandas_df():
+    duckdb_task = DuckDBQuery(
+        name="duckdb_sd_df",
+        query="SELECT * FROM pandas_df WHERE i = 2",
+        inputs=kwtypes(pandas_df=StructuredDataset),
+    )
+
+    @task
+    def get_pandas_df() -> StructuredDataset:
+        return StructuredDataset(
+            dataframe=pd.DataFrame.from_dict({"i": [1, 2, 3, 4], "j": ["one", "two", "three", "four"]})
+        )
+
+    @workflow
+    def pandas_wf(pandas_df: StructuredDataset) -> pd.DataFrame:
+        return duckdb_task(pandas_df=pandas_df)
+
+    assert isinstance(pandas_wf(pandas_df=get_pandas_df()), pd.DataFrame)
 
 
 def test_distinct_params():
