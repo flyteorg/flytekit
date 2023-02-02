@@ -76,7 +76,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
            - `Confidant <https://lyft.github.io/confidant/>`__
            - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`__
            - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
-        :param pod_template: custom PodTemplate.
+        :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         """
         sec_ctx = None
@@ -178,8 +178,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         return self._get_command_fn(settings)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        # if pod_template exists, return None
-        # but in get_k8s_pod, return pod_template merged with container
+        # if pod_template is not None, return None here but in get_k8s_pod, return pod_template merged with container
         if self.pod_template is not None:
             return None
         else:

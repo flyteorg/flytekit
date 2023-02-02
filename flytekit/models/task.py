@@ -283,7 +283,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
         The name of the existing PodTemplate resource which will be used in this task.
         :rtype: Text
         """
-        # TODO: comment
         return self._pod_template_name
 
     def to_flyte_idl(self):

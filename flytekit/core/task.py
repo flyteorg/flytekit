@@ -185,7 +185,7 @@ def task(
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: If true, this task will not output deck html file
     :param docs: Documentation about this task
-    :param pod_template: custom PodTemplate.
+    :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
     """
 

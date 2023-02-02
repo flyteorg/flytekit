@@ -199,7 +199,7 @@ def test_pod_template(default_serialization_settings):
     assert pod_spec["volumes"][0] == {"name": "volume"}
 
     #################
-    # Test pod_teamplte_name
+    # Test pod_template_name
     #################
     assert task_with_pod_template.metadata.pod_template_name == "podTemplateA"
     assert task_with_pod_template.metadata.retries == 3
@@ -233,7 +233,6 @@ task_with_minimum_pod_template = DummyAutoContainerTask(
         primary_container_name="primary",
         labels={"lKeyA": "lValA"},
         annotations={"aKeyA": "aValA"},
-        pod_spec=V1PodSpec(volumes=[V1Volume(name="volume")], containers=[]),
     ),
     pod_template_name="A",
 )
@@ -279,9 +278,6 @@ def test_minimum_pod_template(default_serialization_settings):
         "task-name",
         "task_with_minimum_pod_template",
     ]
-
-    volume = k8s_pod.pod_spec["volumes"][0]
-    assert volume == {"name": "volume"}
 
     config = task_with_minimum_pod_template.get_config(default_serialization_settings)
     assert config == {"primary_container_name": "primary"}
