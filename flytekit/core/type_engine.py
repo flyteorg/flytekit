@@ -1149,6 +1149,8 @@ class DictTransformer(TypeTransformer[dict]):
     transforms a untyped dictionary to a JSON (struct/Generic)
     """
 
+    INTEGER_PREFIX = "INT-"
+
     def __init__(self):
         super().__init__("Typed Dict", dict)
 
@@ -1180,7 +1182,7 @@ class DictTransformer(TypeTransformer[dict]):
         ret = {}
         for k, v in d.items():
             if isinstance(v, int):
-                v = f"encoded-{v}"
+                v = f"{DictTransformer.INTEGER_PREFIX}{v}"
             ret[k] = v
         return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(ret), _struct.Struct())))
 
@@ -1212,7 +1214,7 @@ class DictTransformer(TypeTransformer[dict]):
             if type(k) != str:
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
-            k_type, v_type = self.get_dict_types(python_type)
+            _, v_type = self.get_dict_types(python_type)
             lit_map[k] = TypeEngine.to_literal(ctx, v, v_type, expected.map_value_type)
         return Literal(map=LiteralMap(literals=lit_map))
 
@@ -1240,8 +1242,8 @@ class DictTransformer(TypeTransformer[dict]):
                 # Traverse resulting dictionary and convert values back in case they contain the encoding prefix
                 ret = {}
                 for k, v in d.items():
-                    if isinstance(v, str) and v.startswith("encoded-"):
-                        v = int(v[8:])
+                    if isinstance(v, str) and v.startswith(DictTransformer.INTEGER_PREFIX):
+                        v = int(v[len(DictTransformer.INTEGER_PREFIX) :])
                     ret[k] = v
                 return ret
             except TypeError:
