@@ -8,7 +8,7 @@ import typing
 import joblib
 import pytest
 
-from flytekit import CronSchedule, LaunchPlan, kwtypes, task, workflow
+from flytekit import LaunchPlan, kwtypes
 from flytekit.configuration import Config
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
