@@ -566,7 +566,7 @@ tomli==2.0.1
     #   coverage
     #   mypy
     #   pytest
-torch==1.12.1
+torch==1.13.1
     # via -r dev-requirements.in
 traitlets==5.9.0
     # via
