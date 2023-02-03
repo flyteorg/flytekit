@@ -94,11 +94,11 @@ def resolve_backfill_window(
     " Else all steps will be run sequentially [--serial].",
 )
 @click.option(
-    "--no-execute",
+    "--execute/--do-not-execute",
     required=False,
     type=bool,
     is_flag=True,
-    default=False,
+    default=True,
     show_default=True,
     help="Generate the workflow and register, do not execute",
 )
@@ -147,7 +147,7 @@ def backfill(
     launchplan: str,
     launchplan_version: str,
     dry_run: bool,
-    no_execute: bool,
+    execute: bool,
     parallel: bool,
     execution_name: str,
     version: str,
@@ -165,14 +165,14 @@ def backfill(
             execution_name=execution_name,
             version=version,
             dry_run=dry_run,
-            no_execute=no_execute,
+            execute=execute,
             parallel=parallel,
         )
         if entity:
             console_url = remote.generate_console_url(entity)
-            if no_execute:
-                click.secho(f"\n No Execution mode: Workflow registered at {console_url}", fg="green")
-            else:
-                click.secho(f"\n Execution can be seen at {console_url} to see execution in the console.", fg="green")
+            if execute:
+                click.secho(f"\n Execution launched {console_url} to see execution in the console.", fg="green")
+                return
+            click.secho(f"\n Workflow registered at {console_url}", fg="green")
     except StopIteration as e:
         click.secho(f"{e.value}", fg="red")
