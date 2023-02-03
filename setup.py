@@ -40,7 +40,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.3.0,<1.4.0",
+        "flyteidl>=1.3.5,<1.4.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -83,6 +83,7 @@ setup(
         # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
         "numpy<1.24.0",
         "gitpython",
+        "kubernetes>=12.0.1",
     ],
     extras_require=extras_require,
     scripts=[
