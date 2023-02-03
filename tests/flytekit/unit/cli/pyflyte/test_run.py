@@ -2,6 +2,7 @@ import functools
 import os
 import pathlib
 import typing
+from datetime import datetime, timedelta
 from enum import Enum
 
 import click
@@ -16,6 +17,8 @@ from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY
 from flytekit.clis.sdk_in_container.run import (
     REMOTE_FLAG_KEY,
     RUN_LEVEL_PARAMS_KEY,
+    DateTimeType,
+    DurationParamType,
     FileParamType,
     FlyteLiteralConverter,
     get_entities_in_file,
@@ -330,3 +333,22 @@ def test_enum_converter():
 
     assert union_lt.stored_type.simple is None
     assert union_lt.stored_type.enum_type.values == ["red", "green", "blue"]
+
+
+def test_duration_type():
+    t = DurationParamType()
+    assert t.convert(value="1 day", param=None, ctx=None) == timedelta(days=1)
+
+    with pytest.raises(click.BadParameter):
+        t.convert(None, None, None)
+
+
+def test_datetime_type():
+    t = DateTimeType()
+
+    assert t.convert("2020-01-01", None, None) == datetime(2020, 1, 1)
+
+    now = datetime.now()
+    v = t.convert("now", None, None)
+    assert v.day == now.day
+    assert v.month == now.month
