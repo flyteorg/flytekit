@@ -1,4 +1,4 @@
-from typing import NamedTuple, Optional, Union
+from typing import Dict, List, NamedTuple, Optional, Union
 
 import duckdb
 import pandas as pd
@@ -20,8 +20,8 @@ class DuckDBQuery(PythonInstanceTask):
     def __init__(
         self,
         name: str,
-        query: Union[str, list],
-        inputs: Optional[dict[str, Union[StructuredDataset, list]]] = None,
+        query: Union[str, List[str]],
+        inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
         **kwargs,
     ):
         self._query = query
