@@ -69,7 +69,6 @@ def translate_inputs_to_literals(
         val_type: type,
         flyte_literal_type: _type_models.LiteralType,
     ) -> _literal_models.Literal:
-
         if isinstance(input_val, list):
             lt = flyte_literal_type
             python_type = val_type
@@ -142,17 +141,16 @@ def translate_inputs_to_literals(
 
 
 def get_primitive_val(prim: Primitive) -> Any:
-    if prim.integer:
-        return prim.integer
-    if prim.datetime:
-        return prim.datetime
-    if prim.boolean:
-        return prim.boolean
-    if prim.duration:
-        return prim.duration
-    if prim.string_value:
-        return prim.string_value
-    return prim.float_value
+    for value in [
+        prim.integer,
+        prim.float_value,
+        prim.string_value,
+        prim.boolean,
+        prim.datetime,
+        prim.duration,
+    ]:
+        if value is not None:
+            return value
 
 
 class ConjunctionOps(Enum):
