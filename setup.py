@@ -1,15 +1,5 @@
-import sys
-
 from setuptools import find_packages, setup  # noqa
 
-MIN_PYTHON_VERSION = (3, 7)
-CURRENT_PYTHON = sys.version_info[:2]
-if CURRENT_PYTHON < MIN_PYTHON_VERSION:
-    print(
-        f"Flytekit API is only supported for Python version is {MIN_PYTHON_VERSION}+. Detected you are on"
-        f" version {CURRENT_PYTHON}, installation will not proceed!"
-    )
-    sys.exit(-1)
 
 extras_require = {}
 
