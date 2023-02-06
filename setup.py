@@ -92,7 +92,7 @@ setup(
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.7,<3.11",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
