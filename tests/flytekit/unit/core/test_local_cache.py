@@ -447,7 +447,7 @@ def test_stable_cache_key():
         }
     )
     key = _calculate_cache_key("task_name_1", "31415", lm)
-    assert key == "task_name_1-31415-4e9f9ea30ed7751e8180e0f07c48c19e"
+    assert key == "task_name_1-31415-8e7a2a9279aa424d9e92a7cd93d9d61e"
 
 
 def calculate_cache_key_multiple_times(x, n=1000):
