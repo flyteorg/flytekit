@@ -85,6 +85,7 @@ class TaskMetadata(object):
         timeout (Optional[Union[datetime.timedelta, int]]): the max amount of time for which one execution of this task
             should be executed for. The execution will be terminated if the runtime exceeds the given timeout
             (approximately)
+        pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
     """
 
     cache: bool = False
@@ -94,6 +95,7 @@ class TaskMetadata(object):
     deprecated: str = ""
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
+    pod_template_name: Optional[str] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -127,6 +129,7 @@ class TaskMetadata(object):
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
+            pod_template_name=self.pod_template_name,
         )
 
 

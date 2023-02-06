@@ -1,13 +1,17 @@
 import os
 import pathlib
 import tempfile
+from collections import OrderedDict
+from datetime import datetime, timedelta
 
 import pytest
 from flyteidl.core import compiler_pb2 as _compiler_pb2
 from mock import MagicMock, patch
 
 import flytekit.configuration
+from flytekit import CronSchedule, LaunchPlan, task, workflow
 from flytekit.configuration import Config, DefaultImages, ImageConfig
+from flytekit.core.base_task import PythonTask
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models import security
@@ -18,7 +22,7 @@ from flytekit.models.execution import Execution
 from flytekit.models.task import Task
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote import FlyteRemote
-from flytekit.tools.translator import Options
+from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
 from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
 CLIENT_METHODS = {
@@ -231,7 +235,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         remote = FlyteRemote(
             config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
         )
-        assert remote.generate_console_http_domain() == "http://localhost:30080"
+        assert remote.generate_console_http_domain() == "http://localhost:30081"
 
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
@@ -293,3 +297,54 @@ def test_fetch_lazy(mock_client):
     assert lt._entity is None
     tk = lt.entity
     assert tk.name == "n"
+
+
+@task
+def tk(t: datetime, v: int):
+    print(f"Invoked at {t} with v {v}")
+
+
+@workflow
+def example_wf(t: datetime, v: int):
+    tk(t=t, v=v)
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_launch_backfill(mock_client):
+    daily_lp = LaunchPlan.get_or_create(
+        workflow=example_wf,
+        name="daily2",
+        fixed_inputs={"v": 10},
+        schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
+    )
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+
+    start_date = datetime(2022, 12, 1, 8)
+    end_date = start_date + timedelta(days=10)
+
+    ser_lp = get_serializable_launch_plan(OrderedDict(), serialization_settings, daily_lp, recurse_downstream=False)
+    m = OrderedDict()
+    ser_wf = get_serializable(m, serialization_settings, example_wf)
+    tasks = []
+    for k, v in m.items():
+        if isinstance(k, PythonTask):
+            tasks.append(v)
+    mock_client.get_launch_plan.return_value = ser_lp
+    mock_client.get_workflow.return_value = Workflow(
+        id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily2", "v"),
+        closure=WorkflowClosure(
+            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
+        ),
+    )
+    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    remote._client = mock_client
+
+    wf = remote.launch_backfill("p", "d", start_date, end_date, "daily2", "v1", dry_run=True)
+    assert wf

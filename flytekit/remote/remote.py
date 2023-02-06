@@ -19,7 +19,6 @@ from datetime import datetime, timedelta
 
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
-from git import Repo
 
 from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -56,7 +55,8 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
-from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteWorkflow
+from flytekit.remote.backfill import create_backfill_workflow
+from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
@@ -127,9 +127,14 @@ def _get_git_repo_url(source_path):
     Get git repo URL from remote.origin.url
     """
     try:
+        from git import Repo
+
         return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
+    except ImportError:
+        remote_logger.warning("Could not import git. is the git executable installed?")
     except Exception:
         # If the file isn't in the git repo, we can't get the url from git config
+        remote_logger.debug(f"{source_path} is not a git repo.")
         return ""
 
 
@@ -1456,7 +1461,7 @@ class FlyteRemote(object):
                             upstream_nodes=[],
                             bindings=[],
                             metadata=NodeMetadata(name=""),
-                            flyte_task=flyte_entity,
+                            task_node=FlyteTaskNode(flyte_entity),
                         )
                     }
                     if len(task_node_exec) >= 1
@@ -1713,6 +1718,88 @@ class FlyteRemote(object):
         return protocol + f"://{endpoint}"
 
     def generate_console_url(
-        self, execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+        self,
+        entity: typing.Union[
+            FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflow, FlyteTask, FlyteLaunchPlan
+        ],
     ):
-        return f"{self.generate_console_http_domain()}/console/projects/{execution.id.project}/domains/{execution.id.domain}/executions/{execution.id.name}"
+        """
+        Generate a Flyteconsole URL for the given Flyte remote endpoint.
+        This will automatically determine if this is an execution or an entity and change the type automatically
+        """
+        if isinstance(entity, (FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution)):
+            return f"{self.generate_console_http_domain()}/console/projects/{entity.id.project}/domains/{entity.id.domain}/executions/{entity.id.name}"  # noqa
+
+        if not isinstance(entity, (FlyteWorkflow, FlyteTask, FlyteLaunchPlan)):
+            raise ValueError(f"Only remote entities can be looked at in the console, got type {type(entity)}")
+        rt = "workflow"
+        if entity.id.resource_type == ResourceType.TASK:
+            rt = "task"
+        elif entity.id.resource_type == ResourceType.LAUNCH_PLAN:
+            rt = "launch_plan"
+        return f"{self.generate_console_http_domain()}/console/projects/{entity.id.project}/domains/{entity.id.domain}/{rt}/{entity.name}/version/{entity.id.version}"  # noqa
+
+    def launch_backfill(
+        self,
+        project: str,
+        domain: str,
+        from_date: datetime,
+        to_date: datetime,
+        launchplan: str,
+        launchplan_version: str = None,
+        execution_name: str = None,
+        version: str = None,
+        dry_run: bool = False,
+        execute: bool = True,
+        parallel: bool = False,
+    ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
+        """
+        Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
+        then the latest launchplan is retrieved.
+        The from_date is exclusive and end_date is inclusive and backfill run for all instances in between.
+            -> (start_date - exclusive, end_date inclusive)
+        If dry_run is specified, the workflow is created and returned
+        if execute==False is specified then the workflow is created and registered
+        in the last case, the workflow is created, registered and executed.
+
+        The `parallel` flag can be used to generate a workflow where all launchplans can be run in parallel. Default
+        is that execute backfill is run sequentially
+
+        :param project: str project name
+        :param domain: str domain name
+        :param from_date: datetime generate a backfill starting at this datetime (exclusive)
+        :param to_date:  datetime generate a backfill ending at this datetime (inclusive)
+        :param launchplan: str launchplan name in the flyte backend
+        :param launchplan_version: str (optional) version for the launchplan. If not specified the most recent will be retrieved
+        :param execution_name: str (optional) the generated execution will be named so. this can help in ensuring idempotency
+        :param version: str (optional) version to be used for the newly created workflow.
+        :param dry_run: bool do not register or execute the workflow
+        :param execute: bool Register and execute the wwkflow.
+        :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially
+        :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
+                 case return a FlyteWorkflowExecution
+        """
+        lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
+        wf, start, end = create_backfill_workflow(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel)
+        if dry_run:
+            remote_logger.warning("Dry Run enabled. Workflow will not be registered and or executed.")
+            return wf
+
+        unique_fingerprint = f"{start}-{end}-{launchplan}-{launchplan_version}"
+        h = hashlib.md5()
+        h.update(unique_fingerprint.encode("utf-8"))
+        unique_fingerprint_encoded = base64.urlsafe_b64encode(h.digest()).decode("ascii")
+        if not version:
+            version = unique_fingerprint_encoded
+        ss = SerializationSettings(
+            image_config=ImageConfig.auto(),
+            project=project,
+            domain=domain,
+            version=version,
+        )
+        remote_wf = self.register_workflow(wf, serialization_settings=ss)
+
+        if not execute:
+            return remote_wf
+
+        return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)

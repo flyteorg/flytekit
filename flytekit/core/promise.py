@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import collections
-import typing
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from typing_extensions import Protocol, get_args
 
@@ -350,7 +349,7 @@ class Promise(object):
     def __hash__(self):
         return hash(id(self))
 
-    def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
+    def __rshift__(self, other: Union[Promise, VoidPromise]):
         if not self.is_ready:
             self.ref.node.runs_before(other.ref.node)
         return other
@@ -458,7 +457,7 @@ class Promise(object):
 
 def create_native_named_tuple(
     ctx: FlyteContext,
-    promises: Optional[Union[Promise, typing.List[Promise]]],
+    promises: Optional[Union[Promise, List[Promise]]],
     entity_interface: Interface,
 ) -> Optional[Tuple]:
     """
@@ -578,7 +577,7 @@ def binding_from_flyte_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
     expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+    t_value: Any,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type=None)
     return _literals_models.Binding(var=var_name, binding=binding_data)
@@ -587,7 +586,7 @@ def binding_from_flyte_std(
 def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+    t_value: Any,
     t_value_type: Optional[type] = None,
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
@@ -654,7 +653,7 @@ def binding_from_python_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
     expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+    t_value: Any,
     t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
@@ -671,7 +670,7 @@ class VoidPromise(object):
     VoidPromise cannot be interacted with and does not allow comparisons or any operations
     """
 
-    def __init__(self, task_name: str, ref: typing.Optional[NodeOutput] = None):
+    def __init__(self, task_name: str, ref: Optional[NodeOutput] = None):
         self._task_name = task_name
         self._ref = ref
 
@@ -682,10 +681,10 @@ class VoidPromise(object):
         """
 
     @property
-    def ref(self) -> typing.Optional[NodeOutput]:
+    def ref(self) -> Optional[NodeOutput]:
         return self._ref
 
-    def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
+    def __rshift__(self, other: Union[Promise, VoidPromise]):
         if self.ref:
             self.ref.node.runs_before(other.ref.node)
         return other
@@ -811,10 +810,26 @@ def extract_obj_name(name: str) -> str:
 def create_and_link_node_from_remote(
     ctx: FlyteContext,
     entity: HasFlyteInterface,
+    _inputs_not_allowed: Optional[Set[str]] = None,
+    _ignorable_inputs: Optional[Set[str]] = None,
     **kwargs,
-):
+) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
-    This method is used to generate a node with bindings. This is not used in the execution path.
+    This method is used to generate a node with bindings especially when using remote entities, like FlyteWorkflow,
+    FlyteTask and FlyteLaunchplan.
+
+    This method is kept separate from the similar named method `create_and_link_node` as remote entities have to be
+    handled differently. The major difference arises from the fact that the remote entities do not have a python
+    interface, so all comparisons need to happen using the Literals.
+
+    :param ctx: FlyteContext
+    :param entity: RemoteEntity
+    :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
+                     Useful for Launchplans with `fixed` inputs
+    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overriden. Useful
+                     for launchplans with `default` inputs
+    :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
+    :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
     if ctx.compilation_state is None:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
@@ -824,9 +839,19 @@ def create_and_link_node_from_remote(
 
     typed_interface = entity.interface
 
+    if _inputs_not_allowed:
+        inputs_not_allowed_specified = _inputs_not_allowed.intersection(kwargs.keys())
+        if inputs_not_allowed_specified:
+            raise _user_exceptions.FlyteAssertion(
+                f"Fixed inputs cannot be specified. Please remove the following inputs - {inputs_not_allowed_specified}"
+            )
+
     for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
+            if _inputs_not_allowed and _ignorable_inputs:
+                if k in _ignorable_inputs or k in _inputs_not_allowed:
+                    continue
             # TODO to improve the error message, should we show python equivalent types for var.type?
             raise _user_exceptions.FlyteAssertion("Missing input `{}` type `{}`".format(k, var.type))
         v = kwargs[k]
@@ -854,7 +879,8 @@ def create_and_link_node_from_remote(
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
         raise _user_exceptions.FlyteAssertion(
-            "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
+            f"Too many inputs for [{entity.name}] Expected inputs: {typed_interface.inputs.keys()} "
+            f"- extra inputs: {extra_inputs}"
         )
 
     # Detect upstream nodes
@@ -895,7 +921,13 @@ def create_and_link_node(
     **kwargs,
 ) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
-    This method is used to generate a node with bindings. This is not used in the execution path.
+    This method is used to generate a node with bindings within a flytekit workflow. this is useful to traverse the
+    workflow using regular python interpreter and generate nodes and promises whenever an execution is encountered
+
+    :param ctx: FlyteContext
+    :param entity: RemoteEntity
+    :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
+    :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
     if ctx.compilation_state is None:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
