@@ -20,7 +20,7 @@ class DuckDBQuery(PythonInstanceTask):
     def __init__(
         self,
         name: str,
-        query: Union[str, list[str]],
+        query: Union[str, list],
         inputs: Optional[dict[str, Union[StructuredDataset, list]]] = None,
         **kwargs,
     ):
@@ -43,7 +43,7 @@ class DuckDBQuery(PythonInstanceTask):
             if multiple_params:
                 counter += 1
                 if not counter < len(params):
-                    raise ValueError(f"Parameter doesn't exist.")
+                    raise ValueError("Parameter doesn't exist.")
                 if "insert" in query.lower():
                     # run executemany disregarding the number of entries to store for an insert query
                     yield QueryOutput(output=self._con.executemany(query, params[counter]), counter=counter)
