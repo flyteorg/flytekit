@@ -1177,14 +1177,10 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        # Traverse the dictionary and in case we find any integer value we cast it to a string but prefix it with a
-        # special code that we can use when deserializing it.
-        ret = {}
-        for k, v in d.items():
-            if isinstance(v, int):
-                v = f"{DictTransformer.INTEGER_PREFIX}{v}"
-            ret[k] = v
-        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(ret), _struct.Struct())))
+        if any(isinstance(v, int) for _, v in d.items()):
+            # if any of the values is an integer, encode the dictionary as a json string
+            return Literal(scalar=Scalar(primitive=Primitive(string_value=_json.dumps(d))))
+        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(d), _struct.Struct())))
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
@@ -1233,18 +1229,16 @@ class DictTransformer(TypeTransformer[dict]):
             for k, v in lv.map.literals.items():
                 py_map[k] = TypeEngine.to_python_value(ctx, v, tp[1])
             return py_map
-
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
-        if lv and lv.scalar and lv.scalar.generic is not None:
+        elif lv and lv.scalar is not None:
             try:
-                d = _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                if lv.scalar.generic is not None:
+                    ret = _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                else:
+                    # if not encoded as a generic, assume that the dictionary was encoded as a string literal
+                    ret = _json.loads(lv.scalar.primitive.string_value)
                 # Traverse resulting dictionary and convert values back in case they contain the encoding prefix
-                ret = {}
-                for k, v in d.items():
-                    if isinstance(v, str) and v.startswith(DictTransformer.INTEGER_PREFIX):
-                        v = int(v[len(DictTransformer.INTEGER_PREFIX) :])
-                    ret[k] = v
                 return ret
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
