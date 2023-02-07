@@ -4,6 +4,7 @@ import pytest
 
 import flytekit
 from flytekit.core.checkpointer import SyncCheckpoint
+from flytekit.core.local_cache import LocalTaskCache
 
 
 def test_sync_checkpoint_write(tmpdir):
@@ -129,6 +130,12 @@ def t2(n: int) -> int:
     cp = ctx.checkpoint
     cp.write(bytes(n + 1))
     return n + 1
+
+
+@pytest.fixture(scope="function", autouse=True)
+def setup():
+    LocalTaskCache.initialize()
+    LocalTaskCache.clear()
 
 
 def test_checkpoint_task():
