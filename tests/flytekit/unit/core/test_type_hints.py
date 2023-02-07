@@ -1550,7 +1550,7 @@ def test_guess_dict2():
 def test_guess_dict3():
     @task
     def t2() -> dict:
-        return {"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}}
+        return {"k1": "v1", "k2": 3.0, 4: {"one": [1, "two", [3]]}}
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
 
@@ -1560,7 +1560,7 @@ def test_guess_dict3():
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
     expected_struct = Struct()
-    expected_struct.update({"k1": "v1", "k2": "INT-3", "4": {"one": [1, "two", [3]]}})
+    expected_struct.update({"k1": "v1", "k2": 3.0, "4": {"one": [1, "two", [3]]}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 
