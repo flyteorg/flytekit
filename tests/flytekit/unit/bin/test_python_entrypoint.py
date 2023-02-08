@@ -1,5 +1,5 @@
-import typing
 import os
+import typing
 from collections import OrderedDict
 
 import mock
