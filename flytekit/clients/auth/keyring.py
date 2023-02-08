@@ -39,12 +39,8 @@ class KeyringStore:
 
     @staticmethod
     def retrieve(for_endpoint: str) -> typing.Optional[Credentials]:
-        refresh_token = _keyring.get_password(
-            for_endpoint, KeyringStore._refresh_token_key
-        )
-        access_token = _keyring.get_password(
-            for_endpoint, KeyringStore._access_token_key
-        )
+        refresh_token = _keyring.get_password(for_endpoint, KeyringStore._refresh_token_key)
+        access_token = _keyring.get_password(for_endpoint, KeyringStore._access_token_key)
         if not access_token:
             return None
         return Credentials(access_token, refresh_token, for_endpoint)

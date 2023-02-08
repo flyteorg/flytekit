@@ -320,6 +320,7 @@ class PlatformConfig(object):
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
+    rpc_retries: int = 3
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:

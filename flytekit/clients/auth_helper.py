@@ -2,12 +2,8 @@ import logging
 import ssl
 
 import grpc
-from flyteidl.service.auth_pb2 import (
-    OAuth2MetadataRequest,
-    PublicClientAuthConfigRequest,
-)
+from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
-from flytekit.configuration import AuthType, PlatformConfig
 
 from flytekit.clients.auth.authenticator import (
     Authenticator,
@@ -18,6 +14,8 @@ from flytekit.clients.auth.authenticator import (
     PKCEAuthenticator,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
+from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
+from flytekit.configuration import AuthType, PlatformConfig
 
 
 class RemoteClientConfigStore(ClientConfigStore):
@@ -33,9 +31,7 @@ class RemoteClientConfigStore(ClientConfigStore):
         Retrieves the ClientConfig from the given grpc.Channel assuming  AuthMetadataService is available
         """
         metadata_service = AuthMetadataServiceStub(self._secure_channel)
-        public_client_config = metadata_service.GetPublicClientConfig(
-            PublicClientAuthConfigRequest()
-        )
+        public_client_config = metadata_service.GetPublicClientConfig(PublicClientAuthConfigRequest())
         oauth2_metadata = metadata_service.GetOAuth2Metadata(OAuth2MetadataRequest())
         return ClientConfig(
             token_endpoint=oauth2_metadata.token_endpoint,
@@ -47,9 +43,7 @@ class RemoteClientConfigStore(ClientConfigStore):
         )
 
 
-def get_authenticator(
-        cfg: PlatformConfig, cfg_store: ClientConfigStore
-) -> Authenticator:
+def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Authenticator:
     """
     Returns a new authenticator based on the platform config.
     """
@@ -58,18 +52,12 @@ def get_authenticator(
         try:
             cfg_auth = AuthType[cfg_auth.upper()]
         except KeyError:
-            logging.warning(
-                f"Authentication type {cfg_auth} does not exist, defaulting to standard"
-            )
+            logging.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
             cfg_auth = AuthType.STANDARD
 
     if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
         return PKCEAuthenticator(cfg.endpoint, cfg_store)
-    elif (
-            cfg_auth == AuthType.BASIC
-            or cfg_auth == AuthType.CLIENT_CREDENTIALS
-            or cfg_auth == AuthType.CLIENTSECRET
-    ):
+    elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
         return ClientCredentialsAuthenticator(
             endpoint=cfg.endpoint,
             client_id=cfg.client_id,
@@ -86,8 +74,7 @@ def get_authenticator(
         )
     else:
         raise ValueError(
-            f"Invalid auth mode [{cfg_auth}] specified."
-            f"Please update the creds config to use a valid value"
+            f"Invalid auth mode [{cfg_auth}] specified." f"Please update the creds config to use a valid value"
         )
 
 
@@ -107,8 +94,11 @@ def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:
     """
     Returns a new channel for the given config that is authenticated
     """
-    channel = grpc.insecure_channel(cfg.endpoint) if cfg.insecure else grpc.secure_channel(
-        cfg.endpoint, grpc.ssl_channel_credentials())
+    channel = (
+        grpc.insecure_channel(cfg.endpoint)
+        if cfg.insecure
+        else grpc.secure_channel(cfg.endpoint, grpc.ssl_channel_credentials())
+    )
     return upgrade_channel_to_authenticated(cfg, channel)
 
 
@@ -164,3 +154,18 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
         options=kwargs.get("options", None),
         compression=kwargs.get("compression", None),
     )
+
+
+def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
+    """
+    Wraps the input channel with RetryExceptionWrapperInterceptor. This wrapper will cover all
+    exceptions and raise Exceptions of the Family flytekit.exceptions.
+
+    .. note:: This channel should be usually the outermost channel. This channel will raise an exception of type
+    FlyteException
+
+    :param cfg: PlatformConfig
+    :param
+    :return: grpc.Channel
+    """
+    return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))

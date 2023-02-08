@@ -10,27 +10,10 @@ from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
-from google.protobuf.json_format import MessageToJson as _MessageToJson
 
-from flytekit.clients.auth_helper import get_channel, upgrade_channel_to_authenticated
+from flytekit.clients.auth_helper import get_channel, upgrade_channel_to_authenticated, wrap_exceptions_channel
 from flytekit.configuration import PlatformConfig
 from flytekit.loggers import cli_logger
-
-
-def _handle_invalid_create_request(fn):
-    def handler(self, create_request):
-        try:
-            fn(self, create_request)
-        except grpc.RpcError as e:
-            if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                cli_logger.error("Error creating Flyte entity because of invalid arguments. Create request: ")
-                cli_logger.error(_MessageToJson(create_request))
-                cli_logger.error("Details returned from the flyte admin: ")
-                cli_logger.error(e.details)
-            # Re-raise since we're not  handling the error here and add the create_request details
-            raise e
-
-    return handler
 
 
 class RawSynchronousFlyteClient(object):
@@ -58,7 +41,7 @@ class RawSynchronousFlyteClient(object):
           insecure: if insecure is desired
         """
         self._cfg = cfg
-        self._channel = upgrade_channel_to_authenticated(cfg, get_channel(cfg))
+        self._channel = wrap_exceptions_channel(cfg, upgrade_channel_to_authenticated(cfg, get_channel(cfg)))
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._signal = signal_service.SignalServiceStub(self._channel)
         self._dataproxy_stub = dataproxy_service.DataProxyServiceStub(self._channel)
@@ -86,7 +69,6 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_invalid_create_request
     def create_task(self, task_create_request):
         """
         This will create a task definition in the Admin database. Once successful, the task object can be
@@ -181,7 +163,6 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_invalid_create_request
     def create_workflow(self, workflow_create_request):
         """
         This will create a workflow definition in the Admin database.  Once successful, the workflow object can be
@@ -264,7 +245,6 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    @_handle_invalid_create_request
     def create_launch_plan(self, launch_plan_create_request):
         """
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
@@ -284,7 +264,6 @@ class RawSynchronousFlyteClient(object):
             the identical launch plan is already registered.
         :raises grpc.RpcError:
         """
-        print("======================= Called!!!!!!================")
         return self._stub.CreateLaunchPlan(launch_plan_create_request, metadata=self._metadata)
 
     # TODO: List endpoints when they come in
