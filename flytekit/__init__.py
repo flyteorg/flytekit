@@ -183,6 +183,7 @@ from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, W
 from flytekit.core.resources import Resources
 from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
+from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
