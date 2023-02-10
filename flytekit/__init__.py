@@ -71,6 +71,18 @@ See the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more 
 
    dynamic
 
+Signaling
+=========
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   approve
+   sleep
+   wait_for_input
+
 Scheduling
 ============================
 
@@ -166,17 +178,17 @@ Task Utilities
    Deck
    HashMethod
 
-Signaling
-=========
+Documentation
+=============
 
 .. autosummary::
    :nosignatures:
    :template: custom.rst
    :toctree: generated/
 
-   approve
-   sleep
-   wait_for_input
+   Description
+   Documentation
+   SourceCode
 
 """
 import sys
