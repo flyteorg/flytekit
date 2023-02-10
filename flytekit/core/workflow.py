@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
+from flytekit.configuration import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -232,9 +234,6 @@ class WorkflowBase(object):
 
     @property
     def nodes(self) -> List[Node]:
-        ctx = FlyteContext.current_context()
-        if len(self._nodes) == 0 and ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
-            self.compile()
         return self._nodes
 
     def __repr__(self):
@@ -244,9 +243,6 @@ class WorkflowBase(object):
             f"Outputs ({len(self._python_interface.outputs)}): {self._python_interface.outputs} && "
             f"Output bindings: {self._output_bindings} && "
         )
-
-    def compile(self, **kwargs):
-        pass
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return _workflow_model.NodeMetadata(
@@ -388,6 +384,10 @@ class ImperativeWorkflow(WorkflowBase):
         class has to keep track of its own compilation state.
         """
         return self._compilation_state
+
+    @property
+    def nodes(self) -> List[Node]:
+        return self._compilation_state.nodes
 
     @property
     def inputs(self) -> Dict[str, Promise]:
@@ -759,7 +759,10 @@ def workflow(
             docs=docs,
         )
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
+        if (
+            ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION
+            or os.environ.get(SERIALIZED_CONTEXT_ENV_VAR) is not None
+        ):
             workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
