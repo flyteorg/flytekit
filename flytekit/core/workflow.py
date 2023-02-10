@@ -390,10 +390,6 @@ class ImperativeWorkflow(WorkflowBase):
         return self._compilation_state
 
     @property
-    def nodes(self) -> List[Node]:
-        return self._compilation_state.nodes
-
-    @property
     def inputs(self) -> Dict[str, Promise]:
         """
         This holds the input promises to the workflow. The nodes in these Promise objects should always point to
