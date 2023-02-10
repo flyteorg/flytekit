@@ -232,7 +232,8 @@ class WorkflowBase(object):
 
     @property
     def nodes(self) -> List[Node]:
-        if self._nodes is None or len(self._nodes) == 0:
+        ctx = FlyteContext.current_context()
+        if len(self._nodes) == 0 and ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
             self.compile()
         return self._nodes
 
@@ -387,6 +388,10 @@ class ImperativeWorkflow(WorkflowBase):
         class has to keep track of its own compilation state.
         """
         return self._compilation_state
+
+    @property
+    def nodes(self) -> List[Node]:
+        return self._compilation_state.nodes
 
     @property
     def inputs(self) -> Dict[str, Promise]:
@@ -757,7 +762,9 @@ def workflow(
             docstring=Docstring(callable_=fn),
             docs=docs,
         )
-
+        ctx = FlyteContextManager.current_context()
+        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
+            workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
 
