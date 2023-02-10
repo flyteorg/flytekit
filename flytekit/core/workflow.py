@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from flytekit.configuration import SERIALIZED_CONTEXT_ENV_VAR
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
