@@ -186,7 +186,7 @@ class NotebookTask(PythonInstanceTask[T]):
         return self._config_task_instance.get_k8s_pod(settings)
 
     def get_config(self, settings: SerializationSettings) -> typing.Dict[str, str]:
-        return self._config_task_instance.get_config(settings)
+        return {**super().get_config(settings), **self._config_task_instance.get_config(settings)}
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         return self._config_task_instance.pre_execute(user_params)
