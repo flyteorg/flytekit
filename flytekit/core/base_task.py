@@ -258,7 +258,7 @@ class Task(object):
             # The cache returns None iff the key does not exist in the cache
             if outputs_literal_map is None:
                 logger.info("Cache miss, task will be executed now")
-                outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+                outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
                 LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
                 logger.info(
@@ -268,10 +268,10 @@ class Task(object):
             else:
                 logger.info("Cache hit")
         else:
-            es = ctx.execution_state
-            b = es.user_space_params.with_task_sandbox()
-            ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
-            outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+            # This code should mirror the call to `sandbox_execute` in the above cache case.
+            # Code is simpler with duplication and less metaprogramming, but introduces regressions
+            # if one is changed and not the other.
+            outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -325,6 +325,19 @@ class Task(object):
         defined for this task.
         """
         return None
+
+    def sandbox_execute(
+        self,
+        ctx: FlyteContext,
+        input_literal_map: _literal_models.LiteralMap,
+    ) -> _literal_models.LiteralMap:
+        """
+        Call dispatch_execute, in the context of a local sandbox execution. Not invoked during runtime.
+        """
+        es = ctx.execution_state
+        b = es.user_space_params.with_task_sandbox()
+        ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
+        return self.dispatch_execute(ctx, input_literal_map)
 
     @abstractmethod
     def dispatch_execute(
