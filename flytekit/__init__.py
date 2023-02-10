@@ -197,7 +197,7 @@ from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugi
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.hash import HashMethod
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack
 from flytekit.core.pod_template import PodTemplate
@@ -207,7 +207,6 @@ from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, W
 from flytekit.core.resources import Resources
 from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
-from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck

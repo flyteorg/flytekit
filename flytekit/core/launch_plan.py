@@ -459,7 +459,7 @@ def reference_launch_plan(
     via the function definition.
 
     If at registration time the interface provided causes an issue with compilation, an error will be returned.
-    
+
     :param project: Flyte project name of the launch plan
     :param domain: Flyte domain name of the launch plan
     :param name: launch plan name
