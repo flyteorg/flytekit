@@ -26,3 +26,7 @@ repos:
   rev: 4.0.0
   hooks:
   - id: pydocstyle
+    files: ^(flytekit|plugins)/.+\.py$
+    exclude: tests/
+    # args:
+    #   - --select=D100
