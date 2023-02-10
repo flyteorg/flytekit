@@ -154,6 +154,30 @@ Common Flyte IDL Objects
    Scalar
    LiteralType
    BlobType
+
+Task Utilities
+==============
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   Deck
+   HashMethod
+
+Signaling
+=========
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   approve
+   sleep
+   wait_for_input
+
 """
 import sys
 from typing import Generator
@@ -241,7 +265,7 @@ def load_implicit_plugins():
         # note the group is always ``flytekit.plugins``
         setup(
         ...
-        entry_points={'flytekit.plugins’: 'fsspec=flytekitplugins.fsspec'},
+        entry_points={'flytekit.plugins': 'fsspec=flytekitplugins.fsspec'},
         ...
         )
 
