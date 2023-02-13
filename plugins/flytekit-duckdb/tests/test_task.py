@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 
 import pandas as pd
 import pyarrow as pa
@@ -33,7 +33,7 @@ def test_parquet():
             "LOAD httpfs",
             """SELECT hour(lpep_pickup_datetime) AS hour, count(*) AS count FROM READ_PARQUET(?) GROUP BY hour""",
         ],
-        inputs=kwtypes(params=list[str]),
+        inputs=kwtypes(params=List[str]),
     )
 
     @workflow
@@ -110,7 +110,7 @@ def test_distinct_params():
             "INSERT INTO items VALUES (?, ?, ?)",
             "SELECT $1 AS one, $1 AS two, $2 AS three",
         ],
-        inputs=kwtypes(params=list[list[Union[str, list[Union[str, int]]]]]),
+        inputs=kwtypes(params=List[List[Union[str, List[Union[str, int]]]]]),
     )
 
     @task
@@ -118,7 +118,7 @@ def test_distinct_params():
         return df.open(pd.DataFrame).all()
 
     @workflow
-    def params_wf(params: list[list[Union[str, list[Union[str, int]]]]]) -> pd.DataFrame:
+    def params_wf(params: List[List[Union[str, List[Union[str, int]]]]]) -> pd.DataFrame:
         return read_df(df=duckdb_params_query(params=params))
 
     params = [[["chainsaw", 500, 10], ["iphone", 300, 2]], ["duck", "goose"]]
@@ -135,11 +135,11 @@ def test_insert_query_with_single_params():
             "INSERT INTO items VALUES (?)",
             "SELECT * FROM items",
         ],
-        inputs=kwtypes(params=list[list[list[int]]]),
+        inputs=kwtypes(params=List[List[List[int]]]),
     )
 
     @workflow
-    def params_wf(params: list[list[list[int]]]) -> pa.Table:
+    def params_wf(params: List[List[List[int]]]) -> pa.Table:
         return duckdb_params_query(params=params)
 
     assert isinstance(params_wf(params=[[[500], [300], [2]]]), pa.Table)
