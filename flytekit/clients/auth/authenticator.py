@@ -126,7 +126,7 @@ class CommandAuthenticator(Authenticator):
         self._cmd = command
         if not self._cmd:
             raise ValueError("Command cannot be empty for command authenticator")
-        super().__init__(header_key)
+        super().__init__(None, header_key)
 
     def refresh_credentials(self):
         """
