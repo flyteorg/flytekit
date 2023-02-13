@@ -71,6 +71,22 @@ def test_condition_else_fail():
         multiplier_2(my_input=10.0)
 
 
+def test_condition_else_int():
+    @workflow
+    def multiplier_3(my_input: int) -> float:
+        return (
+            conditional("fractions")
+            .if_((my_input >= 0) & (my_input < 1.0))
+            .then(double(n=my_input))
+            .elif_((my_input > 1.0) & (my_input < 10.0))
+            .then(square(n=my_input))
+            .else_()
+            .fail("The input must be between 0 and 10")
+        )
+
+    assert multiplier_3(my_input=0) == 0
+
+
 def test_condition_sub_workflows():
     @task
     def sum_div_sub(a: int, b: int) -> typing.NamedTuple("Outputs", sum=int, div=int, sub=int):
