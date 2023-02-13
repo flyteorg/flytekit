@@ -201,12 +201,19 @@ class RawSynchronousFlyteClient(object):
                 "Check your Admin server's .well-known endpoints to make sure they're working as expected."
             )
 
+        verify = None
+        if self._cfg.insecure_skip_verify:
+            verify = False
+        elif self._cfg.ca_cert_file_path:
+            verify = self._cfg.ca_cert_file_path
+
         client = _credentials_access.get_client(
             redirect_endpoint=self.public_client_config.redirect_uri,
             client_id=self.public_client_config.client_id,
             scopes=self.public_client_config.scopes,
             auth_endpoint=self.oauth2_metadata.authorization_endpoint,
             token_endpoint=self.oauth2_metadata.token_endpoint,
+            verify=verify,
         )
 
         if client.has_valid_credentials and not self.check_access_token(client.credentials.access_token):

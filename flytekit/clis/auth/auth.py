@@ -139,12 +139,7 @@ class Credentials(object):
 
 class AuthorizationClient(object):
     def __init__(
-        self,
-        auth_endpoint=None,
-        token_endpoint=None,
-        scopes=None,
-        client_id=None,
-        redirect_uri=None,
+        self, auth_endpoint=None, token_endpoint=None, scopes=None, client_id=None, redirect_uri=None, verify=None
     ):
         self._auth_endpoint = auth_endpoint
         self._token_endpoint = token_endpoint
@@ -160,6 +155,7 @@ class AuthorizationClient(object):
         self._refresh_token = None
         self._headers = {"content-type": "application/x-www-form-urlencoded"}
         self._expired = False
+        self._verify = verify
 
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
@@ -262,6 +258,7 @@ class AuthorizationClient(object):
             data=self._params,
             headers=self._headers,
             allow_redirects=False,
+            verify=self._verify,
         )
         if resp.status_code != _StatusCodes.OK:
             # TODO: handle expected (?) error cases:
@@ -280,6 +277,7 @@ class AuthorizationClient(object):
             data={"grant_type": "refresh_token", "client_id": self._client_id, "refresh_token": self._refresh_token},
             headers=self._headers,
             allow_redirects=False,
+            verify=self._verify,
         )
         if resp.status_code != _StatusCodes.OK:
             self._expired = True

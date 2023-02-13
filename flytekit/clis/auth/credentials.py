@@ -11,7 +11,7 @@ _authorization_client = None
 
 
 def get_client(
-    redirect_endpoint: str, client_id: str, scopes: List[str], auth_endpoint: str, token_endpoint: str
+    redirect_endpoint: str, client_id: str, scopes: List[str], auth_endpoint: str, token_endpoint: str, verify: bool
 ) -> AuthorizationClient:
     global _authorization_client
     if _authorization_client is not None and not _authorization_client.expired:
@@ -23,6 +23,7 @@ def get_client(
         scopes=scopes,
         auth_endpoint=auth_endpoint,
         token_endpoint=token_endpoint,
+        verify=verify,
     )
 
     auth_logger.debug(f"Created oauth client with redirect {_authorization_client}")

@@ -314,6 +314,7 @@ class PlatformConfig(object):
     endpoint: str = "localhost:30080"
     insecure: bool = False
     insecure_skip_verify: bool = False
+    ca_cert_file_path: typing.Optional[str] = None
     console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
@@ -334,6 +335,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(
             kwargs, "insecure_skip_verify", _internal.Platform.INSECURE_SKIP_VERIFY.read(config_file)
         )
+        kwargs = set_if_exists(kwargs, "ca_cert_file_path", _internal.Platform.CA_CERT_FILE_PATH.read(config_file))
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
@@ -355,6 +357,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
+
         return PlatformConfig(**kwargs)
 
     @classmethod
