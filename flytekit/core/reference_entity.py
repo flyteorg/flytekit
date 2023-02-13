@@ -43,6 +43,8 @@ class Reference(ABC):
 
 @dataclass
 class TaskReference(Reference):
+    """A reference object containing metadata that points to a remote task."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.TASK
@@ -50,6 +52,8 @@ class TaskReference(Reference):
 
 @dataclass
 class LaunchPlanReference(Reference):
+    """A reference object containing metadata that points to a remote launch plan."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.LAUNCH_PLAN
@@ -57,6 +61,8 @@ class LaunchPlanReference(Reference):
 
 @dataclass
 class WorkflowReference(Reference):
+    """A reference object containing metadata that points to a remote workflow."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.WORKFLOW
