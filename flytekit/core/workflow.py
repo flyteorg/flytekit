@@ -232,6 +232,8 @@ class WorkflowBase(object):
 
     @property
     def nodes(self) -> List[Node]:
+        if len(self._nodes) == 0:
+            self.compile()
         return self._nodes
 
     def __repr__(self):
@@ -258,6 +260,9 @@ class WorkflowBase(object):
         return flyte_entity_call_handler(self, *args, **input_kwargs)
 
     def execute(self, **kwargs):
+        raise Exception("Should not be called")
+
+    def compile(self, **kwargs):
         raise Exception("Should not be called")
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
