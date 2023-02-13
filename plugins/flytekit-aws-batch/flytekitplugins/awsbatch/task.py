@@ -53,7 +53,7 @@ class AWSBatchFunctionTask(PythonFunctionTask):
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         # Parameters in taskTemplate config will be used to create aws job definition.
         # More detail about job definition: https://docs.aws.amazon.com/batch/latest/userguide/job_definition_parameters.html
-        return {"platformCapabilities": self._task_config.platformCapabilities}
+        return {**super().get_config(settings), "platformCapabilities": self._task_config.platformCapabilities}
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
         container_args = [
