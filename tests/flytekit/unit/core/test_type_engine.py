@@ -753,14 +753,14 @@ def test_structured_dataset_in_dataclass():
     @dataclass_json
     @dataclass
     class InnerDatasetStruct(object):
-        a: StructuredDataset
+        a: Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]
         b: typing.List[StructuredDataset]
         c: typing.Dict[str, StructuredDataset]
 
     @dataclass_json
     @dataclass
     class DatasetStruct(object):
-        a: StructuredDataset
+        a: Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]
         b: InnerDatasetStruct
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")

@@ -320,6 +320,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
         schema = None
         try:
+            t = self._get_origin_type_in_annotation(t)
             s = cast(DataClassJsonMixin, t).schema()
             for _, v in s.fields.items():
                 # marshmallow-jsonschema only supports enums loaded by name.
@@ -351,6 +352,17 @@ class DataclassTransformer(TypeTransformer[object]):
         return Literal(
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
+
+    def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
+        # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
+        # not hashable, such as Annotated[StructuredDataset, kwtypes(...)]. Therefore, we should just extract the origin
+        # type from annotated.
+        for field in dataclasses.fields(python_type):
+            if get_origin(field.type) is Annotated:
+                field.type = get_args(field.type)[0]
+            elif dataclasses.is_dataclass(field.type):
+                field.type = self._get_origin_type_in_annotation(field.type)
+        return python_type
 
     def _serialize_flyte_type(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
