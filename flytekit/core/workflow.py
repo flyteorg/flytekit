@@ -705,6 +705,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
+        ctx = FlyteContextManager.current_context()
+        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
+            self.compile()
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
@@ -756,9 +759,6 @@ def workflow(
             docstring=Docstring(callable_=fn),
             docs=docs,
         )
-        ctx = FlyteContextManager.current_context()
-        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
-            workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
 
