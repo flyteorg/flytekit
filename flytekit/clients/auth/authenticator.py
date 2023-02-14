@@ -78,8 +78,13 @@ class PKCEAuthenticator(Authenticator):
     This Authenticator encapsulates the entire PKCE flow and automatically opens a browser window for login
     """
 
-    def __init__(self, endpoint: str, cfg_store: ClientConfigStore,
-                 header_key: typing.Optional[str] = None, verify: typing.Optional[typing.Union[bool, str]] = None):
+    def __init__(
+        self,
+        endpoint: str,
+        cfg_store: ClientConfigStore,
+        header_key: typing.Optional[str] = None,
+        verify: typing.Optional[typing.Union[bool, str]] = None,
+    ):
         """
         Initialize with default creds from KeyStore using the endpoint name
         """

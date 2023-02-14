@@ -186,21 +186,21 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
         """
-            Create new AuthorizationClient
+        Create new AuthorizationClient
 
-            :param endpoint: str endpoint to connect to
-            :param auth_endpoint: str endpoint where auth metadata can be found
-            :param token_endpoint: str endpoint to retrieve token from
-            :param scopes: list[str] oauth2 scopes
-            :param client_id
-            :param verify: (optional) Either a boolean, in which case it controls whether we verify
-                the server's TLS certificate, or a string, in which case it must be a path
-                to a CA bundle to use. Defaults to ``True``. When set to
-                ``False``, requests will accept any TLS certificate presented by
-                the server, and will ignore hostname mismatches and/or expired
-                certificates, which will make your application vulnerable to
-                man-in-the-middle (MitM) attacks. Setting verify to ``False``
-                may be useful during local development or testing.
+        :param endpoint: str endpoint to connect to
+        :param auth_endpoint: str endpoint where auth metadata can be found
+        :param token_endpoint: str endpoint to retrieve token from
+        :param scopes: list[str] oauth2 scopes
+        :param client_id
+        :param verify: (optional) Either a boolean, in which case it controls whether we verify
+            the server's TLS certificate, or a string, in which case it must be a path
+            to a CA bundle to use. Defaults to ``True``. When set to
+            ``False``, requests will accept any TLS certificate presented by
+            the server, and will ignore hostname mismatches and/or expired
+            certificates, which will make your application vulnerable to
+            man-in-the-middle (MitM) attacks. Setting verify to ``False``
+            may be useful during local development or testing.
         """
         self._endpoint = endpoint
         self._auth_endpoint = auth_endpoint
