@@ -11,7 +11,7 @@ _authorization_client = None
 
 
 def get_client(
-    redirect_endpoint: str, client_id: str, scopes: List[str], auth_endpoint: str, token_endpoint: str, verify: bool
+    redirect_endpoint: str, client_id: str, scopes: List[str], auth_endpoint: str, token_endpoint: str, verify: Union[bool, str]
 ) -> AuthorizationClient:
     global _authorization_client
     if _authorization_client is not None and not _authorization_client.expired:
