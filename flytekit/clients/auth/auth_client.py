@@ -17,6 +17,7 @@ from urllib.parse import urlencode as _urlencode
 
 import requests as _requests
 
+from .default_html import get_default_success_html
 from .exceptions import AccessTokenNotFoundError
 from .keyring import Credentials
 
@@ -100,19 +101,7 @@ class OAuthCallbackHandler(_BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
             self.handle_login(dict(_urlparse.parse_qsl(url.query)))
             if self.server.remote_metadata.success_html is None:
-                self.wfile.write(
-                    bytes(
-                        f"""
-                <html>
-                <head>
-                    <title>Oauth2 authentication Flow</title>
-                </head>
-                <body>
-                    <h1>Log in successful to {self.server.remote_metadata.endpoint}</h1>
-                </body></html>""",
-                        "utf-8",
-                    )
-                )
+                self.wfile.write(bytes(get_default_success_html(self.server.remote_metadata.endpoint), "utf-8"))
             self.wfile.close()
         else:
             self.send_response(_StatusCodes.NOT_FOUND)
