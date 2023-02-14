@@ -179,11 +179,29 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         endpoint: str,
         auth_endpoint: str,
         token_endpoint: str,
-        scopes: typing.List[str] = None,
-        client_id: str = None,
-        redirect_uri: str = None,
-        endpoint_metadata: EndpointMetadata = None,
+        scopes: typing.Optional[typing.List[str]] = None,
+        client_id: typing.Optional[str] = None,
+        redirect_uri: typing.Optional[str] = None,
+        endpoint_metadata: typing.Optional[EndpointMetadata] = None,
+        verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
+        """
+            Create new AuthorizationClient
+
+            :param endpoint: str endpoint to connect to
+            :param auth_endpoint: str endpoint where auth metadata can be found
+            :param token_endpoint: str endpoint to retrieve token from
+            :param scopes: list[str] oauth2 scopes
+            :param client_id
+            :param verify: (optional) Either a boolean, in which case it controls whether we verify
+                the server's TLS certificate, or a string, in which case it must be a path
+                to a CA bundle to use. Defaults to ``True``. When set to
+                ``False``, requests will accept any TLS certificate presented by
+                the server, and will ignore hostname mismatches and/or expired
+                certificates, which will make your application vulnerable to
+                man-in-the-middle (MitM) attacks. Setting verify to ``False``
+                may be useful during local development or testing.
+        """
         self._endpoint = endpoint
         self._auth_endpoint = auth_endpoint
         if endpoint_metadata is None:
@@ -200,6 +218,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         self._code_challenge = code_challenge
         state = _generate_state_parameter()
         self._state = state
+        self._verify = verify
         self._headers = {"content-type": "application/x-www-form-urlencoded"}
 
         self._params = {
@@ -270,6 +289,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             data=self._params,
             headers=self._headers,
             allow_redirects=False,
+            verify=self._verify,
         )
         if resp.status_code != _StatusCodes.OK:
             # TODO: handle expected (?) error cases:
@@ -319,6 +339,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             },
             headers=self._headers,
             allow_redirects=False,
+            verify=self._verify,
         )
         if resp.status_code != _StatusCodes.OK:
             # In the absence of a successful response, assume the refresh token is expired. This should indicate
