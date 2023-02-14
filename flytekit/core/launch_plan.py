@@ -455,8 +455,15 @@ def reference_launch_plan(
 ) -> Callable[[Callable[..., Any]], ReferenceLaunchPlan]:
     """
     A reference launch plan is a pointer to a launch plan that already exists on your Flyte installation. This
-    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
+    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface
+    via the function definition.
+
     If at registration time the interface provided causes an issue with compilation, an error will be returned.
+
+    :param project: Flyte project name of the launch plan
+    :param domain: Flyte domain name of the launch plan
+    :param name: launch plan name
+    :param version: specific version of the launch plan to use
     """
 
     def wrapper(fn) -> ReferenceLaunchPlan:
