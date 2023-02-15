@@ -24,6 +24,14 @@ class DuckDBQuery(PythonInstanceTask):
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
         **kwargs,
     ):
+        """
+        This method initializes the DuckDBQuery.
+
+        Args:
+            name: Name of the task
+            query: DuckDB query to execute
+            inputs: The query parameters to be used while executing the query
+        """
         self._query = query
         # create an in-memory database that's non-persistent
         self._con = duckdb.connect(":memory:")
@@ -39,6 +47,15 @@ class DuckDBQuery(PythonInstanceTask):
         )
 
     def _execute_query(self, params: list, query: str, counter: int, multiple_params: bool):
+        """
+        This method runs the DuckDBQuery.
+
+        Args:
+            params: Query parameters to use while executing the query
+            query: DuckDB query to execute
+            counter: Use counter to map user-given arguments to the query parameters
+            multiple_params: Set flag to indicate the presence of params for multiple queries
+        """
         if any(x in query for x in ("$", "?")):
             if multiple_params:
                 counter += 1
@@ -58,9 +75,7 @@ class DuckDBQuery(PythonInstanceTask):
             yield QueryOutput(output=self._con.execute(query), counter=counter)
 
     def execute(self, **kwargs) -> StructuredDataset:
-        """
-        TODO: Enable iterative download after adding the functionality to structured dataset code.
-        """
+        # TODO: Enable iterative download after adding the functionality to structured dataset code.
         params = None
         for key in self.python_interface.inputs.keys():
             val = kwargs.get(key)
