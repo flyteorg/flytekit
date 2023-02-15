@@ -164,7 +164,7 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
 def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
     Wraps the input channel with RetryExceptionWrapperInterceptor. This wrapper will cover all
-    exceptions and raise Exceptions of the Family flytekit.exceptions.
+    exceptions and raise Exception from the Family flytekit.exceptions.
 
     .. note:: This channel should be usually the outermost channel. This channel will raise an exception of type
     FlyteException

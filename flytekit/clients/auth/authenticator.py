@@ -206,9 +206,10 @@ class ClientCredentialsAuthenticator(Authenticator):
         """
         This function transforms the client id and the client secret into a header that conforms with http basic auth.
         It joins the id and the secret with a : then base64 encodes it, then adds the appropriate text.
-        :param Text client_id:
-        :param Text client_secret:
-        :rtype: Text
+
+        :param client_id: str
+        :param client_secret: str
+        :rtype: str
         """
         concated = "{}:{}".format(client_id, client_secret)
         return "Basic {}".format(

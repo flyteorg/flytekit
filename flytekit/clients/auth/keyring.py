@@ -13,8 +13,8 @@ class Credentials(object):
     """
 
     access_token: str
-    refresh_token: typing.Optional[str] = None
-    for_endpoint: typing.Optional[str] = None
+    refresh_token: str = "na"
+    for_endpoint: str = "flyte-default"
 
 
 class KeyringStore:
