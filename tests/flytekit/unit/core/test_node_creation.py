@@ -334,6 +334,8 @@ def test_timeout_override_invalid_value():
         def my_wf(a: str) -> str:
             return t1(a=a).with_overrides(timeout="foo")
 
+        my_wf()
+
 
 @pytest.mark.parametrize(
     "retries,expected",
@@ -447,3 +449,5 @@ def test_config_override():
         @workflow
         def my_wf(a: str) -> str:
             return t1(a=a).with_overrides(task_config=None)
+
+        my_wf()

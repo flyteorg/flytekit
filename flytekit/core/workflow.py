@@ -228,11 +228,14 @@ class WorkflowBase(object):
 
     @property
     def output_bindings(self) -> List[_literal_models.Binding]:
+        if len(self._nodes) == 0:
+            self.compile()
         return self._output_bindings
 
     @property
     def nodes(self) -> List[Node]:
-        if len(self._nodes) == 0:
+        ctx = FlyteContextManager.current_context()
+        if len(self._nodes) == 0 and ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
             self.compile()
         return self._nodes
 
@@ -275,6 +278,7 @@ class WorkflowBase(object):
 
         # The output of this will always be a combination of Python native values and Promises containing Flyte
         # Literals.
+        self.compile()
         function_outputs = self.execute(**kwargs)
 
         # First handle the empty return case.
@@ -710,9 +714,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
-        ctx = FlyteContextManager.current_context()
-        if ctx.execution_state.mode != ctx.execution_state.Mode.TASK_EXECUTION:
-            self.compile()
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 

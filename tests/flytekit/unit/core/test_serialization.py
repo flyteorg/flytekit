@@ -440,6 +440,8 @@ def test_named_outputs_nested_fail():
             # Note only Namedtuples can be created like this
             return wf_outputs(say_hello(), say_hello())
 
+        my_wf()
+
 
 def test_serialized_docstrings():
     @task

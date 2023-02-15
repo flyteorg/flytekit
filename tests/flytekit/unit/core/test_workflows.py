@@ -157,6 +157,8 @@ def test_unexpected_outputs():
         def one_output_wf() -> int:  # noqa
             t1(a=3)
 
+        one_output_wf()
+
 
 def test_wf_no_output():
     @task
