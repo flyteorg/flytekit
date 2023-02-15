@@ -267,6 +267,7 @@ class WorkflowBase(object):
         # Get default arguments and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
+        self.compile()
         return flyte_entity_call_handler(self, *args, **input_kwargs)
 
     def execute(self, **kwargs):
@@ -625,6 +626,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             python_interface=native_interface,
             docs=docs,
         )
+        self.compiled = False
 
     @property
     def function(self):
@@ -638,6 +640,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
+        if self.compiled:
+            return
+        self.compiled = True
         ctx = FlyteContextManager.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
