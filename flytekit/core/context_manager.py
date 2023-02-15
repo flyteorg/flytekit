@@ -852,7 +852,7 @@ class FlyteEntities(object):
      registration process
     """
 
-    entities: List["LaunchPlan" | Task | "WorkflowBase"] = []  # type: ignore
+    entities: List[Union["LaunchPlan", Task, "WorkflowBase"]] = []  # type: ignore
 
 
 FlyteContextManager.initialize()
