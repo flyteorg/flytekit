@@ -749,18 +749,19 @@ def test_flyte_directory_in_dataclass():
 
 def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)]
 
     @dataclass_json
     @dataclass
     class InnerDatasetStruct(object):
-        a: Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]
-        b: typing.List[StructuredDataset]
-        c: typing.Dict[str, StructuredDataset]
+        a: People
+        b: typing.List[People]
+        c: typing.Dict[str, People]
 
     @dataclass_json
     @dataclass
     class DatasetStruct(object):
-        a: Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]
+        a: People
         b: InnerDatasetStruct
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")
