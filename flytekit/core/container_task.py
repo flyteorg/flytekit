@@ -10,6 +10,7 @@ from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
 
+# TODO: do we need pod_template here? Seems that it is a raw container not running in pods
 class ContainerTask(PythonTask):
     """
     This is an intermediate class that represents Flyte Tasks that run a container at execution time. This is the vast

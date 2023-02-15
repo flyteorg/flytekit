@@ -105,12 +105,32 @@ class FileParamType(click.ParamType):
         raise click.BadParameter(f"parameter should be a valid file path, {value}")
 
 
-class DurationParamType(click.ParamType):
-    name = "timedelta"
+class DateTimeType(click.DateTime):
+
+    _NOW_FMT = "now"
+    _ADDITONAL_FORMATS = [_NOW_FMT]
+
+    def __init__(self):
+        super().__init__()
+        self.formats.extend(self._ADDITONAL_FORMATS)
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if value in self._ADDITONAL_FORMATS:
+            if value == self._NOW_FMT:
+                return datetime.datetime.now()
+        return super().convert(value, param, ctx)
+
+
+class DurationParamType(click.ParamType):
+    name = "[1:24 | :22 | 1 minute | 10 days | ...]"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        if value is None:
+            raise click.BadParameter("None value cannot be converted to a Duration type.")
         return datetime.timedelta(seconds=parse(value))
 
 

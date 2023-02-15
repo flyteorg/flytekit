@@ -3,11 +3,16 @@ from __future__ import annotations
 import importlib
 import re
 from abc import ABC
-from typing import Callable, Dict, List, Optional, TypeVar
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+
+from flyteidl.core import tasks_pb2 as _core_task
+from kubernetes.client import ApiClient
+from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.core.base_task import PythonTask, TaskResolverMixin
+from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
@@ -17,6 +22,11 @@ from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
+_PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
+
+
+def _sanitize_resource_name(resource: _task_model.Resources.ResourceEntry) -> str:
+    return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
 class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
@@ -39,6 +49,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
         secret_requests: Optional[List[Secret]] = None,
+        pod_template: Optional[PodTemplate] = None,
+        pod_template_name: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -63,6 +75,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
            - `Confidant <https://lyft.github.io/confidant/>`__
            - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`__
            - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
+        :param pod_template: Custom PodTemplate for this task.
+        :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         """
         sec_ctx = None
         if secret_requests:
@@ -70,6 +84,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 if not isinstance(s, Secret):
                     raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
             sec_ctx = SecurityContext(secrets=secret_requests)
+
+        # pod_template_name overwrites the metedata.pod_template_name
+        kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
+        kwargs["metadata"].pod_template_name = pod_template_name
+
         super().__init__(
             task_type=task_type,
             name=name,
@@ -96,6 +115,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         else:
             self._task_resolver = task_resolver or default_task_resolver
         self._get_command_fn = self.get_default_command
+
+        self.pod_template = pod_template
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -156,6 +177,13 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         return self._get_command_fn(settings)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+        # if pod_template is not None, return None here but in get_k8s_pod, return pod_template merged with container
+        if self.pod_template is not None:
+            return None
+        else:
+            return self._get_container(settings)
+
+    def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {}
         for elem in (settings.env, self.environment):
             if elem:
@@ -177,6 +205,64 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
         )
+
+    def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
+        containers = self.pod_template.pod_spec.containers
+        primary_exists = False
+
+        for container in containers:
+            if container.name == self.pod_template.primary_container_name:
+                primary_exists = True
+                break
+
+        if not primary_exists:
+            # insert a placeholder primary container if it is not defined in the pod spec.
+            containers.append(V1Container(name=self.pod_template.primary_container_name))
+        final_containers = []
+        for container in containers:
+            # In the case of the primary container, we overwrite specific container attributes
+            # with the default values used in the regular Python task.
+            # The attributes include: image, command, args, resource, and env (env is unioned)
+            if container.name == self.pod_template.primary_container_name:
+                sdk_default_container = self._get_container(settings)
+                container.image = sdk_default_container.image
+                # clear existing commands
+                container.command = sdk_default_container.command
+                # also clear existing args
+                container.args = sdk_default_container.args
+                limits, requests = {}, {}
+                for resource in sdk_default_container.resources.limits:
+                    limits[_sanitize_resource_name(resource)] = resource.value
+                for resource in sdk_default_container.resources.requests:
+                    requests[_sanitize_resource_name(resource)] = resource.value
+                resource_requirements = V1ResourceRequirements(limits=limits, requests=requests)
+                if len(limits) > 0 or len(requests) > 0:
+                    # Important! Only copy over resource requirements if they are non-empty.
+                    container.resources = resource_requirements
+                container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()] + (
+                    container.env or []
+                )
+            final_containers.append(container)
+        self.pod_template.pod_spec.containers = final_containers
+
+        return ApiClient().sanitize_for_serialization(self.pod_template.pod_spec)
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
+        if self.pod_template is None:
+            return None
+        return _task_model.K8sPod(
+            pod_spec=self._serialize_pod_spec(settings),
+            metadata=_task_model.K8sObjectMetadata(
+                labels=self.pod_template.labels,
+                annotations=self.pod_template.annotations,
+            ),
+        )
+
+    # need to call super in all its children tasks
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
+        if self.pod_template is None:
+            return {}
+        return {_PRIMARY_CONTAINER_NAME_FIELD: self.pod_template.primary_container_name}
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
