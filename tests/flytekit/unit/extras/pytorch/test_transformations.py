@@ -40,6 +40,7 @@ def test_get_literal_type(transformer, python_type, format):
     tf = transformer
     lt = tf.get_literal_type(python_type)
     assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE))
+    assert tf.guess_python_type(lt) == python_type
 
 
 @pytest.mark.parametrize(
