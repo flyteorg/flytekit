@@ -273,7 +273,7 @@ class WorkflowBase(object):
         raise Exception("Should not be called")
 
     def compile(self, **kwargs):
-        raise Exception("Should not be called")
+        pass
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
