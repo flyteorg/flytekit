@@ -1171,11 +1171,14 @@ class DictTransformer(TypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_generic_literal(v: dict) -> Literal:
+    def dict_to_generic_literal(d: dict) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
+        if any(isinstance(v, int) for _, v in d.items()):
+            # if any of the values is an integer, encode the dictionary as a json string
+            return Literal(scalar=Scalar(primitive=Primitive(string_value=_json.dumps(d))))
+        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(d), _struct.Struct())))
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
@@ -1205,7 +1208,7 @@ class DictTransformer(TypeTransformer[dict]):
             if type(k) != str:
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
-            k_type, v_type = self.get_dict_types(python_type)
+            _, v_type = self.get_dict_types(python_type)
             lit_map[k] = TypeEngine.to_literal(ctx, v, v_type, expected.map_value_type)
         return Literal(map=LiteralMap(literals=lit_map))
 
@@ -1224,12 +1227,17 @@ class DictTransformer(TypeTransformer[dict]):
             for k, v in lv.map.literals.items():
                 py_map[k] = TypeEngine.to_python_value(ctx, v, tp[1])
             return py_map
-
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
-        if lv and lv.scalar and lv.scalar.generic is not None:
+        elif lv and lv.scalar is not None:
             try:
-                return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                if lv.scalar.generic is not None:
+                    ret = _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                else:
+                    # if not encoded as a generic, assume that the dictionary was encoded as a string literal
+                    ret = _json.loads(lv.scalar.primitive.string_value)
+                # Traverse resulting dictionary and convert values back in case they contain the encoding prefix
+                return ret
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
