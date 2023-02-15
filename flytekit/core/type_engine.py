@@ -540,9 +540,6 @@ class DataclassTransformer(TypeTransformer[object]):
         if val is None:
             return val
 
-        if get_origin(t) == Annotated:
-            t = get_args(t)[0]
-
         if get_origin(t) is typing.Union and type(None) in get_args(t):
             # Handle optional type. e.g. Optional[int], Optional[dataclass]
             # Marshmallow doesn't support union type, so the type here is always an optional type.
@@ -594,8 +591,6 @@ class DataclassTransformer(TypeTransformer[object]):
         json_str = _json_format.MessageToJson(lv.scalar.generic)
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
-        # from flytekit import StructuredDataset
-        # dc.a = StructuredDataset(**dc.a)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
