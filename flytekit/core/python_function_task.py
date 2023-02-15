@@ -263,8 +263,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
-            if ctx.execution_state.mode == ctx.execution_state.Mode.TASK_EXECUTION:
-                self._wf.compile()
             function_outputs = self._wf.execute(**kwargs)
 
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
