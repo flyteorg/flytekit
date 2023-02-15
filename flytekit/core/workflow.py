@@ -9,13 +9,7 @@ from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import (
-    CompilationState,
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-    FlyteEntities,
-)
+from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
@@ -234,16 +228,12 @@ class WorkflowBase(object):
 
     @property
     def output_bindings(self) -> List[_literal_models.Binding]:
-        ctx = FlyteContextManager.current_context()
-        if len(self._nodes) == 0 and ctx.execution_state.mode != ExecutionState.Mode.TASK_EXECUTION:
-            self.compile()
+        self.compile()
         return self._output_bindings
 
     @property
     def nodes(self) -> List[Node]:
-        ctx = FlyteContextManager.current_context()
-        if len(self._nodes) == 0 and ctx.execution_state.mode != ExecutionState.Mode.TASK_EXECUTION:
-            self.compile()
+        self.compile()
         return self._nodes
 
     def __repr__(self):
