@@ -71,6 +71,18 @@ See the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more 
 
    dynamic
 
+Signaling
+=========
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   approve
+   sleep
+   wait_for_input
+
 Scheduling
 ============================
 
@@ -108,6 +120,7 @@ Reference Entities
    WorkflowReference
    reference_task
    reference_workflow
+   reference_launch_plan
 
 Core Task Types
 =================
@@ -153,6 +166,30 @@ Common Flyte IDL Objects
    Scalar
    LiteralType
    BlobType
+
+Task Utilities
+==============
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   Deck
+   HashMethod
+
+Documentation
+=============
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   Description
+   Documentation
+   SourceCode
+
 """
 import sys
 from typing import Generator
@@ -172,7 +209,7 @@ from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugi
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.hash import HashMethod
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack
 from flytekit.core.pod_template import PodTemplate
@@ -239,7 +276,7 @@ def load_implicit_plugins():
         # note the group is always ``flytekit.plugins``
         setup(
         ...
-        entry_points={'flytekit.plugins’: 'fsspec=flytekitplugins.fsspec'},
+        entry_points={'flytekit.plugins': 'fsspec=flytekitplugins.fsspec'},
         ...
         )
 

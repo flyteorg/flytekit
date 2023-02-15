@@ -118,7 +118,8 @@ class Gate(object):
 
 
 def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing.Type):
-    """
+    """Create a Gate object that waits for user input of the specified type.
+
     Create a Gate object. This object will function like a task. Note that unlike a task,
     each time this function is called, a new Python object is created. If a workflow
     calls a subworkflow twice, and the subworkflow has a signal, then two Gate
@@ -136,7 +137,8 @@ def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing
 
 
 def sleep(duration: datetime.timedelta):
-    """
+    """Create a sleep Gate object.
+
     :param duration: How long to sleep for
     :return:
     """
@@ -146,7 +148,8 @@ def sleep(duration: datetime.timedelta):
 
 
 def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: str, timeout: datetime.timedelta):
-    """
+    """Create a Gate object for binary approval.
+
     Create a Gate object. This object will function like a task. Note that unlike a task,
     each time this function is called, a new Python object is created. If a workflow
     calls a subworkflow twice, and the subworkflow has a signal, then two Gate
