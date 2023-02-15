@@ -766,7 +766,7 @@ def workflow(
     if _workflow_function:
         return wrapper(_workflow_function)
     else:
-        return wrapper
+        return wrapper  # type: ignore
 
 
 class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):  # type: ignore

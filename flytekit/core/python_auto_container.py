@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import re
 from abc import ABC
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, TypeVar, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 from kubernetes.client import ApiClient
@@ -207,23 +207,23 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         )
 
     def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
-        containers = self.pod_template.pod_spec.containers
+        containers = cast(PodTemplate, self.pod_template).pod_spec.containers
         primary_exists = False
 
         for container in containers:
-            if container.name == self.pod_template.primary_container_name:
+            if container.name == cast(PodTemplate, self.pod_template).primary_container_name:
                 primary_exists = True
                 break
 
         if not primary_exists:
             # insert a placeholder primary container if it is not defined in the pod spec.
-            containers.append(V1Container(name=self.pod_template.primary_container_name))
+            containers.append(V1Container(name=cast(PodTemplate, self.pod_template).primary_container_name))
         final_containers = []
         for container in containers:
             # In the case of the primary container, we overwrite specific container attributes
             # with the default values used in the regular Python task.
             # The attributes include: image, command, args, resource, and env (env is unioned)
-            if container.name == self.pod_template.primary_container_name:
+            if container.name == cast(PodTemplate, self.pod_template).primary_container_name:
                 sdk_default_container = self._get_container(settings)
                 container.image = sdk_default_container.image
                 # clear existing commands
@@ -243,9 +243,9 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                     container.env or []
                 )
             final_containers.append(container)
-        self.pod_template.pod_spec.containers = final_containers
+        cast(PodTemplate, self.pod_template).pod_spec.containers = final_containers
 
-        return ApiClient().sanitize_for_serialization(self.pod_template.pod_spec)
+        return ApiClient().sanitize_for_serialization(cast(PodTemplate, self.pod_template).pod_spec)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
         if self.pod_template is None:

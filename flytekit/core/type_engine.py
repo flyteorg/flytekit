@@ -1152,7 +1152,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
         if literal_type.union_type is not None:
-            return typing.Union[tuple(TypeEngine.guess_python_type(v) for v in literal_type.union_type.variants)]
+            return typing.Union[tuple(TypeEngine.guess_python_type(v) for v in literal_type.union_type.variants)]  # type: ignore
 
         raise ValueError(f"Union transformer cannot reverse {literal_type}")
 
