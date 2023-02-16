@@ -196,3 +196,5 @@ def test_optional_input():
         @workflow
         def wf():
             return t3()
+
+        wf()

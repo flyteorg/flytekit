@@ -1061,7 +1061,6 @@ def flyte_entity_call_handler(
             )
 
     ctx = FlyteContextManager.current_context()
-
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
     elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
