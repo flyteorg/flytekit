@@ -70,7 +70,7 @@ def test_local_exec():
     )
 
     assert len(snowflake_task.interface.inputs) == 1
-    assert snowflake_task.query_template == "select 1\\n"
+    assert snowflake_task.query_template == "select 1"
     assert len(snowflake_task.interface.outputs) == 1
 
     # will not run locally
@@ -86,4 +86,4 @@ def test_sql_template():
          custom where column = 1""",
         output_schema_type=FlyteSchema,
     )
-    assert snowflake_task.query_template == "select 1 from\\t\\n         custom where column = 1"
+    assert snowflake_task.query_template == "select 1 from custom where column = 1"

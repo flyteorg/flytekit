@@ -161,6 +161,12 @@ def _dispatch_execute(
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
     logger.debug("Finished _dispatch_execute")
 
+    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
+        # This env is set by the flytepropeller
+        # AWS batch job get the status from the exit code, so once we catch the error,
+        # we should return the error code here
+        exit(1)
+
 
 def get_one_of(*args) -> str:
     """
@@ -264,6 +270,8 @@ def setup_execution(
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
         ssb = ss.new_builder()
+        ssb.project = exe_project
+        ssb.domain = exe_domain
         ssb.version = tk_version
         if dynamic_addl_distro:
             ssb.fast_serialization_settings = FastSerializationSettings(

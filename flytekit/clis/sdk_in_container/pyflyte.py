@@ -1,6 +1,7 @@
 import click
 
 from flytekit import configuration
+from flytekit.clis.sdk_in_container.backfill import backfill
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES
 from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
@@ -70,6 +71,7 @@ main.add_command(local_cache)
 main.add_command(init)
 main.add_command(run)
 main.add_command(register)
+main.add_command(backfill)
 
 if __name__ == "__main__":
     main()
