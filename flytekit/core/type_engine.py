@@ -358,9 +358,9 @@ class DataclassTransformer(TypeTransformer[object]):
         # not hashable, such as Annotated[StructuredDataset, kwtypes(...)]. Therefore, we should just extract the origin
         # type from annotated.
         if get_origin(python_type) is list:
-            return typing.List[self._get_origin_type_in_annotation(get_args(python_type)[0])]
+            return typing.List[self._get_origin_type_in_annotation(get_args(python_type)[0])]  # type: ignore
         elif get_origin(python_type) is dict:
-            return typing.Dict[
+            return typing.Dict[  # type: ignore
                 self._get_origin_type_in_annotation(get_args(python_type)[0]),
                 self._get_origin_type_in_annotation(get_args(python_type)[1]),
             ]
@@ -371,7 +371,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 field.type = self._get_origin_type_in_annotation(field.type)
         return python_type
 
-    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: T) -> T:
+    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T:
         # In python 3.7, 3.8, DataclassJson will deserialize Annotated[StructuredDataset, kwtypes(..)] to a dict,
         # so here we convert it back to the Structured Dataset.
         from flytekit import StructuredDataset
@@ -379,9 +379,9 @@ class DataclassTransformer(TypeTransformer[object]):
         if python_type == StructuredDataset and type(python_val) == dict:
             return StructuredDataset(**python_val)
         elif get_origin(python_type) is list:
-            return [self._fix_structured_dataset_type(get_args(python_type)[0], v) for v in python_val]
+            return [self._fix_structured_dataset_type(get_args(python_type)[0], v) for v in python_val]  # type: ignore
         elif get_origin(python_type) is dict:
-            return {
+            return {  # type: ignore
                 self._fix_structured_dataset_type(get_args(python_type)[0], k): self._fix_structured_dataset_type(
                     get_args(python_type)[1], v
                 )
