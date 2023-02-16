@@ -167,11 +167,15 @@ def test_condition_unary_bool():
             result = return_true()
             return conditional("test").if_(result).then(success()).else_().then(failed())
 
+        decompose_unary()
+
     with pytest.raises(AssertionError):
 
         @workflow
         def decompose_none() -> int:
             return conditional("test").if_(None).then(success()).else_().then(failed())
+
+        decompose_none()
 
     with pytest.raises(AssertionError):
 
@@ -179,6 +183,8 @@ def test_condition_unary_bool():
         def decompose_is() -> int:
             result = return_true()
             return conditional("test").if_(result is True).then(success()).else_().then(failed())
+
+        decompose_is()
 
     @workflow
     def decompose() -> int:
