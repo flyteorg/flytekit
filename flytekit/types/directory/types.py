@@ -115,7 +115,12 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     field in the ``BlobType``.
     """
 
-    def __init__(self, path: typing.Union[str, os.PathLike], downloader: typing.Callable = None, remote_directory=None):
+    def __init__(
+        self,
+        path: typing.Union[str, os.PathLike],
+        downloader: typing.Optional[typing.Callable] = None,
+        remote_directory: typing.Optional[str] = None,
+    ):
         """
         :param path: The source path that users are expected to call open() on
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil

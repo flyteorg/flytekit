@@ -111,7 +111,7 @@ class ConditionalSection:
             return self._compute_outputs(n)
         return self._condition
 
-    def if_(self, expr: bool) -> Case:
+    def if_(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
         return self._condition._if(expr)
 
     def compute_output_vars(self) -> typing.Optional[typing.List[str]]:
@@ -360,7 +360,7 @@ def create_branch_node_promise_var(node_id: str, var: str) -> str:
     return f"{node_id}.{var}"
 
 
-def merge_promises(*args: Promise) -> typing.List[Promise]:
+def merge_promises(*args: Optional[Promise]) -> typing.List[Promise]:
     node_vars: typing.Set[typing.Tuple[str, str]] = set()
     merged_promises: typing.List[Promise] = []
     for p in args:
@@ -414,7 +414,7 @@ def transform_to_boolexpr(
 
 
 def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
-    expr, promises = transform_to_boolexpr(c.expr)
+    expr, promises = transform_to_boolexpr(cast(Union[ComparisonExpression, ConjunctionExpression], c.expr))
     n = c.output_promise.ref.node  # type: ignore
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
