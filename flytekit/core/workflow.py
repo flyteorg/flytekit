@@ -230,10 +230,12 @@ class WorkflowBase(object):
 
     @property
     def output_bindings(self) -> List[_literal_models.Binding]:
+        self.compile()
         return self._output_bindings
 
     @property
     def nodes(self) -> List[Node]:
+        self.compile()
         return self._nodes
 
     def __repr__(self):
@@ -257,10 +259,14 @@ class WorkflowBase(object):
         # Get default arguments and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
+        self.compile()
         return flyte_entity_call_handler(self, *args, **input_kwargs)
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
+
+    def compile(self, **kwargs):
+        pass
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
@@ -272,6 +278,7 @@ class WorkflowBase(object):
 
         # The output of this will always be a combination of Python native values and Promises containing Flyte
         # Literals.
+        self.compile()
         function_outputs = self.execute(**kwargs)
 
         # First handle the empty return case.
@@ -612,6 +619,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             python_interface=native_interface,
             docs=docs,
         )
+        self.compiled = False
 
     @property
     def function(self):
@@ -625,6 +633,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
+        if self.compiled:
+            return
+        self.compiled = True
         ctx = FlyteContextManager.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
@@ -759,7 +770,6 @@ def workflow(
             docstring=Docstring(callable_=fn),
             docs=docs,
         )
-        workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
 
