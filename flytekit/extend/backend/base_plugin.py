@@ -21,6 +21,7 @@ class CreateResponse(BaseModel):
 class PollRequest(BaseModel):
     job_id: str
     output_prefix: str
+    prev_state: str
 
 
 class PollResponse(BaseModel):

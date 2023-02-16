@@ -15,7 +15,7 @@ from flytekit.extend.backend.base_plugin import (
     PollResponse,
 )
 from flytekit.extend.backend.utils import get_task_inputs, get_task_template, upload_output_file
-from flytekit.models import literals, task
+from flytekit.models import literals
 from flytekit.models.types import LiteralType, StructuredDatasetType
 
 
@@ -35,21 +35,28 @@ class DummyPlugin(BackendPluginBase):
         return CreateResponse(job_id="fake_id")
 
     async def poll(self, poll_request: PollRequest) -> PollResponse:
-        # ctx = FlyteContextManager.current_context()
-        # output_file_dict = {
-        #     constants.OUTPUT_FILE_NAME: literals.LiteralMap(
-        #         {
-        #             "results": TypeEngine.to_literal(
-        #                 ctx,
-        #                 StructuredDataset(uri="fake_uri"),
-        #                 StructuredDataset,
-        #                 LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
-        #             )
-        #         }
-        #     )
-        # }
-        # upload_output_file(output_file_dict, poll_request.output_prefix)
-        state = SUCCEEDED
+        if poll_request.prev_state == SUCCEEDED:
+            return PollResponse(state=SUCCEEDED)
+
+        x = randint(1, 100)
+        if x > 50:
+            ctx = FlyteContextManager.current_context()
+            output_file_dict = {
+                constants.OUTPUT_FILE_NAME: literals.LiteralMap(
+                    {
+                        "results": TypeEngine.to_literal(
+                            ctx,
+                            StructuredDataset(uri="fake_uri"),
+                            StructuredDataset,
+                            LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
+                        )
+                    }
+                )
+            }
+            upload_output_file(output_file_dict, poll_request.output_prefix)
+            state = SUCCEEDED
+        else:
+            state = RUNNING
 
         return PollResponse(state=state)
 
