@@ -67,15 +67,13 @@ def test_imperative():
     assert len(wf_spec.template.interface.outputs) == 1
 
     # docs_equivalent_start
-    nt = typing.NamedTuple("wf_output", from_n0t1=str)
+    nt = typing.NamedTuple("wf_output", [("from_n0t1", str)])
 
     @workflow
     def my_workflow(in1: str) -> nt:
         x = t1(a=in1)
         t2()
-        return nt(
-            x,
-        )
+        return nt(x)
 
     # docs_equivalent_end
 

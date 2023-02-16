@@ -58,7 +58,7 @@ class DataPersistence(object):
     Base abstract type for all DataPersistence operations. This can be extended using the flytekitplugins architecture
     """
 
-    def __init__(self, name: str, default_prefix: typing.Optional[str] = None, **kwargs):
+    def __init__(self, name: str = "", default_prefix: typing.Optional[str] = None, **kwargs):
         self._name = name
         self._default_prefix = default_prefix
 
@@ -142,7 +142,7 @@ class DataPersistencePlugins(object):
         cls._PLUGINS[protocol] = plugin
 
     @staticmethod
-    def get_protocol(url: str):
+    def get_protocol(url: str) -> str:
         # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
         parts = re.split(r"(\:\:|\://)", url, 1)
         if len(parts) > 1:
@@ -458,7 +458,7 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             )
 
-    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart=False):
+    def put_data(self, local_path: str, remote_path: str, is_multipart=False):
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
         we don't use the true local proxy if the remote path is a file://
