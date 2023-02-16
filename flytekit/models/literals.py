@@ -628,7 +628,7 @@ class StructuredDataset(_common.FlyteIdlEntity):
         return self._uri
 
     @property
-    def metadata(self) -> StructuredDatasetMetadata:
+    def metadata(self) -> Optional[StructuredDatasetMetadata]:
         return self._metadata
 
     def to_flyte_idl(self) -> _literals_pb2.StructuredDataset:

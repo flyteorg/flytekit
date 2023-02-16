@@ -21,10 +21,16 @@ import collections
 import datetime
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
 from flytekit.configuration import SerializationSettings
-from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, FlyteEntities
+from flytekit.core.context_manager import (
+    ExecutionParameters,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+)
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
@@ -156,7 +162,7 @@ class Task(object):
         self,
         task_type: str,
         name: str,
-        interface: Optional[_interface_models.TypedInterface] = None,
+        interface: _interface_models.TypedInterface,
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
@@ -174,7 +180,7 @@ class Task(object):
         FlyteEntities.entities.append(self)
 
     @property
-    def interface(self) -> Optional[_interface_models.TypedInterface]:
+    def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
     @property
@@ -294,8 +300,8 @@ class Task(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
-    def __call__(self, *args, **kwargs):
-        return flyte_entity_call_handler(self, *args, **kwargs)
+    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
@@ -339,8 +345,8 @@ class Task(object):
         """
         Call dispatch_execute, in the context of a local sandbox execution. Not invoked during runtime.
         """
-        es = ctx.execution_state
-        b = es.user_space_params.with_task_sandbox()
+        es = cast(ExecutionState, ctx.execution_state)
+        b = cast(ExecutionParameters, es.user_space_params).with_task_sandbox()
         ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
         return self.dispatch_execute(ctx, input_literal_map)
 
@@ -389,7 +395,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self,
         task_type: str,
         name: str,
-        task_config: T,
+        task_config: Optional[T],
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
         disable_deck: bool = True,
@@ -426,9 +432,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 )
             else:
                 if self._python_interface.docstring.short_description:
-                    self._docs.short_description = self._python_interface.docstring.short_description
+                    cast(
+                        Documentation, self._docs
+                    ).short_description = self._python_interface.docstring.short_description
                 if self._python_interface.docstring.long_description:
-                    self._docs.long_description = Description(value=self._python_interface.docstring.long_description)
+                    cast(Documentation, self._docs).long_description = Description(
+                        value=self._python_interface.docstring.long_description
+                    )
 
     # TODO lets call this interface and the other as flyte_interface?
     @property
@@ -439,25 +449,25 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self._python_interface
 
     @property
-    def task_config(self) -> T:
+    def task_config(self) -> Optional[T]:
         """
         Returns the user-specified task config which is used for plugin-specific handling of the task.
         """
         return self._task_config
 
-    def get_type_for_input_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+    def get_type_for_input_var(self, k: str, v: Any) -> Type[Any]:
         """
         Returns the python type for an input variable by name.
         """
         return self._python_interface.inputs[k]
 
-    def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+    def get_type_for_output_var(self, k: str, v: Any) -> Type[Any]:
         """
         Returns the python type for the specified output variable by name.
         """
         return self._python_interface.outputs[k]
 
-    def get_input_types(self) -> Optional[Dict[str, type]]:
+    def get_input_types(self) -> Dict[str, type]:
         """
         Returns the names and python types as a dictionary for the inputs of this task.
         """
@@ -503,7 +513,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
+            ctx.with_execution_state(
+                cast(ExecutionState, ctx.execution_state).with_params(user_space_params=new_user_params)
+            )
             # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
@@ -596,7 +608,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # After the execute has been successfully completed
             return outputs_literal_map
 
-    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+    def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
         """
         This is the method that will be invoked directly before executing the task method and before all the inputs
         are converted. One particular case where this is useful is if the context is to be modified for the user process
@@ -614,7 +626,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         pass
 
-    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
+    def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
         """
         Post execute is called after the execution has completed, with the user_params and can be used to clean-up,
         or alter the outputs to match the intended tasks outputs. If not overridden, then this function is a No-op

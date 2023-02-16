@@ -17,7 +17,7 @@
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -43,7 +43,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 T = TypeVar("T")
 
 
-class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
+class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
     """
     This class should be used as the base class for all Tasks that do not have a user defined function body, but have
     a platform defined execute method. (Execute needs to be overridden). This base class ensures that the module loader
@@ -72,7 +72,7 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):
         super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
 
-class PythonFunctionTask(PythonAutoContainerTask[T]):
+class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     """
     A Python Function task should be used as the base for all extensions that have a python function. It will
     automatically detect interface of the python function and when serialized on the hosted Flyte platform handles the
@@ -193,10 +193,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             from flytekit.tools.translator import get_serializable
 
             self._create_and_cache_dynamic_workflow()
-            self._wf.compile(**kwargs)
+            cast(PythonFunctionWorkflow, self._wf).compile(**kwargs)
 
             wf = self._wf
-            model_entities = OrderedDict()
+            model_entities: OrderedDict = OrderedDict()
             # See comment on reference entity checking a bit down below in this function.
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
@@ -263,12 +263,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
-            function_outputs = self._wf.execute(**kwargs)
+            function_outputs = cast(PythonFunctionWorkflow, self._wf).execute(**kwargs)
 
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
                 return VoidPromise(self.name)
 
-            if len(self._wf.python_interface.outputs) == 0:
+            if len(cast(PythonFunctionWorkflow, self._wf).python_interface.outputs) == 0:
                 raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
 
             # TODO: This will need to be cleaned up when we revisit top-level tuple support.

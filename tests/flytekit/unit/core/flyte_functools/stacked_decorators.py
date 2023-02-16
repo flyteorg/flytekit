@@ -48,4 +48,4 @@ def my_workflow(x: int) -> int:
 
 
 if __name__ == "__main__":
-    print(my_workflow(x=int(os.getenv("SCRIPT_INPUT"))))
+    print(my_workflow(x=int(os.getenv("SCRIPT_INPUT", 0))))

@@ -28,7 +28,7 @@ TensorboardLogs = FlyteDirectory[tensorboard]
     TensorBoard.
 """
 
-tfrecords_dir = typing.TypeVar("tfrecord")
+tfrecords_dir = typing.TypeVar("tfrecords_dir")
 TFRecordsDirectory = FlyteDirectory[tfrecords_dir]
 """
     This type can be used to denote that the output is a folder that contains tensorflow record files.

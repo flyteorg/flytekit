@@ -17,7 +17,9 @@ class ParquetIO(object):
     def _read(self, chunk: os.PathLike, columns: typing.Optional[typing.List[str]], **kwargs) -> pandas.DataFrame:
         return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
 
-    def read(self, *files: os.PathLike, columns: typing.List[str] = None, **kwargs) -> pandas.DataFrame:
+    def read(
+        self, *files: os.PathLike, columns: typing.Optional[typing.List[str]] = None, **kwargs
+    ) -> pandas.DataFrame:
         frames = [self._read(chunk=f, columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
         if len(frames) == 1:
             return frames[0]
@@ -56,7 +58,7 @@ class ParquetIO(object):
 
 
 class PandasSchemaReader(LocalIOSchemaReader[pandas.DataFrame]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, local_dir: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(local_dir, cols, fmt)
         self._parquet_engine = ParquetIO()
 
@@ -65,7 +67,7 @@ class PandasSchemaReader(LocalIOSchemaReader[pandas.DataFrame]):
 
 
 class PandasSchemaWriter(LocalIOSchemaWriter[pandas.DataFrame]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, local_dir: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(local_dir, cols, fmt)
         self._parquet_engine = ParquetIO()
 
