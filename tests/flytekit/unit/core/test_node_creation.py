@@ -96,6 +96,8 @@ def test_normal_task():
         def empty_wf2():
             create_node(t2, "foo")
 
+        empty_wf2()
+
 
 def test_more_normal_task():
     nt = typing.NamedTuple("OneOutput", t1_str_output=str)
@@ -144,6 +146,8 @@ def test_reserved_keyword():
         def my_wf(a: int) -> str:
             t1_node = create_node(t1, a=a)
             return t1_node.outputs
+
+        my_wf()
 
 
 def test_runs_before():
