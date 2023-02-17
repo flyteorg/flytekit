@@ -1,3 +1,2 @@
-.
 -e file:.#egg=flytekitplugins-mlflow
 grpcio-status<1.49.0

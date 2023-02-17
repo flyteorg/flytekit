@@ -1,4 +1,3 @@
-.
 -e file:.#egg=flytekitplugins-onnxtensorflow
 onnxruntime
 pillow
