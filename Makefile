@@ -62,18 +62,6 @@ unit_test:
 	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
 		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
 
-requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
-requirements-spark2.txt: requirements-spark2.in install-piptools
-	$(PIP_COMPILE) $<
-
-requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
-requirements.txt: requirements.in install-piptools
-	$(PIP_COMPILE) $<
-
-dev-requirements.txt: export CUSTOM_COMPILE_COMMAND := make dev-requirements.txt
-dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
-	$(PIP_COMPILE) $<
-
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
 	$(PIP_COMPILE) $<
