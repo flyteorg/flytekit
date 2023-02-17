@@ -1,3 +1,4 @@
+.
 -e file:.#egg=flytekitplugins-onnxpytorch
 onnxruntime
 pillow

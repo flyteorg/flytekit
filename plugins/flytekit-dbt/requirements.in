@@ -1,3 +1,4 @@
+.
 -e file:.#egg=flytekitplugins-dbt
 # dbt-sqlite and dbt-core should be compatible
 dbt-core==1.2.1
