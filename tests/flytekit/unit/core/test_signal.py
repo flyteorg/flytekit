@@ -8,11 +8,13 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.models.core.identifier import SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.remote.remote import FlyteRemote
 
+
 @pytest.fixture
 def remote():
     flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     flyte_remote._client_initialized = True
     return flyte_remote
+
 
 def test_remote_list_signals(remote):
     ctx = FlyteContextManager.current_context()

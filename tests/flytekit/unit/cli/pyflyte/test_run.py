@@ -42,7 +42,7 @@ def remote():
         flyte_remote._client = mock_client
         return flyte_remote
 
-#@mock.patch(")
+
 def test_pyflyte_run_wf(remote):
     with mock.patch("flytekit.clis.sdk_in_container.helpers.get_and_save_remote_with_click_context"):
         runner = CliRunner()
