@@ -159,6 +159,8 @@ def test_map_tasks_only():
         def wf2(a: typing.List[int]):
             return map_task(wf1)(a=a)
 
+        wf2()
+
     lp = LaunchPlan.create("test", wf1)
 
     with pytest.raises(ValueError):
@@ -166,6 +168,8 @@ def test_map_tasks_only():
         @workflow
         def wf3(a: typing.List[int]):
             return map_task(lp)(a=a)
+
+        wf3()
 
 
 def test_inputs_outputs_length():

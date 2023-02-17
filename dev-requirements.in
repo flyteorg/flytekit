@@ -19,3 +19,6 @@ tensorflow==2.8.1; platform_machine!='arm64' or platform_system!='Darwin'
 # we put this constraint while we do not have per-environment requirements files
 torch<=1.12.1
 scikit-learn
+types-protobuf
+types-croniter
+types-mock
