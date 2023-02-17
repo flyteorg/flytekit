@@ -44,29 +44,36 @@ ENTITY_TYPE_TEXT = {
 }
 
 
-@patch("flytekit.clients.friendly.SynchronousFlyteClient")
-def test_remote_fetch_execution(mock_client_manager):
+@pytest.fixture
+def remote():
+    with patch("flytekit.clients.friendly.SynchronousFlyteClient") as mock_client:
+        flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+        flyte_remote._client_initialized = True
+        flyte_remote._client = mock_client
+        return flyte_remote
+
+
+def test_remote_fetch_execution(remote):
     admin_workflow_execution = Execution(
         id=WorkflowExecutionIdentifier("p1", "d1", "n1"),
         spec=MagicMock(),
         closure=MagicMock(),
     )
-
     mock_client = MagicMock()
     mock_client.get_execution.return_value = admin_workflow_execution
-
-    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     remote._client = mock_client
     flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
 
 
-@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
-def test_underscore_execute_uses_launch_plan_attributes(mock_wf_exec):
+@pytest.fixture
+def mock_wf_exec():
+    return patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
+
+
+def test_underscore_execute_uses_launch_plan_attributes(remote, mock_wf_exec):
     mock_wf_exec.return_value = True
     mock_client = MagicMock()
-
-    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     remote._client = mock_client
 
     def local_assertions(*args, **kwargs):
@@ -93,12 +100,9 @@ def test_underscore_execute_uses_launch_plan_attributes(mock_wf_exec):
     )
 
 
-@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
-def test_underscore_execute_fall_back_remote_attributes(mock_wf_exec):
+def test_underscore_execute_fall_back_remote_attributes(remote, mock_wf_exec):
     mock_wf_exec.return_value = True
     mock_client = MagicMock()
-
-    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     remote._client = mock_client
 
     options = Options(
@@ -124,14 +128,11 @@ def test_underscore_execute_fall_back_remote_attributes(mock_wf_exec):
     )
 
 
-@patch("flytekit.remote.executions.FlyteWorkflowExecution.promote_from_model")
-def test_execute_with_wrong_input_key(mock_wf_exec):
+def test_execute_with_wrong_input_key(remote, mock_wf_exec):
     # mock_url.get.return_value = "localhost"
     # mock_insecure.get.return_value = True
     mock_wf_exec.return_value = True
     mock_client = MagicMock()
-
-    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     remote._client = mock_client
 
     mock_entity = MagicMock()
@@ -162,7 +163,7 @@ def test_passing_of_kwargs(mock_client):
         "root_certificates": 5,
         "certificate_chain": 6,
     }
-    FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args)
+    FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args).client
     assert mock_client.called
     assert mock_client.call_args[1] == additional_args
 
@@ -273,8 +274,8 @@ def get_compiled_workflow_closure():
     return CompiledWorkflowClosure.from_flyte_idl(cwc_pb)
 
 
-@patch("flytekit.remote.remote.SynchronousFlyteClient")
-def test_fetch_lazy(mock_client):
+def test_fetch_lazy(remote):
+    mock_client = remote._client
     mock_client.get_task.return_value = Task(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"), closure=LIST_OF_TASK_CLOSURES[0]
     )
@@ -284,7 +285,6 @@ def test_fetch_lazy(mock_client):
         closure=WorkflowClosure(compiled_workflow=get_compiled_workflow_closure()),
     )
 
-    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     lw = remote.fetch_workflow_lazy(name="wn", version="v")
     assert isinstance(lw, LazyEntity)
     assert lw._getter
@@ -309,8 +309,7 @@ def example_wf(t: datetime, v: int):
     tk(t=t, v=v)
 
 
-@patch("flytekit.remote.remote.SynchronousFlyteClient")
-def test_launch_backfill(mock_client):
+def test_launch_backfill(remote):
     daily_lp = LaunchPlan.get_or_create(
         workflow=example_wf,
         name="daily2",
@@ -336,6 +335,7 @@ def test_launch_backfill(mock_client):
     for k, v in m.items():
         if isinstance(k, PythonTask):
             tasks.append(v)
+    mock_client = remote._client
     mock_client.get_launch_plan.return_value = ser_lp
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily2", "v"),
@@ -343,8 +343,6 @@ def test_launch_backfill(mock_client):
             compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
         ),
     )
-    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
-    remote._client = mock_client
 
     wf = remote.launch_backfill("p", "d", start_date, end_date, "daily2", "v1", dry_run=True)
     assert wf
