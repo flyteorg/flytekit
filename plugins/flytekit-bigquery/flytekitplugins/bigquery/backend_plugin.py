@@ -61,7 +61,8 @@ class BigQueryPlugin(BackendPluginBase):
         client = bigquery.Client()
         job = client.get_job(poll_request.job_id)
         state = convert_to_flyte_state(str(job.state))
-        if state == SUCCEEDED:
+
+        if poll_request.prev_state != SUCCEEDED and state == SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             output_location = f"bq://{job.destination.project}:{job.destination.dataset_id}.{job.destination.table_id}"
             output_file_dict = {
