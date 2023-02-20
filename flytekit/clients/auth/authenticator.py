@@ -91,7 +91,7 @@ class PKCEAuthenticator(Authenticator):
         super().__init__(endpoint, header_key, KeyringStore.retrieve(endpoint))
         self._cfg_store = cfg_store
         self._auth_client = None
-        self._verify = None
+        self._verify = verify
 
     def _initialize_auth_client(self):
         if not self._auth_client:
@@ -168,7 +168,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         header_key: str = None,
     ):
         if not client_id or not client_secret:
-            raise ValueError("Client ID and secret not specified.")
+            raise ValueError("Client ID and Client SECRET both are required.")
         cfg = cfg_store.get_client_config()
         self._token_endpoint = cfg.token_endpoint
         self._scopes = cfg.scopes

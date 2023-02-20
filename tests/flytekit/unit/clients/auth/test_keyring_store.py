@@ -1,7 +1,8 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from keyring.errors import NoKeyringError
 
-from flytekit.clients.auth.keyring import KeyringStore, Credentials
+from flytekit.clients.auth.keyring import Credentials, KeyringStore
 
 
 @patch("keyring.get_password")

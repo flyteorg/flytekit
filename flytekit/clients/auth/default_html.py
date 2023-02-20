@@ -9,4 +9,4 @@ def get_default_success_html(endpoint: str) -> str:
             <img src="https://artwork.lfaidata.foundation/projects/flyte/horizontal/color/flyte-horizontal-color.svg" alt="Flyte login"></img>
     </body>
 </html>
-""" # noqa
+"""  # noqa
