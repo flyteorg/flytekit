@@ -86,6 +86,8 @@ class Credentials(object):
     """
 
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
+    
+    AUDIENCE = ConfigEntry(LegacyConfigEntry(SECTION, "audience"), YamlConfigEntry("admin.audience"))
 
     AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"), YamlConfigEntry("admin.authType"))
     """
