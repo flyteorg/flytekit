@@ -10,7 +10,14 @@ from flytekit.clients.auth.authenticator import (
     CommandAuthenticator,
     PKCEAuthenticator,
 )
-from flytekit.clients.auth_helper import RemoteClientConfigStore, get_authenticator
+from flytekit.clients.auth_helper import (
+    RemoteClientConfigStore,
+    get_authenticator,
+    upgrade_channel_to_authenticated,
+    wrap_exceptions_channel,
+)
+from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
+from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
 
 REDIRECT_URI = "http://localhost:53593/callback"
@@ -123,3 +130,15 @@ def test_get_authenticator_cmd():
     assert authn
     assert isinstance(authn, CommandAuthenticator)
     assert authn._cmd == ["echo"]
+
+
+def test_wrap_exceptions_channel():
+    ch = MagicMock()
+    out_ch = wrap_exceptions_channel(PlatformConfig(), ch)
+    assert isinstance(out_ch._interceptor, RetryExceptionWrapperInterceptor)
+
+
+def test_upgrade_channel_to_auth():
+    ch = MagicMock()
+    out_ch = upgrade_channel_to_authenticated(PlatformConfig(), ch)
+    assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)
