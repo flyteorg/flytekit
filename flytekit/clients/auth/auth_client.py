@@ -102,7 +102,7 @@ class OAuthCallbackHandler(_BaseHTTPServer.BaseHTTPRequestHandler):
             self.handle_login(dict(_urlparse.parse_qsl(url.query)))
             if self.server.remote_metadata.success_html is None:
                 self.wfile.write(bytes(get_default_success_html(self.server.remote_metadata.endpoint), "utf-8"))
-            self.wfile.close()
+            self.wfile.flush()
         else:
             self.send_response(_StatusCodes.NOT_FOUND)
 
