@@ -7,8 +7,9 @@ from pandas.testing import assert_frame_equal
 from typing_extensions import Annotated  # type: ignore
 
 import flytekit.configuration
-from flytekit import StructuredDataset, kwtypes
+from flytekit import FlyteContextManager, StructuredDataset, kwtypes
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
@@ -155,6 +156,8 @@ def test_unexpected_outputs():
         @workflow
         def one_output_wf() -> int:  # type: ignore
             t1(a=3)
+
+        one_output_wf()
 
 
 def test_wf_no_output():
@@ -320,3 +323,18 @@ def test_structured_dataset_wf():
     assert_frame_equal(sd_to_schema_wf(), superset_df)
     assert_frame_equal(schema_to_sd_wf()[0], subset_df)
     assert_frame_equal(schema_to_sd_wf()[1], subset_df)
+
+
+def test_compile_wf_at_compile_time():
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.new_execution_state().with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ):
+
+        @workflow
+        def wf():
+            t4()
+
+        assert ctx.compilation_state is None
