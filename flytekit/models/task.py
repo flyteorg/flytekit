@@ -13,6 +13,7 @@ from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.documentation import Documentation
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -176,6 +177,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         discovery_version,
         deprecated_error_message,
         cache_serializable,
+        pod_template_name,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -195,6 +197,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             receive deprecation warnings.
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
+        :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -204,6 +207,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._discovery_version = discovery_version
         self._deprecated_error_message = deprecated_error_message
         self._cache_serializable = cache_serializable
+        self._pod_template_name = pod_template_name
 
     @property
     def discoverable(self):
@@ -273,6 +277,14 @@ class TaskMetadata(_common.FlyteIdlEntity):
         """
         return self._cache_serializable
 
+    @property
+    def pod_template_name(self):
+        """
+        The name of the existing PodTemplate resource which will be used in this task.
+        :rtype: Text
+        """
+        return self._pod_template_name
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskMetadata
@@ -285,6 +297,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=self.discovery_version,
             deprecated_error_message=self.deprecated_error_message,
             cache_serializable=self.cache_serializable,
+            pod_template_name=self.pod_template_name,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -305,6 +318,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
+            pod_template_name=pb2_object.pod_template_name,
         )
 
 
@@ -480,11 +494,13 @@ class TaskTemplate(_common.FlyteIdlEntity):
 
 
 class TaskSpec(_common.FlyteIdlEntity):
-    def __init__(self, template):
+    def __init__(self, template: TaskTemplate, docs: typing.Optional[Documentation] = None):
         """
         :param TaskTemplate template:
+        :param Documentation docs:
         """
         self._template = template
+        self._docs = docs
 
     @property
     def template(self):
@@ -493,11 +509,20 @@ class TaskSpec(_common.FlyteIdlEntity):
         """
         return self._template
 
+    @property
+    def docs(self):
+        """
+        :rtype: Description entity for the task
+        """
+        return self._docs
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.tasks_pb2.TaskSpec
         """
-        return _admin_task.TaskSpec(template=self.template.to_flyte_idl())
+        return _admin_task.TaskSpec(
+            template=self.template.to_flyte_idl(), description=self.docs.to_flyte_idl() if self.docs else None
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -505,7 +530,10 @@ class TaskSpec(_common.FlyteIdlEntity):
         :param flyteidl.admin.tasks_pb2.TaskSpec pb2_object:
         :rtype: TaskSpec
         """
-        return cls(TaskTemplate.from_flyte_idl(pb2_object.template))
+        return cls(
+            TaskTemplate.from_flyte_idl(pb2_object.template),
+            Documentation.from_flyte_idl(pb2_object.description) if pb2_object.description else None,
+        )
 
 
 class Task(_common.FlyteIdlEntity):

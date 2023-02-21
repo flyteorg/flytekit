@@ -1,13 +1,19 @@
 import json
 from subprocess import CompletedProcess
 
+import grpc
 import mock
 import pytest
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.service import auth_pb2
 from mock import MagicMock, patch
 
-from flytekit.clients.raw import RawSynchronousFlyteClient, get_basic_authorization_header, get_token
+from flytekit.clients.raw import (
+    RawSynchronousFlyteClient,
+    _handle_invalid_create_request,
+    get_basic_authorization_header,
+    get_token,
+)
 from flytekit.configuration import AuthType, PlatformConfig
 from flytekit.configuration.internal import Credentials
 
@@ -34,12 +40,13 @@ def get_admin_stub_mock() -> mock.MagicMock:
     return auth_stub_mock
 
 
+@mock.patch("flytekit.clients.raw.signal_service")
 @mock.patch("flytekit.clients.raw.dataproxy_service")
 @mock.patch("flytekit.clients.raw.auth_service")
 @mock.patch("flytekit.clients.raw._admin_service")
 @mock.patch("flytekit.clients.raw.grpc.insecure_channel")
 @mock.patch("flytekit.clients.raw.grpc.secure_channel")
-def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_dataproxy):
+def test_client_set_token(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_dataproxy, mock_signal):
     mock_secure_channel.return_value = True
     mock_channel.return_value = True
     mock_admin.AdminServiceStub.return_value = True
@@ -67,6 +74,7 @@ def test_refresh_credentials_from_command(mock_call_to_external_process, mock_ad
     mock_set_access_token.assert_called_with(token, client.public_client_config.authorization_metadata_key)
 
 
+@mock.patch("flytekit.clients.raw.signal_service")
 @mock.patch("flytekit.clients.raw.dataproxy_service")
 @mock.patch("flytekit.clients.raw.get_basic_authorization_header")
 @mock.patch("flytekit.clients.raw.get_token")
@@ -82,6 +90,7 @@ def test_refresh_client_credentials_aka_basic(
     mock_get_token,
     mock_get_basic_header,
     mock_dataproxy,
+    mock_signal,
 ):
     mock_secure_channel.return_value = True
     mock_channel.return_value = True
@@ -106,12 +115,13 @@ def test_refresh_client_credentials_aka_basic(
     assert client._metadata[0][0] == "authorization"
 
 
+@mock.patch("flytekit.clients.raw.signal_service")
 @mock.patch("flytekit.clients.raw.dataproxy_service")
 @mock.patch("flytekit.clients.raw.auth_service")
 @mock.patch("flytekit.clients.raw._admin_service")
 @mock.patch("flytekit.clients.raw.grpc.insecure_channel")
 @mock.patch("flytekit.clients.raw.grpc.secure_channel")
-def test_raises(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_dataproxy):
+def test_raises(mock_secure_channel, mock_channel, mock_admin, mock_admin_auth, mock_dataproxy, mock_signal):
     mock_secure_channel.return_value = True
     mock_channel.return_value = True
     mock_admin.AdminServiceStub.return_value = True
@@ -211,3 +221,24 @@ def test_refresh_from_environment_variable(mocked_method, monkeypatch: pytest.Mo
     cc = RawSynchronousFlyteClient(PlatformConfig(auth_mode=None).auto(None))
     cc.refresh_credentials()
     assert mocked_method.called
+
+
+def test__handle_invalid_create_request_decorator_happy():
+    client = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.CLIENT_CREDENTIALS))
+    mocked_method = client._stub.CreateWorkflow = mock.Mock()
+    _handle_invalid_create_request(client.create_workflow("/flyteidl.service.AdminService/CreateWorkflow"))
+    mocked_method.assert_called_once()
+
+
+@patch("flytekit.clients.raw.cli_logger")
+@patch("flytekit.clients.raw._MessageToJson")
+def test__handle_invalid_create_request_decorator_raises(mock_to_JSON, mock_logger):
+    mock_to_JSON(return_value="test")
+    err = grpc.RpcError()
+    err.details = "There is already a workflow with different structure."
+    err.code = lambda: grpc.StatusCode.INVALID_ARGUMENT
+    client = RawSynchronousFlyteClient(PlatformConfig(auth_mode=AuthType.CLIENT_CREDENTIALS))
+    client._stub.CreateWorkflow = mock.Mock(side_effect=err)
+    with pytest.raises(grpc.RpcError):
+        _handle_invalid_create_request(client.create_workflow("/flyteidl.service.AdminService/CreateWorkflow"))
+    mock_logger.error.assert_called_with("There is already a workflow with different structure.")

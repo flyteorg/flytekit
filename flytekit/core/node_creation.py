@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import collections
-from typing import TYPE_CHECKING, Type, Union
+from typing import TYPE_CHECKING, Union
 
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
@@ -21,7 +20,7 @@ if TYPE_CHECKING:
 
 def create_node(
     entity: Union[PythonTask, LaunchPlan, WorkflowBase, RemoteEntity], *args, **kwargs
-) -> Union[Node, VoidPromise, Type[collections.namedtuple]]:
+) -> Union[Node, VoidPromise]:
     """
     This is the function you want to call if you need to specify dependencies between tasks that don't consume and/or
     don't produce outputs. For example, if you have t1() and t2(), both of which do not take in nor produce any
@@ -164,18 +163,18 @@ def create_node(
         # The reason we return it if it's a tuple is to handle the case where the task returns a typing.NamedTuple.
         # In that case, it's already a tuple and we don't need to further tupletize.
         if isinstance(results, VoidPromise) or isinstance(results, tuple):
-            return results
+            return results  # type: ignore
 
-        output_names = entity.python_interface.output_names
+        output_names = entity.python_interface.output_names  # type: ignore
 
         if not output_names:
             raise Exception(f"Non-VoidPromise received {results} but interface for {entity.name} doesn't have outputs")
 
         if len(output_names) == 1:
             # See explanation above for why we still tupletize a single element.
-            return entity.python_interface.output_tuple(results)
+            return entity.python_interface.output_tuple(results)  # type: ignore
 
-        return entity.python_interface.output_tuple(*results)
+        return entity.python_interface.output_tuple(*results)  # type: ignore
 
     else:
         raise Exception(f"Cannot use explicit run to call Flyte entities {entity.name}")

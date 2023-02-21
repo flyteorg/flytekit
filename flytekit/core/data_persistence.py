@@ -25,19 +25,23 @@ simple implementation that ships with the core.
 import os
 import pathlib
 import re
+import shutil
+import sys
 import tempfile
 import typing
 from abc import abstractmethod
-from distutils import dir_util
 from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
 
 from flytekit.configuration import DataConfig
 from flytekit.core.utils import PerformanceTimer
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
+
+CURRENT_PYTHON = sys.version_info[:2]
+THREE_SEVEN = (3, 7)
 
 
 class UnsupportedPersistenceOp(Exception):
@@ -54,7 +58,7 @@ class DataPersistence(object):
     Base abstract type for all DataPersistence operations. This can be extended using the flytekitplugins architecture
     """
 
-    def __init__(self, name: str, default_prefix: typing.Optional[str] = None, **kwargs):
+    def __init__(self, name: str = "", default_prefix: typing.Optional[str] = None, **kwargs):
         self._name = name
         self._default_prefix = default_prefix
 
@@ -138,7 +142,7 @@ class DataPersistencePlugins(object):
         cls._PLUGINS[protocol] = plugin
 
     @staticmethod
-    def get_protocol(url: str):
+    def get_protocol(url: str) -> str:
         # copy from fsspec https://github.com/fsspec/filesystem_spec/blob/fe09da6942ad043622212927df7442c104fe7932/fsspec/utils.py#L387-L391
         parts = re.split(r"(\:\:|\://)", url, 1)
         if len(parts) > 1:
@@ -221,17 +225,34 @@ class DiskPersistence(DataPersistence):
     def exists(self, path: str):
         return os.path.exists(self.strip_file_header(path))
 
+    def copy_tree(self, from_path: str, to_path: str):
+        # TODO: Remove this code after support for 3.7 is dropped and inline this function back
+        #    3.7 doesn't have dirs_exist_ok
+        if CURRENT_PYTHON == THREE_SEVEN:
+            tp = pathlib.Path(self.strip_file_header(to_path))
+            if tp.exists():
+                if not tp.is_dir():
+                    raise FlyteValueException(tp, f"Target {tp} exists but is not a dir")
+                files = os.listdir(tp)
+                if len(files) != 0:
+                    logger.debug(f"Deleting existing target dir {tp} with files {files}")
+                shutil.rmtree(tp)
+            shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+        else:
+            # copytree will overwrite existing files in the to_path
+            shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
+
     def get(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
-                dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+                self.copy_tree(from_path, to_path)
             else:
                 copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         if from_path != to_path:
             if recursive:
-                dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
+                self.copy_tree(from_path, to_path)
             else:
                 # Emulate s3's flat storage by automatically creating directory path
                 self._make_local_path(os.path.dirname(self.strip_file_header(to_path)))
@@ -437,7 +458,7 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             )
 
-    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart=False):
+    def put_data(self, local_path: str, remote_path: str, is_multipart=False):
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
         we don't use the true local proxy if the remote path is a file://

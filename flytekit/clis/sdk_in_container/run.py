@@ -105,12 +105,32 @@ class FileParamType(click.ParamType):
         raise click.BadParameter(f"parameter should be a valid file path, {value}")
 
 
-class DurationParamType(click.ParamType):
-    name = "timedelta"
+class DateTimeType(click.DateTime):
+
+    _NOW_FMT = "now"
+    _ADDITONAL_FORMATS = [_NOW_FMT]
+
+    def __init__(self):
+        super().__init__()
+        self.formats.extend(self._ADDITONAL_FORMATS)
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if value in self._ADDITONAL_FORMATS:
+            if value == self._NOW_FMT:
+                return datetime.datetime.now()
+        return super().convert(value, param, ctx)
+
+
+class DurationParamType(click.ParamType):
+    name = "[1:24 | :22 | 1 minute | 10 days | ...]"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        if value is None:
+            raise click.BadParameter("None value cannot be converted to a Duration type.")
         return datetime.timedelta(seconds=parse(value))
 
 
@@ -303,6 +323,9 @@ class FlyteLiteralConverter(object):
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
                 if self._python_type == dict:
+                    if type(value) != str:
+                        # The type of default value is dict, so we have to convert it to json string
+                        value = json.dumps(value)
                     o = json.loads(value)
                 elif type(value) != self._python_type:
                     o = cast(DataClassJsonMixin, self._python_type).from_json(value)
@@ -644,7 +667,8 @@ class RunCommand(click.MultiCommand):
         return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
 
     def get_command(self, ctx, filename):
-        ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
+        if ctx.obj:
+            ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
         return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
 
 

@@ -10,11 +10,13 @@ from typing import Optional
 import grpc
 import requests as _requests
 from flyteidl.admin.project_pb2 import ProjectListRequest
+from flyteidl.admin.signal_pb2 import SignalList, SignalListRequest, SignalSetRequest, SignalSetResponse
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import auth_pb2
 from flyteidl.service import auth_pb2_grpc as auth_service
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
+from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 from google.protobuf.json_format import MessageToJson as _MessageToJson
 
@@ -77,8 +79,9 @@ def _handle_invalid_create_request(fn):
             if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
                 cli_logger.error("Error creating Flyte entity because of invalid arguments. Create request: ")
                 cli_logger.error(_MessageToJson(create_request))
-
-            # In any case, re-raise since we're not truly handling the error here
+                cli_logger.error("Details returned from the flyte admin: ")
+                cli_logger.error(e.details)
+            # Re-raise since we're not  handling the error here and add the create_request details
             raise e
 
     return handler
@@ -144,6 +147,7 @@ class RawSynchronousFlyteClient(object):
             )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._auth_stub = auth_service.AuthMetadataServiceStub(self._channel)
+        self._signal = signal_service.SignalServiceStub(self._channel)
         try:
             resp = self._auth_stub.GetPublicClientConfig(auth_pb2.PublicClientAuthConfigRequest())
             self._public_client_config = resp
@@ -258,7 +262,6 @@ class RawSynchronousFlyteClient(object):
         :param self: RawSynchronousFlyteClient
         :return:
         """
-
         command = self._cfg.command
         if not command:
             raise FlyteAuthenticationException("No command specified in configuration for command authentication")
@@ -405,6 +408,20 @@ class RawSynchronousFlyteClient(object):
         :raises: TODO
         """
         return self._stub.GetTask(get_object_request, metadata=self._metadata)
+
+    @_handle_rpc_error(retry=True)
+    def set_signal(self, signal_set_request: SignalSetRequest) -> SignalSetResponse:
+        """
+        This sets a signal
+        """
+        return self._signal.SetSignal(signal_set_request, metadata=self._metadata)
+
+    @_handle_rpc_error(retry=True)
+    def list_signals(self, signal_list_request: SignalListRequest) -> SignalList:
+        """
+        This lists signals
+        """
+        return self._signal.ListSignals(signal_list_request, metadata=self._metadata)
 
     ####################################################################################################################
     #

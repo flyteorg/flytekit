@@ -175,6 +175,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         raw_output_data_config=None,
         max_parallelism=None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        overwrite_cache: bool = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -200,6 +201,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self.overwrite_cache = overwrite_cache
 
     @property
     def launch_plan(self):
@@ -283,6 +285,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             else None,
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            overwrite_cache=self.overwrite_cache,
         )
 
     @classmethod
@@ -306,6 +309,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             security_context=security.SecurityContext.from_flyte_idl(p.security_context)
             if p.security_context
             else None,
+            overwrite_cache=p.overwrite_cache,
         )
 
 
@@ -441,6 +445,8 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         error: typing.Optional[flytekit.models.core.execution.ExecutionError] = None,
         outputs: typing.Optional[LiteralMapBlob] = None,
         abort_metadata: typing.Optional[AbortMetadata] = None,
+        created_at: typing.Optional[datetime.datetime] = None,
+        updated_at: typing.Optional[datetime.datetime] = None,
     ):
         """
         :param phase: From the flytekit.models.core.execution.WorkflowExecutionPhase enum
@@ -456,6 +462,8 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         self._error = error
         self._outputs = outputs
         self._abort_metadata = abort_metadata
+        self._created_at = created_at
+        self._updated_at = updated_at
 
     @property
     def error(self) -> flytekit.models.core.execution.ExecutionError:
@@ -477,6 +485,14 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         return self._duration
 
     @property
+    def created_at(self) -> typing.Optional[datetime.datetime]:
+        return self._created_at
+
+    @property
+    def updated_at(self) -> typing.Optional[datetime.datetime]:
+        return self._updated_at
+
+    @property
     def outputs(self) -> LiteralMapBlob:
         return self._outputs
 
@@ -496,6 +512,10 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         )
         obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
+        if self.created_at:
+            obj.created_at.FromDatetime(self.created_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        if self.updated_at:
+            obj.updated_at.FromDatetime(self.updated_at.astimezone(_pytz.UTC).replace(tzinfo=None))
         return obj
 
     @classmethod
@@ -520,6 +540,12 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
             duration=pb2_object.duration.ToTimedelta(),
             abort_metadata=abort_metadata,
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_pytz.UTC)
+            if pb2_object.HasField("created_at")
+            else None,
+            updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_pytz.UTC)
+            if pb2_object.HasField("updated_at")
+            else None,
         )
 
 
