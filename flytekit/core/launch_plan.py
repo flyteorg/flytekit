@@ -8,7 +8,6 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Fly
 from flytekit.core.interface import Interface, transform_function_to_interface, transform_inputs_to_parameters
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
-from flytekit.core.type_engine import TypeEngine
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -184,7 +183,7 @@ class LaunchPlan(object):
     @classmethod
     def get_or_create(
         cls,
-        workflow: typing.Union[_annotated_workflow.WorkflowBase, "FlyteWorkflow"],
+        workflow: typing.Union[_annotated_workflow.WorkflowBase, "FlyteWorkflow"],  # type: ignore
         name: Optional[str] = None,
         default_inputs: Optional[Dict[str, Any]] = None,
         fixed_inputs: Optional[Dict[str, Any]] = None,
