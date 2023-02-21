@@ -28,6 +28,7 @@ from flytekit.core import constants, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.interface import Interface
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
@@ -1353,6 +1354,12 @@ class FlyteRemote(object):
                 project=project,
                 domain=domain,
             )
+
+        if entity.python_interface is None:
+            entity.workflow._python_interface = Interface(
+                inputs={k: TypeEngine.guess_python_type(v.type) for k, v in entity.interface.inputs.items()},
+            )
+
         return self.execute_remote_task_lp(
             flyte_launchplan,
             inputs,
