@@ -298,17 +298,18 @@ class PlatformConfig(object):
     This object contains the settings to talk to a Flyte backend (the DNS location of your Admin server basically).
 
     :param endpoint: DNS for Flyte backend
-    :param insecure: Whether or not to use SSL
-    :param insecure_skip_verify: Wether to skip SSL certificate verification
-    :param console_endpoint: endpoint for console if different than Flyte backend
-    :param command: This command is executed to return a token using an external process.
+    :param insecure: Whether to use SSL
+    :param insecure_skip_verify: Whether to skip SSL certificate verification
+    :param console_endpoint: endpoint for console if different from Flyte backend
+    :param command: This command is executed to return a token using an external process
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
     :param client_credentials_secret: Used for service auth, which is automatically called during pyflyte. This will
       allow the Flyte engine to read the password directly from the environment variable. Note that this is
-      less secure! Please only use this if mounting the secret as a file is impossible.
-    :param scopes: List of scopes to request. This is only applicable to the client credentials flow.
-    :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
+      less secure! Please only use this if mounting the secret as a file is impossible
+    :param scopes: List of scopes to request. This is only applicable to the client credentials flow
+    :param auth_mode: The OAuth mode to use. Defaults to pkce flow
+    :param ca_cert_file_path: [optional] str Root Cert to be loaded and used to verify admin
     """
 
     endpoint: str = "localhost:30080"

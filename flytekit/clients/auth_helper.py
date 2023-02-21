@@ -16,6 +16,7 @@ from flytekit.clients.auth.authenticator import (
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
+from OpenSSL import crypto
 
 
 class RemoteClientConfigStore(ClientConfigStore):
@@ -86,7 +87,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
 def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
     Given a grpc.Channel, preferrably a secure channel, it returns a composed channel that uses Interceptor to
-    perform a Oauth2.0 Auth flow
+    perform an Oauth2.0 Auth flow
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel Precreated channel
     :return: grpc.Channel. New composite channel
@@ -105,6 +106,28 @@ def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:
         else grpc.secure_channel(cfg.endpoint, grpc.ssl_channel_credentials())
     )
     return upgrade_channel_to_authenticated(cfg, channel)
+
+
+def load_cert(cert_file: str) -> crypto.X509:
+    """
+    Given a cert-file loads the PEM certificate and returns
+    """
+    st_cert = open(cert_file, 'rt').read()
+    return crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
+
+
+def bootstrap_creds_from_server(endpoint: str) -> grpc.ChannelCredentials:
+    """
+    Retrieves the SSL cert from the remote and uses that. should be used only if insecure-skip-verify
+    """
+    # Get port from endpoint or use 443
+    endpoint_parts = endpoint.rsplit(":", 1)
+    if len(endpoint_parts) == 2 and endpoint_parts[1].isdigit():
+        server_address = (endpoint_parts[0], endpoint_parts[1])
+    else:
+        server_address = (endpoint, "443")
+    cert = ssl.get_server_certificate(server_address)
+    return grpc.ssl_channel_credentials(str.encode(cert))
 
 
 def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
@@ -137,14 +160,9 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     credentials = None
     if "credentials" not in kwargs:
         if cfg.insecure_skip_verify:
-            # Get port from endpoint or use 443
-            endpoint_parts = cfg.endpoint.rsplit(":", 1)
-            if len(endpoint_parts) == 2 and endpoint_parts[1].isdigit():
-                server_address = (endpoint_parts[0], endpoint_parts[1])
-            else:
-                server_address = (cfg.endpoint, "443")
-            cert = ssl.get_server_certificate(server_address)
-            credentials = grpc.ssl_channel_credentials(str.encode(cert))
+            credentials = bootstrap_creds_from_server(cfg.endpoint)
+        elif cfg.ca_cert_file_path:
+            credentials = grpc.ssl_channel_credentials(load_cert(cfg.ca_cert_file_path))
         else:
             credentials = grpc.ssl_channel_credentials(
                 root_certificates=kwargs.get("root_certificates", None),
