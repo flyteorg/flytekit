@@ -122,11 +122,6 @@ class LaunchPlan(object):
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
         fixed_inputs = fixed_inputs or {}
-        if workflow.python_interface is None:
-            workflow._python_interface = Interface(
-                inputs={k: TypeEngine.guess_python_type(v.type) for k, v in workflow.interface.inputs.items()},
-                outputs={k: TypeEngine.guess_python_type(v.type) for k, v in workflow.interface.outputs.items()},
-            )
         # Default inputs come from two places, the original signature of the workflow function, and the default_inputs
         # argument to this function. We'll take the latter as having higher precedence.
         wf_signature_parameters = transform_inputs_to_parameters(ctx, workflow.python_interface)

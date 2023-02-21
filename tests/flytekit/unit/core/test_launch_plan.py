@@ -104,10 +104,6 @@ def test_lp():
     lp_with_defaults = launch_plan.LaunchPlan.create("get_or_create2", wf, default_inputs={"a": 3})
     assert lp_with_defaults.parameters.parameters["a"].default.scalar.primitive.integer == 3
 
-    wf._python_interface = None
-    launch_plan.LaunchPlan.create("get_or_create3", wf, default_inputs={"a": 3})
-    assert wf.python_interface is not None
-
 
 def test_lp_each_parameter():
     @task
