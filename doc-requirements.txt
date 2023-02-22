@@ -448,7 +448,6 @@ jupyter-server-terminals==0.4.4
 jupyterlab-pygments==0.2.2
     # via nbconvert
 jupyterlab-widgets==3.0.5
->>>>>>> 55b6602a (Add support MLFlow plugin (#1274))
     # via ipywidgets
 keras==2.9.0
     # via tensorflow
