@@ -35,26 +35,26 @@ class Resources(object):
 
 @dataclass
 class ResourceSpec(object):
-    requests: Resources
-    limits: Resources
+    requests: Optional[Resources] = None
+    limits: Optional[Resources] = None
 
 
-_ResourceName = task_models.Resources.ResourceName
+_ResouceName = task_models.Resources.ResourceName
 _ResourceEntry = task_models.Resources.ResourceEntry
 
 
-def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:  # type: ignore
+def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:
     resource_entries = []
     if resources.cpu is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=resources.cpu))
+        resource_entries.append(_ResourceEntry(name=_ResouceName.CPU, value=resources.cpu))
     if resources.mem is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.MEMORY, value=resources.mem))
+        resource_entries.append(_ResourceEntry(name=_ResouceName.MEMORY, value=resources.mem))
     if resources.gpu is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=resources.gpu))
+        resource_entries.append(_ResourceEntry(name=_ResouceName.GPU, value=resources.gpu))
     if resources.storage is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.STORAGE, value=resources.storage))
+        resource_entries.append(_ResourceEntry(name=_ResouceName.STORAGE, value=resources.storage))
     if resources.ephemeral_storage is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=resources.ephemeral_storage))
+        resource_entries.append(_ResourceEntry(name=_ResouceName.EPHEMERAL_STORAGE, value=resources.ephemeral_storage))
     return resource_entries
 
 

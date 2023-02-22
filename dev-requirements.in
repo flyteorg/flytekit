@@ -18,6 +18,3 @@ grpcio-status<1.49.0
 # we put this constraint while we do not have per-environment requirements files
 torch<=1.12.1
 scikit-learn
-types-protobuf
-types-croniter
-types-mock

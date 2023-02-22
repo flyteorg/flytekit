@@ -219,7 +219,7 @@ def test_dyn_signal_no_approve():
 
 
 def test_subwf():
-    nt = typing.NamedTuple("Multi", [("named1", int), ("named2", int)])
+    nt = typing.NamedTuple("Multi", named1=int, named2=int)
 
     @task
     def nt1(a: int) -> nt:

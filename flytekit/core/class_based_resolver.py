@@ -19,7 +19,7 @@ class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "ClassStorageTaskResolver"
 
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type:ignore
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
         return self.mapping
 
     def add(self, t: PythonAutoContainerTask):
@@ -33,7 +33,7 @@ class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
         idx = int(loader_args[0])
         return self.mapping[idx]
 
-    def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:  # type: ignore
+    def loader_args(self, settings: SerializationSettings, t: PythonAutoContainerTask) -> List[str]:
         """
         This is responsible for turning an instance of a task into args that the load_task function can reconstitute.
         """

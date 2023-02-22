@@ -10,13 +10,7 @@ from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
-from flytekit.core.context_manager import (
-    BranchEvalMode,
-    ExecutionParameters,
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-)
+from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
@@ -87,7 +81,7 @@ def translate_inputs_to_literals(
             if lt.collection_type is None:
                 raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
             try:
-                sub_type: type = ListTransformer.get_sub_type(python_type)
+                sub_type = ListTransformer.get_sub_type(python_type)
             except ValueError:
                 if len(input_val) == 0:
                     raise
@@ -354,7 +348,7 @@ class Promise(object):
         return hash(id(self))
 
     def __rshift__(self, other: Union[Promise, VoidPromise]):
-        if not self.is_ready and other.ref:
+        if not self.is_ready:
             self.ref.node.runs_before(other.ref.node)
         return other
 
@@ -414,10 +408,10 @@ class Promise(object):
     def is_true(self):
         return self.is_(True)
 
-    def __eq__(self, other) -> ComparisonExpression:  # type: ignore
+    def __eq__(self, other) -> ComparisonExpression:
         return ComparisonExpression(self, ComparisonOps.EQ, other)
 
-    def __ne__(self, other) -> ComparisonExpression:  # type: ignore
+    def __ne__(self, other) -> ComparisonExpression:
         return ComparisonExpression(self, ComparisonOps.NE, other)
 
     def __gt__(self, other) -> ComparisonExpression:
@@ -461,7 +455,7 @@ class Promise(object):
 
 def create_native_named_tuple(
     ctx: FlyteContext,
-    promises: Union[Tuple[Promise], Promise, VoidPromise, None],
+    promises: Optional[Union[Promise, List[Promise]]],
     entity_interface: Interface,
 ) -> Optional[Tuple]:
     """
@@ -482,7 +476,7 @@ def create_native_named_tuple(
         except Exception as e:
             raise AssertionError(f"Failed to convert value of output {k}, expected type {v}.") from e
 
-    if len(cast(Tuple[Promise], promises)) == 0:
+    if len(promises) == 0:
         return None
 
     named_tuple_name = "DefaultNamedTupleOutput"
@@ -490,7 +484,7 @@ def create_native_named_tuple(
         named_tuple_name = entity_interface.output_tuple_name
 
     outputs = {}
-    for p in cast(Tuple[Promise], promises):
+    for p in promises:
         if not isinstance(p, Promise):
             raise AssertionError(
                 "Workflow outputs can only be promises that are returned by tasks. Found a value of"
@@ -503,8 +497,8 @@ def create_native_named_tuple(
             raise AssertionError(f"Failed to convert value of output {p.var}, expected type {t}.") from e
 
     # Should this class be part of the Interface?
-    nt = collections.namedtuple(named_tuple_name, list(outputs.keys()))  # type: ignore
-    return nt(**outputs)
+    t = collections.namedtuple(named_tuple_name, list(outputs.keys()))
+    return t(**outputs)
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
@@ -548,7 +542,7 @@ def create_task_output(
         named_tuple_name = entity_interface.output_tuple_name
 
     # Should this class be part of the Interface?
-    class Output(collections.namedtuple(named_tuple_name, variables)):  # type: ignore
+    class Output(collections.namedtuple(named_tuple_name, variables)):
         def with_overrides(self, *args, **kwargs):
             val = self.__getattribute__(self._fields[0])
             val.with_overrides(*args, **kwargs)
@@ -607,7 +601,7 @@ def binding_data_from_python_std(
         if expected_literal_type.collection_type is None:
             raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
 
-        sub_type: Optional[type] = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
+        sub_type = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
         collection = _literals_models.BindingDataCollection(
             bindings=[
                 binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
@@ -689,7 +683,7 @@ class VoidPromise(object):
         return self._ref
 
     def __rshift__(self, other: Union[Promise, VoidPromise]):
-        if self.ref and other.ref:
+        if self.ref:
             self.ref.node.runs_before(other.ref.node)
         return other
 
@@ -1025,13 +1019,11 @@ def create_and_link_node(
 
 
 class LocallyExecutable(Protocol):
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         ...
 
 
-def flyte_entity_call_handler(
-    entity: SupportsNodeCreation, *args, **kwargs
-) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+def flyte_entity_call_handler(entity: SupportsNodeCreation, *args, **kwargs):
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
@@ -1083,7 +1075,7 @@ def flyte_entity_call_handler(
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
             )
         ) as child_ctx:
-            cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
+            cast(FlyteContext, child_ctx).user_space_params._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
 
         expected_outputs = len(cast(SupportsNodeCreation, entity).python_interface.outputs)
@@ -1093,9 +1085,7 @@ def flyte_entity_call_handler(
             else:
                 raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
 
-        if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
-            result is not None and expected_outputs == 1
-        ):
+        if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
             return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
 
         raise ValueError(

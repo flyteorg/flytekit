@@ -3,7 +3,8 @@ from __future__ import annotations
 import importlib
 import re
 from abc import ABC
-from typing import Any, Callable, Dict, List, Optional, TypeVar, cast
+from types import ModuleType
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
 from kubernetes.client import ApiClient
@@ -119,7 +120,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self.pod_template = pod_template
 
     @property
-    def task_resolver(self) -> TaskResolverMixin:
+    def task_resolver(self) -> Optional[TaskResolverMixin]:
         return self._task_resolver
 
     @property
@@ -207,23 +208,23 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         )
 
     def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
-        containers = cast(PodTemplate, self.pod_template).pod_spec.containers
+        containers = self.pod_template.pod_spec.containers
         primary_exists = False
 
         for container in containers:
-            if container.name == cast(PodTemplate, self.pod_template).primary_container_name:
+            if container.name == self.pod_template.primary_container_name:
                 primary_exists = True
                 break
 
         if not primary_exists:
             # insert a placeholder primary container if it is not defined in the pod spec.
-            containers.append(V1Container(name=cast(PodTemplate, self.pod_template).primary_container_name))
+            containers.append(V1Container(name=self.pod_template.primary_container_name))
         final_containers = []
         for container in containers:
             # In the case of the primary container, we overwrite specific container attributes
             # with the default values used in the regular Python task.
             # The attributes include: image, command, args, resource, and env (env is unioned)
-            if container.name == cast(PodTemplate, self.pod_template).primary_container_name:
+            if container.name == self.pod_template.primary_container_name:
                 sdk_default_container = self._get_container(settings)
                 container.image = sdk_default_container.image
                 # clear existing commands
@@ -243,9 +244,9 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                     container.env or []
                 )
             final_containers.append(container)
-        cast(PodTemplate, self.pod_template).pod_spec.containers = final_containers
+        self.pod_template.pod_spec.containers = final_containers
 
-        return ApiClient().sanitize_for_serialization(cast(PodTemplate, self.pod_template).pod_spec)
+        return ApiClient().sanitize_for_serialization(self.pod_template.pod_spec)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
         if self.pod_template is None:
@@ -273,14 +274,14 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "DefaultTaskResolver"
 
-    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
+    def load_task(self, loader_args: List[Union[T, ModuleType]]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 
-        task_module = importlib.import_module(name=task_module)  # type: ignore
+        task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)
         return task_def
 
-    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
         from flytekit.core.python_function_task import PythonFunctionTask
 
         if isinstance(task, PythonFunctionTask):
@@ -290,7 +291,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
             _, m, t, _ = extract_task_module(task)
             return ["task-module", m, "task-name", t]
 
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
         raise Exception("should not be needed")
 
 

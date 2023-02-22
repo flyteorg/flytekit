@@ -51,7 +51,7 @@ def _dnsify(value: str) -> str:
 def _get_container_definition(
     image: str,
     command: List[str],
-    args: Optional[List[str]] = None,
+    args: List[str],
     data_loading_config: Optional[task_models.DataLoadingConfig] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
