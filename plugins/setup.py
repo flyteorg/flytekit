@@ -81,5 +81,5 @@ setup(
     classifiers=["Private :: Do Not Upload to pypi server"],
     install_requires=[],
     cmdclass={"install": InstallCmd, "develop": DevelopCmd},
-    package_data={'flytekit': ['py.typed']},
+    package_data={"flytekit": ["py.typed"]},
 )
