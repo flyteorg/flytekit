@@ -4,6 +4,7 @@ import ssl
 import grpc
 from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
+from OpenSSL import crypto
 
 from flytekit.clients.auth.authenticator import (
     Authenticator,
@@ -16,7 +17,6 @@ from flytekit.clients.auth.authenticator import (
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
-from OpenSSL import crypto
 
 
 class RemoteClientConfigStore(ClientConfigStore):
@@ -104,7 +104,7 @@ def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:
         grpc.insecure_channel(cfg.endpoint)
         if cfg.insecure
         else grpc.secure_channel(cfg.endpoint, grpc.ssl_channel_credentials())
-    )
+    )  # noqa
     return upgrade_channel_to_authenticated(cfg, channel)
 
 
@@ -112,7 +112,7 @@ def load_cert(cert_file: str) -> crypto.X509:
     """
     Given a cert-file loads the PEM certificate and returns
     """
-    st_cert = open(cert_file, 'rt').read()
+    st_cert = open(cert_file, "rt").read()
     return crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
 
 
@@ -126,7 +126,7 @@ def bootstrap_creds_from_server(endpoint: str) -> grpc.ChannelCredentials:
         server_address = (endpoint_parts[0], endpoint_parts[1])
     else:
         server_address = (endpoint, "443")
-    cert = ssl.get_server_certificate(server_address)
+    cert = ssl.get_server_certificate(server_address)  # noqa
     return grpc.ssl_channel_credentials(str.encode(cert))
 
 
@@ -182,13 +182,12 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
 def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
     Wraps the input channel with RetryExceptionWrapperInterceptor. This wrapper will cover all
-    exceptions and raise Exception from the Family flytekit.exceptions.
+    exceptions and raise Exception from the Family flytekit.exceptions
 
-    .. note:: This channel should be usually the outermost channel. This channel will raise an exception of type
-    FlyteException
+    .. note:: This channel should be usually the outermost channel. This channel will raise a FlyteException
 
     :param cfg: PlatformConfig
-    :param
+    :param in_channel: grpc.Channel
     :return: grpc.Channel
     """
     return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))

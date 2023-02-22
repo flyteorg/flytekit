@@ -1,3 +1,4 @@
+import os.path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +14,7 @@ from flytekit.clients.auth.authenticator import (
 from flytekit.clients.auth_helper import (
     RemoteClientConfigStore,
     get_authenticator,
+    load_cert,
     upgrade_channel_to_authenticated,
     wrap_exceptions_channel,
 )
@@ -135,10 +137,17 @@ def test_get_authenticator_cmd():
 def test_wrap_exceptions_channel():
     ch = MagicMock()
     out_ch = wrap_exceptions_channel(PlatformConfig(), ch)
-    assert isinstance(out_ch._interceptor, RetryExceptionWrapperInterceptor)
+    assert isinstance(out_ch._interceptor, RetryExceptionWrapperInterceptor)  # noqa
 
 
 def test_upgrade_channel_to_auth():
     ch = MagicMock()
     out_ch = upgrade_channel_to_authenticated(PlatformConfig(), ch)
-    assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)
+    assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)  # noqa
+
+
+def test_load_cert():
+    cert_file = os.path.join(os.path.dirname(__file__), "testdata", "rootCACert.pem")
+    f = load_cert(cert_file)
+    assert f
+    print(f)
