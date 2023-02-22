@@ -7,8 +7,9 @@ from pandas.testing import assert_frame_equal
 from typing_extensions import Annotated  # type: ignore
 
 import flytekit.configuration
-from flytekit import StructuredDataset, kwtypes
+from flytekit import FlyteContextManager, StructuredDataset, kwtypes
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
@@ -44,12 +45,12 @@ def test_default_metadata_values():
 
 def test_workflow_values():
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", [("t1_int_output", int), ("c", str)]):
         a = a + 2
         return a, "world-" + str(a)
 
     @workflow(interruptible=True, failure_policy=WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
-    def wf(a: int) -> (str, str):
+    def wf(a: int) -> typing.Tuple[str, str]:
         x, y = t1(a=a)
         u, v = t1(a=x)
         return y, v
@@ -94,7 +95,7 @@ def test_list_output_wf():
 
 
 def test_sub_wf_single_named_tuple():
-    nt = typing.NamedTuple("SingleNamedOutput", named1=int)
+    nt = typing.NamedTuple("SingleNamedOutput", [("named1", int)])
 
     @task
     def t1(a: int) -> nt:
@@ -115,7 +116,7 @@ def test_sub_wf_single_named_tuple():
 
 
 def test_sub_wf_multi_named_tuple():
-    nt = typing.NamedTuple("Multi", named1=int, named2=int)
+    nt = typing.NamedTuple("Multi", [("named1", int), ("named2", int)])
 
     @task
     def t1(a: int) -> nt:
@@ -153,8 +154,10 @@ def test_unexpected_outputs():
     with pytest.raises(AssertionError):
 
         @workflow
-        def one_output_wf() -> int:  # noqa
+        def one_output_wf() -> int:  # type: ignore
             t1(a=3)
+
+        one_output_wf()
 
 
 def test_wf_no_output():
@@ -309,10 +312,10 @@ def sd_to_schema_wf() -> pd.DataFrame:
 
 
 @workflow
-def schema_to_sd_wf() -> (pd.DataFrame, pd.DataFrame):
+def schema_to_sd_wf() -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
     # schema -> StructuredDataset
     df = t4()
-    return t2(df=df), t5(sd=df)
+    return t2(df=df), t5(sd=df)  # type: ignore
 
 
 def test_structured_dataset_wf():
@@ -320,3 +323,18 @@ def test_structured_dataset_wf():
     assert_frame_equal(sd_to_schema_wf(), superset_df)
     assert_frame_equal(schema_to_sd_wf()[0], subset_df)
     assert_frame_equal(schema_to_sd_wf()[1], subset_df)
+
+
+def test_compile_wf_at_compile_time():
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.new_execution_state().with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ):
+
+        @workflow
+        def wf():
+            t4()
+
+        assert ctx.compilation_state is None

@@ -346,13 +346,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return FlyteFile(uri)
 
         # The rest of the logic is only for FlyteFile types.
-        if not issubclass(expected_python_type, FlyteFile):
+        if not issubclass(expected_python_type, FlyteFile):  # type: ignore
             raise TypeError(f"Neither os.PathLike nor FlyteFile specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
-            return expected_python_type(uri)
+            return expected_python_type(uri)  # type: ignore
 
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)

@@ -6,6 +6,7 @@
 
 import datetime
 import re as _re
+from typing import Optional
 
 import croniter as _croniter
 
@@ -52,7 +53,11 @@ class CronSchedule(_schedule_models.Schedule):
     _OFFSET_PATTERN = _re.compile("([-+]?)P([-+0-9YMWD]+)?(T([-+0-9HMS.,]+)?)?")
 
     def __init__(
-        self, cron_expression: str = None, schedule: str = None, offset: str = None, kickoff_time_input_arg: str = None
+        self,
+        cron_expression: Optional[str] = None,
+        schedule: Optional[str] = None,
+        offset: Optional[str] = None,
+        kickoff_time_input_arg: Optional[str] = None,
     ):
         """
         :param str cron_expression: This should be a cron expression in AWS style.Shouldn't be used in case of native scheduler.
@@ -161,7 +166,7 @@ class FixedRate(_schedule_models.Schedule):
     See the :std:ref:`fixed rate intervals` chapter in the cookbook for additional usage examples.
     """
 
-    def __init__(self, duration: datetime.timedelta, kickoff_time_input_arg: str = None):
+    def __init__(self, duration: datetime.timedelta, kickoff_time_input_arg: Optional[str] = None):
         """
         :param datetime.timedelta duration:
         :param str kickoff_time_input_arg:

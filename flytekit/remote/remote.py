@@ -165,7 +165,8 @@ class FlyteRemote(object):
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
-        self._client = SynchronousFlyteClient(config.platform, **kwargs)
+        self._kwargs = kwargs
+        self._client_initialized = False
         self._config = config
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
@@ -187,6 +188,9 @@ class FlyteRemote(object):
     @property
     def client(self) -> SynchronousFlyteClient:
         """Return a SynchronousFlyteClient for additional operations."""
+        if not self._client_initialized:
+            self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
+            self._client_initialized = True
         return self._client
 
     @property
