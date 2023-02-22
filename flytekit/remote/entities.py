@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple, Union
 
+from flytekit import FlyteContext
 from flytekit.core import constants as _constants
 from flytekit.core import hash as _hash_mixin
 from flytekit.core import hash as hash_mixin
+from flytekit.core.promise import create_and_link_node_from_remote
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import remote_logger
@@ -334,6 +336,12 @@ class FlyteBranchNode(_workflow_model.BranchNode):
         return cls(new_if_else_block), converted_sub_workflows
 
 
+class FlyteGateNode(_workflow_model.GateNode):
+    @classmethod
+    def promote_from_model(cls, model: _workflow_model.GateNode):
+        return cls(model.signal, model.sleep, model.approve)
+
+
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
     """A class encapsulating a remote Flyte node."""
 
@@ -343,22 +351,23 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         upstream_nodes,
         bindings,
         metadata,
-        task_node: FlyteTaskNode = None,
-        workflow_node: FlyteWorkflowNode = None,
-        branch_node: FlyteBranchNode = None,
+        task_node: Optional[FlyteTaskNode] = None,
+        workflow_node: Optional[FlyteWorkflowNode] = None,
+        branch_node: Optional[FlyteBranchNode] = None,
+        gate_node: Optional[FlyteGateNode] = None,
     ):
-        if not task_node and not workflow_node and not branch_node:
+        if not task_node and not workflow_node and not branch_node and not gate_node:
             raise _user_exceptions.FlyteAssertion(
-                "An Flyte node must have one of task|workflow|branch entity specified at once"
+                "An Flyte node must have one of task|workflow|branch|gate entity specified at once"
             )
-        # todo: wip - flyte_branch_node is a hack, it should be a Condition, but backing out a Condition object from
-        #   the compiled IfElseBlock is cumbersome, shouldn't do it if we can get away with it.
+        # TODO: Revisit flyte_branch_node and flyte_gate_node, should they be another type like Condition instead
+        #       of a node?
         if task_node:
             self._flyte_entity = task_node.flyte_task
         elif workflow_node:
             self._flyte_entity = workflow_node.flyte_workflow or workflow_node.flyte_launch_plan
         else:
-            self._flyte_entity = branch_node
+            self._flyte_entity = branch_node or gate_node
 
         super(FlyteNode, self).__init__(
             id=id,
@@ -369,6 +378,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             task_node=task_node,
             workflow_node=workflow_node,
             branch_node=branch_node,
+            gate_node=gate_node,
         )
         self._upstream = upstream_nodes
 
@@ -412,7 +422,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             remote_logger.warning(f"Should not call promote from model on a start node or end node {model}")
             return None, converted_sub_workflows
 
-        flyte_task_node, flyte_workflow_node, flyte_branch_node = None, None, None
+        flyte_task_node, flyte_workflow_node, flyte_branch_node, flyte_gate_node = None, None, None, None
         if model.task_node is not None:
             if model.task_node.reference_id not in tasks:
                 raise RuntimeError(
@@ -435,6 +445,8 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 tasks,
                 converted_sub_workflows,
             )
+        elif model.gate_node is not None:
+            flyte_gate_node = FlyteGateNode.promote_from_model(model.gate_node)
         else:
             raise _system_exceptions.FlyteSystemException(
                 f"Bad Node model, neither task nor workflow detected, node: {model}"
@@ -459,6 +471,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 task_node=flyte_task_node,
                 workflow_node=flyte_workflow_node,
                 branch_node=flyte_branch_node,
+                gate_node=flyte_gate_node,
             ),
             converted_sub_workflows,
         )
@@ -786,6 +799,17 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
     @property
     def entity_type_text(self) -> str:
         return "Launch Plan"
+
+    def compile(self, ctx: FlyteContext, *args, **kwargs):
+        fixed_input_lits = self.fixed_inputs.literals or {}
+        default_input_params = self.default_inputs.parameters or {}
+        return create_and_link_node_from_remote(
+            ctx,
+            entity=self,
+            _inputs_not_allowed=set(fixed_input_lits.keys()),
+            _ignorable_inputs=set(default_input_params.keys()),
+            **kwargs,
+        )  # noqa
 
     def __repr__(self) -> str:
         return f"FlyteLaunchPlan(ID: {self.id} Interface: {self.interface}) - Spec {super().__repr__()})"

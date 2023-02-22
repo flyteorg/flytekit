@@ -292,7 +292,7 @@ def test_lp_each_parameter():
 
 
 def test_lp_all_parameters():
-    nt = typing.NamedTuple("OutputsBC", t1_int_output=int, c=str)
+    nt = typing.NamedTuple("OutputsBC", [("t1_int_output", int), ("c", str)])
 
     @task
     def t1(a: int) -> nt:

@@ -67,7 +67,7 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
             kwargs[_ARROW_S3_SECRET] = s3_cfg.secret_access_key
 
     if s3_cfg.endpoint is not None:
-        kwargs["client_kwargs"] = {_ARROW_ENDPOINT: s3_cfg.endpoint}
+        kwargs[_ARROW_ENDPOINT] = s3_cfg.endpoint
 
     if anonymous:
         kwargs[_ARROW_ANON] = True

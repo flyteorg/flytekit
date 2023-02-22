@@ -1,6 +1,4 @@
 """
-Flytekit PyTorch
-=========================================
 .. currentmodule:: flytekit.extras.pytorch
 
 .. autosummary::
@@ -8,6 +6,9 @@ Flytekit PyTorch
    :toctree: generated/
 
     PyTorchCheckpoint
+    PyTorchCheckpointTransformer
+    PyTorchModuleTransformer
+    PyTorchTensorTransformer
 """
 from flytekit.loggers import logger
 

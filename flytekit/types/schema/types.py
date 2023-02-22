@@ -100,32 +100,38 @@ class SchemaWriter(typing.Generic[T]):
 
 
 class LocalIOSchemaReader(SchemaReader[T]):
-    def __init__(self, from_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
-        super().__init__(str(from_path), cols, fmt)
+    def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+        super().__init__(from_path, cols, fmt)
 
     @abstractmethod
     def _read(self, *path: os.PathLike, **kwargs) -> T:
         pass
 
     def iter(self, **kwargs) -> typing.Generator[T, None, None]:
-        with os.scandir(self._from_path) as it:
+        with os.scandir(self._from_path) as it:  # type: ignore
             for entry in it:
-                if not entry.name.startswith(".") and entry.is_file():
-                    yield self._read(Path(entry.path), **kwargs)
+                if (
+                    not typing.cast(os.DirEntry, entry).name.startswith(".")
+                    and typing.cast(os.DirEntry, entry).is_file()
+                ):
+                    yield self._read(Path(typing.cast(os.DirEntry, entry).path), **kwargs)
 
     def all(self, **kwargs) -> T:
         files: typing.List[os.PathLike] = []
-        with os.scandir(self._from_path) as it:
+        with os.scandir(self._from_path) as it:  # type: ignore
             for entry in it:
-                if not entry.name.startswith(".") and entry.is_file():
-                    files.append(Path(entry.path))
+                if (
+                    not typing.cast(os.DirEntry, entry).name.startswith(".")
+                    and typing.cast(os.DirEntry, entry).is_file()
+                ):
+                    files.append(Path(typing.cast(os.DirEntry, entry).path))
 
         return self._read(*files, **kwargs)
 
 
 class LocalIOSchemaWriter(SchemaWriter[T]):
-    def __init__(self, to_local_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
-        super().__init__(str(to_local_path), cols, fmt)
+    def __init__(self, to_local_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+        super().__init__(to_local_path, cols, fmt)
 
     @abstractmethod
     def _write(self, df: T, path: os.PathLike, **kwargs):
@@ -176,10 +182,11 @@ class SchemaEngine(object):
 @dataclass_json
 @dataclass
 class FlyteSchema(object):
-    remote_path: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
+    logger.warning("FlyteSchema is deprecated, use Structured Dataset instead.")
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
@@ -228,12 +235,11 @@ class FlyteSchema(object):
 
     def __init__(
         self,
-        local_path: os.PathLike = None,
-        remote_path: os.PathLike = None,
+        local_path: typing.Optional[str] = None,
+        remote_path: typing.Optional[str] = None,
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
-        downloader: typing.Callable[[str, os.PathLike], None] = None,
+        downloader: typing.Optional[typing.Callable] = None,
     ):
-
         if supported_mode == SchemaOpenMode.READ and remote_path is None:
             raise ValueError("To create a FlyteSchema in read mode, remote_path is required")
         if (
@@ -254,7 +260,7 @@ class FlyteSchema(object):
         self._downloader = downloader
 
     @property
-    def local_path(self) -> os.PathLike:
+    def local_path(self) -> str:
         return self._local_path
 
     @property
@@ -262,7 +268,7 @@ class FlyteSchema(object):
         return self._supported_mode
 
     def open(
-        self, dataframe_fmt: type = pandas.DataFrame, override_mode: SchemaOpenMode = None
+        self, dataframe_fmt: type = pandas.DataFrame, override_mode: typing.Optional[SchemaOpenMode] = None
     ) -> typing.Union[SchemaReader, SchemaWriter]:
         """
         Returns a reader or writer depending on the mode of the object when created. This mode can be
@@ -290,13 +296,13 @@ class FlyteSchema(object):
                 self._downloader(self.remote_path, self.local_path)
                 self._downloaded = True
             if mode == SchemaOpenMode.WRITE:
-                return h.writer(typing.cast(str, self.local_path), self.columns(), self.format())
-            return h.reader(typing.cast(str, self.local_path), self.columns(), self.format())
+                return h.writer(self.local_path, self.columns(), self.format())
+            return h.reader(self.local_path, self.columns(), self.format())
 
         # Remote IO is handled. So we will just pass the remote reference to the object
         if mode == SchemaOpenMode.WRITE:
-            return h.writer(self.remote_path, self.columns(), self.format())
-        return h.reader(self.remote_path, self.columns(), self.format())
+            return h.writer(typing.cast(str, self.remote_path), self.columns(), self.format())
+        return h.reader(typing.cast(str, self.remote_path), self.columns(), self.format())
 
     def as_readonly(self) -> FlyteSchema:
         if self._supported_mode == SchemaOpenMode.READ:
@@ -304,7 +310,7 @@ class FlyteSchema(object):
         s = FlyteSchema.__class_getitem__(self.columns(), self.format())(
             local_path=self.local_path,
             # Dummy path is ok, as we will assume data is already downloaded and will not download again
-            remote_path=self.remote_path if self.remote_path else "",
+            remote_path=typing.cast(str, self.remote_path) if self.remote_path else "",
             supported_mode=SchemaOpenMode.READ,
         )
         s._downloaded = True
