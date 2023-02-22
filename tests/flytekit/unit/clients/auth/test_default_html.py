@@ -7,11 +7,11 @@ def test_default_html():
         == """
 <html>
     <head>
-            <title>Oauth2 authentication Flow</title>
+            <title>OAuth2 Authentication Success</title>
     </head>
     <body>
             <h1>Successfully logged into flyte.org</h1>
-            <img src="https://artwork.lfaidata.foundation/projects/flyte/horizontal/color/flyte-horizontal-color.svg" alt="Flyte login"></img>
+            <img height="100" src="https://artwork.lfaidata.foundation/projects/flyte/horizontal/color/flyte-horizontal-color.svg" alt="Flyte login"></img>
     </body>
 </html>
 """
