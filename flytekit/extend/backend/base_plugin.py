@@ -1,6 +1,10 @@
+import typing
 from abc import abstractmethod
 from typing import List, Optional
 
+from flyteidl.core.tasks_pb2 import TaskTemplate
+
+from flytekit.models.interface import VariableMap
 from pydantic import BaseModel
 
 PENDING = "pending"
@@ -9,8 +13,8 @@ RUNNING = "running"
 
 
 class CreateRequest(BaseModel):
-    inputs_path: str
-    task_template_path: str
+    inputs: VariableMap
+    task_template: TaskTemplate
 
 
 class CreateResponse(BaseModel):
@@ -55,15 +59,15 @@ class BackendPluginBase:
 
 
 class BackendPluginRegistry(object):
-    _REGISTRY = []
+    _REGISTRY: typing.Dict[str, BackendPluginBase] = {}
 
     @staticmethod
     def register(plugin: BackendPluginBase):
-        BackendPluginRegistry._REGISTRY.append(plugin)
+        BackendPluginRegistry._REGISTRY[plugin.task_type] = plugin
 
     @staticmethod
-    def list_registered_plugins() -> List[BackendPluginBase]:
-        return BackendPluginRegistry._REGISTRY
+    def get_plugin(task_type: str):
+        return BackendPluginRegistry._REGISTRY[task_type]
 
 
 def convert_to_flyte_state(state: str):
