@@ -13,11 +13,11 @@ import numpy as _np
 import pandas as pd
 import pyarrow as pa
 from dataclasses_json import config, dataclass_json
+from fsspec.utils import get_protocol
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import DataPersistencePlugins, DiskPersistence
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.deck.renderer import Renderable
 from flytekit.loggers import logger
@@ -271,11 +271,6 @@ class StructuredDatasetDecoder(ABC):
         raise NotImplementedError
 
 
-def protocol_prefix(uri: str) -> str:
-    p = DataPersistencePlugins.get_protocol(uri)
-    return p
-
-
 def convert_schema_type_to_structured_dataset_type(
     column_type: int,
 ) -> int:
@@ -437,11 +432,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if h.protocol is None:
             if default_for_type:
                 raise ValueError(f"Registering SD handler {h} with all protocols should never have default specified.")
-            for persistence_protocol in DataPersistencePlugins.supported_protocols():
+            for persistence_protocol in ["s3", "gs", "file"]:
                 # TODO: Clean this up when we get to replacing the persistence layer.
                 # The behavior of the protocols given in the supported_protocols and is_supported_protocol
                 # is not actually the same as the one returned in get_protocol.
-                stripped = DataPersistencePlugins.get_protocol(persistence_protocol)
+                stripped = persistence_protocol
                 logger.debug(f"Automatically registering {persistence_protocol} as {stripped} with {h}")
                 try:
                     cls.register_for_protocol(
@@ -471,8 +466,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         See the main register function instead.
         """
         if protocol == "/":
-            # TODO: Special fix again, because get_protocol returns file, instead of file://
-            protocol = DataPersistencePlugins.get_protocol(DiskPersistence.PROTOCOL)
+            protocol = "file"
         lowest_level = cls._handler_finder(h, protocol)
         if h.supported_format in lowest_level and override is False:
             raise DuplicateHandlerError(
@@ -593,7 +587,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if df_type in self.DEFAULT_PROTOCOLS:
             return self.DEFAULT_PROTOCOLS[df_type]
         else:
-            protocol = protocol_prefix(uri or ctx.file_access.raw_output_prefix)
+            protocol = get_protocol(uri or ctx.file_access.raw_output_prefix)
             logger.debug(
                 f"No default protocol for type {df_type} found, using {protocol} from output prefix {ctx.file_access.raw_output_prefix}"
             )
@@ -769,7 +763,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         :param updated_metadata: New metadata type, since it might be different from the metadata in the literal.
         :return: dataframe. It could be pandas dataframe or arrow table, etc.
         """
-        protocol = protocol_prefix(sd.uri)
+        protocol = get_protocol(sd.uri)
         decoder = self.get_decoder(df_type, protocol, sd.metadata.structured_dataset_type.format)
         result = decoder.decode(ctx, sd, updated_metadata)
         if isinstance(result, types.GeneratorType):
@@ -783,7 +777,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         df_type: Type[DF],
         updated_metadata: StructuredDatasetMetadata,
     ) -> Generator[DF, None, None]:
-        protocol = protocol_prefix(sd.uri)
+        protocol = get_protocol(sd.uri)
         decoder = self.DECODERS[df_type][protocol][sd.metadata.structured_dataset_type.format]
         result = decoder.decode(ctx, sd, updated_metadata)
         if not isinstance(result, types.GeneratorType):

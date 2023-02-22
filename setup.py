@@ -54,6 +54,7 @@ setup(
         "grpcio>=1.50.0,<2.0",
         "grpcio-status>=1.50.0,<2.0",
         "importlib-metadata",
+        "fsspec",
         "pyopenssl",
         "joblib",
         "python-json-logger>=2.0.0",
