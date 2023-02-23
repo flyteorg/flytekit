@@ -1,3 +1,4 @@
+import sys
 import typing
 
 import click
@@ -44,7 +45,7 @@ def pretty_print_grpc_error(e: grpc.RpcError):
 
 def pretty_print_exception(e: Exception):
     if isinstance(e, click.exceptions.Exit):
-        return
+        raise e
 
     if isinstance(e, click.ClickException):
         click.secho(e.message, fg="red")
@@ -81,6 +82,7 @@ class ErrorHandlingCommand(click.Group):
                 print("Verbose mode on")
                 raise e
             pretty_print_exception(e)
+            raise SystemExit(e)
 
 
 @click.group("pyflyte", invoke_without_command=True, cls=ErrorHandlingCommand)

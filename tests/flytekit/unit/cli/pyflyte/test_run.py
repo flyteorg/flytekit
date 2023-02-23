@@ -152,6 +152,7 @@ def test_union_type_with_invalid_input():
         runner.invoke(
             pyflyte.main,
             [
+                "--verbose",
                 "run",
                 os.path.join(DIR_NAME, "workflow.py"),
                 "test_union2",
