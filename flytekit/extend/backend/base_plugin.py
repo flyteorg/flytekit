@@ -1,34 +1,38 @@
+from dataclasses import dataclass
 import typing
 from abc import abstractmethod
-from typing import List, Optional
+from typing import Optional
 
 from flyteidl.core.tasks_pb2 import TaskTemplate
 
 from flytekit.models.interface import VariableMap
-from pydantic import BaseModel
 
 PENDING = "pending"
 SUCCEEDED = "succeeded"
 RUNNING = "running"
 
 
-class CreateRequest(BaseModel):
+@dataclass
+class CreateRequest:
     inputs: VariableMap
     task_template: TaskTemplate
 
 
-class CreateResponse(BaseModel):
+@dataclass
+class CreateResponse:
     job_id: str
     message: Optional[str]
 
 
-class PollRequest(BaseModel):
+@dataclass
+class PollRequest:
     job_id: str
     output_prefix: str
     prev_state: str
 
 
-class PollResponse(BaseModel):
+@dataclass
+class PollResponse:
     state: str
     message: Optional[str]
 
@@ -42,19 +46,19 @@ class BackendPluginBase:
         return self._task_type
 
     @abstractmethod
-    async def initialize(self):
+    def initialize(self):
         pass
 
     @abstractmethod
-    async def create(self, create_request: CreateRequest) -> CreateResponse:
+    def create(self, create_request: CreateRequest) -> CreateResponse:
         pass
 
     @abstractmethod
-    async def poll(self, poll_request: PollRequest) -> PollResponse:
+    def poll(self, poll_request: PollRequest) -> PollResponse:
         pass
 
     @abstractmethod
-    async def terminate(self, job_id: str):
+    def terminate(self, job_id: str):
         pass
 
 
@@ -66,11 +70,11 @@ class BackendPluginRegistry(object):
         BackendPluginRegistry._REGISTRY[plugin.task_type] = plugin
 
     @staticmethod
-    def get_plugin(task_type: str):
+    def get_plugin(task_type: str) -> BackendPluginBase:
         return BackendPluginRegistry._REGISTRY[task_type]
 
 
-def convert_to_flyte_state(state: str):
+def convert_to_flyte_state(state: str) -> str:
     if state.lower() in [PENDING]:
         return PENDING
     if state.lower() in ["done", SUCCEEDED]:
