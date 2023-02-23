@@ -2,6 +2,10 @@
 Pyflyte CLI
 ###########
 
+.. click:: flytekit.clis.sdk_in_container.pyflyte:main
+    :prog: pyflyte
+    :nested: full
+
 .. click:: flytekit.clis.sdk_in_container.init:init
     :prog: pyflyte init
     :nested: full
