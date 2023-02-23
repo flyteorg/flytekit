@@ -12,21 +12,21 @@ from flytekit.exceptions.user import (
     FlyteInvalidInputException,
 )
 
-
 class RetryExceptionWrapperInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor):
     def __init__(self, max_retries: int = 3):
         self._max_retries = 3
 
     @staticmethod
     def _raise_if_exc(request: typing.Any, e: Union[grpc.Call, grpc.Future]):
-        if e.code() == grpc.StatusCode.UNAUTHENTICATED:
-            raise FlyteAuthenticationException() from e
-        elif e.code() == grpc.StatusCode.ALREADY_EXISTS:
-            raise FlyteEntityAlreadyExistsException() from e
-        elif e.code() == grpc.StatusCode.NOT_FOUND:
-            raise FlyteEntityNotExistException() from e
-        elif e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-            raise FlyteInvalidInputException(request) from e
+        if isinstance(e, grpc.RpcError):
+            if e.code() == grpc.StatusCode.UNAUTHENTICATED:
+                raise FlyteAuthenticationException() from e
+            elif e.code() == grpc.StatusCode.ALREADY_EXISTS:
+                raise FlyteEntityAlreadyExistsException() from e
+            elif e.code() == grpc.StatusCode.NOT_FOUND:
+                raise FlyteEntityNotExistException() from e
+            elif e.code() == grpc.StatusCode.INVALID_ARGUMENT:
+                raise FlyteInvalidInputException(request) from e
         raise FlyteSystemException() from e
 
     def intercept_unary_unary(self, continuation, client_call_details, request):
