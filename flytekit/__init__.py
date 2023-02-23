@@ -58,7 +58,7 @@ Customizing Tasks & Workflows
    TaskMetadata - Wrapper object that allows users to specify Task
    Resources - Things like CPUs/Memory, etc.
    WorkflowFailurePolicy - Customizes what happens when a workflow fails.
-
+   PodTemplate - Custom PodTemplate for a task.
 
 Dynamic and Nested Workflows
 ==============================
@@ -70,6 +70,18 @@ See the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more 
    :toctree: generated/
 
    dynamic
+
+Signaling
+=========
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   approve
+   sleep
+   wait_for_input
 
 Scheduling
 ============================
@@ -108,6 +120,7 @@ Reference Entities
    WorkflowReference
    reference_task
    reference_workflow
+   reference_launch_plan
 
 Core Task Types
 =================
@@ -153,6 +166,30 @@ Common Flyte IDL Objects
    Scalar
    LiteralType
    BlobType
+
+Task Utilities
+==============
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   Deck
+   HashMethod
+
+Documentation
+=============
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   Description
+   Documentation
+   SourceCode
+
 """
 
 import sys
@@ -171,10 +208,12 @@ from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.hash import HashMethod
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, WorkflowReference
@@ -184,12 +223,13 @@ from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
-from flytekit.extras import pytorch
+from flytekit.extras import pytorch, sklearn, tensorflow
 from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
 from flytekit.models.common import Annotations, AuthRole, Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.models.core.types import BlobType
+from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file, numpy, schema
@@ -237,7 +277,7 @@ def load_implicit_plugins():
         # note the group is always ``flytekit.plugins``
         setup(
         ...
-        entry_points={'flytekit.plugins’: 'fsspec=flytekitplugins.fsspec'},
+        entry_points={'flytekit.plugins': 'fsspec=flytekitplugins.fsspec'},
         ...
         )
 

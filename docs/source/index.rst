@@ -76,6 +76,7 @@ Expected output:
    flytekit
    configuration
    remote
+   clients
    testing
    extend
    deck
@@ -83,4 +84,5 @@ Expected output:
    tasks.extend
    types.extend
    data.extend
+   pyflyte
    contributing

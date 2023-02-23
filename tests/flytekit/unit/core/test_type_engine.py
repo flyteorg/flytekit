@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 
+import mock
 import pandas as pd
 import pyarrow as pa
 import pytest
@@ -44,7 +45,7 @@ from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
-from flytekit.models.types import LiteralType, SimpleType, TypeStructure
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FileExt, JPEGImageFile
@@ -569,6 +570,90 @@ def test_dataclass_int_preserving():
     assert ot == o
 
 
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+def test_optional_flytefile_in_dataclass(mock_upload_dir):
+    mock_upload_dir.return_value = True
+
+    @dataclass_json
+    @dataclass
+    class A(object):
+        a: int
+
+    @dataclass_json
+    @dataclass
+    class TestFileStruct(object):
+        a: FlyteFile
+        b: typing.Optional[FlyteFile]
+        b_prime: typing.Optional[FlyteFile]
+        c: typing.Union[FlyteFile, None]
+        d: typing.List[FlyteFile]
+        e: typing.List[typing.Optional[FlyteFile]]
+        e_prime: typing.List[typing.Optional[FlyteFile]]
+        f: typing.Dict[str, FlyteFile]
+        g: typing.Dict[str, typing.Optional[FlyteFile]]
+        g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
+        h: typing.Optional[FlyteFile] = None
+        h_prime: typing.Optional[FlyteFile] = None
+        i: typing.Optional[A] = None
+        i_prime: typing.Optional[A] = A(a=99)
+
+    remote_path = "s3://tmp/file"
+    with tempfile.TemporaryFile() as f:
+        f.write(b"abc")
+        f1 = FlyteFile("f1", remote_path=remote_path)
+        o = TestFileStruct(
+            a=f1,
+            b=f1,
+            b_prime=None,
+            c=f1,
+            d=[f1],
+            e=[f1],
+            e_prime=[None],
+            f={"a": f1},
+            g={"a": f1},
+            g_prime={"a": None},
+            h=f1,
+            i=A(a=42),
+        )
+
+        ctx = FlyteContext.current_context()
+        tf = DataclassTransformer()
+        lt = tf.get_literal_type(TestFileStruct)
+        lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+
+        assert lv.scalar.generic["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["b"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["b_prime"] is None
+        assert lv.scalar.generic["c"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["d"].values[0].struct_value.fields["path"].string_value == remote_path
+        assert lv.scalar.generic["e"].values[0].struct_value.fields["path"].string_value == remote_path
+        assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
+        assert lv.scalar.generic["f"]["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["g"]["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["g_prime"]["a"] is None
+        assert lv.scalar.generic["h"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["h_prime"] is None
+        assert lv.scalar.generic["i"].fields["a"].number_value == 42
+        assert lv.scalar.generic["i_prime"].fields["a"].number_value == 99
+
+        ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+
+        assert o.a.path == ot.a.remote_source
+        assert o.b.path == ot.b.remote_source
+        assert ot.b_prime is None
+        assert o.c.path == ot.c.remote_source
+        assert o.d[0].path == ot.d[0].remote_source
+        assert o.e[0].path == ot.e[0].remote_source
+        assert o.e_prime == [None]
+        assert o.f["a"].path == ot.f["a"].remote_source
+        assert o.g["a"].path == ot.g["a"].remote_source
+        assert o.g_prime == {"a": None}
+        assert o.h.path == ot.h.remote_source
+        assert ot.h_prime is None
+        assert o.i == ot.i
+        assert o.i_prime == A(a=99)
+
+
 def test_flyte_file_in_dataclass():
     @dataclass_json
     @dataclass
@@ -664,18 +749,19 @@ def test_flyte_directory_in_dataclass():
 
 def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)]
 
     @dataclass_json
     @dataclass
     class InnerDatasetStruct(object):
         a: StructuredDataset
-        b: typing.List[StructuredDataset]
-        c: typing.Dict[str, StructuredDataset]
+        b: typing.List[Annotated[StructuredDataset, "parquet"]]
+        c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
 
     @dataclass_json
     @dataclass
     class DatasetStruct(object):
-        a: StructuredDataset
+        a: People
         b: InnerDatasetStruct
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")
@@ -854,6 +940,18 @@ def test_union_transformer():
     assert UnionTransformer.is_optional_type(typing.Optional[int])
     assert not UnionTransformer.is_optional_type(str)
     assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
+
+
+def test_union_guess_type():
+    ut = UnionTransformer()
+    t = ut.guess_python_type(
+        LiteralType(
+            union_type=UnionType(
+                variants=[LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
+            )
+        )
+    )
+    assert t == typing.Union[str, int]
 
 
 def test_union_type_with_annotated():

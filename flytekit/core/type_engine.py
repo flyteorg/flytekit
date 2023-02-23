@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import copy
 import dataclasses
 import datetime as _datetime
 import enum
@@ -320,7 +321,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
         schema = None
         try:
-            s = cast(DataClassJsonMixin, t).schema()
+            s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
             for _, v in s.fields.items():
                 # marshmallow-jsonschema only supports enums loaded by name.
                 # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
@@ -352,6 +353,46 @@ class DataclassTransformer(TypeTransformer[object]):
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
 
+    def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
+        # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
+        # not hashable, such as Annotated[StructuredDataset, kwtypes(...)]. Therefore, we should just extract the origin
+        # type from annotated.
+        if get_origin(python_type) is list:
+            return typing.List[self._get_origin_type_in_annotation(get_args(python_type)[0])]  # type: ignore
+        elif get_origin(python_type) is dict:
+            return typing.Dict[  # type: ignore
+                self._get_origin_type_in_annotation(get_args(python_type)[0]),
+                self._get_origin_type_in_annotation(get_args(python_type)[1]),
+            ]
+        elif get_origin(python_type) is Annotated:
+            return get_args(python_type)[0]
+        elif dataclasses.is_dataclass(python_type):
+            for field in dataclasses.fields(copy.deepcopy(python_type)):
+                field.type = self._get_origin_type_in_annotation(field.type)
+        return python_type
+
+    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T:
+        # In python 3.7, 3.8, DataclassJson will deserialize Annotated[StructuredDataset, kwtypes(..)] to a dict,
+        # so here we convert it back to the Structured Dataset.
+        from flytekit import StructuredDataset
+
+        if python_type == StructuredDataset and type(python_val) == dict:
+            return StructuredDataset(**python_val)
+        elif get_origin(python_type) is list:
+            return [self._fix_structured_dataset_type(get_args(python_type)[0], v) for v in python_val]  # type: ignore
+        elif get_origin(python_type) is dict:
+            return {  # type: ignore
+                self._fix_structured_dataset_type(get_args(python_type)[0], k): self._fix_structured_dataset_type(
+                    get_args(python_type)[1], v
+                )
+                for k, v in python_val.items()
+            }
+        elif dataclasses.is_dataclass(python_type):
+            for field in dataclasses.fields(python_type):
+                val = python_val.__getattribute__(field.name)
+                python_val.__setattr__(field.name, self._fix_structured_dataset_type(field.type, val))
+        return python_val
+
     def _serialize_flyte_type(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
@@ -360,6 +401,12 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.file import FlyteFile
         from flytekit.types.schema.types import FlyteSchema
         from flytekit.types.structured.structured_dataset import StructuredDataset
+
+        # Handle Optional
+        if get_origin(python_type) is typing.Union and type(None) in get_args(python_type):
+            if python_val is None:
+                return None
+            return self._serialize_flyte_type(python_val, get_args(python_type)[0])
 
         if hasattr(python_type, "__origin__") and python_type.__origin__ is list:
             return [self._serialize_flyte_type(v, python_type.__args__[0]) for v in python_val]
@@ -388,7 +435,9 @@ class DataclassTransformer(TypeTransformer[object]):
             if issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory):
                 return python_type(path=lv.scalar.blob.uri)
             elif issubclass(python_type, StructuredDataset):
-                return python_type(uri=lv.scalar.structured_dataset.uri)
+                sd = python_type(uri=lv.scalar.structured_dataset.uri)
+                sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
+                return sd
             else:
                 return python_val
         else:
@@ -398,11 +447,17 @@ class DataclassTransformer(TypeTransformer[object]):
                 python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
             return python_val
 
-    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> T:
+    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
         from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+
+        # Handle Optional
+        if get_origin(expected_python_type) is typing.Union and type(None) in get_args(expected_python_type):
+            if python_val is None:
+                return None
+            return self._deserialize_flyte_type(python_val, get_args(expected_python_type)[0])
 
         if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is list:
             return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]  # type: ignore
@@ -533,8 +588,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json to be "
                 f"serialized correctly"
             )
-
-        dc = cast(DataClassJsonMixin, expected_python_type).from_json(_json_format.MessageToJson(lv.scalar.generic))
+        json_str = _json_format.MessageToJson(lv.scalar.generic)
+        dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)
+        dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
@@ -1123,7 +1179,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
         if literal_type.union_type is not None:
-            return typing.Union[tuple(TypeEngine.guess_python_type(v.type) for v in literal_type.union_type.variants)]  # type: ignore
+            return typing.Union[tuple(TypeEngine.guess_python_type(v) for v in literal_type.union_type.variants)]
 
         raise ValueError(f"Union transformer cannot reverse {literal_type}")
 

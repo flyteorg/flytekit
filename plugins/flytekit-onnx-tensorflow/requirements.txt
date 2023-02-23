@@ -57,9 +57,9 @@ flatbuffers==1.12
     #   onnxruntime
     #   tensorflow
     #   tf2onnx
-flyteidl==1.1.8
+flyteidl==1.2.9
     # via flytekit
-flytekit==1.1.0
+flytekit==1.2.7
     # via flytekitplugins-onnxtensorflow
 gast==0.4.0
     # via tensorflow

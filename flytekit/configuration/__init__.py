@@ -53,6 +53,7 @@ Compilation (Serialization) Time Settings
    ~Image
    ~ImageConfig
    ~SerializationSettings
+   ~FastSerializationSettings
 
 .. _configuration-execution-time-settings:
 
@@ -299,7 +300,7 @@ class PlatformConfig(object):
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
     :param insecure_skip_verify: Wether to skip SSL certificate verification
-    :param console_endpoint: endpoint for console if differenet than Flyte backend
+    :param console_endpoint: endpoint for console if different than Flyte backend
     :param command: This command is executed to return a token using an external process.
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
@@ -310,7 +311,7 @@ class PlatformConfig(object):
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
     """
 
-    endpoint: str = "localhost:30081"
+    endpoint: str = "localhost:30080"
     insecure: bool = False
     insecure_skip_verify: bool = False
     console_endpoint: typing.Optional[str] = None
@@ -462,7 +463,7 @@ class GCSConfig(object):
     gsutil_parallelism: bool = False
 
     @classmethod
-    def auto(self, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "gsutil_parallelism", _internal.GCP.GSUTIL_PARALLELISM.read(config_file))
@@ -528,7 +529,7 @@ class Config(object):
         )
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
+    def auto(cls, config_file: typing.Union[str, ConfigFile, None] = None) -> Config:
         """
         Automatically constructs the Config Object. The order of precedence is as follows
           1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
@@ -557,9 +558,9 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(endpoint="localhost:30081", auth_mode="Pkce", insecure=True),
+            platform=PlatformConfig(endpoint="localhost:30080", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
-                s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
+                s3=S3Config(endpoint="http://localhost:30002", access_key_id="minio", secret_access_key="miniostorage")
             ),
         )
 
@@ -646,6 +647,7 @@ class SerializationSettings(object):
     domain: typing.Optional[str] = None
     version: typing.Optional[str] = None
     env: Optional[Dict[str, str]] = None
+    git_repo: Optional[str] = None
     python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
@@ -718,6 +720,7 @@ class SerializationSettings(object):
             version=self.version,
             image_config=self.image_config,
             env=self.env.copy() if self.env else None,
+            git_repo=self.git_repo,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
@@ -767,6 +770,7 @@ class SerializationSettings(object):
         version: str
         image_config: ImageConfig
         env: Optional[Dict[str, str]] = None
+        git_repo: Optional[str] = None
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
@@ -782,6 +786,7 @@ class SerializationSettings(object):
                 version=self.version,
                 image_config=self.image_config,
                 env=self.env,
+                git_repo=self.git_repo,
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,

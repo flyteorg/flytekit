@@ -45,6 +45,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
@@ -84,6 +85,7 @@ class TaskMetadata(object):
         timeout (Optional[Union[datetime.timedelta, int]]): the max amount of time for which one execution of this task
             should be executed for. The execution will be terminated if the runtime exceeds the given timeout
             (approximately)
+        pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
     """
 
     cache: bool = False
@@ -93,6 +95,7 @@ class TaskMetadata(object):
     deprecated: str = ""
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
+    pod_template_name: Optional[str] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -126,6 +129,7 @@ class TaskMetadata(object):
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
+            pod_template_name=self.pod_template_name,
         )
 
 
@@ -156,6 +160,7 @@ class Task(object):
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
+        docs: Optional[Documentation] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -164,6 +169,7 @@ class Task(object):
         self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
+        self._docs = docs
 
         FlyteEntities.entities.append(self)
 
@@ -194,6 +200,10 @@ class Task(object):
     @property
     def security_context(self) -> SecurityContext:
         return self._security_ctx
+
+    @property
+    def docs(self) -> Documentation:
+        return self._docs
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
@@ -248,7 +258,7 @@ class Task(object):
             # The cache returns None iff the key does not exist in the cache
             if outputs_literal_map is None:
                 logger.info("Cache miss, task will be executed now")
-                outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+                outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
                 LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
                 logger.info(
@@ -258,10 +268,10 @@ class Task(object):
             else:
                 logger.info("Cache hit")
         else:
-            es = ctx.execution_state
-            b = es.user_space_params.with_task_sandbox()
-            ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
-            outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+            # This code should mirror the call to `sandbox_execute` in the above cache case.
+            # Code is simpler with duplication and less metaprogramming, but introduces regressions
+            # if one is changed and not the other.
+            outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -315,6 +325,19 @@ class Task(object):
         defined for this task.
         """
         return None
+
+    def sandbox_execute(
+        self,
+        ctx: FlyteContext,
+        input_literal_map: _literal_models.LiteralMap,
+    ) -> _literal_models.LiteralMap:
+        """
+        Call dispatch_execute, in the context of a local sandbox execution. Not invoked during runtime.
+        """
+        es = ctx.execution_state
+        b = es.user_space_params.with_task_sandbox()
+        ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
+        return self.dispatch_execute(ctx, input_literal_map)
 
     @abstractmethod
     def dispatch_execute(
@@ -390,6 +413,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._environment = environment if environment else {}
         self._task_config = task_config
         self._disable_deck = disable_deck
+        if self._python_interface.docstring:
+            if self.docs is None:
+                self._docs = Documentation(
+                    short_description=self._python_interface.docstring.short_description,
+                    long_description=Description(value=self._python_interface.docstring.long_description),
+                )
+            else:
+                if self._python_interface.docstring.short_description:
+                    self._docs.short_description = self._python_interface.docstring.short_description
+                if self._python_interface.docstring.long_description:
+                    self._docs.long_description = Description(value=self._python_interface.docstring.long_description)
 
     # TODO lets call this interface and the other as flyte_interface?
     @property

@@ -34,4 +34,5 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     scripts=["scripts/flytekit_install_spark3.sh"],
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
