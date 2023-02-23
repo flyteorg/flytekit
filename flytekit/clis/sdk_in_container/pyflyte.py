@@ -6,6 +6,7 @@ from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
+from flytekit.clis.sdk_in_container.serve import serve
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.configuration.internal import LocalSDK
@@ -70,6 +71,7 @@ main.add_command(local_cache)
 main.add_command(init)
 main.add_command(run)
 main.add_command(register)
+main.add_command(serve)
 
 if __name__ == "__main__":
     main()

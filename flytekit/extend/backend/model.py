@@ -30,6 +30,6 @@ class TaskCreateRequest(common.FlyteIdlEntity):
     def from_flyte_idl(cls, proto):
         return cls(
             task_type=proto.proto,
-            inputs=interface.VariableMap.from_flyte_idl(proto.inputs),
+            inputs=interface.VariableMap.from_flyte_idl(proto.inputs) if proto.inputs is not None else None,
             template=task.TaskTemplate.from_flyte_idl(proto.template),
         )

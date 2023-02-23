@@ -21,7 +21,7 @@ class CreateRequest:
 @dataclass
 class CreateResponse:
     job_id: str
-    message: Optional[str]
+    message: Optional[str] = None
 
 
 @dataclass
@@ -34,7 +34,7 @@ class PollRequest:
 @dataclass
 class PollResponse:
     state: str
-    message: Optional[str]
+    message: Optional[str] = None
 
 
 class BackendPluginBase:
