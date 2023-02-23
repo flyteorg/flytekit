@@ -12,6 +12,7 @@ codespell
 google-cloud-bigquery
 google-cloud-bigquery-storage
 IPython
+keyring.alt
 
 # Only install tensorflow if not running on an arm Mac.
 tensorflow==2.8.1; platform_machine!='arm64' or platform_system!='Darwin'
