@@ -4,10 +4,6 @@ FROM python:${PYTHON_VERSION}-slim-buster
 MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
 
-RUN useradd -u 1000 flytekit
-RUN chown flytekit: /root
-USER flytekit
-
 WORKDIR /root
 ENV PYTHONPATH /root
 
@@ -23,5 +19,9 @@ RUN pip install -U flytekit==$VERSION \
 	flytekitplugins-data-fsspec[aws]==$VERSION \
 	flytekitplugins-data-fsspec[gcp]==$VERSION \
 	scikit-learn
+
+RUN useradd -u 1000 flytekit
+RUN chown flytekit: /root
+USER flytekit
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
