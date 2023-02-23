@@ -175,8 +175,10 @@ six==1.16.0
     #   python-dateutil
 sortedcontainers==2.4.0
     # via flytekit
-sqlalchemy==2.0.4
-    # via flytekitplugins-sqlalchemy
+sqlalchemy==1.4.39
+    # via
+    #   -r requirements.in
+    #   flytekitplugins-sqlalchemy
 statsd==3.3.0
     # via flytekit
 text-unidecode==1.3
@@ -191,7 +193,6 @@ typing-extensions==4.5.0
     #   flytekit
     #   importlib-metadata
     #   responses
-    #   sqlalchemy
     #   typing-inspect
 typing-inspect==0.8.0
     # via dataclasses-json
