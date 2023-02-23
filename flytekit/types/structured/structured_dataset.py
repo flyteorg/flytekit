@@ -34,6 +34,7 @@ StructuredDatasetFormat: TypeAlias = str
 # Storage formats
 PARQUET: StructuredDatasetFormat = "parquet"
 GENERIC_FORMAT: StructuredDatasetFormat = ""
+GENERIC_PROTOCOL: str = "generic protocol"
 
 
 @dataclass_json

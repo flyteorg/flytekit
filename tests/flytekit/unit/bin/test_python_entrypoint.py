@@ -2,6 +2,7 @@ import os
 import typing
 from collections import OrderedDict
 
+import fsspec
 import mock
 import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
@@ -9,15 +10,13 @@ from flyteidl.core.errors_pb2 import ErrorDocument
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
-from flytekit.core.data_persistence import DiskPersistence
+from fsspec.implementations.arrow import ArrowFSWrapper
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.scopes import system_entry_point
-from flytekit.extras.persistence.gcs_gsutil import GCSPersistence
-from flytekit.extras.persistence.s3_awscli import S3Persistence
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
@@ -312,15 +311,18 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
 
 def test_setup_disk_prefix():
     with setup_execution("qwerty") as ctx:
-        assert isinstance(ctx.file_access._default_remote, DiskPersistence)
+        assert isinstance(ctx.file_access._default_remote, fsspec.AbstractFileSystem)
+        assert ctx.file_access._default_remote.protocol == "file"
 
 
 def test_setup_cloud_prefix():
     with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
-        assert isinstance(ctx.file_access._default_remote, S3Persistence)
+        assert isinstance(ctx.file_access._default_remote, ArrowFSWrapper)
+        assert ctx.file_access._default_remote.protocol == "s3"
 
     with setup_execution("gs://", checkpoint_path=None, prev_checkpoint=None) as ctx:
-        assert isinstance(ctx.file_access._default_remote, GCSPersistence)
+        assert isinstance(ctx.file_access._default_remote, ArrowFSWrapper)
+        assert ctx.file_access._default_remote.protocol == "gs"
 
 
 def test_normalize_inputs():

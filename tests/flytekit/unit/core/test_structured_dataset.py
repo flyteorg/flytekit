@@ -25,8 +25,9 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     convert_schema_type_to_structured_dataset_type,
     extract_cols_and_format,
-    protocol_prefix,
 )
+from fsspec.utils import get_protocol
+
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 
@@ -44,8 +45,8 @@ df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 
 def test_protocol():
-    assert protocol_prefix("s3://my-s3-bucket/file") == "s3"
-    assert protocol_prefix("/file") == "file"
+    assert get_protocol("s3://my-s3-bucket/file") == "s3"
+    assert get_protocol("/file") == "file"
 
 
 def generate_pandas() -> pd.DataFrame:
