@@ -12,6 +12,7 @@ from flytekit.exceptions.user import (
     FlyteInvalidInputException,
 )
 
+
 class RetryExceptionWrapperInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor):
     def __init__(self, max_retries: int = 3):
         self._max_retries = 3
