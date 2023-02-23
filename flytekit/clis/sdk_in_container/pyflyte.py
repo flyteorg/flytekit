@@ -34,7 +34,18 @@ def validate_package(ctx, param, values):
     return pkgs
 
 
+def pretty_print_grpc_error(e: grpc.RpcError):
+    if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
+        click.secho(f"RPC Failed, with Status: {e.code()}", fg="red")
+        click.secho(f"\tdetails: {e.details()}", fg="magenta")
+        click.secho(f"\tDebug string {e.debug_error_string()}", dim=True)
+    return
+
+
 def pretty_print_exception(e: Exception):
+    if isinstance(e, click.exceptions.Exit):
+        return
+
     if isinstance(e, click.ClickException):
         click.secho(e.message, fg="red")
         raise e
@@ -46,17 +57,19 @@ def pretty_print_exception(e: Exception):
             click.secho(f"\tInput Request: {MessageToJson(e.request)}", dim=True)
             return
         click.secho(f"Failed with Exception: Reason: {e._ERROR_CODE}", fg="red")  # noqa
-        click.secho(f"Underlying Exception: {e.__cause__}", dim=True)
+        cause = e.__cause__
+        if cause:
+            if isinstance(cause, grpc.RpcError):
+                pretty_print_grpc_error(cause)
+            else:
+                click.secho(f"Underlying Exception: {cause}")
         return
 
-    if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
-        click.secho("RPC failed.", fg="red")
-        click.secho(f"\tStatus: {e.code()}")
-        click.secho(f"\tdetails: {e.details()}")
-        click.secho(f"\tDebug string {e.debug_error_string()}", dim=True)
+    if isinstance(e, grpc.RpcError):
+        pretty_print_grpc_error(e)
         return
 
-    click.secho(f"Failed with Unknown Exception: Reason: {e}", fg="red")  # noqa
+    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
 
 
 class ErrorHandlingCommand(click.Group):
