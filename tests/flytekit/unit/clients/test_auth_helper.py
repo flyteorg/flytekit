@@ -11,6 +11,7 @@ from flytekit.clients.auth.authenticator import (
     CommandAuthenticator,
     PKCEAuthenticator,
 )
+from flytekit.clients.auth.exceptions import AuthenticationError
 from flytekit.clients.auth_helper import (
     RemoteClientConfigStore,
     get_authenticator,
@@ -119,7 +120,7 @@ def test_get_authenticator_pkce():
 
 def test_get_authenticator_cmd():
     cfg = PlatformConfig(auth_mode=AuthType.EXTERNAL_PROCESS)
-    with pytest.raises(ValueError):
+    with pytest.raises(AuthenticationError):
         get_authenticator(cfg, get_client_config())
 
     cfg = PlatformConfig(auth_mode=AuthType.EXTERNAL_PROCESS, command=["echo"])
