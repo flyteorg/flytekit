@@ -29,8 +29,9 @@ T = typing.TypeVar("T")
 @dataclass_json
 @dataclass
 class FlyteFile(os.PathLike, typing.Generic[T]):
-    path: typing.Union[str, os.PathLike] = field(default=None,
-                                                 metadata=config(mm_field=fields.String()))  # type: ignore
+    path: typing.Union[str, os.PathLike] = field(
+        default=None, metadata=config(mm_field=fields.String())
+    )  # type: ignore
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -180,10 +181,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return _SpecificFormatClass
 
     def __init__(
-            self,
-            path: typing.Union[str, os.PathLike],
-            downloader: typing.Callable = noop,
-            remote_path: typing.Optional[os.PathLike] = None,
+        self,
+        path: typing.Union[str, os.PathLike],
+        downloader: typing.Callable = noop,
+        remote_path: typing.Optional[os.PathLike] = None,
     ):
         """
         :param path: The source path that users are expected to call open() on
@@ -209,9 +210,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     def __eq__(self, other):
         if isinstance(other, FlyteFile):
             return (
-                    self.path == other.path
-                    and self._remote_path == other._remote_path
-                    and self.extension() == other.extension()
+                self.path == other.path
+                and self._remote_path == other._remote_path
+                and self.extension() == other.extension()
             )
         else:
             return self.path == other
@@ -272,6 +273,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         """
         try:
             import fsspec
+
             final_path = self.remote_path if self.remote_path else self.path
             kwargs = {}
             if cache_type:
@@ -283,8 +285,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
             finally:
                 open_file.close()
         except ImportError as e:
-            print("To use streaming files, please install fsspec."
-                  " Note: This will be bundled with flytekit in the future.")
+            print(
+                "To use streaming files, please install fsspec."
+                " Note: This will be bundled with flytekit in the future."
+            )
             raise FlyteUserException("Install fsspec to use FlyteFile streaming.") from e
 
     def __repr__(self):
@@ -308,7 +312,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
 
     def assert_type(
-            self, t: typing.Union[typing.Type[FlyteFile], os.PathLike], v: typing.Union[FlyteFile, os.PathLike, str]
+        self, t: typing.Union[typing.Type[FlyteFile], os.PathLike], v: typing.Union[FlyteFile, os.PathLike, str]
     ):
         if isinstance(v, os.PathLike) or isinstance(v, FlyteFile) or isinstance(v, str):
             return
@@ -321,11 +325,11 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
     def to_literal(
-            self,
-            ctx: FlyteContext,
-            python_val: typing.Union[FlyteFile, os.PathLike, str],
-            python_type: typing.Type[FlyteFile],
-            expected: LiteralType,
+        self,
+        ctx: FlyteContext,
+        python_val: typing.Union[FlyteFile, os.PathLike, str],
+        python_type: typing.Type[FlyteFile],
+        expected: LiteralType,
     ) -> Literal:
         remote_path = None
         should_upload = True
@@ -395,8 +399,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     def to_python_value(
-            self, ctx: FlyteContext, lv: Literal,
-            expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
         try:
             uri = lv.scalar.blob.uri
@@ -430,9 +433,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
         if (
-                literal_type.blob is not None
-                and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
-                and literal_type.blob.format != FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format != FlytePickleTransformer.PYTHON_PICKLE_FORMAT
         ):
             return FlyteFile.__class_getitem__(literal_type.blob.format)
 

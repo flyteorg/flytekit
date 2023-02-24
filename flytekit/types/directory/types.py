@@ -189,16 +189,36 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         return self.__fspath__()
 
     @contextmanager
-    def open(self, mode: str, **kwargs):
+    def open(
+        self,
+        mode: str,
+        cache_type: typing.Optional[str] = None,
+        cache_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ) -> "fsspec.core.OpenFiles":
+        """
+        TODO after making fsspec default in flytekit remove the quotes in return type.
+
+        TODO after making the persistence layer based on fsspec, we can use "fs.walk" and implement "walk" on
+        FlyteDirectory
+        """
         try:
             import fsspec
+
             final_path = self.remote_path if self.remote_path else self.path
+
+            kwargs = {}
+            if cache_type:
+                final_path = f"{cache_type}::{final_path}"
+                kwargs[cache_type] = cache_options
+
             open_files: fsspec.core.OpenFiles = fsspec.open_files(final_path, mode, **kwargs)
-            # TODO should we wrap this up into FlyteFile?
+            # TODO this is still experimental, we probably should wrap OpenFiles in a flytekit object?
             return open_files
         except ImportError as e:
-            print("To use streaming files, please install fsspec."
-                  " Note: This will be bundled with flytekit in the future.")
+            print(
+                "To use streaming files, please install fsspec."
+                " Note: This will be bundled with flytekit in the future."
+            )
             raise
 
     def __repr__(self):
