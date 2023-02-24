@@ -29,11 +29,11 @@ class BigQueryPlugin(BackendPluginBase):
     def __init__(self):
         super().__init__(task_type="bigquery")
 
-    async def initialize(self):
+    def initialize(self):
         # TODO: Read GOOGLE_APPLICATION_CREDENTIALS from secret. If not found, raise an error.
         pass
 
-    async def create(self, create_request: CreateRequest) -> CreateResponse:
+    def create(self, create_request: CreateRequest) -> CreateResponse:
         ctx = FlyteContextManager.current_context()
         task_template = get_task_template(create_request.task_template_path)
         task_input_literals = get_task_inputs(create_request.inputs_path)
@@ -57,7 +57,7 @@ class BigQueryPlugin(BackendPluginBase):
 
         return CreateResponse(job_id=query_job.job_id)
 
-    async def poll(self, poll_request: PollRequest) -> PollResponse:
+    def poll(self, poll_request: PollRequest) -> PollResponse:
         client = bigquery.Client()
         job = client.get_job(poll_request.job_id)
         state = convert_to_flyte_state(str(job.state))
@@ -81,7 +81,7 @@ class BigQueryPlugin(BackendPluginBase):
 
         return PollResponse(job_id=job.job_id, state=state)
 
-    async def terminate(self, job_id):
+    def terminate(self, job_id):
         client = bigquery.Client()
         client.cancel_job(job_id)
 

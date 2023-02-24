@@ -23,3 +23,4 @@ class BackendPluginServer(BackendPluginServiceServicer):
         plugin = BackendPluginRegistry.get_plugin(request.task_type)
         res = plugin.terminate(request.job_id)
         print("deleting", res)
+        return plugin_system_pb2.TaskDeleteResponse()
