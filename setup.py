@@ -67,7 +67,6 @@ setup(
         "diskcache>=5.2.1",
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
-        "numpy<1.22.0; python_version < '3.8.0'",
         # TODO: We should remove mentions to the deprecated numpy
         # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
         "numpy<1.24.0",
@@ -81,12 +80,11 @@ setup(
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
-    python_requires=">=3.7,<3.11",
+    python_requires=">=3.8,<3.11",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",

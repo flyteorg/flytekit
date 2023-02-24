@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10"]
         exclude:
           # Ignore this test because we failed to install docker-py
           # docker-py will install pywin32==227, whereas pywin only added support for python 3.10 in version 301.
