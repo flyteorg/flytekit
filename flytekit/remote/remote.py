@@ -165,7 +165,8 @@ class FlyteRemote(object):
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
-        self._client = SynchronousFlyteClient(config.platform, **kwargs)
+        self._kwargs = kwargs
+        self._client_initialized = False
         self._config = config
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
@@ -187,6 +188,9 @@ class FlyteRemote(object):
     @property
     def client(self) -> SynchronousFlyteClient:
         """Return a SynchronousFlyteClient for additional operations."""
+        if not self._client_initialized:
+            self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
+            self._client_initialized = True
         return self._client
 
     @property
@@ -592,6 +596,7 @@ class FlyteRemote(object):
         settings: typing.Optional[SerializationSettings],
         version: str,
         options: typing.Optional[Options] = None,
+        create_default_launchplan: bool = True,
     ) -> Identifier:
         """
         This method serializes and register the given Flyte entity
@@ -626,7 +631,7 @@ class FlyteRemote(object):
                     cp_entity,
                     settings=settings,
                     version=version,
-                    create_default_launchplan=True,
+                    create_default_launchplan=create_default_launchplan,
                     options=options,
                     og_entity=entity,
                 )
@@ -681,14 +686,7 @@ class FlyteRemote(object):
             b.domain = ident.domain
             b.version = ident.version
             serialization_settings = b.build()
-        ident = self._serialize_and_register(entity, serialization_settings, version, options)
-        if default_launch_plan:
-            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
-            self.register_launch_plan(
-                default_lp, version=ident.version, project=ident.project, domain=ident.domain, options=options
-            )
-            remote_logger.debug("Created default launch plan for Workflow")
-
+        ident = self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf

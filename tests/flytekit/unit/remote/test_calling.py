@@ -75,6 +75,8 @@ def test_misnamed():
         def wf(a: int) -> int:
             return ft(b=a)
 
+        wf()
+
 
 def test_calling_lp():
     sub_wf_lp = LaunchPlan.get_or_create(sub_wf)

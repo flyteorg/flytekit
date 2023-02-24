@@ -35,12 +35,21 @@ IMPERATIVE_WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file_
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 
 
-def test_pyflyte_run_wf():
-    runner = CliRunner()
-    module_path = WORKFLOW_FILE
-    result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+@pytest.fixture
+def remote():
+    with mock.patch("flytekit.clients.friendly.SynchronousFlyteClient") as mock_client:
+        flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+        flyte_remote._client = mock_client
+        return flyte_remote
 
-    assert result.exit_code == 0
+
+def test_pyflyte_run_wf(remote):
+    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_and_save_remote_with_click_context"):
+        runner = CliRunner()
+        module_path = WORKFLOW_FILE
+        result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+
+        assert result.exit_code == 0
 
 
 def test_imperative_wf():
@@ -143,6 +152,7 @@ def test_union_type_with_invalid_input():
         runner.invoke(
             pyflyte.main,
             [
+                "--verbose",
                 "run",
                 os.path.join(DIR_NAME, "workflow.py"),
                 "test_union2",

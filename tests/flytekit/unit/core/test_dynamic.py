@@ -34,11 +34,16 @@ def test_wf1_with_fast_dynamic():
         a = a + 2
         return "fast-" + str(a)
 
+    @workflow
+    def subwf(a: int):
+        t1(a=a)
+
     @dynamic
     def my_subwf(a: int) -> typing.List[str]:
         s = []
         for i in range(a):
             s.append(t1(a=i))
+        subwf(a=a)
         return s
 
     @workflow
@@ -58,7 +63,7 @@ def test_wf1_with_fast_dynamic():
         ) as ctx:
             input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
             dynamic_job_spec = my_subwf.dispatch_execute(ctx, input_literal_map)
-            assert len(dynamic_job_spec._nodes) == 5
+            assert len(dynamic_job_spec._nodes) == 6
             assert len(dynamic_job_spec.tasks) == 1
             args = " ".join(dynamic_job_spec.tasks[0].container.args)
             assert args.startswith(

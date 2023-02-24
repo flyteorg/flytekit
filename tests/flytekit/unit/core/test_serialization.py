@@ -406,17 +406,17 @@ def test_serialization_named_outputs_single():
 
 
 def test_named_outputs_nested():
-    nm = typing.NamedTuple("OP", greet=str)
+    nm = typing.NamedTuple("OP", [("greet", str)])
 
     @task
     def say_hello() -> nm:
         return nm("hello world")
 
-    wf_outputs = typing.NamedTuple("OP2", greet1=str, greet2=str)
+    wf_outputs = typing.NamedTuple("OP2", [("greet1", str), ("greet2", str)])
 
     @workflow
     def my_wf() -> wf_outputs:
-        # Note only Namedtuples can be created like this
+        # Note only Namedtuple can be created like this
         return wf_outputs(say_hello().greet, say_hello().greet)
 
     x, y = my_wf()
@@ -425,20 +425,22 @@ def test_named_outputs_nested():
 
 
 def test_named_outputs_nested_fail():
-    nm = typing.NamedTuple("OP", greet=str)
+    nm = typing.NamedTuple("OP", [("greet", str)])
 
     @task
     def say_hello() -> nm:
         return nm("hello world")
 
-    wf_outputs = typing.NamedTuple("OP2", greet1=str, greet2=str)
+    wf_outputs = typing.NamedTuple("OP2", [("greet1", str), ("greet2", str)])
 
     with pytest.raises(AssertionError):
         # this should fail because say_hello returns a tuple, but we do not de-reference it
         @workflow
         def my_wf() -> wf_outputs:
-            # Note only Namedtuples can be created like this
+            # Note only Namedtuple can be created like this
             return wf_outputs(say_hello(), say_hello())
+
+        my_wf()
 
 
 def test_serialized_docstrings():

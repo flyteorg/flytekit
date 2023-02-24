@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
@@ -177,9 +177,9 @@ class WorkflowBase(object):
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
         self._interface = transform_interface_to_typed_interface(python_interface)
-        self._inputs = {}
-        self._unbound_inputs = set()
-        self._nodes = []
+        self._inputs: Dict[str, Promise] = {}
+        self._unbound_inputs: set = set()
+        self._nodes: List[Node] = []
         self._output_bindings: List[_literal_models.Binding] = []
         self._docs = docs
 
@@ -191,7 +191,9 @@ class WorkflowBase(object):
                 )
             else:
                 if self._python_interface.docstring.short_description:
-                    self._docs.short_description = self._python_interface.docstring.short_description
+                    cast(
+                        Documentation, self._docs
+                    ).short_description = self._python_interface.docstring.short_description
                 if self._python_interface.docstring.long_description:
                     self._docs = Description(value=self._python_interface.docstring.long_description)
 
@@ -211,11 +213,11 @@ class WorkflowBase(object):
         return extract_obj_name(self._name)
 
     @property
-    def workflow_metadata(self) -> Optional[WorkflowMetadata]:
+    def workflow_metadata(self) -> WorkflowMetadata:
         return self._workflow_metadata
 
     @property
-    def workflow_metadata_defaults(self):
+    def workflow_metadata_defaults(self) -> WorkflowMetadataDefaults:
         return self._workflow_metadata_defaults
 
     @property
@@ -228,10 +230,12 @@ class WorkflowBase(object):
 
     @property
     def output_bindings(self) -> List[_literal_models.Binding]:
+        self.compile()
         return self._output_bindings
 
     @property
     def nodes(self) -> List[Node]:
+        self.compile()
         return self._nodes
 
     def __repr__(self):
@@ -248,17 +252,21 @@ class WorkflowBase(object):
             interruptible=self.workflow_metadata_defaults.interruptible,
         )
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
         """
         Workflow needs to fill in default arguments before invoking the call handler.
         """
         # Get default arguments and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
+        self.compile()
         return flyte_entity_call_handler(self, *args, **input_kwargs)
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
+
+    def compile(self, **kwargs):
+        pass
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
@@ -270,6 +278,7 @@ class WorkflowBase(object):
 
         # The output of this will always be a combination of Python native values and Promises containing Flyte
         # Literals.
+        self.compile()
         function_outputs = self.execute(**kwargs)
 
         # First handle the empty return case.
@@ -412,7 +421,7 @@ class ImperativeWorkflow(WorkflowBase):
             raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
 
         # Create a map that holds the outputs of each node.
-        intermediate_node_outputs = {GLOBAL_START_NODE: {}}  # type: Dict[Node, Dict[str, Promise]]
+        intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
@@ -509,7 +518,7 @@ class ImperativeWorkflow(WorkflowBase):
                     self._unbound_inputs.remove(input_value)
             return n  # type: ignore
 
-    def add_workflow_input(self, input_name: str, python_type: Type) -> Interface:
+    def add_workflow_input(self, input_name: str, python_type: Type) -> Promise:
         """
         Adds an input to the workflow.
         """
@@ -536,7 +545,8 @@ class ImperativeWorkflow(WorkflowBase):
                     f"If specifying a list or dict of Promises, you must specify the python_type type for {output_name}"
                     f" starting with the container type (e.g. List[int]"
                 )
-            python_type = p.ref.node.flyte_entity.python_interface.outputs[p.var]
+            promise = cast(Promise, p)
+            python_type = promise.ref.node.flyte_entity.python_interface.outputs[promise.var]
             logger.debug(f"Inferring python type for wf output {output_name} from Promise provided {python_type}")
 
         flyte_type = TypeEngine.to_literal_type(python_type=python_type)
@@ -589,8 +599,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         workflow_function: Callable,
-        metadata: Optional[WorkflowMetadata],
-        default_metadata: Optional[WorkflowMetadataDefaults],
+        metadata: WorkflowMetadata,
+        default_metadata: WorkflowMetadataDefaults,
         docstring: Optional[Docstring] = None,
         docs: Optional[Documentation] = None,
     ):
@@ -609,12 +619,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             python_interface=native_interface,
             docs=docs,
         )
+        self.compiled = False
 
     @property
     def function(self):
         return self._workflow_function
 
-    def task_name(self, t: PythonAutoContainerTask) -> str:
+    def task_name(self, t: PythonAutoContainerTask) -> str:  # type: ignore
         return f"{self.name}.{t.__module__}.{t.name}"
 
     def compile(self, **kwargs):
@@ -622,6 +633,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
+        if self.compiled:
+            return
+        self.compiled = True
         ctx = FlyteContextManager.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
@@ -756,17 +770,16 @@ def workflow(
             docstring=Docstring(callable_=fn),
             docs=docs,
         )
-        workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
 
     if _workflow_function:
         return wrapper(_workflow_function)
     else:
-        return wrapper
+        return wrapper  # type: ignore
 
 
-class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):
+class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):  # type: ignore
     """
     A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This
     object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.

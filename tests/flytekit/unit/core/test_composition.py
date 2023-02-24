@@ -35,14 +35,12 @@ def test_wf1_with_subwf():
 
 
 def test_single_named_output_subwf():
-    nt = NamedTuple("SubWfOutput", sub_int=int)
+    nt = NamedTuple("SubWfOutput", [("sub_int", int)])
 
     @task
     def t1(a: int) -> nt:
         a = a + 2
-        return nt(
-            a,
-        )  # returns a named tuple
+        return nt(a)
 
     @task
     def t2(a: int, b: int) -> nt:
@@ -198,3 +196,5 @@ def test_optional_input():
         @workflow
         def wf():
             return t3()
+
+        wf()
