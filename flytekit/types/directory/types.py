@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -181,6 +182,19 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
 
     def download(self) -> str:
         return self.__fspath__()
+
+    @contextmanager
+    def open(self, mode: str, **kwargs):
+        try:
+            import fsspec
+            final_path = self.remote_path if self.remote_path else self.path
+            open_files: fsspec.core.OpenFiles = fsspec.open_files(final_path, mode, **kwargs)
+            # TODO should we wrap this up into FlyteFile?
+            return open_files
+        except ImportError as e:
+            print("To use streaming files, please install fsspec."
+                  " Note: This will be bundled with flytekit in the future.")
+            raise
 
     def __repr__(self):
         return self.path

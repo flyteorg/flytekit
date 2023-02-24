@@ -11,6 +11,7 @@ from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -151,9 +152,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return ""
 
     @classmethod
-    def new_remote_file(cls) -> FlyteFile:
+    def new_remote_file(cls, name: typing.Optional[str] = None) -> FlyteFile:
         ctx = FlyteContextManager.current_context()
-        remote_path = ctx.file_access.get_random_remote_path()
+        remote_path = ctx.file_access.get_random_remote_path(name)
         return cls(path=remote_path)
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
@@ -235,11 +236,48 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return self.__fspath__()
 
     @contextmanager
-    def open(self, mode: str, **kwargs):
+    def open(self, mode: str, cache_type: str = None, cache_options: typing.Dict[str, typing.Any] = None):
+        """
+        Returns a streaming File handle
+
+        .. code-block:: python
+
+            @task
+            def copy_file(ff: FlyteFile) -> FlyteFile:
+                new_file = FlyteFile.new_remote_file(ff.name)
+                with ff.open("rb", cache_type="readahead", cache={}) as r:
+                    with new_file.open("wb") as w:
+                        w.write(r.read())
+                return new_file
+
+        Alternatively
+
+        .. code-block:: python
+
+            @task
+            def copy_file(ff: FlyteFile) -> FlyteFile:
+                new_file = FlyteFile.new_remote_file(ff.name)
+                with fsspec.open(f"readahead::{ff.remote_path}", "rb", readahead={}) as r:
+                    with new_file.open("wb") as w:
+                        w.write(r.read())
+                return new_file
+
+
+        :param mode: str Open mode like 'rb', 'rt', 'wb', ...
+        :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
+                            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
+                             especially useful for large file reads
+        :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
+                        cache_protocol
+        """
         try:
             import fsspec
             final_path = self.remote_path if self.remote_path else self.path
-            open_file: fsspec.core.OpenFile = fsspec.open(final_path, mode)
+            kwargs = {}
+            if cache_type:
+                final_path = f"{cache_type}::{final_path}"
+                kwargs[cache_type] = cache_options
+            open_file: fsspec.core.OpenFile = fsspec.open(final_path, mode, **kwargs)
             try:
                 yield open_file.open()
             finally:
@@ -247,7 +285,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         except ImportError as e:
             print("To use streaming files, please install fsspec."
                   " Note: This will be bundled with flytekit in the future.")
-            raise
+            raise FlyteUserException("Install fsspec to use FlyteFile streaming.") from e
 
     def __repr__(self):
         return self.path
