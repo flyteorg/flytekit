@@ -17,6 +17,6 @@ def serve(_: click.Context):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_BackendPluginServiceServicer_to_server(BackendPluginServer(), server)
 
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port('[::]:8000')
     server.start()
     server.wait_for_termination()
