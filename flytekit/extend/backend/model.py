@@ -1,10 +1,11 @@
 from flyteidl.service import plugin_system_pb2
 
-from flytekit.models import common, interface, task
+from flytekit.models import common, task
+from flytekit.models.literals import LiteralMap
 
 
 class TaskCreateRequest(common.FlyteIdlEntity):
-    def __init__(self, inputs: interface.VariableMap, template: task.TaskTemplate):
+    def __init__(self, inputs: LiteralMap, template: task.TaskTemplate):
         self._inputs = inputs
         self._template = template
 
@@ -24,6 +25,6 @@ class TaskCreateRequest(common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, proto):
         return cls(
-            inputs=interface.VariableMap.from_flyte_idl(proto.inputs) if proto.inputs is not None else None,
+            inputs=LiteralMap.from_flyte_idl(proto.inputs) if proto.inputs is not None else None,
             template=task.TaskTemplate.from_flyte_idl(proto.template),
         )

@@ -6,6 +6,7 @@ from typing import Optional
 from flyteidl.core.tasks_pb2 import TaskTemplate
 
 from flytekit.models.interface import VariableMap
+from flytekit.models.literals import LiteralMap
 
 PENDING = "pending"
 SUCCEEDED = "succeeded"
@@ -14,7 +15,7 @@ RUNNING = "running"
 
 @dataclass
 class CreateRequest:
-    inputs: VariableMap
+    inputs: LiteralMap
     task_template: TaskTemplate
 
 
