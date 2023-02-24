@@ -10,6 +10,7 @@ from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import get_filesystem
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.loggers import logger
@@ -272,18 +273,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
                         cache_protocol
         """
         try:
-            import fsspec
-
             final_path = self.remote_path if self.remote_path else self.path
-            kwargs = {}
-            if cache_type:
-                final_path = f"{cache_type}::{final_path}"
-                kwargs[cache_type] = cache_options
-            open_file: fsspec.core.OpenFile = fsspec.open(final_path, mode, **kwargs)
-            try:
-                yield open_file.open()
-            finally:
-                open_file.close()
+            fs = get_filesystem(final_path, cache_type=cache_type, cache_options=cache_options)
+            yield fs.open(final_path, mode)
         except ImportError as e:
             print(
                 "To use streaming files, please install fsspec."

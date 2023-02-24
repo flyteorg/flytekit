@@ -3,23 +3,27 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+from random import random
+from uuid import UUID
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.data_persistence import get_filesystem
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types.file import FileExt
+from flytekit.types.file import FileExt, FlyteFile
 
 T = typing.TypeVar("T")
 PathType = typing.Union[str, os.PathLike]
+ListOrDict = typing.Union[typing.List, typing.Dict]
 
 
 def noop():
@@ -117,10 +121,10 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     """
 
     def __init__(
-        self,
-        path: typing.Union[str, os.PathLike],
-        downloader: typing.Optional[typing.Callable] = None,
-        remote_directory: typing.Optional[str] = None,
+            self,
+            path: typing.Union[str, os.PathLike],
+            downloader: typing.Optional[typing.Callable] = None,
+            remote_directory: typing.Optional[str] = None,
     ):
         """
         :param path: The source path that users are expected to call open() on
@@ -148,6 +152,11 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     @classmethod
     def extension(cls) -> str:
         return ""
+
+    @classmethod
+    def new_remote(cls) -> FlyteDirectory:
+        d = FlyteContext.current_context().file_access.get_random_remote_directory()
+        return FlyteDirectory(path=d)
 
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:
@@ -185,41 +194,34 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         """
         return typing.cast(str, self._remote_source)
 
+    def new_file(self, name: typing.Optional[str] = None) -> FlyteFile:
+        # TODO we may want to use - https://github.com/fsspec/universal_pathlib
+        if not name:
+            name = UUID(int=random.getrandbits(128)).hex
+        return FlyteFile(path=os.path.join(self.path, name))
+
+    def new_dir(self, name: typing.Optional[str] = None) -> FlyteDirectory:
+        if not name:
+            name = UUID(int=random.getrandbits(128)).hex
+        return FlyteDirectory(path=os.path.join(self.path, name))
+
     def download(self) -> str:
         return self.__fspath__()
 
-    @contextmanager
-    def open(
-        self,
-        mode: str,
-        cache_type: typing.Optional[str] = None,
-        cache_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
-    ) -> "fsspec.core.OpenFiles":
+    def walk(self, maxdepth=None, topdown=True, **kwargs) -> typing.Tuple[str, ListOrDict, ListOrDict]:
         """
-        TODO after making fsspec default in flytekit remove the quotes in return type.
-
-        TODO after making the persistence layer based on fsspec, we can use "fs.walk" and implement "walk" on
-        FlyteDirectory
         """
         try:
-            import fsspec
-
             final_path = self.remote_path if self.remote_path else self.path
-
-            kwargs = {}
-            if cache_type:
-                final_path = f"{cache_type}::{final_path}"
-                kwargs[cache_type] = cache_options
-
-            open_files: fsspec.core.OpenFiles = fsspec.open_files(final_path, mode, **kwargs)
-            # TODO this is still experimental, we probably should wrap OpenFiles in a flytekit object?
-            return open_files
+            import fsspec
+            fs: fsspec.AbstractFileSystem = get_filesystem(final_path)
+            yield fs.walk(final_path, maxdepth, topdown, **kwargs)
         except ImportError as e:
             print(
                 "To use streaming files, please install fsspec."
                 " Note: This will be bundled with flytekit in the future."
             )
-            raise
+            raise FlyteUserException("Install fsspec to use FlyteFile streaming.") from e
 
     def __repr__(self):
         return self.path
@@ -266,11 +268,11 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
 
     def to_literal(
-        self,
-        ctx: FlyteContext,
-        python_val: FlyteDirectory,
-        python_type: typing.Type[FlyteDirectory],
-        expected: LiteralType,
+            self,
+            ctx: FlyteContext,
+            python_val: FlyteDirectory,
+            python_type: typing.Type[FlyteDirectory],
+            expected: LiteralType,
     ) -> Literal:
 
         remote_directory = None
@@ -319,7 +321,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
+            self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
 
         uri = lv.scalar.blob.uri
@@ -344,8 +346,8 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteDirectory[typing.Any]]:
         if (
-            literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
+                literal_type.blob is not None
+                and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
         ):
             return FlyteDirectory.__class_getitem__(literal_type.blob.format)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")

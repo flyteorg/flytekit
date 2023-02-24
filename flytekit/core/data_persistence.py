@@ -34,7 +34,7 @@ from shutil import copyfile
 from typing import Dict, Union
 from uuid import UUID
 
-from flytekit.configuration import DataConfig
+from flytekit.configuration import DataConfig, S3Config
 from flytekit.core.utils import PerformanceTimer
 from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
 from flytekit.interfaces.random import random
@@ -42,6 +42,50 @@ from flytekit.loggers import logger
 
 CURRENT_PYTHON = sys.version_info[:2]
 THREE_SEVEN = (3, 7)
+
+# TODO Remove Hack after data persistence pr is merged
+# -------------------------------------------------------------
+
+S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
+S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
+
+# Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
+# for key and secret
+_FSSPEC_S3_KEY_ID = "key"
+_FSSPEC_S3_SECRET = "secret"
+
+
+def s3_setup_args(s3_cfg: S3Config):
+    kwargs = {}
+    if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
+        if s3_cfg.access_key_id:
+            kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
+
+    if S3_SECRET_ACCESS_KEY_ENV_NAME not in os.environ:
+        if s3_cfg.secret_access_key:
+            kwargs[_FSSPEC_S3_SECRET] = s3_cfg.secret_access_key
+
+    # S3fs takes this as a special arg
+    if s3_cfg.endpoint is not None:
+        kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
+
+    return kwargs
+
+
+def get_filesystem(path: str, **kwargs) -> "fsspec.AbstractFileSystem":
+    import fsspec
+    protocol, path = split_protocol(path)
+    if protocol is None or protocol == "file":
+        protocol = "file"
+        kwargs = {"auto_mkdir": True}
+    elif protocol == "s3":
+        from flytekit.core.context_manager import FlyteContextManager
+        fa = FlyteContextManager().current_context().file_access
+        kwargs = s3_setup_args(fa.data_config.s3)
+    return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+
+
+# ----------------------------------------------------
 
 
 class UnsupportedPersistenceOp(Exception):
@@ -320,10 +364,10 @@ class FileAccessProvider(object):
     """
 
     def __init__(
-        self,
-        local_sandbox_dir: Union[str, os.PathLike],
-        raw_output_prefix: str,
-        data_config: typing.Optional[DataConfig] = None,
+            self,
+            local_sandbox_dir: Union[str, os.PathLike],
+            raw_output_prefix: str,
+            data_config: typing.Optional[DataConfig] = None,
     ):
         """
         Args:
@@ -370,7 +414,7 @@ class FileAccessProvider(object):
         return self._local
 
     def construct_random_path(
-        self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
+            self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
     ) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
