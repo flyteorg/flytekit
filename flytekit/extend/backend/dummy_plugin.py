@@ -1,12 +1,11 @@
 from random import randint
-from time import sleep
+
+from flyteidl.service import plugin_system_pb2
 
 from flytekit import FlyteContextManager, StructuredDataset
 from flytekit.core import constants
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_plugin import (
-    RUNNING,
-    SUCCEEDED,
     BackendPluginBase,
     BackendPluginRegistry,
     CreateRequest,
@@ -24,16 +23,16 @@ class DummyPlugin(BackendPluginBase):
     def __init__(self):
         super().__init__(task_type="dummy")
 
-    async def initialize(self):
+    def initialize(self):
         pass
 
-    async def create(self, create_request: CreateRequest) -> CreateResponse:
+    def create(self, create_request: CreateRequest) -> CreateResponse:
         print("creating")
         return CreateResponse(job_id="fake_id")
 
-    async def poll(self, poll_request: PollRequest) -> PollResponse:
-        if poll_request.prev_state == SUCCEEDED:
-            return PollResponse(state=SUCCEEDED)
+    def poll(self, poll_request: PollRequest) -> PollResponse:
+        if poll_request.prev_state == plugin_system_pb2.SUCCEEDED:
+            return PollResponse(state=plugin_system_pb2.SUCCEEDED)
 
         x = randint(1, 100)
         if x > 50:
@@ -51,13 +50,13 @@ class DummyPlugin(BackendPluginBase):
                 )
             }
             upload_output_file(output_file_dict, poll_request.output_prefix)
-            state = SUCCEEDED
+            state = plugin_system_pb2.SUCCEEDED
         else:
-            state = RUNNING
+            state = plugin_system_pb2.RUNNING
 
         return PollResponse(state=state)
 
-    async def terminate(self, job_id):
+    def terminate(self, job_id):
         print("deleting")
 
 

@@ -4,6 +4,7 @@ from abc import abstractmethod
 from typing import Optional
 
 from flyteidl.core.tasks_pb2 import TaskTemplate
+from flyteidl.service import plugin_system_pb2
 
 from flytekit.models.interface import VariableMap
 from flytekit.models.literals import LiteralMap
@@ -29,12 +30,12 @@ class CreateResponse:
 class PollRequest:
     job_id: str
     output_prefix: str
-    prev_state: str
+    prev_state: plugin_system_pb2.State
 
 
 @dataclass
 class PollResponse:
-    state: str
+    state: plugin_system_pb2.State
     message: Optional[str] = None
 
 
