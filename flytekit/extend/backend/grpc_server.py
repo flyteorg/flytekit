@@ -1,6 +1,3 @@
-from concurrent import futures
-
-import grpc
 from flyteidl.service import plugin_system_pb2
 from flyteidl.service.plugin_system_pb2_grpc import BackendPluginServiceServicer, add_BackendPluginServiceServicer_to_server
 
@@ -16,7 +13,7 @@ class BackendPluginServer(BackendPluginServiceServicer):
         return plugin_system_pb2.TaskCreateResponse(res.job_id, res.message)
 
     def GetTask(self, request, context):
-        return plugin_system_pb2.TaskGetResponse(state=SUCCEEDED)
+        return plugin_system_pb2.TaskGetResponse(state=plugin_system_pb2.SUCCEEDED)
 
     def DeleteTask(self, request, context):
         print("deleting")
