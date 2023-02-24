@@ -168,10 +168,10 @@ class FileAccessProvider(object):
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
-        if not f.endswith("*"):
-            f = os.path.join(f, "*")
-        if not t.endswith("/"):
-            t += "/"
+        # if not f.endswith("*"):
+        #     f = os.path.join(f, "*")
+        # if not t.endswith("/"):
+        #     t += "/"
         return f, t
 
     def exists(self, path: str) -> bool:
@@ -202,6 +202,9 @@ class FileAccessProvider(object):
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         file_system = self.get_filesystem_for_path(to_path)
+        if from_path.startswith("file"):
+            # The localFs system doesn't know how to handle source files with file:// so remove it
+            from_path = from_path.replace("file://", "")
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return file_system.put(from_path, to_path, recursive=recursive)
@@ -219,6 +222,9 @@ class FileAccessProvider(object):
             _, tail = os.path.split(file_path_or_file_name)
         sep = self._default_remote.sep
         tail = sep + tail if tail else tail
+        if self._default_remote.protocol == "file":
+            # Special case the local case, users will not expect to see a file:// prefix
+            return strip_protocol(self.raw_output_prefix) + sep + key + tail
         return self._default_remote.protocol + "://" + strip_protocol(self.raw_output_prefix) + sep + key + tail
 
     def get_random_remote_directory(self):

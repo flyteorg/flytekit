@@ -432,8 +432,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if h.protocol is None:
             if default_for_type:
                 raise ValueError(f"Registering SD handler {h} with all protocols should never have default specified.")
-            for persistence_protocol in ["s3", "gs", "file"]:
-                # TODO: Clean this up when we get to replacing the persistence layer.
+            for persistence_protocol in ["s3", "gs", "file", "http", "https"]:
+                # TODO: Clean this up after replacing the persistence layer.
                 # The behavior of the protocols given in the supported_protocols and is_supported_protocol
                 # is not actually the same as the one returned in get_protocol.
                 stripped = persistence_protocol

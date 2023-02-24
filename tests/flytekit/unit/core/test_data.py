@@ -2,6 +2,10 @@ import fsspec
 import mock
 from fsspec.implementations.arrow import ArrowFSWrapper
 from pyarrow import fs
+import contextlib
+import os
+import shutil
+import tempfile
 
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 
@@ -40,9 +44,9 @@ def test_path_getting(mock_uuid_class):
 
     # Testing with raw output prefix pointing to a local path
     local_raw_fp = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="/tmp/unittestdata")
-    assert local_raw_fp.get_random_remote_path() == "file:///tmp/unittestdata/abcdef123"
-    assert local_raw_fp.get_random_remote_path("/fsa/blah.csv") == "file:///tmp/unittestdata/abcdef123/blah.csv"
-    assert local_raw_fp.get_random_remote_directory() == "file:///tmp/unittestdata/abcdef123"
+    assert local_raw_fp.get_random_remote_path() == "/tmp/unittestdata/abcdef123"
+    assert local_raw_fp.get_random_remote_path("/fsa/blah.csv") == "/tmp/unittestdata/abcdef123/blah.csv"
+    assert local_raw_fp.get_random_remote_directory() == "/tmp/unittestdata/abcdef123"
 
     # Test local path and directory
     assert local_raw_fp.get_random_local_path() == "/tmp/unittest/local_flytekit/abcdef123"
@@ -60,9 +64,9 @@ def test_path_getting(mock_uuid_class):
 
     # Testing with raw output prefix pointing to file://
     file_raw_fp = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="file:///tmp/unittestdata")
-    assert file_raw_fp.get_random_remote_path() == "file:///tmp/unittestdata/abcdef123"
-    assert file_raw_fp.get_random_remote_path("/fsa/blah.csv") == "file:///tmp/unittestdata/abcdef123/blah.csv"
-    assert file_raw_fp.get_random_remote_directory() == "file:///tmp/unittestdata/abcdef123"
+    assert file_raw_fp.get_random_remote_path() == "/tmp/unittestdata/abcdef123"
+    assert file_raw_fp.get_random_remote_path("/fsa/blah.csv") == "/tmp/unittestdata/abcdef123/blah.csv"
+    assert file_raw_fp.get_random_remote_directory() == "/tmp/unittestdata/abcdef123"
 
 
 @mock.patch("flytekit.core.data_persistence.UUID")
@@ -108,3 +112,24 @@ Out[10]: 's3://my-s3-bucket//f9ae51d910de8c66a49fc9b9e0652f9a'
 In [11]: s3_fa.get_random_remote_directory()
 Out[11]: 's3://my-s3-bucket//425d3af05e456772f983a19f1594c844'
 """
+
+
+def test_local_only():
+    dirpath = tempfile.mkdtemp()
+    source = os.path.join(dirpath, "start.txt")
+    file_source = "file://" + source
+    dest = os.path.join(dirpath, "dest.txt")
+    file_dest = f"file://{os.path.join(dirpath, 'dest2.txt')}"
+    filesource_dest = os.path.join(dirpath, "dest3.txt")
+    data = os.path.join(dirpath, "data")
+    print(source)
+    print(file_dest)
+    with open(source, "w") as fh:
+        fh.write("hello")
+
+    local = FileAccessProvider(local_sandbox_dir=dirpath, raw_output_prefix=data)
+    local.put_data(local_path=source, remote_path=dest)
+    local.put_data(local_path=source, remote_path=file_dest)
+    local.put_data(local_path=file_source, remote_path=filesource_dest)
+
+
