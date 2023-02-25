@@ -97,7 +97,6 @@ class FileAccessProvider(object):
         local_sandbox_dir_appended = os.path.join(local_sandbox_dir, "local_flytekit")
         self._local_sandbox_dir = pathlib.Path(local_sandbox_dir_appended)
         self._local_sandbox_dir.mkdir(parents=True, exist_ok=True)
-        # TODO: Replace with local = fs.LocalFileSystem(); ArrowFSWrapper(local)
         self._local = fsspec.filesystem(None)
 
         self._raw_output_prefix = raw_output_prefix
@@ -121,7 +120,6 @@ class FileAccessProvider(object):
         kwargs = {}
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
-            # todo: try local fs from arrow.
         elif protocol == "s3":
             kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
             s3_fs = fs.S3FileSystem(**kwargs)
@@ -206,6 +204,9 @@ class FileAccessProvider(object):
             # The localFs system doesn't know how to handle source files with file:// so remove it
             from_path = from_path.replace("file://", "")
         if recursive:
+            # Only check this for the local filesystem
+            if file_system.protocol == "file" and not file_system.isdir(from_path):
+                raise FlyteAssertion(f"Source path {from_path} is not a directory")
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return file_system.put(from_path, to_path, recursive=recursive)
 

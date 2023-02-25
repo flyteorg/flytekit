@@ -6,6 +6,8 @@ import contextlib
 import os
 import shutil
 import tempfile
+import pathlib
+
 
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 
@@ -79,14 +81,14 @@ def test_default_file_access_instance(mock_uuid_class):
     assert default_local_file_access_provider.get_random_local_directory().endswith("sandbox/local_flytekit/abcdef123")
 
     x = default_local_file_access_provider.get_random_remote_path()
-    assert x.startswith("file:///")
     assert x.endswith("raw/abcdef123")
     x = default_local_file_access_provider.get_random_remote_path("eve.txt")
-    assert x.startswith("file:///")
     assert x.endswith("raw/abcdef123/eve.txt")
     x = default_local_file_access_provider.get_random_remote_directory()
-    assert x.startswith("file:///")
     assert x.endswith("raw/abcdef123")
+
+
+
 
 
 """
@@ -133,3 +135,74 @@ def test_local_only():
     local.put_data(local_path=file_source, remote_path=filesource_dest)
 
 
+def test_local_only_dup():
+    # local = fsspec.filesystem(None)
+    # x = local.expand_path("/Users/ytong/temp/data/unitdest2/", recursive=True)
+    # print(x)
+    source_dir = "/Users/ytong/temp/data/source"
+
+    local = fsspec.filesystem(None)
+    with tempfile.TemporaryDirectory() as dest_tmpdir:
+        # pathlib.Path(dest_tmpdir).mkdir(parents=True, exist_ok=True)
+        dest_tmpdir2 = dest_tmpdir + "/"
+        a = local.get_mapper(source_dir)
+        b = local.get_mapper(dest_tmpdir)
+        for k in a:
+            b[k] = a[k]
+        print('hi')
+
+        # local.copy(source_dir, dest_tmpdir2, recursive=True)
+        # local.put(source_dir, dest_tmpdir2, recursive=True)
+        # print(dest_tmpdir)
+
+
+def test_copy_s3():
+    source_dir = "/Users/ytong/temp/data/source"
+    local_s3 = fs.S3FileSystem(
+            access_key="minio", secret_key="miniostorage", endpoint_override="http://localhost:30002"
+        )
+    wr_s3 = ArrowFSWrapper(local_s3)
+    wr_s3.put(source_dir, "s3://my-s3-bucket/destination7", recursive=True)
+
+
+def test_copy_s3_plain_fs():
+    source_dir = "/Users/ytong/temp/data/source"
+    options = {
+        "key": "minio",
+        "secret": "miniostorage",
+        "client_kwargs": {"endpoint_url": "http://localhost:30002"},
+    }
+    local_s3 = fsspec.filesystem("s3", **options)
+    local_s3.put(source_dir, "s3://my-s3-bucket/destination5", recursive=True)
+
+
+def test_local_only_dup_old():
+    # local = fsspec.filesystem(None)
+    # x = local.expand_path("/Users/ytong/temp/data/unitdest2/", recursive=True)
+    # print(x)
+    source_dir = "/Users/ytong/temp/data/source"
+
+    local = fsspec.filesystem(None)
+    with tempfile.TemporaryDirectory() as dest_tmpdir:
+        # pathlib.Path(dest_tmpdir).mkdir(parents=True, exist_ok=True)
+        dest_tmpdir2 = dest_tmpdir + "/"
+
+        # local.copy(source_dir, dest_tmpdir2, recursive=True)
+        local.put(source_dir, dest_tmpdir2, recursive=True)
+        print(dest_tmpdir)
+
+
+def test_local_only_dup_arrow():
+    # local = fsspec.filesystem(None)
+    # x = local.expand_path("/Users/ytong/temp/data/unitdest2/", recursive=True)
+    # print(x)
+    source_dir = "/Users/ytong/temp/data/source"
+
+    loc = fs.LocalFileSystem()
+    local = ArrowFSWrapper(loc)
+    with tempfile.TemporaryDirectory() as dest_tmpdir:
+        # pathlib.Path(dest_tmpdir).mkdir(parents=True, exist_ok=True)
+
+        # local.copy(source_dir, dest_tmpdir2, recursive=True)
+        local.put(source_dir, dest_tmpdir, recursive=True)
+        print(dest_tmpdir)

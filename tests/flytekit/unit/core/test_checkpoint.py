@@ -40,7 +40,7 @@ def test_sync_checkpoint_save_filepath(tmpdir):
     cp = SyncCheckpoint(checkpoint_dest=tmpdir)
     dst_path = td_path.joinpath("test")
     assert not dst_path.exists()
-    inp = td_path.joinpath("test")
+    inp = td_path.joinpath("test1")
     with inp.open("wb") as f:
         f.write(b"blah")
     cp.save(inp)

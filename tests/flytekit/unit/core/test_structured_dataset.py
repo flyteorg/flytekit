@@ -1,6 +1,7 @@
 import tempfile
 import typing
 
+import os
 import pandas as pd
 import pyarrow as pa
 import pytest
@@ -75,7 +76,6 @@ def test_formats_make_sense():
 
 
 def test_setting_of_unset_formats():
-
     custom = Annotated[StructuredDataset, "parquet"]
     example = custom(dataframe=df, uri="/path")
     # It's okay that the annotation is not used here yet.
@@ -90,7 +90,9 @@ def test_setting_of_unset_formats():
     def wf(path: str) -> StructuredDataset:
         return t2(path=path)
 
-    res = wf(path="/tmp/somewhere")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fname = os.path.join(tmp_dir, "somewhere")
+        res = wf(path=fname)
     # Now that it's passed through an encoder however, it should be set.
     assert res.file_format == "parquet"
 

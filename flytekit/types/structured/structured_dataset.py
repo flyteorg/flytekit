@@ -75,6 +75,7 @@ class StructuredDataset(object):
         self._literal_sd: Optional[literals.StructuredDataset] = None
         # Not meant for users to set, will be set by an open() call
         self._dataframe_type: Optional[DF] = None  # type: ignore
+        self._already_uploaded = False
 
     @property
     def dataframe(self) -> Optional[DF]:
@@ -537,6 +538,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             #   def t1(dataset: Annotated[StructuredDataset, my_cols]) -> Annotated[StructuredDataset, my_cols]:
             #       return dataset
             if python_val._literal_sd is not None:
+                if python_val._already_uploaded:
+                    return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
                 if python_val.dataframe is not None:
                     raise ValueError(
                         f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}"
@@ -617,7 +620,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # Note that this will always be the same as the incoming format except for when the fallback handler
         # with a format of "" is used.
         sd_model.metadata._structured_dataset_type.format = handler.supported_format
-        return Literal(scalar=Scalar(structured_dataset=sd_model))
+        lit = Literal(scalar=Scalar(structured_dataset=sd_model))
+        sd._literal_sd = sd_model
+        sd._already_uploaded = True
+        return lit
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
