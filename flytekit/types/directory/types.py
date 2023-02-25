@@ -5,7 +5,7 @@ import pathlib
 import typing
 from dataclasses import dataclass, field
 from pathlib import Path
-from random import random
+import random
 from uuid import UUID
 
 from dataclasses_json import config, dataclass_json
@@ -212,10 +212,10 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         """
         """
         try:
-            final_path = self.remote_path if self.remote_path else self.path
+            final_path = self.remote_directory if self.remote_directory else self.path
             import fsspec
             fs: fsspec.AbstractFileSystem = get_filesystem(final_path)
-            yield fs.walk(final_path, maxdepth, topdown, **kwargs)
+            return fs.walk(final_path, maxdepth, topdown, **kwargs)
         except ImportError as e:
             print(
                 "To use streaming files, please install fsspec."
