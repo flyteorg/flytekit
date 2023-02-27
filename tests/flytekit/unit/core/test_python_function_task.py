@@ -1,10 +1,13 @@
 import pytest
+from kubernetes.client.models import V1Container, V1PodSpec
 
 from flytekit import task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import isnested, istestfunction
+from flytekit.tools.translator import get_serializable_task
 from tests.flytekit.unit.core import tasks
 
 
@@ -122,3 +125,83 @@ def test_metadata():
         @task(cache_serialize=True)
         def foo_missing_cache(i: str):
             print(f"{i}")
+
+
+def test_pod_template():
+    @task(
+        container_image="repo/image:0.0.0",
+        pod_template=PodTemplate(
+            primary_container_name="primary",
+            labels={"lKeyA": "lValA"},
+            annotations={"aKeyA": "aValA"},
+            pod_spec=V1PodSpec(
+                containers=[
+                    V1Container(
+                        name="primary",
+                    ),
+                ]
+            ),
+        ),
+        pod_template_name="A",
+    )
+    def func_with_pod_template(i: str):
+        print(i + "a")
+
+    default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
+    default_image_config = ImageConfig(default_image=default_image)
+    default_serialization_settings = SerializationSettings(
+        project="p", domain="d", version="v", image_config=default_image_config
+    )
+
+    #################
+    # Test get_k8s_pod
+    #################
+
+    container = func_with_pod_template.get_container(default_serialization_settings)
+    assert container is None
+
+    k8s_pod = func_with_pod_template.get_k8s_pod(default_serialization_settings)
+
+    metadata = k8s_pod.metadata
+    assert metadata.labels == {"lKeyA": "lValA"}
+    assert metadata.annotations == {"aKeyA": "aValA"}
+
+    pod_spec = k8s_pod.pod_spec
+    primary_container = pod_spec["containers"][0]
+
+    assert primary_container["image"] == "repo/image:0.0.0"
+    assert primary_container["command"] == []
+    assert primary_container["args"] == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.flytekit.unit.core.test_python_function_task",
+        "task-name",
+        "func_with_pod_template",
+    ]
+
+    #################
+    # Test pod_teamplte_name
+    #################
+    assert func_with_pod_template.metadata.pod_template_name == "A"
+
+    #################
+    # Test Serialization
+    #################
+    ts = get_serializable_task(default_serialization_settings, func_with_pod_template)
+    assert ts.template.container is None
+    # k8s_pod content is already verified above, so only check the existence here
+    assert ts.template.k8s_pod is not None
+    assert ts.template.metadata.pod_template_name == "A"

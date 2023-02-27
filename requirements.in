@@ -1,4 +1,3 @@
-.
 -e file:.#egg=flytekit
 attrs<21
 # We need to restrict constrain the versions of both jsonschema and pyyaml because of docker-compose (which is
@@ -13,3 +12,5 @@ pandas<1.4.0
 numpy<1.22.0
 # This is required by docker-compose and otherwise clashes with docker-py
 websocket-client<1.0.0
+# TODO: Remove after buf migration is done and packages updated
+packaging<22.0

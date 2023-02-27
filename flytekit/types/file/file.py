@@ -27,7 +27,7 @@ T = typing.TypeVar("T")
 @dataclass_json
 @dataclass
 class FlyteFile(os.PathLike, typing.Generic[T]):
-    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -149,9 +149,13 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return ""
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
+        from . import FileExt
+
         if item is None:
             return cls
-        item_string = str(item)
+
+        item_string = FileExt.check_and_convert_to_str(item)
+
         item_string = item_string.strip().lstrip("~").lstrip(".")
         if item == "":
             return cls
@@ -167,7 +171,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return _SpecificFormatClass
 
     def __init__(
-        self, path: typing.Union[str, os.PathLike], downloader: typing.Callable = noop, remote_path: os.PathLike = None
+        self,
+        path: typing.Union[str, os.PathLike],
+        downloader: typing.Callable = noop,
+        remote_path: typing.Optional[os.PathLike] = None,
     ):
         """
         :param path: The source path that users are expected to call open() on
@@ -205,7 +212,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return self._downloaded
 
     @property
-    def remote_path(self) -> os.PathLike:
+    def remote_path(self) -> typing.Optional[os.PathLike]:
         return self._remote_path
 
     @property
@@ -339,13 +346,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return FlyteFile(uri)
 
         # The rest of the logic is only for FlyteFile types.
-        if not issubclass(expected_python_type, FlyteFile):
+        if not issubclass(expected_python_type, FlyteFile):  # type: ignore
             raise TypeError(f"Neither os.PathLike nor FlyteFile specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
-            return expected_python_type(uri)
+            return expected_python_type(uri)  # type: ignore
 
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)

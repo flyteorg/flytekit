@@ -60,36 +60,66 @@ jobs:
     needs: deploy
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: "0"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to GitHub Container Registry
+        if: ${{ github.event_name == 'release' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
+          password: "${{ secrets.FLYTE_BOT_PAT }}"
+      - name: Prepare Flytekit Image Names
+        id: flytekit-names
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/flytekit
+          tags: |
+            py${{ matrix.python-version }}-latest
+            py${{ matrix.python-version }}-${{ github.sha }}
+            py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
       - name: Build & Push Flytekit Python${{ matrix.python-version }} Docker Image to Github Registry
-        uses: whoan/docker-build-with-cache-action@v5
+        uses: docker/build-push-action@v2
         with:
-          # https://docs.github.com/en/packages/learn-github-packages/publishing-a-package
-          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
-          password: "${{ secrets.FLYTE_BOT_PAT }}"
-          image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: py${{ matrix.python-version }}-latest,py${{ matrix.python-version }}-${{ github.sha }},py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
-          push_git_tag: true
-          push_image_and_stages: true
-          registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }} --build-arg=DOCKER_IMAGE=ghcr.io/flyteorg/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}"
           context: .
-          dockerfile: Dockerfile.py${{ matrix.python-version }}
-      - name: Push SQLAlchemy Image to GitHub Registry
-        uses: whoan/docker-build-with-cache-action@v5
+          platforms: linux/arm64, linux/amd64
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.flytekit-names.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+            DOCKER_IMAGE=ghcr.io/${{ github.repository_owner }}/flytekit:py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
+            PYTHON_VERSION=${{ matrix.python-version }}
+          file: Dockerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Prepare SQLAlchemy Image Names
+        id: sqlalchemy-names
+        uses: docker/metadata-action@v3
         with:
-          # https://docs.github.com/en/packages/learn-github-packages/publishing-a-package
-          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
-          password: "${{ secrets.FLYTE_BOT_PAT }}"
-          image_name: ${{ github.repository_owner }}/flytekit
-          image_tag: py${{ matrix.python-version }}-sqlalchemy-latest,py${{ matrix.python-version }}-sqlalchemy-${{ github.sha }},py${{ matrix.python-version }}-sqlalchemy-${{ needs.deploy.outputs.version }}
-          push_git_tag: true
-          push_image_and_stages: true
-          registry: ghcr.io
-          build_extra_args: "--compress=true --build-arg=VERSION=${{ needs.deploy.outputs.version }}"
+          images: |
+            ghcr.io/${{ github.repository_owner }}/flytekit
+          tags: |
+            py${{ matrix.python-version }}-sqlalchemy-latest
+            py${{ matrix.python-version }}-sqlalchemy-${{ github.sha }}
+            py${{ matrix.python-version }}-sqlalchemy-${{ needs.deploy.outputs.version }}
+      - name: Push SQLAlchemy Image to GitHub Registry
+        uses: docker/build-push-action@v2
+        with:
           context: "./plugins/flytekit-sqlalchemy/"
-          dockerfile: Dockerfile.py${{ matrix.python-version }}
+          platforms: linux/arm64, linux/amd64
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.sqlalchemy-names.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+          file: ./plugins/flytekit-sqlalchemy/Dockerfile.py${{ matrix.python-version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

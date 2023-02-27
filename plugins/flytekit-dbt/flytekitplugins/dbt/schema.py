@@ -203,3 +203,56 @@ class DBTTestOutput(BaseDBTOutput):
 
     raw_run_result: str
     raw_manifest: str
+
+
+@dataclass_json
+@dataclass
+class DBTFreshnessInput(BaseDBTInput):
+    """
+    Input to DBT Freshness task.
+
+    Attributes
+    ----------
+    select : List[str]
+        List of model to be executed (default : None).
+    exclude : List[str]
+        List of model to be excluded (default : None).
+    """
+
+    select: Optional[List[str]] = None
+    exclude: Optional[List[str]] = None
+
+    def to_args(self) -> List[str]:
+        """
+        Convert the instance of DBTFreshnessInput into list of arguments.
+
+        Returns
+        -------
+        List[str]
+            List of arguments.
+        """
+
+        args = BaseDBTInput.to_args(self)
+
+        if self.select is not None:
+            args += ["--select"] + self.select
+
+        if self.exclude is not None:
+            args += ["--exclude"] + self.exclude
+
+        return args
+
+
+@dataclass_json
+@dataclass
+class DBTFreshnessOutput(BaseDBTOutput):
+    """
+    Output of DBT Freshness task.
+
+    Attributes
+    ----------
+    raw_sources : str
+        Raw value of DBT's ``sources.json``.
+    """
+
+    raw_sources: str

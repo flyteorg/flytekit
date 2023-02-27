@@ -4,7 +4,6 @@ import typing
 
 
 class PythonVersion(enum.Enum):
-    PYTHON_3_7 = (3, 7)
     PYTHON_3_8 = (3, 8)
     PYTHON_3_9 = (3, 9)
     PYTHON_3_10 = (3, 10)
@@ -16,10 +15,9 @@ class DefaultImages(object):
     """
 
     _DEFAULT_IMAGE_PREFIXES = {
-        PythonVersion.PYTHON_3_7: "ghcr.io/flyteorg/flytekit:py3.7-",
-        PythonVersion.PYTHON_3_8: "ghcr.io/flyteorg/flytekit:py3.8-",
-        PythonVersion.PYTHON_3_9: "ghcr.io/flyteorg/flytekit:py3.9-",
-        PythonVersion.PYTHON_3_10: "ghcr.io/flyteorg/flytekit:py3.10-",
+        PythonVersion.PYTHON_3_8: "cr.flyte.org/flyteorg/flytekit:py3.8-",
+        PythonVersion.PYTHON_3_9: "cr.flyte.org/flyteorg/flytekit:py3.9-",
+        PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-",
     }
 
     @classmethod

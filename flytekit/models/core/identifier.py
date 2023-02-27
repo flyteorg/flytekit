@@ -1,13 +1,13 @@
-from flyteidl.core import identifier_pb2 as _identifier_pb2
+from flyteidl.core import identifier_pb2 as identifier_pb2
 
 from flytekit.models import common as _common_models
 
 
 class ResourceType(object):
-    UNSPECIFIED = _identifier_pb2.UNSPECIFIED
-    TASK = _identifier_pb2.TASK
-    WORKFLOW = _identifier_pb2.WORKFLOW
-    LAUNCH_PLAN = _identifier_pb2.LAUNCH_PLAN
+    UNSPECIFIED = identifier_pb2.UNSPECIFIED
+    TASK = identifier_pb2.TASK
+    WORKFLOW = identifier_pb2.WORKFLOW
+    LAUNCH_PLAN = identifier_pb2.LAUNCH_PLAN
 
 
 class Identifier(_common_models.FlyteIdlEntity):
@@ -34,7 +34,7 @@ class Identifier(_common_models.FlyteIdlEntity):
         return self._resource_type
 
     def resource_type_name(self) -> str:
-        return _identifier_pb2.ResourceType.Name(self.resource_type)
+        return identifier_pb2.ResourceType.Name(self.resource_type)
 
     @property
     def project(self):
@@ -68,7 +68,7 @@ class Identifier(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.identifier_pb2.Identifier
         """
-        return _identifier_pb2.Identifier(
+        return identifier_pb2.Identifier(
             resource_type=self.resource_type,
             project=self.project,
             domain=self.domain,
@@ -89,6 +89,12 @@ class Identifier(_common_models.FlyteIdlEntity):
             name=p.name,
             version=p.version,
         )
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return f"{self.resource_type_name()}:{self.project}:{self.domain}:{self.name}:{self.version}"
 
 
 class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
@@ -127,7 +133,7 @@ class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.identifier_pb2.WorkflowExecutionIdentifier
         """
-        return _identifier_pb2.WorkflowExecutionIdentifier(
+        return identifier_pb2.WorkflowExecutionIdentifier(
             project=self.project,
             domain=self.domain,
             name=self.name,
@@ -173,7 +179,7 @@ class NodeExecutionIdentifier(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.identifier_pb2.NodeExecutionIdentifier
         """
-        return _identifier_pb2.NodeExecutionIdentifier(
+        return identifier_pb2.NodeExecutionIdentifier(
             node_id=self.node_id,
             execution_id=self.execution_id.to_flyte_idl(),
         )
@@ -226,7 +232,7 @@ class TaskExecutionIdentifier(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.identifier_pb2.TaskExecutionIdentifier
         """
-        return _identifier_pb2.TaskExecutionIdentifier(
+        return identifier_pb2.TaskExecutionIdentifier(
             task_id=self.task_id.to_flyte_idl(),
             node_execution_id=self.node_execution_id.to_flyte_idl(),
             retry_attempt=self.retry_attempt,
@@ -242,4 +248,35 @@ class TaskExecutionIdentifier(_common_models.FlyteIdlEntity):
             task_id=Identifier.from_flyte_idl(proto.task_id),
             node_execution_id=NodeExecutionIdentifier.from_flyte_idl(proto.node_execution_id),
             retry_attempt=proto.retry_attempt,
+        )
+
+
+class SignalIdentifier(_common_models.FlyteIdlEntity):
+    def __init__(self, signal_id: str, execution_id: WorkflowExecutionIdentifier):
+        """
+        :param signal_id: User provided name for the gate node.
+        :param execution_id: The workflow execution id this signal is for.
+        """
+        self._signal_id = signal_id
+        self._execution_id = execution_id
+
+    @property
+    def signal_id(self) -> str:
+        return self._signal_id
+
+    @property
+    def execution_id(self) -> WorkflowExecutionIdentifier:
+        return self._execution_id
+
+    def to_flyte_idl(self) -> identifier_pb2.SignalIdentifier:
+        return identifier_pb2.SignalIdentifier(
+            signal_id=self.signal_id,
+            execution_id=self.execution_id.to_flyte_idl(),
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: identifier_pb2.SignalIdentifier) -> "SignalIdentifier":
+        return cls(
+            signal_id=proto.signal_id,
+            execution_id=WorkflowExecutionIdentifier.from_flyte_idl(proto.execution_id),
         )

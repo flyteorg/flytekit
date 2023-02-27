@@ -176,21 +176,19 @@ def test_wf1():
         d = t2(a=y, b=b)
         return x, d
 
-    assert len(my_wf._nodes) == 2
+    assert len(my_wf.nodes) == 2
     assert my_wf._nodes[0].id == "n0"
     assert my_wf._nodes[1]._upstream_nodes[0] is my_wf._nodes[0]
 
-    assert len(my_wf._output_bindings) == 2
+    assert len(my_wf.output_bindings) == 2
     assert my_wf._output_bindings[0].var == "o0"
     assert my_wf._output_bindings[0].binding.promise.var == "t1_int_output"
 
-    nt = typing.NamedTuple("SingleNT", t1_int_output=float)
+    nt = typing.NamedTuple("SingleNT", [("t1_int_output", float)])
 
     @task
     def t3(a: int) -> nt:
-        return nt(
-            a + 2,
-        )
+        return nt(a + 2)
 
     assert t3.python_interface.output_tuple_name == "SingleNT"
     assert t3.interface.outputs["t1_int_output"] is not None
@@ -282,17 +280,23 @@ def test_wf_output_mismatch():
         def my_wf(a: int, b: str) -> (int, str):
             return a
 
+        my_wf()
+
     with pytest.raises(AssertionError):
 
         @workflow
         def my_wf2(a: int, b: str) -> int:
             return a, b  # type: ignore
 
+        my_wf2()
+
     with pytest.raises(AssertionError):
 
         @workflow
         def my_wf3(a: int, b: str) -> int:
             return (a,)  # type: ignore
+
+        my_wf3()
 
     assert context_manager.FlyteContextManager.size() == 1
 
@@ -678,7 +682,7 @@ def test_list_output():
         return s
 
     assert len(lister.interface.outputs) == 1
-    binding_data = lister._output_bindings[0].binding  # the property should be named binding_data
+    binding_data = lister.output_bindings[0].binding  # the property should be named binding_data
     assert binding_data.collection is not None
     assert len(binding_data.collection.bindings) == 10
 
@@ -802,6 +806,8 @@ def test_wf1_branches_no_else_malformed_but_no_error():
             conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
             return x, d
 
+        my_wf()
+
     assert context_manager.FlyteContextManager.size() == 1
 
 
@@ -882,7 +888,7 @@ def test_lp_serialize():
         return b + a
 
     @workflow
-    def my_subwf(a: int) -> (str, str):
+    def my_subwf(a: int) -> typing.Tuple[str, str]:
         x, y = t1(a=a)
         u, v = t1(a=x)
         return y, v
@@ -1406,7 +1412,7 @@ def test_nested_dynamic():
         return b + a
 
     @workflow
-    def my_wf(a: int, b: str) -> (str, typing.List[str]):
+    def my_wf(a: int, b: str) -> typing.Tuple[str, typing.List[str]]:
         @dynamic
         def my_subwf(a: int) -> typing.List[str]:
             s = []
@@ -1446,7 +1452,7 @@ def test_workflow_named_tuple():
         return "Hello"
 
     @workflow
-    def wf() -> typing.NamedTuple("OP", a=str, b=str):
+    def wf() -> typing.NamedTuple("OP", [("a", str), ("b", str)]):  # type: ignore
         return t1(), t1()
 
     assert wf() == ("Hello", "Hello")
@@ -1613,14 +1619,14 @@ def test_error_messages():
 
     @task
     def foo2(a: int, b: str) -> typing.Tuple[int, str]:
-        return "hello", 10
+        return "hello", 10  # type: ignore
 
     @task
     def foo3(a: typing.Dict) -> typing.Dict:
         return a
 
     with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
-        foo(a="hello", b=10)
+        foo(a="hello", b=10)  # type: ignore
 
     with pytest.raises(
         TypeError,
@@ -1629,7 +1635,7 @@ def test_error_messages():
         foo2(a=10, b="hello")
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
-        foo3(a=[{"hello": 2}])
+        foo3(a=[{"hello": 2}])  # type: ignore
 
 
 def test_union_type():
@@ -1648,7 +1654,9 @@ def test_union_type():
     assert wf(a=2.0) == 2.0
     file = tempfile.NamedTemporaryFile(delete=False)
     assert isinstance(wf(a=FlyteFile(file.name)), FlyteFile)
-    assert isinstance(wf(a=FlyteSchema()), FlyteSchema)
+    flyteSchema = FlyteSchema()
+    flyteSchema.open().write(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [1, 22]}))
+    assert isinstance(wf(a=flyteSchema), FlyteSchema)
     assert wf(a=[1, 2, 3]) == [1, 2, 3]
     assert wf(a={"a": 1}) == {"a": 1}
 

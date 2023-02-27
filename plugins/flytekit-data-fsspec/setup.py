@@ -4,7 +4,7 @@ PLUGIN_NAME = "fsspec"
 
 microlib_name = f"flytekitplugins-data-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "fsspec>=2021.7.0", "botocore>=1.7.48", "pandas>=1.2.0"]
+plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "fsspec>=2021.7.0", "botocore>=1.7.48", "pandas>=1.2.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -27,12 +27,11 @@ setup(
         "gcp": ["gcsfs>=2021.7.0"],
     },
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",

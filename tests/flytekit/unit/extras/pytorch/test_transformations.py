@@ -40,6 +40,7 @@ def test_get_literal_type(transformer, python_type, format):
     tf = transformer
     lt = tf.get_literal_type(python_type)
     assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE))
+    assert tf.guess_python_type(lt) == python_type
 
 
 @pytest.mark.parametrize(
@@ -72,7 +73,8 @@ def test_get_literal_type(transformer, python_type, format):
 def test_to_python_value_and_literal(transformer, python_type, format, python_val):
     ctx = context_manager.FlyteContext.current_context()
     tf = transformer
-    python_val = python_val
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    python_val = python_val.to(device) if hasattr(python_val, "to") else python_val
     lt = tf.get_literal_type(python_type)
 
     lv = tf.to_literal(ctx, python_val, type(python_val), lt)  # type: ignore

@@ -3,6 +3,7 @@ from collections import OrderedDict
 from typing import List
 from unittest.mock import MagicMock
 
+import pytest
 from flytekitplugins.pod.task import Pod, PodFunctionTask
 from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements, V1VolumeMount
@@ -11,13 +12,15 @@ from flytekit import Resources, TaskMetadata, dynamic, map_task, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import user
 from flytekit.extend import ExecutionState
 from flytekit.tools.translator import get_serializable
 
 
-def get_pod_spec():
+def get_pod_spec(environment=[]):
     a_container = V1Container(
         name="a container",
+        env=environment,
     )
     a_container.command = ["fee", "fi", "fo", "fum"]
     a_container.volume_mounts = [
@@ -31,10 +34,27 @@ def get_pod_spec():
     return pod_spec
 
 
-def test_pod_task_deserialization():
-    pod = Pod(pod_spec=get_pod_spec(), primary_container_name="a container")
+@pytest.mark.parametrize(
+    "task_environment, podspec_env_vars, expected_environment",
+    [
+        ({"FOO": "bar"}, [], [V1EnvVar(name="FOO", value="bar")]),
+        (
+            {"FOO": "bar"},
+            [V1EnvVar(name="AN_ENV_VAR", value="42")],
+            [V1EnvVar(name="FOO", value="bar"), V1EnvVar(name="AN_ENV_VAR", value="42")],
+        ),
+        # We do not provide any validation for the duplication of env vars, neither does k8s.
+        (
+            {"FOO": "bar"},
+            [V1EnvVar(name="FOO", value="another-bar")],
+            [V1EnvVar(name="FOO", value="bar"), V1EnvVar(name="FOO", value="another-bar")],
+        ),
+    ],
+)
+def test_pod_task_deserialization(task_environment, podspec_env_vars, expected_environment):
+    pod = Pod(pod_spec=get_pod_spec(podspec_env_vars), primary_container_name="a container")
 
-    @task(task_config=pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment={"FOO": "bar"})
+    @task(task_config=pod, requests=Resources(cpu="10"), limits=Resources(gpu="2"), environment=task_environment)
     def simple_pod_task(i: int):
         pass
 
@@ -85,7 +105,7 @@ def test_pod_task_deserialization():
     assert primary_container.volume_mounts[0].mount_path == "some/where"
     assert primary_container.volume_mounts[0].name == "volume mount"
     assert primary_container.resources == V1ResourceRequirements(limits={"gpu": "2"}, requests={"cpu": "10"})
-    assert primary_container.env == [V1EnvVar(name="FOO", value="bar")]
+    assert primary_container.env == expected_environment
     assert deserialized_pod_spec.containers[1].name == "another container"
 
     config = simple_pod_task.get_config(
@@ -454,3 +474,32 @@ def test_fast():
             assert dynamic_job_spec.tasks[0].k8s_pod.pod_spec["containers"][0]["resources"]["requests"]["gpu"] == "1"
 
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_pod_config():
+    with pytest.raises(user.FlyteValidationException):
+        Pod(pod_spec=None)
+
+    with pytest.raises(user.FlyteValidationException):
+        Pod(pod_spec=V1PodSpec(containers=[]), primary_container_name=None)
+
+    selector = {"node_group": "memory"}
+
+    @task(
+        task_config=Pod(
+            pod_spec=V1PodSpec(
+                containers=[],
+                node_selector=selector,
+            ),
+        ),
+        requests=Resources(
+            mem="1G",
+        ),
+    )
+    def my_pod_task():
+        print("hello world")
+        time.sleep(30000)
+
+    assert my_pod_task.task_config
+    assert isinstance(my_pod_task.task_config, Pod)
+    assert my_pod_task.task_config.pod_spec.node_selector == selector

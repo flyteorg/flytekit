@@ -1,6 +1,7 @@
 import datetime
 import typing
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import pytest
 
@@ -87,12 +88,15 @@ def test_normal_task():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
     assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
     assert wf_spec.template.nodes[0].id == "n0"
+    assert wf_spec.template.nodes[0].metadata.name == "t2"
 
     with pytest.raises(FlyteAssertion):
 
         @workflow
         def empty_wf2():
             create_node(t2, "foo")
+
+        empty_wf2()
 
 
 def test_more_normal_task():
@@ -101,14 +105,12 @@ def test_more_normal_task():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return nt(
-            f"{a + 2}",
-        )
+        return nt(f"{a + 2}")  # type: ignore
 
     @task
     def t1_nt(a: int) -> nt:
         # This one returns an instance of the named tuple.
-        return nt(f"{a + 2}")
+        return nt(f"{a + 2}")  # type: ignore
 
     @task
     def t2(a: typing.List[str]) -> str:
@@ -131,9 +133,7 @@ def test_reserved_keyword():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return nt(
-            f"{a + 2}",
-        )
+        return nt(f"{a + 2}")  # type: ignore
 
     # Test that you can't name an output "outputs"
     with pytest.raises(FlyteAssertion):
@@ -142,6 +142,8 @@ def test_reserved_keyword():
         def my_wf(a: int) -> str:
             t1_node = create_node(t1, a=a)
             return t1_node.outputs
+
+        my_wf()
 
 
 def test_runs_before():
@@ -194,7 +196,12 @@ def test_promise_chaining():
         c >> a
         return b
 
+    @workflow
+    def wf1(x: int):
+        task_a(x=x) >> task_b(x=x) >> task_c(x=x)
+
     wf(x=3)
+    wf1(x=3)
 
 
 def test_resource_request_override():
@@ -327,9 +334,12 @@ def test_timeout_override_invalid_value():
         def my_wf(a: str) -> str:
             return t1(a=a).with_overrides(timeout="foo")
 
+        my_wf()
+
 
 @pytest.mark.parametrize(
-    "retries,expected", [(None, _literal_models.RetryStrategy(0)), (3, _literal_models.RetryStrategy(3))]
+    "retries,expected",
+    [(None, _literal_models.RetryStrategy(0)), (3, _literal_models.RetryStrategy(3))],
 )
 def test_retries_override(retries, expected):
     @task
@@ -396,3 +406,48 @@ def test_void_promise_override():
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
     ]
+
+
+def test_name_override():
+    @task
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(name="foo")
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].metadata.name == "foo"
+
+
+def test_config_override():
+    @dataclass
+    class DummyConfig:
+        name: str
+
+    @task(task_config=DummyConfig(name="hello"))
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(task_config=DummyConfig("flyte"))
+
+    assert my_wf.nodes[0].flyte_entity.task_config.name == "flyte"
+
+    with pytest.raises(ValueError):
+
+        @workflow
+        def my_wf(a: str) -> str:
+            return t1(a=a).with_overrides(task_config=None)
+
+        my_wf()

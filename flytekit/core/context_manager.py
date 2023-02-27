@@ -48,7 +48,7 @@ if typing.TYPE_CHECKING:
 flyte_context_Var: ContextVar[typing.List[FlyteContext]] = ContextVar("", default=[])
 
 if typing.TYPE_CHECKING:
-    from flytekit.core.base_task import TaskResolverMixin
+    from flytekit.core.base_task import Task, TaskResolverMixin
 
 
 # Identifier fields use placeholders for registration-time substitution.
@@ -80,15 +80,15 @@ class ExecutionParameters(object):
     @dataclass(init=False)
     class Builder(object):
         stats: taggable.TaggableStats
-        execution_date: datetime
-        logging: _logging.Logger
-        execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier]
         attrs: typing.Dict[str, typing.Any]
-        working_dir: typing.Union[os.PathLike, utils.AutoDeletingTempDir]
-        checkpoint: typing.Optional[Checkpoint]
         decks: List[Deck]
-        raw_output_prefix: str
-        task_id: typing.Optional[_identifier.Identifier]
+        raw_output_prefix: Optional[str] = None
+        execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier] = None
+        working_dir: typing.Optional[utils.AutoDeletingTempDir] = None
+        checkpoint: typing.Optional[Checkpoint] = None
+        execution_date: typing.Optional[datetime] = None
+        logging: Optional[_logging.Logger] = None
+        task_id: typing.Optional[_identifier.Identifier] = None
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -108,7 +108,7 @@ class ExecutionParameters(object):
 
         def build(self) -> ExecutionParameters:
             if not isinstance(self.working_dir, utils.AutoDeletingTempDir):
-                pathlib.Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+                pathlib.Path(typing.cast(str, self.working_dir)).mkdir(parents=True, exist_ok=True)
             return ExecutionParameters(
                 execution_date=self.execution_date,
                 stats=self.stats,
@@ -123,14 +123,14 @@ class ExecutionParameters(object):
             )
 
     @staticmethod
-    def new_builder(current: ExecutionParameters = None) -> Builder:
+    def new_builder(current: Optional[ExecutionParameters] = None) -> Builder:
         return ExecutionParameters.Builder(current=current)
 
     def with_task_sandbox(self) -> Builder:
         prefix = self.working_directory
         if isinstance(self.working_directory, utils.AutoDeletingTempDir):
             prefix = self.working_directory.name
-        task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)
+        task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)  # type: ignore
         p = pathlib.Path(task_sandbox_dir)
         cp_dir = p.joinpath("__cp")
         cp_dir.mkdir(exist_ok=True)
@@ -287,7 +287,7 @@ class ExecutionParameters(object):
         """
         Returns task specific context if present else raise an error. The returned context will match the key
         """
-        return self.__getattr__(attr_name=key)
+        return self.__getattr__(attr_name=key)  # type: ignore
 
 
 class SecretsManager(object):
@@ -450,31 +450,31 @@ class ExecutionState(object):
         Defines the possible execution modes, which in turn affects execution behavior.
         """
 
-        #: This is the mode that is used when a task execution mimics the actual runtime environment.
-        #: NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
-        #: LOCAL_TASK_EXECUTION, is the mode that is run purely locally and in some cases the difference between local
-        #: and runtime environment may be different. For example for Dynamic tasks local_task_execution will just run it
-        #: as a regular function, while task_execution will extract a runtime spec
+        # This is the mode that is used when a task execution mimics the actual runtime environment.
+        # NOTE: This is important to understand the difference between TASK_EXECUTION and LOCAL_TASK_EXECUTION
+        # LOCAL_TASK_EXECUTION, is the mode that is run purely locally and in some cases the difference between local
+        # and runtime environment may be different. For example for Dynamic tasks local_task_execution will just run it
+        # as a regular function, while task_execution will extract a runtime spec
         TASK_EXECUTION = 1
 
-        #: This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
-        #: because instead of running a task's user defined function directly, it'll need to wrap the return values in
-        #: NodeOutput
+        # This represents when flytekit is locally running a workflow. The behavior of tasks differs in this case
+        # because instead of running a task's user defined function directly, it'll need to wrap the return values in
+        # NodeOutput
         LOCAL_WORKFLOW_EXECUTION = 2
 
-        #: This is the mode that is used to to indicate a purely local task execution - i.e. running without a container
-        #: or propeller.
+        # This is the mode that is used to indicate a purely local task execution - i.e. running without a container
+        # or propeller.
         LOCAL_TASK_EXECUTION = 3
 
     mode: Optional[ExecutionState.Mode]
-    working_dir: os.PathLike
+    working_dir: Union[os.PathLike, str]
     engine_dir: Optional[Union[os.PathLike, str]]
     branch_eval_mode: Optional[BranchEvalMode]
     user_space_params: Optional[ExecutionParameters]
 
     def __init__(
         self,
-        working_dir: os.PathLike,
+        working_dir: Union[os.PathLike, str],
         mode: Optional[ExecutionState.Mode] = None,
         engine_dir: Optional[Union[os.PathLike, str]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
@@ -607,7 +607,7 @@ class FlyteContext(object):
         return ExecutionState(working_dir=working_dir, user_space_params=self.user_space_params)
 
     @staticmethod
-    def current_context() -> Optional[FlyteContext]:
+    def current_context() -> FlyteContext:
         """
         This method exists only to maintain backwards compatibility. Please use
         ``FlyteContextManager.current_context()`` instead.
@@ -617,10 +617,29 @@ class FlyteContext(object):
         """
         return FlyteContextManager.current_context()
 
-    def get_deck(self) -> str:
+    def get_deck(self) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
+        """
+        Returns the deck that was created as part of the last execution.
+
+        The return value depends on the execution environment. In a notebook, the return value is compatible with
+        IPython.display and should be rendered in the notebook.
+
+        .. code-block:: python
+
+            with flytekit.new_context() as ctx:
+                my_task(...)
+            ctx.get_deck()
+
+        OR if you wish to explicity display
+
+        .. code-block:: python
+
+            from IPython import display
+            display(ctx.get_deck())
+        """
         from flytekit.deck.deck import _get_deck
 
-        return _get_deck(self.execution_state.user_space_params)
+        return _get_deck(typing.cast(ExecutionState, self.execution_state).user_space_params)
 
     @dataclass
     class Builder(object):
@@ -833,7 +852,7 @@ class FlyteEntities(object):
      registration process
     """
 
-    entities = []
+    entities: List[Union["LaunchPlan", Task, "WorkflowBase"]] = []  # type: ignore
 
 
 FlyteContextManager.initialize()

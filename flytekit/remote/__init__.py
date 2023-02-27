@@ -51,9 +51,9 @@ Entities
    :toctree: generated/
    :nosignatures:
 
-   ~task.FlyteTask
-   ~workflow.FlyteWorkflow
-   ~launch_plan.FlyteLaunchPlan
+   ~entities.FlyteTask
+   ~entities.FlyteWorkflow
+   ~entities.FlyteLaunchPlan
 
 .. _remote-flyte-entity-components:
 
@@ -65,9 +65,9 @@ Entity Components
    :toctree: generated/
    :nosignatures:
 
-   ~nodes.FlyteNode
-   ~component_nodes.FlyteTaskNode
-   ~component_nodes.FlyteWorkflowNode
+   ~entities.FlyteNode
+   ~entities.FlyteTaskNode
+   ~entities.FlyteWorkflowNode
 
 .. _remote-flyte-execution-objects:
 
@@ -85,10 +85,14 @@ Execution Objects
 
 """
 
-from flytekit.remote.component_nodes import FlyteTaskNode, FlyteWorkflowNode
+from flytekit.remote.entities import (
+    FlyteBranchNode,
+    FlyteLaunchPlan,
+    FlyteNode,
+    FlyteTask,
+    FlyteTaskNode,
+    FlyteWorkflow,
+    FlyteWorkflowNode,
+)
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
-from flytekit.remote.launch_plan import FlyteLaunchPlan
-from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.remote import FlyteRemote
-from flytekit.remote.task import FlyteTask
-from flytekit.remote.workflow import FlyteWorkflow

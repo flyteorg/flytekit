@@ -1,7 +1,9 @@
 import enum
-import typing
+from typing import Dict, Optional
 
 from flyteidl.plugins import spark_pb2 as _spark_task
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
@@ -17,12 +19,15 @@ class SparkType(enum.Enum):
 class SparkJob(_common.FlyteIdlEntity):
     def __init__(
         self,
-        spark_type,
-        application_file,
-        main_class,
-        spark_conf,
-        hadoop_conf,
-        executor_path,
+        spark_type: SparkType,
+        application_file: str,
+        main_class: str,
+        spark_conf: Dict[str, str],
+        hadoop_conf: Dict[str, str],
+        executor_path: str,
+        databricks_conf: Dict[str, Dict[str, Dict]] = {},
+        databricks_token: Optional[str] = None,
+        databricks_instance: Optional[str] = None,
     ):
         """
         This defines a SparkJob target.  It will execute the appropriate SparkJob.
@@ -30,6 +35,9 @@ class SparkJob(_common.FlyteIdlEntity):
         :param application_file: The main application file to execute.
         :param dict[Text, Text] spark_conf: A definition of key-value pairs for spark config for the job.
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
+        :param Optional[dict[Text, dict]] databricks_conf: A definition of key-value pairs for databricks config for the job. Refer to https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit.
+        :param Optional[str] databricks_token: databricks access token.
+        :param Optional[str] databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
         """
         self._application_file = application_file
         self._spark_type = spark_type
@@ -37,9 +45,15 @@ class SparkJob(_common.FlyteIdlEntity):
         self._executor_path = executor_path
         self._spark_conf = spark_conf
         self._hadoop_conf = hadoop_conf
+        self._databricks_conf = databricks_conf
+        self._databricks_token = databricks_token
+        self._databricks_instance = databricks_instance
 
     def with_overrides(
-        self, new_spark_conf: typing.Dict[str, str] = None, new_hadoop_conf: typing.Dict[str, str] = None
+        self,
+        new_spark_conf: Optional[Dict[str, str]] = None,
+        new_hadoop_conf: Optional[Dict[str, str]] = None,
+        new_databricks_conf: Optional[Dict[str, Dict]] = None,
     ) -> "SparkJob":
         if not new_spark_conf:
             new_spark_conf = self.spark_conf
@@ -47,12 +61,18 @@ class SparkJob(_common.FlyteIdlEntity):
         if not new_hadoop_conf:
             new_hadoop_conf = self.hadoop_conf
 
+        if not new_databricks_conf:
+            new_databricks_conf = self.databricks_conf
+
         return SparkJob(
             spark_type=self.spark_type,
             application_file=self.application_file,
             main_class=self.main_class,
             spark_conf=new_spark_conf,
             hadoop_conf=new_hadoop_conf,
+            databricks_conf=new_databricks_conf,
+            databricks_token=self.databricks_token,
+            databricks_instance=self.databricks_instance,
             executor_path=self.executor_path,
         )
 
@@ -104,6 +124,31 @@ class SparkJob(_common.FlyteIdlEntity):
         """
         return self._hadoop_conf
 
+    @property
+    def databricks_conf(self) -> Dict[str, Dict]:
+        """
+        databricks_conf: Databricks job configuration.
+        Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        :rtype: dict[Text, dict[Text, Text]]
+        """
+        return self._databricks_conf
+
+    @property
+    def databricks_token(self) -> str:
+        """
+        Databricks access token
+        :rtype: str
+        """
+        return self._databricks_token
+
+    @property
+    def databricks_instance(self) -> str:
+        """
+        Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+        :rtype: str
+        """
+        return self._databricks_instance
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
@@ -120,6 +165,9 @@ class SparkJob(_common.FlyteIdlEntity):
         else:
             raise _user_exceptions.FlyteValidationException("Invalid Spark Application Type Specified")
 
+        databricks_conf = Struct()
+        databricks_conf.update(self.databricks_conf)
+
         return _spark_task.SparkJob(
             applicationType=application_type,
             mainApplicationFile=self.application_file,
@@ -127,6 +175,9 @@ class SparkJob(_common.FlyteIdlEntity):
             executorPath=self.executor_path,
             sparkConf=self.spark_conf,
             hadoopConf=self.hadoop_conf,
+            databricksConf=databricks_conf,
+            databricksToken=self.databricks_token,
+            databricksInstance=self.databricks_instance,
         )
 
     @classmethod
@@ -151,4 +202,7 @@ class SparkJob(_common.FlyteIdlEntity):
             main_class=pb2_object.mainClass,
             hadoop_conf=pb2_object.hadoopConf,
             executor_path=pb2_object.executorPath,
+            databricks_conf=json_format.MessageToDict(pb2_object.databricksConf),
+            databricks_token=pb2_object.databricksToken,
+            databricks_instance=pb2_object.databricksInstance,
         )

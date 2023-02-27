@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import os
 import types
 import typing
 from abc import ABC, abstractmethod
@@ -34,6 +33,7 @@ StructuredDatasetFormat: TypeAlias = str
 
 # Storage formats
 PARQUET: StructuredDatasetFormat = "parquet"
+GENERIC_FORMAT: StructuredDatasetFormat = ""
 
 
 @dataclass_json
@@ -44,10 +44,8 @@ class StructuredDataset(object):
     class (that is just a model, a Python class representation of the protobuf).
     """
 
-    uri: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
-    file_format: typing.Optional[str] = field(default=PARQUET, metadata=config(mm_field=fields.String()))
-
-    DEFAULT_FILE_FORMAT = PARQUET
+    uri: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
+    file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
@@ -60,7 +58,7 @@ class StructuredDataset(object):
     def __init__(
         self,
         dataframe: typing.Optional[typing.Any] = None,
-        uri: Optional[str] = None,
+        uri: typing.Optional[str] = None,
         metadata: typing.Optional[literals.StructuredDatasetMetadata] = None,
         **kwargs,
     ):
@@ -68,15 +66,17 @@ class StructuredDataset(object):
         # Make these fields public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
         self.uri = uri
+        # When dataclass_json runs from_json, we need to set it here, otherwise the format will be empty string
+        self.file_format = kwargs["file_format"] if "file_format" in kwargs else GENERIC_FORMAT
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._metadata = metadata
         # This is not for users to set, the transformer will set this.
         self._literal_sd: Optional[literals.StructuredDataset] = None
         # Not meant for users to set, will be set by an open() call
-        self._dataframe_type = None
+        self._dataframe_type: Optional[DF] = None  # type: ignore
 
     @property
-    def dataframe(self) -> Type[typing.Any]:
+    def dataframe(self) -> Optional[DF]:
         return self._dataframe
 
     @property
@@ -91,7 +91,7 @@ class StructuredDataset(object):
         self._dataframe_type = dataframe_type
         return self
 
-    def all(self) -> DF:
+    def all(self) -> DF:  # type: ignore
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
@@ -128,14 +128,14 @@ def extract_cols_and_format(
         optional str for the format,
         optional pyarrow Schema
     """
-    fmt = None
+    fmt = ""
     ordered_dict_cols = None
     pa_schema = None
     if get_origin(t) is Annotated:
         base_type, *annotate_args = get_args(t)
         for aa in annotate_args:
             if isinstance(aa, StructuredDatasetFormat):
-                if fmt is not None:
+                if fmt != "":
                     raise ValueError(f"A format was already specified {fmt}, cannot use {aa}")
                 fmt = aa
             elif isinstance(aa, collections.OrderedDict):
@@ -254,7 +254,7 @@ class StructuredDatasetDecoder(ABC):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> Union[DF, Generator[DF, None, None]]:
+    ) -> Union[DF, typing.Iterator[DF]]:
         """
         This is code that will be called by the dataset transformer engine to ultimately translate from a Flyte Literal
         value into a Python instance.
@@ -334,21 +334,44 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     Handlers = Union[StructuredDatasetEncoder, StructuredDatasetDecoder]
     Renderers: Dict[Type, Renderable] = {}
 
-    @staticmethod
-    def _finder(handler_map, df_type: Type, protocol: str, format: str):
-        try:
-            return handler_map[df_type][protocol][format]
-        except KeyError:
+    @classmethod
+    def _finder(cls, handler_map, df_type: Type, protocol: str, format: str):
+        # If the incoming format requested is a specific format (e.g. "avro"), then look for that specific handler
+        #   if missing, see if there's a generic format handler. Error if missing.
+        # If the incoming format requested is the generic format (""), then see if it's present,
+        #   if not, look to see if there is a default format for the df_type and a handler for that format.
+        #   if still missing, look to see if there's only _one_ handler for that type, if so then use that.
+        if format != GENERIC_FORMAT:
             try:
-                hh = handler_map[df_type][protocol][""]
-                logger.info(
-                    f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"
-                    f" format {format}, using default instead."
-                )
-                return hh
+                return handler_map[df_type][protocol][format]
             except KeyError:
-                ...
-        raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt {format}")
+                try:
+                    return handler_map[df_type][protocol][GENERIC_FORMAT]
+                except KeyError:
+                    ...
+        else:
+            try:
+                return handler_map[df_type][protocol][GENERIC_FORMAT]
+            except KeyError:
+                if df_type in cls.DEFAULT_FORMATS and cls.DEFAULT_FORMATS[df_type] in handler_map[df_type][protocol]:
+                    hh = handler_map[df_type][protocol][cls.DEFAULT_FORMATS[df_type]]
+                    logger.debug(
+                        f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"
+                        f" using the generic handler {hh} instead."
+                    )
+                    return hh
+                if len(handler_map[df_type][protocol]) == 1:
+                    hh = list(handler_map[df_type][protocol].values())[0]
+                    logger.debug(
+                        f"Using {hh} with format {hh.supported_format} as it's the only one available for {df_type}"
+                    )
+                    return hh
+                else:
+                    logger.warning(
+                        f"Did not automatically pick a handler for {df_type},"
+                        f" more than one detected {handler_map[df_type][protocol].keys()}"
+                    )
+        raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt |{format}|")
 
     @classmethod
     def get_encoder(cls, df_type: Type, protocol: str, format: str):
@@ -363,14 +386,14 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if isinstance(h, StructuredDatasetEncoder):
             top_level = cls.ENCODERS
         elif isinstance(h, StructuredDatasetDecoder):
-            top_level = cls.DECODERS
+            top_level = cls.DECODERS  # type: ignore
         else:
             raise TypeError(f"We don't support this type of handler {h}")
         if h.python_type not in top_level:
             top_level[h.python_type] = {}
         if protocol not in top_level[h.python_type]:
             top_level[h.python_type][protocol] = {}
-        return top_level[h.python_type][protocol]
+        return top_level[h.python_type][protocol]  # type: ignore
 
     def __init__(self):
         super().__init__("StructuredDataset Transformer", StructuredDataset)
@@ -381,7 +404,14 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         cls.Renderers[python_type] = renderer
 
     @classmethod
-    def register(cls, h: Handlers, default_for_type: Optional[bool] = False, override: Optional[bool] = False):
+    def register(
+        cls,
+        h: Handlers,
+        default_for_type: bool = False,
+        override: bool = False,
+        default_format_for_type: bool = False,
+        default_storage_for_type: bool = False,
+    ):
         """
         Call this with any Encoder or Decoder to register it with the flytekit type system. If your handler does not
         specify a protocol (e.g. s3, gs, etc.) field, then
@@ -395,6 +425,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
           In these cases, the protocol is determined by the raw output data prefix set in the active context.
         :param override: Override any previous registrations. If default_for_type is also set, this will also override
           the default.
+        :param default_format_for_type: Unlike the default_for_type arg that will set this handler's format and storage
+          as the default, this will only set the format. Error if already set, unless override is specified.
+        :param default_storage_for_type: Same as above but only for the storage format. Error if already set,
+          unless override is specified.
         """
         if not (isinstance(h, StructuredDatasetEncoder) or isinstance(h, StructuredDatasetDecoder)):
             raise TypeError(f"We don't support this type of handler {h}")
@@ -409,17 +443,29 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 stripped = DataPersistencePlugins.get_protocol(persistence_protocol)
                 logger.debug(f"Automatically registering {persistence_protocol} as {stripped} with {h}")
                 try:
-                    cls.register_for_protocol(h, stripped, False, override)
+                    cls.register_for_protocol(
+                        h, stripped, False, override, default_format_for_type, default_storage_for_type
+                    )
                 except DuplicateHandlerError:
                     logger.debug(f"Skipping {persistence_protocol}/{stripped} for {h} because duplicate")
 
         elif h.protocol == "":
             raise ValueError(f"Use None instead of empty string for registering handler {h}")
         else:
-            cls.register_for_protocol(h, h.protocol, default_for_type, override)
+            cls.register_for_protocol(
+                h, h.protocol, default_for_type, override, default_format_for_type, default_storage_for_type
+            )
 
     @classmethod
-    def register_for_protocol(cls, h: Handlers, protocol: str, default_for_type: bool, override: bool):
+    def register_for_protocol(
+        cls,
+        h: Handlers,
+        protocol: str,
+        default_for_type: bool,
+        override: bool,
+        default_format_for_type: bool,
+        default_storage_for_type: bool,
+    ):
         """
         See the main register function instead.
         """
@@ -434,12 +480,25 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         lowest_level[h.supported_format] = h
         logger.debug(f"Registered {h} as handler for {h.python_type}, protocol {protocol}, fmt {h.supported_format}")
 
-        if default_for_type:
-            logger.debug(
-                f"Using storage {protocol} and format {h.supported_format} for dataframes of type {h.python_type} from handler {h}"
-            )
-            cls.DEFAULT_FORMATS[h.python_type] = h.supported_format
-            cls.DEFAULT_PROTOCOLS[h.python_type] = protocol
+        if (default_format_for_type or default_for_type) and h.supported_format != GENERIC_FORMAT:
+            if h.python_type in cls.DEFAULT_FORMATS and not override:
+                if cls.DEFAULT_FORMATS[h.python_type] != h.supported_format:
+                    logger.info(
+                        f"Not using handler {h} with format {h.supported_format} as default for {h.python_type}, {cls.DEFAULT_FORMATS[h.python_type]} already specified."
+                    )
+            else:
+                logger.debug(
+                    f"Setting format {h.supported_format} for dataframes of type {h.python_type} from handler {h}"
+                )
+                cls.DEFAULT_FORMATS[h.python_type] = h.supported_format
+        if default_storage_for_type or default_for_type:
+            if h.protocol in cls.DEFAULT_PROTOCOLS and not override:
+                logger.debug(
+                    f"Not using handler {h} with storage protocol {h.protocol} as default for {h.python_type}, {cls.DEFAULT_PROTOCOLS[h.python_type]} already specified."
+                )
+            else:
+                logger.debug(f"Using storage {protocol} for dataframes of type {h.python_type} from handler {h}")
+                cls.DEFAULT_PROTOCOLS[h.python_type] = protocol
 
         # Register with the type engine as well
         # The semantics as of now are such that it doesn't matter which order these transformers are loaded in, as
@@ -461,7 +520,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # Check first to see if it's even an SD type. For backwards compatibility, we may be getting a FlyteSchema
         python_type, *attrs = extract_cols_and_format(python_type)
         # In case it's a FlyteSchema
-        sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, None))
+        sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, GENERIC_FORMAT))
 
         if expected and expected.structured_dataset_type:
             sdt = StructuredDatasetType(
@@ -514,16 +573,12 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 python_val,
                 df_type,
                 protocol,
-                sdt.format or typing.cast(StructuredDataset, python_val).DEFAULT_FILE_FORMAT,
+                sdt.format,
                 sdt,
             )
 
         # Otherwise assume it's a dataframe instance. Wrap it with some defaults
-        if python_type in self.DEFAULT_FORMATS:
-            fmt = self.DEFAULT_FORMATS[python_type]
-        else:
-            logger.debug(f"No default format for type {python_type}, using system default.")
-            fmt = StructuredDataset.DEFAULT_FILE_FORMAT
+        fmt = self.DEFAULT_FORMATS.get(python_type, "")
         protocol = self._protocol_from_type_or_prefix(ctx, python_type)
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
 
@@ -561,7 +616,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # least as good as the type of the interface.
         if sd_model.metadata is None:
             sd_model._metadata = StructuredDatasetMetadata(structured_literal_type)
-        if sd_model.metadata.structured_dataset_type is None:
+        if sd_model.metadata and sd_model.metadata.structured_dataset_type is None:
             sd_model.metadata._structured_dataset_type = structured_literal_type
         # Always set the format here to the format of the handler.
         # Note that this will always be the same as the incoming format except for when the fallback handler
@@ -569,7 +624,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         sd_model.metadata._structured_dataset_type.format = handler.supported_format
         return Literal(scalar=Scalar(structured_dataset=sd_model))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
         """
         The only tricky thing with converting a Literal (say the output of an earlier task), to a Python value at
         the start of a task execution, is the column subsetting behavior. For example, if you have,
@@ -689,7 +746,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 # Here we only render column information by default instead of opening the structured dataset.
                 col = typing.cast(StructuredDataset, python_val).columns()
                 df = pd.DataFrame(col, ["column type"])
-                return df.to_html()
+                return df.to_html()  # type: ignore
         else:
             df = python_val
 
@@ -725,10 +782,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         sd: literals.StructuredDataset,
         df_type: Type[DF],
         updated_metadata: StructuredDatasetMetadata,
-    ) -> Generator[DF, None, None]:
+    ) -> typing.Iterator[DF]:
         protocol = protocol_prefix(sd.uri)
         decoder = self.DECODERS[df_type][protocol][sd.metadata.structured_dataset_type.format]
-        result = decoder.decode(ctx, sd, updated_metadata)
+        result: Union[DF, typing.Iterator[DF]] = decoder.decode(ctx, sd, updated_metadata)
         if not isinstance(result, types.GeneratorType):
             raise ValueError(f"Decoder {decoder} didn't return iterator {result} but should have from {sd}")
         return result
@@ -743,7 +800,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 
     def _convert_ordered_dict_of_columns_to_list(
-        self, column_map: typing.OrderedDict[str, Type]
+        self, column_map: typing.Optional[typing.OrderedDict[str, Type]]
     ) -> typing.List[StructuredDatasetType.DatasetColumn]:
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         if column_map is None or len(column_map) == 0:
@@ -754,22 +811,16 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return converted_cols
 
     def _get_dataset_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
-        original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)
+        original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)  # type: ignore
 
         # Get the column information
-        converted_cols = self._convert_ordered_dict_of_columns_to_list(column_map)
-
-        # Get the format
-        default_format = (
-            original_python_type.DEFAULT_FILE_FORMAT
-            if issubclass(original_python_type, StructuredDataset)
-            else self.DEFAULT_FORMATS.get(original_python_type, PARQUET)
-        )
-        fmt = storage_format or default_format
+        converted_cols: typing.List[
+            StructuredDatasetType.DatasetColumn
+        ] = self._convert_ordered_dict_of_columns_to_list(column_map)
 
         return StructuredDatasetType(
             columns=converted_cols,
-            format=fmt,
+            format=storage_format,
             external_schema_type="arrow" if pa_schema else None,
             external_schema_bytes=typing.cast(pa.lib.Schema, pa_schema).to_string().encode() if pa_schema else None,
         )
@@ -784,7 +835,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         """
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[StructuredDataset]:
         # todo: technically we should return the dataframe type specified in the constructor, but to do that,
         #   we'd have to store that, which we don't do today. See possibly #1363
         if literal_type.structured_dataset_type is not None:

@@ -65,6 +65,9 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         return self.short_string()
 
+    def serialize_to_string(self) -> str:
+        return self.to_flyte_idl().SerializeToString()
+
     @property
     def is_empty(self):
         return len(self.to_flyte_idl().SerializeToString()) == 0
@@ -411,8 +414,10 @@ class UrlBlob(FlyteIdlEntity):
 
 class AuthRole(FlyteIdlEntity):
     def __init__(self, assumable_iam_role=None, kubernetes_service_account=None):
-        """
+        """Auth configuration for IAM or K8s service account.
+
         Either one or both of the assumable IAM role and/or the K8s service account can be set.
+
         :param Text assumable_iam_role: IAM identity with set permissions policies.
         :param Text kubernetes_service_account: Provides an identity for workflow execution resources.
           Flyte deployment administrators are responsible for handling permissions as they

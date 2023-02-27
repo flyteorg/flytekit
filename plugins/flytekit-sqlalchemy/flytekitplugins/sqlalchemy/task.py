@@ -20,10 +20,9 @@ class SQLAlchemyDefaultImages(DefaultImages):
     """Default images for the sqlalchemy flytekit plugin."""
 
     _DEFAULT_IMAGE_PREFIXES = {
-        PythonVersion.PYTHON_3_7: "ghcr.io/flyteorg/flytekit:py3.7-sqlalchemy-",
-        PythonVersion.PYTHON_3_8: "ghcr.io/flyteorg/flytekit:py3.8-sqlalchemy-",
-        PythonVersion.PYTHON_3_9: "ghcr.io/flyteorg/flytekit:py3.9-sqlalchemy-",
-        PythonVersion.PYTHON_3_10: "ghcr.io/flyteorg/flytekit:py3.10-sqlalchemy-",
+        PythonVersion.PYTHON_3_8: "cr.flyte.org/flyteorg/flytekit:py3.8-sqlalchemy-",
+        PythonVersion.PYTHON_3_9: "cr.flyte.org/flyteorg/flytekit:py3.9-sqlalchemy-",
+        PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-sqlalchemy-",
     }
 
 
