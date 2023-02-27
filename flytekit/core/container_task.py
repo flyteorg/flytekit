@@ -1,24 +1,16 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type, cast
-
-from flyteidl.core import tasks_pb2 as _core_task
-from kubernetes.client import ApiClient
-from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
-from flytekit.core.utils import _get_container_definition
+from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
-
-
-def _sanitize_resource_name(resource: _task_model.Resources.ResourceEntry) -> str:
-    return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
 class ContainerTask(PythonTask):
@@ -145,54 +137,11 @@ class ContainerTask(PythonTask):
             memory_limit=self.resources.limits.mem,
         )
 
-    def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
-        containers = cast(PodTemplate, self.pod_template).pod_spec.containers
-        primary_exists = False
-
-        for container in containers:
-            if container.name == cast(PodTemplate, self.pod_template).primary_container_name:
-                primary_exists = True
-                break
-
-        if not primary_exists:
-            # insert a placeholder primary container if it is not defined in the pod spec.
-            containers.append(V1Container(name=cast(PodTemplate, self.pod_template).primary_container_name))
-        final_containers = []
-        for container in containers:
-            # In the case of the primary container, we overwrite specific container attributes
-            # with the values given to ContainerTask.
-            # The attributes include: image, command, args, resource, and env (env is unioned)
-            if container.name == cast(PodTemplate, self.pod_template).primary_container_name:
-                prim_container = self._get_container(settings)
-
-                container.image = self._image
-                container.command = self._cmd
-                container.args = self._args
-
-                limits, requests = {}, {}
-                for resource in prim_container.resources.limits:
-                    limits[_sanitize_resource_name(resource)] = resource.value
-                for resource in prim_container.resources.requests:
-                    requests[_sanitize_resource_name(resource)] = resource.value
-                resource_requirements = V1ResourceRequirements(limits=limits, requests=requests)
-                if len(limits) > 0 or len(requests) > 0:
-                    # Important! Only copy over resource requirements if they are non-empty.
-                    container.resources = resource_requirements
-                env = settings.env or {}
-                env = {**env, **self.environment} if self.environment else env
-                container.env = [V1EnvVar(name=key, value=val) for key, val in env.items()] + (container.env or [])
-            final_containers.append(container)
-        cast(PodTemplate, self.pod_template).pod_spec.containers = final_containers
-
-        cast(PodTemplate, self.pod_template).data_config = self._get_data_loading_config()
-
-        return ApiClient().sanitize_for_serialization(cast(PodTemplate, self.pod_template).pod_spec)
-
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
         if self.pod_template is None:
             return None
         return _task_model.K8sPod(
-            pod_spec=self._serialize_pod_spec(settings),
+            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings)),
             metadata=_task_model.K8sObjectMetadata(
                 labels=self.pod_template.labels,
                 annotations=self.pod_template.annotations,
