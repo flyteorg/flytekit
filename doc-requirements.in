@@ -45,4 +45,5 @@ whylabs-client              # whylogs
 ray                         # ray
 scikit-learn                # scikit-learn
 vaex                        # vaex
-mlflow                       # mlflow
+mlflow                      # mlflow
+duckdb                      # duckdb
