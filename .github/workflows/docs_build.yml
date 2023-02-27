@@ -1,0 +1,26 @@
+name: Docs Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  docs_warnings:
+    name: Docs Warnings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: "0"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Report Sphinx Warnings
+        id: sphinx-warnings
+        run: |
+          sudo apt-get install python3-sphinx
+          pip install -r doc-requirements.txt
+          SPHINXOPTS="-W" cd docs && make html
