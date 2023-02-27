@@ -6,9 +6,9 @@ from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
-from flytekit.clis.sdk_in_container.serve import serve
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
+from flytekit.clis.sdk_in_container.serve import serve
 from flytekit.configuration.internal import LocalSDK
 from flytekit.loggers import cli_logger
 

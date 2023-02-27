@@ -1,28 +1,18 @@
-from dataclasses import dataclass
 import typing
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Optional
 
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from flyteidl.service import plugin_system_pb2
 
-from flytekit.models.interface import VariableMap
 from flytekit.models.literals import LiteralMap
-
-PENDING = "pending"
-SUCCEEDED = "succeeded"
-RUNNING = "running"
-
-
-@dataclass
-class CreateRequest:
-    inputs: LiteralMap
-    task_template: TaskTemplate
 
 
 @dataclass
 class CreateResponse:
     job_id: str
+    output_prefix: str
     message: Optional[str] = None
 
 
@@ -52,15 +42,19 @@ class BackendPluginBase:
         pass
 
     @abstractmethod
-    def create(self, create_request: CreateRequest) -> CreateResponse:
+    def create(
+        self, inputs: LiteralMap, output_prefix: str, task_template: TaskTemplate
+    ) -> plugin_system_pb2.TaskCreateResponse:
         pass
 
     @abstractmethod
-    def poll(self, poll_request: PollRequest) -> PollResponse:
+    def get(
+        self, job_id: str, output_prefix: str, prev_state: plugin_system_pb2.State
+    ) -> plugin_system_pb2.TaskGetResponse:
         pass
 
     @abstractmethod
-    def terminate(self, job_id: str):
+    def delete(self, job_id: str) -> plugin_system_pb2.TaskDeleteResponse:
         pass
 
 
@@ -76,11 +70,11 @@ class BackendPluginRegistry(object):
         return BackendPluginRegistry._REGISTRY[task_type]
 
 
-def convert_to_flyte_state(state: str) -> str:
-    if state.lower() in [PENDING]:
-        return PENDING
-    if state.lower() in ["done", SUCCEEDED]:
-        return SUCCEEDED
-    if state.lower() in [RUNNING]:
-        return RUNNING
+def convert_to_flyte_state(state: str) -> plugin_system_pb2.State:
+    if state.lower() in ["failed"]:
+        return plugin_system_pb2.FAILED
+    if state.lower() in ["done", "succeeded"]:
+        return plugin_system_pb2.SUCCEEDED
+    if state.lower() in ["running"]:
+        return plugin_system_pb2.RUNNING
     raise ValueError("Unrecognize state")
