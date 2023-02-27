@@ -5,14 +5,8 @@ from flyteidl.service import plugin_system_pb2
 from flytekit import FlyteContextManager, StructuredDataset
 from flytekit.core import constants
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_plugin import (
-    BackendPluginBase,
-    BackendPluginRegistry,
-    CreateResponse,
-    PollRequest,
-    PollResponse,
-)
-from flytekit.extend.backend.utils import get_task_inputs, get_task_template, upload_output_file
+from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry
+from flytekit.extend.backend.utils import upload_output_file
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate

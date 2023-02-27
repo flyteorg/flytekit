@@ -8,7 +8,7 @@ from flytekit import FlyteContextManager, StructuredDataset
 from flytekit.core import constants
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry, convert_to_flyte_state
-from flytekit.extend.backend.utils import get_task_inputs, get_task_template, upload_output_file
+from flytekit.extend.backend.utils import upload_output_file
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate

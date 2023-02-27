@@ -7,7 +7,6 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit import StructuredDataset
 from flytekit.configuration import SerializationSettings
-from flytekit.core.utils import is_backend_plugin_service_enabled
 from flytekit.extend import SQLTask
 from flytekit.models import task as _task_model
 
