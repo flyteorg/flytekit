@@ -33,7 +33,6 @@ class BigQueryPlugin(BackendPluginBase):
     ) -> plugin_system_pb2.TaskCreateResponse:
         ctx = FlyteContextManager.current_context()
 
-        # 3. Submit the job
         # TODO: is there any other way to get python interface input?
         python_interface_inputs = {
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()

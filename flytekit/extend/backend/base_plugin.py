@@ -1,32 +1,10 @@
 import typing
 from abc import abstractmethod
-from dataclasses import dataclass
-from typing import Optional
 
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from flyteidl.service import plugin_system_pb2
 
 from flytekit.models.literals import LiteralMap
-
-
-@dataclass
-class CreateResponse:
-    job_id: str
-    output_prefix: str
-    message: Optional[str] = None
-
-
-@dataclass
-class PollRequest:
-    job_id: str
-    output_prefix: str
-    prev_state: plugin_system_pb2.State
-
-
-@dataclass
-class PollResponse:
-    state: plugin_system_pb2.State
-    message: Optional[str] = None
 
 
 class BackendPluginBase:

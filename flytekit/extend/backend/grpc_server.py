@@ -1,10 +1,7 @@
 from flyteidl.service import plugin_system_pb2
-from flyteidl.service.plugin_system_pb2_grpc import (
-    BackendPluginServiceServicer,
-    add_BackendPluginServiceServicer_to_server,
-)
+from flyteidl.service.plugin_system_pb2_grpc import BackendPluginServiceServicer
 
-from flytekit.extend.backend.base_plugin import BackendPluginRegistry, PollRequest
+from flytekit.extend.backend.base_plugin import BackendPluginRegistry
 from flytekit.extend.backend.model import TaskCreateRequest
 
 

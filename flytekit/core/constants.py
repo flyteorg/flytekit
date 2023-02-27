@@ -2,7 +2,6 @@ INPUT_FILE_NAME = "inputs.pb"
 OUTPUT_FILE_NAME = "outputs.pb"
 FUTURES_FILE_NAME = "futures.pb"
 ERROR_FILE_NAME = "error.pb"
-ENABLE_BACKEND_SYSTEM_SERVICE = "ENABLE_BACKEND_SYSTEM_SERVICE"
 
 
 class SdkTaskType(object):

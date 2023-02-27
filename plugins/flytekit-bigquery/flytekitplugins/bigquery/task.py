@@ -84,7 +84,4 @@ class BigQueryTask(SQLTask[BigQueryConfig]):
         return sql
 
     def execute(self, **kwargs) -> Any:
-        if not is_backend_plugin_service_enabled():
-            raise Exception("Backend plugin service is not enabled")
-
         raise Exception("Cannot run a SQL Task natively, please mock.")
