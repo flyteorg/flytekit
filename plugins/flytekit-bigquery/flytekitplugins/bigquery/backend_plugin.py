@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from flyteidl.service import plugin_system_pb2
 from flyteidl.service.plugin_system_pb2 import TaskGetResponse
@@ -25,19 +25,17 @@ class BigQueryPlugin(BackendPluginBase):
         super().__init__(task_type="bigquery")
 
     def initialize(self):
-        # TODO: Read GOOGLE_APPLICATION_CREDENTIALS from secret. If not found, raise an error.
         pass
 
     def create(
-        self, inputs: LiteralMap, output_prefix: str, task_template: TaskTemplate
+        self, inputs: Optional[LiteralMap], output_prefix: str, task_template: TaskTemplate
     ) -> plugin_system_pb2.TaskCreateResponse:
         ctx = FlyteContextManager.current_context()
-
-        # TODO: is there any other way to get python interface input?
         python_interface_inputs = {
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
         }
         native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
+
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
                 bigquery.ScalarQueryParameter(name, pythonTypeToBigQueryType[python_interface_inputs[name]], val)

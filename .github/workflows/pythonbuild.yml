@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
+          RUN pip install "git+https://github.com/flyteorg/flytekit@backend-plugin-system-grpc#egg=flytekitplugins-bigquery&subdirectory=plugins/flytekit-bigquery"
+          RUN pip install "git+https://github.com/flyteorg/flytekit@backend-plugin-system-grpc"
+          RUN pip install "git+https://github.com/flyteorg/flyteidl@backend-plugin-system"
           pip freeze
       - name: Test with coverage
         run: |

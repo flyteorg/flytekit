@@ -21,7 +21,7 @@ class BackendPluginBase:
 
     @abstractmethod
     def create(
-        self, inputs: LiteralMap, output_prefix: str, task_template: TaskTemplate
+        self, inputs: typing.Optional[LiteralMap], output_prefix: str, task_template: TaskTemplate
     ) -> plugin_system_pb2.TaskCreateResponse:
         pass
 
