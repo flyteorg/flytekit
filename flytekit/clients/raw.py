@@ -663,7 +663,7 @@ class RawSynchronousFlyteClient(object):
     @_handle_rpc_error(retry=True)
     def get_execution_metrics(self, get_execution_metrics_request):
         """
-        TODO @hamersaw - docs
+        Returns metrics partitioning and categorizing the workflow execution time-series.
 
         :param flyteidl.admin.execution_pb2.WorkflowExecutionGetMetricsRequest get_execution_metrics_request:
         :rtype: flyteidl.admin.execution_pb2.WorkflowExecutionGetMetricsResponse
@@ -721,16 +721,6 @@ class RawSynchronousFlyteClient(object):
         return self._stub.GetNodeExecutionData(get_node_execution_data_request, metadata=self._metadata)
 
     @_handle_rpc_error(retry=True)
-    def get_node_execution_metrics(self, get_node_execution_metrics_request):
-        """
-        TODO @hamersaw - docs
-
-        :param flyteidl.admin.node_execution_pb2.NodeExecutionGetMetricsRequest get_node_execution_metrics_request:
-        :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionGetMetricsResponse
-        """
-        return self._stub.GetNodeExecutionMetrics(get_node_execution_metrics_request, metadata=self._metadata)
-
-    @_handle_rpc_error(retry=True)
     def list_node_executions_paginated(self, node_execution_list_request):
         """
         :param flyteidl.admin.node_execution_pb2.NodeExecutionListRequest node_execution_list_request:
@@ -769,16 +759,6 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.task_execution_pb2.TaskExecutionGetDataResponse
         """
         return self._stub.GetTaskExecutionData(get_task_execution_data_request, metadata=self._metadata)
-
-    @_handle_rpc_error(retry=True)
-    def get_task_execution_metrics(self, get_task_execution_metrics_request):
-        """
-        TODO @hamersaw - docs
-
-        :param flyteidl.admin.task_execution_pb2.TaskExecutionGetMetricsRequest get_task_execution_metrics_request:
-        :rtype: flyteidl.admin.task_execution_pb2.TaskExecutionGetMetricsResponse
-        """
-        return self._stub.GetTaskExecutionMetrics(get_task_execution_metrics_request, metadata=self._metadata)
 
     @_handle_rpc_error(retry=True)
     def list_task_executions_paginated(self, task_execution_list_request):
