@@ -74,12 +74,14 @@ def s3_setup_args(s3_cfg: S3Config):
 
 def get_filesystem(path: str, **kwargs) -> "fsspec.AbstractFileSystem":
     import fsspec
+
     protocol, path = split_protocol(path)
     if protocol is None or protocol == "file":
         protocol = "file"
         kwargs = {"auto_mkdir": True}
     elif protocol == "s3":
         from flytekit.core.context_manager import FlyteContextManager
+
         fa = FlyteContextManager().current_context().file_access
         kwargs = s3_setup_args(fa.data_config.s3)
     return fsspec.filesystem(protocol, **kwargs)  # type: ignore
@@ -364,10 +366,10 @@ class FileAccessProvider(object):
     """
 
     def __init__(
-            self,
-            local_sandbox_dir: Union[str, os.PathLike],
-            raw_output_prefix: str,
-            data_config: typing.Optional[DataConfig] = None,
+        self,
+        local_sandbox_dir: Union[str, os.PathLike],
+        raw_output_prefix: str,
+        data_config: typing.Optional[DataConfig] = None,
     ):
         """
         Args:
@@ -414,7 +416,7 @@ class FileAccessProvider(object):
         return self._local
 
     def construct_random_path(
-            self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
+        self, persist: DataPersistence, file_path_or_file_name: typing.Optional[str] = None
     ) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name

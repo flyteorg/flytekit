@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import os
 import pathlib
+import random
 import typing
 from dataclasses import dataclass, field
 from pathlib import Path
-import random
+from typing import Any, Generator, Tuple
 from uuid import UUID
 
 from dataclasses_json import config, dataclass_json
@@ -121,10 +122,10 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     """
 
     def __init__(
-            self,
-            path: typing.Union[str, os.PathLike],
-            downloader: typing.Optional[typing.Callable] = None,
-            remote_directory: typing.Optional[str] = None,
+        self,
+        path: typing.Union[str, os.PathLike],
+        downloader: typing.Optional[typing.Callable] = None,
+        remote_directory: typing.Optional[str] = None,
     ):
         """
         :param path: The source path that users are expected to call open() on
@@ -208,9 +209,8 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     def download(self) -> str:
         return self.__fspath__()
 
-    def walk(self, maxdepth=None, topdown=True, **kwargs) -> typing.Tuple[str, ListOrDict, ListOrDict]:
-        """
-        """
+    def walk(self, maxdepth=None, topdown=True, **kwargs) -> Generator[Tuple[str, ListOrDict, ListOrDict], Any, None]:
+        """ """
         try:
             final_path = self.path
             if self.remote_source:
@@ -218,8 +218,9 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
             elif self.remote_directory:
                 final_path = self.remote_directory
             import fsspec
+
             fs: fsspec.AbstractFileSystem = get_filesystem(final_path)
-            return fs.walk(final_path, maxdepth, topdown, **kwargs)
+            return ((fs.unstrip_protocol(x), y, z) for x, y, z in fs.walk(final_path, maxdepth, topdown, **kwargs))
         except ImportError as e:
             print(
                 "To use streaming files, please install fsspec."
@@ -272,11 +273,11 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
 
     def to_literal(
-            self,
-            ctx: FlyteContext,
-            python_val: FlyteDirectory,
-            python_type: typing.Type[FlyteDirectory],
-            expected: LiteralType,
+        self,
+        ctx: FlyteContext,
+        python_val: FlyteDirectory,
+        python_type: typing.Type[FlyteDirectory],
+        expected: LiteralType,
     ) -> Literal:
 
         remote_directory = None
@@ -325,7 +326,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     def to_python_value(
-            self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
 
         uri = lv.scalar.blob.uri
@@ -350,8 +351,8 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteDirectory[typing.Any]]:
         if (
-                literal_type.blob is not None
-                and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
         ):
             return FlyteDirectory.__class_getitem__(literal_type.blob.format)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
