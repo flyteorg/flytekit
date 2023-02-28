@@ -27,6 +27,7 @@ import tempfile
 import typing
 from typing import Union
 from uuid import UUID
+import shutil
 
 import fsspec
 from fsspec.core import strip_protocol
@@ -158,12 +159,18 @@ class FileAccessProvider(object):
         return self._local
 
     @staticmethod
+    def strip_file_header(path: str) -> str:
+        """
+        Drops file:// if it exists from the file
+        """
+        if path.startswith("file://"):
+            return path.replace("file://", "", 1)
+        return path
+
+    @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
         f = os.path.join(f, "")
-        # if not f.endswith("*"):
-        #     f = os.path.join(f, "*")
-        # if not t.endswith("/"):
-        #     t += "/"
+        t = os.path.join(t, "")
         return f, t
 
     def exists(self, path: str) -> bool:
@@ -183,6 +190,11 @@ class FileAccessProvider(object):
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
+            # Special case system level behavior because of inconsistencies in local implementation copy
+            # Don't want to use ls to check empty-ness because it can be extremely expensive if not empty
+            # TODO: Fix after https://github.com/fsspec/filesystem_spec/issues/1198
+            if file_system.protocol == "file" and recursive:
+                return shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
             return file_system.get(from_path, to_path, recursive=recursive)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")

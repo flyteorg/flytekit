@@ -98,7 +98,7 @@ def test_default_file_access_instance(mock_uuid_class):
 def source_folder():
     # Set up source directory for testing
     parent_temp = tempfile.mkdtemp()
-    src_dir = os.path.join(parent_temp, "source")
+    src_dir = os.path.join(parent_temp, "source", "")
     nested_dir = os.path.join(src_dir, "nested")
     local.mkdir(nested_dir)
     local.touch(os.path.join(src_dir, "original.txt"))
@@ -139,3 +139,12 @@ def test_s3_provider(source_folder):
     )
     doesnotexist = provider.get_random_remote_directory()
     provider.put_data(source_folder, doesnotexist, is_multipart=True)
+
+
+# Add some assertions
+def test_local_provider_get_empty():
+    dc = Config.for_sandbox().data_config
+    with tempfile.TemporaryDirectory() as empty_source:
+        with tempfile.TemporaryDirectory() as dest_folder:
+            provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=empty_source, data_config=dc)
+            provider.get_data(empty_source, dest_folder, is_multipart=True)
