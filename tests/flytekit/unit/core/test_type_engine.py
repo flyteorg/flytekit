@@ -45,7 +45,7 @@ from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
-from flytekit.models.types import LiteralType, SimpleType, TypeStructure
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FileExt, JPEGImageFile
@@ -749,18 +749,19 @@ def test_flyte_directory_in_dataclass():
 
 def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)]
 
     @dataclass_json
     @dataclass
     class InnerDatasetStruct(object):
         a: StructuredDataset
-        b: typing.List[StructuredDataset]
-        c: typing.Dict[str, StructuredDataset]
+        b: typing.List[Annotated[StructuredDataset, "parquet"]]
+        c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
 
     @dataclass_json
     @dataclass
     class DatasetStruct(object):
-        a: StructuredDataset
+        a: People
         b: InnerDatasetStruct
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")
@@ -939,6 +940,18 @@ def test_union_transformer():
     assert UnionTransformer.is_optional_type(typing.Optional[int])
     assert not UnionTransformer.is_optional_type(str)
     assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
+
+
+def test_union_guess_type():
+    ut = UnionTransformer()
+    t = ut.guess_python_type(
+        LiteralType(
+            union_type=UnionType(
+                variants=[LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
+            )
+        )
+    )
+    assert t == typing.Union[str, int]
 
 
 def test_union_type_with_annotated():
@@ -1459,21 +1472,21 @@ def test_multiple_annotations():
         TypeEngine.to_literal_type(t)
 
 
-TestSchema = FlyteSchema[kwtypes(some_str=str)]
+TestSchema = FlyteSchema[kwtypes(some_str=str)]  # type: ignore
 
 
 @dataclass_json
 @dataclass
 class InnerResult:
     number: int
-    schema: TestSchema
+    schema: TestSchema  # type: ignore
 
 
 @dataclass_json
 @dataclass
 class Result:
     result: InnerResult
-    schema: TestSchema
+    schema: TestSchema  # type: ignore
 
 
 def test_schema_in_dataclass():

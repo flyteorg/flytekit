@@ -1,3 +1,4 @@
+import os
 import typing
 
 import datasets
@@ -59,12 +60,11 @@ class ParquetToHuggingFaceDatasetDecodingHandler(StructuredDatasetDecoder):
     ) -> datasets.Dataset:
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(flyte_value.uri, local_dir, is_multipart=True)
-        path = f"{local_dir}/00000"
-
+        files = [item.path for item in os.scandir(local_dir)]
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
-            return datasets.Dataset.from_parquet(path, columns=columns)
-        return datasets.Dataset.from_parquet(path)
+            return datasets.Dataset.from_parquet(files, columns=columns)
+        return datasets.Dataset.from_parquet(files)
 
 
 StructuredDatasetTransformerEngine.register(HuggingFaceDatasetToParquetEncodingHandler())

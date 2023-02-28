@@ -4,8 +4,9 @@ import datetime
 import typing
 from typing import Any, List
 
-from flytekit.core.resources import Resources
+from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
+from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.task import Resources as _resources_model
@@ -92,9 +93,14 @@ class Node(object):
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
         if "requests" in kwargs or "limits" in kwargs:
-            requests = _convert_resource_overrides(kwargs.get("requests"), "requests")
-            limits = _convert_resource_overrides(kwargs.get("limits"), "limits")
-            self._resources = _resources_model(requests=requests, limits=limits)
+            requests = kwargs.get("requests")
+            if requests and not isinstance(requests, Resources):
+                raise AssertionError("requests should be specified as flytekit.Resources")
+            limits = kwargs.get("limits")
+            if limits and not isinstance(limits, Resources):
+                raise AssertionError("limits should be specified as flytekit.Resources")
+
+            self._resources = convert_resources_to_resource_model(requests=requests, limits=limits)
         if "timeout" in kwargs:
             timeout = kwargs["timeout"]
             if timeout is None:
@@ -114,16 +120,21 @@ class Node(object):
             self._metadata._interruptible = kwargs["interruptible"]
         if "name" in kwargs:
             self._metadata._name = kwargs["name"]
+        if "task_config" in kwargs:
+            logger.warning("This override is beta. We may want to revisit this in the future.")
+            new_task_config = kwargs["task_config"]
+            if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
+                raise ValueError("can't change the type of the task config")
+            self.flyte_entity._task_config = new_task_config
         return self
 
 
 def _convert_resource_overrides(
     resources: typing.Optional[Resources], resource_name: str
-) -> [_resources_model.ResourceEntry]:
+) -> typing.List[_resources_model.ResourceEntry]:
     if resources is None:
         return []
-    if not isinstance(resources, Resources):
-        raise AssertionError(f"{resource_name} should be specified as flytekit.Resources")
+
     resource_entries = []
     if resources.cpu is not None:
         resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.CPU, resources.cpu))

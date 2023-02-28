@@ -76,6 +76,7 @@ Expected output:
    flytekit
    configuration
    remote
+   clients
    testing
    extend
    deck

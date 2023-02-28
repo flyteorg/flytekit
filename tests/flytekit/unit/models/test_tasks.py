@@ -7,6 +7,7 @@ from google.protobuf import text_format
 
 import flytekit.models.interface as interface_models
 import flytekit.models.literals as literal_models
+from flytekit import Description, Documentation, SourceCode
 from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
 from tests.flytekit.common import parameterizers
@@ -70,6 +71,7 @@ def test_task_metadata():
         "0.1.1b0",
         "This is deprecated!",
         True,
+        "A",
     )
 
     assert obj.discoverable is True
@@ -81,6 +83,7 @@ def test_task_metadata():
     assert obj.runtime.version == "1.0.0"
     assert obj.deprecated_error_message == "This is deprecated!"
     assert obj.discovery_version == "0.1.1b0"
+    assert obj.pod_template_name == "A"
     assert obj == task.TaskMetadata.from_flyte_idl(obj.to_flyte_idl())
 
 
@@ -123,7 +126,62 @@ def test_task_template(in_tuple):
     assert obj.config == {"a": "b"}
 
 
-def test_task_template__k8s_pod_target():
+def test_task_spec():
+    task_metadata = task.TaskMetadata(
+        True,
+        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
+        timedelta(days=1),
+        literals.RetryStrategy(3),
+        True,
+        "0.1.1b0",
+        "This is deprecated!",
+        True,
+        "A",
+    )
+
+    int_type = types.LiteralType(types.SimpleType.INTEGER)
+    interfaces = interface_models.TypedInterface(
+        {"a": interface_models.Variable(int_type, "description1")},
+        {
+            "b": interface_models.Variable(int_type, "description2"),
+            "c": interface_models.Variable(int_type, "description3"),
+        },
+    )
+
+    resource = [task.Resources.ResourceEntry(task.Resources.ResourceName.CPU, "1")]
+    resources = task.Resources(resource, resource)
+
+    template = task.TaskTemplate(
+        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
+        "python",
+        task_metadata,
+        interfaces,
+        {"a": 1, "b": {"c": 2, "d": 3}},
+        container=task.Container(
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            resources,
+            {"a": "b"},
+            {"d": "e"},
+        ),
+        config={"a": "b"},
+    )
+
+    short_description = "short"
+    long_description = Description(value="long", icon_link="http://icon")
+    source_code = SourceCode(link="https://github.com/flyteorg/flytekit")
+    docs = Documentation(
+        short_description=short_description, long_description=long_description, source_code=source_code
+    )
+
+    obj = task.TaskSpec(template, docs)
+    assert task.TaskSpec.from_flyte_idl(obj.to_flyte_idl()) == obj
+    assert obj.docs == docs
+    assert obj.template == template
+
+
+def test_task_template_k8s_pod_target():
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     obj = task.TaskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
@@ -137,6 +195,7 @@ def test_task_template__k8s_pod_target():
             "1.0",
             "deprecated",
             False,
+            "A",
         ),
         interface_models.TypedInterface(
             # inputs

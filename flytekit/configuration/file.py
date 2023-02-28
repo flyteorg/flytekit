@@ -18,6 +18,11 @@ from flytekit.loggers import logger
 FLYTECTL_CONFIG_ENV_VAR = "FLYTECTL_CONFIG"
 
 
+def _exists(val: typing.Any) -> bool:
+    """Check if a value is defined."""
+    return isinstance(val, bool) or bool(val is not None and val)
+
+
 @dataclass
 class LegacyConfigEntry(object):
     """
@@ -63,7 +68,7 @@ class LegacyConfigEntry(object):
 @dataclass
 class YamlConfigEntry(object):
     """
-    Creates a record for the config entry. contains
+    Creates a record for the config entry.
     Args:
         switch: dot-delimited string that should match flytectl args. Leaving it as dot-delimited instead of a list
           of strings because it's easier to maintain alignment with flytectl.
@@ -80,10 +85,11 @@ class YamlConfigEntry(object):
             return None
         try:
             v = cfg.get(self)
-            if v:
+            if _exists(v):
                 return transform(v) if transform else v
         except Exception:
             ...
+
         return None
 
 
@@ -224,7 +230,7 @@ class ConfigFile(object):
         return self._legacy_config
 
     @property
-    def yaml_config(self) -> typing.Dict[str, Any]:
+    def yaml_config(self) -> typing.Dict[str, typing.Any]:
         return self._yaml_config
 
 
@@ -273,7 +279,7 @@ def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
 
         The input dictionary ``d`` will be mutated.
     """
-    if v:
+    if _exists(v):
         d[k] = v
     return d
 

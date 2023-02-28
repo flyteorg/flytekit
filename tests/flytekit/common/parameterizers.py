@@ -121,8 +121,9 @@ LIST_OF_TASK_METADATA = [
         discovery_version,
         deprecated,
         cache_serializable,
+        pod_template_name,
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
@@ -131,6 +132,7 @@ LIST_OF_TASK_METADATA = [
         ["1.0"],
         ["deprecated"],
         [True, False],
+        ["A", "B"],
     )
 ]
 

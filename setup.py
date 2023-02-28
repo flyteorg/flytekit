@@ -1,15 +1,4 @@
-import sys
-
 from setuptools import find_packages, setup  # noqa
-
-MIN_PYTHON_VERSION = (3, 7)
-CURRENT_PYTHON = sys.version_info[:2]
-if CURRENT_PYTHON < MIN_PYTHON_VERSION:
-    print(
-        f"Flytekit API is only supported for Python version is {MIN_PYTHON_VERSION}+. Detected you are on"
-        f" version {CURRENT_PYTHON}, installation will not proceed!"
-    )
-    sys.exit(-1)
 
 extras_require = {}
 
@@ -40,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.3.0,<1.4.0",
+        "flyteidl>=1.3.5,<1.4.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -54,6 +43,7 @@ setup(
         "grpcio>=1.50.0,<2.0",
         "grpcio-status>=1.50.0,<2.0",
         "importlib-metadata",
+        "fsspec",
         "pyopenssl",
         "joblib",
         "python-json-logger>=2.0.0",
@@ -82,6 +72,8 @@ setup(
         # TODO: We should remove mentions to the deprecated numpy
         # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
         "numpy<1.24.0",
+        "gitpython",
+        "kubernetes>=12.0.1",
     ],
     extras_require=extras_require,
     scripts=[
@@ -90,7 +82,7 @@ setup(
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.7,<3.11",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",

@@ -1,6 +1,7 @@
 import datetime
 import typing
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import pytest
 
@@ -95,6 +96,8 @@ def test_normal_task():
         def empty_wf2():
             create_node(t2, "foo")
 
+        empty_wf2()
+
 
 def test_more_normal_task():
     nt = typing.NamedTuple("OneOutput", t1_str_output=str)
@@ -102,14 +105,12 @@ def test_more_normal_task():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return nt(
-            f"{a + 2}",
-        )
+        return nt(f"{a + 2}")  # type: ignore
 
     @task
     def t1_nt(a: int) -> nt:
         # This one returns an instance of the named tuple.
-        return nt(f"{a + 2}")
+        return nt(f"{a + 2}")  # type: ignore
 
     @task
     def t2(a: typing.List[str]) -> str:
@@ -132,9 +133,7 @@ def test_reserved_keyword():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return nt(
-            f"{a + 2}",
-        )
+        return nt(f"{a + 2}")  # type: ignore
 
     # Test that you can't name an output "outputs"
     with pytest.raises(FlyteAssertion):
@@ -143,6 +142,8 @@ def test_reserved_keyword():
         def my_wf(a: int) -> str:
             t1_node = create_node(t1, a=a)
             return t1_node.outputs
+
+        my_wf()
 
 
 def test_runs_before():
@@ -333,6 +334,8 @@ def test_timeout_override_invalid_value():
         def my_wf(a: str) -> str:
             return t1(a=a).with_overrides(timeout="foo")
 
+        my_wf()
+
 
 @pytest.mark.parametrize(
     "retries,expected",
@@ -424,3 +427,27 @@ def test_name_override():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.name == "foo"
+
+
+def test_config_override():
+    @dataclass
+    class DummyConfig:
+        name: str
+
+    @task(task_config=DummyConfig(name="hello"))
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(task_config=DummyConfig("flyte"))
+
+    assert my_wf.nodes[0].flyte_entity.task_config.name == "flyte"
+
+    with pytest.raises(ValueError):
+
+        @workflow
+        def my_wf(a: str) -> str:
+            return t1(a=a).with_overrides(task_config=None)
+
+        my_wf()

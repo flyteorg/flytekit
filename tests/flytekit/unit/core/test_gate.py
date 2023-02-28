@@ -13,7 +13,8 @@ from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.tools.translator import get_serializable
+from flytekit.remote.entities import FlyteWorkflow
+from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = SerializationSettings(
@@ -218,7 +219,7 @@ def test_dyn_signal_no_approve():
 
 
 def test_subwf():
-    nt = typing.NamedTuple("Multi", named1=int, named2=int)
+    nt = typing.NamedTuple("Multi", [("named1", int), ("named2", int)])
 
     @task
     def nt1(a: int) -> nt:
@@ -290,3 +291,35 @@ def test_cond_wait():
         x = cond_wf(a=3)
         assert x == 6
         assert stdin.read() == ""
+
+
+def test_promote():
+    @task
+    def t1(a: int) -> int:
+        return a + 5
+
+    @task
+    def t2(a: int) -> int:
+        return a + 6
+
+    @workflow
+    def wf(a: int) -> typing.Tuple[int, int, int]:
+        zzz = sleep(timedelta(seconds=10))
+        x = t1(a=a)
+        s1 = wait_for_input("my-signal-name", timeout=timedelta(hours=1), expected_type=bool)
+        s2 = wait_for_input("my-signal-name-2", timeout=timedelta(hours=2), expected_type=int)
+        z = t1(a=5)
+        y = t2(a=s2)
+        q = t2(a=approve(y, "approvalfory", timeout=timedelta(hours=2)))
+        zzz >> x
+        x >> s1
+        s1 >> z
+
+        return y, z, q
+
+    entries = OrderedDict()
+    wf_spec = get_serializable(entries, serialization_settings, wf)
+    tts, wf_specs, lp_specs = gather_dependent_entities(entries)
+
+    fwf = FlyteWorkflow.promote_from_model(wf_spec.template, tasks=tts)
+    assert fwf.template.nodes[2].gate_node is not None

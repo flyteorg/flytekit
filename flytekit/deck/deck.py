@@ -10,6 +10,11 @@ from flytekit.loggers import logger
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
 
+try:
+    from IPython.core.display import HTML
+except ImportError:
+    ...
+
 
 class Deck:
     """
@@ -100,8 +105,6 @@ def _get_deck(
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
     raw_html = template.render(metadata=deck_map)
     if not ignore_jupyter and _ipython_check():
-        from IPython.core.display import HTML
-
         return HTML(raw_html)
     return raw_html
 

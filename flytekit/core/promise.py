@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import collections
-import typing
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from typing_extensions import Protocol, get_args
 
@@ -11,7 +10,13 @@ from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
-from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import (
+    BranchEvalMode,
+    ExecutionParameters,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+)
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
@@ -70,7 +75,6 @@ def translate_inputs_to_literals(
         val_type: type,
         flyte_literal_type: _type_models.LiteralType,
     ) -> _literal_models.Literal:
-
         if isinstance(input_val, list):
             lt = flyte_literal_type
             python_type = val_type
@@ -83,7 +87,7 @@ def translate_inputs_to_literals(
             if lt.collection_type is None:
                 raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
             try:
-                sub_type = ListTransformer.get_sub_type(python_type)
+                sub_type: type = ListTransformer.get_sub_type(python_type)
             except ValueError:
                 if len(input_val) == 0:
                     raise
@@ -143,17 +147,16 @@ def translate_inputs_to_literals(
 
 
 def get_primitive_val(prim: Primitive) -> Any:
-    if prim.integer:
-        return prim.integer
-    if prim.datetime:
-        return prim.datetime
-    if prim.boolean:
-        return prim.boolean
-    if prim.duration:
-        return prim.duration
-    if prim.string_value:
-        return prim.string_value
-    return prim.float_value
+    for value in [
+        prim.integer,
+        prim.float_value,
+        prim.string_value,
+        prim.boolean,
+        prim.datetime,
+        prim.duration,
+    ]:
+        if value is not None:
+            return value
 
 
 class ConjunctionOps(Enum):
@@ -350,8 +353,8 @@ class Promise(object):
     def __hash__(self):
         return hash(id(self))
 
-    def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
-        if not self.is_ready:
+    def __rshift__(self, other: Union[Promise, VoidPromise]):
+        if not self.is_ready and other.ref:
             self.ref.node.runs_before(other.ref.node)
         return other
 
@@ -411,10 +414,10 @@ class Promise(object):
     def is_true(self):
         return self.is_(True)
 
-    def __eq__(self, other) -> ComparisonExpression:
+    def __eq__(self, other) -> ComparisonExpression:  # type: ignore
         return ComparisonExpression(self, ComparisonOps.EQ, other)
 
-    def __ne__(self, other) -> ComparisonExpression:
+    def __ne__(self, other) -> ComparisonExpression:  # type: ignore
         return ComparisonExpression(self, ComparisonOps.NE, other)
 
     def __gt__(self, other) -> ComparisonExpression:
@@ -458,7 +461,7 @@ class Promise(object):
 
 def create_native_named_tuple(
     ctx: FlyteContext,
-    promises: Optional[Union[Promise, typing.List[Promise]]],
+    promises: Union[Tuple[Promise], Promise, VoidPromise, None],
     entity_interface: Interface,
 ) -> Optional[Tuple]:
     """
@@ -479,7 +482,7 @@ def create_native_named_tuple(
         except Exception as e:
             raise AssertionError(f"Failed to convert value of output {k}, expected type {v}.") from e
 
-    if len(promises) == 0:
+    if len(cast(Tuple[Promise], promises)) == 0:
         return None
 
     named_tuple_name = "DefaultNamedTupleOutput"
@@ -487,7 +490,7 @@ def create_native_named_tuple(
         named_tuple_name = entity_interface.output_tuple_name
 
     outputs = {}
-    for p in promises:
+    for p in cast(Tuple[Promise], promises):
         if not isinstance(p, Promise):
             raise AssertionError(
                 "Workflow outputs can only be promises that are returned by tasks. Found a value of"
@@ -500,8 +503,8 @@ def create_native_named_tuple(
             raise AssertionError(f"Failed to convert value of output {p.var}, expected type {t}.") from e
 
     # Should this class be part of the Interface?
-    t = collections.namedtuple(named_tuple_name, list(outputs.keys()))
-    return t(**outputs)
+    nt = collections.namedtuple(named_tuple_name, list(outputs.keys()))  # type: ignore
+    return nt(**outputs)
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
@@ -545,7 +548,7 @@ def create_task_output(
         named_tuple_name = entity_interface.output_tuple_name
 
     # Should this class be part of the Interface?
-    class Output(collections.namedtuple(named_tuple_name, variables)):
+    class Output(collections.namedtuple(named_tuple_name, variables)):  # type: ignore
         def with_overrides(self, *args, **kwargs):
             val = self.__getattribute__(self._fields[0])
             val.with_overrides(*args, **kwargs)
@@ -578,7 +581,7 @@ def binding_from_flyte_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
     expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+    t_value: Any,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type=None)
     return _literals_models.Binding(var=var_name, binding=binding_data)
@@ -587,7 +590,7 @@ def binding_from_flyte_std(
 def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+    t_value: Any,
     t_value_type: Optional[type] = None,
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
@@ -604,7 +607,7 @@ def binding_data_from_python_std(
         if expected_literal_type.collection_type is None:
             raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
 
-        sub_type = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
+        sub_type: Optional[type] = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
         collection = _literals_models.BindingDataCollection(
             bindings=[
                 binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
@@ -654,7 +657,7 @@ def binding_from_python_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
     expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+    t_value: Any,
     t_value_type: type,
 ) -> _literals_models.Binding:
     binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
@@ -671,7 +674,7 @@ class VoidPromise(object):
     VoidPromise cannot be interacted with and does not allow comparisons or any operations
     """
 
-    def __init__(self, task_name: str, ref: typing.Optional[NodeOutput] = None):
+    def __init__(self, task_name: str, ref: Optional[NodeOutput] = None):
         self._task_name = task_name
         self._ref = ref
 
@@ -682,11 +685,11 @@ class VoidPromise(object):
         """
 
     @property
-    def ref(self) -> typing.Optional[NodeOutput]:
+    def ref(self) -> Optional[NodeOutput]:
         return self._ref
 
-    def __rshift__(self, other: typing.Union[Promise, VoidPromise]):
-        if self.ref:
+    def __rshift__(self, other: Union[Promise, VoidPromise]):
+        if self.ref and other.ref:
             self.ref.node.runs_before(other.ref.node)
         return other
 
@@ -811,10 +814,26 @@ def extract_obj_name(name: str) -> str:
 def create_and_link_node_from_remote(
     ctx: FlyteContext,
     entity: HasFlyteInterface,
+    _inputs_not_allowed: Optional[Set[str]] = None,
+    _ignorable_inputs: Optional[Set[str]] = None,
     **kwargs,
-):
+) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
-    This method is used to generate a node with bindings. This is not used in the execution path.
+    This method is used to generate a node with bindings especially when using remote entities, like FlyteWorkflow,
+    FlyteTask and FlyteLaunchplan.
+
+    This method is kept separate from the similar named method `create_and_link_node` as remote entities have to be
+    handled differently. The major difference arises from the fact that the remote entities do not have a python
+    interface, so all comparisons need to happen using the Literals.
+
+    :param ctx: FlyteContext
+    :param entity: RemoteEntity
+    :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
+                     Useful for Launchplans with `fixed` inputs
+    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overriden. Useful
+                     for launchplans with `default` inputs
+    :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
+    :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
     if ctx.compilation_state is None:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
@@ -824,9 +843,19 @@ def create_and_link_node_from_remote(
 
     typed_interface = entity.interface
 
+    if _inputs_not_allowed:
+        inputs_not_allowed_specified = _inputs_not_allowed.intersection(kwargs.keys())
+        if inputs_not_allowed_specified:
+            raise _user_exceptions.FlyteAssertion(
+                f"Fixed inputs cannot be specified. Please remove the following inputs - {inputs_not_allowed_specified}"
+            )
+
     for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
+            if _inputs_not_allowed and _ignorable_inputs:
+                if k in _ignorable_inputs or k in _inputs_not_allowed:
+                    continue
             # TODO to improve the error message, should we show python equivalent types for var.type?
             raise _user_exceptions.FlyteAssertion("Missing input `{}` type `{}`".format(k, var.type))
         v = kwargs[k]
@@ -854,7 +883,8 @@ def create_and_link_node_from_remote(
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
         raise _user_exceptions.FlyteAssertion(
-            "Too many inputs were specified for the interface.  Extra inputs were: {}".format(extra_inputs)
+            f"Too many inputs for [{entity.name}] Expected inputs: {typed_interface.inputs.keys()} "
+            f"- extra inputs: {extra_inputs}"
         )
 
     # Detect upstream nodes
@@ -895,7 +925,13 @@ def create_and_link_node(
     **kwargs,
 ) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
-    This method is used to generate a node with bindings. This is not used in the execution path.
+    This method is used to generate a node with bindings within a flytekit workflow. this is useful to traverse the
+    workflow using regular python interpreter and generate nodes and promises whenever an execution is encountered
+
+    :param ctx: FlyteContext
+    :param entity: RemoteEntity
+    :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
+    :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
     if ctx.compilation_state is None:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
@@ -989,11 +1025,13 @@ def create_and_link_node(
 
 
 class LocallyExecutable(Protocol):
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         ...
 
 
-def flyte_entity_call_handler(entity: SupportsNodeCreation, *args, **kwargs):
+def flyte_entity_call_handler(
+    entity: SupportsNodeCreation, *args, **kwargs
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
@@ -1023,7 +1061,6 @@ def flyte_entity_call_handler(entity: SupportsNodeCreation, *args, **kwargs):
             )
 
     ctx = FlyteContextManager.current_context()
-
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
     elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
@@ -1046,7 +1083,7 @@ def flyte_entity_call_handler(entity: SupportsNodeCreation, *args, **kwargs):
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
             )
         ) as child_ctx:
-            cast(FlyteContext, child_ctx).user_space_params._decks = []
+            cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
 
         expected_outputs = len(cast(SupportsNodeCreation, entity).python_interface.outputs)
@@ -1056,7 +1093,9 @@ def flyte_entity_call_handler(entity: SupportsNodeCreation, *args, **kwargs):
             else:
                 raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
 
-        if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
+        if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
+            result is not None and expected_outputs == 1
+        ):
             return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
 
         raise ValueError(

@@ -21,7 +21,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 
-@dataclass
+@dataclass  # type: ignore
 class Reference(ABC):
     project: str
     domain: str
@@ -43,6 +43,8 @@ class Reference(ABC):
 
 @dataclass
 class TaskReference(Reference):
+    """A reference object containing metadata that points to a remote task."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.TASK
@@ -50,6 +52,8 @@ class TaskReference(Reference):
 
 @dataclass
 class LaunchPlanReference(Reference):
+    """A reference object containing metadata that points to a remote launch plan."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.LAUNCH_PLAN
@@ -57,6 +61,8 @@ class LaunchPlanReference(Reference):
 
 @dataclass
 class WorkflowReference(Reference):
+    """A reference object containing metadata that points to a remote workflow."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.WORKFLOW
@@ -66,7 +72,7 @@ class ReferenceEntity(object):
     def __init__(
         self,
         reference: Union[WorkflowReference, TaskReference, LaunchPlanReference],
-        inputs: Optional[Dict[str, Union[Type[Any], Tuple[Type[Any], Any]]]],
+        inputs: Dict[str, Type],
         outputs: Dict[str, Type],
     ):
         if (

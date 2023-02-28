@@ -21,26 +21,22 @@ simple implementation that ships with the core.
    UnsupportedPersistenceOp
 
 """
-
 import os
 import pathlib
-import re
-import shutil
-import sys
 import tempfile
 import typing
-from abc import abstractmethod
-from shutil import copyfile
-from typing import Dict, Union
+from typing import Union
 from uuid import UUID
+import shutil
 
 import fsspec
+from fsspec.core import strip_protocol
 from fsspec.utils import get_protocol
 
 from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.utils import PerformanceTimer
-from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -51,9 +47,10 @@ S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
 # for key and secret
 _FSSPEC_S3_KEY_ID = "key"
 _FSSPEC_S3_SECRET = "secret"
+_ANON = "anon"
 
 
-def s3_setup_args(s3_cfg: configuration.S3Config):
+def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
     kwargs = {}
     if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
         if s3_cfg.access_key_id:
@@ -66,6 +63,9 @@ def s3_setup_args(s3_cfg: configuration.S3Config):
     # S3fs takes this as a special arg
     if s3_cfg.endpoint is not None:
         kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
+
+    if anonymous:
+        kwargs[_ANON] = True
 
     return kwargs
 
@@ -94,10 +94,14 @@ class FileAccessProvider(object):
         self._local_sandbox_dir.mkdir(parents=True, exist_ok=True)
         self._local = fsspec.filesystem(None)
 
-        self._raw_output_prefix = raw_output_prefix
-        self._default_protocol = self.get_protocol(self._raw_output_prefix)
-        self._default_remote = self.get_filesystem(self._default_protocol)
         self._data_config = data_config if data_config else DataConfig.auto()
+        self._default_protocol = get_protocol(raw_output_prefix)
+        self._default_remote = self.get_filesystem(self._default_protocol)
+        self._raw_output_prefix = (
+            raw_output_prefix
+            if raw_output_prefix.endswith(self._default_remote.sep)
+            else raw_output_prefix + self._default_remote.sep
+        )
 
     @property
     def raw_output_prefix(self) -> str:
@@ -107,39 +111,36 @@ class FileAccessProvider(object):
     def data_config(self) -> DataConfig:
         return self._data_config
 
-    @staticmethod
-    def get_protocol(path: typing.Optional[str] = None):
-        if path:
-            return get_protocol(path)
-        logger.info("Setting protocol to file")
-        return "file"
-
-    def get_filesystem(self, protocol: str = None) -> fsspec.AbstractFileSystem:
+    def get_filesystem(
+        self, protocol: str = None, anonymous: bool = False
+    ) -> typing.Optional[fsspec.AbstractFileSystem]:
         if not protocol:
             return self._default_remote
         kwargs = {}
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
         elif protocol == "s3":
-            kwargs = s3_setup_args(self._data_cfg.s3)
+            kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
+            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        elif protocol == "gs":
+            if anonymous:
+                kwargs["token"] = _ANON
+            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+
+        # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
+        if anonymous:
+            return None
+
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
-    def get_filesystem_for_path(self, path: str) -> fsspec.AbstractFileSystem:
-        protocol = self.get_protocol(path)
+    def get_filesystem_for_path(self, path: str = "") -> fsspec.AbstractFileSystem:
+        protocol = get_protocol(path)
         return self.get_filesystem(protocol)
-
-    def get_anonymous_filesystem(self, path: str) -> typing.Optional[fsspec.AbstractFileSystem]:
-        protocol = self.get_protocol(path)
-        if protocol == "s3":
-            kwargs = s3_setup_args(self._data_cfg.s3)
-            anonymous_fs = fsspec.filesystem(protocol, anon=True, **kwargs)  # type: ignore
-            return anonymous_fs
-        return None
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
         """
-        Deprecated. Lets find a replacement
+        Deprecated. Let's find a replacement
         """
         protocol = get_protocol(path)
         if protocol is None:
@@ -158,66 +159,62 @@ class FileAccessProvider(object):
         return self._local
 
     @staticmethod
+    def strip_file_header(path: str) -> str:
+        """
+        Drops file:// if it exists from the file
+        """
+        if path.startswith("file://"):
+            return path.replace("file://", "", 1)
+        return path
+
+    @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
-        if not f.endswith("*"):
-            f = os.path.join(f, "*")
-        if not t.endswith("/"):
-            t += "/"
+        f = os.path.join(f, "")
+        t = os.path.join(t, "")
         return f, t
 
     def exists(self, path: str) -> bool:
         try:
-            fs = self.get_filesystem(path)
-            return fs.exists(path)
+            file_system = self.get_filesystem_for_path(path)
+            return file_system.exists(path)
         except OSError as oe:
             logger.debug(f"Error in exists checking {path} {oe}")
-            fs = self.get_anonymous_filesystem(path)
-            if fs is not None:
-                logger.debug("S3 source detected, attempting anonymous S3 exists check")
-                return fs.exists(path)
+            anon_fs = self.get_filesystem(get_protocol(path), anonymous=True)
+            if anon_fs is not None:
+                logger.debug(f"Attempting anonymous exists with {anon_fs}")
+                return anon_fs.exists(path)
             raise oe
 
     def get(self, from_path: str, to_path: str, recursive: bool = False):
-        fs = self.get_filesystem(from_path)
+        file_system = self.get_filesystem_for_path(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
-            return fs.get(from_path, to_path, recursive=recursive)
+            # Special case system level behavior because of inconsistencies in local implementation copy
+            # Don't want to use ls to check empty-ness because it can be extremely expensive if not empty
+            # TODO: Fix after https://github.com/fsspec/filesystem_spec/issues/1198
+            if file_system.protocol == "file" and recursive:
+                return shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
+            return file_system.get(from_path, to_path, recursive=recursive)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
-            fs = self.get_anonymous_filesystem(from_path)
-            if fs is not None:
-                logger.debug("S3 source detected, attempting anonymous S3 access")
-                return fs.get(from_path, to_path, recursive=recursive)
+            file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
+            if file_system is not None:
+                logger.debug(f"Attempting anonymous get with {file_system}")
+                return file_system.get(from_path, to_path, recursive=recursive)
             raise oe
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
-        fs = self.get_filesystem(to_path)
+        file_system = self.get_filesystem_for_path(to_path)
+        if from_path.startswith("file"):
+            # The localFs system doesn't know how to handle source files with file:// so remove it
+            from_path = from_path.replace("file://", "")
         if recursive:
+            # Only check this for the local filesystem
+            if file_system.protocol == "file" and not file_system.isdir(from_path):
+                raise FlyteAssertion(f"Source path {from_path} is not a directory")
             from_path, to_path = self.recursive_paths(from_path, to_path)
-        return fs.put(from_path, to_path, recursive=recursive)
-
-    def construct_path(self, add_protocol: bool, add_prefix: bool, *paths) -> str:
-        path_list = list(paths)  # make type check happy
-        if add_prefix:
-            path_list.insert(0, self.default_prefix)  # type: ignore
-        path = "/".join(path_list)
-        if add_protocol:
-            return f"{self._default_protocol}://{path}"
-        return typing.cast(str, path)
-
-    def construct_random_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
-        """
-        Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
-        """
-        key = UUID(int=random.getrandbits(128)).hex
-        if file_path_or_file_name:
-            _, tail = os.path.split(file_path_or_file_name)
-            if tail:
-                return self.construct_path(False, True, key, tail)
-            else:
-                logger.warning(f"No filename detected in {file_path_or_file_name}, generating random path")
-        return self.construct_path(False, True, key)
+        return file_system.put(from_path, to_path, recursive=recursive)
 
     def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
@@ -226,7 +223,20 @@ class FileAccessProvider(object):
 
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
-        return self.construct_random_path(self._default_remote, file_path_or_file_name)
+        default_protocol = self._default_remote.protocol
+        if type(default_protocol) == list:
+            default_protocol = default_protocol[0]
+        key = UUID(int=random.getrandbits(128)).hex
+        tail = ""
+        if file_path_or_file_name:
+            _, tail = os.path.split(file_path_or_file_name)
+        sep = self._default_remote.sep
+        tail = sep + tail if tail else tail
+        if default_protocol == "file":
+            # Special case the local case, users will not expect to see a file:// prefix
+            return strip_protocol(self.raw_output_prefix) + sep + key + tail
+
+        return self._default_remote.unstrip_protocol(self.raw_output_prefix + key + tail)
 
     def get_random_remote_directory(self):
         return self.get_random_remote_path(None)
@@ -235,18 +245,18 @@ class FileAccessProvider(object):
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
-        return self.construct_random_path(self._local, file_path_or_file_name)
+        key = UUID(int=random.getrandbits(128)).hex
+        tail = ""
+        if file_path_or_file_name:
+            _, tail = os.path.split(file_path_or_file_name)
+        if tail:
+            return os.path.join(self._local_sandbox_dir, key, tail)
+        return os.path.join(self._local_sandbox_dir, key)
 
     def get_random_local_directory(self) -> str:
         _dir = self.get_random_local_path(None)
         pathlib.Path(_dir).mkdir(parents=True, exist_ok=True)
         return _dir
-
-    def exists(self, path: str) -> bool:
-        """
-        checks if the given path exists
-        """
-        return self.exists(path)
 
     def download_directory(self, remote_path: str, local_path: str):
         """
@@ -274,11 +284,11 @@ class FileAccessProvider(object):
         """
         return self.put_data(local_path, remote_path, is_multipart=True)
 
-    def get_data(self, remote_path: str, local_path: str, is_multipart=False):
+    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False):
         """
-        :param Text remote_path:
-        :param Text local_path:
-        :param bool is_multipart:
+        :param remote_path:
+        :param local_path:
+        :param is_multipart:
         """
         try:
             with PerformanceTimer(f"Copying ({remote_path} -> {local_path})"):
@@ -290,14 +300,14 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             )
 
-    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart=False):
+    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False):
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
         we don't use the true local proxy if the remote path is a file://
 
-        :param Text local_path:
-        :param Text remote_path:
-        :param bool is_multipart:
+        :param local_path:
+        :param remote_path:
+        :param is_multipart:
         """
         try:
             with PerformanceTimer(f"Writing ({local_path} -> {remote_path})"):
@@ -308,10 +318,6 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             ) from ex
 
-
-fsspec.register_implementation("/", )
-DataPersistencePlugins.register_plugin("file://", DiskPersistence)
-DataPersistencePlugins.register_plugin("/", DiskPersistence)
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
 default_local_file_access_provider = FileAccessProvider(
