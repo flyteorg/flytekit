@@ -6,11 +6,11 @@ import fsspec
 import mock
 import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
+from fsspec.implementations.arrow import ArrowFSWrapper
 
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
-from fsspec.implementations.arrow import ArrowFSWrapper
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
@@ -317,12 +317,10 @@ def test_setup_disk_prefix():
 
 def test_setup_cloud_prefix():
     with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
-        assert isinstance(ctx.file_access._default_remote, ArrowFSWrapper)
-        assert ctx.file_access._default_remote.protocol == "s3"
+        assert ctx.file_access._default_remote.protocol[0] == "s3"
 
     with setup_execution("gs://", checkpoint_path=None, prev_checkpoint=None) as ctx:
-        assert isinstance(ctx.file_access._default_remote, ArrowFSWrapper)
-        assert ctx.file_access._default_remote.protocol == "gs"
+        assert "gs" in ctx.file_access._default_remote.protocol
 
 
 def test_normalize_inputs():

@@ -30,9 +30,7 @@ from uuid import UUID
 
 import fsspec
 from fsspec.core import strip_protocol
-from fsspec.implementations.arrow import ArrowFSWrapper
 from fsspec.utils import get_protocol
-from pyarrow import fs
 
 from flytekit import configuration
 from flytekit.configuration import DataConfig
@@ -44,33 +42,29 @@ from flytekit.loggers import logger
 S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
 S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
 
-# Refer to https://arrow.apache.org/docs/python/generated/pyarrow.fs.S3FileSystem.html#pyarrow.fs.S3FileSystem
-# and https://arrow.apache.org/docs/python/generated/pyarrow.fs.GcsFileSystem.html#pyarrow.fs.GcsFileSystem
-# TODO: Add GCS keys
-_ARROW_S3_KEY = "access_key"
-_ARROW_S3_SECRET = "secret_key"
-_ARROW_ENDPOINT = "endpoint_override"
-_ARROW_ANON = "anonymous"
+# Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
+# for key and secret
+_FSSPEC_S3_KEY_ID = "key"
+_FSSPEC_S3_SECRET = "secret"
+_ANON = "anon"
 
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
-    """
-    This function is necessary because... why?
-    """
     kwargs = {}
     if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
-        if s3_cfg.access_key_id and not anonymous:
-            kwargs[_ARROW_S3_KEY] = s3_cfg.access_key_id
+        if s3_cfg.access_key_id:
+            kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
 
     if S3_SECRET_ACCESS_KEY_ENV_NAME not in os.environ:
-        if s3_cfg.secret_access_key and not anonymous:
-            kwargs[_ARROW_S3_SECRET] = s3_cfg.secret_access_key
+        if s3_cfg.secret_access_key:
+            kwargs[_FSSPEC_S3_SECRET] = s3_cfg.secret_access_key
 
+    # S3fs takes this as a special arg
     if s3_cfg.endpoint is not None:
-        kwargs[_ARROW_ENDPOINT] = s3_cfg.endpoint
+        kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
 
     if anonymous:
-        kwargs[_ARROW_ANON] = True
+        kwargs[_ANON] = True
 
     return kwargs
 
@@ -99,10 +93,14 @@ class FileAccessProvider(object):
         self._local_sandbox_dir.mkdir(parents=True, exist_ok=True)
         self._local = fsspec.filesystem(None)
 
-        self._raw_output_prefix = raw_output_prefix
-        self._default_protocol = get_protocol(self._raw_output_prefix)
         self._data_config = data_config if data_config else DataConfig.auto()
+        self._default_protocol = get_protocol(raw_output_prefix)
         self._default_remote = self.get_filesystem(self._default_protocol)
+        self._raw_output_prefix = (
+            raw_output_prefix
+            if raw_output_prefix.endswith(self._default_remote.sep)
+            else raw_output_prefix + self._default_remote.sep
+        )
 
     @property
     def raw_output_prefix(self) -> str:
@@ -122,16 +120,11 @@ class FileAccessProvider(object):
             kwargs = {"auto_mkdir": True}
         elif protocol == "s3":
             kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
-            s3_fs = fs.S3FileSystem(**kwargs)
-            wrapped = ArrowFSWrapper(s3_fs)
-            # Overwrite because arrow isn't setting the correct protocol
-            wrapped.protocol = "s3"
-            return wrapped
+            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
         elif protocol == "gs":
-            gcs_fs = fs.GcsFileSystem(anonymous=anonymous)
-            wrapped = ArrowFSWrapper(gcs_fs)
-            wrapped.protocol = "gs"  # Overwrite
-            return wrapped
+            if anonymous:
+                kwargs["token"] = _ANON
+            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
         # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
         if anonymous:
@@ -166,6 +159,7 @@ class FileAccessProvider(object):
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
+        f = os.path.join(f, "")
         # if not f.endswith("*"):
         #     f = os.path.join(f, "*")
         # if not t.endswith("/"):
@@ -217,16 +211,20 @@ class FileAccessProvider(object):
 
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
+        default_protocol = self._default_remote.protocol
+        if type(default_protocol) == list:
+            default_protocol = default_protocol[0]
         key = UUID(int=random.getrandbits(128)).hex
         tail = ""
         if file_path_or_file_name:
             _, tail = os.path.split(file_path_or_file_name)
         sep = self._default_remote.sep
         tail = sep + tail if tail else tail
-        if self._default_remote.protocol == "file":
+        if default_protocol == "file":
             # Special case the local case, users will not expect to see a file:// prefix
             return strip_protocol(self.raw_output_prefix) + sep + key + tail
-        return self._default_remote.protocol + "://" + strip_protocol(self.raw_output_prefix) + sep + key + tail
+
+        return self._default_remote.unstrip_protocol(self.raw_output_prefix + key + tail)
 
     def get_random_remote_directory(self):
         return self.get_random_remote_path(None)

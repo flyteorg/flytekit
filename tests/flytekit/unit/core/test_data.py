@@ -1,15 +1,17 @@
-import fsspec
-import mock
-from fsspec.implementations.arrow import ArrowFSWrapper
-from pyarrow import fs
-import contextlib
 import os
 import shutil
 import tempfile
-import pathlib
 
+import fsspec
+import mock
+import pytest
+from fsspec.implementations.arrow import ArrowFSWrapper
+from pyarrow import fs
 
+from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
+
+local = fsspec.filesystem("file")
 
 # def test_mlje():
 #     # pyarrow stuff
@@ -40,8 +42,9 @@ from flytekit.core.data_persistence import FileAccessProvider, default_local_fil
 #     wr_s3 = ArrowFSWrapper(local_s3)
 
 
+@mock.patch("google.auth.compute_engine._metadata")  # to prevent network calls
 @mock.patch("flytekit.core.data_persistence.UUID")
-def test_path_getting(mock_uuid_class):
+def test_path_getting(mock_uuid_class, mock_gcs):
     mock_uuid_class.return_value.hex = "abcdef123"
 
     # Testing with raw output prefix pointing to a local path
@@ -70,6 +73,9 @@ def test_path_getting(mock_uuid_class):
     assert file_raw_fp.get_random_remote_path("/fsa/blah.csv") == "/tmp/unittestdata/abcdef123/blah.csv"
     assert file_raw_fp.get_random_remote_directory() == "/tmp/unittestdata/abcdef123"
 
+    g_fa = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="gs://my-s3-bucket/")
+    assert g_fa.get_random_remote_path() == "gs://my-s3-bucket/abcdef123"
+
 
 @mock.patch("flytekit.core.data_persistence.UUID")
 def test_default_file_access_instance(mock_uuid_class):
@@ -88,121 +94,48 @@ def test_default_file_access_instance(mock_uuid_class):
     assert x.endswith("raw/abcdef123")
 
 
+@pytest.fixture
+def source_folder():
+    # Set up source directory for testing
+    parent_temp = tempfile.mkdtemp()
+    src_dir = os.path.join(parent_temp, "source")
+    nested_dir = os.path.join(src_dir, "nested")
+    local.mkdir(nested_dir)
+    local.touch(os.path.join(src_dir, "original.txt"))
+    local.touch(os.path.join(nested_dir, "more.txt"))
+    yield src_dir
+    shutil.rmtree(parent_temp)
 
 
-
-"""
-In [4]: local_raw_fp.get_random_local_path()
-Out[4]: '/tmp/unittest/local_flytekit/153b61bec01aa77222ac6f80585474f7'
-
-In [5]: local_raw_fp.get_random_local_directory()
-Out[5]: '/tmp/unittest/local_flytekit/b8dc5fa64106246a4fcc5f15c5510622'
-
-In [6]: s3_fa = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket")
-
-In [7]: s3_fa.get_random_remote_path()
-Out[7]: 's3://my-s3-bucket/3b82914f468caff2ee2b42dc6710b9d8'
-
-In [8]: s3_fa.get_random_remote_directory()
-Out[8]: 's3://my-s3-bucket/328b65c71db29fef33e1ec5101a07ac2'
-
-In [9]: s3_fa = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/")
-
-In [10]: s3_fa.get_random_remote_directory()
-Out[10]: 's3://my-s3-bucket//f9ae51d910de8c66a49fc9b9e0652f9a'
-
-In [11]: s3_fa.get_random_remote_directory()
-Out[11]: 's3://my-s3-bucket//425d3af05e456772f983a19f1594c844'
-"""
-
-
-def test_local_only():
-    dirpath = tempfile.mkdtemp()
-    source = os.path.join(dirpath, "start.txt")
-    file_source = "file://" + source
-    dest = os.path.join(dirpath, "dest.txt")
-    file_dest = f"file://{os.path.join(dirpath, 'dest2.txt')}"
-    filesource_dest = os.path.join(dirpath, "dest3.txt")
-    data = os.path.join(dirpath, "data")
-    print(source)
-    print(file_dest)
-    with open(source, "w") as fh:
-        fh.write("hello")
-
-    local = FileAccessProvider(local_sandbox_dir=dirpath, raw_output_prefix=data)
-    local.put_data(local_path=source, remote_path=dest)
-    local.put_data(local_path=source, remote_path=file_dest)
-    local.put_data(local_path=file_source, remote_path=filesource_dest)
-
-
-def test_local_only_dup():
-    # local = fsspec.filesystem(None)
-    # x = local.expand_path("/Users/ytong/temp/data/unitdest2/", recursive=True)
-    # print(x)
-    source_dir = "/Users/ytong/temp/data/source"
-
-    local = fsspec.filesystem(None)
+# Add some assertions
+def test_local_raw_fsspec(source_folder):
     with tempfile.TemporaryDirectory() as dest_tmpdir:
-        # pathlib.Path(dest_tmpdir).mkdir(parents=True, exist_ok=True)
-        dest_tmpdir2 = dest_tmpdir + "/"
-        a = local.get_mapper(source_dir)
-        b = local.get_mapper(dest_tmpdir)
-        for k in a:
-            b[k] = a[k]
-        print('hi')
+        local.put(source_folder, dest_tmpdir, recursive=True)
 
-        # local.copy(source_dir, dest_tmpdir2, recursive=True)
-        # local.put(source_dir, dest_tmpdir2, recursive=True)
-        # print(dest_tmpdir)
+    new_temp_dir_2 = tempfile.mkdtemp()
+    new_temp_dir_2 = os.path.join(new_temp_dir_2, "doesnotexist")
+    local.put(source_folder, new_temp_dir_2, recursive=True)
 
 
-def test_copy_s3():
-    source_dir = "/Users/ytong/temp/data/source"
-    local_s3 = fs.S3FileSystem(
-            access_key="minio", secret_key="miniostorage", endpoint_override="http://localhost:30002"
-        )
-    wr_s3 = ArrowFSWrapper(local_s3)
-    wr_s3.put(source_dir, "s3://my-s3-bucket/destination7", recursive=True)
-
-
-def test_copy_s3_plain_fs():
-    source_dir = "/Users/ytong/temp/data/source"
-    options = {
-        "key": "minio",
-        "secret": "miniostorage",
-        "client_kwargs": {"endpoint_url": "http://localhost:30002"},
-    }
-    local_s3 = fsspec.filesystem("s3", **options)
-    local_s3.put(source_dir, "s3://my-s3-bucket/destination5", recursive=True)
-
-
-def test_local_only_dup_old():
-    # local = fsspec.filesystem(None)
-    # x = local.expand_path("/Users/ytong/temp/data/unitdest2/", recursive=True)
-    # print(x)
-    source_dir = "/Users/ytong/temp/data/source"
-
-    local = fsspec.filesystem(None)
+# Add some assertions
+def test_local_provider(source_folder):
+    dc = Config.for_sandbox().data_config
     with tempfile.TemporaryDirectory() as dest_tmpdir:
-        # pathlib.Path(dest_tmpdir).mkdir(parents=True, exist_ok=True)
-        dest_tmpdir2 = dest_tmpdir + "/"
+        provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=dest_tmpdir, data_config=dc)
+        doesnotexist = provider.get_random_remote_directory()
+        provider.put_data(source_folder, doesnotexist, is_multipart=True)
 
-        # local.copy(source_dir, dest_tmpdir2, recursive=True)
-        local.put(source_dir, dest_tmpdir2, recursive=True)
-        print(dest_tmpdir)
+        exists = provider.get_random_remote_directory()
+        provider._default_remote.mkdir(exists)
+        provider.put_data(source_folder, exists, is_multipart=True)
 
 
-def test_local_only_dup_arrow():
-    # local = fsspec.filesystem(None)
-    # x = local.expand_path("/Users/ytong/temp/data/unitdest2/", recursive=True)
-    # print(x)
-    source_dir = "/Users/ytong/temp/data/source"
-
-    loc = fs.LocalFileSystem()
-    local = ArrowFSWrapper(loc)
-    with tempfile.TemporaryDirectory() as dest_tmpdir:
-        # pathlib.Path(dest_tmpdir).mkdir(parents=True, exist_ok=True)
-
-        # local.copy(source_dir, dest_tmpdir2, recursive=True)
-        local.put(source_dir, dest_tmpdir, recursive=True)
-        print(dest_tmpdir)
+@pytest.mark.needs_local_sandbox
+def test_s3_provider(source_folder):
+    # Running mkdir on s3 filesystem doesn't do anything so leaving out for now
+    dc = Config.for_sandbox().data_config
+    provider = FileAccessProvider(
+        local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
+    )
+    doesnotexist = provider.get_random_remote_directory()
+    provider.put_data(source_folder, doesnotexist, is_multipart=True)
