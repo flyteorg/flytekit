@@ -1,3 +1,5 @@
+import typing
+
 from flytekit.exceptions.base import FlyteException as _FlyteException
 from flytekit.exceptions.base import FlyteRecoverableException as _Recoverable
 
@@ -84,3 +86,11 @@ class FlyteRecoverableException(FlyteUserException, _Recoverable):
 
 class FlyteAuthenticationException(FlyteAssertion):
     _ERROR_CODE = "USER:AuthenticationError"
+
+
+class FlyteInvalidInputException(FlyteUserException):
+    _ERROR_CODE = "USER:BadInputToAPI"
+
+    def __init__(self, request: typing.Any):
+        self.request = request
+        super(self).__init__()
