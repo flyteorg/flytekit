@@ -273,7 +273,11 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
                         cache_protocol
         """
         try:
-            final_path = self.remote_path if self.remote_path else self.path
+            final_path = self.path
+            if self.remote_source:
+                final_path = self.remote_source
+            elif self.remote_path:
+                final_path = self.remote_path
             fs = get_filesystem(final_path, cache_type=cache_type, cache_options=cache_options)
             yield fs.open(final_path, mode)
         except ImportError as e:

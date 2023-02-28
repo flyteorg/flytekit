@@ -212,7 +212,11 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         """
         """
         try:
-            final_path = self.remote_directory if self.remote_directory else self.path
+            final_path = self.path
+            if self.remote_source:
+                final_path = self.remote_source
+            elif self.remote_directory:
+                final_path = self.remote_directory
             import fsspec
             fs: fsspec.AbstractFileSystem = get_filesystem(final_path)
             return fs.walk(final_path, maxdepth, topdown, **kwargs)
