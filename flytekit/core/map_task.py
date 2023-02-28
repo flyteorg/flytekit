@@ -7,7 +7,7 @@ import os
 import typing
 from contextlib import contextmanager
 from itertools import count
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
@@ -36,8 +36,8 @@ class MapPythonTask(PythonTask):
     def __init__(
         self,
         python_function_task: PythonFunctionTask,
-        concurrency: int = None,
-        min_success_ratio: float = None,
+        concurrency: Optional[int] = None,
+        min_success_ratio: Optional[float] = None,
         **kwargs,
     ):
         """
@@ -149,8 +149,8 @@ class MapPythonTask(PythonTask):
         environment variable and the offset (if one's set). The offset will be set and used when the user request that the
         job runs in a number of slots less than the size of the input.
         """
-        return int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET", 0)) + int(
-            os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"))
+        return int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET", "0")) + int(
+            os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "0"), "0")
         )
 
     @property
@@ -168,7 +168,7 @@ class MapPythonTask(PythonTask):
             return self.interface.outputs
         return self._run_task.interface.outputs
 
-    def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+    def get_type_for_output_var(self, k: str, v: Any) -> type:
         """
         We override this method from flytekit.core.base_task Task because the dispatch_execute method uses this
         interface to construct outputs. Each instance of an container_array task will however produce outputs
@@ -181,7 +181,7 @@ class MapPythonTask(PythonTask):
             return self._python_interface.outputs[k]
         return self._run_task._python_interface.outputs[k]
 
-    def _execute_map_task(self, ctx: FlyteContext, **kwargs) -> Any:
+    def _execute_map_task(self, _: FlyteContext, **kwargs) -> Any:
         """
         This is called during ExecutionState.Mode.TASK_EXECUTION executions, that is executions orchestrated by the
         Flyte platform. Individual instances of the map task, aka array task jobs are passed the full set of inputs but
@@ -221,7 +221,12 @@ class MapPythonTask(PythonTask):
         return outputs
 
 
-def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_success_ratio: float = 1.0, **kwargs):
+def map_task(
+    task_function: typing.Union[typing.Callable, PythonFunctionTask],
+    concurrency: int = 0,
+    min_success_ratio: float = 1.0,
+    **kwargs,
+):
     """
     Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.

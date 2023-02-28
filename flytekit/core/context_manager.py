@@ -48,7 +48,7 @@ if typing.TYPE_CHECKING:
 flyte_context_Var: ContextVar[typing.List[FlyteContext]] = ContextVar("", default=[])
 
 if typing.TYPE_CHECKING:
-    from flytekit.core.base_task import TaskResolverMixin
+    from flytekit.core.base_task import Task, TaskResolverMixin
 
 
 # Identifier fields use placeholders for registration-time substitution.
@@ -108,7 +108,7 @@ class ExecutionParameters(object):
 
         def build(self) -> ExecutionParameters:
             if not isinstance(self.working_dir, utils.AutoDeletingTempDir):
-                pathlib.Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+                pathlib.Path(typing.cast(str, self.working_dir)).mkdir(parents=True, exist_ok=True)
             return ExecutionParameters(
                 execution_date=self.execution_date,
                 stats=self.stats,
@@ -123,14 +123,14 @@ class ExecutionParameters(object):
             )
 
     @staticmethod
-    def new_builder(current: ExecutionParameters = None) -> Builder:
+    def new_builder(current: Optional[ExecutionParameters] = None) -> Builder:
         return ExecutionParameters.Builder(current=current)
 
     def with_task_sandbox(self) -> Builder:
         prefix = self.working_directory
         if isinstance(self.working_directory, utils.AutoDeletingTempDir):
             prefix = self.working_directory.name
-        task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)
+        task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)  # type: ignore
         p = pathlib.Path(task_sandbox_dir)
         cp_dir = p.joinpath("__cp")
         cp_dir.mkdir(exist_ok=True)
@@ -287,7 +287,7 @@ class ExecutionParameters(object):
         """
         Returns task specific context if present else raise an error. The returned context will match the key
         """
-        return self.__getattr__(attr_name=key)
+        return self.__getattr__(attr_name=key)  # type: ignore
 
 
 class SecretsManager(object):
@@ -467,14 +467,14 @@ class ExecutionState(object):
         LOCAL_TASK_EXECUTION = 3
 
     mode: Optional[ExecutionState.Mode]
-    working_dir: os.PathLike
+    working_dir: Union[os.PathLike, str]
     engine_dir: Optional[Union[os.PathLike, str]]
     branch_eval_mode: Optional[BranchEvalMode]
     user_space_params: Optional[ExecutionParameters]
 
     def __init__(
         self,
-        working_dir: os.PathLike,
+        working_dir: Union[os.PathLike, str],
         mode: Optional[ExecutionState.Mode] = None,
         engine_dir: Optional[Union[os.PathLike, str]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
@@ -607,7 +607,7 @@ class FlyteContext(object):
         return ExecutionState(working_dir=working_dir, user_space_params=self.user_space_params)
 
     @staticmethod
-    def current_context() -> Optional[FlyteContext]:
+    def current_context() -> FlyteContext:
         """
         This method exists only to maintain backwards compatibility. Please use
         ``FlyteContextManager.current_context()`` instead.
@@ -639,7 +639,7 @@ class FlyteContext(object):
         """
         from flytekit.deck.deck import _get_deck
 
-        return _get_deck(self.execution_state.user_space_params)
+        return _get_deck(typing.cast(ExecutionState, self.execution_state).user_space_params)
 
     @dataclass
     class Builder(object):
@@ -852,7 +852,7 @@ class FlyteEntities(object):
      registration process
     """
 
-    entities = []
+    entities: List[Union["LaunchPlan", Task, "WorkflowBase"]] = []  # type: ignore
 
 
 FlyteContextManager.initialize()

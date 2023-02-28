@@ -179,7 +179,7 @@ class _ModuleSanitizer(object):
     def __init__(self):
         self._module_cache = {}
 
-    def _resolve_abs_module_name(self, path: str, package_root: str) -> str:
+    def _resolve_abs_module_name(self, path: str, package_root: typing.Optional[str] = None) -> str:
         """
         Recursively finds the root python package under-which basename exists
         """

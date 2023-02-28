@@ -1,5 +1,5 @@
 import pathlib
-from typing import Generic, Type, TypeVar
+from typing import Type, TypeVar
 
 import torch
 
@@ -12,7 +12,7 @@ from flytekit.models.types import LiteralType
 T = TypeVar("T")
 
 
-class PyTorchTypeTransformer(TypeTransformer, Generic[T]):
+class PyTorchTypeTransformer(TypeTransformer[T]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
@@ -63,16 +63,6 @@ class PyTorchTypeTransformer(TypeTransformer, Generic[T]):
         # load pytorch tensor/module from a file
         return torch.load(local_path, map_location=map_location)
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
-        if (
-            literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
-            and literal_type.blob.format == self.PYTORCH_FORMAT
-        ):
-            return T
-
-        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
-
 
 class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):
     PYTORCH_FORMAT = "PyTorchTensor"
@@ -80,12 +70,32 @@ class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):
     def __init__(self):
         super().__init__(name="PyTorch Tensor", t=torch.Tensor)
 
+    def guess_python_type(self, literal_type: LiteralType) -> Type[torch.Tensor]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == self.PYTORCH_FORMAT
+        ):
+            return torch.Tensor
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
 
 class PyTorchModuleTransformer(PyTorchTypeTransformer[torch.nn.Module]):
     PYTORCH_FORMAT = "PyTorchModule"
 
     def __init__(self):
         super().__init__(name="PyTorch Module", t=torch.nn.Module)
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[torch.nn.Module]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == self.PYTORCH_FORMAT
+        ):
+            return torch.nn.Module
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
 TypeEngine.register(PyTorchTensorTransformer())
