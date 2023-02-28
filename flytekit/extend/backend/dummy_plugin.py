@@ -30,7 +30,6 @@ class DummyPlugin(BackendPluginBase):
     async def create(self, create_request: CreateRequest) -> CreateResponse:
         _ = get_task_template(create_request.task_template_path)
         _ = get_task_inputs(create_request.inputs_path)
-        sleep(1)
 
         return CreateResponse(job_id="fake_id")
 
@@ -61,7 +60,7 @@ class DummyPlugin(BackendPluginBase):
         return PollResponse(state=state)
 
     async def terminate(self, job_id):
-        sleep(1)
+        print("deleting")
 
 
 BackendPluginRegistry.register(DummyPlugin())
