@@ -68,7 +68,7 @@ class ContainerTask(PythonTask):
             task_type="raw-container",
             name=name,
             interface=Interface(inputs, outputs),
-            metadata=metadata,
+            # metadata=metadata,
             task_config=None,
             security_ctx=sec_ctx,
             **kwargs,
@@ -146,6 +146,7 @@ class ContainerTask(PythonTask):
                 labels=self.pod_template.labels,
                 annotations=self.pod_template.annotations,
             ),
+            data_config=self._get_data_loading_config(),
         )
 
     def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
