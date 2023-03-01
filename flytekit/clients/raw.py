@@ -376,7 +376,6 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetExecutionData(get_execution_data_request, metadata=self._metadata)
 
-    @_handle_rpc_error(retry=True)
     def get_execution_metrics(self, get_execution_metrics_request):
         """
         Returns metrics partitioning and categorizing the workflow execution time-series.
@@ -386,7 +385,6 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetExecutionMetrics(get_execution_metrics_request, metadata=self._metadata)
 
-    @_handle_rpc_error(retry=True)
     def list_executions_paginated(self, resource_list_request):
         """
         Lists the executions for a given identifier.
