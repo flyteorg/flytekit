@@ -11,7 +11,9 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
 def test_simple():
-    simple_duckdb_query = DuckDBQuery(name="duckdb_task", query="SELECT SUM(a) FROM mydf", inputs=kwtypes(mydf=pd.DataFrame))
+    simple_duckdb_query = DuckDBQuery(
+        name="duckdb_task", query="SELECT SUM(a) FROM mydf", inputs=kwtypes(mydf=pd.DataFrame)
+    )
 
     @workflow
     def pandas_wf(mydf: pd.DataFrame) -> pd.DataFrame:
