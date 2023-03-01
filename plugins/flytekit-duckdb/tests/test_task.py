@@ -8,6 +8,8 @@ from typing_extensions import Annotated
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
+import json
+
 
 def test_simple():
     duckdb_task = DuckDBQuery(name="duckdb_task", query="SELECT SUM(a) FROM mydf", inputs=kwtypes(mydf=pd.DataFrame))
@@ -110,7 +112,7 @@ def test_distinct_params():
             "INSERT INTO items VALUES (?, ?, ?)",
             "SELECT $1 AS one, $1 AS two, $2 AS three",
         ],
-        inputs=kwtypes(params=List[List[Union[str, List[Union[str, int]]]]]),
+        inputs=kwtypes(params=str),
     )
 
     @task
@@ -118,11 +120,11 @@ def test_distinct_params():
         return df.open(pd.DataFrame).all()
 
     @workflow
-    def params_wf(params: List[List[Union[str, List[Union[str, int]]]]]) -> pd.DataFrame:
+    def params_wf(params: str) -> pd.DataFrame:
         return read_df(df=duckdb_params_query(params=params))
 
     params = [[["chainsaw", 500, 10], ["iphone", 300, 2]], ["duck", "goose"]]
-    wf_output = params_wf(params=params)
+    wf_output = params_wf(params=json.dumps(params))
     assert isinstance(wf_output, pd.DataFrame)
     assert wf_output.columns.values == ["one"]
 
@@ -135,11 +137,11 @@ def test_insert_query_with_single_params():
             "INSERT INTO items VALUES (?)",
             "SELECT * FROM items",
         ],
-        inputs=kwtypes(params=List[List[List[int]]]),
+        inputs=kwtypes(params=str),
     )
 
     @workflow
-    def params_wf(params: List[List[List[int]]]) -> pa.Table:
+    def params_wf(params: str) -> pa.Table:
         return duckdb_params_query(params=params)
 
-    assert isinstance(params_wf(params=[[[500], [300], [2]]]), pa.Table)
+    assert isinstance(params_wf(params=json.dumps([[[500], [300], [2]]])), pa.Table)
