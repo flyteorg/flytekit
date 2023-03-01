@@ -7,6 +7,7 @@ import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
 
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
 from flytekit.core.data_persistence import DiskPersistence
@@ -308,6 +309,22 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
         assert ed.error.kind == error_models.ContainerError.Kind.RECOVERABLE
         assert "some system exception" in ed.error.message
         assert ed.error.origin == execution_models.ExecutionError.ErrorKind.SYSTEM
+
+
+def test_persist_ss():
+    default_img = Image(name="default", fqn="test", tag="tag")
+    ss = SerializationSettings(
+        project="proj1",
+        domain="dom",
+        version="version123",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    ss_txt = ss.serialized_context
+    os.environ["_F_SS_C"] = ss_txt
+    with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
+        assert ctx.serialization_settings.project == "proj1"
+        assert ctx.serialization_settings.domain == "dom"
 
 
 def test_setup_disk_prefix():
