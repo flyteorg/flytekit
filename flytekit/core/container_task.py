@@ -61,14 +61,14 @@ class ContainerTask(PythonTask):
             sec_ctx = SecurityContext(secrets=secret_requests)
 
         # pod_template_name overwrites the metadata.pod_template_name
-        kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
-        kwargs["metadata"].pod_template_name = pod_template_name
+        metadata = metadata or TaskMetadata()
+        metadata.pod_template_name = pod_template_name
 
         super().__init__(
             task_type="raw-container",
             name=name,
             interface=Interface(inputs, outputs),
-            # metadata=metadata,
+            metadata=metadata,
             task_config=None,
             security_ctx=sec_ctx,
             **kwargs,

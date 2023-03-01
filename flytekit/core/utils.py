@@ -173,8 +173,6 @@ def _serialize_pod_spec(pod_template: PodTemplate, primary_container: _task_mode
         final_containers.append(container)
     cast(PodTemplate, pod_template).pod_spec.containers = final_containers
 
-    cast(PodTemplate, pod_template).data_config = primary_container.data_loading_config
-
     return ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec)
 
 
