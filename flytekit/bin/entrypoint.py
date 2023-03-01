@@ -270,8 +270,6 @@ def setup_execution(
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
         ssb = ss.new_builder()
-        ssb.project = ssb.project or exe_project
-        ssb.domain = ssb.domain or exe_domain
         ssb.version = tk_version
         if dynamic_addl_distro:
             ssb.fast_serialization_settings = FastSerializationSettings(
