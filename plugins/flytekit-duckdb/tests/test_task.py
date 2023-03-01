@@ -1,4 +1,5 @@
-from typing import List, Union
+import json
+from typing import List
 
 import pandas as pd
 import pyarrow as pa
@@ -7,8 +8,6 @@ from typing_extensions import Annotated
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import StructuredDataset
-
-import json
 
 
 def test_simple():
