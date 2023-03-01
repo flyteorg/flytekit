@@ -31,7 +31,7 @@ be ``FLYTE_PLATFORM_URL``.
 
 **YAML Format Configuration File**: A configuration file that contains settings for both
 `flytectl <https://docs.flyte.org/projects/flytectl/>`__ and ``flytekit``. This is the recommended configuration
-file format.
+file format. Invoke ``flytectl --help`` to learn about all of the configuration yaml options.
 
 .. dropdown:: See example ``config.yaml`` file
    :title: text-muted
