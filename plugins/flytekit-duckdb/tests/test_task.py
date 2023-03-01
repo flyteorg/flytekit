@@ -11,15 +11,15 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
 def test_simple():
-    duckdb_task = DuckDBQuery(name="duckdb_task", query="SELECT SUM(a) FROM mydf", inputs=kwtypes(mydf=pd.DataFrame))
+    simple_duckdb_query = DuckDBQuery(name="duckdb_task", query="SELECT SUM(a) FROM mydf", inputs=kwtypes(mydf=pd.DataFrame))
 
     @workflow
     def pandas_wf(mydf: pd.DataFrame) -> pd.DataFrame:
-        return duckdb_task(mydf=mydf)
+        return simple_duckdb_query(mydf=mydf)
 
     @workflow
     def arrow_wf(mydf: pd.DataFrame) -> pa.Table:
-        return duckdb_task(mydf=mydf)
+        return simple_duckdb_query(mydf=mydf)
 
     df = pd.DataFrame({"a": [1, 2, 3]})
     assert isinstance(pandas_wf(mydf=df), pd.DataFrame)
@@ -27,7 +27,7 @@ def test_simple():
 
 
 def test_parquet():
-    duckdb_query = DuckDBQuery(
+    parquet_duckdb_query = DuckDBQuery(
         name="read_parquet",
         query=[
             "INSTALL httpfs",
@@ -39,7 +39,7 @@ def test_parquet():
 
     @workflow
     def parquet_wf(parquet_file: str) -> pd.DataFrame:
-        return duckdb_query(params=[parquet_file])
+        return parquet_duckdb_query(params=[parquet_file])
 
     assert isinstance(
         parquet_wf(parquet_file="https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2022-02.parquet"),
@@ -48,7 +48,7 @@ def test_parquet():
 
 
 def test_arrow():
-    duckdb_task = DuckDBQuery(
+    arrow_duckdb_query = DuckDBQuery(
         name="duckdb_arrow_task", query="SELECT * FROM arrow_table WHERE i = 2", inputs=kwtypes(arrow_table=pa.Table)
     )
 
@@ -57,14 +57,14 @@ def test_arrow():
         return pa.Table.from_pydict({"i": [1, 2, 3, 4], "j": ["one", "two", "three", "four"]})
 
     @workflow
-    def arrow_wf(arrow_table: pa.Table) -> pa.Table:
-        return duckdb_task(arrow_table=arrow_table)
+    def arrow_wf() -> pa.Table:
+        return arrow_duckdb_query(arrow_table=get_arrow_table())
 
-    assert isinstance(arrow_wf(arrow_table=get_arrow_table()), pa.Table)
+    assert isinstance(arrow_wf(), pa.Table)
 
 
 def test_structured_dataset_arrow_table():
-    duckdb_task = DuckDBQuery(
+    sd_duckdb_query = DuckDBQuery(
         name="duckdb_sd_table",
         query="SELECT * FROM arrow_table WHERE i = 2",
         inputs=kwtypes(arrow_table=StructuredDataset),
@@ -77,14 +77,14 @@ def test_structured_dataset_arrow_table():
         )
 
     @workflow
-    def arrow_wf(arrow_table: StructuredDataset) -> pa.Table:
-        return duckdb_task(arrow_table=arrow_table)
+    def arrow_wf() -> pa.Table:
+        return sd_duckdb_query(arrow_table=get_arrow_table())
 
-    assert isinstance(arrow_wf(arrow_table=get_arrow_table()), pa.Table)
+    assert isinstance(arrow_wf(), pa.Table)
 
 
 def test_structured_dataset_pandas_df():
-    duckdb_task = DuckDBQuery(
+    sd_pandas_duckdb_query = DuckDBQuery(
         name="duckdb_sd_df",
         query="SELECT * FROM pandas_df WHERE i = 2",
         inputs=kwtypes(pandas_df=StructuredDataset),
@@ -97,10 +97,10 @@ def test_structured_dataset_pandas_df():
         )
 
     @workflow
-    def pandas_wf(pandas_df: StructuredDataset) -> pd.DataFrame:
-        return duckdb_task(pandas_df=pandas_df)
+    def pandas_wf() -> pd.DataFrame:
+        return sd_pandas_duckdb_query(pandas_df=get_pandas_df())
 
-    assert isinstance(pandas_wf(pandas_df=get_pandas_df()), pd.DataFrame)
+    assert isinstance(pandas_wf(), pd.DataFrame)
 
 
 def test_distinct_params():
