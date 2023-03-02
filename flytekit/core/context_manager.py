@@ -202,12 +202,10 @@ class ExecutionParameters(object):
         return self._raw_output_prefix
 
     @property
-    def working_directory(self) -> utils.AutoDeletingTempDir:
+    def working_directory(self) -> str:
         """
         A handle to a special working directory for easily producing temporary files.
-
         TODO: Usage examples
-        TODO: This does not always return a AutoDeletingTempDir
         """
         return self._working_directory
 

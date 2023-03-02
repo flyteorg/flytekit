@@ -1,11 +1,10 @@
+import typing
+
 import pandas as pd
 import pyarrow as pa
-
-from flytekit import kwtypes, task
-from flytekit.configuration import DataConfig, S3Config
-
 from typing_extensions import Annotated
 
+from flytekit import kwtypes, task
 
 cols = kwtypes(Name=str, Age=int)
 subset_cols = kwtypes(Name=str)
@@ -14,7 +13,7 @@ subset_cols = kwtypes(Name=str)
 @task
 def t1(
     df1: Annotated[pd.DataFrame, cols], df2: Annotated[pa.Table, cols]
-) -> (Annotated[pd.DataFrame, subset_cols], Annotated[pa.Table, subset_cols]):
+) -> typing.Tuple[Annotated[pd.DataFrame, subset_cols], Annotated[pa.Table, subset_cols]]:
     return df1, df2
 
 

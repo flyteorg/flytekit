@@ -25,7 +25,7 @@ import os
 import pathlib
 import tempfile
 import typing
-from typing import Union
+from typing import Union, cast
 from uuid import UUID
 
 import fsspec
@@ -95,7 +95,7 @@ class FileAccessProvider(object):
 
         self._data_config = data_config if data_config else DataConfig.auto()
         self._default_protocol = get_protocol(raw_output_prefix)
-        self._default_remote = self.get_filesystem(self._default_protocol)
+        self._default_remote = cast(fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol))
         self._raw_output_prefix = (
             raw_output_prefix
             if raw_output_prefix.endswith(self._default_remote.sep)
@@ -111,11 +111,11 @@ class FileAccessProvider(object):
         return self._data_config
 
     def get_filesystem(
-        self, protocol: str = None, anonymous: bool = False
+        self, protocol: typing.Optional[str] = None, anonymous: bool = False
     ) -> typing.Optional[fsspec.AbstractFileSystem]:
         if not protocol:
             return self._default_remote
-        kwargs = {}
+        kwargs = {}  # type: typing.Dict[str, typing.Any]
         if protocol == "file":
             kwargs = {"auto_mkdir": True}
         elif protocol == "s3":
@@ -303,7 +303,7 @@ class FileAccessProvider(object):
         """
         try:
             with PerformanceTimer(f"Writing ({local_path} -> {remote_path})"):
-                self.put(local_path, remote_path, recursive=is_multipart)
+                self.put(cast(str, local_path), remote_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
