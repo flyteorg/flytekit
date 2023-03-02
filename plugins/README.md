@@ -23,6 +23,8 @@ All the Flytekit plugins maintained by the core team are added here. It is not n
 | Snowflake                    | ```bash pip install flytekitplugins-snowflake```          | Use Snowflake as a 'data warehouse-as-a-service' within Flyte                                                              | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-snowflake.svg)](https://pypi.python.org/pypi/flytekitplugins-snowflake/)                   | Backend       |
 | dbt                          | ```bash pip install flytekitplugins-dbt```                | Run dbt within Flyte                                                                                                       | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-dbt.svg)](https://pypi.python.org/pypi/flytekitplugins-dbt/)                               | Flytekit-only |
 | Huggingface                  | ```bash pip install flytekitplugins-huggingface```        | Read & write Hugginface Datasets as Flyte StructuredDatasets                                                               | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-huggingface.svg)](https://pypi.python.org/pypi/flytekitplugins-huggingface/)               | Flytekit-only |
+| DuckDB                  | ```bash pip install flytekitplugins-duckdb```        | Run analytical workloads with ease using DuckDB.
+| [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-duckdb.svg)](https://pypi.python.org/pypi/flytekitplugins-duckdb/)               | Flytekit-only |
 
 ## Have a Plugin Idea? 💡
 Please [file an issue](https://github.com/flyteorg/flyte/issues/new?assignees=&labels=untriaged%2Cplugins&template=backend-plugin-request.md&title=%5BPlugin%5D).
@@ -92,13 +94,14 @@ setup(
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

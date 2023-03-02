@@ -299,27 +299,30 @@ class PlatformConfig(object):
 
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
-    :param insecure_skip_verify: Wether to skip SSL certificate verification
-    :param console_endpoint: endpoint for console if different than Flyte backend
-    :param command: This command is executed to return a token using an external process.
+    :param insecure_skip_verify: Whether to skip SSL certificate verification
+    :param console_endpoint: endpoint for console if different from Flyte backend
+    :param command: This command is executed to return a token using an external process
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
     :param client_credentials_secret: Used for service auth, which is automatically called during pyflyte. This will
       allow the Flyte engine to read the password directly from the environment variable. Note that this is
-      less secure! Please only use this if mounting the secret as a file is impossible.
-    :param scopes: List of scopes to request. This is only applicable to the client credentials flow.
-    :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
+      less secure! Please only use this if mounting the secret as a file is impossible
+    :param scopes: List of scopes to request. This is only applicable to the client credentials flow
+    :param auth_mode: The OAuth mode to use. Defaults to pkce flow
+    :param ca_cert_file_path: [optional] str Root Cert to be loaded and used to verify admin
     """
 
     endpoint: str = "localhost:30080"
     insecure: bool = False
     insecure_skip_verify: bool = False
+    ca_cert_file_path: typing.Optional[str] = None
     console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
+    rpc_retries: int = 3
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
@@ -334,6 +337,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(
             kwargs, "insecure_skip_verify", _internal.Platform.INSECURE_SKIP_VERIFY.read(config_file)
         )
+        kwargs = set_if_exists(kwargs, "ca_cert_file_path", _internal.Platform.CA_CERT_FILE_PATH.read(config_file))
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(

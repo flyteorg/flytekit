@@ -15,6 +15,7 @@ SOURCES = {
     "flytekitplugins-fsspec": "flytekit-data-fsspec",
     "flytekitplugins-dbt": "flytekit-dbt",
     "flytekitplugins-dolt": "flytekit-dolt",
+    "flytekitplugins-duckdb": "flytekit-duckdb",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
     "flytekitplugins-hive": "flytekit-hive",
     "flytekitplugins-pod": "flytekit-k8s-pod",
@@ -81,4 +82,5 @@ setup(
     classifiers=["Private :: Do Not Upload to pypi server"],
     install_requires=[],
     cmdclass={"install": InstallCmd, "develop": DevelopCmd},
+    package_data={"flytekit": ["py.typed"]},
 )

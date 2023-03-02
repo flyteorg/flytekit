@@ -146,5 +146,7 @@ def test_local_provider_get_empty():
     dc = Config.for_sandbox().data_config
     with tempfile.TemporaryDirectory() as empty_source:
         with tempfile.TemporaryDirectory() as dest_folder:
-            provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=empty_source, data_config=dc)
+            provider = FileAccessProvider(
+                local_sandbox_dir="/tmp/unittest", raw_output_prefix=empty_source, data_config=dc
+            )
             provider.get_data(empty_source, dest_folder, is_multipart=True)

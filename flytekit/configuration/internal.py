@@ -108,6 +108,9 @@ class Platform(object):
         LegacyConfigEntry(SECTION, "insecure_skip_verify", bool), YamlConfigEntry("admin.insecureSkipVerify", bool)
     )
     CONSOLE_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "console_endpoint"), YamlConfigEntry("console.endpoint"))
+    CA_CERT_FILE_PATH = ConfigEntry(
+        LegacyConfigEntry(SECTION, "ca_cert_file_path"), YamlConfigEntry("admin.caCertFilePath")
+    )
 
 
 class LocalSDK(object):

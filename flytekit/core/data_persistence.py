@@ -23,11 +23,11 @@ simple implementation that ships with the core.
 """
 import os
 import pathlib
+import shutil
 import tempfile
 import typing
 from typing import Union
 from uuid import UUID
-import shutil
 
 import fsspec
 from fsspec.core import strip_protocol
@@ -194,7 +194,9 @@ class FileAccessProvider(object):
             # Don't want to use ls to check empty-ness because it can be extremely expensive if not empty
             # TODO: Fix after https://github.com/fsspec/filesystem_spec/issues/1198
             if file_system.protocol == "file" and recursive:
-                return shutil.copytree(self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True)
+                return shutil.copytree(
+                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
+                )
             return file_system.get(from_path, to_path, recursive=recursive)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
