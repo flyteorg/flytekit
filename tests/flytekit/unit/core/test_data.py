@@ -5,6 +5,7 @@ import tempfile
 import fsspec
 import mock
 import pytest
+
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 
@@ -26,6 +27,14 @@ def test_path_getting(mock_uuid_class, mock_gcs):
     assert local_raw_fp.get_random_local_path() == "/tmp/unittest/local_flytekit/abcdef123"
     assert local_raw_fp.get_random_local_path("xjiosa/blah.txt") == "/tmp/unittest/local_flytekit/abcdef123/blah.txt"
     assert local_raw_fp.get_random_local_directory() == "/tmp/unittest/local_flytekit/abcdef123"
+
+    # Recursive paths
+    assert "file:///abc/happy/", "s3://my-s3-bucket/bucket1/" == local_raw_fp.recursive_paths(
+        "file:///abc/happy/", "s3://my-s3-bucket/bucket1/"
+    )
+    assert "file:///abc/happy/", "s3://my-s3-bucket/bucket1/" == local_raw_fp.recursive_paths(
+        "file:///abc/happy", "s3://my-s3-bucket/bucket1"
+    )
 
     # Test with remote pointed to s3.
     s3_fa = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket")
@@ -77,6 +86,7 @@ def source_folder():
 
 
 def test_local_raw_fsspec(source_folder):
+    # Test copying using raw fsspec local filesystem, should not create a nested folder
     with tempfile.TemporaryDirectory() as dest_tmpdir:
         local.put(source_folder, dest_tmpdir, recursive=True)
 
@@ -87,20 +97,25 @@ def test_local_raw_fsspec(source_folder):
     assert len(files) == 2
 
 
-# Add some assertions
 def test_local_provider(source_folder):
+    # Test that behavior putting from a local dir to a local remote dir is the same whether or not the local
+    # dest folder exists.
     dc = Config.for_sandbox().data_config
     with tempfile.TemporaryDirectory() as dest_tmpdir:
         provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=dest_tmpdir, data_config=dc)
         doesnotexist = provider.get_random_remote_directory()
         provider.put_data(source_folder, doesnotexist, is_multipart=True)
+        files = provider._default_remote.find(doesnotexist)
+        assert len(files) == 2
 
         exists = provider.get_random_remote_directory()
         provider._default_remote.mkdir(exists)
         provider.put_data(source_folder, exists, is_multipart=True)
+        files = provider._default_remote.find(exists)
+        assert len(files) == 2
 
 
-@pytest.mark.needs_local_sandbox
+@pytest.mark.sandbox_test
 def test_s3_provider(source_folder):
     # Running mkdir on s3 filesystem doesn't do anything so leaving out for now
     dc = Config.for_sandbox().data_config
