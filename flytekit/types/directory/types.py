@@ -24,7 +24,6 @@ from flytekit.types.file import FileExt, FlyteFile
 
 T = typing.TypeVar("T")
 PathType = typing.Union[str, os.PathLike]
-ListOrDict = typing.Union[typing.List, typing.Dict]
 
 
 def noop():
@@ -209,8 +208,21 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     def download(self) -> str:
         return self.__fspath__()
 
-    def walk(self, maxdepth=None, topdown=True, **kwargs) -> Generator[Tuple[str, ListOrDict, ListOrDict], Any, None]:
-        """ """
+    def crawl(
+        self, maxdepth: int = None, topdown: bool = True, **kwargs
+    ) -> Generator[typing.Tuple[str, typing.Union[str, typing.Dict]]]:
+        """
+        Crawl returns a generator of all files prefixed by any sub-folders under the given "FlyteDirectory".
+        if details=True is passed, then it will return a dictionary as specified by fsspec.
+
+        Example:
+
+            >>> list(fd.crawl())
+            [("/base", "file1"), ("/base", "dir1/file1"), ("/base", "dir2/file1"), ("/base", "dir1/dir/file1")]
+
+            >>> list(fd.crawl(details=True))
+            []
+        """
         try:
             final_path = self.path
             if self.remote_source:
@@ -220,7 +232,14 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
             import fsspec
 
             fs: fsspec.AbstractFileSystem = get_filesystem(final_path)
-            return ((fs.unstrip_protocol(x), y, z) for x, y, z in fs.walk(final_path, maxdepth, topdown, **kwargs))
+            base_path_len = len(fsspec.core.strip_protocol(final_path)) + 1  # Add additional `/` at the end
+            for base, _, files in fs.walk(final_path, maxdepth, topdown, **kwargs):
+                current_base = base[base_path_len:]
+                for f in files:
+                    if isinstance(f, str):
+                        yield final_path, os.path.join(current_base, f)
+                    else:
+                        yield final_path, f
         except ImportError as e:
             print(
                 "To use streaming files, please install fsspec."
