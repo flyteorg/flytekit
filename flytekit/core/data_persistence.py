@@ -132,9 +132,9 @@ class FileAccessProvider(object):
 
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
-    def get_filesystem_for_path(self, path: str = "") -> fsspec.AbstractFileSystem:
+    def get_filesystem_for_path(self, path: str = "", anonymous: bool = False) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
-        return self.get_filesystem(protocol)
+        return self.get_filesystem(protocol, anonymous=anonymous)
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:

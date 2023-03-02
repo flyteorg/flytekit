@@ -8,7 +8,6 @@ This package contains things that are useful when extending Flytekit.
    :toctree: generated/
 
    ArrowToParquetEncodingHandler
-   FSSpecPersistence
    PandasToParquetEncodingHandler
    ParquetToArrowDecodingHandler
    ParquetToPandasDecodingHandler
@@ -16,7 +15,6 @@ This package contains things that are useful when extending Flytekit.
 
 __all__ = [
     "ArrowToParquetEncodingHandler",
-    "FSSpecPersistence",
     "PandasToParquetEncodingHandler",
     "ParquetToArrowDecodingHandler",
     "ParquetToPandasDecodingHandler",
@@ -28,7 +26,6 @@ from flytekit import StructuredDatasetTransformerEngine, logger
 
 from .arrow import ArrowToParquetEncodingHandler, ParquetToArrowDecodingHandler
 from .pandas import PandasToParquetEncodingHandler, ParquetToPandasDecodingHandler
-from .persist import FSSpecPersistence
 
 S3 = "s3"
 ABFS = "abfs"
