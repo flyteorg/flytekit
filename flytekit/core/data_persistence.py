@@ -200,9 +200,7 @@ class FileAccessProvider(object):
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         file_system = self.get_filesystem_for_path(to_path)
-        if from_path.startswith("file"):
-            # The localFs system doesn't know how to handle source files with file:// so remove it
-            from_path = from_path.replace("file://", "")
+        from_path = self.strip_file_header(from_path)
         if recursive:
             # Only check this for the local filesystem
             if file_system.protocol == "file" and not file_system.isdir(from_path):

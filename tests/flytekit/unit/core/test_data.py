@@ -5,7 +5,6 @@ import tempfile
 import fsspec
 import mock
 import pytest
-
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 
@@ -77,7 +76,6 @@ def source_folder():
     shutil.rmtree(parent_temp)
 
 
-# Add some assertions
 def test_local_raw_fsspec(source_folder):
     with tempfile.TemporaryDirectory() as dest_tmpdir:
         local.put(source_folder, dest_tmpdir, recursive=True)
@@ -85,6 +83,8 @@ def test_local_raw_fsspec(source_folder):
     new_temp_dir_2 = tempfile.mkdtemp()
     new_temp_dir_2 = os.path.join(new_temp_dir_2, "doesnotexist")
     local.put(source_folder, new_temp_dir_2, recursive=True)
+    files = local.find(new_temp_dir_2)
+    assert len(files) == 2
 
 
 # Add some assertions
