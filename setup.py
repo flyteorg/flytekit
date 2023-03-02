@@ -43,7 +43,7 @@ setup(
         "grpcio>=1.50.0,<2.0",
         "grpcio-status>=1.50.0,<2.0",
         "importlib-metadata",
-        "fsspec",
+        "fsspec @ git+https://github.com/fsspec/filesystem_spec.git@a50899eee6a84b8724a782ad3003064cc0aa10ad",
         "pyopenssl",
         "joblib",
         "python-json-logger>=2.0.0",

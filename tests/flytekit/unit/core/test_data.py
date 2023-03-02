@@ -5,41 +5,11 @@ import tempfile
 import fsspec
 import mock
 import pytest
-from fsspec.implementations.arrow import ArrowFSWrapper
-from pyarrow import fs
 
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 
 local = fsspec.filesystem("file")
-
-# def test_mlje():
-#     # pyarrow stuff
-#     local = fs.LocalFileSystem()
-#     local_fsspec = ArrowFSWrapper(local)
-#
-#     s3, path = fs.FileSystem.from_uri("s3://flyte-demo/datasets/sddemo/small.parquet")
-#     print(s3, path)
-#     f = s3.open_input_stream(path)
-#     f.readall()
-#     ws3 = ArrowFSWrapper(s3)
-#
-#     ss3 = fs.S3FileSystem(region="us-east-2")
-#
-#     # base fsspec stuff
-#     fs3 = fsspec.filesystem("s3")
-#     fs3.cat_file("s3://flyte-demo/datasets/sddemo/small.parquet")
-#
-#     # Does doing this work with minio without the thing?
-#     s3, path = fs.FileSystem.from_uri(
-#         "s3://my-s3-bucket/metadata/flytesnacks/development/am9s9q2dfrkrfnc7x9nd/user_inputs"
-#     )
-#     # If you don't have http, it will try to use SSL.
-#     # TODO: check the sandbox configuration to see what it uses.
-#     local_s3 = fs.S3FileSystem(
-#         access_key="minio", secret_key="miniostorage", endpoint_override="http://localhost:30002"
-#     )
-#     wr_s3 = ArrowFSWrapper(local_s3)
 
 
 @mock.patch("google.auth.compute_engine._metadata")  # to prevent network calls
@@ -141,7 +111,6 @@ def test_s3_provider(source_folder):
     provider.put_data(source_folder, doesnotexist, is_multipart=True)
 
 
-# Add some assertions
 def test_local_provider_get_empty():
     dc = Config.for_sandbox().data_config
     with tempfile.TemporaryDirectory() as empty_source:
@@ -150,3 +119,8 @@ def test_local_provider_get_empty():
                 local_sandbox_dir="/tmp/unittest", raw_output_prefix=empty_source, data_config=dc
             )
             provider.get_data(empty_source, dest_folder, is_multipart=True)
+            loc = provider.get_filesystem_for_path(dest_folder)
+            src_files = loc.find(empty_source)
+            assert len(src_files) == 0
+            dest_files = loc.find(dest_folder)
+            assert len(dest_files) == 0
