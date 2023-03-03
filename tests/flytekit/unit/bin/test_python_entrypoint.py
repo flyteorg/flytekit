@@ -323,7 +323,8 @@ def test_setup_cloud_prefix():
         assert "gs" in ctx.file_access._default_remote.protocol
 
 
-def test_persist_ss():
+@mock.patch("google.auth.compute_engine._metadata")  # to prevent network calls
+def test_persist_ss(mock_gcs):
     default_img = Image(name="default", fqn="test", tag="tag")
     ss = SerializationSettings(
         project="proj1",
