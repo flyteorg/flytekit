@@ -95,6 +95,7 @@ def test_sync_checkpoint_read_empty_dir(tmpdir):
     src = td_path.joinpath("src")
     src.mkdir()
     cp = SyncCheckpoint(checkpoint_dest=str(dest), checkpoint_src=str(src))
+    # import ipdb; ipdb.set_trace()
     assert cp.read() is None
 
 

@@ -200,6 +200,11 @@ class FileAccessProvider(object):
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
+            if os.name == "nt" and file_system.protocol == "file" and recursive:
+                import shutil
+                return shutil.copytree(
+                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
+                )
             return file_system.get(from_path, to_path, recursive=recursive)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
@@ -216,6 +221,13 @@ class FileAccessProvider(object):
             # Only check this for the local filesystem
             if file_system.protocol == "file" and not file_system.isdir(from_path):
                 raise FlyteAssertion(f"Source path {from_path} is not a directory")
+            if os.name == "nt" and file_system.protocol == "file":
+                import shutil
+                return shutil.copytree(
+                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
+                )
+            return file_system.get(from_path, to_path, recursive=recursive)
+
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return file_system.put(from_path, to_path, recursive=recursive)
 
