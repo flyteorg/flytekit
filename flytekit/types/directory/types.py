@@ -220,8 +220,10 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
             >>> list(fd.crawl())
             [("/base", "file1"), ("/base", "dir1/file1"), ("/base", "dir2/file1"), ("/base", "dir1/dir/file1")]
 
-            >>> list(fd.crawl(details=True))
-            []
+            >>> list(x.crawl(detail=True))
+            [('/tmp/test', {'my-dir/ab.py': {'name': '/tmp/test/my-dir/ab.py', 'size': 0, 'type': 'file',
+             'created': 1677720780.2318847, 'islink': False, 'mode': 33188, 'uid': 501, 'gid': 0,
+              'mtime': 1677720780.2317934, 'ino': 1694329, 'nlink': 1}})]
         """
         try:
             final_path = self.path
@@ -235,11 +237,12 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
             base_path_len = len(fsspec.core.strip_protocol(final_path)) + 1  # Add additional `/` at the end
             for base, _, files in fs.walk(final_path, maxdepth, topdown, **kwargs):
                 current_base = base[base_path_len:]
-                for f in files:
-                    if isinstance(f, str):
+                if isinstance(files, dict):
+                    for f, v in files.items():
+                        yield final_path, {os.path.join(current_base, f): v}
+                else:
+                    for f in files:
                         yield final_path, os.path.join(current_base, f)
-                    else:
-                        yield final_path, f
         except ImportError as e:
             print(
                 "To use streaming files, please install fsspec."
