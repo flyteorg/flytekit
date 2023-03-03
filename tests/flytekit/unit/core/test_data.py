@@ -10,6 +10,7 @@ from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 
 local = fsspec.filesystem("file")
+root = os.path.abspath(os.sep)
 
 
 @mock.patch("google.auth.compute_engine._metadata")  # to prevent network calls
@@ -18,15 +19,17 @@ def test_path_getting(mock_uuid_class, mock_gcs):
     mock_uuid_class.return_value.hex = "abcdef123"
 
     # Testing with raw output prefix pointing to a local path
-    local_raw_fp = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="/tmp/unittestdata")
-    assert local_raw_fp.get_random_remote_path() == "/tmp/unittestdata/abcdef123"
-    assert local_raw_fp.get_random_remote_path("/fsa/blah.csv") == "/tmp/unittestdata/abcdef123/blah.csv"
-    assert local_raw_fp.get_random_remote_directory() == "/tmp/unittestdata/abcdef123"
+    loc_sandbox = os.path.join(root, "tmp", "unittest")
+    loc_data = os.path.join(root, "tmp", "unittestdata")
+    local_raw_fp = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix=loc_data)
+    assert local_raw_fp.get_random_remote_path() == os.path.join(root, "tmp", "unittestdata", "abcdef123")
+    assert local_raw_fp.get_random_remote_path("/fsa/blah.csv") == os.path.join(root, "tmp", "unittestdata", "abcdef123", "blah.csv")
+    assert local_raw_fp.get_random_remote_directory() == os.path.join(root, "tmp", "unittestdata", "abcdef123")
 
     # Test local path and directory
-    assert local_raw_fp.get_random_local_path() == "/tmp/unittest/local_flytekit/abcdef123"
-    assert local_raw_fp.get_random_local_path("xjiosa/blah.txt") == "/tmp/unittest/local_flytekit/abcdef123/blah.txt"
-    assert local_raw_fp.get_random_local_directory() == "/tmp/unittest/local_flytekit/abcdef123"
+    assert local_raw_fp.get_random_local_path() == os.path.join(root, "tmp", "unittest", "local_flytekit", "abcdef123")
+    assert local_raw_fp.get_random_local_path("xjiosa/blah.txt") == os.path.join(root, "tmp", "unittest", "local_flytekit", "abcdef123", "blah.txt")
+    assert local_raw_fp.get_random_local_directory() == os.path.join(root, "tmp", "unittest", "local_flytekit", "abcdef123")
 
     # Recursive paths
     assert "file:///abc/happy/", "s3://my-s3-bucket/bucket1/" == local_raw_fp.recursive_paths(
@@ -37,21 +40,23 @@ def test_path_getting(mock_uuid_class, mock_gcs):
     )
 
     # Test with remote pointed to s3.
-    s3_fa = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket")
+    s3_fa = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="s3://my-s3-bucket")
     assert s3_fa.get_random_remote_path() == "s3://my-s3-bucket/abcdef123"
     assert s3_fa.get_random_remote_directory() == "s3://my-s3-bucket/abcdef123"
     # trailing slash should make no difference
-    s3_fa = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/")
+    s3_fa = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="s3://my-s3-bucket/")
     assert s3_fa.get_random_remote_path() == "s3://my-s3-bucket/abcdef123"
     assert s3_fa.get_random_remote_directory() == "s3://my-s3-bucket/abcdef123"
 
     # Testing with raw output prefix pointing to file://
-    file_raw_fp = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="file:///tmp/unittestdata")
-    assert file_raw_fp.get_random_remote_path() == "/tmp/unittestdata/abcdef123"
-    assert file_raw_fp.get_random_remote_path("/fsa/blah.csv") == "/tmp/unittestdata/abcdef123/blah.csv"
-    assert file_raw_fp.get_random_remote_directory() == "/tmp/unittestdata/abcdef123"
+    # Skip tests for windows
+    if os.name != "nt":
+        file_raw_fp = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="file:///tmp/unittestdata")
+        assert file_raw_fp.get_random_remote_path() == os.path.join(root, "tmp", "unittestdata", "abcdef123")
+        assert file_raw_fp.get_random_remote_path("/fsa/blah.csv") == os.path.join(root, "tmp", "unittestdata", "abcdef123", "blah.csv")
+        assert file_raw_fp.get_random_remote_directory() == os.path.join(root, "tmp", "unittestdata", "abcdef123")
 
-    g_fa = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix="gs://my-s3-bucket/")
+    g_fa = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="gs://my-s3-bucket/")
     assert g_fa.get_random_remote_path() == "gs://my-s3-bucket/abcdef123"
 
 
@@ -59,17 +64,17 @@ def test_path_getting(mock_uuid_class, mock_gcs):
 def test_default_file_access_instance(mock_uuid_class):
     mock_uuid_class.return_value.hex = "abcdef123"
 
-    assert default_local_file_access_provider.get_random_local_path().endswith("/sandbox/local_flytekit/abcdef123")
-    assert default_local_file_access_provider.get_random_local_path("bob.txt").endswith("abcdef123/bob.txt")
+    assert default_local_file_access_provider.get_random_local_path().endswith(os.path.join("sandbox", "local_flytekit", "abcdef123"))
+    assert default_local_file_access_provider.get_random_local_path("bob.txt").endswith(os.path.join("abcdef123", "bob.txt"))
 
-    assert default_local_file_access_provider.get_random_local_directory().endswith("sandbox/local_flytekit/abcdef123")
+    assert default_local_file_access_provider.get_random_local_directory().endswith(os.path.join("sandbox", "local_flytekit", "abcdef123"))
 
     x = default_local_file_access_provider.get_random_remote_path()
-    assert x.endswith("raw/abcdef123")
+    assert x.endswith(os.path.join("raw", "abcdef123"))
     x = default_local_file_access_provider.get_random_remote_path("eve.txt")
-    assert x.endswith("raw/abcdef123/eve.txt")
+    assert x.endswith(os.path.join("raw", "abcdef123", "eve.txt"))
     x = default_local_file_access_provider.get_random_remote_directory()
-    assert x.endswith("raw/abcdef123")
+    assert x.endswith(os.path.join("raw", "abcdef123"))
 
 
 @pytest.fixture

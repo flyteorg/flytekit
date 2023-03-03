@@ -96,10 +96,12 @@ class FileAccessProvider(object):
         self._data_config = data_config if data_config else DataConfig.auto()
         self._default_protocol = get_protocol(raw_output_prefix)
         self._default_remote = self.get_filesystem(self._default_protocol)
+        if os.name == "nt" and raw_output_prefix.startswith("file://"):
+            raise FlyteAssertion("Cannot use the file:// prefix on Windows.")
         self._raw_output_prefix = (
             raw_output_prefix
-            if raw_output_prefix.endswith(self._default_remote.sep)
-            else raw_output_prefix + self._default_remote.sep
+            if raw_output_prefix.endswith(self.sep(self._default_remote))
+            else raw_output_prefix + self.sep(self._default_remote)
         )
 
     @property
@@ -158,12 +160,16 @@ class FileAccessProvider(object):
         return self._local
 
     @staticmethod
-    def strip_file_header(path: str) -> str:
+    def strip_file_header(path: str, trim_trailing_sep: bool = False) -> str:
         """
         Drops file:// if it exists from the file
         """
+        print("ddd")
+        print(path)
+
         if path.startswith("file://"):
-            return path.replace("file://", "", 1)
+            p = path.replace("file://", "", 1)
+            return p
         return path
 
     @staticmethod
@@ -171,6 +177,11 @@ class FileAccessProvider(object):
         f = os.path.join(f, "")
         t = os.path.join(t, "")
         return f, t
+    
+    def sep(self, file_system: typing.Optional[fsspec.AbstractFileSystem]) -> str:
+        if file_system is None or file_system.protocol == "file":
+            return os.sep
+        return file_system.sep
 
     def exists(self, path: str) -> bool:
         try:
@@ -222,12 +233,16 @@ class FileAccessProvider(object):
         tail = ""
         if file_path_or_file_name:
             _, tail = os.path.split(file_path_or_file_name)
-        sep = self._default_remote.sep
+        sep = self.sep(self._default_remote)
         tail = sep + tail if tail else tail
         if default_protocol == "file":
             # Special case the local case, users will not expect to see a file:// prefix
-            return strip_protocol(self.raw_output_prefix) + sep + key + tail
+            print("=======")
+            print(self.raw_output_prefix)
+            print(self.strip_file_header(self.raw_output_prefix))
+            return self.strip_file_header(self.raw_output_prefix) + key + tail
 
+        print(f"Unstripped {self._default_remote.unstrip_protocol(self.raw_output_prefix + key + tail)}")
         return self._default_remote.unstrip_protocol(self.raw_output_prefix + key + tail)
 
     def get_random_remote_directory(self):
