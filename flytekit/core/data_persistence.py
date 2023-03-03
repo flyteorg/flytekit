@@ -173,7 +173,7 @@ class FileAccessProvider(object):
         f = os.path.join(f, "")
         t = os.path.join(t, "")
         return f, t
-    
+
     def sep(self, file_system: typing.Optional[fsspec.AbstractFileSystem]) -> str:
         if file_system is None or file_system.protocol == "file":
             return os.sep
@@ -198,6 +198,7 @@ class FileAccessProvider(object):
         try:
             if os.name == "nt" and file_system.protocol == "file" and recursive:
                 import shutil
+
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
@@ -219,6 +220,7 @@ class FileAccessProvider(object):
                 raise FlyteAssertion(f"Source path {from_path} is not a directory")
             if os.name == "nt" and file_system.protocol == "file":
                 import shutil
+
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
