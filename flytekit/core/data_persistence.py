@@ -226,8 +226,6 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            return file_system.get(from_path, to_path, recursive=recursive)
-
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return file_system.put(from_path, to_path, recursive=recursive)
 
