@@ -164,12 +164,8 @@ class FileAccessProvider(object):
         """
         Drops file:// if it exists from the file
         """
-        print("ddd")
-        print(path)
-
         if path.startswith("file://"):
-            p = path.replace("file://", "", 1)
-            return p
+            return path.replace("file://", "", 1)
         return path
 
     @staticmethod
@@ -247,12 +243,8 @@ class FileAccessProvider(object):
         tail = sep + tail if tail else tail
         if default_protocol == "file":
             # Special case the local case, users will not expect to see a file:// prefix
-            print("=======")
-            print(self.raw_output_prefix)
-            print(self.strip_file_header(self.raw_output_prefix))
             return self.strip_file_header(self.raw_output_prefix) + key + tail
 
-        print(f"Unstripped {self._default_remote.unstrip_protocol(self.raw_output_prefix + key + tail)}")
         return self._default_remote.unstrip_protocol(self.raw_output_prefix + key + tail)
 
     def get_random_remote_directory(self):
