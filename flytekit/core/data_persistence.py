@@ -29,7 +29,6 @@ from typing import Union, cast
 from uuid import UUID
 
 import fsspec
-from fsspec.core import strip_protocol
 from fsspec.utils import get_protocol
 
 from flytekit import configuration
