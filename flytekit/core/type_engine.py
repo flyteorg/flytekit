@@ -971,10 +971,10 @@ class ListTransformer(TypeTransformer[T]):
     def getFlytePickle(self):
         for _, transformer in TypeEngine._REGISTRY.items():
             if transformer.name == "FlytePickle":
-                return transformer
+                return transformer.python_type
         return None
 
-    def conatinFlytePickle(self, t, FlytePickle):
+    def conatinFlytePickle(self, t: Type, FlytePickle: Type[T]):
         if hasattr(t, "__origin__") and t.__origin__ == FlytePickle:
             return True
         elif get_origin(t) is not None:
@@ -987,13 +987,12 @@ class ListTransformer(TypeTransformer[T]):
             raise TypeTransformerFailedError("Expected a list")
 
         t = self.get_sub_type(python_type)
-        flytePickleTransformer = self.getFlytePickle()
-        flytePickle = flytePickleTransformer.python_type
+        flytePickle = self.getFlytePickle()
         batchSize = 1  # default batch size
         if get_origin(python_type) is Annotated:
             batchSize = get_args(python_type)[1]
-        if flytePickleTransformer is not None and self.conatinFlytePickle(python_type, flytePickle):
-            lit_list = [flytePickleTransformer.to_literal(ctx, python_val[i : i + batchSize], t, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
+        if flytePickle is not None and self.conatinFlytePickle(python_type, flytePickle):
+            lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batchSize], flytePickle, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
         else:
             lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
@@ -1004,10 +1003,9 @@ class ListTransformer(TypeTransformer[T]):
         except AttributeError:
             raise TypeTransformerFailedError()
         st = self.get_sub_type(expected_python_type)
-        flytePickleTransformer = self.getFlytePickle()
-        flytePickle = flytePickleTransformer.python_type
-        if flytePickleTransformer is not None and self.conatinFlytePickle(expected_python_type, flytePickle):
-            batchList = [flytePickleTransformer.to_python_value(ctx, batch, st) for batch in lits]
+        flytePickle = self.getFlytePickle()
+        if flytePickle is not None and self.conatinFlytePickle(expected_python_type, flytePickle):
+            batchList = [TypeEngine.to_python_value(ctx, batch, flytePickle) for batch in lits]
             return [item for batch in batchList for item in batch]
         else:
             return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
