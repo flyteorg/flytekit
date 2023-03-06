@@ -989,7 +989,7 @@ class ListTransformer(TypeTransformer[T]):
         t = self.get_sub_type(python_type)
         flytePickle = self.getFlytePickle()
         if flytePickle is not None and self.conatinFlytePickle(python_type, flytePickle):
-            batchSize = 1  # default batch size
+            batchSize = len(python_val)  # default batch size
             if get_origin(python_type) is Annotated:
                 batchSize = get_args(python_type)[1]
             lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batchSize], flytePickle, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
@@ -1006,7 +1006,8 @@ class ListTransformer(TypeTransformer[T]):
         flytePickle = self.getFlytePickle()
         if flytePickle is not None and self.conatinFlytePickle(expected_python_type, flytePickle):
             batchList = [TypeEngine.to_python_value(ctx, batch, flytePickle) for batch in lits]
-            return [item for batch in batchList for item in batch]
+            # TODO: to_literal and to_python_value is not symmetric
+            return [item for batch in batchList for item in batch] if type(batchList[0]) == list else batchList
         else:
             return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
 
