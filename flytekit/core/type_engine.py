@@ -988,10 +988,10 @@ class ListTransformer(TypeTransformer[T]):
 
         t = self.get_sub_type(python_type)
         flytePickle = self.getFlytePickle()
-        batchSize = 1  # default batch size
-        if get_origin(python_type) is Annotated:
-            batchSize = get_args(python_type)[1]
         if flytePickle is not None and self.conatinFlytePickle(python_type, flytePickle):
+            batchSize = 1  # default batch size
+            if get_origin(python_type) is Annotated:
+                batchSize = get_args(python_type)[1]
             lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batchSize], flytePickle, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
         else:
             lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
