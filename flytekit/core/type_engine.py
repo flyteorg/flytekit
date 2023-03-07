@@ -289,7 +289,7 @@ class DataclassTransformer(TypeTransformer[object]):
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
 
-        for f in dataclasses.fields(type(v)):
+        for f in dataclasses.fields(type(v)):  # type: ignore
             original_type = f.type
             expected_type = expected_fields_dict[f.name]
 
