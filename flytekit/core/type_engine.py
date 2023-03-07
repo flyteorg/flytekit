@@ -968,46 +968,41 @@ class ListTransformer(TypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
-    def getFlytePickle(self):
-        for _, transformer in TypeEngine._REGISTRY.items():
-            if transformer.name == "FlytePickle":
-                return transformer.python_type
-        return None
-
-    def conatinFlytePickle(self, t: Type, FlytePickle: Type[T]):
+    @staticmethod
+    def isBatchable(t: Type, FlytePickle: Type[T]):
+        print("hi!!!!!!!!!!!!!!",)
         if hasattr(t, "__origin__") and t.__origin__ == FlytePickle:
             return True
         elif get_origin(t) is not None:
-            return any(map(lambda x: self.conatinFlytePickle(x, FlytePickle), get_args(t)))
+            return any(map(lambda x: ListTransformer.isBatchable(x, FlytePickle), get_args(t)))
         else:
             return False
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        from flytekit.types.pickle import FlytePickle
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
         t = self.get_sub_type(python_type)
-        flytePickle = self.getFlytePickle()
-        if flytePickle is not None and self.conatinFlytePickle(python_type, flytePickle):
+        if self.isBatchable(python_type, FlytePickle):
             batchSize = len(python_val)  # default batch size
             if get_origin(python_type) is Annotated:
                 batchSize = get_args(python_type)[1]
-            lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batchSize], flytePickle, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
+            lit_list = [TypeEngine.to_literal(ctx, python_val[i: i + batchSize], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
         else:
             lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
+        from flytekit.types.pickle import FlytePickle
         try:
             lits = lv.collection.literals
         except AttributeError:
             raise TypeTransformerFailedError()
         st = self.get_sub_type(expected_python_type)
-        flytePickle = self.getFlytePickle()
-        if flytePickle is not None and self.conatinFlytePickle(expected_python_type, flytePickle):
-            batchList = [TypeEngine.to_python_value(ctx, batch, flytePickle) for batch in lits]
-            # TODO: to_literal and to_python_value is not symmetric
-            return [item for batch in batchList for item in batch] if type(batchList[0]) == list else batchList
+        if self.isBatchable(expected_python_type, FlytePickle):
+            batchList = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
+            return [item for batch in batchList for item in batch]
         else:
             return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
 
