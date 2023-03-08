@@ -56,7 +56,6 @@ extensions = [
     "sphinx.ext.graphviz",
     "sphinx-prompt",
     "sphinx_copybutton",
-    "sphinx_fontawesome",
     "sphinx_panels",
     "sphinxcontrib.yt",
     "sphinx_tags",
