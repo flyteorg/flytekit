@@ -8,7 +8,7 @@ import typing
 from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional
-
+from flytekit import ContainerTask
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask
@@ -267,8 +267,9 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_succes
         successfully before terminating this task and marking it successful.
 
     """
-    if not isinstance(task_function, PythonFunctionTask):
-        raise ValueError(
-            f"Only Flyte python task types are supported in map tasks currently, received {type(task_function)}"
-        )
-    return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+    if task_function.task_type in ["python-task", "raw-container", "sidecar"]:
+        return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+
+    raise ValueError(
+        f"Only Flyte python-task, raw-container, and sidecar types are supported in map tasks currently, received {type(task_function)}"
+    )
