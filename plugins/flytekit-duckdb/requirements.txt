@@ -10,8 +10,12 @@ arrow==1.2.3
     # via jinja2-time
 binaryornot==0.4.4
     # via cookiecutter
+cachetools==5.3.0
+    # via google-auth
 certifi==2022.12.7
-    # via requests
+    # via
+    #   kubernetes
+    #   requests
 cffi==1.15.1
     # via cryptography
 chardet==5.1.0
@@ -48,20 +52,25 @@ duckdb==0.6.1
     # via
     #   -r requirements.in
     #   flytekitplugins-duckdb
-flyteidl==1.3.2
+flyteidl==1.2.9
     # via flytekit
-flytekit==1.3.0b6
+flytekit==1.2.9
     # via flytekitplugins-duckdb
+gitdb==4.0.10
+    # via gitpython
+gitpython==3.1.31
+    # via flytekit
+google-auth==2.16.2
+    # via kubernetes
 googleapis-common-protos==1.58.0
     # via
     #   flyteidl
-    #   flytekit
     #   grpcio-status
-grpcio==1.51.1
+grpcio==1.48.2
     # via
     #   flytekit
     #   grpcio-status
-grpcio-status==1.51.1
+grpcio-status==1.48.2
     # via flytekit
 idna==3.4
     # via requests
@@ -80,6 +89,8 @@ jinja2-time==0.2.0
 joblib==1.2.0
     # via flytekit
 keyring==23.13.1
+    # via flytekit
+kubernetes==26.1.0
     # via flytekit
 markupsafe==2.1.1
     # via jinja2
@@ -104,15 +115,18 @@ numpy==1.23.5
     #   flytekit
     #   pandas
     #   pyarrow
+oauthlib==3.2.2
+    # via requests-oauthlib
 packaging==23.0
     # via
     #   docker
     #   marshmallow
 pandas==1.5.2
     # via flytekit
-protobuf==4.21.12
+protobuf==3.20.3
     # via
     #   flyteidl
+    #   flytekit
     #   googleapis-common-protos
     #   grpcio-status
     #   protoc-gen-swagger
@@ -122,6 +136,12 @@ py==1.11.0
     # via retry
 pyarrow==10.0.1
     # via flytekit
+pyasn1==0.4.8
+    # via
+    #   pyasn1-modules
+    #   rsa
+pyasn1-modules==0.2.8
+    # via google-auth
 pycparser==2.21
     # via cffi
 pyopenssl==23.0.0
@@ -131,6 +151,7 @@ python-dateutil==2.8.2
     #   arrow
     #   croniter
     #   flytekit
+    #   kubernetes
     #   pandas
 python-json-logger==2.0.4
     # via flytekit
@@ -146,6 +167,7 @@ pyyaml==6.0
     # via
     #   cookiecutter
     #   flytekit
+    #   kubernetes
 regex==2022.10.31
     # via docker-image-py
 requests==2.28.1
@@ -153,13 +175,25 @@ requests==2.28.1
     #   cookiecutter
     #   docker
     #   flytekit
+    #   kubernetes
+    #   requests-oauthlib
     #   responses
+requests-oauthlib==1.3.1
+    # via kubernetes
 responses==0.22.0
     # via flytekit
 retry==0.9.2
     # via flytekit
+rsa==4.9
+    # via google-auth
 six==1.16.0
-    # via python-dateutil
+    # via
+    #   google-auth
+    #   grpcio
+    #   kubernetes
+    #   python-dateutil
+smmap==5.0.0
+    # via gitdb
 sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0
@@ -180,10 +214,13 @@ urllib3==1.26.13
     # via
     #   docker
     #   flytekit
+    #   kubernetes
     #   requests
     #   responses
 websocket-client==1.4.2
-    # via docker
+    # via
+    #   docker
+    #   kubernetes
 wheel==0.38.4
     # via flytekit
 wrapt==1.14.1
@@ -192,3 +229,6 @@ wrapt==1.14.1
     #   flytekit
 zipp==3.11.0
     # via importlib-metadata
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools
