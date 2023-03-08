@@ -46,4 +46,3 @@ ray                         # ray
 scikit-learn                # scikit-learn
 vaex                        # vaex
 mlflow                      # mlflow
-duckdb                      # duckdb
