@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "fsspec"
+PLUGIN_NAME = "duckdb"
 
-microlib_name = f"flytekitplugins-data-{PLUGIN_NAME}"
+microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<1.3.0,<2.0.0", "fsspec<=2023.1", "botocore>=1.7.48", "pandas>=1.2.0"]
+plugin_requires = ["flytekit<1.3.0,<2.0.0", "duckdb"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,21 +13,12 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package data-plugins for flytekit, that are powered by fsspec",
-    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-data-fsspec",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
+    description="DuckDB Plugin for Flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
-    extras_require={
-        # https://github.com/fsspec/filesystem_spec/blob/master/setup.py#L36
-        "abfs": ["adlfs>=2022.2.0"],
-        "aws": ["s3fs>=2021.7.0"],
-        "gcp": ["gcsfs>=2021.7.0"],
-    },
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.7,<3.11",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
@@ -42,5 +33,4 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
