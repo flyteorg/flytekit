@@ -286,5 +286,5 @@ def map_task(
         return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
 
     raise ValueError(
-        f"Only Flyte python-task, raw-container, and sidecar types are supported in map tasks currently, received {type(task_function)}"
+        f"Only Flyte python-task, and raw-container types are supported in map tasks currently, received {type(task_function)}"
     )
