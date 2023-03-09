@@ -333,49 +333,51 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
     @classmethod
     def _finder(cls, handler_map, df_type: Type, protocol: str, format: str):
+        # If there's an exact match, then we should use it.
         try:
-            handler_map_protocol = handler_map[df_type][protocol]
+            return handler_map[df_type][protocol][format]
         except KeyError:
-            try:
-                handler_map_protocol = handler_map[df_type]["fsspec"]
-            except KeyError:
-                raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt |{format}|")
-        # If the incoming format requested is a specific format (e.g. "avro"), then look for that specific handler
-        #   if missing, see if there's a generic format handler. Error if missing.
-        # If the incoming format requested is the generic format (""), then see if it's present,
-        #   if not, look to see if there is a default format for the df_type and a handler for that format.
-        #   if still missing, look to see if there's only _one_ handler for that type, if so then use that.
-        if format != GENERIC_FORMAT:
-            try:
-                return handler_map_protocol[format]
-            except KeyError:
-                try:
-                    return handler_map_protocol[GENERIC_FORMAT]
-                except KeyError:
-                    ...
-        else:
-            try:
-                return handler_map_protocol[GENERIC_FORMAT]
-            except KeyError:
-                if df_type in cls.DEFAULT_FORMATS and cls.DEFAULT_FORMATS[df_type] in handler_map_protocol:
-                    hh = handler_map_protocol[cls.DEFAULT_FORMATS[df_type]]
-                    logger.debug(
-                        f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"
-                        f" using the generic handler {hh} instead."
-                    )
-                    return hh
-                if len(handler_map_protocol) == 1:
-                    hh = list(handler_map_protocol.values())[0]
-                    logger.debug(
-                        f"Using {hh} with format {hh.supported_format} as it's the only one available for {df_type}"
-                    )
-                    return hh
+            ...
+
+        fsspec_handler = None
+        protocol_specific_handler = None
+        single_handler = None
+        default_format = cls.DEFAULT_FORMATS.get(df_type, None)
+
+        try:
+            fss_handlers = handler_map[df_type]["fsspec"]
+            if format in fss_handlers:
+                fsspec_handler = fss_handlers[format]
+            elif GENERIC_FORMAT in fss_handlers:
+                fsspec_handler = fss_handlers[GENERIC_FORMAT]
+            else:
+                if default_format and default_format in fss_handlers and format == GENERIC_FORMAT:
+                    fsspec_handler = fss_handlers[default_format]
                 else:
-                    logger.warning(
-                        f"Did not automatically pick a handler for {df_type},"
-                        f" more than one detected {handler_map_protocol.keys()}"
-                    )
-        raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt |{format}|")
+                    ...
+        except KeyError:
+            ...
+
+        try:
+            protocol_handlers = handler_map[df_type][protocol]
+            if GENERIC_FORMAT in protocol_handlers:
+                protocol_specific_handler = protocol_handlers[GENERIC_FORMAT]
+            else:
+                if default_format and default_format in protocol_handlers:
+                    protocol_specific_handler = protocol_handlers[default_format]
+                else:
+                    if len(protocol_handlers) == 1:
+                        single_handler = list(protocol_handlers.values())[0]
+                    else:
+                        ...
+
+        except KeyError:
+            ...
+
+        if protocol_specific_handler or fsspec_handler or single_handler:
+            return protocol_specific_handler or fsspec_handler or single_handler
+        else:
+            raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt |{format}|")
 
     @classmethod
     def get_encoder(cls, df_type: Type, protocol: str, format: str):

@@ -419,12 +419,9 @@ def test_to_python_value_without_incoming_columns():
 
 
 def test_format_correct():
-    class MyTestDF(pd.DataFrame):
-        ...
-
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self):
-            super().__init__(MyTestDF, "/", "avro")
+            super().__init__(pd.DataFrame, "/", "avro")
 
         def encode(
             self,
@@ -437,7 +434,7 @@ def test_format_correct():
             )
 
     ctx = FlyteContextManager.current_context()
-    df = MyTestDF({"name": ["Tom", "Joseph"], "age": [20, 22]})
+    df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     annotated_sd_type = Annotated[StructuredDataset, "avro", kwtypes(name=str, age=int)]
     df_literal_type = TypeEngine.to_literal_type(annotated_sd_type)
