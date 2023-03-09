@@ -36,7 +36,7 @@ class MapPythonTask(PythonTask):
 
     def __init__(
         self,
-        python_function_task: PythonFunctionTask,
+        python_function_task: typing.Union[PythonFunctionTask, ContainerTask],
         concurrency: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         **kwargs,
@@ -282,7 +282,7 @@ def map_task(
         successfully before terminating this task and marking it successful.
 
     """
-    if task_function.task_type in ["python-task", "raw-container", "sidecar"]:
+    if isinstance(task_function, PythonFunctionTask) or isinstance(task_function, ContainerTask):
         return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
 
     raise ValueError(
