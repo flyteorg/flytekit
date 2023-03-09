@@ -8,6 +8,7 @@ import typing
 from contextlib import contextmanager
 from itertools import count
 from typing import Any, Dict, List, Optional
+
 from flytekit import ContainerTask
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
@@ -55,8 +56,11 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
         instance = next(self._ids)
-        _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
-        name = f"{mod}.mapper_{f}_{instance}"
+        if isinstance(python_function_task, ContainerTask):
+            name = f"raw_container_task.mapper_{python_function_task.name}_{instance}"
+        else:
+            _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
+            name = f"{mod}.mapper_{f}_{instance}"
 
         self._cmd_prefix = None
         self._run_task = python_function_task
@@ -114,14 +118,20 @@ class MapPythonTask(PythonTask):
             self._run_task.reset_command_fn()
 
     def get_container(self, settings: SerializationSettings) -> Container:
+        if isinstance(self._run_task, ContainerTask):
+            return self._run_task.get_container(settings)
         with self.prepare_target():
             return self._run_task.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
+        if isinstance(self._run_task, ContainerTask):
+            return self._run_task.get_k8s_pod(settings)
         with self.prepare_target():
             return self._run_task.get_k8s_pod(settings)
 
     def get_sql(self, settings: SerializationSettings) -> Sql:
+        if isinstance(self._run_task, ContainerTask):
+            return self._run_task.get_sql(settings)
         with self.prepare_target():
             return self._run_task.get_sql(settings)
 
@@ -221,7 +231,12 @@ class MapPythonTask(PythonTask):
         return outputs
 
 
-def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_success_ratio: float = 1.0, **kwargs):
+def map_task(
+    task_function: typing.Union[PythonFunctionTask, ContainerTask],
+    concurrency: int = 0,
+    min_success_ratio: float = 1.0,
+    **kwargs,
+):
     """
     Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.
