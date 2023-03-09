@@ -516,7 +516,7 @@ class FileAccessProvider(object):
         try:
             with PerformanceTimer(f"Writing ({local_path} -> {remote_path})"):
                 DataPersistencePlugins.find_plugin(remote_path)(data_config=self.data_config).put(
-                    local_path, remote_path, recursive=is_multipart
+                    str(local_path), remote_path, recursive=is_multipart
                 )
         except Exception as ex:
             raise FlyteAssertion(
