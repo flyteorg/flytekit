@@ -1,8 +1,8 @@
 import os
 import pathlib
 import tempfile
-import mock
 
+import mock
 from flytekitplugins.fsspec.persist import FSSpecPersistence, s3_setup_args
 from fsspec.implementations.local import LocalFileSystem
 
@@ -20,34 +20,48 @@ def test_s3_setup_args():
     assert kwargs == {"key": "access"}
 
 
-def mockenv(**envvars):
-    return mock.patch.dict(os.environ, envvars, clear=True)
-
-
-@mockenv()
+@mock.patch.dict(os.environ, {}, clear=True)
 def test_s3_setup_args_env_empty():
     kwargs = s3_setup_args(S3Config.auto())
     assert kwargs == {}
 
 
-@mockenv(
-    AWS_ACCESS_KEY_ID="ignore-user",
-    AWS_SECRET_ACCESS_KEY="ignore-secret",
-    FLYTE_AWS_ACCESS_KEY_ID="flyte",
-    FLYTE_AWS_SECRET_ACCESS_KEY="flyte-secret",
+@mock.patch.dict(
+    os.environ,
+    {
+        "AWS_ACCESS_KEY_ID": "ignore-user",
+        "AWS_SECRET_ACCESS_KEY": "ignore-secret",
+        "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
+        "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
+    },
+    clear=True,
 )
 def test_s3_setup_args_env_both():
     kwargs = s3_setup_args(S3Config.auto())
     assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
 
 
-@mockenv(FLYTE_AWS_ACCESS_KEY_ID="flyte", FLYTE_AWS_SECRET_ACCESS_KEY="flyte-secret")
+@mock.patch.dict(
+    os.environ,
+    {
+        "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
+        "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
+    },
+    clear=True,
+)
 def test_s3_setup_args_env_flyte():
     kwargs = s3_setup_args(S3Config.auto())
     assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
 
 
-@mockenv(AWS_ACCESS_KEY_ID="ignore-user", AWS_SECRET_ACCESS_KEY="ignore-secret")
+@mock.patch.dict(
+    os.environ,
+    {
+        "AWS_ACCESS_KEY_ID": "ignore-user",
+        "AWS_SECRET_ACCESS_KEY": "ignore-secret",
+    },
+    clear=True,
+)
 def test_s3_setup_args_env_aws():
     kwargs = s3_setup_args(S3Config.auto())
     # not explicitly in kwargs, since fsspec/boto3 will use these env vars by default
