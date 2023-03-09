@@ -29,7 +29,6 @@ from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
 from flytekit.models.types import SimpleType
-from flytekit.types.pickle import FlytePickle
 
 
 def translate_inputs_to_literals(
@@ -93,7 +92,7 @@ def translate_inputs_to_literals(
                 if len(input_val) == 0:
                     raise
                 sub_type = type(input_val[0])
-            if ListTransformer.isBatchable(python_type, FlytePickle):
+            if ListTransformer.is_batchable(python_type):
                 return TypeEngine.to_literal(ctx, input_val, python_type, lt)
             literal_list = [extract_value(ctx, v, sub_type, lt.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))

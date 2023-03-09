@@ -18,7 +18,7 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation
@@ -1574,3 +1574,29 @@ def test_file_ext_with_flyte_file_wrong_type():
     with pytest.raises(ValueError) as e:
         FlyteFile[WRONG_TYPE]
     assert str(e.value) == "Underlying type of File Extension must be of type <str>"
+
+
+def test_batch_pickle_list():
+    from math import ceil
+
+    python_val = [{"a": {0: "foo"}}] * 5
+    python_type_list = [
+        typing.List[typing.Dict[str, FlytePickle]],
+        Annotated[typing.List[typing.Dict[str, FlytePickle]], 2],
+    ]
+
+    for python_type in python_type_list:
+        batch_size = len(python_val)
+        if get_origin(python_type) is Annotated:
+            batch_size = get_args(python_type)[1]
+
+        ctx = FlyteContext.current_context()
+        expected = TypeEngine.to_literal_type(python_type)
+
+        lv = TypeEngine.to_literal(ctx, python_val, python_type, expected)
+        # For example, if batch_size = 2, then the list should be split into ceil(5/3) = 3 chunks.
+        # By default, the batch_size is set to the length of the list.
+        assert len(lv.collection.literals) == ceil(len(python_val) / batch_size)
+
+        pv = TypeEngine.to_python_value(ctx, lv, python_type)
+        assert pv == python_val
