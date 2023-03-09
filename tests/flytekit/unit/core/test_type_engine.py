@@ -1594,8 +1594,8 @@ def test_batch_pickle_list():
         expected = TypeEngine.to_literal_type(python_type)
 
         lv = TypeEngine.to_literal(ctx, python_val, python_type, expected)
-        # For example, if batch_size = 2, then the list should be split into ceil(5/3) = 3 chunks.
-        # By default, the batch_size is set to the length of the list.
+        # For example, if the batch size is 2 and the length of the list is 5, the list should be split into ceil(5/3) = 3 chunks.
+        # By default, the batch_size is set to the length of the whole list.
         assert len(lv.collection.literals) == ceil(len(python_val) / batch_size)
 
         pv = TypeEngine.to_python_value(ctx, lv, python_type)
