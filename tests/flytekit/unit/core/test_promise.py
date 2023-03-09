@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import pytest
 from dataclasses_json import dataclass_json
+from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow
 from flytekit.core import context_manager
@@ -14,6 +15,7 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.types.pickle import FlytePickle
 
 
 def test_create_and_link_node():
@@ -92,7 +94,7 @@ def test_create_and_link_node_from_remote_ignore():
 
 @pytest.mark.parametrize(
     "input",
-    [2.0, {"i": 1, "a": ["h", "e"]}, [1, 2, 3]],
+    [2.0, {"i": 1, "a": ["h", "e"]}, [1, 2, 3], [{"a": {0: "foo"}}] * 5],
 )
 def test_translate_inputs_to_literals(input):
     @dataclass_json
@@ -102,7 +104,9 @@ def test_translate_inputs_to_literals(input):
         a: typing.List[str]
 
     @task
-    def t1(a: typing.Union[float, typing.List[int], MyDataclass]):
+    def t1(
+        a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[typing.Dict[str, FlytePickle]], 2]]
+    ):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
