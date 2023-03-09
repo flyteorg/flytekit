@@ -272,6 +272,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         if python_val is None:
             raise TypeTransformerFailedError("None value cannot be converted to a file.")
 
+        # Correctly handle `Annotated[FlyteFile, ...]` by extracting the origin type
+        if typing.get_origin(python_type) is typing.Annotated:
+            python_type = typing.get_args(python_type)[0]
+
         if not (python_type is os.PathLike or issubclass(python_type, FlyteFile)):
             raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")
 
