@@ -4,7 +4,7 @@ from collections import OrderedDict
 import pytest
 
 import flytekit.configuration
-from flytekit import LaunchPlan, map_task
+from flytekit import ContainerTask, LaunchPlan, kwtypes, map_task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.task import TaskMetadata, task
@@ -22,6 +22,22 @@ def serialization_settings():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
+
+
+raw_container = ContainerTask(
+    name="ellipse-area-metadata-python",
+    input_data_dir="/var/inputs",
+    output_data_dir="/var/outputs",
+    inputs=kwtypes(a=int),
+    outputs=kwtypes(area=float),
+    image="flyte/raw-container:v1",
+    command=[
+        "python",
+        "test.py",
+        "{{.inputs.a}}",
+        "/var/outputs",
+    ],
+)
 
 
 @task
@@ -93,6 +109,22 @@ def test_serialization(serialization_settings):
         "tests.flytekit.unit.core.test_map_task",
         "task-name",
         "t1",
+    ]
+
+
+def test_serialization_with_raw_container(serialization_settings):
+    maptask = map_task(raw_container, metadata=TaskMetadata(retries=1))
+    task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
+
+    # By default all map_task tasks will have their custom fields set.
+    assert task_spec.template.custom["minSuccessRatio"] == 1.0
+    assert task_spec.template.type == "container_array"
+    assert task_spec.template.task_type_version == 1
+    assert task_spec.template.container.command == [
+        "python",
+        "test.py",
+        "{{.inputs.a}}",
+        "/var/outputs",
     ]
 
 
