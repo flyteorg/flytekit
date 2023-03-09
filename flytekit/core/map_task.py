@@ -124,14 +124,10 @@ class MapPythonTask(PythonTask):
             return self._run_task.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
-        if isinstance(self._run_task, ContainerTask):
-            return self._run_task.get_k8s_pod(settings)
         with self.prepare_target():
             return self._run_task.get_k8s_pod(settings)
 
     def get_sql(self, settings: SerializationSettings) -> Sql:
-        if isinstance(self._run_task, ContainerTask):
-            return self._run_task.get_sql(settings)
         with self.prepare_target():
             return self._run_task.get_sql(settings)
 
