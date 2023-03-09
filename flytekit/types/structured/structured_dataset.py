@@ -446,18 +446,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 )
             except DuplicateHandlerError:
                 logger.debug(f"Skipping generic fsspec protocol for handler {h} because duplicate")
-            # for persistence_protocol in ["s3", "gs", "file", "http", "https"]:
-            #     # TODO: Clean this up after replacing the persistence layer.
-            #     # The behavior of the protocols given in the supported_protocols and is_supported_protocol
-            #     # is not actually the same as the one returned in get_protocol.
-            #     stripped = persistence_protocol
-            #     logger.debug(f"Automatically registering {persistence_protocol} as {stripped} with {h}")
-            #     try:
-            #         cls.register_for_protocol(
-            #             h, stripped, False, override, default_format_for_type, default_storage_for_type
-            #         )
-            #     except DuplicateHandlerError:
-            #         logger.debug(f"Skipping {persistence_protocol}/{stripped} for {h} because duplicate")
 
         elif h.protocol == "":
             raise ValueError(f"Use None instead of empty string for registering handler {h}")
