@@ -354,7 +354,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 if default_format and default_format in fss_handlers and format == GENERIC_FORMAT:
                     fsspec_handler = fss_handlers[default_format]
                 else:
-                    ...
+                    if len(fss_handlers) == 1 and format == GENERIC_FORMAT:
+                        single_handler = list(fss_handlers.values())[0]
+                    else:
+                        ...
         except KeyError:
             ...
 
