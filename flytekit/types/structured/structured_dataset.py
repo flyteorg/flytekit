@@ -333,6 +333,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
     @classmethod
     def _finder(cls, handler_map, df_type: Type, protocol: str, format: str):
+        try:
+            handler_map_protocol = handler_map[df_type][protocol]
+        except KeyError:
+            try:
+                handler_map_protocol = handler_map[df_type]["fsspec"]
+            except KeyError:
+                raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt |{format}|")
         # If the incoming format requested is a specific format (e.g. "avro"), then look for that specific handler
         #   if missing, see if there's a generic format handler. Error if missing.
         # If the incoming format requested is the generic format (""), then see if it's present,
@@ -340,25 +347,25 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         #   if still missing, look to see if there's only _one_ handler for that type, if so then use that.
         if format != GENERIC_FORMAT:
             try:
-                return handler_map[df_type][protocol][format]
+                return handler_map_protocol[format]
             except KeyError:
                 try:
-                    return handler_map[df_type][protocol][GENERIC_FORMAT]
+                    return handler_map_protocol[GENERIC_FORMAT]
                 except KeyError:
                     ...
         else:
             try:
-                return handler_map[df_type][protocol][GENERIC_FORMAT]
+                return handler_map_protocol[GENERIC_FORMAT]
             except KeyError:
-                if df_type in cls.DEFAULT_FORMATS and cls.DEFAULT_FORMATS[df_type] in handler_map[df_type][protocol]:
-                    hh = handler_map[df_type][protocol][cls.DEFAULT_FORMATS[df_type]]
+                if df_type in cls.DEFAULT_FORMATS and cls.DEFAULT_FORMATS[df_type] in handler_map_protocol:
+                    hh = handler_map_protocol[cls.DEFAULT_FORMATS[df_type]]
                     logger.debug(
                         f"Didn't find format specific handler {type(handler_map)} for protocol {protocol}"
                         f" using the generic handler {hh} instead."
                     )
                     return hh
-                if len(handler_map[df_type][protocol]) == 1:
-                    hh = list(handler_map[df_type][protocol].values())[0]
+                if len(handler_map_protocol) == 1:
+                    hh = list(handler_map_protocol.values())[0]
                     logger.debug(
                         f"Using {hh} with format {hh.supported_format} as it's the only one available for {df_type}"
                     )
@@ -366,7 +373,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 else:
                     logger.warning(
                         f"Did not automatically pick a handler for {df_type},"
-                        f" more than one detected {handler_map[df_type][protocol].keys()}"
+                        f" more than one detected {handler_map_protocol.keys()}"
                     )
         raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt |{format}|")
 
@@ -433,18 +440,24 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if h.protocol is None:
             if default_for_type:
                 raise ValueError(f"Registering SD handler {h} with all protocols should never have default specified.")
-            for persistence_protocol in ["s3", "gs", "file", "http", "https"]:
-                # TODO: Clean this up after replacing the persistence layer.
-                # The behavior of the protocols given in the supported_protocols and is_supported_protocol
-                # is not actually the same as the one returned in get_protocol.
-                stripped = persistence_protocol
-                logger.debug(f"Automatically registering {persistence_protocol} as {stripped} with {h}")
-                try:
-                    cls.register_for_protocol(
-                        h, stripped, False, override, default_format_for_type, default_storage_for_type
-                    )
-                except DuplicateHandlerError:
-                    logger.debug(f"Skipping {persistence_protocol}/{stripped} for {h} because duplicate")
+            try:
+                cls.register_for_protocol(
+                    h, "fsspec", False, override, default_format_for_type, default_storage_for_type
+                )
+            except DuplicateHandlerError:
+                logger.debug(f"Skipping generic fsspec protocol for handler {h} because duplicate")
+            # for persistence_protocol in ["s3", "gs", "file", "http", "https"]:
+            #     # TODO: Clean this up after replacing the persistence layer.
+            #     # The behavior of the protocols given in the supported_protocols and is_supported_protocol
+            #     # is not actually the same as the one returned in get_protocol.
+            #     stripped = persistence_protocol
+            #     logger.debug(f"Automatically registering {persistence_protocol} as {stripped} with {h}")
+            #     try:
+            #         cls.register_for_protocol(
+            #             h, stripped, False, override, default_format_for_type, default_storage_for_type
+            #         )
+            #     except DuplicateHandlerError:
+            #         logger.debug(f"Skipping {persistence_protocol}/{stripped} for {h} because duplicate")
 
         elif h.protocol == "":
             raise ValueError(f"Use None instead of empty string for registering handler {h}")

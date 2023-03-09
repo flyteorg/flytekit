@@ -283,7 +283,10 @@ def test_slash_register():
 
     # Check that registering with a / triggers the file protocol instead.
     StructuredDatasetTransformerEngine.register(TempEncoder("/"))
-    assert StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("file") is not None
+    res = StructuredDatasetTransformerEngine.get_encoder(MyDF, "file", "/")
+    # Test that the one we got was registered under fsspec
+    assert res is StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("fsspec")["/"]
+    assert res is not None
 
 
 def test_sd():
