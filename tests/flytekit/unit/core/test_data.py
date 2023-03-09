@@ -143,6 +143,9 @@ def test_s3_provider(source_folder):
     )
     doesnotexist = provider.get_random_remote_directory()
     provider.put_data(source_folder, doesnotexist, is_multipart=True)
+    fs = provider.get_filesystem_for_path(doesnotexist)
+    files = fs.find(doesnotexist)
+    assert len(files) == 2
 
 
 def test_local_provider_get_empty():
