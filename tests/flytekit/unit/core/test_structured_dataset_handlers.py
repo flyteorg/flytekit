@@ -50,5 +50,5 @@ def test_arrow():
     assert encoder.protocol is None
     assert decoder.protocol is None
     assert encoder.python_type is decoder.python_type
-    d = StructuredDatasetTransformerEngine.DECODERS[encoder.python_type]["s3"]["parquet"]
+    d = StructuredDatasetTransformerEngine.DECODERS[encoder.python_type]["fsspec"]["parquet"]
     assert d is not None

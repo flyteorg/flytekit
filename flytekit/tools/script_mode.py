@@ -1,17 +1,11 @@
 import gzip
 import hashlib
-import importlib
 import os
 import shutil
 import tarfile
 import tempfile
 import typing
 from pathlib import Path
-
-from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
-
-from flytekit.core import context_manager
-from flytekit.core.tracker import get_full_module_path
 
 
 def compress_single_script(source_path: str, destination: str, full_module_name: str):
@@ -94,24 +88,6 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     tar_info.pax_headers = {}
 
     return tar_info
-
-
-def fast_register_single_script(
-    source_path: str, module_name: str, create_upload_location_fn: typing.Callable
-) -> (_data_proxy_pb2.CreateUploadLocationResponse, bytes):
-
-    # Open a temp directory and dump the contents of the digest.
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        archive_fname = os.path.join(tmp_dir, "script_mode.tar.gz")
-        mod = importlib.import_module(module_name)
-        compress_single_script(source_path, archive_fname, get_full_module_path(mod, mod.__name__))
-
-        flyte_ctx = context_manager.FlyteContextManager.current_context()
-        md5, _ = hash_file(archive_fname)
-        upload_location = create_upload_location_fn(content_md5=md5)
-        flyte_ctx.file_access.put_data(archive_fname, upload_location.signed_url)
-
-        return upload_location, md5
 
 
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):

@@ -492,11 +492,13 @@ def test_structured_dataset_in_dataclass():
     def wf(path: str) -> DatasetStruct:
         return t1(path=path)
 
-    res = wf(path="/tmp/somewhere")
-    assert "parquet" == res.a.file_format
-    assert "parquet" == res.b.a.file_format
-    assert_frame_equal(df, res.a.open(pd.DataFrame).all())
-    assert_frame_equal(df, res.b.a.open(pd.DataFrame).all())
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fname = os.path.join(tmp_dir, "df_file")
+        res = wf(path=fname)
+        assert "parquet" == res.a.file_format
+        assert "parquet" == res.b.a.file_format
+        assert_frame_equal(df, res.a.open(pd.DataFrame).all())
+        assert_frame_equal(df, res.b.a.open(pd.DataFrame).all())
 
 
 def test_wf1_with_map():

@@ -49,7 +49,6 @@ def test_engine():
 
 
 def test_transformer_to_literal_local():
-
     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "raw"))
     ctx = context_manager.FlyteContext.current_context()
@@ -86,6 +85,15 @@ def test_transformer_to_literal_local():
         with pytest.raises(TypeError, match="No automatic conversion from <class 'int'>"):
             TypeEngine.to_literal(ctx, 3, FlyteDirectory, lt)
 
+
+def test_transformer_to_literal_localss():
+    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "raw"))
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
+
+        tf = FlyteDirToMultipartBlobTransformer()
+        lt = tf.get_literal_type(FlyteDirectory)
         # Can't use if it's not a directory
         with pytest.raises(FlyteAssertion):
             p = "/tmp/flyte/xyz"

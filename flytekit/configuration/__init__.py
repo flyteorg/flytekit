@@ -352,7 +352,7 @@ class PlatformConfig(object):
     This object contains the settings to talk to a Flyte backend (the DNS location of your Admin server basically).
 
     :param endpoint: DNS for Flyte backend
-    :param insecure: Whether to use SSL
+    :param insecure: Whether or not to use SSL
     :param insecure_skip_verify: Whether to skip SSL certificate verification
     :param console_endpoint: endpoint for console if different from Flyte backend
     :param command: This command is executed to return a token using an external process
