@@ -38,9 +38,6 @@ from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
-S3_ACCESS_KEY_ID_ENV_NAME = "AWS_ACCESS_KEY_ID"
-S3_SECRET_ACCESS_KEY_ENV_NAME = "AWS_SECRET_ACCESS_KEY"
-
 # Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
 # for key and secret
 _FSSPEC_S3_KEY_ID = "key"
@@ -50,13 +47,11 @@ _ANON = "anon"
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
     kwargs = {}
-    if S3_ACCESS_KEY_ID_ENV_NAME not in os.environ:
-        if s3_cfg.access_key_id:
-            kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
+    if s3_cfg.access_key_id:
+        kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
 
-    if S3_SECRET_ACCESS_KEY_ENV_NAME not in os.environ:
-        if s3_cfg.secret_access_key:
-            kwargs[_FSSPEC_S3_SECRET] = s3_cfg.secret_access_key
+    if s3_cfg.secret_access_key:
+        kwargs[_FSSPEC_S3_SECRET] = s3_cfg.secret_access_key
 
     # S3fs takes this as a special arg
     if s3_cfg.endpoint is not None:

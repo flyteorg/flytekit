@@ -6,8 +6,8 @@ import fsspec
 import mock
 import pytest
 
-from flytekit.configuration import Config
-from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
+from flytekit.configuration import Config, S3Config
+from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider, s3_setup_args
 
 local = fsspec.filesystem("file")
 root = os.path.abspath(os.sep)
@@ -161,3 +161,52 @@ def test_local_provider_get_empty():
             assert len(src_files) == 0
             dest_files = loc.find(dest_folder)
             assert len(dest_files) == 0
+
+
+@mock.patch.dict(os.environ, {}, clear=True)
+def test_s3_setup_args_env_empty():
+    s3c = S3Config.auto()
+    kwargs = s3_setup_args(s3c)
+    assert kwargs == {}
+
+
+@mock.patch.dict(
+    os.environ,
+    {
+        "AWS_ACCESS_KEY_ID": "ignore-user",
+        "AWS_SECRET_ACCESS_KEY": "ignore-secret",
+        "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
+        "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
+    },
+    clear=True,
+)
+def test_s3_setup_args_env_both():
+    kwargs = s3_setup_args(S3Config.auto())
+    assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
+
+
+@mock.patch.dict(
+    os.environ,
+    {
+        "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
+        "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
+    },
+    clear=True,
+)
+def test_s3_setup_args_env_flyte():
+    kwargs = s3_setup_args(S3Config.auto())
+    assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
+
+
+@mock.patch.dict(
+    os.environ,
+    {
+        "AWS_ACCESS_KEY_ID": "ignore-user",
+        "AWS_SECRET_ACCESS_KEY": "ignore-secret",
+    },
+    clear=True,
+)
+def test_s3_setup_args_env_aws():
+    kwargs = s3_setup_args(S3Config.auto())
+    # not explicitly in kwargs, since fsspec/boto3 will use these env vars by default
+    assert kwargs == {}
