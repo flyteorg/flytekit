@@ -163,16 +163,20 @@ def test_local_provider_get_empty():
             assert len(dest_files) == 0
 
 
+@mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-def test_s3_setup_args_env_empty(mock_os):
+def test_s3_setup_args_env_empty(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
     mock_os.get.return_value = None
     s3c = S3Config.auto()
     kwargs = s3_setup_args(s3c)
     assert kwargs == {}
 
 
+@mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-def test_s3_setup_args_env_both(mock_os):
+def test_s3_setup_args_env_both(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
     ee = {
         "AWS_ACCESS_KEY_ID": "ignore-user",
         "AWS_SECRET_ACCESS_KEY": "ignore-secret",
@@ -184,8 +188,10 @@ def test_s3_setup_args_env_both(mock_os):
     assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
 
 
+@mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-def test_s3_setup_args_env_flyte(mock_os):
+def test_s3_setup_args_env_flyte(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
     ee = {
         "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
         "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
@@ -195,8 +201,10 @@ def test_s3_setup_args_env_flyte(mock_os):
     assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
 
 
+@mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-def test_s3_setup_args_env_aws(mock_os):
+def test_s3_setup_args_env_aws(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
     ee = {
         "AWS_ACCESS_KEY_ID": "ignore-user",
         "AWS_SECRET_ACCESS_KEY": "ignore-secret",
