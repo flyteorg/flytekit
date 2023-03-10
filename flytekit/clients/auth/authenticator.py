@@ -22,6 +22,7 @@ class ClientConfig:
     authorization_endpoint: str
     redirect_uri: str
     client_id: str
+    device_authorization_endpoint: typing.Optional[str] = None
     scopes: typing.List[str] = None
     header_key: str = "authorization"
 
@@ -79,11 +80,11 @@ class PKCEAuthenticator(Authenticator):
     """
 
     def __init__(
-        self,
-        endpoint: str,
-        cfg_store: ClientConfigStore,
-        header_key: typing.Optional[str] = None,
-        verify: typing.Optional[typing.Union[bool, str]] = None,
+            self,
+            endpoint: str,
+            cfg_store: ClientConfigStore,
+            header_key: typing.Optional[str] = None,
+            verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
         """
         Initialize with default creds from KeyStore using the endpoint name
@@ -158,12 +159,12 @@ class ClientCredentialsAuthenticator(Authenticator):
     _utf_8 = "utf-8"
 
     def __init__(
-        self,
-        endpoint: str,
-        client_id: str,
-        client_secret: str,
-        cfg_store: ClientConfigStore,
-        header_key: str = None,
+            self,
+            endpoint: str,
+            client_id: str,
+            client_secret: str,
+            cfg_store: ClientConfigStore,
+            header_key: str = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
@@ -233,3 +234,32 @@ class ClientCredentialsAuthenticator(Authenticator):
         token, expires_in = self.get_token(token_endpoint, authorization_header, scopes)
         logging.info("Retrieved new token, expires in {}".format(expires_in))
         self._creds = Credentials(token)
+
+
+class DeviceCodeAuthenticator(Authenticator):
+    """
+    This Authenticator implements the Device Code authorization flow useful for headless user authentication.
+
+    Examples described
+    - https://developer.okta.com/docs/guides/device-authorization-grant/main/
+    - https://auth0.com/docs/get-started/authentication-and-authorization-flow/device-authorization-flow#device-flow
+    """
+
+    def __init__(self,
+                 endpoint: str,
+                 cfg_store: ClientConfigStore,
+                 header_key: typing.Optional[str] = None,
+                 audience: typing.Optional[str] = None):
+        pass
+
+    def _get_code(self):
+        pass
+
+    def _poll(self):
+        pass
+
+    def _get_token(self):
+        pass
+    
+    def refresh_credentials(self):
+        pass
