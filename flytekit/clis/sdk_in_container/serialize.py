@@ -74,21 +74,21 @@ def serialize_all(
     "--image",
     required=False,
     default=lambda: os.environ.get("FLYTE_INTERNAL_IMAGE", ""),
-    help="Text tag: e.g. somedocker.com/myimage:someversion123",
+    help="Text tag, for example ``somedocker.com/myimage:someversion123``",
 )
 @click.option(
     "--local-source-root",
     required=False,
     default=lambda: os.getcwd(),
-    help="Root dir for python code containing workflow definitions to operate on when not the current working directory"
-    "Optional when running `pyflyte serialize` in out of container mode and your code lies outside of your working directory",
+    help="Root dir for Python code containing workflow definitions to operate on when not the current working directory. "
+    "Optional when running ``pyflyte serialize`` in out-of-container-mode and your code lies outside of your working directory.",
 )
 @click.option(
     "--in-container-config-path",
     required=False,
     help="This is where the configuration for your task lives inside the container. "
     "The reason it needs to be a separate option is because this pyflyte utility cannot know where the Dockerfile "
-    "writes the config file to. Required for running `pyflyte serialize` in out of container mode",
+    "writes the config file to. Required for running ``pyflyte serialize`` in out-of-container-mode",
 )
 @click.option(
     "--in-container-virtualenv-root",
@@ -103,9 +103,9 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
-    For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object.  The closure
-        object contains the WorkflowTemplate, along with the relevant tasks for that workflow.  In lieu of Admin,
-        this serialization step will set the URN of the tasks to the fully qualified name of the task function.
+    For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object. The closure
+    object contains the WorkflowTemplate, along with the relevant tasks for that workflow. In lieu of Admin,
+    this serialization step will set the URN of the tasks to the fully qualified name of the task function.
     """
     ctx.obj[CTX_IMAGE] = image
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
