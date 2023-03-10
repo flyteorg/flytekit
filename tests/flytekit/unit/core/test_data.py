@@ -163,54 +163,45 @@ def test_local_provider_get_empty():
             assert len(dest_files) == 0
 
 
-@mock.patch.dict(os.environ, {}, clear=True)
-def test_s3_setup_args_env_empty():
-    os.environ["FLYTECTL_CONFIG"] = ""
+@mock.patch("os.environ")
+def test_s3_setup_args_env_empty(mock_os):
+    mock_os.get.return_value = None
     s3c = S3Config.auto()
     kwargs = s3_setup_args(s3c)
     assert kwargs == {}
 
 
-# @mock.patch.dict(
-#     os.environ,
-#     {
-#         "AWS_ACCESS_KEY_ID": "ignore-user",
-#         "AWS_SECRET_ACCESS_KEY": "ignore-secret",
-#         "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
-#         "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
-#     },
-#     clear=True,
-# )
-# def test_s3_setup_args_env_both():
-#     os.environ["FLYTECTL_CONFIG"] = ""
-#     kwargs = s3_setup_args(S3Config.auto())
-#     assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
-
-
-# @mock.patch.dict(
-#     os.environ,
-#     {
-#         "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
-#         "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
-#     },
-#     clear=True,
-# )
-# def test_s3_setup_args_env_flyte():
-#     os.environ["FLYTECTL_CONFIG"] = ""
-#     kwargs = s3_setup_args(S3Config.auto())
-#     assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
-
-
-@mock.patch.dict(
-    os.environ,
-    {
+@mock.patch("os.environ")
+def test_s3_setup_args_env_both(mock_os):
+    ee = {
         "AWS_ACCESS_KEY_ID": "ignore-user",
         "AWS_SECRET_ACCESS_KEY": "ignore-secret",
-    },
-    clear=True,
-)
-def test_s3_setup_args_env_aws():
-    os.environ["FLYTECTL_CONFIG"] = ""
+        "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
+        "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
+    kwargs = s3_setup_args(S3Config.auto())
+    assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
+
+
+@mock.patch("os.environ")
+def test_s3_setup_args_env_flyte(mock_os):
+    ee = {
+        "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
+        "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
+    kwargs = s3_setup_args(S3Config.auto())
+    assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
+
+
+@mock.patch("os.environ")
+def test_s3_setup_args_env_aws(mock_os):
+    ee = {
+        "AWS_ACCESS_KEY_ID": "ignore-user",
+        "AWS_SECRET_ACCESS_KEY": "ignore-secret",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
     kwargs = s3_setup_args(S3Config.auto())
     # not explicitly in kwargs, since fsspec/boto3 will use these env vars by default
     assert kwargs == {}
