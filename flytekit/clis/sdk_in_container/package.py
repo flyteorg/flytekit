@@ -22,11 +22,11 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     multiple=True,
     type=click.UNPROCESSED,
     callback=ImageConfig.validate_image,
-    help="A fully qualified tag for an docker image, e.g. somedocker.com/myimage:someversion123. This is a "
-    "multi-option and can be of the form --image xyz.io/docker:latest"
-    " --image my_image=xyz.io/docker2:latest. Note, the `name=image_uri`. The name is optional, if not"
-    "provided the image will be used as the default image. All the names have to be unique, and thus"
-    "there can only be one --image option with no-name.",
+    help="A fully qualified tag for an docker image, for example ``somedocker.com/myimage:someversion123``. This is a "
+    "multi-option and can be of the form ``--image xyz.io/docker:latest"
+    " --image my_image=xyz.io/docker2:latest``. Note, the ``name=image_uri``. The name is optional, if not "
+    "provided the image will be used as the default image. All the names have to be unique, and thus "
+    "there can only be one ``--image`` option with no name.",
 )
 @click.option(
     "-s",
@@ -34,7 +34,7 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     required=False,
     type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
     default=".",
-    help="local filesystem path to the root of the package.",
+    help="Local filesystem path to the root of the package.",
 )
 @click.option(
     "-o",
@@ -42,14 +42,14 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     required=False,
     type=click.Path(dir_okay=False, writable=True, resolve_path=True, allow_dash=True),
     default="flyte-package.tgz",
-    help="filesystem path to the source of the python package (from where the pkgs will start).",
+    help="Filesystem path to the source of the Python package (from where the pkgs will start).",
 )
 @click.option(
     "--fast",
     is_flag=True,
     default=False,
     required=False,
-    help="This flag enables fast packaging, that allows `no container build` deploys of flyte workflows and tasks."
+    help="This flag enables fast packaging, that allows `no container build` deploys of flyte workflows and tasks. "
     "Note this needs additional configuration, refer to the docs.",
 )
 @click.option(
@@ -59,7 +59,7 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     default=False,
     required=False,
     help="This flag enables overriding existing output files. If not specified, package will exit with an error,"
-    " in case an output file already exists.",
+    " when an output file already exists.",
 )
 @click.option(
     "-p",
@@ -75,7 +75,7 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     required=False,
     type=str,
     default="/root",
-    help="Filesystem path to where the code is copied into within the Dockerfile. look for `COPY . /root` like command.",
+    help="Filesystem path to where the code is copied into within the Dockerfile. look for ``COPY . /root`` like command.",
 )
 @click.option(
     "--deref-symlinks",
@@ -90,9 +90,9 @@ def package(
     """
     This command produces a Flyte backend registrable package of all entities in Flyte.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
-    For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object.  The closure
-        object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
-        This serialization step will set the name of the tasks to the fully qualified name of the task function.
+    For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object. The closure
+    object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
+    This serialization step will set the name of the tasks to the fully qualified name of the task function.
     """
     if os.path.exists(output) and not force:
         raise click.BadParameter(click.style(f"Output file {output} already exists, specify -f to override.", fg="red"))
