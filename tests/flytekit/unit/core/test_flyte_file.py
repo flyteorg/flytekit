@@ -5,6 +5,7 @@ import typing
 from unittest.mock import MagicMock
 
 import pytest
+from typing_extensions import Annotated
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
@@ -441,7 +442,7 @@ def test_flyte_file_annotated_hashmethod():
         return str(ff.path)
 
     @task
-    def t1(path: str) -> typing.Annotated[FlyteFile, HashMethod(calc_hash)]:
+    def t1(path: str) -> Annotated[FlyteFile, HashMethod(calc_hash)]:
         return FlyteFile(path)
 
     @workflow
