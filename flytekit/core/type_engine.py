@@ -984,10 +984,10 @@ class ListTransformer(TypeTransformer[T]):
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
-        if self.is_batchable(python_type):
+        if ListTransformer.is_batchable(python_type):
             batchSize = len(python_val)  # default batch size
             # parse annotated to get the number of items saved in a pickle file.
-            if get_origin(python_type) is Annotated:
+            if get_origin(python_type) is Annotated and type(get_args(python_type)[1]) == int:
                 batchSize = get_args(python_type)[1]
             lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batchSize], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
         else:
