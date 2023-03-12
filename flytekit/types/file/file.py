@@ -237,7 +237,12 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         return self.__fspath__()
 
     @contextmanager
-    def open(self, mode: str, cache_type: str = None, cache_options: typing.Dict[str, typing.Any] = None):
+    def open(
+        self,
+        mode: str,
+        cache_type: typing.Optional[str] = None,
+        cache_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ):
         """
         Returns a streaming File handle
 

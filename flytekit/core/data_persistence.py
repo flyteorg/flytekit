@@ -169,28 +169,6 @@ class FileAccessProvider(object):
         t = os.path.join(t, "")
         return f, t
 
-    def parent(
-        self, path: Union[str, os.PathLike], file_system: typing.Optional[fsspec.AbstractFileSystem] = None
-    ) -> str:
-        """
-        /tmp/a -> /tmp/
-        /tmp/ -> /tmp/
-        path/file -> path/
-        name -> name
-        """
-        path = str(path)
-        file_system = file_system or self.get_filesystem_for_path(path)
-        sep = file_system.sep
-        if os.name == "nt" and file_system.protocol == "file":
-            sep = "\\"
-        if path.endswith(sep):
-            return path
-
-        if sep in path:
-            return os.path.join(path.rsplit(sep, 1)[0], "")
-        else:
-            return path
-
     def sep(self, file_system: typing.Optional[fsspec.AbstractFileSystem]) -> str:
         if file_system is None or file_system.protocol == "file":
             return os.sep

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Generator, Tuple, Type
 from uuid import UUID
 
+import fsspec
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
@@ -208,8 +209,8 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         return self.__fspath__()
 
     def crawl(
-        self, maxdepth: int = None, topdown: bool = True, **kwargs
-    ) -> Generator[typing.Tuple[str, typing.Union[str, typing.Dict]]]:
+        self, maxdepth: typing.Optional[int] = None, topdown: bool = True, **kwargs
+    ) -> Generator[Tuple[typing.Union[str, os.PathLike[Any]], typing.Dict[Any, Any]], None, None]:
         """
         Crawl returns a generator of all files prefixed by any sub-folders under the given "FlyteDirectory".
         if details=True is passed, then it will return a dictionary as specified by fsspec.
@@ -224,9 +225,6 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
              'created': 1677720780.2318847, 'islink': False, 'mode': 33188, 'uid': 501, 'gid': 0,
               'mtime': 1677720780.2317934, 'ino': 1694329, 'nlink': 1}})]
         """
-        import fsspec
-        from fsspec.implementations.local import LocalFileSystem
-
         final_path = self.path
         if self.remote_source:
             final_path = self.remote_source
