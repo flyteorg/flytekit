@@ -6,14 +6,13 @@ import random
 import typing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Generator, Tuple
+from typing import Any, Generator, Tuple, Type
 from uuid import UUID
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
-from flytekit.core.context_manager import FlyteContext
-from flytekit.core.data_persistence import get_filesystem
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, flyte_context_Var
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models import types as _type_models
@@ -225,30 +224,25 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
              'created': 1677720780.2318847, 'islink': False, 'mode': 33188, 'uid': 501, 'gid': 0,
               'mtime': 1677720780.2317934, 'ino': 1694329, 'nlink': 1}})]
         """
-        try:
-            final_path = self.path
-            if self.remote_source:
-                final_path = self.remote_source
-            elif self.remote_directory:
-                final_path = self.remote_directory
-            import fsspec
+        import fsspec
+        from fsspec.implementations.local import LocalFileSystem
 
-            fs: fsspec.AbstractFileSystem = get_filesystem(final_path)
-            base_path_len = len(fsspec.core.strip_protocol(final_path)) + 1  # Add additional `/` at the end
-            for base, _, files in fs.walk(final_path, maxdepth, topdown, **kwargs):
-                current_base = base[base_path_len:]
-                if isinstance(files, dict):
-                    for f, v in files.items():
-                        yield final_path, {os.path.join(current_base, f): v}
-                else:
-                    for f in files:
-                        yield final_path, os.path.join(current_base, f)
-        except ImportError as e:
-            print(
-                "To use streaming files, please install fsspec."
-                " Note: This will be bundled with flytekit in the future."
-            )
-            raise FlyteUserException("Install fsspec to use FlyteFile streaming.") from e
+        final_path = self.path
+        if self.remote_source:
+            final_path = self.remote_source
+        elif self.remote_directory:
+            final_path = self.remote_directory
+        ctx = FlyteContextManager.current_context()
+        fs = ctx.file_access.get_filesystem_for_path(final_path)
+        base_path_len = len(fsspec.core.strip_protocol(final_path)) + 1  # Add additional `/` at the end
+        for base, _, files in fs.walk(final_path, maxdepth, topdown, **kwargs):
+            current_base = base[base_path_len:]
+            if isinstance(files, dict):
+                for f, v in files.items():
+                    yield final_path, {os.path.join(current_base, f): v}
+            else:
+                for f in files:
+                    yield final_path, os.path.join(current_base, f)
 
     def __repr__(self):
         return self.path
@@ -268,6 +262,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
        a remote reference.
 
     """
+
+    def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
+        pass
 
     def __init__(self):
         super().__init__(name="FlyteDirectory", t=FlyteDirectory)

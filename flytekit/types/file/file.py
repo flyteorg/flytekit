@@ -10,7 +10,6 @@ from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import get_filesystem
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.loggers import logger
@@ -272,13 +271,14 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
                         cache_protocol
         """
+        ctx = FlyteContextManager.current_context()
         try:
             final_path = self.path
             if self.remote_source:
                 final_path = self.remote_source
             elif self.remote_path:
                 final_path = self.remote_path
-            fs = get_filesystem(final_path, cache_type=cache_type, cache_options=cache_options)
+            fs = ctx.file_access.get_filesystem_for_path(final_path, cache_type=cache_type, cache_options=cache_options)
             yield fs.open(final_path, mode)
         except ImportError as e:
             print(
