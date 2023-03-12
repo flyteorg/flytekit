@@ -17,6 +17,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.task import TaskSpec
+from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options, get_serializable
 
 
@@ -40,7 +41,7 @@ def _should_register_with_admin(entity) -> bool:
     """
     return isinstance(
         entity, (task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
-    )
+    ) and not isinstance(entity, RemoteEntity)
 
 
 def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Set[task_models.TaskSpec]:
