@@ -88,6 +88,8 @@ The ``for_endpoint`` method also accepts:
 * ``data_config``: can be used to configure how data is downloaded or uploaded to a specific blob storage like S3, GCS, etc.
 * ``config_file``: the path to the configuration file to use.
 
+.. _general_initialization:
+
 Generalized Initialization
 ==========================
 

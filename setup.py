@@ -36,13 +36,17 @@ setup(
         "click>=6.6,<9.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
-        "docker>=5.0.3,<7.0.0",
+        "docker>=4.0.0,<7.0.0",
         "python-dateutil>=2.1",
         # Restrict grpcio and grpcio-status.  Version 1.50.0 pulls in a version of protobuf that is not compatible
         # with the old protobuf library (as described in https://developers.google.com/protocol-buffers/docs/news/2022-05-06)
         "grpcio>=1.50.0,<2.0",
         "grpcio-status>=1.50.0,<2.0",
         "importlib-metadata",
+        "fsspec>=2023.3.0",
+        "adlfs",
+        "s3fs",
+        "gcsfs",
         "pyopenssl",
         "joblib",
         "python-json-logger>=2.0.0",

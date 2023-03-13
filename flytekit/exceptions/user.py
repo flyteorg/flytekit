@@ -93,4 +93,4 @@ class FlyteInvalidInputException(FlyteUserException):
 
     def __init__(self, request: typing.Any):
         self.request = request
-        super(self).__init__()
+        super().__init__()

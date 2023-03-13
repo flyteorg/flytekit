@@ -1,3 +1,4 @@
+import json
 from typing import Dict, List, NamedTuple, Optional, Union
 
 import duckdb
@@ -88,6 +89,9 @@ class DuckDBQuery(PythonInstanceTask):
             elif isinstance(val, list):
                 # copy val into params
                 params = val
+            elif isinstance(val, str):
+                # load into a list
+                params = json.loads(val)
             else:
                 raise ValueError(f"Expected inputs of type StructuredDataset, str or list, received {type(val)}")
 

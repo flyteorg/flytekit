@@ -7,6 +7,8 @@ from setuptools.command.install import install
 
 PACKAGE_NAME = "flytekitplugins-parent"
 
+__version__ = "0.0.0+develop"
+
 # Please maintain an alphabetical order in the following list
 SOURCES = {
     "flytekitplugins-athena": "flytekit-aws-athena",
@@ -74,7 +76,7 @@ class InstallCmd(install):
 
 setup(
     name=PACKAGE_NAME,
-    version="0.1.0",
+    version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
     description="This is a microlib package to help install all the plugins",
@@ -82,5 +84,4 @@ setup(
     classifiers=["Private :: Do Not Upload to pypi server"],
     install_requires=[],
     cmdclass={"install": InstallCmd, "develop": DevelopCmd},
-    package_data={"flytekit": ["py.typed"]},
 )
