@@ -6,16 +6,15 @@ import random
 import typing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Generator, Tuple, Type
+from typing import Any, Generator, Tuple
 from uuid import UUID
 
 import fsspec
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager, flyte_context_Var
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
-from flytekit.exceptions.user import FlyteUserException
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -260,9 +259,6 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
        a remote reference.
 
     """
-
-    def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
-        pass
 
     def __init__(self):
         super().__init__(name="FlyteDirectory", t=FlyteDirectory)

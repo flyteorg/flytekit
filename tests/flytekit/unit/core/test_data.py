@@ -7,7 +7,7 @@ import mock
 import pytest
 
 from flytekit.configuration import Config, S3Config
-from flytekit.core.context_manager import FlyteContextManager, flyte_context_Var
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider, s3_setup_args
 from flytekit.types.directory.types import FlyteDirectory
 
