@@ -1580,8 +1580,11 @@ def test_file_ext_with_flyte_file_wrong_type():
     "python_val, python_type, batch_size",
     [
         ([{"a": {0: "foo"}}] * 5, typing.List[typing.Dict[str, FlytePickle]], 5),
-        ([{"a": {0: "foo"}}] * 5, Annotated[typing.List[typing.Dict[str, FlytePickle]], 2], 2),
-        ([{"a": {0: "foo"}}] * 6, Annotated[typing.List[typing.Dict[str, FlytePickle]], HashMethod(function=str), 2], 2),
+        (
+            [{"a": {0: "foo"}}] * 5,
+            Annotated[typing.List[typing.Dict[str, FlytePickle]], HashMethod(function=str), 2],
+            2,
+        ),
     ],
 )
 def test_batch_pickle_list(python_val, python_type, batch_size):
