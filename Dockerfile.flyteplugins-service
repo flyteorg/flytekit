@@ -14,4 +14,4 @@ RUN pip install numpy==1.23.1
 RUN pip install awscli
 RUN pip install protobuf==3.20.1
 
-CMD pyflyte serve
+CMD pyflyte serve --port 9090
