@@ -10,8 +10,8 @@ _backfill_help = """
 The backfill command generates and registers a new workflow based on the input launchplan to run an
 automated backfill. The workflow can be managed using the Flyte UI and can be canceled, relaunched, and recovered.
 
-- launchplan refers to the name of the launchplan
-- launchplan_version is optional and should be a valid version for a launchplan version.
+- ``launchplan`` refers to the name of the Launchplan
+- ``launchplan_version`` is optional and should be a valid version for a Launchplan version.
 """
 
 
@@ -90,8 +90,8 @@ def resolve_backfill_window(
     is_flag=True,
     default=False,
     show_default=True,
-    help="All backfill steps can be run in parallel (limited by max-parallelism), if using --parallel."
-    " Else all steps will be run sequentially [--serial].",
+    help="All backfill steps can be run in parallel (limited by max-parallelism), if using ``--parallel.``"
+    " Else all steps will be run sequentially [``--serial``].",
 )
 @click.option(
     "--execute/--do-not-execute",
