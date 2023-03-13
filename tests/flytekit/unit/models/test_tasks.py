@@ -71,6 +71,7 @@ def test_task_metadata():
         "0.1.1b0",
         "This is deprecated!",
         True,
+        "A",
     )
 
     assert obj.discoverable is True
@@ -82,6 +83,7 @@ def test_task_metadata():
     assert obj.runtime.version == "1.0.0"
     assert obj.deprecated_error_message == "This is deprecated!"
     assert obj.discovery_version == "0.1.1b0"
+    assert obj.pod_template_name == "A"
     assert obj == task.TaskMetadata.from_flyte_idl(obj.to_flyte_idl())
 
 
@@ -134,6 +136,7 @@ def test_task_spec():
         "0.1.1b0",
         "This is deprecated!",
         True,
+        "A",
     )
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
@@ -178,7 +181,7 @@ def test_task_spec():
     assert obj.template == template
 
 
-def test_task_template__k8s_pod_target():
+def test_task_template_k8s_pod_target():
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     obj = task.TaskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
@@ -192,6 +195,7 @@ def test_task_template__k8s_pod_target():
             "1.0",
             "deprecated",
             False,
+            "A",
         ),
         interface_models.TypedInterface(
             # inputs

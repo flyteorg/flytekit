@@ -1,7 +1,12 @@
+import typing
+
 import click
+import grpc
+from google.protobuf.json_format import MessageToJson
 
 from flytekit import configuration
-from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES
+from flytekit.clis.sdk_in_container.backfill import backfill
+from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES, CTX_VERBOSE
 from flytekit.clis.sdk_in_container.init import init
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
@@ -9,6 +14,8 @@ from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.configuration.internal import LocalSDK
+from flytekit.exceptions.base import FlyteException
+from flytekit.exceptions.user import FlyteInvalidInputException
 from flytekit.loggers import cli_logger
 
 
@@ -27,7 +34,60 @@ def validate_package(ctx, param, values):
     return pkgs
 
 
-@click.group("pyflyte", invoke_without_command=True)
+def pretty_print_grpc_error(e: grpc.RpcError):
+    if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
+        click.secho(f"RPC Failed, with Status: {e.code()}", fg="red")
+        click.secho(f"\tdetails: {e.details()}", fg="magenta")
+        click.secho(f"\tDebug string {e.debug_error_string()}", dim=True)
+    return
+
+
+def pretty_print_exception(e: Exception):
+    if isinstance(e, click.exceptions.Exit):
+        raise e
+
+    if isinstance(e, click.ClickException):
+        click.secho(e.message, fg="red")
+        raise e
+
+    if isinstance(e, FlyteException):
+        if isinstance(e, FlyteInvalidInputException):
+            click.secho("Request rejected by the API, due to Invalid input.", fg="red")
+            click.secho(f"\tReason: {str(e)}", dim=True)
+            click.secho(f"\tInput Request: {MessageToJson(e.request)}", dim=True)
+            return
+        click.secho(f"Failed with Exception: Reason: {e._ERROR_CODE}", fg="red")  # noqa
+        cause = e.__cause__
+        if cause:
+            if isinstance(cause, grpc.RpcError):
+                pretty_print_grpc_error(cause)
+            else:
+                click.secho(f"Underlying Exception: {cause}")
+        return
+
+    if isinstance(e, grpc.RpcError):
+        pretty_print_grpc_error(e)
+        return
+
+    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
+
+
+class ErrorHandlingCommand(click.Group):
+    def invoke(self, ctx: click.Context) -> typing.Any:
+        try:
+            return super().invoke(ctx)
+        except Exception as e:
+            if CTX_VERBOSE in ctx.obj and ctx.obj[CTX_VERBOSE]:
+                print("Verbose mode on")
+                raise e
+            pretty_print_exception(e)
+            raise SystemExit(e)
+
+
+@click.group("pyflyte", invoke_without_command=True, cls=ErrorHandlingCommand)
+@click.option(
+    "--verbose", required=False, default=False, is_flag=True, help="Show verbose messages and exception traces"
+)
 @click.option(
     "-k",
     "--pkgs",
@@ -46,7 +106,7 @@ def validate_package(ctx, param, values):
     help="Path to config file for use within container",
 )
 @click.pass_context
-def main(ctx, pkgs=None, config=None):
+def main(ctx, pkgs: typing.List[str], config: str, verbose: bool):
     """
     Entrypoint for all the user commands.
     """
@@ -62,6 +122,7 @@ def main(ctx, pkgs=None, config=None):
             if pkgs is None:
                 pkgs = []
     ctx.obj[CTX_PACKAGES] = pkgs
+    ctx.obj[CTX_VERBOSE] = verbose
 
 
 main.add_command(serialize)
@@ -70,6 +131,8 @@ main.add_command(local_cache)
 main.add_command(init)
 main.add_command(run)
 main.add_command(register)
+main.add_command(backfill)
+main.epilog
 
 if __name__ == "__main__":
     main()

@@ -120,7 +120,8 @@ class ShellTask(PythonInstanceTask[T]):
             task_config: T Configuration for the task, can be either a Pod (or coming soon, BatchJob) config
             inputs: A Dictionary of input names to types
             output_locs: A list of :py:class:`OutputLocations`
-            **kwargs: Other arguments that can be passed to :ref:class:`PythonInstanceTask`
+            **kwargs: Other arguments that can be passed to
+                :py:class:`~flytekit.core.python_function_task.PythonInstanceTask`
         """
         if script and script_file:
             raise ValueError("Only either of script or script_file can be provided")

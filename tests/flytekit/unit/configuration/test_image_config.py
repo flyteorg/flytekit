@@ -11,10 +11,9 @@ from flytekit.configuration.default_images import DefaultImages, PythonVersion
 @pytest.mark.parametrize(
     "python_version_enum, expected_image_string",
     [
-        (PythonVersion.PYTHON_3_7, "ghcr.io/flyteorg/flytekit:py3.7-latest"),
-        (PythonVersion.PYTHON_3_8, "ghcr.io/flyteorg/flytekit:py3.8-latest"),
-        (PythonVersion.PYTHON_3_9, "ghcr.io/flyteorg/flytekit:py3.9-latest"),
-        (PythonVersion.PYTHON_3_10, "ghcr.io/flyteorg/flytekit:py3.10-latest"),
+        (PythonVersion.PYTHON_3_8, "cr.flyte.org/flyteorg/flytekit:py3.8-latest"),
+        (PythonVersion.PYTHON_3_9, "cr.flyte.org/flyteorg/flytekit:py3.9-latest"),
+        (PythonVersion.PYTHON_3_10, "cr.flyte.org/flyteorg/flytekit:py3.10-latest"),
     ],
 )
 def test_defaults(python_version_enum, expected_image_string):
@@ -24,8 +23,8 @@ def test_defaults(python_version_enum, expected_image_string):
 @pytest.mark.parametrize(
     "python_version_enum, flytekit_version, expected_image_string",
     [
-        (PythonVersion.PYTHON_3_7, "v0.32.0", "ghcr.io/flyteorg/flytekit:py3.7-0.32.0"),
-        (PythonVersion.PYTHON_3_8, "1.31.3", "ghcr.io/flyteorg/flytekit:py3.8-1.31.3"),
+        (PythonVersion.PYTHON_3_9, "v0.32.0", "cr.flyte.org/flyteorg/flytekit:py3.9-0.32.0"),
+        (PythonVersion.PYTHON_3_8, "1.31.3", "cr.flyte.org/flyteorg/flytekit:py3.8-1.31.3"),
     ],
 )
 def test_set_both(python_version_enum, flytekit_version, expected_image_string):
@@ -36,7 +35,7 @@ def test_image_config_auto():
     x = ImageConfig.auto_default_image()
     assert x.images[0].name == "default"
     version_str = f"{sys.version_info.major}.{sys.version_info.minor}"
-    assert x.images[0].full == f"ghcr.io/flyteorg/flytekit:py{version_str}-latest"
+    assert x.images[0].full == f"cr.flyte.org/flyteorg/flytekit:py{version_str}-latest"
 
 
 def test_image_from_flytectl_config():
@@ -56,7 +55,7 @@ def test_not_version(mock_sys):
 
 def test_image_create():
     with pytest.raises(ValueError):
-        ImageConfig.create_from("ghcr.io/im/g:latest")
+        ImageConfig.create_from("cr.flyte.org/im/g:latest")
 
-    ic = ImageConfig.from_images("ghcr.io/im/g:latest")
-    assert ic.default_image.fqn == "ghcr.io/im/g"
+    ic = ImageConfig.from_images("cr.flyte.org/im/g:latest")
+    assert ic.default_image.fqn == "cr.flyte.org/im/g"

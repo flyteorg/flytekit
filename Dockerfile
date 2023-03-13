@@ -20,4 +20,8 @@ RUN pip install -U flytekit==$VERSION \
 	flytekitplugins-data-fsspec[gcp]==$VERSION \
 	scikit-learn
 
+RUN useradd -u 1000 flytekit
+RUN chown flytekit: /root
+USER flytekit
+
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"

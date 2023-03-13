@@ -126,7 +126,7 @@ def test_diabetes():
         fname = "model.joblib.dat"
         with open(fname, "w") as f:
             f.write("Some binary data")
-        return nt(model=fname)
+        return nt(model=fname)  # type: ignore
 
     @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFile[MODELSER_JOBLIB]) -> FlyteSchema[CLASSES_COLUMNS]:

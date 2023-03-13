@@ -2,6 +2,7 @@ import functools
 import os
 import pathlib
 import typing
+from datetime import datetime, timedelta
 from enum import Enum
 
 import click
@@ -16,6 +17,8 @@ from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY
 from flytekit.clis.sdk_in_container.run import (
     REMOTE_FLAG_KEY,
     RUN_LEVEL_PARAMS_KEY,
+    DateTimeType,
+    DurationParamType,
     FileParamType,
     FlyteLiteralConverter,
     get_entities_in_file,
@@ -32,12 +35,21 @@ IMPERATIVE_WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file_
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 
 
-def test_pyflyte_run_wf():
-    runner = CliRunner()
-    module_path = WORKFLOW_FILE
-    result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+@pytest.fixture
+def remote():
+    with mock.patch("flytekit.clients.friendly.SynchronousFlyteClient") as mock_client:
+        flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+        flyte_remote._client = mock_client
+        return flyte_remote
 
-    assert result.exit_code == 0
+
+def test_pyflyte_run_wf(remote):
+    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_and_save_remote_with_click_context"):
+        runner = CliRunner()
+        module_path = WORKFLOW_FILE
+        result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+
+        assert result.exit_code == 0
 
 
 def test_imperative_wf():
@@ -140,6 +152,7 @@ def test_union_type_with_invalid_input():
         runner.invoke(
             pyflyte.main,
             [
+                "--verbose",
                 "run",
                 os.path.join(DIR_NAME, "workflow.py"),
                 "test_union2",
@@ -330,3 +343,22 @@ def test_enum_converter():
 
     assert union_lt.stored_type.simple is None
     assert union_lt.stored_type.enum_type.values == ["red", "green", "blue"]
+
+
+def test_duration_type():
+    t = DurationParamType()
+    assert t.convert(value="1 day", param=None, ctx=None) == timedelta(days=1)
+
+    with pytest.raises(click.BadParameter):
+        t.convert(None, None, None)
+
+
+def test_datetime_type():
+    t = DateTimeType()
+
+    assert t.convert("2020-01-01", None, None) == datetime(2020, 1, 1)
+
+    now = datetime.now()
+    v = t.convert("now", None, None)
+    assert v.day == now.day
+    assert v.month == now.month

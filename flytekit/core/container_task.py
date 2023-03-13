@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
@@ -10,6 +10,7 @@ from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
 
+# TODO: do we need pod_template here? Seems that it is a raw container not running in pods
 class ContainerTask(PythonTask):
     """
     This is an intermediate class that represents Flyte Tasks that run a container at execution time. This is the vast
@@ -35,16 +36,16 @@ class ContainerTask(PythonTask):
         name: str,
         image: str,
         command: List[str],
-        inputs: Optional[Dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
         metadata: Optional[TaskMetadata] = None,
-        arguments: List[str] = None,
-        outputs: Dict[str, Type] = None,
+        arguments: Optional[List[str]] = None,
+        outputs: Optional[Dict[str, Type]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        input_data_dir: str = None,
-        output_data_dir: str = None,
+        input_data_dir: Optional[str] = None,
+        output_data_dir: Optional[str] = None,
         metadata_format: MetadataFormat = MetadataFormat.JSON,
-        io_strategy: IOStrategy = None,
+        io_strategy: Optional[IOStrategy] = None,
         secret_requests: Optional[List[Secret]] = None,
         **kwargs,
     ):

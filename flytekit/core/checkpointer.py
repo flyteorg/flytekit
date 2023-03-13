@@ -126,7 +126,7 @@ class SyncCheckpoint(Checkpoint):
                 fa.upload_directory(str(cp), self._checkpoint_dest)
             else:
                 fname = cp.stem + cp.suffix
-                rpath = fa._default_remote.construct_path(False, False, self._checkpoint_dest, fname)
+                rpath = fa._default_remote.sep.join([str(self._checkpoint_dest), fname])
                 fa.upload(str(cp), rpath)
             return
 
@@ -138,7 +138,7 @@ class SyncCheckpoint(Checkpoint):
         with dest_cp.open("wb") as f:
             f.write(cp.read())
 
-        rpath = fa._default_remote.construct_path(False, False, self._checkpoint_dest, self.TMP_DST_PATH)
+        rpath = fa._default_remote.sep.join([str(self._checkpoint_dest), self.TMP_DST_PATH])
         fa.upload(str(dest_cp), rpath)
 
     def read(self) -> typing.Optional[bytes]:
