@@ -11,12 +11,19 @@ _serve_help = """Start a grpc server for the backend plugin system."""
 
 
 @click.command("serve", help=_serve_help)
+@click.option(
+    "--port",
+    default="9090",
+    is_flag=False,
+    type=int,
+    help="Grpc port for the flyteplugins service",
+)
 @click.pass_context
-def serve(_: click.Context):
-    print("Starting a grpc server for the backend plugin system.")
+def serve(_: click.Context, port):
+    cli_logger.info("Starting a grpc server for the flyteplugins service.")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_BackendPluginServiceServicer_to_server(BackendPluginServer(), server)
 
-    server.add_insecure_port("[::]:9090")
+    server.add_insecure_port(f"[::]:{port}")
     server.start()
     server.wait_for_termination()
