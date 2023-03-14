@@ -5,10 +5,8 @@ from flyteidl.service.plugin_system_pb2 import TaskGetResponse
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset
-from flytekit.core import constants
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry, convert_to_flyte_state
-from flytekit.extend.backend.utils import upload_output_file
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -49,31 +47,30 @@ class BigQueryPlugin(BackendPluginBase):
 
         return plugin_system_pb2.TaskCreateResponse(job_id=query_job.job_id)
 
-    def get(
-        self, job_id: str, output_prefix: str, prev_state: plugin_system_pb2.State
-    ) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, job_id: str, prev_state: plugin_system_pb2.State) -> plugin_system_pb2.TaskGetResponse:
+        if prev_state == plugin_system_pb2.SUCCEEDED:
+            return TaskGetResponse(state=plugin_system_pb2.SUCCEEDED)
+
         client = bigquery.Client()
         job = client.get_job(job_id)
         cur_state = convert_to_flyte_state(str(job.state))
+        res = None
 
-        if prev_state != plugin_system_pb2.SUCCEEDED and cur_state == plugin_system_pb2.SUCCEEDED:
+        if cur_state == plugin_system_pb2.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             output_location = f"bq://{job.destination.project}:{job.destination.dataset_id}.{job.destination.table_id}"
-            output_file_dict = {
-                constants.OUTPUT_FILE_NAME: literals.LiteralMap(
-                    {
-                        "results": TypeEngine.to_literal(
-                            ctx,
-                            StructuredDataset(uri=output_location),
-                            StructuredDataset,
-                            LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
-                        )
-                    }
-                )
-            }
-            upload_output_file(output_file_dict, output_prefix)
+            res = literals.LiteralMap(
+                {
+                    "results": TypeEngine.to_literal(
+                        ctx,
+                        StructuredDataset(uri=output_location),
+                        StructuredDataset,
+                        LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
+                    )
+                }
+            )
 
-        return TaskGetResponse(state=cur_state)
+        return TaskGetResponse(state=cur_state, outputs=res)
 
     def delete(self, job_id: str) -> plugin_system_pb2.TaskDeleteResponse:
         client = bigquery.Client()

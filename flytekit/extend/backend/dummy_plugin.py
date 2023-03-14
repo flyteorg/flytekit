@@ -22,9 +22,7 @@ class DummyPlugin(BackendPluginBase):
         print("creating")
         return plugin_system_pb2.TaskCreateResponse(job_id="fake_id")
 
-    def get(
-        self, job_id: str, output_prefix: str, prev_state: plugin_system_pb2.State
-    ) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, job_id: str, prev_state: plugin_system_pb2.State) -> plugin_system_pb2.TaskGetResponse:
         print("polling")
         if prev_state == plugin_system_pb2.SUCCEEDED:
             return plugin_system_pb2.TaskGetResponse(state=plugin_system_pb2.SUCCEEDED)

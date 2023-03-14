@@ -11,10 +11,10 @@ class BackendPluginServer(BackendPluginServiceServicer):
         plugin = BackendPluginRegistry.get_plugin(req.template.type)
         return plugin.create(req.inputs, req.output_prefix, req.template)
 
-    def GetTask(self, request: plugin_system_pb2.TaskGetRequest, context):
+    def GetTask(self, request: plugin_system_pb2.TaskGetRequest, context) -> plugin_system_pb2.TaskGetResponse:
         plugin = BackendPluginRegistry.get_plugin(request.task_type)
-        return plugin.get(job_id=request.job_id, output_prefix=request.output_prefix, prev_state=request.prev_state)
+        return plugin.get(job_id=request.job_id, prev_state=request.prev_state)
 
-    def DeleteTask(self, request: plugin_system_pb2.TaskDeleteRequest, context):
+    def DeleteTask(self, request: plugin_system_pb2.TaskDeleteRequest, context) -> plugin_system_pb2.TaskDeleteResponse:
         plugin = BackendPluginRegistry.get_plugin(request.task_type)
         return plugin.delete(request.job_id)
