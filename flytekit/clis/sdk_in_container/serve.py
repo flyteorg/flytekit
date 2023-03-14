@@ -13,7 +13,7 @@ _serve_help = """Start a grpc server for the backend plugin system."""
 @click.command("serve", help=_serve_help)
 @click.option(
     "--port",
-    default="9090",
+    default="80",
     is_flag=False,
     type=int,
     help="Grpc port for the flyteplugins service",
