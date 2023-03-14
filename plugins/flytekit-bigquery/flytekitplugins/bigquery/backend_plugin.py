@@ -22,9 +22,6 @@ class BigQueryPlugin(BackendPluginBase):
     def __init__(self):
         super().__init__(task_type="bigquery")
 
-    def initialize(self):
-        pass
-
     def create(
         self, inputs: Optional[LiteralMap], output_prefix: str, task_template: TaskTemplate
     ) -> plugin_system_pb2.TaskCreateResponse:

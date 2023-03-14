@@ -19,21 +19,26 @@ class DummyPlugin(BackendPluginBase):
     ) -> plugin_system_pb2.TaskCreateResponse:
         return plugin_system_pb2.TaskCreateResponse(job_id="dummy_id")
 
-    def get(
-        self, job_id: str, output_prefix: str, prev_state: plugin_system_pb2.State
-    ) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, job_id: str, prev_state: plugin_system_pb2.State) -> plugin_system_pb2.TaskGetResponse:
         return plugin_system_pb2.TaskGetResponse(state=plugin_system_pb2.SUCCEEDED)
 
     def delete(self, job_id) -> plugin_system_pb2.TaskDeleteResponse:
-        print("deleting")
         return plugin_system_pb2.TaskDeleteResponse()
 
 
 BackendPluginRegistry.register(DummyPlugin())
 
 
-def test_plugin():
+def test_base_plugin():
+    p = BackendPluginBase(task_type="dummy")
+    assert p.task_type == "dummy"
+    p.create(None, "/tmp", None)
+    p.get("id", plugin_system_pb2.RUNNING)
+    p.delete("id")
+
+
+def test_dummy_plugin():
     p = BackendPluginRegistry.get_plugin("dummy")
     assert p.create(None, "/tmp", None).job_id == "dummy_id"
-    assert p.get("id", "/tmp", plugin_system_pb2.RUNNING).state == plugin_system_pb2.SUCCEEDED
+    assert p.get("id", plugin_system_pb2.RUNNING).state == plugin_system_pb2.SUCCEEDED
     assert p.delete("id") == plugin_system_pb2.TaskDeleteResponse()
