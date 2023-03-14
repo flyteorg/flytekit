@@ -1,12 +1,16 @@
 import base64
+import json
 import logging
 import subprocess
+import time
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 import requests
 
+from . import token_client
 from .auth_client import AuthorizationClient
 from .exceptions import AccessTokenNotFoundError, AuthenticationError
 from .keyring import Credentials, KeyringStore
@@ -80,11 +84,11 @@ class PKCEAuthenticator(Authenticator):
     """
 
     def __init__(
-            self,
-            endpoint: str,
-            cfg_store: ClientConfigStore,
-            header_key: typing.Optional[str] = None,
-            verify: typing.Optional[typing.Union[bool, str]] = None,
+        self,
+        endpoint: str,
+        cfg_store: ClientConfigStore,
+        header_key: typing.Optional[str] = None,
+        verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
         """
         Initialize with default creds from KeyStore using the endpoint name
@@ -156,15 +160,13 @@ class ClientCredentialsAuthenticator(Authenticator):
     This Authenticator uses ClientId and ClientSecret to authenticate
     """
 
-    _utf_8 = "utf-8"
-
     def __init__(
-            self,
-            endpoint: str,
-            client_id: str,
-            client_secret: str,
-            cfg_store: ClientConfigStore,
-            header_key: str = None,
+        self,
+        endpoint: str,
+        client_id: str,
+        client_secret: str,
+        cfg_store: ClientConfigStore,
+        header_key: str = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
@@ -174,48 +176,6 @@ class ClientCredentialsAuthenticator(Authenticator):
         self._client_id = client_id
         self._client_secret = client_secret
         super().__init__(endpoint, cfg.header_key or header_key)
-
-    @staticmethod
-    def get_token(token_endpoint: str, authorization_header: str, scopes: typing.List[str]) -> typing.Tuple[str, int]:
-        """
-        :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
-                in seconds
-        """
-        headers = {
-            "Authorization": authorization_header,
-            "Cache-Control": "no-cache",
-            "Accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-        body = {
-            "grant_type": "client_credentials",
-        }
-        if scopes is not None:
-            body["scope"] = ",".join(scopes)
-        response = requests.post(token_endpoint, data=body, headers=headers)
-        if response.status_code != 200:
-            logging.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
-            raise AuthenticationError("Non-200 received from IDP")
-
-        response = response.json()
-        return response["access_token"], response["expires_in"]
-
-    @staticmethod
-    def get_basic_authorization_header(client_id: str, client_secret: str) -> str:
-        """
-        This function transforms the client id and the client secret into a header that conforms with http basic auth.
-        It joins the id and the secret with a : then base64 encodes it, then adds the appropriate text
-
-        :param client_id: str
-        :param client_secret: str
-        :rtype: str
-        """
-        concated = "{}:{}".format(client_id, client_secret)
-        return "Basic {}".format(
-            base64.b64encode(concated.encode(ClientCredentialsAuthenticator._utf_8)).decode(
-                ClientCredentialsAuthenticator._utf_8
-            )
-        )
 
     def refresh_credentials(self):
         """
@@ -230,8 +190,8 @@ class ClientCredentialsAuthenticator(Authenticator):
 
         # Note that unlike the Pkce flow, the client ID does not come from Admin.
         logging.debug(f"Basic authorization flow with client id {self._client_id} scope {scopes}")
-        authorization_header = self.get_basic_authorization_header(self._client_id, self._client_secret)
-        token, expires_in = self.get_token(token_endpoint, authorization_header, scopes)
+        authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
+        token, expires_in = token_client.get_token(token_endpoint, scopes, authorization_header)
         logging.info("Retrieved new token, expires in {}".format(expires_in))
         self._creds = Credentials(token)
 
@@ -245,21 +205,41 @@ class DeviceCodeAuthenticator(Authenticator):
     - https://auth0.com/docs/get-started/authentication-and-authorization-flow/device-authorization-flow#device-flow
     """
 
-    def __init__(self,
-                 endpoint: str,
-                 cfg_store: ClientConfigStore,
-                 header_key: typing.Optional[str] = None,
-                 audience: typing.Optional[str] = None):
-        pass
+    def __init__(
+        self,
+        endpoint: str,
+        cfg_store: ClientConfigStore,
+        header_key: typing.Optional[str] = None,
+        audience: typing.Optional[str] = None,
+    ):
+        self._audience = audience
+        cfg = cfg_store.get_client_config()
+        self._client_id = cfg.client_id
+        self._device_auth_endpoint = cfg.device_authorization_endpoint
+        self._scope = cfg.scopes
+        self._token_endpoint = cfg.token_endpoint
+        if self._device_auth_endpoint is None:
+            raise ValueError("Device Authentication is not available on the Flyte backend / authentication server")
+        super().__init__(
+            endpoint=endpoint, header_key=header_key or cfg.header_key, credentials=KeyringStore.retrieve(endpoint)
+        )
 
-    def _get_code(self):
-        pass
-
-    def _poll(self):
-        pass
-
-    def _get_token(self):
-        pass
-    
     def refresh_credentials(self):
-        pass
+        resp = token_client.get_device_code(self._device_auth_endpoint, self._client_id, self._audience, self._scope)
+        print(
+            f"""
+To Authenticate navigate in a browser to the following URL: {resp.verification_uri} and enter code: {resp.user_code}
+OR copy paste the following URL: {resp.verification_uri_complete}
+        """
+        )
+        try:
+            # Currently the refresh token is not retreived. We may want to add support for refreshTokens so that
+            # access tokens can be refreshed for once authenticated machines
+            token, expires_in = token_client.poll_token_endpoint(
+                resp, self._token_endpoint, device_code=resp.device_code, client_id=self._client_id
+            )
+            self._creds = Credentials(access_token=token, expires_in=expires_in, for_endpoint=self._endpoint)
+            KeyringStore.store(self._creds)
+        except Exception:
+            KeyringStore.delete(self._endpoint)
+            raise
