@@ -8,6 +8,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.extend.image_spec.base_image import ImageSpec
 from flytekit.models.documentation import Documentation
 from flytekit.models.security import Secret
 
@@ -85,6 +86,7 @@ def task(
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
     container_image: Optional[str] = None,
+    image_spec: Optional[ImageSpec] = None,
     environment: Optional[Dict[str, str]] = None,
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
@@ -170,6 +172,7 @@ def task(
                     @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
                     def foo2():
                         ...
+    :param image_spec: Define a image spec for building a docker image
     :param environment: Environment variables that should be added for this tasks execution
     :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
       to the primary container.
@@ -205,6 +208,7 @@ def task(
             fn,
             metadata=_metadata,
             container_image=container_image,
+            image_spec=image_spec,
             environment=environment,
             requests=requests,
             limits=limits,
