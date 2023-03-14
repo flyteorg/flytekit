@@ -1,6 +1,7 @@
+import os
+
 import pandas
 import pytest
-import os
 
 from flytekit import kwtypes, task, workflow
 from flytekit.configuration import DefaultImages

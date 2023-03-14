@@ -277,20 +277,13 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
                         cache_protocol
         """
         ctx = FlyteContextManager.current_context()
-        try:
-            final_path = self.path
-            if self.remote_source:
-                final_path = self.remote_source
-            elif self.remote_path:
-                final_path = self.remote_path
-            fs = ctx.file_access.get_filesystem_for_path(final_path, cache_type=cache_type, cache_options=cache_options)
-            yield fs.open(final_path, mode)
-        except ImportError as e:
-            print(
-                "To use streaming files, please install fsspec."
-                " Note: This will be bundled with flytekit in the future."
-            )
-            raise FlyteUserException("Install fsspec to use FlyteFile streaming.") from e
+        final_path = self.path
+        if self.remote_source:
+            final_path = self.remote_source
+        elif self.remote_path:
+            final_path = self.remote_path
+        fs = ctx.file_access.get_filesystem_for_path(final_path)
+        yield fs.open(final_path, mode, cache_type=cache_type, cache_options=cache_options)
 
     def __repr__(self):
         return self.path

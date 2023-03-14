@@ -11,6 +11,7 @@ from uuid import UUID
 
 import fsspec
 from dataclasses_json import config, dataclass_json
+from fsspec.utils import get_protocol
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -186,6 +187,12 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         return self._remote_directory
 
     @property
+    def sep(self) -> str:
+        if os.name == "nt" and get_protocol(self.path or self.remote_source or self.remote_directory) == "file":
+            return "\\"
+        return "/"
+
+    @property
     def remote_source(self) -> str:
         """
         If this is an input to a task, and the original path is s3://something, flytekit will download the
@@ -197,12 +204,14 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         # TODO we may want to use - https://github.com/fsspec/universal_pathlib
         if not name:
             name = UUID(int=random.getrandbits(128)).hex
-        return FlyteFile(path=os.path.join(self.path, name))
+        new_path = self.sep.join([self.path.rstrip(self.sep), name])  # trim trailing sep if any and join
+        return FlyteFile(path=new_path)
 
     def new_dir(self, name: typing.Optional[str] = None) -> FlyteDirectory:
         if not name:
             name = UUID(int=random.getrandbits(128)).hex
-        return FlyteDirectory(path=os.path.join(self.path, name))
+        new_path = self.sep.join([self.path.rstrip(self.sep), name])  # trim trailing sep if any and join
+        return FlyteDirectory(path=new_path)
 
     def download(self) -> str:
         return self.__fspath__()
