@@ -13,7 +13,7 @@ class BackendPluginServer(BackendPluginServiceServicer):
 
     def GetTask(self, request: plugin_system_pb2.TaskGetRequest, context) -> plugin_system_pb2.TaskGetResponse:
         plugin = BackendPluginRegistry.get_plugin(request.task_type)
-        return plugin.get(job_id=request.job_id, prev_state=request.prev_state)
+        return plugin.get(job_id=request.job_id)
 
     def DeleteTask(self, request: plugin_system_pb2.TaskDeleteRequest, context) -> plugin_system_pb2.TaskDeleteResponse:
         plugin = BackendPluginRegistry.get_plugin(request.task_type)

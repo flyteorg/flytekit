@@ -44,10 +44,7 @@ class BigQueryPlugin(BackendPluginBase):
 
         return plugin_system_pb2.TaskCreateResponse(job_id=query_job.job_id)
 
-    def get(self, job_id: str, prev_state: plugin_system_pb2.State) -> plugin_system_pb2.TaskGetResponse:
-        if prev_state == plugin_system_pb2.SUCCEEDED:
-            return TaskGetResponse(state=plugin_system_pb2.SUCCEEDED)
-
+    def get(self, job_id: str) -> plugin_system_pb2.TaskGetResponse:
         client = bigquery.Client()
         job = client.get_job(job_id)
         cur_state = convert_to_flyte_state(str(job.state))

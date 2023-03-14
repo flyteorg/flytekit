@@ -22,7 +22,7 @@ class BackendPluginBase:
         pass
 
     @abstractmethod
-    def get(self, job_id: str, prev_state: plugin_system_pb2.State) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, job_id: str) -> plugin_system_pb2.TaskGetResponse:
         pass
 
     @abstractmethod
