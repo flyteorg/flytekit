@@ -33,12 +33,12 @@ def test_base_plugin():
     p = BackendPluginBase(task_type="dummy")
     assert p.task_type == "dummy"
     p.create(None, "/tmp", None)
-    p.get("id", plugin_system_pb2.RUNNING)
+    p.get("id")
     p.delete("id")
 
 
 def test_dummy_plugin():
     p = BackendPluginRegistry.get_plugin("dummy")
     assert p.create(None, "/tmp", None).job_id == "dummy_id"
-    assert p.get("id", plugin_system_pb2.RUNNING).state == plugin_system_pb2.SUCCEEDED
+    assert p.get("id").state == plugin_system_pb2.SUCCEEDED
     assert p.delete("id") == plugin_system_pb2.TaskDeleteResponse()
