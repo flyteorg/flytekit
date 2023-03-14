@@ -433,6 +433,7 @@ def test_flyte_file_in_dyn():
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
 
+@pytest.mark.sandbox_test
 def test_file_open_things():
     @task
     def write_this_file_to_s3() -> FlyteFile:
