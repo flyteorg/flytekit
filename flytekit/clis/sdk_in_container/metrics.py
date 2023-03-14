@@ -7,7 +7,7 @@ from datetime import datetime
 
 from flyteidl.admin.execution_pb2 import WorkflowExecutionGetMetricsRequest
 from flyteidl.admin.common_pb2 import CategoricalSpanInfo
-from flyteidl.admin.node_execution_pb2 import NodeExecutionGetMetricsRequest
+#from flyteidl.admin.node_execution_pb2 import NodeExecutionGetMetricsRequest
 from flyteidl.core.identifier_pb2 import NodeExecutionIdentifier, WorkflowExecutionIdentifier
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
