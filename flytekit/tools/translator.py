@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask, SourceCode
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import SerializationSettings, ImageConfig, Image
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -18,6 +18,7 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
+from flytekit.extend.image_spec.base_image import build_docker_image
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -186,6 +187,11 @@ def get_serializable_task(
             # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
             # parent class
             container._args = prefix_with_fast_execute(settings, container.args)
+            if isinstance(entity, PythonAutoContainerTask) and entity.image_spec:
+                tag = settings.version.replace('=', '.')
+                image_name = f"{entity.name}:{tag}"
+                build_docker_image(entity.image_spec, image_name)
+                settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=f"{entity.image_spec.registry}/{entity.name}", tag=tag))
 
         # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
@@ -231,7 +237,12 @@ def get_serializable_workflow(
         # Ignore start nodes
         if n.id == _common_constants.GLOBAL_INPUT_NODE_ID:
             continue
-
+        if entity.image_spec:
+            # docker tag can't contain "="
+            tag = settings.version.replace('=', '.')
+            image_name = f"{entity.name}:{tag}"
+            build_docker_image(entity.image_spec, image_name)
+            settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=f"{entity.image_spec.registry}/{entity.name}", tag=tag))
         # Recursively serialize the node
         serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
 

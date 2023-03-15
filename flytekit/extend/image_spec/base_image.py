@@ -3,6 +3,7 @@ from typing import List, Optional
 from dataclasses import dataclass
 import docker
 import subprocess
+from flytekit.loggers import logger
 
 client = docker.from_env()
 
@@ -17,7 +18,8 @@ class ImageSpec:
         python_version: python version in the image.
     """
     packages: list[str]
-    os: str = "ubuntu20.04"
+    os: str = "pingsutw/envd_base:v2"
+    base_image: str = "ubuntu:20.04"
     registry: Optional[str] = None
     python_version: Optional[str] = None,
 
@@ -45,16 +47,15 @@ def build():
 
 def build_docker_image(image_spec: ImageSpec, name: str):
     cfg_path = create_envd_config(image_spec)
+    logger.info("building image...")
     p = subprocess.run(["envd", "build",
                         "--path", f"{pathlib.Path(cfg_path).parent}",
                         "--output", f"type=image,name=docker.io/{image_spec.registry}/{name},push=true"
                         ],
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    print("=====stdout=====")
-    print(p.stdout.decode())
-    print("=====stderr=====")
-    print(p.stderr.decode())
+    logger.info("pushed image")
+    if p.stderr:
+        print(p.stderr.decode())
 
 
 if __name__ == '__main__':

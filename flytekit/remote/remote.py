@@ -623,12 +623,9 @@ class FlyteRemote(object):
             )
             is_dummy_serialization_setting = True
 
-        print(print("type(cp_entity)", type(entity)))
-        print(entity.image_spec)
-        image_name = f"{entity.name}:{version.replace('=', '.')}"
-        print(image_name)
-        build_docker_image(entity.image_spec, image_name)
-        entity._container_image = f"{entity.image_spec.registry}/{image_name}"
+        if serialization_settings.version is None:
+            serialization_settings.version = version
+
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None
