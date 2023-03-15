@@ -44,6 +44,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         task_config: T,
         task_type="python-task",
         container_image: Optional[str] = None,
+        image_spec: Optional["ImageSpec"] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
@@ -97,6 +98,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             **kwargs,
         )
         self._container_image = container_image
+        self._image_spec = image_spec
         # TODO(katrogan): Implement resource overrides
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
@@ -125,6 +127,10 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
     @property
     def container_image(self) -> Optional[str]:
         return self._container_image
+
+    @property
+    def image_spec(self) -> Optional["ImageSpec"]:
+        return self._image_spec
 
     @property
     def resources(self) -> ResourceSpec:

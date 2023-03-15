@@ -166,6 +166,7 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
+    print("settings.version", settings.version)
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state

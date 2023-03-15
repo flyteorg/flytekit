@@ -43,10 +43,11 @@ def build():
     return cfg_path
 
 
-def build_docker_image(image_spec: ImageSpec):
+def build_docker_image(image_spec: ImageSpec, name: str):
     cfg_path = create_envd_config(image_spec)
     p = subprocess.run(["envd", "build",
                         "--path", f"{pathlib.Path(cfg_path).parent}",
+                        "--output", f"type=image,name=docker.io/{image_spec.registry}/{name},push=true"
                         ],
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 

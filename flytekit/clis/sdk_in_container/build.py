@@ -7,7 +7,8 @@ import click
 from flytekit.clis.sdk_in_container.run import load_naive_entity
 from flytekit.configuration import SerializationSettings, ImageConfig
 from flytekit.core.base_task import PythonTask
-from flytekit.tools.script_mode import _find_project_root
+from flytekit.extend.image_spec.base_image import build_docker_image
+from flytekit.tools.script_mode import _find_project_root, hash_file
 from flytekit.tools.translator import get_serializable
 
 _build_help = """Build a image for the flyte task or workflow."""
@@ -39,25 +40,29 @@ def build(_: click.Context, file: str, name: str):
     """
     m = OrderedDict()
     file = Path(file).resolve()
+    _, str_digest = hash_file(file)
     project_root = _find_project_root(file)
     rel_path = Path(file).relative_to(project_root)
     module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
 
     entity = load_naive_entity(module, name, project_root)
     for n in entity.nodes:
-        print(n.flyte_entity.container_image)
+        print(n.name)
+        print(n.flyte_entity.image_spec)
+        image_name = f"{n.name}:{str_digest}"
+        build_docker_image(n.flyte_entity.image_spec, name=image_name)
 
-    serialization_settings = SerializationSettings(
-        ImageConfig.auto_default_image(),
-        project="flytesnacks",
-        domain="development",
-        version="t1",
-    )
-    _ = get_serializable(m, settings=serialization_settings, entity=entity, options=None)
-    # print(m)
-    for entity in m:
-        if isinstance(entity, PythonTask):
-            print(entity.get_container(serialization_settings).image)
+    # serialization_settings = SerializationSettings(
+    #     ImageConfig.auto_default_image(),
+    #     project="flytesnacks",
+    #     domain="development",
+    #     version="t1",
+    # )
+    # _ = get_serializable(m, settings=serialization_settings, entity=entity, options=None)
+    # # print(m)
+    # for entity in m:
+    #     if isinstance(entity, PythonTask):
+    #         print(entity.get_container(serialization_settings).image)
 
 
 if __name__ == '__main__':

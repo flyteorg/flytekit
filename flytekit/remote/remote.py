@@ -43,6 +43,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
+from flytekit.extend.image_spec.base_image import build_docker_image
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
@@ -548,8 +549,6 @@ class FlyteRemote(object):
             return None
 
         if isinstance(cp_entity, task_models.TaskSpec):
-            if isinstance(cp_entity, FlyteTask):
-                version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
             try:
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)
@@ -623,6 +622,13 @@ class FlyteRemote(object):
                 version=version,
             )
             is_dummy_serialization_setting = True
+
+        print(print("type(cp_entity)", type(entity)))
+        print(entity.image_spec)
+        image_name = f"{entity.name}:{version.replace('=', '.')}"
+        print(image_name)
+        build_docker_image(entity.image_spec, image_name)
+        entity.container_image = f"{entity.image_spec.regisry}/{image_name}"
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None
