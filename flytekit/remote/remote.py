@@ -628,7 +628,7 @@ class FlyteRemote(object):
         image_name = f"{entity.name}:{version.replace('=', '.')}"
         print(image_name)
         build_docker_image(entity.image_spec, image_name)
-        entity.container_image = f"{entity.image_spec.regisry}/{image_name}"
+        entity._container_image = f"{entity.image_spec.registry}/{image_name}"
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None
