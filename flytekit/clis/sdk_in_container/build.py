@@ -50,7 +50,7 @@ def build(_: click.Context, file: str, name: str):
         print(n.name)
         print(n.flyte_entity.image_spec)
         image_name = f"{n.name}:{str_digest}"
-        build_docker_image(n.flyte_entity.image_spec, name=image_name)
+        # build_docker_image(n.flyte_entity.image_spec, name=image_name)
 
     # serialization_settings = SerializationSettings(
     #     ImageConfig.auto_default_image(),

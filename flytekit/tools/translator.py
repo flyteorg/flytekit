@@ -85,7 +85,7 @@ class Options(object):
 
     @classmethod
     def default_from(
-        cls, k8s_service_account: typing.Optional[str] = None, raw_data_prefix: typing.Optional[str] = None
+            cls, k8s_service_account: typing.Optional[str] = None, raw_data_prefix: typing.Optional[str] = None
     ) -> "Options":
         return cls(
             security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
@@ -98,10 +98,10 @@ class Options(object):
 
 
 def to_serializable_case(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    c: _core_wf.IfBlock,
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        c: _core_wf.IfBlock,
+        options: Optional[Options] = None,
 ) -> _core_wf.IfBlock:
     if c is None:
         raise ValueError("Cannot convert none cases to registrable")
@@ -110,10 +110,10 @@ def to_serializable_case(
 
 
 def to_serializable_cases(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    cases: List[_core_wf.IfBlock],
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        cases: List[_core_wf.IfBlock],
+        options: Optional[Options] = None,
 ) -> Optional[List[_core_wf.IfBlock]]:
     if cases is None:
         return None
@@ -143,7 +143,7 @@ def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[s
 
 
 def _fast_serialize_command_fn(
-    settings: SerializationSettings, task: PythonAutoContainerTask
+        settings: SerializationSettings, task: PythonAutoContainerTask
 ) -> Callable[[SerializationSettings], List[str]]:
     """
     This function is only applicable for Pod tasks.
@@ -157,8 +157,8 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
-    settings: SerializationSettings,
-    entity: FlyteLocalEntity,
+        settings: SerializationSettings,
+        entity: FlyteLocalEntity,
 ) -> TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -168,6 +168,12 @@ def get_serializable_task(
         settings.version,
     )
     print("settings.version", settings.version)
+    if isinstance(entity, PythonAutoContainerTask) and entity.image_spec:
+        tag = settings.version.replace('=', '.')
+        image_name = f"{entity.image_spec.registry}/{entity.name}"
+        build_docker_image(entity.image_spec, image_name, tag)
+        settings.image_config = ImageConfig.create_from(
+            default_image=Image(name="default", fqn=image_name, tag=tag))
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
@@ -187,11 +193,6 @@ def get_serializable_task(
             # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
             # parent class
             container._args = prefix_with_fast_execute(settings, container.args)
-            if isinstance(entity, PythonAutoContainerTask) and entity.image_spec:
-                tag = settings.version.replace('=', '.')
-                image_name = f"{entity.name}:{tag}"
-                build_docker_image(entity.image_spec, image_name)
-                settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=f"{entity.image_spec.registry}/{entity.name}", tag=tag))
 
         # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
@@ -225,10 +226,10 @@ def get_serializable_task(
 
 
 def get_serializable_workflow(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: WorkflowBase,
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: WorkflowBase,
+        options: Optional[Options] = None,
 ) -> admin_workflow_models.WorkflowSpec:
     # Serialize all nodes
     serialized_nodes = []
@@ -240,9 +241,10 @@ def get_serializable_workflow(
         if entity.image_spec:
             # docker tag can't contain "="
             tag = settings.version.replace('=', '.')
-            image_name = f"{entity.name}:{tag}"
-            build_docker_image(entity.image_spec, image_name)
-            settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=f"{entity.image_spec.registry}/{entity.name}", tag=tag))
+            image_name = f"{entity.image_spec.registry}/{entity.name}"
+            build_docker_image(entity.image_spec, image_name, tag)
+            settings.image_config = ImageConfig.create_from(
+                default_image=Image(name="default", fqn=image_name, tag=tag))
         # Recursively serialize the node
         serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
 
@@ -317,11 +319,11 @@ def get_serializable_workflow(
 
 
 def get_serializable_launch_plan(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: LaunchPlan,
-    recurse_downstream: bool = True,
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: LaunchPlan,
+        recurse_downstream: bool = True,
+        options: Optional[Options] = None,
 ) -> _launch_plan_models.LaunchPlan:
     """
     :param entity_mapping:
@@ -388,10 +390,10 @@ def get_serializable_launch_plan(
 
 
 def get_serializable_node(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: Node,
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: Node,
+        options: Optional[Options] = None,
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
         raise Exception(f"Node {entity.id} has no flyte entity")
@@ -551,10 +553,10 @@ def get_serializable_node(
 
 
 def get_serializable_branch_node(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: FlyteLocalEntity,
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: FlyteLocalEntity,
+        options: Optional[Options] = None,
 ) -> BranchNodeModel:
     # We have to iterate through the blocks to convert the nodes from the internal Node type to the Node model type.
     # This was done to avoid having to create our own IfElseBlock object (i.e. condition.py just uses the model
@@ -574,14 +576,14 @@ def get_serializable_branch_node(
 
 
 def get_reference_spec(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: ReferenceEntity
+        entity_mapping: OrderedDict, settings: SerializationSettings, entity: ReferenceEntity
 ) -> ReferenceSpec:
     template = ReferenceTemplate(entity.id, entity.reference.resource_type)
     return ReferenceSpec(template)
 
 
 def get_serializable_flyte_workflow(
-    entity: "FlyteWorkflow", settings: SerializationSettings
+        entity: "FlyteWorkflow", settings: SerializationSettings
 ) -> FlyteControlPlaneEntity:
     """
     TODO replace with deep copy
@@ -629,10 +631,10 @@ def get_serializable_flyte_task(entity: "FlyteTask", settings: SerializationSett
 
 
 def get_serializable(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: FlyteLocalEntity,
-    options: Optional[Options] = None,
+        entity_mapping: OrderedDict,
+        settings: SerializationSettings,
+        entity: FlyteLocalEntity,
+        options: Optional[Options] = None,
 ) -> FlyteControlPlaneEntity:
     """
     The flytekit authoring code produces objects representing Flyte entities (tasks, workflows, etc.). In order to
@@ -715,7 +717,7 @@ def get_serializable(
 
 
 def gather_dependent_entities(
-    serialized: OrderedDict,
+        serialized: OrderedDict,
 ) -> Tuple[
     Dict[_identifier_model.Identifier, TaskTemplate],
     Dict[_identifier_model.Identifier, admin_workflow_models.WorkflowSpec],
