@@ -513,6 +513,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
     print(cmd)
     print(os.getcwd())
+    dir_list = os.listdir("/root")
+    print(dir_list)
     subprocess.run(cmd, check=True)
 
 
