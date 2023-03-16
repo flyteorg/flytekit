@@ -502,7 +502,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
         _download_distribution(additional_distribution, dest_dir)
 
     # Insert the call to fast before the unbounded resolver args
-    cmd = ["cd", dest_dir, "&&"]
+    os.chdir(dest_dir)
+    cmd = []
     for arg in task_execute_cmd:
         if arg == "--resolver":
             cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
@@ -510,6 +511,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
+    print(cmd)
     subprocess.run(cmd, check=True)
 
 
