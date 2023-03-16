@@ -43,7 +43,6 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
-from flytekit.extend.image_spec.base_image import build_docker_image
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
@@ -625,7 +624,7 @@ class FlyteRemote(object):
 
         if serialization_settings.version is None:
             serialization_settings.version = version
-
+        print("serialization_settings serialization_settings", serialization_settings.version)
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None

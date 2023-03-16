@@ -1,13 +1,12 @@
 import pathlib
-from typing import List, Optional
-from dataclasses import dataclass
-import docker
 import subprocess
-from flytekit.loggers import logger
+from dataclasses import dataclass
+from typing import Optional
 
-client = docker.from_env()
+from dataclasses_json import dataclass_json
 
 
+@dataclass_json
 @dataclass
 class ImageSpec:
     """
@@ -17,11 +16,12 @@ class ImageSpec:
         registry: docker registry. if it's specified, flytekit will push the image.
         python_version: python version in the image.
     """
+
     packages: list[str]
-    os: str = "pingsutw/envd_base:v2"
-    base_image: str = "ubuntu:20.04"
+    os: str = "ubuntu:20.04"
+    base_image: str = "pingsutw/envd_base:v4"
     registry: Optional[str] = None
-    python_version: Optional[str] = None,
+    python_version: Optional[str] = (None,)
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
@@ -31,10 +31,11 @@ def create_envd_config(image_spec: ImageSpec) -> str:
 
     envd_config = f"""
 def build():
-    base(os="{image_spec.os}", language="python3")
+    base(image="{image_spec.base_image}", language="python3")
     install.python_packages(name = [{packages_list}])
 """
     from flytekit.core import context_manager
+
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
@@ -47,12 +48,18 @@ def build():
 
 def build_docker_image(image_spec: ImageSpec, name: str, tag: str):
     cfg_path = create_envd_config(image_spec)
-    logger.info("building image...")
-    p = subprocess.run(["envd", "build",
-                        "--path", f"{pathlib.Path(cfg_path).parent}",
-                        "--output", f"type=image,name={name}:{tag},push=true"
-                        ],
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    logger.info("pushed image")
+    print("building image...")
+    p = subprocess.run(
+        [
+            "envd",
+            "build",
+            "--path",
+            f"{pathlib.Path(cfg_path).parent}",
+            "--output",
+            f"type=image,name={name}:{tag},push=true",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     if p.stderr:
         print(p.stderr.decode())

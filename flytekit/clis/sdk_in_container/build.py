@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 
 from flytekit.clis.sdk_in_container.run import load_naive_entity
-from flytekit.configuration import SerializationSettings, ImageConfig
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.extend.image_spec.base_image import build_docker_image
 from flytekit.tools.script_mode import _find_project_root, hash_file
@@ -65,5 +65,5 @@ def build(_: click.Context, file: str, name: str):
     #         print(entity.get_container(serialization_settings).image)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     build(None, "/Users/kevin/git/flytekit/flyte-example/example_test.py", "wf")
