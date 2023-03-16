@@ -502,7 +502,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
         _download_distribution(additional_distribution, dest_dir)
 
     # Insert the call to fast before the unbounded resolver args
-    cmd = []
+    cmd = ["cd", dest_dir, "&&"]
     for arg in task_execute_cmd:
         if arg == "--resolver":
             cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])

@@ -708,6 +708,7 @@ class SerializationSettings(object):
     python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
+    source_root: Optional[str] = None
 
     def __post_init__(self):
         if self.flytekit_virtualenv_root is None:

@@ -61,5 +61,7 @@ def build_docker_image(image_spec: ImageSpec, name: str, tag: str):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+    print(p.stdout.decode())
     if p.stderr:
         print(p.stderr.decode())
+        raise Exception("failed to build the image.")
