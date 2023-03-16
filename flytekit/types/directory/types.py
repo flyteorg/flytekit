@@ -155,6 +155,12 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
 
     @classmethod
     def new_remote(cls) -> FlyteDirectory:
+        """
+        Create a new FlyteDirectory object using the currently configured default remote in the context (i.e.
+        the raw_output_prefix configured in the current FileAccessProvider object in the context).
+        This is used if you explicitly have a folder somewhere that you want to upload.
+        Alternatively you can also let your task return a FlyteDirectory object, and let flytekit handle uploading.
+        """
         d = FlyteContext.current_context().file_access.get_random_remote_directory()
         return FlyteDirectory(path=d)
 
