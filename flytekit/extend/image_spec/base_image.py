@@ -18,8 +18,7 @@ class ImageSpec:
     """
 
     packages: list[str]
-    os: str = "ubuntu:20.04"
-    base_image: str = "pingsutw/envd_base:v4"
+    base_image: str = "pingsutw/envd_base:v8"
     registry: Optional[str] = None
     python_version: Optional[str] = (None,)
 
@@ -29,10 +28,13 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     for pkg in image_spec.packages:
         packages_list += f'"{pkg}", '
 
-    envd_config = f"""
+    envd_config = f"""# syntax=v1
+
 def build():
-    base(image="{image_spec.base_image}", language="python3")
+    base(image="{image_spec.base_image}", dev=False)
     install.python_packages(name = [{packages_list}])
+    install.python(version="3.9")
+    runtime.environ(env={{"PYTHONPATH": "/"}})
 """
     from flytekit.core import context_manager
 
@@ -40,6 +42,7 @@ def build():
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
 
+    print(cfg_path)
     with open(cfg_path, "x") as f:
         f.write(envd_config)
 
