@@ -36,22 +36,6 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
-      - name: Sleep until pypi is available
-        id: bump
-        run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=1.4.2
-          LINK="https://pypi.org/project/flytekit/${VERSION}"
-          for i in {1..60}; do
-            if curl -L -I -s -f ${LINK} >/dev/null; then
-              echo "Found pypi"
-              exit 0
-            else
-              echo "Failed - Retrying in 10 seconds..."
-              sleep 10
-            fi
-          done
-          exit 1
       - name: Install dependencies
         run: |
           make setup
