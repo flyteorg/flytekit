@@ -50,11 +50,16 @@ jobs:
       - name: Sleep until pypi is available
         id: bump
         run: |
-          # from refs/tags/v1.2.3 get 1.2.3
+          # from refs/tags/v1.2.3 get 1.2.3 and make sure it's not an empty string
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          if [ -z "$VERSION" ]
+          then
+            echo "No tagged version found, exiting"
+            exit 1
+          fi
           LINK="https://pypi.org/project/flytekit/${VERSION}"
           for i in {1..60}; do
-            if curl -I -s -f ${LINK} >/dev/null; then
+            if curl -L -I -s -f ${LINK} >/dev/null; then
               echo "Found pypi"
               exit 0
             else

@@ -43,7 +43,7 @@ jobs:
           VERSION=1.4.2
           LINK="https://pypi.org/project/flytekit/${VERSION}"
           for i in {1..60}; do
-            if curl -I -s -f ${LINK} >/dev/null; then
+            if curl -L -I -s -f ${LINK} >/dev/null; then
               echo "Found pypi"
               exit 0
             else
