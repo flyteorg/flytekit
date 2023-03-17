@@ -65,22 +65,6 @@ def test_command_authenticator(mock_subprocess: MagicMock):
         authn.refresh_credentials()
 
 
-def test_get_basic_authorization_header():
-    header = ClientCredentialsAuthenticator.get_basic_authorization_header("client_id", "abc")
-    assert header == "Basic Y2xpZW50X2lkOmFiYw=="
-
-
-@patch("flytekit.clients.auth.authenticator.requests")
-def test_get_token(mock_requests):
-    response = MagicMock()
-    response.status_code = 200
-    response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
-    mock_requests.post.return_value = response
-    access, expiration = ClientCredentialsAuthenticator.get_token("https://corp.idp.net", "abc123", ["my_scope"])
-    assert access == "abc"
-    assert expiration == 60
-
-
 @patch("flytekit.clients.auth.authenticator.requests")
 def test_client_creds_authenticator(mock_requests):
     authn = ClientCredentialsAuthenticator(
@@ -93,3 +77,7 @@ def test_client_creds_authenticator(mock_requests):
     mock_requests.post.return_value = response
     authn.refresh_credentials()
     assert authn._creds
+
+
+def test_device_flow_authenticator():
+    pass

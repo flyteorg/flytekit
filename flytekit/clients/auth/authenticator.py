@@ -219,7 +219,9 @@ class DeviceCodeAuthenticator(Authenticator):
         self._scope = cfg.scopes
         self._token_endpoint = cfg.token_endpoint
         if self._device_auth_endpoint is None:
-            raise ValueError("Device Authentication is not available on the Flyte backend / authentication server")
+            raise AuthenticationError(
+                "Device Authentication is not available on the Flyte backend / authentication server"
+            )
         super().__init__(
             endpoint=endpoint, header_key=header_key or cfg.header_key, credentials=KeyringStore.retrieve(endpoint)
         )
@@ -235,9 +237,7 @@ OR copy paste the following URL: {resp.verification_uri_complete}
         try:
             # Currently the refresh token is not retreived. We may want to add support for refreshTokens so that
             # access tokens can be refreshed for once authenticated machines
-            token, expires_in = token_client.poll_token_endpoint(
-                resp, self._token_endpoint, device_code=resp.device_code, client_id=self._client_id
-            )
+            token, expires_in = token_client.poll_token_endpoint(resp, self._token_endpoint, client_id=self._client_id)
             self._creds = Credentials(access_token=token, expires_in=expires_in, for_endpoint=self._endpoint)
             KeyringStore.store(self._creds)
         except Exception:

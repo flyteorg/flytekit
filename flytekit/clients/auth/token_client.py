@@ -106,8 +106,8 @@ def get_token(
         logging.error("Status Code ({}) received from IDP: {}".format(response.status_code, response.text))
         raise AuthenticationError("Status Code ({}) received from IDP: {}".format(response.status_code, response.text))
 
-    response = response.json()
-    return response["access_token"], response["expires_in"]
+    j = response.json()
+    return j["access_token"], j["expires_in"]
 
 
 def get_device_code(
@@ -127,16 +127,17 @@ def get_device_code(
     return DeviceCodeResponse.from_json_response(resp.json())
 
 
-def poll_token_endpoint(
-    resp: DeviceCodeResponse, token_endpoint: str, client_id: str, device_code: str
-) -> typing.Tuple[str, int]:
+def poll_token_endpoint(resp: DeviceCodeResponse, token_endpoint: str, client_id: str) -> typing.Tuple[str, int]:
     tick = datetime.now()
     interval = timedelta(seconds=resp.interval)
     end_time = tick + timedelta(seconds=resp.expires_in)
     while tick < end_time:
         try:
             access_token, expires_in = get_token(
-                token_endpoint, grant_type=GrantType.DEVICE_CODE, client_id=client_id, device_code=device_code
+                token_endpoint,
+                grant_type=GrantType.DEVICE_CODE,
+                client_id=client_id,
+                device_code=resp.device_code,
             )
             print("Authentication successful!")
             return access_token, expires_in
@@ -147,3 +148,4 @@ def poll_token_endpoint(
         print(f"Authentication Pending...")
         time.sleep(interval.total_seconds())
         tick = tick + interval
+    raise AuthenticationError("Authentication failed!")
