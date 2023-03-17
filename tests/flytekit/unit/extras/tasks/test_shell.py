@@ -2,6 +2,7 @@ import datetime
 import os
 import tempfile
 import typing
+from collections import OrderedDict
 from dataclasses import dataclass
 from subprocess import CalledProcessError
 
@@ -9,8 +10,10 @@ import pytest
 from dataclasses_json import dataclass_json
 
 import flytekit
-from flytekit import kwtypes
+from flytekit import kwtypes, workflow, Resources
+from flytekit.configuration import ImageConfig, Image
 from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task
+from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -24,16 +27,36 @@ else:
     script_sh = os.path.join(testdata, "script.sh")
     script_sh_2 = os.path.join(testdata, "script_args_env.sh")
 
-
-def test_shell_task_no_io():
-    t = ShellTask(
+shell_task = ShellTask(
         name="test",
         script="""
         echo "Hello World!"
         """,
     )
 
-    t()
+
+def test_shell_task_no_io():
+    shell_task()
+
+
+def test_shell_task_override():
+    @workflow
+    def my_wf():
+        shell_task().with_overrides(requests=Resources(cpu="1", mem="1Gi"))
+        # return t.with_overrides(requests=Resources(cpu="1", mem="1Gi"))
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node.overrides is not None
+    print("test test ", wf_spec.template.nodes[0].task_node.overrides)
 
 
 def test_shell_task_fail():
