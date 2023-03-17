@@ -113,7 +113,7 @@ def aggregate_spans(spans):
     for span in spans:
         span_type = span.WhichOneof("info")
         if span_type == "category":
-            category = CategoricalSpanInfo.Category.Name(span.category.category)
+            category = span.category.category
 
             start_time = datetime.fromtimestamp(span.start_time.seconds + span.start_time.nanos/1e9)
             end_time = datetime.fromtimestamp(span.end_time.seconds + span.end_time.nanos/1e9)
@@ -191,13 +191,12 @@ def print_span(span, indent, identifier):
 
     span_type = span.WhichOneof("info")
     if span_type == "category":
-        category = CategoricalSpanInfo.Category.Name(span.category.category)
         indent_str = ""
         for i in range(indent):
             indent_str += "  "
 
         print("{:25s}{:25s}{:25s} {:7.2f}s    {:s}{:s}".format(
-            category,
+            span.category.category,
             start_time.strftime("%m-%d %H:%M:%S.%f"),
             end_time.strftime("%m-%d %H:%M:%S.%f"),
             (end_time - start_time).total_seconds(),
