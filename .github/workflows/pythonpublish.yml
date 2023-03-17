@@ -56,12 +56,13 @@ jobs:
           for i in {1..60}; do
             if curl -I -s -f ${LINK} >/dev/null; then
               echo "Found pypi"
-              break
+              exit 0
             else
-              echo "Failed - Retrying in 10 seconds..."
+              echo "Did not find - Retrying in 10 seconds..."
               sleep 10
             fi
           done
+          exit 1
         shell: bash
     outputs:
       version: ${{ steps.bump.outputs.version }}
