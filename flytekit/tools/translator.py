@@ -163,7 +163,6 @@ def _update_entity_image(settings: SerializationSettings, entity: FlyteLocalEnti
         return
     if settings.fast_serialization_settings.enabled:
         tag = calculate_hash_from_image_spec(entity.image_spec)
-        # Always override destination_dir because we will override
         settings.fast_serialization_settings.destination_dir = "/"
     else:
         tag = settings.version
