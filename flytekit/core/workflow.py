@@ -212,7 +212,7 @@ class WorkflowBase(object):
         return self._docs
 
     @property
-    def image_spec(self):
+    def image_spec(self) -> ImageSpec:
         return self._image_spec
 
     @property

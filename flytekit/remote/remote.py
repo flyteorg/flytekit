@@ -624,7 +624,7 @@ class FlyteRemote(object):
 
         if serialization_settings.version is None:
             serialization_settings.version = version
-        print("serialization_settings serialization_settings", serialization_settings.version)
+
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None

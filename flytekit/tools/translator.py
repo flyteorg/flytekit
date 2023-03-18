@@ -20,7 +20,7 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.extend.image_spec.base_image import build_docker_image
+from flytekit.extend.image_spec.base_image import build_docker_image, calculate_hash_from_image_spec
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -162,12 +162,11 @@ def _update_entity_image(settings: SerializationSettings, entity: FlyteLocalEnti
     if not isinstance(entity, (PythonAutoContainerTask, WorkflowBase)) or not entity.image_spec:
         return
     if settings.fast_serialization_settings.enabled:
-        h = hashlib.md5(bytes(entity.image_spec.to_json(), "utf-8"))
-        tag = base64.urlsafe_b64encode(h.digest()).decode("ascii")
+        tag = calculate_hash_from_image_spec(entity.image_spec)
+        # Always override destination_dir because we will override
+        settings.fast_serialization_settings.destination_dir = "/"
     else:
         tag = settings.version
-    # docker tag can't contain "="
-    tag = tag.replace("=", ".")
     image_name = f"{entity.image_spec.registry}/flytekit"
     build_docker_image(entity.image_spec, image_name, tag)
     settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=image_name, tag=tag))
@@ -184,7 +183,6 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
-    print("kevin settings.version", settings.version)
     _update_entity_image(settings, entity)
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:

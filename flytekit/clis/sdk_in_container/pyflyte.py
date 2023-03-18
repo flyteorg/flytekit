@@ -133,7 +133,7 @@ main.add_command(init)
 main.add_command(run)
 main.add_command(register)
 main.add_command(backfill)
-# main.add_command(build)
+main.add_command(build)
 main.epilog
 
 if __name__ == "__main__":
