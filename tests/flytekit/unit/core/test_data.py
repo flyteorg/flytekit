@@ -1,6 +1,8 @@
 import os
+import random
 import shutil
 import tempfile
+from uuid import UUID
 
 import fsspec
 import mock
@@ -10,6 +12,7 @@ from flytekit.configuration import Config, S3Config
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider, s3_setup_args
 from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.file.file import FlyteFile
 
 local = fsspec.filesystem("file")
 root = os.path.abspath(os.sep)
@@ -101,6 +104,8 @@ def source_folder():
     nested_dir = os.path.join(src_dir, "nested")
     local.mkdir(nested_dir)
     local.touch(os.path.join(src_dir, "original.txt"))
+    with open(os.path.join(src_dir, "original.txt"), "w") as fh:
+        fh.write("hello original")
     local.touch(os.path.join(nested_dir, "more.txt"))
     yield src_dir
     shutil.rmtree(parent_temp)
@@ -296,3 +301,58 @@ def test_crawl_s3(source_folder):
         res = fd_file.crawl()
         files = [r for r in res]
         assert len(files) == 1
+
+
+@pytest.mark.sandbox_test
+def test_walk_local_copy_to_s3(source_folder):
+    dc = Config.for_sandbox().data_config
+    explicit_empty_folder = UUID(int=random.getrandbits(128)).hex
+    raw_output_path = f"s3://my-s3-bucket/testdata/{explicit_empty_folder}"
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output_path, data_config=dc)
+
+    ctx = FlyteContextManager.current_context()
+    local_fd = FlyteDirectory(path=source_folder)
+    local_fd_crawl = local_fd.crawl()
+    local_fd_crawl = [x for x in local_fd_crawl]
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)):
+        fd = FlyteDirectory.new_remote()
+        assert raw_output_path in fd.path
+
+        # Write source folder files to new remote path
+        for root_path, suffix in local_fd_crawl:
+            new_file = fd.new_file(suffix)  # noqa
+            with open(os.path.join(root_path, suffix), "rb") as r:  # noqa
+                with new_file.open("w") as w:
+                    print(f"Writing, t {type(w)} p {new_file.path} |{suffix}|")
+                    w.write(str(r.read()))
+
+        new_crawl = fd.crawl()
+        new_suffixes = [y for x, y in new_crawl]
+        assert len(new_suffixes) == 2  # should have written two files
+
+
+def test_ls_only():
+    print("======")
+    dc = Config.for_sandbox().data_config
+    provider = FileAccessProvider(
+        local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket", data_config=dc
+    )
+    fs = provider.get_filesystem("s3")
+    file = "s3://my-s3-bucket/testdata/62b675134e3bb8a081ca818e2558cbc8"
+
+    print("Find:")
+    xx = fs.find(file, detail=True)
+    for x in xx:
+        print(x)
+
+    print("Walk:")
+    xx = fs.walk(file, detail=True)
+    for x in xx:
+        print(x)
+
+    print("Crawl ====>")
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)):
+        local_fd = FlyteDirectory(path=file)
+        local_fd_crawl = local_fd.crawl(maxdepth=3)
+        print([x for x in local_fd_crawl])

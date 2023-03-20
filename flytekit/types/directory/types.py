@@ -158,8 +158,9 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         """
         Create a new FlyteDirectory object using the currently configured default remote in the context (i.e.
         the raw_output_prefix configured in the current FileAccessProvider object in the context).
-        This is used if you explicitly have a folder somewhere that you want to upload.
-        Alternatively you can also let your task return a FlyteDirectory object, and let flytekit handle uploading.
+        This is used if you explicitly have a folder somewhere that you want to create files under.
+        If you want to write a whole folder, you can let your task return a FlyteDirectory object,
+        and let flytekit handle the uploading.
         """
         d = FlyteContext.current_context().file_access.get_random_remote_directory()
         return FlyteDirectory(path=d)
@@ -207,16 +208,27 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         return typing.cast(str, self._remote_source)
 
     def new_file(self, name: typing.Optional[str] = None) -> FlyteFile:
+        """
+        This will create a new file under the current folder.
+        If given a name, it will use the name given, otherwise it'll pick a random string.
+        Collisions are not checked.
+        """
         # TODO we may want to use - https://github.com/fsspec/universal_pathlib
         if not name:
             name = UUID(int=random.getrandbits(128)).hex
-        new_path = self.sep.join([self.path.rstrip(self.sep), name])  # trim trailing sep if any and join
+        new_path = self.sep.join([str(self.path).rstrip(self.sep), name])  # trim trailing sep if any and join
         return FlyteFile(path=new_path)
 
     def new_dir(self, name: typing.Optional[str] = None) -> FlyteDirectory:
+        """
+        This will create a new folder under the current folder.
+        If given a name, it will use the name given, otherwise it'll pick a random string.
+        Collisions are not checked.
+        """
         if not name:
             name = UUID(int=random.getrandbits(128)).hex
-        new_path = self.sep.join([self.path.rstrip(self.sep), name])  # trim trailing sep if any and join
+
+        new_path = self.sep.join([str(self.path).rstrip(self.sep), name])  # trim trailing sep if any and join
         return FlyteDirectory(path=new_path)
 
     def download(self) -> str:

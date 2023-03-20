@@ -154,6 +154,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
     @classmethod
     def new_remote_file(cls, name: typing.Optional[str] = None) -> FlyteFile:
+        """
+        Create a new FlyteFile object with a remote path.
+        """
         ctx = FlyteContextManager.current_context()
         remote_path = ctx.file_access.get_random_remote_path(name)
         return cls(path=remote_path)
@@ -283,7 +286,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         elif self.remote_path:
             final_path = self.remote_path
         fs = ctx.file_access.get_filesystem_for_path(final_path)
-        yield fs.open(final_path, mode, cache_type=cache_type, cache_options=cache_options)
+        f = fs.open(final_path, mode, cache_type=cache_type, cache_options=cache_options)
+        yield f
+        f.close()
 
     def __repr__(self):
         return self.path

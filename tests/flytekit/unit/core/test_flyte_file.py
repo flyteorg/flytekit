@@ -4,6 +4,7 @@ import tempfile
 import typing
 from unittest.mock import MagicMock
 
+import fsspec
 import pytest
 
 import flytekit.configuration
