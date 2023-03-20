@@ -79,3 +79,10 @@ def test_extract_task_module(test_input, expected):
     except Exception:
         FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT = old
         raise
+
+
+local_task = task(d.inner_function)
+
+
+def test_local_task_wrap():
+    assert local_task.instantiated_in == "tests.flytekit.unit.core.tracker.test_tracking"

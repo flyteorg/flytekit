@@ -1,13 +1,17 @@
 import os
+import random
 import shutil
 import tempfile
+from uuid import UUID
 
 import fsspec
 import mock
 import pytest
 
 from flytekit.configuration import Config, S3Config
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider, s3_setup_args
+from flytekit.types.directory.types import FlyteDirectory
 
 local = fsspec.filesystem("file")
 root = os.path.abspath(os.sep)
@@ -99,6 +103,8 @@ def source_folder():
     nested_dir = os.path.join(src_dir, "nested")
     local.mkdir(nested_dir)
     local.touch(os.path.join(src_dir, "original.txt"))
+    with open(os.path.join(src_dir, "original.txt"), "w") as fh:
+        fh.write("hello original")
     local.touch(os.path.join(nested_dir, "more.txt"))
     yield src_dir
     shutil.rmtree(parent_temp)
@@ -213,3 +219,112 @@ def test_s3_setup_args_env_aws(mock_os, mock_get_config_file):
     kwargs = s3_setup_args(S3Config.auto())
     # not explicitly in kwargs, since fsspec/boto3 will use these env vars by default
     assert kwargs == {}
+
+
+def test_crawl_local_nt(source_folder):
+    """
+    running this to see what it prints
+    """
+    if os.name != "nt":  # don't
+        return
+    source_folder = os.path.join(source_folder, "")  # ensure there's a trailing / or \
+    fd = FlyteDirectory(path=source_folder)
+    res = fd.crawl()
+    split = [(x, y) for x, y in res]
+    print(f"NT split {split}")
+
+    # Test crawling a directory without trailing / or \
+    source_folder = source_folder[:-1]
+    fd = FlyteDirectory(path=source_folder)
+    res = fd.crawl()
+    files = [os.path.join(x, y) for x, y in res]
+    print(f"NT files joined {files}")
+
+
+def test_crawl_local_non_nt(source_folder):
+    """
+    crawl on the source folder fixture should return for example
+        ('/var/folders/jx/54tww2ls58n8qtlp9k31nbd80000gp/T/tmpp14arygf/source/', 'original.txt')
+        ('/var/folders/jx/54tww2ls58n8qtlp9k31nbd80000gp/T/tmpp14arygf/source/', 'nested/more.txt')
+    """
+    if os.name == "nt":  # don't
+        return
+    source_folder = os.path.join(source_folder, "")  # ensure there's a trailing / or \
+    fd = FlyteDirectory(path=source_folder)
+    res = fd.crawl()
+    split = [(x, y) for x, y in res]
+    files = [os.path.join(x, y) for x, y in split]
+    assert set(split) == {(source_folder, "original.txt"), (source_folder, os.path.join("nested", "more.txt"))}
+    expected = {os.path.join(source_folder, "original.txt"), os.path.join(source_folder, "nested", "more.txt")}
+    assert set(files) == expected
+
+    # Test crawling a directory without trailing / or \
+    source_folder = source_folder[:-1]
+    fd = FlyteDirectory(path=source_folder)
+    res = fd.crawl()
+    files = [os.path.join(x, y) for x, y in res]
+    assert set(files) == expected
+
+    # Test crawling a single file
+    fd = FlyteDirectory(path=os.path.join(source_folder, "original.txt"))
+    res = fd.crawl()
+    files = [os.path.join(x, y) for x, y in res]
+    assert len(files) == 0
+
+
+@pytest.mark.sandbox_test
+def test_crawl_s3(source_folder):
+    """
+    ('s3://my-s3-bucket/testdata/5b31492c032893b515650f8c76008cf7', 'original.txt')
+    ('s3://my-s3-bucket/testdata/5b31492c032893b515650f8c76008cf7', 'nested/more.txt')
+    """
+    # Running mkdir on s3 filesystem doesn't do anything so leaving out for now
+    dc = Config.for_sandbox().data_config
+    provider = FileAccessProvider(
+        local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
+    )
+    s3_random_target = provider.get_random_remote_directory()
+    provider.put_data(source_folder, s3_random_target, is_multipart=True)
+    ctx = FlyteContextManager.current_context()
+    expected = {f"{s3_random_target}/original.txt", f"{s3_random_target}/nested/more.txt"}
+
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)):
+        fd = FlyteDirectory(path=s3_random_target)
+        res = fd.crawl()
+        res = [(x, y) for x, y in res]
+        files = [os.path.join(x, y) for x, y in res]
+        assert set(files) == expected
+        assert set(res) == {(s3_random_target, "original.txt"), (s3_random_target, os.path.join("nested", "more.txt"))}
+
+        fd_file = FlyteDirectory(path=f"{s3_random_target}/original.txt")
+        res = fd_file.crawl()
+        files = [r for r in res]
+        assert len(files) == 1
+
+
+@pytest.mark.sandbox_test
+def test_walk_local_copy_to_s3(source_folder):
+    dc = Config.for_sandbox().data_config
+    explicit_empty_folder = UUID(int=random.getrandbits(128)).hex
+    raw_output_path = f"s3://my-s3-bucket/testdata/{explicit_empty_folder}"
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output_path, data_config=dc)
+
+    ctx = FlyteContextManager.current_context()
+    local_fd = FlyteDirectory(path=source_folder)
+    local_fd_crawl = local_fd.crawl()
+    local_fd_crawl = [x for x in local_fd_crawl]
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)):
+        fd = FlyteDirectory.new_remote()
+        assert raw_output_path in fd.path
+
+        # Write source folder files to new remote path
+        for root_path, suffix in local_fd_crawl:
+            new_file = fd.new_file(suffix)  # noqa
+            with open(os.path.join(root_path, suffix), "rb") as r:  # noqa
+                with new_file.open("w") as w:
+                    print(f"Writing, t {type(w)} p {new_file.path} |{suffix}|")
+                    w.write(str(r.read()))
+
+        new_crawl = fd.crawl()
+        new_suffixes = [y for x, y in new_crawl]
+        assert len(new_suffixes) == 2  # should have written two files

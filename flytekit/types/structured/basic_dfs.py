@@ -62,22 +62,6 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset_type.format = PARQUET
         return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
-    def ddencode(
-        self,
-        ctx: FlyteContext,
-        structured_dataset: StructuredDataset,
-        structured_dataset_type: StructuredDatasetType,
-    ) -> literals.StructuredDataset:
-
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
-        df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
-        local_dir = ctx.file_access.get_random_local_directory()
-        local_path = os.path.join(local_dir, f"{0:05}")
-        df.to_parquet(local_path, coerce_timestamps="us", allow_truncated_timestamps=False)
-        ctx.file_access.upload_directory(local_dir, path)
-        structured_dataset_type.format = PARQUET
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
-
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
     def __init__(self):
@@ -100,20 +84,6 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
             logger.debug("S3 source detected, attempting anonymous S3 access")
             kwargs = get_storage_options(ctx.file_access.data_config, uri, anon=True)
             return pd.read_parquet(uri, columns=columns, storage_options=kwargs)
-
-    def dcccecode(
-        self,
-        ctx: FlyteContext,
-        flyte_value: literals.StructuredDataset,
-        current_task_metadata: StructuredDatasetMetadata,
-    ) -> pd.DataFrame:
-        path = flyte_value.uri
-        local_dir = ctx.file_access.get_random_local_directory()
-        ctx.file_access.get_data(path, local_dir, is_multipart=True)
-        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
-            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
-            return pd.read_parquet(local_dir, columns=columns)
-        return pd.read_parquet(local_dir)
 
 
 class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):

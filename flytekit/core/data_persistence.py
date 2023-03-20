@@ -107,16 +107,16 @@ class FileAccessProvider(object):
         return self._data_config
 
     def get_filesystem(
-        self, protocol: typing.Optional[str] = None, anonymous: bool = False
+        self, protocol: typing.Optional[str] = None, anonymous: bool = False, **kwargs
     ) -> typing.Optional[fsspec.AbstractFileSystem]:
         if not protocol:
             return self._default_remote
-        kwargs = {}  # type: typing.Dict[str, typing.Any]
         if protocol == "file":
-            kwargs = {"auto_mkdir": True}
+            kwargs["auto_mkdir"] = True
         elif protocol == "s3":
-            kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+            s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
+            s3kwargs.update(kwargs)
+            return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
             if anonymous:
                 kwargs["token"] = _ANON
@@ -128,9 +128,9 @@ class FileAccessProvider(object):
 
         return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
-    def get_filesystem_for_path(self, path: str = "", anonymous: bool = False) -> fsspec.AbstractFileSystem:
+    def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
-        return self.get_filesystem(protocol, anonymous=anonymous)
+        return self.get_filesystem(protocol, anonymous=anonymous, **kwargs)
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
