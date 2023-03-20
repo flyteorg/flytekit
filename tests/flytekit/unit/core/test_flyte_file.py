@@ -4,12 +4,11 @@ import tempfile
 import typing
 from unittest.mock import MagicMock
 
-import fsspec
 import pytest
 
 import flytekit.configuration
-from flytekit.configuration import Config, Image, ImageConfig, S3Config
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.configuration import Config, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.launch_plan import LaunchPlan

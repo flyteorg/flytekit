@@ -12,7 +12,6 @@ from flytekit.configuration import Config, S3Config
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider, s3_setup_args
 from flytekit.types.directory.types import FlyteDirectory
-from flytekit.types.file.file import FlyteFile
 
 local = fsspec.filesystem("file")
 root = os.path.abspath(os.sep)
