@@ -47,11 +47,28 @@ jobs:
         run: |
           make -C plugins build_all_plugins
           make -C plugins publish_all_plugins
-      # Added sleep because PYPI take some time in publish
-      - name: Sleep for 180 seconds
-        uses: jakejarvis/wait-action@master
-        with:
-          time: '180s'
+      - name: Sleep until pypi is available
+        id: pypiwait
+        run: |
+          # from refs/tags/v1.2.3 get 1.2.3 and make sure it's not an empty string
+          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          if [ -z "$VERSION" ]
+          then
+            echo "No tagged version found, exiting"
+            exit 1
+          fi
+          LINK="https://pypi.org/project/flytekit/${VERSION}"
+          for i in {1..60}; do
+            if curl -L -I -s -f ${LINK} >/dev/null; then
+              echo "Found pypi"
+              exit 0
+            else
+              echo "Did not find - Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          exit 1
+        shell: bash
     outputs:
       version: ${{ steps.bump.outputs.version }}
 
