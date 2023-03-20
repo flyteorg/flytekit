@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import collections
 import copy
+import functools
 import inspect
 import typing
 from collections import OrderedDict
@@ -288,7 +289,6 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     For now the fancy object, maybe in the future a dumb object.
 
     """
-
     type_hints = get_type_hints(fn, include_extras=True)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)

@@ -2,7 +2,7 @@
 Flytekit map tasks specify how to run a single task across a list of inputs. Map tasks themselves are constructed with
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
-
+import functools
 import os
 import typing
 from contextlib import contextmanager
@@ -14,7 +14,7 @@ from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
-from flytekit.core.interface import transform_interface_to_list_interface
+from flytekit.core.interface import transform_interface_to_list_interface, Interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
@@ -34,11 +34,11 @@ class MapPythonTask(PythonTask):
     _ids = count(0)
 
     def __init__(
-        self,
-        python_function_task: PythonFunctionTask,
-        concurrency: Optional[int] = None,
-        min_success_ratio: Optional[float] = None,
-        **kwargs,
+            self,
+            python_function_task: typing.Union[PythonFunctionTask, functools.partial],
+            concurrency: Optional[int] = None,
+            min_success_ratio: Optional[float] = None,
+            **kwargs,
     ):
         """
         :param python_function_task: This argument is implicitly passed and represents the repeatable function
@@ -47,13 +47,32 @@ class MapPythonTask(PythonTask):
         :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
             successfully before terminating this task and marking it successful.
         """
-        if len(python_function_task.python_interface.inputs.keys()) > 1:
-            raise ValueError("Map tasks only accept python function tasks with 0 or 1 inputs")
+        self._partial = None
+        if isinstance(python_function_task, functools.partial):
+            self._partial = python_function_task
+            python_function_task = self._partial.func
+
+        if not isinstance(python_function_task, PythonFunctionTask):
+            raise ValueError(
+                "Map tasks can only accept either python functions decorated with `@flytekit.task` or"
+                " `functools.partial` of `@flytekit.task`")
+
+        unassigned_inputs = python_function_task.python_interface.inputs
+        if self._partial:
+            pre_assigned_inputs = self._partial.keywords.keys()
+            for k in pre_assigned_inputs:
+                del unassigned_inputs[k]
+
+        if len(unassigned_inputs) > 1:
+            raise ValueError(
+                "Map tasks only accept python function tasks with 0 or 1 inputs,"
+                " for more than one inputs currently, use `functools.partial` to fix certain inputs.")
 
         if len(python_function_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
 
-        collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
+        mod_interface = Interface(unassigned_inputs, python_function_task.python_interface.outputs)
+        collection_interface = transform_interface_to_list_interface(mod_interface)
         instance = next(self._ids)
         _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
         name = f"{mod}.mapper_{f}_{instance}"
@@ -134,6 +153,16 @@ class MapPythonTask(PythonTask):
     @property
     def run_task(self) -> PythonFunctionTask:
         return self._run_task
+
+    def __call__(self, *args, **kwargs):
+        """
+        This call method modifies the kwargs and adds kwargs from partial.
+        """
+        if self._partial:
+            for k, v in self._partial.keywords.items():
+                if k not in kwargs:
+                    kwargs[k] = v
+        super().__call__(*args, **kwargs)
 
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
