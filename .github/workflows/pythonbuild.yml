@@ -47,24 +47,6 @@ jobs:
         uses: codecov/codecov-action@v3.1.0
         with:
           fail_ci_if_error: false
-      - name: Experiment
-        id: bump
-        run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          VERSION="1.4.2"
-          LINK="https://pypi.org/project/flytekit/${VERSION}"
-          echo "::set-output name=version::$VERSION"
-          for i in {1..20}; do
-            if curl -I -s -f ${LINK} >/dev/null; then
-              echo "Found 1.4.2!"
-              break
-            else
-              echo "Failed - Retrying in 10 seconds..."
-              sleep 10
-            fi
-          done
-        shell: bash
 
   build-plugins:
     runs-on: ubuntu-latest
