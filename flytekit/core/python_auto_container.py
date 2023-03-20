@@ -129,7 +129,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         return self._container_image
 
     @property
-    def image_spec(self) -> Optional["ImageSpec"]:
+    def image_spec(self) -> Optional[ImageSpec]:
         return self._image_spec
 
     @property

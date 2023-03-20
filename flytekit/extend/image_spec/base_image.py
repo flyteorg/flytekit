@@ -5,7 +5,7 @@ import os
 import pathlib
 import subprocess
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
 from dataclasses_json import dataclass_json
 
@@ -23,7 +23,7 @@ class ImageSpec:
         python_version: python version in the image.
     """
 
-    packages: list[str]
+    packages: List[str]
     base_image: str = "pingsutw/envd_base:v8"
     registry: Optional[str] = None
     python_version: Optional[str] = "3.9"
