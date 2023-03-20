@@ -36,7 +36,7 @@ setup(
         "click>=6.6,<9.0",
         "croniter>=0.3.20,<4.0.0",
         "deprecated>=1.0,<2.0",
-        "docker>=5.0.3,<7.0.0",
+        "docker>=4.0.0,<7.0.0",
         "python-dateutil>=2.1",
         # Restrict grpcio and grpcio-status.  Version 1.50.0 pulls in a version of protobuf that is not compatible
         # with the old protobuf library (as described in https://developers.google.com/protocol-buffers/docs/news/2022-05-06)
@@ -60,7 +60,6 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
-        "retry==0.9.2",
         "dataclasses-json>=0.5.2",
         "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
