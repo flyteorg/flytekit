@@ -437,7 +437,7 @@ def test_flyte_file_in_dyn():
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
 
-def test_flyte_file_annotated_hashmethod():
+def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
         return str(ff.path)
 
@@ -449,5 +449,4 @@ def test_flyte_file_annotated_hashmethod():
     def wf(path: str) -> None:
         t1(path=path)
 
-    with tempfile.NamedTemporaryFile() as f:
-        wf(path=f.name)
+    wf(path=local_dummy_file)
