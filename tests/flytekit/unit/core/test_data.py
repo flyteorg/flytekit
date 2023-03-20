@@ -329,30 +329,3 @@ def test_walk_local_copy_to_s3(source_folder):
         new_crawl = fd.crawl()
         new_suffixes = [y for x, y in new_crawl]
         assert len(new_suffixes) == 2  # should have written two files
-
-
-def test_ls_only():
-    print("======")
-    dc = Config.for_sandbox().data_config
-    provider = FileAccessProvider(
-        local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket", data_config=dc
-    )
-    fs = provider.get_filesystem("s3")
-    file = "s3://my-s3-bucket/testdata/62b675134e3bb8a081ca818e2558cbc8"
-
-    print("Find:")
-    xx = fs.find(file, detail=True)
-    for x in xx:
-        print(x)
-
-    print("Walk:")
-    xx = fs.walk(file, detail=True)
-    for x in xx:
-        print(x)
-
-    print("Crawl ====>")
-    ctx = FlyteContextManager.current_context()
-    with FlyteContextManager.with_context(ctx.with_file_access(provider)):
-        local_fd = FlyteDirectory(path=file)
-        local_fd_crawl = local_fd.crawl(maxdepth=3)
-        print([x for x in local_fd_crawl])
