@@ -64,7 +64,7 @@ class MapPythonTask(PythonTask):
         if len(python_function_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
 
-        self._bound_inputs = set(bound_inputs) or set()
+        self._bound_inputs = set(bound_inputs) if bound_inputs else set()
         if self._partial:
             self._bound_inputs = set(self._partial.keywords.keys())
 
@@ -104,6 +104,7 @@ class MapPythonTask(PythonTask):
         """
         TODO ADD bound variables to the resolver. Maybe we need a different resolver?
         """
+        mt = MapTaskResolver()
         container_args = [
             "pyflyte-map-execute",
             "--inputs",
@@ -117,9 +118,9 @@ class MapPythonTask(PythonTask):
             "--prev-checkpoint",
             "{{.prevCheckpointPrefix}}",
             "--resolver",
-            self._run_task.task_resolver.location,
+            mt.name(),
             "--",
-            *self._run_task.task_resolver.loader_args(settings, self._run_task),
+            *mt.loader_args(settings, self),
         ]
 
         if self._cmd_prefix:
@@ -268,7 +269,12 @@ class MapPythonTask(PythonTask):
         return outputs
 
 
-def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_success_ratio: float = 1.0, **kwargs):
+def map_task(
+    task_function: typing.Union[PythonFunctionTask, functools.partial],
+    concurrency: int = 0,
+    min_success_ratio: float = 1.0,
+    **kwargs,
+):
     """
     Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.
@@ -353,7 +359,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> MapPythonTask:
         """
         Loader args should be of the form
-        --vars "var1,var2,.." --resolver "resolver" [resolver_args]
+        vars "var1,var2,.." resolver "resolver" [resolver_args]
         """
         _, bound_vars, _, resolver, *resolver_args = loader_args
         resolver_obj = load_object_from_module(resolver)
@@ -364,11 +370,10 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
 
     def loader_args(self, settings: SerializationSettings, t: MapPythonTask) -> List[str]:
         return [
-            "--vars",
+            "vars",
             ",".join(t.bound_inputs()),
-            "--resolver",
+            "resolver",
             t.run_task.task_resolver.location,
-            "--",
             *t.run_task.task_resolver.loader_args(settings, t.run_task),
         ]
 
