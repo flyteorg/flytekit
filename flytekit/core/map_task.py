@@ -3,6 +3,7 @@ Flytekit map tasks specify how to run a single task across a list of inputs. Map
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
 import functools
+import logging
 import os
 import typing
 from contextlib import contextmanager
@@ -362,6 +363,8 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
         vars "var1,var2,.." resolver "resolver" [resolver_args]
         """
         _, bound_vars, _, resolver, *resolver_args = loader_args
+        logging.info(f"MapTask found task resolver {resolver} and arguments {resolver_args}")
+        print(f"--- Loading inner-- {resolver} +++ {resolver_args}")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
@@ -371,7 +374,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     def loader_args(self, settings: SerializationSettings, t: MapPythonTask) -> List[str]:
         return [
             "vars",
-            ",".join(t.bound_inputs()),
+            f'{",".join(t.bound_inputs())}',
             "resolver",
             t.run_task.task_resolver.location,
             *t.run_task.task_resolver.loader_args(settings, t.run_task),
