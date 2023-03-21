@@ -23,7 +23,7 @@ from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.core.map_task import MapPythonTask
+from flytekit.core.map_task import MapPythonTask, MapTaskResolver
 from flytekit.core.promise import VoidPromise
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
@@ -391,12 +391,11 @@ def _execute_map_task(
     with setup_execution(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
-        resolver_obj = load_object_from_module(resolver)
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
-        if not isinstance(_task_def, PythonFunctionTask):
-            raise Exception("Map tasks cannot be run with instance tasks.")
-        map_task = MapPythonTask(_task_def, max_concurrency)
+        mtr = MapTaskResolver()
+        print("--------MAP TASK RESOLVER ARGS----")
+        print(resolver_args)
+        print("---- DONE----")
+        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         task_index = _compute_array_job_index()
         output_prefix = os.path.join(output_prefix, str(task_index))
