@@ -164,12 +164,14 @@ class ClientCredentialsAuthenticator(Authenticator):
         client_secret: str,
         cfg_store: ClientConfigStore,
         header_key: str = None,
+        scopes: typing.List[str] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
         cfg = cfg_store.get_client_config()
         self._token_endpoint = cfg.token_endpoint
-        self._scopes = cfg.scopes
+        # Use scopes from `flytekit.configuration.PlatformConfig` if passed
+        self._scopes = scopes or cfg.scopes
         self._client_id = client_id
         self._client_secret = client_secret
         super().__init__(endpoint, cfg.header_key or header_key)
