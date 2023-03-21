@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import collections
 import copy
-import functools
 import inspect
 import typing
 from collections import OrderedDict
@@ -20,6 +19,28 @@ from flytekit.models.literals import Void
 from flytekit.types.pickle import FlytePickle
 
 T = typing.TypeVar("T")
+
+
+def repr_kv(k: str, v: Union[str, Tuple[Type, Any]]):
+    if isinstance(v, tuple):
+        if v[1]:
+            return f"{k}: {v[0]}={v[1]}"
+        v = v[0]
+    return f"{k}: {v}"
+
+
+def repr_type_signature(io: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]]) -> str:
+    """
+    Converts an inputs and outputs to a type signature
+    """
+    s = "("
+    i = 0
+    for k, v in io.items():
+        if i > 0:
+            s += ", "
+        s += repr_kv(k, v)
+        i = i + 1
+    return s + ")"
 
 
 class Interface(object):
@@ -58,7 +79,9 @@ class Interface(object):
             variables = [k for k in outputs.keys()]
 
             # TODO: This class is a duplicate of the one in create_task_outputs. Over time, we should move to this one.
-            class Output(collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)):  # type: ignore
+            class Output(
+                collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)
+            ):  # type: ignore
                 """
                 This class can be used in two different places. For multivariate-return entities this class is used
                 to rewrap the outputs so that our with_overrides function can work.
@@ -168,6 +191,12 @@ class Interface(object):
             new_outputs[k] = v
         return Interface(self._inputs, new_outputs)
 
+    def __str__(self):
+        return f"{repr_type_signature(self._inputs)} -> {repr_type_signature(self._outputs)}"
+
+    def __repr__(self):
+        return str(self)
+
 
 def transform_inputs_to_parameters(
     ctx: context_manager.FlyteContext, interface: Interface
@@ -221,7 +250,7 @@ def transform_interface_to_typed_interface(
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
-def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
+def transform_types_to_list_of_type(m: Dict[str, type], bound_inputs: typing.Set[str]) -> Dict[str, type]:
     """
     Converts a given variables to be collections of their type. This is useful for array jobs / map style code.
     It will create a collection of types even if any one these types is not a collection type
@@ -231,6 +260,10 @@ def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
 
     all_types_are_collection = True
     for k, v in m.items():
+        if k in bound_inputs:
+            # Skip the inputs that are bound. If they are bound, it does not matter if they are collection or
+            # singletons
+            continue
         v_type = type(v)
         if v_type != typing.List and v_type != list:
             all_types_are_collection = False
@@ -241,17 +274,22 @@ def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
 
     om = {}
     for k, v in m.items():
-        om[k] = typing.List[v]  # type: ignore
+        if k in bound_inputs:
+            om[k] = v
+        else:
+            om[k] = typing.List[v]  # type: ignore
     return om  # type: ignore
 
 
-def transform_interface_to_list_interface(interface: Interface) -> Interface:
+def transform_interface_to_list_interface(interface: Interface, bound_inputs: typing.Set[str]) -> Interface:
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
+    :param interface: Interface to be upgraded toa list interface
+    :param bound_inputs: fixed inputs that should not upgraded to a list and will be maintained as scalars.
     """
-    map_inputs = transform_types_to_list_of_type(interface.inputs)
-    map_outputs = transform_types_to_list_of_type(interface.outputs)
+    map_inputs = transform_types_to_list_of_type(interface.inputs, bound_inputs)
+    map_outputs = transform_types_to_list_of_type(interface.outputs, set())
 
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
@@ -412,7 +450,8 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
                 "Tuples should be used to indicate multiple return values, found only one return variable."
             )
         return OrderedDict(
-            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)  # type: ignore
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
+            # type: ignore
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:
