@@ -1,5 +1,3 @@
-import os
-
 import pandas
 import pytest
 
@@ -12,7 +10,8 @@ from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.types.schema import FlyteSchema
 
 ctx = context_manager.FlyteContextManager.current_context()
-EXAMPLE_DB = os.path.join(os.path.dirname(os.path.realpath(__file__)), "chinook.zip")
+EXAMPLE_DB = ctx.file_access.get_random_local_path("chinook.zip")
+ctx.file_access.get_data("https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip", EXAMPLE_DB)
 
 # This task belongs to test_task_static but is intentionally here to help test tracking
 tk = SQLite3Task(

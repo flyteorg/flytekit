@@ -9,7 +9,3 @@ def tasks():
     @task
     def foo():
         pass
-
-
-def inner_function(a: str) -> str:
-    return "hello"
