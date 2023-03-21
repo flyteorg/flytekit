@@ -1,0 +1,32 @@
+# This Dockerfile is here to help with end-to-end testing
+# From flytekit
+# $ docker build -f Dockerfile.dev --build-arg PYTHON_VERSION=3.10 -t localhost:30000/flytekittest:someversion .
+# $ docker push localhost:30000/flytekittest:someversion
+# From your test user code
+# $ pyflyte run --image localhost:30000/flytekittest:someversion
+
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim-buster
+
+MAINTAINER Flyte Team <users@flyte.org>
+LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
+
+WORKDIR /root
+
+ARG VERSION
+
+RUN apt-get update && apt-get install build-essential vim -y
+
+COPY . /flytekit
+
+# Pod tasks should be exposed in the default image
+RUN pip install -e /flytekit
+RUN pip install -e /flytekit/plugins/flytekit-k8s-pod
+RUN pip install -e /flytekit/plugins/flytekit-deck-standard
+RUN pip install scikit-learn
+
+ENV PYTHONPATH "/flytekit:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"
+
+RUN useradd -u 1000 flytekit
+RUN chown flytekit: /root
+USER flytekit
