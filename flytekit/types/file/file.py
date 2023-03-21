@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
+from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
@@ -334,6 +335,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         if python_val is None:
             raise TypeTransformerFailedError("None value cannot be converted to a file.")
+
+        # Correctly handle `Annotated[FlyteFile, ...]` by extracting the origin type
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
 
         if not (python_type is os.PathLike or issubclass(python_type, FlyteFile)):
             raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")

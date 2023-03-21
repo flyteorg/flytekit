@@ -5,12 +5,14 @@ import typing
 from unittest.mock import MagicMock
 
 import pytest
+from typing_extensions import Annotated
 
 import flytekit.configuration
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
@@ -431,6 +433,21 @@ def test_flyte_file_in_dyn():
         return t2(ff=n1)
 
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
+
+
+def test_flyte_file_annotated_hashmethod(local_dummy_file):
+    def calc_hash(ff: FlyteFile) -> str:
+        return str(ff.path)
+
+    @task
+    def t1(path: str) -> Annotated[FlyteFile, HashMethod(calc_hash)]:
+        return FlyteFile(path)
+
+    @workflow
+    def wf(path: str) -> None:
+        t1(path=path)
+
+    wf(path=local_dummy_file)
 
 
 @pytest.mark.sandbox_test
