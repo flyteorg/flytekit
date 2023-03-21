@@ -6,8 +6,6 @@ import yaml
 from datetime import datetime
 
 from flyteidl.admin.execution_pb2 import WorkflowExecutionGetMetricsRequest
-from flyteidl.admin.common_pb2 import CategoricalSpanInfo
-#from flyteidl.admin.node_execution_pb2 import NodeExecutionGetMetricsRequest
 from flyteidl.core.identifier_pb2 import NodeExecutionIdentifier, WorkflowExecutionIdentifier
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
@@ -92,15 +90,15 @@ def metrics_dump(
 
 def aggregate_reference_span(span):
     id = ""
-    id_type = span.reference.WhichOneof('id')
+    id_type = span.WhichOneof('id')
     if id_type == "workflow_id":
-        id = span.reference.workflow_id.name
+        id = span.workflow_id.name
     elif id_type == "node_id":
-        id = span.reference.node_id.node_id
+        id = span.node_id.node_id
     elif id_type == "task_id":
-        id = span.reference.task_id.retry_attempt
+        id = span.task_id.retry_attempt
 
-    spans = aggregate_spans(span.reference.spans)
+    spans = aggregate_spans(span.spans)
     return id, spans
 
 def aggregate_spans(spans):
@@ -111,23 +109,21 @@ def aggregate_spans(spans):
     workflows = {}
  
     for span in spans:
-        span_type = span.WhichOneof("info")
-        if span_type == "category":
-            category = span.category.category
+        id_type = span.WhichOneof("id")
+        if id_type == "operation_id":
+            operation_id = span.operation_id
 
             start_time = datetime.fromtimestamp(span.start_time.seconds + span.start_time.nanos/1e9)
             end_time = datetime.fromtimestamp(span.end_time.seconds + span.end_time.nanos/1e9)
             total_time = (end_time - start_time).total_seconds()
 
-            if category in breakdown:
-                breakdown[category] += total_time
+            if operation_id in breakdown:
+                breakdown[operation_id] += total_time
             else:
-                breakdown[category] = total_time
-
-        elif span_type == "reference":
+                breakdown[operation_id] = total_time
+        else:
             id, underlying_span = aggregate_reference_span(span)
 
-            id_type = span.reference.WhichOneof('id')
             if id_type == "workflow_id":
                 workflows[id] = underlying_span
             elif id_type == "node_id":
@@ -135,11 +131,11 @@ def aggregate_spans(spans):
             elif id_type == "task_id":
                 tasks[id] = underlying_span
 
-            for category, total_time in underlying_span["breakdown"].items():
-                if category in breakdown:
-                    breakdown[category] += total_time
+            for operation_id, total_time in underlying_span["breakdown"].items():
+                if operation_id in breakdown:
+                    breakdown[operation_id] += total_time
                 else:
-                    breakdown[category] = total_time
+                    breakdown[operation_id] = total_time
 
     span = {
         "breakdown": breakdown
@@ -180,7 +176,7 @@ def metrics_explain(
     response = sync_client.get_execution_metrics(request)
 
     # print execution spans
-    print('{:25s}{:25s}{:25s} {:>8s}    {:s}'.format('category', 'start_timestamp', 'end_timestamp', 'duration', 'entity'))
+    print('{:25s}{:25s}{:25s} {:>8s}    {:s}'.format('operation', 'start_timestamp', 'end_timestamp', 'duration', 'entity'))
     print('-'*140)
 
     print_span(response.span, -1, "")
@@ -189,14 +185,16 @@ def print_span(span, indent, identifier):
     start_time = datetime.fromtimestamp(span.start_time.seconds + span.start_time.nanos/1e9)
     end_time = datetime.fromtimestamp(span.end_time.seconds + span.end_time.nanos/1e9)
 
-    span_type = span.WhichOneof("info")
-    if span_type == "category":
+    id_type = span.WhichOneof('id')
+    span_identifier = ""
+
+    if id_type == "operation_id":
         indent_str = ""
         for i in range(indent):
             indent_str += "  "
 
         print("{:25s}{:25s}{:25s} {:7.2f}s    {:s}{:s}".format(
-            span.category.category,
+            span.operation_id,
             start_time.strftime("%m-%d %H:%M:%S.%f"),
             end_time.strftime("%m-%d %H:%M:%S.%f"),
             (end_time - start_time).total_seconds(),
@@ -204,19 +202,17 @@ def print_span(span, indent, identifier):
             identifier,
         ))
 
-    elif span_type == "reference":
-        id_type = span.reference.WhichOneof('id')
-        span_identifier = ""
-
+        span_identifier = identifier + "/" + span.operation_id
+    else:
         if id_type == "workflow_id":
-            reference_identifier = "workflow/" + span.reference.workflow_id.name
+            span_identifier = "workflow/" + span.workflow_id.name
         elif id_type == "node_id":
-            reference_identifier = "node/" + span.reference.node_id.node_id
+            span_identifier = "node/" + span.node_id.node_id
         elif id_type == "task_id":
-            reference_identifier = "task/" + str(span.reference.task_id.retry_attempt)
+            span_identifier = "task/" + str(span.task_id.retry_attempt)
 
-        for under_span in span.reference.spans:
-            print_span(under_span, indent+1, reference_identifier)
+    for under_span in span.spans:
+        print_span(under_span, indent+1, span_identifier)
 
 metrics.add_command(metrics_dump)
 metrics.add_command(metrics_explain)
