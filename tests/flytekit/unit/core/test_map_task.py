@@ -1,3 +1,4 @@
+import functools
 import typing
 from collections import OrderedDict
 
@@ -6,7 +7,7 @@ import pytest
 import flytekit.configuration
 from flytekit import LaunchPlan, map_task
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.map_task import MapPythonTask
+from flytekit.core.map_task import MapPythonTask, MapTaskResolver
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
@@ -34,6 +35,11 @@ def t1(a: int) -> str:
 def t2(a: int) -> str:
     b = a + 2
     return str(b)
+
+
+@task(cache=True, cache_version="1")
+def t3(a: int, b: str, c: float) -> str:
+    pass
 
 
 # This test is for documentation.
@@ -194,3 +200,33 @@ def test_map_task_metadata():
     assert mapped_1.metadata is map_meta
     mapped_2 = map_task(t2)
     assert mapped_2.metadata is t2.metadata
+
+
+def test_map_task_resolver(serialization_settings):
+    list_outputs = {"o0": typing.List[str]}
+    mt = map_task(t3)
+    assert mt.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
+    assert mt.python_interface.outputs == list_outputs
+    mtr = MapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+    t = mtr.load_task(loader_args=args)
+    assert t.python_interface.inputs == mt.python_interface.inputs
+    assert t.python_interface.outputs == mt.python_interface.outputs
+
+    mt = map_task(functools.partial(t3, b="hello", c=1.0))
+    assert mt.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
+    assert mt.python_interface.outputs == list_outputs
+    mtr = MapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+    t = mtr.load_task(loader_args=args)
+    assert t.python_interface.inputs == mt.python_interface.inputs
+    assert t.python_interface.outputs == mt.python_interface.outputs
+
+    mt = map_task(functools.partial(t3, b="hello"))
+    assert mt.python_interface.inputs == {"a": typing.List[int], "b": str, "c": typing.List[float]}
+    assert mt.python_interface.outputs == list_outputs
+    mtr = MapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+    t = mtr.load_task(loader_args=args)
+    assert t.python_interface.inputs == mt.python_interface.inputs
+    assert t.python_interface.outputs == mt.python_interface.outputs
