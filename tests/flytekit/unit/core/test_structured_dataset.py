@@ -1,17 +1,21 @@
+import os
 import tempfile
 import typing
 
 import pandas as pd
 import pyarrow as pa
 import pytest
+from fsspec.utils import get_protocol
 from typing_extensions import Annotated
 
 import flytekit.configuration
-from flytekit import kwtypes, task
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.base_task import kwtypes
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
+from flytekit.core.workflow import workflow
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
@@ -23,7 +27,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     convert_schema_type_to_structured_dataset_type,
     extract_cols_and_format,
-    protocol_prefix,
 )
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
@@ -38,23 +41,79 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     image_config=ImageConfig(Image(name="name", fqn="asdf/fdsa", tag="123")),
     env={},
 )
+df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 
 def test_protocol():
-    assert protocol_prefix("s3://my-s3-bucket/file") == "s3"
-    assert protocol_prefix("/file") == "file"
+    assert get_protocol("s3://my-s3-bucket/file") == "s3"
+    assert get_protocol("/file") == "file"
 
 
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
 
+def test_formats_make_sense():
+    @task
+    def t1(a: pd.DataFrame) -> pd.DataFrame:
+        print(a)
+        return generate_pandas()
+
+    # this should be an empty string format
+    assert t1.interface.outputs["o0"].type.structured_dataset_type.format == ""
+    assert t1.interface.inputs["a"].type.structured_dataset_type.format == ""
+
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+        )
+    ):
+        result = t1(a=generate_pandas())
+        val = result.val.scalar.value
+        assert val.metadata.structured_dataset_type.format == "parquet"
+
+
+def test_setting_of_unset_formats():
+    custom = Annotated[StructuredDataset, "parquet"]
+    example = custom(dataframe=df, uri="/path")
+    # It's okay that the annotation is not used here yet.
+    assert example.file_format == ""
+
+    @task
+    def t2(path: str) -> StructuredDataset:
+        sd = StructuredDataset(dataframe=df, uri=path)
+        return sd
+
+    @workflow
+    def wf(path: str) -> StructuredDataset:
+        return t2(path=path)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fname = os.path.join(tmp_dir, "somewhere")
+        res = wf(path=fname)
+    # Now that it's passed through an encoder however, it should be set.
+    assert res.file_format == "parquet"
+
+
+def test_json():
+    sd = StructuredDataset(dataframe=df, uri="/some/path")
+    sd.file_format = "myformat"
+    json_str = sd.to_json()
+    new_sd = StructuredDataset.from_json(json_str)
+    assert new_sd.file_format == "myformat"
+
+
 def test_types_pandas():
     pt = pd.DataFrame
     lt = TypeEngine.to_literal_type(pt)
     assert lt.structured_dataset_type is not None
-    assert lt.structured_dataset_type.format == PARQUET
+    assert lt.structured_dataset_type.format == ""
     assert lt.structured_dataset_type.columns == []
+
+    pt = Annotated[pd.DataFrame, "csv"]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.structured_dataset_type.format == "csv"
 
 
 def test_annotate_extraction():
@@ -68,7 +127,7 @@ def test_annotate_extraction():
     a, b, c, d = extract_cols_and_format(pd.DataFrame)
     assert a is pd.DataFrame
     assert b is None
-    assert c is None
+    assert c == ""
     assert d is None
 
 
@@ -115,9 +174,10 @@ def test_types_sd():
 
 def test_retrieving():
     assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET) is not None
-    with pytest.raises(ValueError):
-        # We don't have a default "" format encoder
-        StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", "")
+    # Asking for a generic means you're okay with any one registered for that type assuming there's just one.
+    assert StructuredDatasetTransformerEngine.get_encoder(
+        pd.DataFrame, "file", ""
+    ) is StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET)
 
     class TempEncoder(StructuredDatasetEncoder):
         def __init__(self, protocol):
@@ -188,9 +248,10 @@ def test_fill_in_literal_type():
         ) -> literals.StructuredDataset:
             return literals.StructuredDataset(uri="")
 
-    StructuredDatasetTransformerEngine.register(TempEncoder("myavro"), default_for_type=True)
+    default_encoder = TempEncoder("myavro")
+    StructuredDatasetTransformerEngine.register(default_encoder, default_for_type=True)
     lt = TypeEngine.to_literal_type(MyDF)
-    assert lt.structured_dataset_type.format == "myavro"
+    assert lt.structured_dataset_type.format == ""
 
     ctx = FlyteContextManager.current_context()
     fdt = StructuredDatasetTransformerEngine()
@@ -222,13 +283,16 @@ def test_slash_register():
 
     # Check that registering with a / triggers the file protocol instead.
     StructuredDatasetTransformerEngine.register(TempEncoder("/"))
-    assert StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("file") is not None
+    res = StructuredDatasetTransformerEngine.get_encoder(MyDF, "file", "/")
+    # Test that the one we got was registered under fsspec
+    assert res is StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("fsspec")["/"]
+    assert res is not None
 
 
 def test_sd():
     sd = StructuredDataset(dataframe="hi")
     sd.uri = "my uri"
-    assert sd.file_format == PARQUET
+    assert sd.file_format == ""
 
     with pytest.raises(ValueError, match="No dataframe type set"):
         sd.all()
@@ -383,7 +447,7 @@ def test_format_correct():
     assert df_literal_type.structured_dataset_type.format == "avro"
 
     sd = annotated_sd_type(df)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Failed to find a handler"):
         TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
 
     StructuredDatasetTransformerEngine.register(TempEncoder(), default_for_type=False)

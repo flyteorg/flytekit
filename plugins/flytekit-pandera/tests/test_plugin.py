@@ -48,6 +48,8 @@ def test_pandera_dataframe_type_hints():
         def invalid_wf() -> pandera.typing.DataFrame[OutSchema]:
             return transform2(df=transform1(df=invalid_df))
 
+        invalid_wf()
+
     # raise error when executing workflow with invalid input
     @workflow
     def wf_with_df_input(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:

@@ -21,7 +21,7 @@ from flytekit.tools.module_loader import load_object_from_module
 TC = TypeVar("TC")
 
 
-class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
+class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):  # type: ignore
     """
     Please take a look at the comments for :py:class`flytekit.extend.ExecutableTemplateShimTask` as well. This class
     should be subclassed and a custom Executor provided as a default to this parent class constructor
@@ -166,10 +166,12 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
             data_loading_config=None,
             environment=env,
             storage_request=self.resources.requests.storage,
+            ephemeral_storage_request=self.resources.requests.ephemeral_storage,
             cpu_request=self.resources.requests.cpu,
             gpu_request=self.resources.requests.gpu,
             memory_request=self.resources.requests.mem,
             storage_limit=self.resources.limits.storage,
+            ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
             cpu_limit=self.resources.limits.cpu,
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
@@ -227,7 +229,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
 
     # The return type of this function is different, it should be a Task, but it's not because it doesn't make
     # sense for ExecutableTemplateShimTask to inherit from Task.
-    def load_task(self, loader_args: List[str]) -> ExecutableTemplateShimTask:
+    def load_task(self, loader_args: List[str]) -> ExecutableTemplateShimTask:  # type: ignore
         logger.info(f"Task template loader args: {loader_args}")
         ctx = FlyteContext.current_context()
         task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")  # type: ignore
@@ -238,7 +240,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         executor_class = load_object_from_module(loader_args[1])
         return ExecutableTemplateShimTask(task_template_model, executor_class)
 
-    def loader_args(self, settings: SerializationSettings, t: PythonCustomizedContainerTask) -> List[str]:
+    def loader_args(self, settings: SerializationSettings, t: PythonCustomizedContainerTask) -> List[str]:  # type: ignore
         return ["{{.taskTemplatePath}}", f"{t.executor_type.__module__}.{t.executor_type.__name__}"]
 
     def get_all_tasks(self) -> List[Task]:

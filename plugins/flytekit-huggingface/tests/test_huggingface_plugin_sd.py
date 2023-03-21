@@ -68,3 +68,15 @@ def test_datasets_renderer():
     df = pd.DataFrame({"col1": [1, 3, 2], "col2": list("abc")})
     dataset = datasets.Dataset.from_pandas(df)
     assert HuggingFaceDatasetRenderer().to_html(dataset) == str(dataset).replace("\n", "<br>")
+
+
+def test_parquet_to_datasets():
+    df = pd.DataFrame({"name": ["Alice"], "age": [10]})
+
+    @task
+    def create_sd() -> StructuredDataset:
+        return StructuredDataset(dataframe=df)
+
+    sd = create_sd()
+    dataset = sd.open(datasets.Dataset).all()
+    assert dataset.data == datasets.Dataset.from_pandas(df).data

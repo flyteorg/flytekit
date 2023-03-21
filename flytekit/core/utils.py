@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from flytekit.loggers import logger
-from flytekit.models import task as _task_models
+from flytekit.models import task as task_models
 
 
 def _dnsify(value: str) -> str:
@@ -51,8 +51,8 @@ def _dnsify(value: str) -> str:
 def _get_container_definition(
     image: str,
     command: List[str],
-    args: List[str],
-    data_loading_config: Optional[_task_models.DataLoadingConfig] = None,
+    args: Optional[List[str]] = None,
+    data_loading_config: Optional[task_models.DataLoadingConfig] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
@@ -64,7 +64,7 @@ def _get_container_definition(
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-) -> _task_models.Container:
+) -> task_models.Container:
     storage_limit = storage_limit
     storage_request = storage_request
     ephemeral_storage_limit = ephemeral_storage_limit
@@ -76,50 +76,49 @@ def _get_container_definition(
     memory_limit = memory_limit
     memory_request = memory_request
 
+    # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
     if storage_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
+            task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.STORAGE, storage_request)
         )
     if ephemeral_storage_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
+            task_models.Resources.ResourceEntry(
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
             )
         )
     if cpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
+        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.CPU, cpu_request))
     if gpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
+        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.GPU, gpu_request))
     if memory_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
-        )
+        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_request))
 
     limits = []
     if storage_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit))
+        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.STORAGE, storage_limit))
     if ephemeral_storage_limit:
         limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
+            task_models.Resources.ResourceEntry(
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
             )
         )
     if cpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
+        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.CPU, cpu_limit))
     if gpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
+        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.GPU, gpu_limit))
     if memory_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit))
+        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_limit))
 
     if environment is None:
         environment = {}
 
-    return _task_models.Container(
+    return task_models.Container(
         image=image,
         command=command,
         args=args,
-        resources=_task_models.Resources(limits=limits, requests=requests),
+        resources=task_models.Resources(limits=limits, requests=requests),
         env=environment,
         config={},
         data_loading_config=data_loading_config,

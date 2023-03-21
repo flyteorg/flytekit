@@ -1,5 +1,4 @@
 import os
-import pathlib
 import typing
 
 import click
@@ -7,27 +6,23 @@ import click
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
-from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.loggers import cli_logger
-from flytekit.tools.fast_registration import fast_package
-from flytekit.tools.repo import find_common_root, load_packages_and_modules
-from flytekit.tools.repo import register as repo_register
-from flytekit.tools.script_mode import hash_file
-from flytekit.tools.translator import Options
+from flytekit.tools import repo
 
 _register_help = """
-This command is similar to package but instead of producing a zip file, all your Flyte entities are compiled,
-and then sent to the backend specified by your config file. Think of this as combining the pyflyte package
-and the flytectl register step in one command. This is why you see switches you'd normally use with flytectl
+This command is similar to ``package`` but instead of producing a zip file, all your Flyte entities are compiled,
+and then sent to the backend specified by your config file. Think of this as combining the ``pyflyte package``
+and the ``flytectl register`` steps in one command. This is why you see switches you'd normally use with flytectl
 like service account here.
 
-Note: This command runs "fast" register by default. Future work to come to add a non-fast version.
-This means that a zip is created from the detected root of the packages given, and uploaded. Just like with
-pyflyte run, tasks registered from this command will download and unzip that code package before running.
+Note: This command runs "fast" register by default.
+This means that a zip is created from the detected root of the packages given and uploaded. Just like with
+``pyflyte run``, tasks registered from this command will download and unzip that code package before running.
 
 Note: This command only works on regular Python packages, not namespace packages. When determining
-      the root of your project, it finds the first folder that does not have an __init__.py file.
+the root of your project, it finds the first folder that does not have a ``__init__.py`` file.
 """
 
 
@@ -57,11 +52,11 @@ Note: This command only works on regular Python packages, not namespace packages
     type=click.UNPROCESSED,
     callback=ImageConfig.validate_image,
     default=[DefaultImages.default_image()],
-    help="A fully qualified tag for an docker image, e.g. somedocker.com/myimage:someversion123. This is a "
-    "multi-option and can be of the form --image xyz.io/docker:latest "
-    "--image my_image=xyz.io/docker2:latest. Note, the `name=image_uri`. The name is optional, if not "
+    help="A fully qualified tag for an docker image, for example ``somedocker.com/myimage:someversion123``. This is a "
+    "multi-option and can be of the form ``--image xyz.io/docker:latest"
+    " --image my_image=xyz.io/docker2:latest``. Note, the ``name=image_uri``. The name is optional, if not "
     "provided the image will be used as the default image. All the names have to be unique, and thus "
-    "there can only be one --image option with no name.",
+    "there can only be one ``--image`` option with no name.",
 )
 @click.option(
     "-o",
@@ -72,7 +67,7 @@ Note: This command only works on regular Python packages, not namespace packages
     help="Directory to write the output zip file containing the protobuf definitions",
 )
 @click.option(
-    "-d",
+    "-D",
     "--destination-dir",
     required=False,
     type=str,
@@ -110,7 +105,13 @@ Note: This command only works on regular Python packages, not namespace packages
     "--non-fast",
     default=False,
     is_flag=True,
-    help="Enables to skip zipping and uploading the package",
+    help="Skip zipping and uploading the package",
+)
+@click.option(
+    "--dry-run",
+    default=False,
+    is_flag=True,
+    help="Execute registration in dry-run mode. Skips actual registration to remote",
 )
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
@@ -127,6 +128,7 @@ def register(
     deref_symlinks: bool,
     non_fast: bool,
     package_or_module: typing.Tuple[str],
+    dry_run: bool,
 ):
     """
     see help
@@ -151,60 +153,32 @@ def register(
     if config_file:
         image_config = patch_image_config(config_file, image_config)
 
-    cli_logger.debug(
+    click.secho(
         f"Running pyflyte register from {os.getcwd()} "
         f"with images {image_config} "
         f"and image destination folder {destination_dir} "
-        f"on {len(package_or_module)} package(s) {package_or_module}"
+        f"on {len(package_or_module)} package(s) {package_or_module}",
+        dim=True,
     )
 
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-
-    detected_root = find_common_root(package_or_module)
-    cli_logger.debug(f"Using {detected_root} as root folder for project")
-
-    # Create a zip file containing all the entries.
-    zip_file = fast_package(detected_root, output, deref_symlinks)
-    md5_bytes, _ = hash_file(pathlib.Path(zip_file))
-
-    fast_serialization_settings = None
-    if non_fast is False:
-        # Upload zip file to Admin using FlyteRemote.
-        md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
-        cli_logger.debug(f"Uploaded zip {zip_file} to {native_url}")
-        fast_serialization_settings = FastSerializationSettings(
-            enabled=not non_fast,
-            destination_dir=destination_dir,
-            distribution_location=native_url,
+    click.secho(f"Registering against {remote.config.platform.endpoint}")
+    try:
+        repo.register(
+            project,
+            domain,
+            image_config,
+            output,
+            destination_dir,
+            service_account,
+            raw_data_prefix,
+            version,
+            deref_symlinks,
+            fast=not non_fast,
+            package_or_module=package_or_module,
+            remote=remote,
+            dry_run=dry_run,
         )
-
-    # Create serialization settings
-    # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
-    serialization_settings = SerializationSettings(
-        project=project,
-        domain=domain,
-        image_config=image_config,
-        fast_serialization_settings=fast_serialization_settings,
-    )
-
-    options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
-
-    # Load all the entities
-    registerable_entities = load_packages_and_modules(
-        serialization_settings, detected_root, list(package_or_module), options
-    )
-    if len(registerable_entities) == 0:
-        display_help_with_error(ctx, "No Flyte entities were detected. Aborting!")
-    cli_logger.info(f"Found and serialized {len(registerable_entities)} entities")
-
-    if not version:
-        version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
-        cli_logger.info(f"Computed version is {version}")
-
-    click.echo(
-        f"Registering entities under version {version} using the following serialization settings = {serialization_settings}"
-    )
-
-    # Register using repo code
-    repo_register(registerable_entities, project, domain, version, remote.client)
+    except Exception as e:
+        raise e

@@ -3,16 +3,21 @@ import shutil
 
 import pytest
 from click.testing import CliRunner
-from flyteidl.admin.launch_plan_pb2 import LaunchPlan
-from flyteidl.admin.task_pb2 import TaskSpec
-from flyteidl.admin.workflow_pb2 import WorkflowSpec
 
 import flytekit
 import flytekit.configuration
 import flytekit.tools.serialize_helpers
+from flytekit import TaskMetadata
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.core import context_manager
 from flytekit.exceptions.user import FlyteValidationException
+from flytekit.models.admin.workflow import WorkflowSpec
+from flytekit.models.core.identifier import Identifier, ResourceType
+from flytekit.models.launch_plan import LaunchPlan
+from flytekit.models.task import TaskSpec
+from flytekit.remote import FlyteTask
+from flytekit.remote.interface import TypedInterface
+from flytekit.remote.remote_callable import RemoteEntity
 
 sample_file_contents = """
 from flytekit import task, workflow
@@ -52,12 +57,25 @@ def test_get_registrable_entities():
             ),
         )
     )
-    context_manager.FlyteEntities.entities = [foo, wf, "str"]
+    context_manager.FlyteEntities.entities = [
+        foo,
+        wf,
+        "str",
+        FlyteTask(
+            id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+            type="t",
+            metadata=TaskMetadata().to_taskmetadata_model(),
+            interface=TypedInterface(inputs={}, outputs={}),
+            custom=None,
+        ),
+    ]
     entities = flytekit.tools.serialize_helpers.get_registrable_entities(ctx)
     assert entities
     assert len(entities) == 3
 
     for e in entities:
+        if isinstance(e, RemoteEntity):
+            assert False, "found unexpected remote entity"
         if isinstance(e, WorkflowSpec) or isinstance(e, TaskSpec) or isinstance(e, LaunchPlan):
             continue
         assert False, f"found unknown entity {type(e)}"

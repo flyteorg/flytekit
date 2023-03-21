@@ -4,6 +4,8 @@
 Authoring Structure
 #######################
 
+.. tags:: Design, Basic
+
 One of the core features of Flytekit is to enable users to write tasks and workflows. In this section, we will understand how it works internally.
 
 .. note::

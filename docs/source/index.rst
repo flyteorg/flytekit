@@ -7,6 +7,8 @@
 Flytekit Python Reference
 *************************
 
+`Flytekit Tags <_tags/tagsindex.html>`__
+
 This section of the documentation provides detailed descriptions of the high-level design of ``Flytekit`` and an
 API reference for specific usage details of Python functions, classes, and decorators that you import to specify tasks,
 build workflows, and extend ``Flytekit``.
@@ -74,6 +76,7 @@ Expected output:
    flytekit
    configuration
    remote
+   clients
    testing
    extend
    deck
@@ -81,4 +84,5 @@ Expected output:
    tasks.extend
    types.extend
    data.extend
+   pyflyte
    contributing

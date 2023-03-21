@@ -81,7 +81,7 @@ class DirParamType(click.ParamType):
                 raise ValueError(
                     f"Currently only directories containing one file are supported, found [{len(files)}] files found in {p.resolve()}"
                 )
-            return Directory(dir_path=value, local_file=files[0].resolve())
+            return Directory(dir_path=str(p), local_file=files[0].resolve())
         raise click.BadParameter(f"parameter should be a valid directory path, {value}")
 
 
@@ -105,12 +105,32 @@ class FileParamType(click.ParamType):
         raise click.BadParameter(f"parameter should be a valid file path, {value}")
 
 
-class DurationParamType(click.ParamType):
-    name = "timedelta"
+class DateTimeType(click.DateTime):
+
+    _NOW_FMT = "now"
+    _ADDITONAL_FORMATS = [_NOW_FMT]
+
+    def __init__(self):
+        super().__init__()
+        self.formats.extend(self._ADDITONAL_FORMATS)
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if value in self._ADDITONAL_FORMATS:
+            if value == self._NOW_FMT:
+                return datetime.datetime.now()
+        return super().convert(value, param, ctx)
+
+
+class DurationParamType(click.ParamType):
+    name = "[1:24 | :22 | 1 minute | 10 days | ...]"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        if value is None:
+            raise click.BadParameter("None value cannot be converted to a Duration type.")
         return datetime.timedelta(seconds=parse(value))
 
 
@@ -303,6 +323,9 @@ class FlyteLiteralConverter(object):
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
                 if self._python_type == dict:
+                    if type(value) != str:
+                        # The type of default value is dict, so we have to convert it to json string
+                        value = json.dumps(value)
                     o = json.loads(value)
                 elif type(value) != self._python_type:
                     o = cast(DataClassJsonMixin, self._python_type).from_json(value)
@@ -424,14 +447,14 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             required=False,
             is_flag=True,
             default=False,
-            help="Whether wait for the execution to finish",
+            help="Whether to wait for the execution to finish",
         ),
         click.Option(
             param_decls=["--dump-snippet", "dump_snippet"],
             required=False,
             is_flag=True,
             default=False,
-            help="Whether dump a code snippet instructing how to load the workflow execution using flyteremote",
+            help="Whether to dump a code snippet instructing how to load the workflow execution using flyteremote",
         ),
     ]
 
@@ -644,17 +667,18 @@ class RunCommand(click.MultiCommand):
         return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
 
     def get_command(self, ctx, filename):
-        ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
+        if ctx.obj:
+            ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
         return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
 
 
 _run_help = """
-This command can execute either a workflow or a task from the commandline, for fully self-contained scripts.
-Tasks and workflows cannot be imported from other files currently. Please use `pyflyte package` or
-`pyflyte register` to handle those and then launch from the Flyte UI or `flytectl`
+This command can execute either a workflow or a task from the command line, for fully self-contained scripts.
+Tasks and workflows cannot be imported from other files currently. Please use ``pyflyte package`` or
+``pyflyte register`` to handle those and then launch from the Flyte UI or ``flytectl``.
 
 Note: This command only works on regular Python packages, not namespace packages. When determining
-      the root of your project, it finds the first folder that does not have an __init__.py file.
+the root of your project, it finds the first folder that does not have an ``__init__.py`` file.
 """
 
 run = RunCommand(

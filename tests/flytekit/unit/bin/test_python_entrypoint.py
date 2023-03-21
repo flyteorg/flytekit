@@ -1,21 +1,22 @@
+import os
 import typing
 from collections import OrderedDict
 
+import fsspec
 import mock
+import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
 
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
-from flytekit.core.data_persistence import DiskPersistence
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.scopes import system_entry_point
-from flytekit.extras.persistence.gcs_gsutil import GCSPersistence
-from flytekit.extras.persistence.s3_awscli import S3Persistence
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
@@ -106,6 +107,37 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
         mock_write_to_file.side_effect = verify_output
         _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 1
+
+
+@mock.patch.dict(os.environ, {"FLYTE_FAIL_ON_ERROR": "True"})
+@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
+def test_dispatch_execute_return_error_code(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        python_task = mock.MagicMock()
+        python_task.dispatch_execute.side_effect = Exception("random")
+
+        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
+        mock_load_proto.return_value = empty_literal_map
+
+        def verify_output(*args, **kwargs):
+            assert isinstance(args[0], ErrorDocument)
+
+        mock_write_to_file.side_effect = verify_output
+
+        with pytest.raises(SystemExit) as cm:
+            _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+            pytest.assertEqual(cm.value.code, 1)
 
 
 # This function collects outputs instead of writing them to a file.
@@ -279,15 +311,33 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
 
 def test_setup_disk_prefix():
     with setup_execution("qwerty") as ctx:
-        assert isinstance(ctx.file_access._default_remote, DiskPersistence)
+        assert isinstance(ctx.file_access._default_remote, fsspec.AbstractFileSystem)
+        assert ctx.file_access._default_remote.protocol == "file"
 
 
 def test_setup_cloud_prefix():
     with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
-        assert isinstance(ctx.file_access._default_remote, S3Persistence)
+        assert ctx.file_access._default_remote.protocol[0] == "s3"
 
     with setup_execution("gs://", checkpoint_path=None, prev_checkpoint=None) as ctx:
-        assert isinstance(ctx.file_access._default_remote, GCSPersistence)
+        assert "gs" in ctx.file_access._default_remote.protocol
+
+
+@mock.patch("google.auth.compute_engine._metadata")  # to prevent network calls
+def test_persist_ss(mock_gcs):
+    default_img = Image(name="default", fqn="test", tag="tag")
+    ss = SerializationSettings(
+        project="proj1",
+        domain="dom",
+        version="version123",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    ss_txt = ss.serialized_context
+    os.environ["_F_SS_C"] = ss_txt
+    with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
+        assert ctx.serialization_settings.project == "proj1"
+        assert ctx.serialization_settings.domain == "dom"
 
 
 def test_normalize_inputs():

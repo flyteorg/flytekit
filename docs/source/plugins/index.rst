@@ -9,6 +9,7 @@ Plugin API reference
 * :ref:`AWS Sagemaker <awssagemaker>` - AWS Sagemaker plugin reference
 * :ref:`Google Bigquery <bigquery>` - Google Bigquery plugin reference
 * :ref:`FS Spec <fsspec>` - FS Spec API reference
+* :ref:`Dask <dask>` - Dask standard API reference
 * :ref:`Deck standard <deck>` - Deck standard API reference
 * :ref:`Dolt standard <dolt>` - Dolt standard API reference
 * :ref:`Great expectations <greatexpectations>` - Great expectations API reference
@@ -26,8 +27,11 @@ Plugin API reference
 * :ref:`ONNX PyTorch <onnxpytorch>` - ONNX PyTorch API reference
 * :ref:`ONNX TensorFlow <onnxtensorflow>` - ONNX TensorFlow API reference
 * :ref:`ONNX ScikitLearn <onnxscikitlearn>` - ONNX ScikitLearn API reference
-* :ref:`Ray <ray>` - Ray
+* :ref:`Ray <ray>` - Ray API reference
 * :ref:`DBT <dbt>` - DBT API reference
+* :ref:`Vaex <vaex>` - Vaex API reference
+* :ref:`MLflow <mlflow>` - MLflow API reference
+* :ref:`DuckDB <duckdb>` - DuckDB API reference
 
 .. toctree::
    :maxdepth: 2
@@ -38,6 +42,7 @@ Plugin API reference
    AWS Sagemaker <awssagemaker>
    Google Bigquery <bigquery>
    FS Spec <fsspec>
+   Dask <dask>
    Deck standard <deck>
    Dolt standard <dolt>
    Great expectations <greatexpectations>
@@ -57,3 +62,6 @@ Plugin API reference
    ONNX ScikitLearn <onnxscikitlearn>
    Ray <ray>
    DBT <dbt>
+   Vaex <vaex>
+   MLflow <mlflow>
+   DuckDB <duckdb>

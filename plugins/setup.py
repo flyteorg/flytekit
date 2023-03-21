@@ -7,6 +7,8 @@ from setuptools.command.install import install
 
 PACKAGE_NAME = "flytekitplugins-parent"
 
+__version__ = "0.0.0+develop"
+
 # Please maintain an alphabetical order in the following list
 SOURCES = {
     "flytekitplugins-athena": "flytekit-aws-athena",
@@ -15,6 +17,7 @@ SOURCES = {
     "flytekitplugins-fsspec": "flytekit-data-fsspec",
     "flytekitplugins-dbt": "flytekit-dbt",
     "flytekitplugins-dolt": "flytekit-dolt",
+    "flytekitplugins-duckdb": "flytekit-duckdb",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
     "flytekitplugins-hive": "flytekit-hive",
     "flytekitplugins-pod": "flytekit-k8s-pod",
@@ -73,7 +76,7 @@ class InstallCmd(install):
 
 setup(
     name=PACKAGE_NAME,
-    version="0.1.0",
+    version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
     description="This is a microlib package to help install all the plugins",

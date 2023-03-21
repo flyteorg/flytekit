@@ -7,6 +7,7 @@ All the Flytekit plugins maintained by the core team are added here. It is not n
 | Plugin                       | Installation                                              | Description                                                                                                                | Version                                                                                                                                                      | Type          |
 |------------------------------|-----------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
 | AWS Sagemaker Training       | ```bash pip install flytekitplugins-awssagemaker ```      | Installs SDK to author Sagemaker built-in and custom training jobs in python                                               | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-awssagemaker.svg)](https://pypi.python.org/pypi/flytekitplugins-awssagemaker/)             | Backend       |
+| dask                         | ```bash pip install flytekitplugins-dask ```              | Installs SDK to author dask jobs that can be executed natively on Kubernetes using the Flyte backend plugin                | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-awssagemaker.svg)](https://pypi.python.org/pypi/flytekitplugins-dask/)             | Backend       |
 | Hive Queries                 | ```bash pip install flytekitplugins-hive ```              | Installs SDK to author Hive Queries that can be executed on a configured hive backend using Flyte backend plugin           | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-hive.svg)](https://pypi.python.org/pypi/flytekitplugins-hive/)                             | Backend       |
 | K8s distributed PyTorch Jobs | ```bash pip install flytekitplugins-kfpytorch ```         | Installs SDK to author Distributed pyTorch Jobs in python using Kubeflow PyTorch Operator                                  | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-kfpytorch.svg)](https://pypi.python.org/pypi/flytekitplugins-kfpytorch/)                   | Backend       |
 | K8s native tensorflow Jobs   | ```bash pip install flytekitplugins-kftensorflow ```      | Installs SDK to author Distributed tensorflow Jobs in python using Kubeflow Tensorflow Operator                            | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-kftensorflow.svg)](https://pypi.python.org/pypi/flytekitplugins-kftensorflow/)             | Backend       |
@@ -21,7 +22,9 @@ All the Flytekit plugins maintained by the core team are added here. It is not n
 | Great Expectations           | ```bash pip install flytekitplugins-great-expectations``` | Enforce data quality for various data types within Flyte                                                                   | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-great-expectations.svg)](https://pypi.python.org/pypi/flytekitplugins-great-expectations/) | Flytekit-only |
 | Snowflake                    | ```bash pip install flytekitplugins-snowflake```          | Use Snowflake as a 'data warehouse-as-a-service' within Flyte                                                              | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-snowflake.svg)](https://pypi.python.org/pypi/flytekitplugins-snowflake/)                   | Backend       |
 | dbt                          | ```bash pip install flytekitplugins-dbt```                | Run dbt within Flyte                                                                                                       | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-dbt.svg)](https://pypi.python.org/pypi/flytekitplugins-dbt/)                               | Flytekit-only |
-
+| Huggingface                  | ```bash pip install flytekitplugins-huggingface```        | Read & write Hugginface Datasets as Flyte StructuredDatasets                                                               | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-huggingface.svg)](https://pypi.python.org/pypi/flytekitplugins-huggingface/)               | Flytekit-only |
+| DuckDB                  | ```bash pip install flytekitplugins-duckdb```        | Run analytical workloads with ease using DuckDB.
+| [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-duckdb.svg)](https://pypi.python.org/pypi/flytekitplugins-duckdb/)               | Flytekit-only |
 
 ## Have a Plugin Idea? 💡
 Please [file an issue](https://github.com/flyteorg/flyte/issues/new?assignees=&labels=untriaged%2Cplugins&template=backend-plugin-request.md&title=%5BPlugin%5D).
@@ -72,7 +75,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 # microlib_name = f"flytekitplugins-data-{PLUGIN_NAME}"
 
 # TODO add additional requirements
-plugin_requires = ["flytekit>=0.21.3,<1.0.0", "<other requirements>"]
+plugin_requires = ["flytekit>=1.1.0b0,<2.0.0, "<other requirements>"]
 
 __version__ = "0.0.0+develop"
 
@@ -91,13 +94,14 @@ setup(
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

@@ -4,6 +4,8 @@
 FlyteRemote: A Programmatic Control Plane Interface
 ###################################################
 
+.. tags:: Remote, Basic
+
 For those who require programmatic access to the control plane, the :mod:`~flytekit.remote` module enables you to perform
 certain operations in a Python runtime environment.
 
@@ -85,6 +87,8 @@ The ``for_endpoint`` method also accepts:
 * ``insecure``: whether to use insecure connections. Defaults to ``False``.
 * ``data_config``: can be used to configure how data is downloaded or uploaded to a specific blob storage like S3, GCS, etc.
 * ``config_file``: the path to the configuration file to use.
+
+.. _general_initialization:
 
 Generalized Initialization
 ==========================

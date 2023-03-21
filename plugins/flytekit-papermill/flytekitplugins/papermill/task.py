@@ -168,6 +168,12 @@ class NotebookTask(PythonInstanceTask[T]):
         return self._notebook_path.split(".ipynb")[0] + "-out.html"
 
     def get_container(self, settings: SerializationSettings) -> task_models.Container:
+        # The task name in the original command is incorrect because we use _dummy_task_func to construct the _config_task_instance.
+        # Therefore, Here we replace the original command with NotebookTask's command.
+        def fn(settings: SerializationSettings) -> typing.List[str]:
+            return self.get_command(settings)
+
+        self._config_task_instance.set_command_fn(fn)
         return self._config_task_instance.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> task_models.K8sPod:
@@ -180,7 +186,7 @@ class NotebookTask(PythonInstanceTask[T]):
         return self._config_task_instance.get_k8s_pod(settings)
 
     def get_config(self, settings: SerializationSettings) -> typing.Dict[str, str]:
-        return self._config_task_instance.get_config(settings)
+        return {**super().get_config(settings), **self._config_task_instance.get_config(settings)}
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         return self._config_task_instance.pre_execute(user_params)

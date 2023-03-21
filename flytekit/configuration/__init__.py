@@ -5,28 +5,72 @@ Configuration
 
 .. currentmodule:: flytekit.configuration
 
-Flytekit Configuration Ecosystem
---------------------------------
+Flytekit Configuration Sources
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Where can configuration come from?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+There are multiple ways to configure flytekit settings:
 
-- Command line arguments. This is the ideal location for settings to go. (See ``pyflyte package --help`` for example.)
-- Environment variables. Users can specify these at compile time, but when your task is run, Flyte Propeller will also set configuration to ensure correct interaction with the platform.
-- A config file - an INI style configuration file. By default, flytekit will look for a file in two places
-  1. First, a file named ``flytekit.config`` in the Python interpreter's starting directory
-  2. A file in ``~/.flyte/config`` in the home directory as detected by Python.
+**Command Line Arguments**: This is the recommended way of setting configuration values for many cases.
+For example, see `pyflyte package <pyflyte.html#pyflyte-package>`_ command.
+
+**Python Config Object**: A :py:class:`~flytekit.configuration.Config` object can by used directly, e.g. when
+initializing a :py:class:`~flytefit.remote.remote.FlyteRemote` object. See :doc:`here <design/control_plane>` for examples on
+how to specify a ``Config`` object.
+
+**Environment Variables**: Users can specify these at compile time, but when your task is run, Flyte Propeller will
+also set configuration to ensure correct interaction with the platform. The environment variables must be specified
+with the format ``FLYTE_{SECTION}_{OPTION}``, all in upper case. For example, to specify the
+:py:class:`PlatformConfig.endpoint <flytekit.configuration.PlatformConfig>` setting, the environment variable would
+be ``FLYTE_PLATFORM_URL``.
+
+.. note::
+
+   Environment variables won't work for image configuration, which need to be specified with the
+   `pyflyte package --image ... <pyflyte.html#cmdoption-pyflyte-package-i>`_ option or in a configuration
+   file.
+
+**YAML Format Configuration File**: A configuration file that contains settings for both
+`flytectl <https://docs.flyte.org/projects/flytectl/>`__ and ``flytekit``. This is the recommended configuration
+file format. Invoke the :ref:`flytectl config init <flytectl_config_init>` command to create a boilerplate
+``~/.flyte/config.yaml`` file, and  ``flytectl --help`` to learn about all of the configuration yaml options.
+
+.. dropdown:: See example ``config.yaml`` file
+   :title: text-muted
+   :animate: fade-in-slide-down
+
+   .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/sample.yaml
+      :language: yaml
+      :caption: config.yaml
+
+**INI Format Configuration File**: A configuration file for ``flytekit``. By default, ``flytekit`` will look for a
+file in two places:
+
+1. First, a file named ``flytekit.config`` in the Python interpreter's working directory.
+2. A file in ``~/.flyte/config`` in the home directory as detected by Python.
+
+.. dropdown:: See example ``flytekit.config`` file
+   :title: text-muted
+   :animate: fade-in-slide-down
+
+   .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/images.config
+      :language: ini
+      :caption: flytekit.config
+
+.. warning::
+
+   The INI format configuration is considered a legacy configuration format. We recommend using the yaml format
+   instead if you're using a configuration file.
 
 How is configuration used?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Configuration usage can roughly be bucketed into the following areas,
 
-- Compile-time settings - things like the default image, where to look for Flyte code, etc.
-- Platform settings - Where to find the Flyte backend (Admin DNS, whether to use SSL)
-- Run time (registration) settings - these are things like the K8s service account to use, a specific S3/GCS bucket to write off-loaded data (dataframes and files) to, notifications, labels & annotations, etc.
-- Data access settings - Is there a custom S3 endpoint in use? Backoff/retry behavior for accessing S3/GCS, key and password, etc.
-- Other settings - Statsd configuration, which is a run-time applicable setting but is not necessarily relevant to the Flyte platform.
+- **Compile-time settings**: these are settings like the default image and named images, where to look for Flyte code, etc.
+- **Platform settings**: Where to find the Flyte backend (Admin DNS, whether to use SSL)
+- **Registration Run-time settings**: these are things like the K8s service account to use, a specific S3/GCS bucket to write off-loaded data (dataframes and files) to, notifications, labels & annotations, etc.
+- **Data access settings**: Is there a custom S3 endpoint in use? Backoff/retry behavior for accessing S3/GCS, key and password, etc.
+- **Other settings** - Statsd configuration, which is a run-time applicable setting but is not necessarily relevant to the Flyte platform.
 
 Configuration Objects
 ---------------------
@@ -42,8 +86,15 @@ The following objects are encapsulated in a parent object called ``Config``.
 
 .. _configuration-compile-time-settings:
 
-Compilation (Serialization) Time Settings
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Serialization Time Settings
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These are serialization/compile-time settings that are used when using commands like
+`pyflyte package <pyflyte.html#pyflyte-package>`_ or `pyflyte register <pyflyte.html#pyflyte-register>`_. These
+configuration settings are typically passed in as flags to the above CLI commands.
+
+The image configurations are typically either passed in via an `--image <pyflyte.html#cmdoption-pyflyte-package-i>`_ flag,
+or can be specified in the ``yaml`` or ``ini`` configuration files (see examples above).
 
 .. autosummary::
    :template: custom.rst
@@ -53,11 +104,16 @@ Compilation (Serialization) Time Settings
    ~Image
    ~ImageConfig
    ~SerializationSettings
+   ~FastSerializationSettings
 
 .. _configuration-execution-time-settings:
 
 Execution Time Settings
 ^^^^^^^^^^^^^^^^^^^^^^^
+
+Users typically shouldn't be concerned with these configurations, as they are typically set by FlytePropeller or
+FlyteAdmin. The configurations below are useful for authenticating to a Flyte backend, configuring data access
+credentials, secrets, and statsd metrics.
 
 .. autosummary::
    :template: custom.rst
@@ -70,7 +126,6 @@ Execution Time Settings
    ~S3Config
    ~GCSConfig
    ~DataConfig
-   ~Config
 
 """
 from __future__ import annotations
@@ -189,10 +244,9 @@ class ImageConfig(object):
     def validate_image(_: typing.Any, param: str, values: tuple) -> ImageConfig:
         """
         Validates the image to match the standard format. Also validates that only one default image
-        is provided. a default image, is one that is specified as
-          default=img or just img. All other images should be provided with a name, in the format
-          name=img
-        This method can be used with the CLI
+        is provided. a default image, is one that is specified as ``default=<image_uri>`` or just ``<image_uri>``. All
+        other images should be provided with a name, in the format ``name=<image_uri>`` This method can be used with the
+        CLI
 
         :param _: click argument, ignored here.
         :param param: the click argument, here should be "image"
@@ -265,7 +319,8 @@ class ImageConfig(object):
                    {
                         "spark": "ghcr.io/flyteorg/myspark:...",
                         "other": "...",
-              })
+                   }
+              )
 
         :return:
         """
@@ -298,27 +353,30 @@ class PlatformConfig(object):
 
     :param endpoint: DNS for Flyte backend
     :param insecure: Whether or not to use SSL
-    :param insecure_skip_verify: Wether to skip SSL certificate verification
-    :param console_endpoint: endpoint for console if differenet than Flyte backend
-    :param command: This command is executed to return a token using an external process.
+    :param insecure_skip_verify: Whether to skip SSL certificate verification
+    :param console_endpoint: endpoint for console if different from Flyte backend
+    :param command: This command is executed to return a token using an external process
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
     :param client_credentials_secret: Used for service auth, which is automatically called during pyflyte. This will
       allow the Flyte engine to read the password directly from the environment variable. Note that this is
-      less secure! Please only use this if mounting the secret as a file is impossible.
-    :param scopes: List of scopes to request. This is only applicable to the client credentials flow.
-    :param auth_mode: The OAuth mode to use. Defaults to pkce flow.
+      less secure! Please only use this if mounting the secret as a file is impossible
+    :param scopes: List of scopes to request. This is only applicable to the client credentials flow
+    :param auth_mode: The OAuth mode to use. Defaults to pkce flow
+    :param ca_cert_file_path: [optional] str Root Cert to be loaded and used to verify admin
     """
 
-    endpoint: str = "localhost:30081"
+    endpoint: str = "localhost:30080"
     insecure: bool = False
     insecure_skip_verify: bool = False
+    ca_cert_file_path: typing.Optional[str] = None
     console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
+    rpc_retries: int = 3
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
@@ -333,6 +391,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(
             kwargs, "insecure_skip_verify", _internal.Platform.INSECURE_SKIP_VERIFY.read(config_file)
         )
+        kwargs = set_if_exists(kwargs, "ca_cert_file_path", _internal.Platform.CA_CERT_FILE_PATH.read(config_file))
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
@@ -462,7 +521,7 @@ class GCSConfig(object):
     gsutil_parallelism: bool = False
 
     @classmethod
-    def auto(self, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "gsutil_parallelism", _internal.GCP.GSUTIL_PARALLELISM.read(config_file))
@@ -528,7 +587,7 @@ class Config(object):
         )
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> Config:
+    def auto(cls, config_file: typing.Union[str, ConfigFile, None] = None) -> Config:
         """
         Automatically constructs the Config Object. The order of precedence is as follows
           1. first try to find any env vars that match the config vars specified in the FLYTE_CONFIG format.
@@ -552,14 +611,14 @@ class Config(object):
     @classmethod
     def for_sandbox(cls) -> Config:
         """
-        Constructs a new Config object specifically to connect to :std:ref:`deploy-sandbox-local`.
+        Constructs a new Config object specifically to connect to :std:ref:`deployment-deployment-sandbox`.
         If you are using a hosted Sandbox like environment, then you may need to use port-forward or ingress urls
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(endpoint="localhost:30081", auth_mode="Pkce", insecure=True),
+            platform=PlatformConfig(endpoint="localhost:30080", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
-                s3=S3Config(endpoint="http://localhost:30084", access_key_id="minio", secret_access_key="miniostorage")
+                s3=S3Config(endpoint="http://localhost:30002", access_key_id="minio", secret_access_key="miniostorage")
             ),
         )
 
@@ -614,14 +673,13 @@ class FastSerializationSettings(object):
     distribution_location: Optional[str] = None
 
 
+# TODO: ImageConfig, python_interpreter, venv_root, fast_serialization_settings.destination_dir should be combined.
 @dataclass_json
 @dataclass()
 class SerializationSettings(object):
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.
-
-    TODO: ImageConfig, python_interpreter, venv_root, fast_serialization_settings.destination_dir should be combined.
 
     Attributes:
         project (str): The project (if any) with which to register entities under.
@@ -646,6 +704,7 @@ class SerializationSettings(object):
     domain: typing.Optional[str] = None
     version: typing.Optional[str] = None
     env: Optional[Dict[str, str]] = None
+    git_repo: Optional[str] = None
     python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
@@ -718,6 +777,7 @@ class SerializationSettings(object):
             version=self.version,
             image_config=self.image_config,
             env=self.env.copy() if self.env else None,
+            git_repo=self.git_repo,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
@@ -767,6 +827,7 @@ class SerializationSettings(object):
         version: str
         image_config: ImageConfig
         env: Optional[Dict[str, str]] = None
+        git_repo: Optional[str] = None
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
@@ -782,6 +843,7 @@ class SerializationSettings(object):
                 version=self.version,
                 image_config=self.image_config,
                 env=self.env,
+                git_repo=self.git_repo,
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,

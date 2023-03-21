@@ -3,12 +3,13 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
@@ -27,7 +28,9 @@ T = typing.TypeVar("T")
 @dataclass_json
 @dataclass
 class FlyteFile(os.PathLike, typing.Generic[T]):
-    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
+    path: typing.Union[str, os.PathLike] = field(
+        default=None, metadata=config(mm_field=fields.String())
+    )  # type: ignore
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -148,10 +151,23 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     def extension(cls) -> str:
         return ""
 
+    @classmethod
+    def new_remote_file(cls, name: typing.Optional[str] = None) -> FlyteFile:
+        """
+        Create a new FlyteFile object with a remote path.
+        """
+        ctx = FlyteContextManager.current_context()
+        remote_path = ctx.file_access.get_random_remote_path(name)
+        return cls(path=remote_path)
+
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
+        from . import FileExt
+
         if item is None:
             return cls
-        item_string = str(item)
+
+        item_string = FileExt.check_and_convert_to_str(item)
+
         item_string = item_string.strip().lstrip("~").lstrip(".")
         if item == "":
             return cls
@@ -221,6 +237,57 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
     def download(self) -> str:
         return self.__fspath__()
+
+    @contextmanager
+    def open(
+        self,
+        mode: str,
+        cache_type: typing.Optional[str] = None,
+        cache_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ):
+        """
+        Returns a streaming File handle
+
+        .. code-block:: python
+
+            @task
+            def copy_file(ff: FlyteFile) -> FlyteFile:
+                new_file = FlyteFile.new_remote_file(ff.name)
+                with ff.open("rb", cache_type="readahead", cache={}) as r:
+                    with new_file.open("wb") as w:
+                        w.write(r.read())
+                return new_file
+
+        Alternatively
+
+        .. code-block:: python
+
+            @task
+            def copy_file(ff: FlyteFile) -> FlyteFile:
+                new_file = FlyteFile.new_remote_file(ff.name)
+                with fsspec.open(f"readahead::{ff.remote_path}", "rb", readahead={}) as r:
+                    with new_file.open("wb") as w:
+                        w.write(r.read())
+                return new_file
+
+
+        :param mode: str Open mode like 'rb', 'rt', 'wb', ...
+        :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
+                            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
+                             especially useful for large file reads
+        :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
+                        cache_protocol
+        """
+        ctx = FlyteContextManager.current_context()
+        final_path = self.path
+        if self.remote_source:
+            final_path = self.remote_source
+        elif self.remote_path:
+            final_path = self.remote_path
+        fs = ctx.file_access.get_filesystem_for_path(final_path)
+        f = fs.open(final_path, mode, cache_type=cache_type, cache_options=cache_options)
+        yield f
+        f.close()
 
     def __repr__(self):
         return self.path
@@ -342,13 +409,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return FlyteFile(uri)
 
         # The rest of the logic is only for FlyteFile types.
-        if not issubclass(expected_python_type, FlyteFile):
+        if not issubclass(expected_python_type, FlyteFile):  # type: ignore
             raise TypeError(f"Neither os.PathLike nor FlyteFile specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
-            return expected_python_type(uri)
+            return expected_python_type(uri)  # type: ignore
 
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)

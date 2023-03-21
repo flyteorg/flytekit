@@ -3,8 +3,15 @@ import pathlib
 
 import pytest
 from flytekitplugins.dbt.error import DBTUnhandledError
-from flytekitplugins.dbt.schema import DBTRunInput, DBTRunOutput, DBTTestInput, DBTTestOutput
-from flytekitplugins.dbt.task import DBTRun, DBTTest
+from flytekitplugins.dbt.schema import (
+    DBTFreshnessInput,
+    DBTFreshnessOutput,
+    DBTRunInput,
+    DBTRunOutput,
+    DBTTestInput,
+    DBTTestOutput,
+)
+from flytekitplugins.dbt.task import DBTFreshness, DBTRun, DBTTest
 
 from flytekit import workflow
 from flytekit.tools.subprocess import check_call
@@ -159,3 +166,60 @@ class TestDBTTest:
         with open(f"{DBT_PROJECT_DIR}/target/manifest.json", "r") as fp:
             exp_manifest = fp.read()
         assert output.raw_manifest == exp_manifest
+
+
+class TestDBTFreshness:
+    def test_simple_task(self):
+        dbt_freshness_task = DBTFreshness(
+            name="test-task",
+        )
+
+        @workflow
+        def my_workflow() -> DBTFreshnessOutput:
+            # run all models
+            return dbt_freshness_task(
+                input=DBTFreshnessInput(
+                    project_dir=DBT_PROJECT_DIR,
+                    profiles_dir=DBT_PROFILES_DIR,
+                    profile=DBT_PROFILE,
+                    select=["tag:something"],
+                    exclude=["tag:something-else"],
+                )
+            )
+
+        result = my_workflow()
+        assert isinstance(result, DBTFreshnessOutput)
+
+    def test_incorrect_project_dir(self):
+        dbt_freshness_task = DBTFreshness(
+            name="test-task",
+        )
+
+        with pytest.raises(DBTUnhandledError):
+            dbt_freshness_task(
+                input=DBTFreshnessInput(
+                    project_dir=".",
+                    profiles_dir=DBT_PROFILES_DIR,
+                    profile=DBT_PROFILE,
+                )
+            )
+
+    def test_task_output(self):
+        dbt_freshness_task = DBTFreshness(
+            name="test-task",
+        )
+
+        output = dbt_freshness_task.execute(
+            input=DBTFreshnessInput(project_dir=DBT_PROJECT_DIR, profiles_dir=DBT_PROFILES_DIR, profile=DBT_PROFILE)
+        )
+
+        assert output.exit_code == 0
+        assert (
+            output.command
+            == f"dbt --log-format json source freshness --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR} --profile {DBT_PROFILE}"
+        )
+
+        with open(f"{DBT_PROJECT_DIR}/target/sources.json", "r") as fp:
+            exp_sources = fp.read()
+
+        assert output.raw_sources == exp_sources
