@@ -1057,7 +1057,7 @@ def flyte_entity_call_handler(
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
             raise ValueError(
-                f"Received unexpected keyword argument {k} in function {cast(SupportsNodeCreation, entity).name}"
+                f"Received unexpected keyword argument '{k}' in function '{cast(SupportsNodeCreation, entity).name}'"
             )
 
     ctx = FlyteContextManager.current_context()

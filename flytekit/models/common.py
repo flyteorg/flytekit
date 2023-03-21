@@ -57,7 +57,8 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         :rtype: Text
         """
-        return str(self.to_flyte_idl())
+        out = str(self.to_flyte_idl()).replace("\n", "").replace(" " * 4, "").replace(" " * 2, "")
+        return f"<Literal '{out}'>"
 
     def verbose_string(self):
         """
