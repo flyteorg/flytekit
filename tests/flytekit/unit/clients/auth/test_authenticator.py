@@ -102,7 +102,11 @@ def test_client_creds_authenticator_without_custom_scopes(mock_requests):
 def test_client_creds_authenticator_with_custom_scopes(mock_requests):
     expected_scopes = ["foo", "baz"]
     authn = ClientCredentialsAuthenticator(
-        ENDPOINT, client_id="client", client_secret="secret", cfg_store=static_cfg_store, scopes=expected_scopes,
+        ENDPOINT,
+        client_id="client",
+        client_secret="secret",
+        cfg_store=static_cfg_store,
+        scopes=expected_scopes,
     )
     response = MagicMock()
     response.status_code = 200
