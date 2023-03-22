@@ -321,7 +321,7 @@ pyarrow==10.0.1
     # via flytekit
 pycparser==2.21
     # via cffi
-pydantic==1.10.6
+pydantic==1.10.7
     # via great-expectations
 pygments==2.14.0
     # via
@@ -369,7 +369,7 @@ pyzmq==25.0.2
     #   jupyter-server
     #   nbclassic
     #   notebook
-regex==2022.10.31
+regex==2023.3.22
     # via docker-image-py
 requests==2.28.2
     # via
@@ -413,7 +413,7 @@ sortedcontainers==2.4.0
     # via flytekit
 soupsieve==2.4
     # via beautifulsoup4
-sqlalchemy==2.0.7
+sqlalchemy==1.4.47
     # via
     #   -r requirements.in
     #   flytekitplugins-great-expectations
@@ -466,7 +466,6 @@ typing-extensions==4.5.0
     #   flytekit
     #   great-expectations
     #   pydantic
-    #   sqlalchemy
     #   typing-inspect
 typing-inspect==0.8.0
     # via dataclasses-json

@@ -45,7 +45,7 @@ cryptography==39.0.2
     # via pyopenssl
 dataclasses-json==0.5.7
     # via flytekit
-dbt-core==1.4.1
+dbt-core==1.4.5
     # via
     #   -r requirements.in
     #   dbt-sqlite
@@ -212,6 +212,7 @@ pytimeparse==1.1.8
     #   flytekit
 pytz==2022.7.1
     # via
+    #   dbt-core
     #   flytekit
     #   pandas
 pyyaml==6.0

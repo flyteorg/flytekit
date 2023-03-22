@@ -2,7 +2,6 @@ import os
 import sys
 
 import pytest
-
 from flytekitplugins.papermill import NotebookTask
 from flytekitplugins.spark import Spark
 

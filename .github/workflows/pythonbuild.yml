@@ -95,6 +95,11 @@ jobs:
             plugin-names: "flytekit-modin"
           - python-version: 3.11
             plugin-names: "flytekit-ray"
+          # Great-expectations does not support python 3.11 due to sqlachemy>=2.0.0
+          # not being supported yet:
+          # https://github.com/great-expectations/great_expectations/issues/7020
+          - python-version: 3.11
+            plugin-names: "flytekit-greatexpectations"
           # onnxruntime does not support python 3.10 yet
           # https://github.com/microsoft/onnxruntime/issues/9782
           - python-version: 3.10
@@ -120,7 +125,11 @@ jobs:
           # vaex currently doesn't support python 3.11
           - python-version: 3.11
             plugin-names: "flytekit-vaex"
-          
+          # whylogs does support python 3.11 dataclass restrictions
+          # See: https://github.com/flyteorg/flytekit/actions/runs/4493746408/jobs/7905368664
+          - python-version: 3.11
+            plugin-names: "flytekit-whylogs"
+
 
     steps:
       - uses: actions/checkout@v2
@@ -148,7 +157,7 @@ jobs:
           cd plugins/${{ matrix.plugin-names }}
           # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
           # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
-          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-whylogs" ]]; then
+          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-whylogs" || ${{ matrix.plugin-names }} == "flytekit-mlflow" ]]; then
              PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests
           else
              coverage run -m pytest tests
