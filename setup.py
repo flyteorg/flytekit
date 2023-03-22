@@ -72,7 +72,8 @@ setup(
         "cookiecutter>=1.7.3",
         # TODO: We should remove mentions to the deprecated numpy
         # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
-        "numpy<1.24.0",
+        "numpy<1.24.0; python_version < '3.11'",
+        "numpy<=1.24.2; python_version >= '3.11'",
         "gitpython",
         "kubernetes>=12.0.1",
     ],
@@ -83,7 +84,7 @@ setup(
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
-    python_requires=">=3.8,<3.11",
+    python_requires=">=3.8,<=3.11",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
