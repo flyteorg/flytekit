@@ -38,6 +38,7 @@ class DefaultImages(object):
             version_suffix = __version__
         if python_version is None:
             python_version = PythonVersion((sys.version_info.major, sys.version_info.minor))
+
         return cls._DEFAULT_IMAGE_PREFIXES[python_version] + (
             flytekit_version.replace("v", "") if flytekit_version else version_suffix
         )

@@ -72,6 +72,7 @@ jobs:
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
+          - flytekit-mlflow
           - flytekit-modin
           - flytekit-onnx-pytorch
           - flytekit-onnx-scikitlearn
@@ -88,14 +89,12 @@ jobs:
           - flytekit-vaex
           - flytekit-whylogs
         exclude:
-          # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
-          # Issue tracked in https://github.com/ray-project/ray/issues/19116.
-          - python-version: 3.10
+          # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
+          # Issue tracked in https://github.com/ray-project/ray/issues/27881
+          - python-version: 3.11
             plugin-names: "flytekit-modin"
-          # Great-expectations does not support python 3.10 yet
-          # https://github.com/great-expectations/great_expectations/blob/develop/setup.py#L87-L89
-          - python-version: 3.10
-            plugin-names: "flytekit-greatexpectations"
+          - python-version: 3.11
+            plugin-names: "flytekit-ray"
           # onnxruntime does not support python 3.10 yet
           # https://github.com/microsoft/onnxruntime/issues/9782
           - python-version: 3.10
@@ -110,10 +109,19 @@ jobs:
             plugin-names: "flytekit-onnx-scikitlearn"
           - python-version: 3.11
             plugin-names: "flytekit-onnx-tensorflow"
-          # whylogs-sketching library does not have a 3.10 build yet
-          # Issue tracked: https://github.com/whylabs/whylogs/issues/697
-          - python-version: 3.10
-            plugin-names: "flytekit-whylogs"
+          # numba, a dependency of mlflow, doesn't support python 3.11
+          # https://github.com/numba/numba/issues/8304
+          - python-version: 3.11
+            plugin-names: "flytekit-mlflow"
+          # pyspark 3.4.0 will support python 3.11, which isn't available yet
+          # Issue tracked in: https://github.com/apache/spark/pull/38987
+          - python-version: 3.11
+            plugin-names: "flytekit-spark"
+          # vaex currently doesn't support python 3.11
+          - python-version: 3.11
+            plugin-names: "flytekit-vaex"
+          
+
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
