@@ -3,11 +3,11 @@ Flytekit map tasks specify how to run a single task across a list of inputs. Map
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
 import functools
+import hashlib
 import logging
 import os
 import typing
 from contextlib import contextmanager
-from itertools import count
 from typing import Any, Dict, List, Optional, Set
 
 from flytekit.configuration import SerializationSettings
@@ -15,7 +15,7 @@ from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
-from flytekit.core.interface import Interface, transform_interface_to_list_interface
+from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import TrackedInstance
 from flytekit.exceptions import scopes as exception_scopes
@@ -31,10 +31,6 @@ class MapPythonTask(PythonTask):
     an inner :py:class:`flytekit.PythonFunctionTask` across a range of inputs in parallel.
     TODO: support lambda functions
     """
-
-    # To support multiple map tasks declared around identical python function tasks, we keep a global count of
-    # MapPythonTask instances to uniquely differentiate map task names for each declared instance.
-    _ids = count(0)
 
     def __init__(
         self,
@@ -72,14 +68,10 @@ class MapPythonTask(PythonTask):
         collection_interface = transform_interface_to_list_interface(
             python_function_task.python_interface, self._bound_inputs
         )
-        print("INTERFACE FOR MAP TASK!!! ------")
-        print(collection_interface)
-        print("INTERFACE FOR MAP TASK END!!! ----")
         self._run_task = python_function_task
-        instance = next(self._ids)
         _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
-        # TODO hash interface and add to name
-        name = f"{mod}.mapper_{f}_{instance}"
+        h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
+        name = f"{mod}.map_{f}_{h}"
 
         self._cmd_prefix = None
         self._max_concurrency = concurrency
@@ -364,7 +356,6 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
         """
         _, bound_vars, _, resolver, *resolver_args = loader_args
         logging.info(f"MapTask found task resolver {resolver} and arguments {resolver_args}")
-        print(f"--- Loading inner-- {resolver} +++ {resolver_args}")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
