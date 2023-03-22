@@ -392,9 +392,6 @@ def _execute_map_task(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         mtr = MapTaskResolver()
-        print("--------MAP TASK RESOLVER ARGS----")
-        print(resolver_args)
-        print("---- DONE----")
         map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         task_index = _compute_array_job_index()
