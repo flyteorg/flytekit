@@ -37,29 +37,9 @@ def compress_single_script(source_path: str, destination: str, full_module_name:
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
         destination_path = os.path.join(tmp_dir, "code")
-        # This is the script relative path to the root of the project
         script_relative_path = Path()
-        # For each package in pkgs, create a directory and copy the __init__.py in it.
-        # Skip the last package as that is the script file.
-        pkgs = full_module_name.split(".")
-        for p in pkgs[:-1]:
-            os.makedirs(os.path.join(destination_path, p))
-            source_path = os.path.join(source_path, p)
-            destination_path = os.path.join(destination_path, p)
-            script_relative_path = Path(script_relative_path, p)
-            init_file = Path(os.path.join(source_path, "__init__.py"))
-            if init_file.exists():
-                shutil.copy(init_file, Path(os.path.join(tmp_dir, "code", script_relative_path, "__init__.py")))
-
-        # Ensure destination path exists to cover the case of a single file and no modules.
-        os.makedirs(destination_path, exist_ok=True)
-        script_file = Path(source_path, f"{pkgs[-1]}.py")
-        script_file_destination = Path(destination_path, f"{pkgs[-1]}.py")
-        # Build the final script relative path and copy it to a known place.
-        shutil.copy(
-            script_file,
-            script_file_destination,
-        )
+        # This is the script relative path to the root of the project
+        copy_module_to_destination(source_path, full_module_name, destination_path)
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w") as tar:
             tar.add(os.path.join(tmp_dir, "code"), arcname="", filter=tar_strip_file_attributes)
@@ -67,6 +47,30 @@ def compress_single_script(source_path: str, destination: str, full_module_name:
             with open(tar_path, "rb") as tar_file:
                 gzipped.write(tar_file.read())
 
+
+def copy_module_to_destination(source_path: str, full_module_name: str, destination_path: str):
+    pkgs = full_module_name.split(".")
+    script_relative_path = Path()
+    for p in pkgs[:-1]:
+        os.makedirs(os.path.join(destination_path, p))
+        source_path = os.path.join(source_path, p)
+        destination_path = os.path.join(destination_path, p)
+        script_relative_path = Path(script_relative_path, p)
+        init_file = Path(os.path.join(source_path, "__init__.py"))
+        if init_file.exists():
+            print(init_file)
+            print(Path(os.path.join(destination_path, script_relative_path, "__init__.py")))
+            shutil.copy(init_file, Path(os.path.join(destination_path, script_relative_path, "__init__.py")))
+
+    # Ensure destination path exists to cover the case of a single file and no modules.
+    os.makedirs(destination_path, exist_ok=True)
+    script_file = Path(source_path, f"{pkgs[-1]}.py")
+    script_file_destination = Path(destination_path, f"{pkgs[-1]}.py")
+    # Build the final script relative path and copy it to a known place.
+    shutil.copy(
+        script_file,
+        script_file_destination,
+    )
 
 # Takes in a TarInfo and returns the modified TarInfo:
 # https://docs.python.org/3/library/tarfile.html#tarinfo-objects
