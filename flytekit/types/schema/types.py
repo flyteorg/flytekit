@@ -202,6 +202,7 @@ class FlyteSchema(object):
     def __class_getitem__(
         cls, columns: typing.Dict[str, typing.Type], fmt: SchemaFormat = SchemaFormat.PARQUET
     ) -> Type[FlyteSchema]:
+        logger.warning("FlyteSchema is deprecated, use Structured Dataset instead.")
         if columns is None:
             return FlyteSchema
 
