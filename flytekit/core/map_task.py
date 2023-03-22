@@ -58,6 +58,9 @@ class MapPythonTask(PythonTask):
             self._partial = python_function_task
             python_function_task = self._partial.func
 
+        if not isinstance(python_function_task, PythonFunctionTask):
+            raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
+
         if len(python_function_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
 
