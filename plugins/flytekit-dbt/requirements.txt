@@ -47,12 +47,11 @@ dataclasses-json==0.5.7
     # via flytekit
 dbt-core==1.4.5
     # via
-    #   -r requirements.in
     #   dbt-sqlite
     #   flytekitplugins-dbt
 dbt-extractor==0.4.1
     # via dbt-core
-dbt-sqlite==1.2.0a2
+dbt-sqlite==1.4.0
     # via -r requirements.in
 decorator==5.1.1
     # via retry
@@ -162,7 +161,7 @@ numpy==1.23.5
     #   flytekit
     #   pandas
     #   pyarrow
-packaging==21.3
+packaging==23.0
     # via
     #   dbt-core
     #   docker
@@ -189,8 +188,6 @@ pycparser==2.21
     # via cffi
 pyopenssl==23.0.0
     # via flytekit
-pyparsing==3.0.9
-    # via packaging
 pyrsistent==0.19.3
     # via jsonschema
 python-dateutil==2.8.2
@@ -221,7 +218,7 @@ pyyaml==6.0
     #   dbt-core
     #   flytekit
     #   responses
-regex==2022.10.31
+regex==2023.3.22
     # via docker-image-py
 requests==2.28.2
     # via
