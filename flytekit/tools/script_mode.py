@@ -1,16 +1,12 @@
 import gzip
 import hashlib
 import importlib
-import inspect
 import os
 import shutil
-import sys
 import tarfile
 import tempfile
 import typing
 from pathlib import Path
-from time import sleep
-from types import ModuleType
 
 from flytekit import PythonFunctionTask
 from flytekit.core.tracker import get_full_module_path

@@ -471,13 +471,6 @@ def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> 
     return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
 
 
-def get_module(module_name: str, project_root: str):
-    flyte_ctx_builder = context_manager.FlyteContextManager.current_context().new_builder()
-    with context_manager.FlyteContextManager.with_context(flyte_ctx_builder):
-        with module_loader.add_sys_path(project_root):
-            return importlib.import_module(module_name)
-
-
 def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
     click.secho(
         f"""
