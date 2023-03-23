@@ -161,7 +161,7 @@ def _update_entity_image(settings: SerializationSettings, entity: FlyteLocalEnti
         return
     if settings.fast_serialization_settings.enabled:
         tag = calculate_hash_from_image_spec(entity.image_spec)
-        settings.fast_serialization_settings.destination_dir = "/"
+        settings.fast_serialization_settings.destination_dir = "/root"
     else:
         tag = settings.version
     image_name = f"{entity.image_spec.registry}/flytekit"

@@ -10,6 +10,8 @@ from typing import List, Optional
 
 from dataclasses_json import dataclass_json
 
+from flytekit.configuration.default_images import DefaultImages
+
 IMAGE_LOCK = f"{os.path.expanduser('~')}{os.path.sep}.flyte{os.path.sep}image.lock"
 
 
@@ -18,16 +20,18 @@ IMAGE_LOCK = f"{os.path.expanduser('~')}{os.path.sep}.flyte{os.path.sep}image.lo
 class ImageSpec:
     """
     Args:
-        packages: list of packages that will be installed in the image.
-        os: operating system. by default is ubuntu 20.04.
         registry: docker registry. if it's specified, flytekit will push the image.
+        packages: list of python packages that will be installed in the image.
+        apt_packages: list of ubuntu packages that will be installed in the image.
+        base_image: base image of the docker container.
         python_version: python version in the image.
     """
 
-    packages: List[str]
-    base_image: str = "pingsutw/envd_base:v8"
-    registry: Optional[str] = None
-    python_version: Optional[str] = f"{sys.version_info.major}.{sys.version_info.minor}"
+    registry: str
+    packages: Optional[List[str]] = None
+    apt_packages: Optional[List[str]] = None
+    base_image: Optional[str] = None
+    python_version: str = f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
@@ -35,11 +39,19 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     for pkg in image_spec.packages:
         packages_list += f'"{pkg}", '
 
+    apt_packages_list = ""
+    for pkg in image_spec.apt_packages:
+        apt_packages_list += f'"{pkg}", '
+
+    if image_spec.base_image is None:
+        image_spec.base_image = DefaultImages.default_image()
+
     envd_config = f"""# syntax=v1
 
 def build():
     base(image="{image_spec.base_image}", dev=False)
     install.python_packages(name = [{packages_list}])
+    install.apt_packages(name = [{apt_packages_list}])
     install.python(version="{image_spec.python_version}")
 """
     from flytekit.core import context_manager

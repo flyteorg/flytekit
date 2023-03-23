@@ -45,7 +45,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         task_config: T,
         task_type="python-task",
         container_image: Optional[str] = None,
-        image_spec: Optional["ImageSpec"] = None,
+        image_spec: Optional[ImageSpec] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
