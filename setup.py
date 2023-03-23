@@ -70,7 +70,7 @@ setup(
         "diskcache>=5.2.1",
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
-        "numpy"
+        "numpy",
         "gitpython",
         "kubernetes>=12.0.1",
     ],
