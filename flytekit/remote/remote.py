@@ -70,7 +70,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.fast_registration import fast_package
-from flytekit.tools.script_mode import compress_single_script, hash_file
+from flytekit.tools.script_mode import compress_scripts, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
@@ -821,8 +821,7 @@ class FlyteRemote(object):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-            mod = importlib.import_module(module_name)
-            compress_single_script(source_path, str(archive_fname), get_full_module_path(mod, mod.__name__))
+            compress_scripts(source_path, str(archive_fname), module_name)
             md5_bytes, upload_native_url = self._upload_file(
                 archive_fname, project or self.default_project, domain or self.default_domain
             )

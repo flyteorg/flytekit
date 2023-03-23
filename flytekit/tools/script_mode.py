@@ -1,14 +1,23 @@
 import gzip
 import hashlib
+import importlib
+import inspect
 import os
 import shutil
+import sys
 import tarfile
 import tempfile
 import typing
 from pathlib import Path
+from time import sleep
+from types import ModuleType
+
+from flytekit import PythonFunctionTask
+from flytekit.core.tracker import get_full_module_path
+from flytekit.core.workflow import WorkflowBase
 
 
-def compress_single_script(source_path: str, destination: str, full_module_name: str):
+def compress_scripts(source_path: str, destination: str, module_name: str):
     """
     Compresses the single script while maintaining the folder structure for that file.
 
@@ -33,13 +42,14 @@ def compress_single_script(source_path: str, destination: str, full_module_name:
     │       ├── example.py
     │       └── __init__.py
 
-    Note how `another_example.py` and `yet_another_example.py` were not copied to the destination.
+    Note: If `example.py` didn't import tasks or workflows from `another_example.py` and `yet_another_example.py`, these files were not copied to the destination..
+
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
         destination_path = os.path.join(tmp_dir, "code")
-        script_relative_path = Path()
-        # This is the script relative path to the root of the project
-        copy_module_to_destination(source_path, full_module_name, destination_path)
+
+        visited: typing.List[str] = []
+        copy_module_to_destination(source_path, destination_path, module_name, visited)
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w") as tar:
             tar.add(os.path.join(tmp_dir, "code"), arcname="", filter=tar_strip_file_attributes)
@@ -48,19 +58,26 @@ def compress_single_script(source_path: str, destination: str, full_module_name:
                 gzipped.write(tar_file.read())
 
 
-def copy_module_to_destination(source_path: str, full_module_name: str, destination_path: str):
+def copy_module_to_destination(
+    original_source_path: str, original_destination_path: str, module_name: str, visited: typing.List[str]
+):
+    mod = importlib.import_module(module_name)
+    full_module_name = get_full_module_path(mod, mod.__name__)
+    if full_module_name in visited:
+        return
+    visited.append(full_module_name)
+
+    source_path = original_source_path
+    destination_path = original_destination_path
     pkgs = full_module_name.split(".")
-    script_relative_path = Path()
+
     for p in pkgs[:-1]:
-        os.makedirs(os.path.join(destination_path, p))
-        source_path = os.path.join(source_path, p)
+        os.makedirs(os.path.join(destination_path, p), exist_ok=True)
         destination_path = os.path.join(destination_path, p)
-        script_relative_path = Path(script_relative_path, p)
+        source_path = os.path.join(source_path, p)
         init_file = Path(os.path.join(source_path, "__init__.py"))
         if init_file.exists():
-            print(init_file)
-            print(Path(os.path.join(destination_path, script_relative_path, "__init__.py")))
-            shutil.copy(init_file, Path(os.path.join(destination_path, script_relative_path, "__init__.py")))
+            shutil.copy(init_file, Path(os.path.join(destination_path, "__init__.py")))
 
     # Ensure destination path exists to cover the case of a single file and no modules.
     os.makedirs(destination_path, exist_ok=True)
@@ -71,6 +88,15 @@ def copy_module_to_destination(source_path: str, full_module_name: str, destinat
         script_file,
         script_file_destination,
     )
+
+    # Try to copy other files to destination if tasks or workflows aren't in the same file
+    for flyte_entity_name in mod.__dict__:
+        flyte_entity = mod.__dict__[flyte_entity_name]
+        if isinstance(flyte_entity, (PythonFunctionTask, WorkflowBase)) and flyte_entity.instantiated_in:
+            copy_module_to_destination(
+                original_source_path, original_destination_path, flyte_entity.instantiated_in, visited
+            )
+
 
 # Takes in a TarInfo and returns the modified TarInfo:
 # https://docs.python.org/3/library/tarfile.html#tarinfo-objects
