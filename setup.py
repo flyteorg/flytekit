@@ -70,10 +70,7 @@ setup(
         "diskcache>=5.2.1",
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
-        # TODO: We should remove mentions to the deprecated numpy
-        # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
-        "numpy<1.24.0; python_version < '3.11'",
-        "numpy<=1.24.2; python_version >= '3.11'",
+        "numpy"
         "gitpython",
         "kubernetes>=12.0.1",
     ],
