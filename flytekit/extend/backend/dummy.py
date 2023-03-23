@@ -20,7 +20,7 @@ class DummyPlugin(BackendPluginBase):
         return plugin_system_pb2.TaskCreateResponse(job_id="dummy_id")
 
     def get(self, job_id: str) -> plugin_system_pb2.TaskGetResponse:
-        return plugin_system_pb2.TaskGetResponse(state=plugin_system_pb2.SUCCEEDED)
+        return plugin_system_pb2.TaskGetResponse(state=plugin_system_pb2.RUNNING)
 
     def delete(self, job_id) -> plugin_system_pb2.TaskDeleteResponse:
         return plugin_system_pb2.TaskDeleteResponse()
