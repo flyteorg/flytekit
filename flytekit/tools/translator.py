@@ -1,5 +1,3 @@
-import base64
-import hashlib
 import sys
 import typing
 from collections import OrderedDict
@@ -20,7 +18,7 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.extend.image_spec.base_image import build_docker_image, calculate_hash_from_image_spec
+from flytekit.image_spec.image_spec import build_docker_image, calculate_hash_from_image_spec
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models

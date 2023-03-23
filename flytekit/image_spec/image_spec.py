@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import subprocess
+import sys
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -26,7 +27,7 @@ class ImageSpec:
     packages: List[str]
     base_image: str = "pingsutw/envd_base:v8"
     registry: Optional[str] = None
-    python_version: Optional[str] = "3.9"
+    python_version: Optional[str] = f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
@@ -40,7 +41,6 @@ def build():
     base(image="{image_spec.base_image}", dev=False)
     install.python_packages(name = [{packages_list}])
     install.python(version="{image_spec.python_version}")
-    runtime.environ(env={{"PYTHONPATH": "/"}})
 """
     from flytekit.core import context_manager
 

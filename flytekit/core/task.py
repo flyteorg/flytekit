@@ -8,7 +8,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
-from flytekit.extend.image_spec.base_image import ImageSpec
+from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.models.documentation import Documentation
 from flytekit.models.security import Secret
 

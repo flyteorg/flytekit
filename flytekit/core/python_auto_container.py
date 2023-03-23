@@ -17,6 +17,7 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition
+from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
@@ -86,7 +87,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                     raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
             sec_ctx = SecurityContext(secrets=secret_requests)
 
-        # pod_template_name overwrites the metedata.pod_template_name
+        # pod_template_name overwrites the metadata.pod_template_name
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 

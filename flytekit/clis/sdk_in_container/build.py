@@ -1,16 +1,11 @@
 import os
 import pathlib
-from collections import OrderedDict
-from pathlib import Path
 
 import click
 
 from flytekit.clis.sdk_in_container.run import get_entities_in_file, load_naive_entity
-from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.core.base_task import PythonTask
-from flytekit.extend.image_spec.base_image import build_docker_image, calculate_hash_from_image_spec
-from flytekit.tools.script_mode import _find_project_root, hash_file
-from flytekit.tools.translator import get_serializable
+from flytekit.image_spec.image_spec import build_docker_image, calculate_hash_from_image_spec
+from flytekit.tools.script_mode import _find_project_root
 
 _build_help = """Build a image for the flyte task or workflow."""
 
