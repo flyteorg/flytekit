@@ -81,7 +81,7 @@ class DirParamType(click.ParamType):
                 raise ValueError(
                     f"Currently only directories containing one file are supported, found [{len(files)}] files found in {p.resolve()}"
                 )
-            return Directory(dir_path=value, local_file=files[0].resolve())
+            return Directory(dir_path=str(p), local_file=files[0].resolve())
         raise click.BadParameter(f"parameter should be a valid directory path, {value}")
 
 
