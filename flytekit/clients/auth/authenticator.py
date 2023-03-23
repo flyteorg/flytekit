@@ -163,7 +163,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         client_id: str,
         client_secret: str,
         cfg_store: ClientConfigStore,
-        header_key: str = None,
+        header_key: typing.Optional[str] = None,
         scopes: typing.Optional[typing.List[str]] = None,
     ):
         if not client_id or not client_secret:
