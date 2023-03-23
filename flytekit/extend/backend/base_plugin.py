@@ -44,7 +44,7 @@ class BackendPluginRegistry(object):
 
 def convert_to_flyte_state(state: str) -> plugin_system_pb2.State:
     if state.lower() in ["failed"]:
-        return plugin_system_pb2.FAILED
+        return plugin_system_pb2.PERMANENT_FAILURE
     if state.lower() in ["done", "succeeded"]:
         return plugin_system_pb2.SUCCEEDED
     if state.lower() in ["running"]:
