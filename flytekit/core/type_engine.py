@@ -129,7 +129,6 @@ class TypeTransformer(typing.Generic[T]):
             f"Conversion to python value expected type {expected_python_type} from literal not implemented"
         )
 
-    @abstractmethod
     def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
         """
         Converts any python val (dataframe, int, float) to a html string, and it will be wrapped in the HTML div
@@ -289,7 +288,7 @@ class DataclassTransformer(TypeTransformer[object]):
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
 
-        for f in dataclasses.fields(type(v)):
+        for f in dataclasses.fields(type(v)):  # type: ignore
             original_type = f.type
             expected_type = expected_fields_dict[f.name]
 

@@ -14,9 +14,9 @@ aiosignal==1.3.1
     # via ray
 alabaster==0.7.13
     # via sphinx
-alembic==1.9.2
+alembic==1.9.3
     # via mlflow
-altair==4.2.2
+altair==4.2.0
     # via great-expectations
 ansiwrap==0.8.4
     # via papermill
@@ -27,6 +27,10 @@ anyio==3.6.2
     #   watchfiles
 aplus==0.11.0
     # via vaex-core
+appnope==0.1.3
+    # via
+    #   ipykernel
+    #   ipython
 argon2-cffi==21.3.0
     # via
     #   jupyter-server
@@ -38,7 +42,7 @@ arrow==1.2.3
     # via
     #   isoduration
     #   jinja2-time
-astroid==2.14.1
+astroid==2.14.2
     # via sphinx-autoapi
 astropy==5.2.1
     # via vaex-astro
@@ -67,7 +71,7 @@ blake3==0.3.3
     # via vaex-core
 bleach==6.0.0
     # via nbconvert
-botocore==1.29.61
+botocore==1.29.72
     # via -r doc-requirements.in
 bqplot==0.12.36
     # via
@@ -125,17 +129,16 @@ cookiecutter==2.1.1
     # via flytekit
 croniter==1.3.8
     # via flytekit
-cryptography==39.0.0
+cryptography==39.0.1
     # via
     #   -r doc-requirements.in
     #   great-expectations
     #   pyopenssl
-    #   secretstorage
 css-html-js-minify==2.5.5
     # via sphinx-material
 cycler==0.11.0
     # via matplotlib
-dask[distributed]==2023.1.1
+dask[distributed]==2023.2.0
     # via
     #   -r doc-requirements.in
     #   distributed
@@ -160,7 +163,7 @@ diskcache==5.4.0
     # via flytekit
 distlib==0.3.6
     # via virtualenv
-distributed==2023.1.1
+distributed==2023.2.0
     # via dask
 docker==6.0.1
     # via
@@ -177,8 +180,10 @@ docutils==0.17.1
     #   sphinx-panels
 dolt-integrations==0.1.5
     # via -r doc-requirements.in
-doltcli==0.1.17
+doltcli==0.1.18
     # via dolt-integrations
+duckdb==0.7.0
+    # via -r doc-requirements.in
 entrypoints==0.4
     # via
     #   altair
@@ -186,7 +191,7 @@ entrypoints==0.4
     #   papermill
 executing==1.2.0
     # via stack-data
-fastapi==0.89.1
+fastapi==0.92.0
     # via vaex-server
 fastjsonschema==2.16.2
     # via nbformat
@@ -195,7 +200,7 @@ filelock==3.9.0
     #   ray
     #   vaex-core
     #   virtualenv
-flask==2.2.2
+flask==2.2.3
     # via mlflow
 flatbuffers==23.1.21
     # via tensorflow
@@ -211,7 +216,7 @@ frozenlist==1.3.3
     # via
     #   aiosignal
     #   ray
-fsspec==2023.1.0
+fsspec==2023.3.0
     # via
     #   -r doc-requirements.in
     #   dask
@@ -260,7 +265,7 @@ googleapis-common-protos==1.58.0
     #   flytekit
     #   google-api-core
     #   grpcio-status
-great-expectations==0.15.46
+great-expectations==0.15.48
     # via -r doc-requirements.in
 greenlet==2.0.2
     # via sqlalchemy
@@ -291,7 +296,7 @@ htmlmin==0.1.12
     # via ydata-profiling
 httptools==0.5.0
     # via uvicorn
-identify==2.5.17
+identify==2.5.18
     # via pre-commit
 idna==3.4
     # via
@@ -315,7 +320,7 @@ importlib-metadata==5.2.0
     #   sphinx
 ipydatawidgets==4.3.2
     # via pythreejs
-ipykernel==6.20.2
+ipykernel==6.21.2
     # via
     #   ipywidgets
     #   jupyter
@@ -325,9 +330,9 @@ ipykernel==6.20.2
     #   qtconsole
 ipyleaflet==0.17.2
     # via vaex-jupyter
-ipympl==0.9.2
+ipympl==0.9.3
     # via vaex-jupyter
-ipython==8.9.0
+ipython==8.10.0
     # via
     #   great-expectations
     #   ipykernel
@@ -371,10 +376,6 @@ jaraco-classes==3.2.3
     # via keyring
 jedi==0.18.2
     # via ipython
-jeepney==0.8.0
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.1.2
     # via
     #   altair
@@ -426,11 +427,13 @@ jupyter-client==8.0.2
     #   nbclient
     #   notebook
     #   qtconsole
-jupyter-console==6.4.4
+jupyter-console==6.5.1
     # via jupyter
 jupyter-core==5.2.0
     # via
+    #   ipykernel
     #   jupyter-client
+    #   jupyter-console
     #   jupyter-server
     #   nbclassic
     #   nbclient
@@ -440,7 +443,7 @@ jupyter-core==5.2.0
     #   qtconsole
 jupyter-events==0.6.3
     # via jupyter-server
-jupyter-server==2.2.0
+jupyter-server==2.3.0
     # via
     #   nbclassic
     #   notebook-shim
@@ -458,7 +461,7 @@ keyring==23.13.1
     # via flytekit
 kiwisolver==1.4.4
     # via matplotlib
-kubernetes==25.3.0
+kubernetes==26.1.0
     # via
     #   -r doc-requirements.in
     #   flytekit
@@ -516,7 +519,7 @@ matplotlib-inline==0.1.6
     #   ipython
 mdurl==0.1.2
     # via markdown-it-py
-mistune==2.0.4
+mistune==2.0.5
     # via
     #   great-expectations
     #   nbconvert
@@ -534,7 +537,7 @@ multimethod==1.9.1
     # via
     #   visions
     #   ydata-profiling
-mypy-extensions==0.4.3
+mypy-extensions==1.0.0
     # via typing-inspect
 natsort==8.2.0
     # via flytekit
@@ -618,16 +621,6 @@ numpy==1.23.5
     #   visions
     #   xarray
     #   ydata-profiling
-nvidia-cublas-cu11==11.10.3.66
-    # via
-    #   nvidia-cudnn-cu11
-    #   torch
-nvidia-cuda-nvrtc-cu11==11.7.99
-    # via torch
-nvidia-cuda-runtime-cu11==11.7.99
-    # via torch
-nvidia-cudnn-cu11==8.5.0.96
-    # via torch
 oauthlib==3.2.2
     # via
     #   databricks-cli
@@ -701,13 +694,13 @@ pillow==9.4.0
     #   matplotlib
     #   vaex-viz
     #   visions
-platformdirs==2.6.2
+platformdirs==3.0.0
     # via
     #   jupyter-core
     #   virtualenv
 plotly==5.13.0
     # via -r doc-requirements.in
-pre-commit==3.0.2
+pre-commit==3.0.4
     # via sphinx-tags
 progressbar2==4.2.0
     # via vaex-core
@@ -766,7 +759,7 @@ pyasn1-modules==0.2.8
     # via google-auth
 pycparser==2.21
     # via cffi
-pydantic==1.10.4
+pydantic==1.10.5
     # via
     #   fastapi
     #   great-expectations
@@ -795,7 +788,7 @@ pyparsing==3.0.9
     #   matplotlib
 pyrsistent==0.19.3
     # via jsonschema
-pyspark==3.3.1
+pyspark==3.3.2
     # via -r doc-requirements.in
 python-dateutil==2.8.2
     # via
@@ -812,7 +805,7 @@ python-dateutil==2.8.2
     #   whylabs-client
 python-dotenv==0.21.1
     # via uvicorn
-python-json-logger==2.0.4
+python-json-logger==2.0.6
     # via
     #   flytekit
     #   jupyter-events
@@ -820,7 +813,7 @@ python-slugify[unidecode]==8.0.0
     # via
     #   cookiecutter
     #   sphinx-material
-python-utils==3.4.5
+python-utils==3.5.2
     # via progressbar2
 pythreejs==2.4.1
     # via ipyvolume
@@ -858,6 +851,7 @@ pyzmq==25.0.0
     # via
     #   ipykernel
     #   jupyter-client
+    #   jupyter-console
     #   jupyter-server
     #   nbclassic
     #   notebook
@@ -933,8 +927,6 @@ scipy==1.9.3
     #   ydata-profiling
 seaborn==0.12.2
     # via ydata-profiling
-secretstorage==3.3.3
-    # via keyring
 send2trash==1.8.0
     # via
     #   jupyter-server
@@ -971,7 +963,7 @@ sortedcontainers==2.4.0
     # via
     #   distributed
     #   flytekit
-soupsieve==2.3.2.post1
+soupsieve==2.4
     # via beautifulsoup4
 sphinx==4.5.0
     # via
@@ -1034,7 +1026,7 @@ sqlparse==0.4.3
     # via mlflow
 stack-data==0.6.2
     # via ipython
-starlette==0.22.0
+starlette==0.25.0
     # via fastapi
 statsd==3.3.0
     # via flytekit
@@ -1048,7 +1040,7 @@ tangled-up-in-unicode==0.2.0
     # via visions
 tblib==1.7.0
     # via distributed
-tenacity==8.1.0
+tenacity==8.2.1
     # via
     #   papermill
     #   plotly
@@ -1116,6 +1108,7 @@ traitlets==5.9.0
     #   ipyvolume
     #   ipywidgets
     #   jupyter-client
+    #   jupyter-console
     #   jupyter-core
     #   jupyter-events
     #   jupyter-server
@@ -1135,11 +1128,13 @@ traittypes==0.2.1
     #   ipydatawidgets
     #   ipyleaflet
     #   ipyvolume
+typed-ast==1.5.4
+    # via doltcli
 typeguard==2.13.3
     # via ydata-profiling
-types-toml==0.10.8.1
+types-toml==0.10.8.4
     # via responses
-typing-extensions==4.4.0
+typing-extensions==4.5.0
     # via
     #   astroid
     #   flytekit
@@ -1204,7 +1199,7 @@ vaex-viz==0.5.4
     # via
     #   vaex
     #   vaex-jupyter
-virtualenv==20.17.1
+virtualenv==20.19.0
     # via
     #   pre-commit
     #   ray
@@ -1220,14 +1215,14 @@ webencodings==0.5.1
     # via
     #   bleach
     #   tinycss2
-websocket-client==1.5.0
+websocket-client==1.5.1
     # via
     #   docker
     #   jupyter-server
     #   kubernetes
 websockets==10.4
     # via uvicorn
-werkzeug==2.2.2
+werkzeug==2.2.3
     # via
     #   flask
     #   tensorboard
@@ -1235,12 +1230,10 @@ wheel==0.38.4
     # via
     #   astunparse
     #   flytekit
-    #   nvidia-cublas-cu11
-    #   nvidia-cuda-runtime-cu11
     #   tensorboard
-whylabs-client==0.4.3
+whylabs-client==0.4.2
     # via -r doc-requirements.in
-whylogs==1.1.24
+whylogs==1.1.26
     # via -r doc-requirements.in
 whylogs-sketching==3.4.1.dev3
     # via whylogs
@@ -1253,7 +1246,7 @@ wrapt==1.14.1
     #   flytekit
     #   pandera
     #   tensorflow
-xarray==2023.1.0
+xarray==2023.2.0
     # via vaex-jupyter
 xyzservices==2022.9.0
     # via ipyleaflet
@@ -1261,7 +1254,7 @@ ydata-profiling==4.0.0
     # via pandas-profiling
 zict==2.2.0
     # via distributed
-zipp==3.12.0
+zipp==3.13.0
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:

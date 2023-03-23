@@ -84,7 +84,7 @@ class ExecutionParameters(object):
         decks: List[Deck]
         raw_output_prefix: Optional[str] = None
         execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier] = None
-        working_dir: typing.Optional[utils.AutoDeletingTempDir] = None
+        working_dir: typing.Optional[str] = None
         checkpoint: typing.Optional[Checkpoint] = None
         execution_date: typing.Optional[datetime] = None
         logging: Optional[_logging.Logger] = None
@@ -202,12 +202,10 @@ class ExecutionParameters(object):
         return self._raw_output_prefix
 
     @property
-    def working_directory(self) -> utils.AutoDeletingTempDir:
+    def working_directory(self) -> str:
         """
         A handle to a special working directory for easily producing temporary files.
-
         TODO: Usage examples
-        TODO: This does not always return a AutoDeletingTempDir
         """
         return self._working_directory
 
