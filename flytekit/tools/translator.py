@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import PythonFunctionTask, SourceCode
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -18,7 +18,6 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.image_spec.image_spec import build_docker_image, calculate_hash_from_image_spec
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -156,19 +155,6 @@ def _fast_serialize_command_fn(
     return fn
 
 
-def _update_entity_image(settings: SerializationSettings, entity: FlyteLocalEntity):
-    if not isinstance(entity, (PythonAutoContainerTask, WorkflowBase)) or not entity.image_spec:
-        return
-    if settings.fast_serialization_settings.enabled:
-        tag = calculate_hash_from_image_spec(entity.image_spec)
-        settings.fast_serialization_settings.destination_dir = "/root"
-    else:
-        tag = settings.version
-    image_name = f"{entity.image_spec.registry}/flytekit"
-    build_docker_image(entity.image_spec, image_name, tag)
-    settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=image_name, tag=tag))
-
-
 def get_serializable_task(
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
@@ -180,7 +166,6 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
-    _update_entity_image(settings, entity)
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
@@ -245,7 +230,6 @@ def get_serializable_workflow(
         # Ignore start nodes
         if n.id == _common_constants.GLOBAL_INPUT_NODE_ID:
             continue
-        _update_entity_image(settings, entity)
         # Recursively serialize the node
         serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
 

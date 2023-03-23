@@ -26,7 +26,7 @@ from flyteidl.core import literals_pb2 as literals_pb2
 from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration import Config, FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -43,6 +43,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
+from flytekit.image_spec.image_spec import build_docker_image, calculate_hash_from_image_spec
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
@@ -98,6 +99,19 @@ class ResolvedIdentifiers:
     domain: str
     name: str
     version: str
+
+
+def _update_entity_image(settings: SerializationSettings, entity: FlyteLocalEntity):
+    if not isinstance(entity, (PythonAutoContainerTask, WorkflowBase)) or not entity.image_spec:
+        return
+    if settings.fast_serialization_settings.enabled:
+        tag = calculate_hash_from_image_spec(entity.image_spec)
+        settings.fast_serialization_settings.destination_dir = entity.image_spec.destination_dir
+    else:
+        tag = settings.version
+    image_name = f"{entity.image_spec.registry}/flytekit"
+    build_docker_image(entity.image_spec, image_name, tag, settings.fast_serialization_settings.enabled)
+    settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=image_name, tag=tag))
 
 
 def _get_latest_version(list_entities_method: typing.Callable, project: str, domain: str, name: str):
@@ -840,6 +854,7 @@ class FlyteRemote(object):
                 distribution_location=upload_native_url,
             ),
         )
+        _update_entity_image(serialization_settings, entity)
 
         if version is None:
             # The md5 version that we send to S3/GCS has to match the file contents exactly,

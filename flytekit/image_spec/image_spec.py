@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass
 from typing import List, Optional
 
+import click
 from dataclasses_json import dataclass_json
 
 from flytekit.configuration.default_images import DefaultImages
@@ -25,6 +26,7 @@ class ImageSpec:
         apt_packages: list of ubuntu packages that will be installed in the image.
         base_image: base image of the docker container.
         python_version: python version in the image.
+        destination_dir: This is the location that the code should be copied into. This must be the same as the WORKING_DIR in the base image.
     """
 
     registry: str
@@ -32,6 +34,7 @@ class ImageSpec:
     apt_packages: Optional[List[str]] = None
     base_image: Optional[str] = None
     python_version: str = f"{sys.version_info.major}.{sys.version_info.minor}"
+    destination_dir: str = "/root"
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
@@ -66,31 +69,28 @@ def build():
     return cfg_path
 
 
-def build_docker_image(image_spec: ImageSpec, name: str, tag: str):
+def build_docker_image(image_spec: ImageSpec, name: str, tag: str, fast_register: bool):
     if should_build_image(image_spec.registry, tag) is False:
+        click.secho("The image has already been pushed. Skip building the image.", fg="blue")
         return
 
     cfg_path = create_envd_config(image_spec)
-    print("building image...")
-    p = subprocess.run(
-        [
-            "envd",
-            "build",
-            "--path",
-            f"{pathlib.Path(cfg_path).parent}",
-            "--output",
-            f"type=image,name={name}:{tag},push=true",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    click.secho("Building image...", fg="blue")
+    command = f"envd build --path {pathlib.Path(cfg_path).parent} --output type=image,name={name}:{tag},push=true"
+    click.secho(f"Run command: {command} ", fg="blue")
+    p = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+    for line in iter(p.stdout.readline, ""):
+        if line.decode().strip() != "":
+            click.secho(line.decode().strip(), fg="blue")
+        if p.poll() is not None:
+            break
 
     if p.stderr:
         raise Exception(
             f"failed to build the imageSpec at {cfg_path} with error {p.stderr}",
         )
 
-    update_lock_file(image_spec.registry, tag)
+    update_lock_file(image_spec.registry, tag, fast_register)
 
 
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
@@ -109,16 +109,21 @@ def should_build_image(registry: str, tag: str) -> bool:
         return registry not in checkpoints or tag not in checkpoints[registry]
 
 
-def update_lock_file(registry: str, tag: str):
+def update_lock_file(registry: str, tag: str, fast_register: bool):
     """
     Update the ~/.flyte/image.lock. It will contains all the image names we have pushed.
     If not exists, create a new file.
     """
-    with open(IMAGE_LOCK, "r") as f:
-        checkpoints = json.load(f)
-        if registry not in checkpoints:
-            checkpoints[registry] = [tag]
-        else:
-            checkpoints[registry].append(tag)
-        with open(IMAGE_LOCK, "w") as o:
-            o.write(json.dumps(checkpoints))
+    data = {}
+    if os.path.isfile(IMAGE_LOCK) is False:
+        open(IMAGE_LOCK, "a").close()
+    else:
+        with open(IMAGE_LOCK, "r") as f:
+            data = json.load(f)
+
+    if registry not in data:
+        data[registry] = [tag]
+    else:
+        data[registry].append(tag)
+    with open(IMAGE_LOCK, "w") as o:
+        o.write(json.dumps(data, indent=2))
