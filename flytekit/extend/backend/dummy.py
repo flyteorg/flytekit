@@ -9,7 +9,7 @@ from flytekit.models.task import TaskTemplate
 
 class DummyPlugin(BackendPluginBase):
     def __init__(self):
-        super().__init__(task_type="dummy")
+        super().__init__(task_type="bigquery")
 
     def initialize(self):
         pass
