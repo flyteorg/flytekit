@@ -164,7 +164,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         client_secret: str,
         cfg_store: ClientConfigStore,
         header_key: str = None,
-        scopes: typing.List[str] = None,
+        scopes: typing.Optional[typing.List[str]] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
