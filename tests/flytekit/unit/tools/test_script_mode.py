@@ -61,7 +61,6 @@ def test_deterministic_hash(tmp_path):
     print(workflows_dir)
     sys.path.append(str(workflows_dir.parent))
     compress_scripts(str(workflows_dir.parent), str(destination), "workflows.hello_world")
-    print(f"{os.listdir(tmp_path)}")
 
     digest, hex_digest = hash_file(destination)
 

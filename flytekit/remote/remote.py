@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import importlib
 import os
 import pathlib
 import tempfile
@@ -34,7 +33,6 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
-from flytekit.core.tracker import get_full_module_path
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as user_exceptions
