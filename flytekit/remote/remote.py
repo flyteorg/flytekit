@@ -10,6 +10,7 @@ import hashlib
 import importlib
 import os
 import pathlib
+import random
 import tempfile
 import time
 import typing
@@ -108,9 +109,11 @@ def _update_entity_image(settings: SerializationSettings, entity: FlyteLocalEnti
         tag = calculate_hash_from_image_spec(entity.image_spec)
         settings.fast_serialization_settings.destination_dir = entity.image_spec.destination_dir
     else:
-        tag = settings.version
+        tag = settings.version or uuid.UUID(int=random.getrandbits(128)).hex
     image_name = f"{entity.image_spec.registry}/flytekit"
-    build_docker_image(entity.image_spec, image_name, tag, settings.fast_serialization_settings.enabled)
+    build_docker_image(
+        entity.image_spec, image_name, tag, settings.fast_serialization_settings.enabled, settings.source_root
+    )
     settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=image_name, tag=tag))
 
 

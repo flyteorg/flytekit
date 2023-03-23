@@ -3,6 +3,7 @@ import os as _os
 import sys
 import typing
 from collections import OrderedDict
+from functools import cmp_to_key
 
 import click
 
@@ -17,6 +18,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.task import TaskSpec
+from flytekit.remote.remote import _update_entity_image
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options, get_serializable
 
@@ -68,7 +70,17 @@ def get_registrable_entities(
     new_api_serializable_entities = OrderedDict()
     # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
     #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
-    for entity in flyte_context.FlyteEntities.entities.copy():
+    flyte_entities = flyte_context.FlyteEntities.entities.copy()
+
+    def compare(x, y):
+        if isinstance(x, WorkflowBase):
+            return -1
+        return 1
+
+    flyte_entities = sorted(flyte_entities, key=cmp_to_key(compare))
+
+    for entity in flyte_entities:
+        _update_entity_image(ctx.serialization_settings, entity)
         if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
             get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity, options=options)
 

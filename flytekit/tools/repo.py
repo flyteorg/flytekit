@@ -60,6 +60,8 @@ def serialize_to_folder(
     """
     Serialize the given set of python packages to a folder
     """
+    if folder is None:
+        folder = "."
     loaded_entities = serialize(pkgs, settings, local_source_root, options=options)
     persist_registrable_entities(loaded_entities, folder)
 

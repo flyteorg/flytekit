@@ -37,7 +37,7 @@ class ImageSpec:
     destination_dir: str = "/root"
 
 
-def create_envd_config(image_spec: ImageSpec) -> str:
+def create_envd_config(image_spec: ImageSpec, fast_register: bool, source_root: str) -> str:
     packages_list = ""
     for pkg in image_spec.packages:
         packages_list += f'"{pkg}", '
@@ -57,40 +57,43 @@ def build():
     install.apt_packages(name = [{apt_packages_list}])
     install.python(version="{image_spec.python_version}")
 """
-    from flytekit.core import context_manager
 
-    ctx = context_manager.FlyteContextManager.current_context()
-    cfg_path = ctx.file_access.get_random_local_path("build.envd")
-    pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
+    cfg_path = source_root + "/build.envd"
 
-    with open(cfg_path, "x") as f:
+    if fast_register is False:
+        envd_config += (
+            f'    io.copy(host_path="{os.path.relpath(source_root, ".")}", envd_path="{image_spec.destination_dir}")'
+        )
+
+    with open(cfg_path, "w+") as f:
         f.write(envd_config)
 
     return cfg_path
 
 
-def build_docker_image(image_spec: ImageSpec, name: str, tag: str, fast_register: bool):
+def build_docker_image(image_spec: ImageSpec, name: str, tag: str, fast_register: bool, source_root: str):
     if should_build_image(image_spec.registry, tag) is False:
         click.secho("The image has already been pushed. Skip building the image.", fg="blue")
         return
 
-    cfg_path = create_envd_config(image_spec)
+    cfg_path = create_envd_config(image_spec, fast_register, source_root)
     click.secho("Building image...", fg="blue")
     command = f"envd build --path {pathlib.Path(cfg_path).parent} --output type=image,name={name}:{tag},push=true"
     click.secho(f"Run command: {command} ", fg="blue")
-    p = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+    p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     for line in iter(p.stdout.readline, ""):
-        if line.decode().strip() != "":
-            click.secho(line.decode().strip(), fg="blue")
         if p.poll() is not None:
             break
+        if line.decode().strip() != "":
+            click.secho(line.decode().strip(), fg="blue")
 
-    if p.stderr:
+    if p.returncode != 0:
+        _, stderr = p.communicate()
         raise Exception(
-            f"failed to build the imageSpec at {cfg_path} with error {p.stderr}",
+            f"failed to build the imageSpec at {cfg_path} with error {stderr}",
         )
 
-    update_lock_file(image_spec.registry, tag, fast_register)
+    update_lock_file(image_spec.registry, tag)
 
 
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
@@ -109,7 +112,7 @@ def should_build_image(registry: str, tag: str) -> bool:
         return registry not in checkpoints or tag not in checkpoints[registry]
 
 
-def update_lock_file(registry: str, tag: str, fast_register: bool):
+def update_lock_file(registry: str, tag: str):
     """
     Update the ~/.flyte/image.lock. It will contains all the image names we have pushed.
     If not exists, create a new file.
