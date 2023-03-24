@@ -29,7 +29,7 @@ class ImageSpec:
         destination_dir: This is the location that the code should be copied into. This must be the same as the WORKING_DIR in the base image.
     """
 
-    registry: str
+    registry: Optional[str] = None
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
     base_image: Optional[str] = None
@@ -37,7 +37,7 @@ class ImageSpec:
     destination_dir: str = "/root"
 
 
-def create_envd_config(image_spec: ImageSpec, fast_register: bool, source_root: str) -> str:
+def create_envd_config(image_spec: ImageSpec, fast_register: bool, source_root: Optional[str] = None) -> str:
     packages_list = ""
     for pkg in image_spec.packages:
         packages_list += f'"{pkg}", '
@@ -57,7 +57,8 @@ def build():
     install.apt_packages(name = [{apt_packages_list}])
     install.python(version="{image_spec.python_version}")
 """
-
+    if source_root is None:
+        source_root = "."
     cfg_path = source_root + "/build.envd"
 
     if fast_register is False:
@@ -78,7 +79,9 @@ def build_docker_image(image_spec: ImageSpec, name: str, tag: str, fast_register
 
     cfg_path = create_envd_config(image_spec, fast_register, source_root)
     click.secho("Building image...", fg="blue")
-    command = f"envd build --path {pathlib.Path(cfg_path).parent} --output type=image,name={name}:{tag},push=true"
+    command = f"envd build --path {pathlib.Path(cfg_path).parent}"
+    if image_spec.registry:
+        command += " --output type=image,name={name}:{tag},push=true"
     click.secho(f"Run command: {command} ", fg="blue")
     p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     for line in iter(p.stdout.readline, ""):
