@@ -8,10 +8,12 @@ from flytekit.clients.auth.authenticator import (
     ClientConfig,
     ClientCredentialsAuthenticator,
     CommandAuthenticator,
+    DeviceCodeAuthenticator,
     PKCEAuthenticator,
     StaticClientConfigStore,
 )
 from flytekit.clients.auth.exceptions import AuthenticationError
+from flytekit.clients.auth.token_client import DeviceCodeResponse
 
 ENDPOINT = "example.com"
 
@@ -79,5 +81,33 @@ def test_client_creds_authenticator(mock_requests):
     assert authn._creds
 
 
-def test_device_flow_authenticator():
-    pass
+@patch("flytekit.clients.auth.authenticator.KeyringStore")
+@patch("flytekit.clients.auth.token_client.get_device_code")
+@patch("flytekit.clients.auth.token_client.poll_token_endpoint")
+def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock, mock_keyring: MagicMock):
+    with pytest.raises(AuthenticationError):
+        DeviceCodeAuthenticator(
+            ENDPOINT,
+            static_cfg_store,
+            audience="x",
+        )
+
+    cfg_store = StaticClientConfigStore(
+        ClientConfig(
+            token_endpoint="token_endpoint",
+            authorization_endpoint="auth_endpoint",
+            redirect_uri="redirect_uri",
+            client_id="client",
+            device_authorization_endpoint="dev",
+        )
+    )
+    authn = DeviceCodeAuthenticator(
+        ENDPOINT,
+        cfg_store,
+        audience="x",
+    )
+
+    device_mock.return_value = DeviceCodeResponse("x", "y", "s", "m", 1000, 0)
+    poll_mock.return_value = ("access", 100)
+    authn.refresh_credentials()
+    assert authn._creds
