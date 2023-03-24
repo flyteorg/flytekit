@@ -159,7 +159,6 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[TFRecordsDirectory]
     ) -> TFRecordDatasetV2:
-
         uri, metadata = extract_metadata_and_uri(lv, expected_python_type)
         local_dir = ctx.file_access.get_random_local_directory()
         ctx.file_access.get_data(uri, local_dir, is_multipart=True)
