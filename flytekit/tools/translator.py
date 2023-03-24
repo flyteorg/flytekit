@@ -9,6 +9,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
+from flytekit.core.container_task import ContainerTask
 from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.map_task import MapPythonTask
@@ -189,7 +190,7 @@ def get_serializable_task(
         # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
         # the pod spec is a K8s library object, and we shouldn't be messing around with it in this file.
-        elif pod:
+        elif pod and not isinstance(entity, ContainerTask):
             if isinstance(entity, MapPythonTask):
                 entity.set_command_prefix(get_command_prefix_for_fast_execute(settings))
                 pod = entity.get_k8s_pod(settings)

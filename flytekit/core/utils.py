@@ -4,10 +4,15 @@ import tempfile as _tempfile
 import time as _time
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
+from flyteidl.core import tasks_pb2 as _core_task
+from kubernetes.client import ApiClient
+from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+
+from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
-from flytekit.models import task as _task_models
+from flytekit.models import task as _task_model
 
 
 def _dnsify(value: str) -> str:
@@ -124,6 +129,51 @@ def _get_container_definition(
         config={},
         data_loading_config=data_loading_config,
     )
+
+
+def _sanitize_resource_name(resource: _task_model.Resources.ResourceEntry) -> str:
+    return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
+
+
+def _serialize_pod_spec(pod_template: PodTemplate, primary_container: _task_model.Container) -> Dict[str, Any]:
+    containers = cast(PodTemplate, pod_template).pod_spec.containers
+    primary_exists = False
+
+    for container in containers:
+        if container.name == cast(PodTemplate, pod_template).primary_container_name:
+            primary_exists = True
+            break
+
+    if not primary_exists:
+        # insert a placeholder primary container if it is not defined in the pod spec.
+        containers.append(V1Container(name=cast(PodTemplate, pod_template).primary_container_name))
+    final_containers = []
+    for container in containers:
+        # In the case of the primary container, we overwrite specific container attributes
+        # with the values given to ContainerTask.
+        # The attributes include: image, command, args, resource, and env (env is unioned)
+        if container.name == cast(PodTemplate, pod_template).primary_container_name:
+            container.image = primary_container.image
+            container.command = primary_container.command
+            container.args = primary_container.args
+
+            limits, requests = {}, {}
+            for resource in primary_container.resources.limits:
+                limits[_sanitize_resource_name(resource)] = resource.value
+            for resource in primary_container.resources.requests:
+                requests[_sanitize_resource_name(resource)] = resource.value
+            resource_requirements = V1ResourceRequirements(limits=limits, requests=requests)
+            if len(limits) > 0 or len(requests) > 0:
+                # Important! Only copy over resource requirements if they are non-empty.
+                container.resources = resource_requirements
+            if primary_container.env is not None:
+                container.env = [V1EnvVar(name=key, value=val) for key, val in primary_container.env.items()] + (
+                    container.env or []
+                )
+        final_containers.append(container)
+    cast(PodTemplate, pod_template).pod_spec.containers = final_containers
+
+    return ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec)
 
 
 def load_proto_from_file(pb2_type, path):

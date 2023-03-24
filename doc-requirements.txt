@@ -197,11 +197,9 @@ filelock==3.9.0
     #   virtualenv
 flask==2.2.2
     # via mlflow
-flatbuffers==2.0.7
-    # via
-    #   tensorflow
-    #   tf2onnx
-flyteidl==1.2.9
+flatbuffers==23.1.21
+    # via tensorflow
+flyteidl==1.3.12
     # via flytekit
 fonttools==4.38.0
     # via matplotlib
