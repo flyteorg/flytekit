@@ -29,7 +29,6 @@ class MapPythonTask(PythonTask):
     """
     A MapPythonTask defines a :py:class:`flytekit.PythonTask` which specifies how to run
     an inner :py:class:`flytekit.PythonFunctionTask` across a range of inputs in parallel.
-    TODO: support lambda functions
     """
 
     def __init__(
@@ -93,6 +92,7 @@ class MapPythonTask(PythonTask):
             **kwargs,
         )
 
+    @property
     def bound_inputs(self) -> Set[str]:
         return self._bound_inputs
 
@@ -228,7 +228,7 @@ class MapPythonTask(PythonTask):
         map_task_inputs = {}
         for k in self.interface.inputs.keys():
             v = kwargs[k]
-            if isinstance(v, list):
+            if isinstance(v, list) and k not in self.bound_inputs:
                 map_task_inputs[k] = v[task_index]
             else:
                 map_task_inputs[k] = v
@@ -254,7 +254,7 @@ class MapPythonTask(PythonTask):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 v = kwargs[k]
-                if isinstance(v, list):
+                if isinstance(v, list) and k not in self.bound_inputs:
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
                     single_instance_inputs[k] = kwargs[k]
@@ -365,10 +365,10 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
         bound_inputs = set(bound_vars.split(","))
         return MapPythonTask(python_function_task=_task_def, max_concurrency=max_concurrency, bound_inputs=bound_inputs)
 
-    def loader_args(self, settings: SerializationSettings, t: MapPythonTask) -> List[str]:
+    def loader_args(self, settings: SerializationSettings, t: MapPythonTask) -> List[str]:  # type:ignore
         return [
             "vars",
-            f'{",".join(t.bound_inputs())}',
+            f'{",".join(t.bound_inputs)}',
             "resolver",
             t.run_task.task_resolver.location,
             *t.run_task.task_resolver.loader_args(settings, t.run_task),
