@@ -1,5 +1,5 @@
 import pathlib
-from typing import Generic, Type, TypeVar
+from typing import Type
 
 import tensorflow as tf
 
@@ -9,13 +9,14 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
-T = TypeVar("T")
 
-
-class TensorFlowModelTransformerBase(TypeTransformer, Generic[T]):
+class TensorFlowModelTransformer(TypeTransformer[tf.keras.Model]):
     TENSORFLOW_FORMAT = "TensorFlowModel"
 
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
+    def __init__(self):
+        super().__init__(name="TensorFlow Model", t=tf.keras.Model)
+
+    def get_literal_type(self, t: Type[tf.keras.Model]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
                 format=self.TENSORFLOW_FORMAT,
@@ -26,8 +27,8 @@ class TensorFlowModelTransformerBase(TypeTransformer, Generic[T]):
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: T,
-        python_type: Type[T],
+        python_val: tf.keras.Model,
+        python_type: Type[tf.keras.Model],
         expected: LiteralType,
     ) -> Literal:
         meta = BlobMetadata(
@@ -47,7 +48,9 @@ class TensorFlowModelTransformerBase(TypeTransformer, Generic[T]):
         ctx.file_access.put_data(local_path, remote_path, is_multipart=True)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[tf.keras.Model]
+    ) -> tf.keras.Model:
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:
@@ -59,26 +62,15 @@ class TensorFlowModelTransformerBase(TypeTransformer, Generic[T]):
         # load model
         return tf.keras.models.load_model(local_path)
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: LiteralType) -> Type[tf.keras.Model]:
         if (
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
             and literal_type.blob.format == self.TENSORFLOW_FORMAT
         ):
-            return T
+            return tf.keras.Model
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-class TensorFlowModelTransformer(TensorFlowModelTransformerBase[tf.keras.Model]):
-    def __init__(self):
-        super().__init__(name="TensorFlow Model", t=tf.keras.Model)
-
-
-# class TensorFlowSequentialTransformer(TensorFlowModelTransformerBase[tf.keras.Sequential]):
-#     def __init__(self):
-#         super().__init__(name="TensorFlow Sequential Model", t=tf.keras.Sequential)
-
-
 TypeEngine.register(TensorFlowModelTransformer())
-# TypeEngine.register(TensorFlowSequentialTransformer())
