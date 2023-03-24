@@ -11,7 +11,7 @@ from flytekit.core import context_manager
 from flytekit.extras.tensorflow import TensorFlowModelTransformer
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
