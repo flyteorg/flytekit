@@ -94,7 +94,7 @@ def test_create_and_link_node_from_remote_ignore():
 
 @pytest.mark.parametrize(
     "input",
-    [2.0, {"i": 1, "a": ["h", "e"]}, [1, 2, 3], [{"a": {0: "foo"}}] * 5],
+    [2.0, {"i": 1, "a": ["h", "e"]}, [1, 2, 3], ["foo"] * 5],
 )
 def test_translate_inputs_to_literals(input):
     @dataclass_json
@@ -105,7 +105,7 @@ def test_translate_inputs_to_literals(input):
 
     @task
     def t1(
-        a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[typing.Dict[str, FlytePickle]], 2]]
+        a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[FlytePickle], 2]]
     ):
         print(a)
 

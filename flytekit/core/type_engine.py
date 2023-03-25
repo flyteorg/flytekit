@@ -970,12 +970,18 @@ class ListTransformer(TypeTransformer[T]):
 
     @staticmethod
     def is_batchable(t: Type):
+        """
+        This function determines whether a given list is batchable or not.
+        A batchable list consists only FlytePickle objects.
+        """
         from flytekit.types.pickle import FlytePickle
 
-        if t == FlytePickle or (hasattr(t, "__origin__") and t.__origin__ == FlytePickle):
-            return True
-        if get_origin(t) is not None:
-            return any(map(ListTransformer.is_batchable, get_args(t)))
+        if get_origin(t) is Annotated:
+            return ListTransformer.is_batchable(get_args(t)[0])
+        if get_origin(t) is list:
+            subtype = get_args(t)[0]
+            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
+                return True
         return False
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:

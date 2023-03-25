@@ -18,7 +18,7 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation
@@ -1577,24 +1577,49 @@ def test_file_ext_with_flyte_file_wrong_type():
 
 
 @pytest.mark.parametrize(
-    "python_val, python_type, batch_size",
+    "python_val, python_type, batch_size, expected_list_length",
     [
-        ([{"a": {0: "foo"}}] * 5, typing.List[typing.Dict[str, FlytePickle]], 5),
-        (
-            [{"a": {0: "foo"}}] * 5,
-            Annotated[typing.List[typing.Dict[str, FlytePickle]], HashMethod(function=str), 2],
-            2,
-        ),
+        # Case 1: List of FlytePickle objects with default batch size.
+        # (By default, the batch_size is set to the length of the whole list.)
+        # After converting to literal, the result will be [batched_FlytePickle(5 items)].
+        # Therefore, the expected list length is [1].
+        ([{"foo"}] * 5, typing.List[FlytePickle], 5, [1]),
+        # Case 2: List of FlytePickle objects with batch size 2.
+        # After converting to literal, the result will be
+        # [batched_FlytePickle(2 items), batched_FlytePickle(2 items), batched_FlytePickle(1 item)].
+        # Therefore, the expected list length is [3].
+        (["foo"] * 5, Annotated[typing.List[FlytePickle], HashMethod(function=str), 2], 2, [3]),
+        # Case 3: Nested list of FlytePickle objects with batch size 2.
+        # After converting to literal, the result will be
+        # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
+        # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
+        ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], 3]], 2, [2, 1]),
     ],
 )
-def test_batch_pickle_list(python_val, python_type, batch_size):
-    from math import ceil
-
+def test_batch_pickle_list(python_val, python_type, batch_size, expected_list_length):
     ctx = FlyteContext.current_context()
     expected = TypeEngine.to_literal_type(python_type)
     lv = TypeEngine.to_literal(ctx, python_val, python_type, expected)
-    # For example, if the batch size is 2 and the length of the list is 5, the list should be split into ceil(5/3) = 3 chunks.
-    # By default, the batch_size is set to the length of the whole list.
-    assert len(lv.collection.literals) == ceil(len(python_val) / batch_size)
+
+    tmp_lv = lv
+    tmp_python_val = python_val
+    for length in expected_list_length:
+        # Check that after converting to literal, the length of the literal list is equal to:
+        # - the length of the original list divided by the batch size if not nested
+        # - the length of the original list if it contains a nested list
+        assert len(tmp_lv.collection.literals) == length
+        tmp_lv = tmp_lv.collection.literals[0]
+        tmp_python_val = tmp_python_val[0]
+
     pv = TypeEngine.to_python_value(ctx, lv, python_type)
+    # Check that after converting literal to Python value, the result is equal to the original python values.
     assert pv == python_val
+    if get_origin(python_type) is Annotated:
+        pv = TypeEngine.to_python_value(ctx, lv, get_args(python_type)[0])
+        # Remove the annotation and check that after converting to Python value, the result is equal
+        # to the original input values. This is used to simulate the following case:
+        # @workflow
+        # def wf():
+        #     data = task0()  # task0() -> Annotated[typing.List[FlytePickle], 2]
+        #     task1(data=data)  # task1(data: typing.List[FlytePickle])
+        assert pv == python_val
