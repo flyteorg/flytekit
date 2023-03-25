@@ -29,11 +29,13 @@ plotly                      # deck
 pandas_profiling            # deck
 dolt_integrations           # dolt
 great-expectations          # greatexpectations
+datasets                    # huggingface
 kubernetes                  # k8s-pod
 modin                       # modin
 pandera                     # pandera
 papermill                   # papermill
 jupyter                     # papermill
+polars                      # polars
 pyspark                     # spark
 sqlalchemy                  # sqlalchemy
 torch                       # pytorch

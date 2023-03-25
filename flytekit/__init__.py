@@ -29,9 +29,10 @@ These are the essentials needed to get started writing tasks and workflows. The 
    ~core.promise.NodeOutput
    FlyteContextManager
 
-Running Locally
-------------------
-Tasks and Workflows can both be locally run (assuming the relevant tasks are capable of local execution). This is useful for unit testing.
+.. important::
+
+   Tasks and Workflows can both be locally run, assuming the relevant tasks are capable of local execution.
+   This is useful for unit testing.
 
 
 Branching and Conditionals
