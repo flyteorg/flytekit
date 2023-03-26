@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ import click
 from dataclasses_json import dataclass_json
 
 from flytekit.configuration.default_images import DefaultImages
+from flytekit.core import context_manager
 
 IMAGE_LOCK = f"{os.path.expanduser('~')}{os.path.sep}.flyte{os.path.sep}image.lock"
 
@@ -57,13 +59,16 @@ def build():
     install.apt_packages(name = [{apt_packages_list}])
     install.python(version="{image_spec.python_version}")
 """
-    if source_root is None:
-        source_root = "."
-    cfg_path = source_root + "/build.envd"
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    cfg_path = ctx.file_access.get_random_local_path("build.envd")
+    pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
 
     if fast_register is False:
+        shutil.copytree(source_root, pathlib.Path(cfg_path).parent)
+
         envd_config += (
-            f'    io.copy(host_path="{os.path.relpath(source_root, ".")}", envd_path="{image_spec.destination_dir}")'
+            f'    io.copy(host_path="./", envd_path="{image_spec.destination_dir}")'
         )
 
     with open(cfg_path, "w+") as f:
@@ -81,7 +86,7 @@ def build_docker_image(image_spec: ImageSpec, name: str, tag: str, fast_register
     click.secho("Building image...", fg="blue")
     command = f"envd build --path {pathlib.Path(cfg_path).parent}"
     if image_spec.registry:
-        command += " --output type=image,name={name}:{tag},push=true"
+        command += f" --output type=image,name={name}:{tag},push=true"
     click.secho(f"Run command: {command} ", fg="blue")
     p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     for line in iter(p.stdout.readline, ""):
