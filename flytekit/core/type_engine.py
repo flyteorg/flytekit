@@ -7,6 +7,7 @@ import datetime as _datetime
 import enum
 import inspect
 import json as _json
+import logging
 import mimetypes
 import textwrap
 import typing
@@ -217,6 +218,49 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 
 
 class DataclassTransformer(TypeTransformer[object]):
+
+    def __init__(self, registry: Type[TypeEngine]):
+        super().__init__(name='dataclass', t=object, enable_type_assertions=True)
+        self._registry = registry
+
+    @property
+    def registry(self) -> Type[TypeEngine]:
+        return self._registry
+
+    def assert_type(self, t: Type[T], v: T):
+        if not dataclasses.is_dataclass(v):
+            raise TypeTransformerFailedError(f'Object {v} must be a dataclass')
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        fields = {}
+        for field in dataclasses.fields(python_type):
+            sub_val = getattr(python_val, field.name)
+            transformer = self.registry.get_transformer(field.type)
+            fields[field.name] = transformer.to_literal(sub_val).to_flyte_idl()
+
+        struct = _struct.Struct()
+        struct.update(fields)
+        return Literal(scalar=Scalar(generic=struct))
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
+        fields = {}
+        struct: _struct.Struct = lv.scalar.generic
+
+        for field in dataclasses.fields(expected_python_type):
+            if struct.HasField(field.name):
+                transformer = self.registry.get_transformer(field.type)
+                fields[field.name] = transformer.to_python_value(
+                    ctx=ctx,
+                    lv=Literal.from_flyte_idl(struct[field.name]),
+                    expected_python_type=field.type)
+
+        return expected_python_type(**fields)
+
+
+class _JsonDataclassTransformer(TypeTransformer[object]):
     """
     The Dataclass Transformer, provides a type transformer for arbitrary Python dataclasses, that have
     @dataclass and @dataclass_json decorators.
@@ -668,7 +712,7 @@ class TypeEngine(typing.Generic[T]):
 
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
     _RESTRICTED_TYPES: typing.List[type] = []
-    _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
+    _JSON_DATACLASS_TRANSFORMER: TypeTransformer = _JsonDataclassTransformer()  # type: ignore
 
     @classmethod
     def register(
@@ -764,7 +808,11 @@ class TypeEngine(typing.Generic[T]):
 
         # Step 4
         if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
+            if isinstance(python_type, DataClassJsonMixin):
+                logging.warning('dataclasses no longer require `dataclasses_json.dataclasses` annotation')
+                return cls._JSON_DATACLASS_TRANSFORMER
+            else:
+                return DataclassTransformer(registry=cls)
 
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
