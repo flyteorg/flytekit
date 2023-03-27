@@ -82,7 +82,7 @@ def test_get_token(mock_requests):
 
 
 @patch("flytekit.clients.auth.authenticator.requests")
-def test_client_creds_authenticator(mock_requests):
+def test_client_creds_authenticator_without_custom_scopes(mock_requests):
     authn = ClientCredentialsAuthenticator(
         ENDPOINT, client_id="client", client_secret="secret", cfg_store=static_cfg_store
     )
@@ -92,4 +92,27 @@ def test_client_creds_authenticator(mock_requests):
     response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
     mock_requests.post.return_value = response
     authn.refresh_credentials()
+    expected_scopes = static_cfg_store.get_client_config().scopes
+
     assert authn._creds
+    assert authn._scopes == expected_scopes
+
+
+@patch("flytekit.clients.auth.authenticator.requests")
+def test_client_creds_authenticator_with_custom_scopes(mock_requests):
+    expected_scopes = ["foo", "baz"]
+    authn = ClientCredentialsAuthenticator(
+        ENDPOINT,
+        client_id="client",
+        client_secret="secret",
+        cfg_store=static_cfg_store,
+        scopes=expected_scopes,
+    )
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
+    mock_requests.post.return_value = response
+    authn.refresh_credentials()
+
+    assert authn._creds
+    assert authn._scopes == expected_scopes
