@@ -67,9 +67,7 @@ def build():
     if fast_register is False:
         shutil.copytree(source_root, pathlib.Path(cfg_path).parent)
 
-        envd_config += (
-            f'    io.copy(host_path="./", envd_path="{image_spec.destination_dir}")'
-        )
+        envd_config += f'    io.copy(host_path="./", envd_path="{image_spec.destination_dir}")'
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)

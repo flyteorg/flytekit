@@ -868,12 +868,18 @@ class K8sObjectMetadata(_common.FlyteIdlEntity):
 
 
 class K8sPod(_common.FlyteIdlEntity):
-    def __init__(self, metadata: K8sObjectMetadata = None, pod_spec: typing.Dict[str, typing.Any] = None):
+    def __init__(
+        self,
+        metadata: K8sObjectMetadata = None,
+        pod_spec: typing.Dict[str, typing.Any] = None,
+        data_config: typing.Optional[DataLoadingConfig] = None,
+    ):
         """
         This defines a kubernetes pod target.  It will build the pod target during task execution
         """
         self._metadata = metadata
         self._pod_spec = pod_spec
+        self._data_config = data_config
 
     @property
     def metadata(self) -> K8sObjectMetadata:
@@ -883,10 +889,15 @@ class K8sPod(_common.FlyteIdlEntity):
     def pod_spec(self) -> typing.Dict[str, typing.Any]:
         return self._pod_spec
 
+    @property
+    def data_config(self) -> typing.Optional[DataLoadingConfig]:
+        return self._data_config
+
     def to_flyte_idl(self) -> _core_task.K8sPod:
         return _core_task.K8sPod(
             metadata=self._metadata.to_flyte_idl(),
             pod_spec=_json_format.Parse(_json.dumps(self.pod_spec), _struct.Struct()) if self.pod_spec else None,
+            data_config=self.data_config.to_flyte_idl() if self.data_config else None,
         )
 
     @classmethod
@@ -894,6 +905,9 @@ class K8sPod(_common.FlyteIdlEntity):
         return cls(
             metadata=K8sObjectMetadata.from_flyte_idl(pb2_object.metadata),
             pod_spec=_json_format.MessageToDict(pb2_object.pod_spec) if pb2_object.HasField("pod_spec") else None,
+            data_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config)
+            if pb2_object.HasField("data_config")
+            else None,
         )
 
 
