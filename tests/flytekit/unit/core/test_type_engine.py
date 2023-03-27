@@ -1602,7 +1602,6 @@ def test_batch_pickle_list(python_val, python_type, expected_list_length):
     lv = TypeEngine.to_literal(ctx, python_val, python_type, expected)
 
     tmp_lv = lv
-
     for length in expected_list_length:
         # Check that after converting to literal, the length of the literal list is equal to:
         # - the length of the original list divided by the batch size if not nested
