@@ -67,7 +67,7 @@ def test_command_authenticator(mock_subprocess: MagicMock):
         authn.refresh_credentials()
 
 
-@patch("flytekit.clients.auth.authenticator.requests")
+@patch("flytekit.clients.auth.token_client.requests")
 def test_client_creds_authenticator(mock_requests):
     authn = ClientCredentialsAuthenticator(
         ENDPOINT, client_id="client", client_secret="secret", cfg_store=static_cfg_store
