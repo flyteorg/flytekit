@@ -57,6 +57,10 @@ def compress_scripts(source_path: str, destination: str, module_name: str):
 def copy_module_to_destination(
     original_source_path: str, original_destination_path: str, module_name: str, visited: typing.List[str]
 ):
+    """
+    Copy the module (file) to the destination directory. If the module relative import other modules, flytekit will
+    recursively copy them as well.
+    """
     mod = importlib.import_module(module_name)
     full_module_name = get_full_module_path(mod, mod.__name__)
     if full_module_name in visited:
