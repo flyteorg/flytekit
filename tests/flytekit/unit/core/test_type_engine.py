@@ -1577,39 +1577,38 @@ def test_file_ext_with_flyte_file_wrong_type():
 
 
 @pytest.mark.parametrize(
-    "python_val, python_type, batch_size, expected_list_length",
+    "python_val, python_type, expected_list_length",
     [
         # Case 1: List of FlytePickle objects with default batch size.
         # (By default, the batch_size is set to the length of the whole list.)
         # After converting to literal, the result will be [batched_FlytePickle(5 items)].
         # Therefore, the expected list length is [1].
-        ([{"foo"}] * 5, typing.List[FlytePickle], 5, [1]),
+        ([{"foo"}] * 5, typing.List[FlytePickle], [1]),
         # Case 2: List of FlytePickle objects with batch size 2.
         # After converting to literal, the result will be
         # [batched_FlytePickle(2 items), batched_FlytePickle(2 items), batched_FlytePickle(1 item)].
         # Therefore, the expected list length is [3].
-        (["foo"] * 5, Annotated[typing.List[FlytePickle], HashMethod(function=str), 2], 2, [3]),
+        (["foo"] * 5, Annotated[typing.List[FlytePickle], HashMethod(function=str), 2], [3]),
         # Case 3: Nested list of FlytePickle objects with batch size 2.
         # After converting to literal, the result will be
         # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
         # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
-        ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], 3]], 2, [2, 1]),
+        ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], 3]], [2, 1]),
     ],
 )
-def test_batch_pickle_list(python_val, python_type, batch_size, expected_list_length):
+def test_batch_pickle_list(python_val, python_type, expected_list_length):
     ctx = FlyteContext.current_context()
     expected = TypeEngine.to_literal_type(python_type)
     lv = TypeEngine.to_literal(ctx, python_val, python_type, expected)
 
     tmp_lv = lv
-    tmp_python_val = python_val
+
     for length in expected_list_length:
         # Check that after converting to literal, the length of the literal list is equal to:
         # - the length of the original list divided by the batch size if not nested
         # - the length of the original list if it contains a nested list
         assert len(tmp_lv.collection.literals) == length
         tmp_lv = tmp_lv.collection.literals[0]
-        tmp_python_val = tmp_python_val[0]
 
     pv = TypeEngine.to_python_value(ctx, lv, python_type)
     # Check that after converting literal to Python value, the result is equal to the original python values.
