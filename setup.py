@@ -29,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.3.5,<1.4.0",
+        "flyteidl>=1.3.12,<1.4.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -60,7 +60,6 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
-        "retry==0.9.2",
         "dataclasses-json>=0.5.2",
         "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
