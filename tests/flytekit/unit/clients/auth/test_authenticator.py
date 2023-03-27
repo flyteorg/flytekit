@@ -78,7 +78,9 @@ def test_client_creds_authenticator(mock_requests):
     response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
     mock_requests.post.return_value = response
     authn.refresh_credentials()
+    expected_scopes = static_cfg_store.get_client_config().scopes
     assert authn._creds
+    assert authn._scopes == expected_scopes
 
 
 @patch("flytekit.clients.auth.authenticator.KeyringStore")
@@ -111,3 +113,26 @@ def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock,
     poll_mock.return_value = ("access", 100)
     authn.refresh_credentials()
     assert authn._creds
+=======
+    assert authn._scopes == expected_scopes
+
+
+@patch("flytekit.clients.auth.authenticator.requests")
+def test_client_creds_authenticator_with_custom_scopes(mock_requests):
+    expected_scopes = ["foo", "baz"]
+    authn = ClientCredentialsAuthenticator(
+        ENDPOINT,
+        client_id="client",
+        client_secret="secret",
+        cfg_store=static_cfg_store,
+        scopes=expected_scopes,
+    )
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
+    mock_requests.post.return_value = response
+    authn.refresh_credentials()
+
+    assert authn._creds
+    assert authn._scopes == expected_scopes
+>>>>>>> master
