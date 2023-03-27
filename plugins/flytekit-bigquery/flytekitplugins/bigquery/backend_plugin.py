@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 
+import grpc
 from flyteidl.service import plugin_system_pb2
 from flyteidl.service.plugin_system_pb2 import TaskGetResponse
 from google.cloud import bigquery
@@ -23,8 +24,13 @@ class BigQueryPlugin(BackendPluginBase):
         super().__init__(task_type="bigquery")
 
     def create(
-        self, inputs: Optional[LiteralMap], output_prefix: str, task_template: TaskTemplate
+        self,
+        context: grpc.ServicerContext,
+        inputs: Optional[LiteralMap],
+        output_prefix: str,
+        task_template: TaskTemplate,
     ) -> plugin_system_pb2.TaskCreateResponse:
+
         ctx = FlyteContextManager.current_context()
         python_interface_inputs = {
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
@@ -44,7 +50,7 @@ class BigQueryPlugin(BackendPluginBase):
 
         return plugin_system_pb2.TaskCreateResponse(job_id=query_job.job_id)
 
-    def get(self, job_id: str) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskGetResponse:
         client = bigquery.Client()
         job = client.get_job(job_id)
         cur_state = convert_to_flyte_state(str(job.state))
@@ -66,7 +72,7 @@ class BigQueryPlugin(BackendPluginBase):
 
         return TaskGetResponse(state=cur_state, outputs=res)
 
-    def delete(self, job_id: str) -> plugin_system_pb2.TaskDeleteResponse:
+    def delete(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskDeleteResponse:
         client = bigquery.Client()
         client.cancel_job(job_id)
         return plugin_system_pb2.TaskDeleteResponse()

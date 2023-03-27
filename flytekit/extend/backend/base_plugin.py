@@ -1,6 +1,7 @@
 import typing
 from abc import abstractmethod
 
+import grpc
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from flyteidl.service import plugin_system_pb2
 
@@ -17,16 +18,20 @@ class BackendPluginBase:
 
     @abstractmethod
     def create(
-        self, inputs: typing.Optional[LiteralMap], output_prefix: str, task_template: TaskTemplate
+        self,
+        context: grpc.ServicerContext,
+        inputs: typing.Optional[LiteralMap],
+        output_prefix: str,
+        task_template: TaskTemplate,
     ) -> plugin_system_pb2.TaskCreateResponse:
         pass
 
     @abstractmethod
-    def get(self, job_id: str) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskGetResponse:
         pass
 
     @abstractmethod
-    def delete(self, job_id: str) -> plugin_system_pb2.TaskDeleteResponse:
+    def delete(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskDeleteResponse:
         pass
 
 

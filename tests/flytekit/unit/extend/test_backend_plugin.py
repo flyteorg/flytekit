@@ -1,5 +1,6 @@
 import typing
 
+import grpc
 from flyteidl.service import plugin_system_pb2
 
 from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry
@@ -15,14 +16,18 @@ class DummyPlugin(BackendPluginBase):
         pass
 
     def create(
-        self, inputs: typing.Optional[LiteralMap], output_prefix: str, task_template: TaskTemplate
+        self,
+        context: grpc.ServicerContext,
+        inputs: typing.Optional[LiteralMap],
+        output_prefix: str,
+        task_template: TaskTemplate,
     ) -> plugin_system_pb2.TaskCreateResponse:
         return plugin_system_pb2.TaskCreateResponse(job_id="dummy_id")
 
-    def get(self, job_id: str) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskGetResponse:
         return plugin_system_pb2.TaskGetResponse(state=plugin_system_pb2.SUCCEEDED)
 
-    def delete(self, job_id) -> plugin_system_pb2.TaskDeleteResponse:
+    def delete(self, context: grpc.ServicerContext, job_id) -> plugin_system_pb2.TaskDeleteResponse:
         return plugin_system_pb2.TaskDeleteResponse()
 
 
