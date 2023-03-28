@@ -58,7 +58,7 @@ def copy_module_to_destination(
     original_source_path: str, original_destination_path: str, module_name: str, visited: typing.List[str]
 ):
     """
-    Copy the module (file) to the destination directory. If the module relative import other modules, flytekit will
+    Copy the module (file) to the destination directory. If the module relative imports other modules, flytekit will
     recursively copy them as well.
     """
     mod = importlib.import_module(module_name)
