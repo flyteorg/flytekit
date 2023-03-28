@@ -40,6 +40,13 @@ class ImageSpec:
 
 
 def create_envd_config(image_spec: ImageSpec, fast_register: bool, source_root: Optional[str] = None) -> str:
+    if image_spec.base_image is None:
+        image_spec.base_image = DefaultImages.default_image()
+    if image_spec.packages is None:
+        image_spec.packages = []
+    if image_spec.apt_packages is None:
+        image_spec.apt_packages = []
+
     packages_list = ""
     for pkg in image_spec.packages:
         packages_list += f'"{pkg}", '
@@ -47,9 +54,6 @@ def create_envd_config(image_spec: ImageSpec, fast_register: bool, source_root: 
     apt_packages_list = ""
     for pkg in image_spec.apt_packages:
         apt_packages_list += f'"{pkg}", '
-
-    if image_spec.base_image is None:
-        image_spec.base_image = DefaultImages.default_image()
 
     envd_config = f"""# syntax=v1
 
@@ -65,8 +69,9 @@ def build():
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
 
     if fast_register is False:
-        shutil.copytree(source_root, pathlib.Path(cfg_path).parent)
-
+        print(source_root)
+        print(pathlib.Path(cfg_path).parent)
+        shutil.copytree(source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
         envd_config += f'    io.copy(host_path="./", envd_path="{image_spec.destination_dir}")'
 
     with open(cfg_path, "w+") as f:
@@ -76,7 +81,7 @@ def build():
 
 
 def build_docker_image(image_spec: ImageSpec, name: str, tag: str, fast_register: bool, source_root: str):
-    if should_build_image(image_spec.registry, tag) is False:
+    if should_build_image(image_spec.registry, tag) is False and fast_register:
         click.secho("The image has already been pushed. Skip building the image.", fg="blue")
         return
 
