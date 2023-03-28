@@ -145,7 +145,7 @@ def poll_token_endpoint(resp: DeviceCodeResponse, token_endpoint: str, client_id
             ...
         except Exception:
             raise
-        print(f"Authentication Pending...")
+        print("Authentication Pending...")
         time.sleep(interval.total_seconds())
         tick = tick + interval
     raise AuthenticationError("Authentication failed!")

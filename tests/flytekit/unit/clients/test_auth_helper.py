@@ -1,5 +1,4 @@
 import os.path
-import typing
 from unittest.mock import MagicMock, patch
 
 import pytest
