@@ -3,6 +3,7 @@ import enum
 import logging
 import time
 import typing
+import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -57,14 +58,16 @@ class DeviceCodeResponse:
 def get_basic_authorization_header(client_id: str, client_secret: str) -> str:
     """
     This function transforms the client id and the client secret into a header that conforms with http basic auth.
-    It joins the id and the secret with a : then base64 encodes it, then adds the appropriate text
+    It joins the id and the secret with a : then base64 encodes it, then adds the appropriate text. Secrets are
+    first URL encoded to escape illegal characters.
 
     :param client_id: str
     :param client_secret: str
     :rtype: str
     """
-    concated = "{}:{}".format(client_id, client_secret)
-    return "Basic {}".format(base64.b64encode(concated.encode(utf_8)).decode(utf_8))
+    encoded = urllib.parse.quote_plus(client_secret)
+    concatenated = "{}:{}".format(client_id, encoded)
+    return "Basic {}".format(base64.b64encode(concatenated.encode(utf_8)).decode(utf_8))
 
 
 def get_token(
