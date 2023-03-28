@@ -113,8 +113,6 @@ def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock,
     poll_mock.return_value = ("access", 100)
     authn.refresh_credentials()
     assert authn._creds
-=======
-    assert authn._scopes == expected_scopes
 
 
 @patch("flytekit.clients.auth.authenticator.requests")
@@ -135,4 +133,3 @@ def test_client_creds_authenticator_with_custom_scopes(mock_requests):
 
     assert authn._creds
     assert authn._scopes == expected_scopes
->>>>>>> master
