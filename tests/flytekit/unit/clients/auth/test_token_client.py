@@ -18,7 +18,7 @@ def test_get_basic_authorization_header():
     header = get_basic_authorization_header("client_id", "abc")
     assert header == "Basic Y2xpZW50X2lkOmFiYw=="
 
-    header = get_basic_authorization_header("client_id", "abc%%$?\\/\/")
+    header = get_basic_authorization_header("client_id", "abc%%$?\\/\\/")
     assert header == "Basic Y2xpZW50X2lkOmFiYyUyNSUyNSUyNCUzRiU1QyUyRiU1QyUyRg=="
 
 
