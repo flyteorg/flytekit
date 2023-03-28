@@ -21,11 +21,11 @@ from flytekit.types.pickle import FlytePickle
 T = typing.TypeVar("T")
 
 
-def repr_kv(k: str, v: Union[str, Tuple[Type, Any]]):
+def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
     if isinstance(v, tuple):
         if v[1]:
             return f"{k}: {v[0]}={v[1]}"
-        v = v[0]
+        return f"{k}: {v[0]}"
     return f"{k}: {v}"
 
 
@@ -79,8 +79,8 @@ class Interface(object):
             variables = [k for k in outputs.keys()]
 
             # TODO: This class is a duplicate of the one in create_task_outputs. Over time, we should move to this one.
-            class Output(
-                collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)
+            class Output(  # type: ignore
+                collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)  # type: ignore
             ):  # type: ignore
                 """
                 This class can be used in two different places. For multivariate-return entities this class is used
@@ -450,8 +450,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
                 "Tuples should be used to indicate multiple return values, found only one return variable."
             )
         return OrderedDict(
-            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
-            # type: ignore
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)  # type: ignore
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:

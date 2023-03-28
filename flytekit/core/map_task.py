@@ -55,34 +55,34 @@ class MapPythonTask(PythonTask):
         self._partial = None
         if isinstance(python_function_task, functools.partial):
             self._partial = python_function_task
-            python_function_task = self._partial.func
+            actual_task = self._partial.func
+        else:
+            actual_task = python_function_task
 
-        if not isinstance(python_function_task, PythonFunctionTask):
+        if not isinstance(actual_task, PythonFunctionTask):
             raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
 
-        if len(python_function_task.python_interface.outputs.keys()) > 1:
+        if len(actual_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
 
-        self._bound_inputs = set(bound_inputs) if bound_inputs else set()
+        self._bound_inputs: typing.Set[str] = set(bound_inputs) if bound_inputs else set()
         if self._partial:
             self._bound_inputs = set(self._partial.keywords.keys())
 
-        collection_interface = transform_interface_to_list_interface(
-            python_function_task.python_interface, self._bound_inputs
-        )
-        self._run_task = python_function_task
-        _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
+        collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
+        self._run_task: PythonFunctionTask = actual_task
+        _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
         name = f"{mod}.map_{f}_{h}"
 
-        self._cmd_prefix = None
-        self._max_concurrency = concurrency
-        self._min_success_ratio = min_success_ratio
-        self._array_task_interface = python_function_task.python_interface
-        if "metadata" not in kwargs and python_function_task.metadata:
-            kwargs["metadata"] = python_function_task.metadata
-        if "security_ctx" not in kwargs and python_function_task.security_context:
-            kwargs["security_ctx"] = python_function_task.security_context
+        self._cmd_prefix: typing.Optional[typing.List[str]] = None
+        self._max_concurrency: typing.Optional[int] = concurrency
+        self._min_success_ratio: typing.Optional[float] = min_success_ratio
+        self._array_task_interface = actual_task.python_interface
+        if "metadata" not in kwargs and actual_task.metadata:
+            kwargs["metadata"] = actual_task.metadata
+        if "security_ctx" not in kwargs and actual_task.security_context:
+            kwargs["security_ctx"] = actual_task.security_context
         super().__init__(
             name=name,
             interface=collection_interface,
@@ -124,7 +124,7 @@ class MapPythonTask(PythonTask):
         return container_args
 
     def set_command_prefix(self, cmd: typing.Optional[typing.List[str]]):
-        self._cmd_prefix = cmd  # type: ignore
+        self._cmd_prefix = cmd
 
     @contextmanager
     def prepare_target(self):

@@ -10,7 +10,6 @@ from typing import List, Optional
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit import PythonFunctionTask
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
     FastSerializationSettings,
@@ -23,7 +22,7 @@ from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.core.map_task import MapPythonTask, MapTaskResolver
+from flytekit.core.map_task import MapTaskResolver
 from flytekit.core.promise import VoidPromise
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
