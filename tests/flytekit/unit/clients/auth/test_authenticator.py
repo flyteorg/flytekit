@@ -115,7 +115,7 @@ def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock,
     assert authn._creds
 
 
-@patch("flytekit.clients.auth.authenticator.requests")
+@patch("flytekit.clients.auth.token_client.requests")
 def test_client_creds_authenticator_with_custom_scopes(mock_requests):
     expected_scopes = ["foo", "baz"]
     authn = ClientCredentialsAuthenticator(
