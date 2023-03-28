@@ -12,18 +12,23 @@ __version__ = "0.0.0+develop"
 # Please maintain an alphabetical order in the following list
 SOURCES = {
     "flytekitplugins-athena": "flytekit-aws-athena",
+    "flytekitplugins-awsbatch": "flytekit-aws-batch",
     "flytekitplugins-awssagemaker": "flytekit-aws-sagemaker",
     "flytekitplugins-bigquery": "flytekit-bigquery",
-    "flytekitplugins-fsspec": "flytekit-data-fsspec",
+    "flytekitplugins-dask": "flytekit-dask",
     "flytekitplugins-dbt": "flytekit-dbt",
+    "flytekitplugins-deck-standard": "flytekit-deck-standard",
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-duckdb": "flytekit-duckdb",
+    "flytekitplugins-data-fsspec": "flytekit-data-fsspec",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
     "flytekitplugins-hive": "flytekit-hive",
+    "flytekitplugins-huggingface": "flytekit-huggingface",
     "flytekitplugins-pod": "flytekit-k8s-pod",
     "flytekitplugins-kfmpi": "flytekit-kf-mpi",
     "flytekitplugins-kfpytorch": "flytekit-kf-pytorch",
     "flytekitplugins-kftensorflow": "flytekit-kf-tensorflow",
+    "flytekitplugins-mlflow": "flytekit-mlflow",
     "flytekitplugins-modin": "flytekit-modin",
     "flytekitplugins-onnxscikitlearn": "flytekit-onnx-scikitlearn",
     "flytekitplugins-onnxtensorflow": "flytekit-onnx-tensorflow",
@@ -34,6 +39,7 @@ SOURCES = {
     "flytekitplugins-snowflake": "flytekit-snowflake",
     "flytekitplugins-spark": "flytekit-spark",
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
+    "flytekitplugins-vaex": "flytekit-vaex",
     "flytekitplugins-whylogs": "flytekit-whylogs",
 }
 

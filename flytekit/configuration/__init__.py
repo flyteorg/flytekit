@@ -483,7 +483,7 @@ class SecretsConfig(object):
         return SecretsConfig(**kwargs)
 
 
-@dataclass
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class S3Config(object):
     """
     S3 specific configuration
@@ -514,7 +514,7 @@ class S3Config(object):
         return S3Config(**kwargs)
 
 
-@dataclass
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class GCSConfig(object):
     """
     Any GCS specific configuration.
