@@ -344,6 +344,7 @@ class AuthType(enum.Enum):
     CLIENTSECRET = "ClientSecret"
     PKCE = "Pkce"
     EXTERNALCOMMAND = "ExternalCommand"
+    DEVICEFLOW = "DeviceFlow"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -376,6 +377,7 @@ class PlatformConfig(object):
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
+    audience: typing.Optional[str] = None
     rpc_retries: int = 3
 
     @classmethod
