@@ -6,10 +6,6 @@ attrs<21
 # https://github.com/flyteorg/flyte/issues/1732.
 jsonschema<4
 pyyaml<6
-# A number of dependencies, including pandas and numpy, started dropping support for Python 3.7 in their latest
-# releases (pandas>=1.4.0 and numpy>=1.22.0). More details in https://github.com/flyteorg/flyte/issues/2115.
-pandas<1.4.0
-numpy<1.22.0
 # This is required by docker-compose and otherwise clashes with docker-py
 websocket-client<1.0.0
 # TODO: Remove after buf migration is done and packages updated

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 from pandas.io.sql import pandasSQL_builder
-from sqlalchemy import create_engine  # type: ignore
+from sqlalchemy import create_engine, text  # type: ignore
 
 from flytekit import current_context, kwtypes
 from flytekit.configuration import SerializationSettings
@@ -23,6 +23,7 @@ class SQLAlchemyDefaultImages(DefaultImages):
         PythonVersion.PYTHON_3_8: "cr.flyte.org/flyteorg/flytekit:py3.8-sqlalchemy-",
         PythonVersion.PYTHON_3_9: "cr.flyte.org/flyteorg/flytekit:py3.9-sqlalchemy-",
         PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-sqlalchemy-",
+        PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-sqlalchemy-",
     }
 
 
@@ -132,7 +133,7 @@ class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
         with engine.begin() as connection:
             df = None
             if tt.interface.outputs:
-                df = pd.read_sql_query(interpolated_query, connection)
+                df = pd.read_sql_query(text(interpolated_query), connection)
             else:
-                pandasSQL_builder(connection).execute(interpolated_query)
+                pandasSQL_builder(connection).execute(text(interpolated_query))
         return df

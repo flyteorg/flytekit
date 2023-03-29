@@ -344,6 +344,7 @@ class AuthType(enum.Enum):
     CLIENTSECRET = "ClientSecret"
     PKCE = "Pkce"
     EXTERNALCOMMAND = "ExternalCommand"
+    DEVICEFLOW = "DeviceFlow"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -352,7 +353,7 @@ class PlatformConfig(object):
     This object contains the settings to talk to a Flyte backend (the DNS location of your Admin server basically).
 
     :param endpoint: DNS for Flyte backend
-    :param insecure: Whether to use SSL
+    :param insecure: Whether or not to use SSL
     :param insecure_skip_verify: Whether to skip SSL certificate verification
     :param console_endpoint: endpoint for console if different from Flyte backend
     :param command: This command is executed to return a token using an external process
@@ -376,6 +377,7 @@ class PlatformConfig(object):
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
+    audience: typing.Optional[str] = None
     rpc_retries: int = 3
 
     @classmethod
@@ -481,7 +483,7 @@ class SecretsConfig(object):
         return SecretsConfig(**kwargs)
 
 
-@dataclass
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class S3Config(object):
     """
     S3 specific configuration
@@ -512,7 +514,7 @@ class S3Config(object):
         return S3Config(**kwargs)
 
 
-@dataclass
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class GCSConfig(object):
     """
     Any GCS specific configuration.
