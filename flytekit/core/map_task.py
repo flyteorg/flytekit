@@ -2,71 +2,87 @@
 Flytekit map tasks specify how to run a single task across a list of inputs. Map tasks themselves are constructed with
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
-
+import functools
+import hashlib
+import logging
 import os
 import typing
 from contextlib import contextmanager
-from itertools import count
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Set
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.tracker import TrackedInstance
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql
+from flytekit.tools.module_loader import load_object_from_module
 
 
 class MapPythonTask(PythonTask):
     """
     A MapPythonTask defines a :py:class:`flytekit.PythonTask` which specifies how to run
     an inner :py:class:`flytekit.PythonFunctionTask` across a range of inputs in parallel.
-    TODO: support lambda functions
     """
-
-    # To support multiple map tasks declared around identical python function tasks, we keep a global count of
-    # MapPythonTask instances to uniquely differentiate map task names for each declared instance.
-    _ids = count(0)
 
     def __init__(
         self,
-        python_function_task: PythonFunctionTask,
-        concurrency: int = None,
-        min_success_ratio: float = None,
+        python_function_task: typing.Union[PythonFunctionTask, functools.partial],
+        concurrency: Optional[int] = None,
+        min_success_ratio: Optional[float] = None,
+        bound_inputs: Optional[Set[str]] = None,
         **kwargs,
     ):
         """
+        Wrapper that creates a MapPythonTask
+
         :param python_function_task: This argument is implicitly passed and represents the repeatable function
         :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given
-        batch size
+           batch size
         :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
-            successfully before terminating this task and marking it successful.
+            successfully before terminating this task and marking it successful
+        :param bound_inputs: List[str] specifies a list of variable names within the interface of python_function_task,
+              that are already bound and should not be considered as list inputs, but scalar values. This is mostly
+              useful at runtime and is passed in by MapTaskResolver. This field is not required when a `partial` method
+              is specified. The bound_vars will be auto-deduced from the `partial.keywords`.
         """
-        if len(python_function_task.python_interface.inputs.keys()) > 1:
-            raise ValueError("Map tasks only accept python function tasks with 0 or 1 inputs")
+        self._partial = None
+        if isinstance(python_function_task, functools.partial):
+            self._partial = python_function_task
+            actual_task = self._partial.func
+        else:
+            actual_task = python_function_task
 
-        if len(python_function_task.python_interface.outputs.keys()) > 1:
+        if not isinstance(actual_task, PythonFunctionTask):
+            raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
+
+        if len(actual_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
 
-        collection_interface = transform_interface_to_list_interface(python_function_task.python_interface)
-        instance = next(self._ids)
-        _, mod, f, _ = tracker.extract_task_module(python_function_task.task_function)
-        name = f"{mod}.mapper_{f}_{instance}"
+        self._bound_inputs: typing.Set[str] = set(bound_inputs) if bound_inputs else set()
+        if self._partial:
+            self._bound_inputs = set(self._partial.keywords.keys())
 
-        self._cmd_prefix = None
-        self._run_task = python_function_task
-        self._max_concurrency = concurrency
-        self._min_success_ratio = min_success_ratio
-        self._array_task_interface = python_function_task.python_interface
-        if "metadata" not in kwargs and python_function_task.metadata:
-            kwargs["metadata"] = python_function_task.metadata
-        if "security_ctx" not in kwargs and python_function_task.security_context:
-            kwargs["security_ctx"] = python_function_task.security_context
+        collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
+        self._run_task: PythonFunctionTask = actual_task
+        _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
+        h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
+        name = f"{mod}.map_{f}_{h}"
+
+        self._cmd_prefix: typing.Optional[typing.List[str]] = None
+        self._max_concurrency: typing.Optional[int] = concurrency
+        self._min_success_ratio: typing.Optional[float] = min_success_ratio
+        self._array_task_interface = actual_task.python_interface
+        if "metadata" not in kwargs and actual_task.metadata:
+            kwargs["metadata"] = actual_task.metadata
+        if "security_ctx" not in kwargs and actual_task.security_context:
+            kwargs["security_ctx"] = actual_task.security_context
         super().__init__(
             name=name,
             interface=collection_interface,
@@ -76,7 +92,15 @@ class MapPythonTask(PythonTask):
             **kwargs,
         )
 
+    @property
+    def bound_inputs(self) -> Set[str]:
+        return self._bound_inputs
+
     def get_command(self, settings: SerializationSettings) -> List[str]:
+        """
+        TODO ADD bound variables to the resolver. Maybe we need a different resolver?
+        """
+        mt = MapTaskResolver()
         container_args = [
             "pyflyte-map-execute",
             "--inputs",
@@ -90,9 +114,9 @@ class MapPythonTask(PythonTask):
             "--prev-checkpoint",
             "{{.prevCheckpointPrefix}}",
             "--resolver",
-            self._run_task.task_resolver.location,
+            mt.name(),
             "--",
-            *self._run_task.task_resolver.loader_args(settings, self._run_task),
+            *mt.loader_args(settings, self),
         ]
 
         if self._cmd_prefix:
@@ -100,7 +124,7 @@ class MapPythonTask(PythonTask):
         return container_args
 
     def set_command_prefix(self, cmd: typing.Optional[typing.List[str]]):
-        self._cmd_prefix = cmd  # type: ignore
+        self._cmd_prefix = cmd
 
     @contextmanager
     def prepare_target(self):
@@ -134,6 +158,18 @@ class MapPythonTask(PythonTask):
     @property
     def run_task(self) -> PythonFunctionTask:
         return self._run_task
+
+    def __call__(self, *args, **kwargs):
+        """
+        This call method modifies the kwargs and adds kwargs from partial.
+        This is mostly done in the local_execute and compilation only.
+        At runtime, the map_task is created with all the inputs filled in. to support this, we have modified
+        the map_task interface in the constructor.
+        """
+        if self._partial:
+            """If partial exists, then mix-in all partial values"""
+            kwargs = {**self._partial.keywords, **kwargs}
+        return super().__call__(*args, **kwargs)
 
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
@@ -191,7 +227,11 @@ class MapPythonTask(PythonTask):
         task_index = self._compute_array_job_index()
         map_task_inputs = {}
         for k in self.interface.inputs.keys():
-            map_task_inputs[k] = kwargs[k][task_index]
+            v = kwargs[k]
+            if isinstance(v, list) and k not in self.bound_inputs:
+                map_task_inputs[k] = v[task_index]
+            else:
+                map_task_inputs[k] = v
         return exception_scopes.user_entry_point(self._run_task.execute)(**map_task_inputs)
 
     def _raw_execute(self, **kwargs) -> Any:
@@ -213,7 +253,11 @@ class MapPythonTask(PythonTask):
         for i in range(len(kwargs[any_input_key])):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
-                single_instance_inputs[k] = kwargs[k][i]
+                v = kwargs[k]
+                if isinstance(v, list) and k not in self.bound_inputs:
+                    single_instance_inputs[k] = kwargs[k][i]
+                else:
+                    single_instance_inputs[k] = kwargs[k]
             o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
             if outputs_expected:
                 outputs.append(o)
@@ -221,7 +265,12 @@ class MapPythonTask(PythonTask):
         return outputs
 
 
-def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_success_ratio: float = 1.0, **kwargs):
+def map_task(
+    task_function: typing.Union[PythonFunctionTask, functools.partial],
+    concurrency: int = 0,
+    min_success_ratio: float = 1.0,
+    **kwargs,
+):
     """
     Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.
@@ -267,8 +316,63 @@ def map_task(task_function: PythonFunctionTask, concurrency: int = 0, min_succes
         successfully before terminating this task and marking it successful.
 
     """
-    if not isinstance(task_function, PythonFunctionTask):
-        raise ValueError(
-            f"Only Flyte python task types are supported in map tasks currently, received {type(task_function)}"
-        )
     return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+
+
+class MapTaskResolver(TrackedInstance, TaskResolverMixin):
+    """
+    Special resolver that is used for MapTasks.
+    This exists because it is possible that MapTasks are created using nested "partial" subtasks.
+    When a maptask is created its interface is interpolated from the interface of the subtask - the interpolation,
+    simply converts every input into a list/collection input.
+
+    For example:
+      interface -> (i: int, j: str) -> str  => map_task interface -> (i: List[int], j: List[str]) -> List[str]
+
+    But in cases in which `j` is bound to a fixed value by using `functools.partial` we need a way to ensure that
+    the interface is not simply interpolated, but only the unbound inputs are interpolated.
+
+        .. code-block:: python
+
+            def foo((i: int, j: str) -> str:
+                ...
+
+            mt = map_task(functools.partial(foo, j=10))
+
+            print(mt.interface)
+
+    output:
+
+            (i: List[int], j: str) -> List[str]
+
+    But, at runtime this information is lost. To reconstruct this, we use MapTaskResolver that records the "bound vars"
+    and then at runtime reconstructs the interface with this knowledge
+    """
+
+    def name(self) -> str:
+        return "MapTaskResolver"
+
+    def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> MapPythonTask:
+        """
+        Loader args should be of the form
+        vars "var1,var2,.." resolver "resolver" [resolver_args]
+        """
+        _, bound_vars, _, resolver, *resolver_args = loader_args
+        logging.info(f"MapTask found task resolver {resolver} and arguments {resolver_args}")
+        resolver_obj = load_object_from_module(resolver)
+        # Use the resolver to load the actual task object
+        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        bound_inputs = set(bound_vars.split(","))
+        return MapPythonTask(python_function_task=_task_def, max_concurrency=max_concurrency, bound_inputs=bound_inputs)
+
+    def loader_args(self, settings: SerializationSettings, t: MapPythonTask) -> List[str]:  # type:ignore
+        return [
+            "vars",
+            f'{",".join(t.bound_inputs)}',
+            "resolver",
+            t.run_task.task_resolver.location,
+            *t.run_task.task_resolver.loader_args(settings, t.run_task),
+        ]
+
+    def get_all_tasks(self) -> List[Task]:
+        raise NotImplementedError("MapTask resolver cannot return every instance of the map task")
