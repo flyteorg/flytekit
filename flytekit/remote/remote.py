@@ -20,10 +20,10 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
 import requests
+from botocore.exceptions import UnauthorizedSSOTokenError
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -63,6 +63,7 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
+from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
@@ -220,6 +221,35 @@ class FlyteRemote(object):
     def file_access(self) -> FileAccessProvider:
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
+
+    def retrieve(self, flyte_uri: typing.Optional[str] = None) -> LiteralsResolver:
+        if flyte_uri is None:
+            raise user_exceptions.FlyteUserException("flyte_uri cannot be empty")
+        ctx = self._ctx or FlyteContextManager.current_context()
+        plm = literals_pb2.LiteralMap()
+        read_data = None
+        try:
+            resolved = self.client.resolve_artifact(flyte_uri)
+            remote_logger.debug(f"Resolved flyte url from {flyte_uri} to {resolved}")
+            with ctx.file_access.get_filesystem_for_path(resolved).open(resolved, "rb") as r:
+                read_data = r.read()
+        # Catch some exceptions, this can happen if you're not authorized to S3 locally.
+        # In this case we can try to use the data proxy service to get
+        except UnauthorizedSSOTokenError:
+            remote_logger.info("Unable to retrieve results locally, trying remote link")
+            download_links = self.client.get_signed_download_link(flyte_uri)
+            if len(download_links) == 0:
+                raise user_exceptions.FlyteValueException(
+                    f"No signed download links retrieved from Admin for " f"{flyte_uri}"
+                )
+            d = download_links[0]  # protocol returns a list of links, just need the first one
+            with ctx.file_access.get_filesystem_for_path(d).open(d, "rb") as r:
+                read_data = r.read()
+                remote_logger.debug(f"Read {len(read_data)} from download link {d}")
+
+        plm.ParseFromString(read_data)
+        lm = LiteralMap.from_flyte_idl(plm)
+        return LiteralsResolver(lm.literals)
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""
