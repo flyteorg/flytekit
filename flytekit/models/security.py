@@ -36,15 +36,13 @@ class Secret(_common.FlyteIdlEntity):
         """
 
     group: str
-    key: str
+    key: Optional[str] = None
     group_version: Optional[str] = None
     mount_requirement: MountType = MountType.ANY
 
     def __post_init__(self):
         if self.group is None:
             raise ValueError("Group is a required parameter")
-        if self.key is None:
-            raise ValueError("Key is also a required parameter")
 
     def to_flyte_idl(self) -> _sec.Secret:
         return _sec.Secret(
@@ -56,6 +54,7 @@ class Secret(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _sec.Secret) -> "Secret":
+        # todo: write test for this
         return cls(
             group=pb2_object.group,
             group_version=pb2_object.group_version if pb2_object.group_version else None,
