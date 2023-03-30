@@ -120,6 +120,7 @@ def test_serialization_with_raw_container(serialization_settings):
     assert task_spec.template.custom["minSuccessRatio"] == 1.0
     assert task_spec.template.type == "container_array"
     assert task_spec.template.task_type_version == 1
+    assert task_spec.template.container.args is None
     assert task_spec.template.container.command == [
         "python",
         "test.py",
