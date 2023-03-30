@@ -971,8 +971,8 @@ class ListTransformer(TypeTransformer[T]):
     @staticmethod
     def is_batchable(t: Type):
         """
-        This function determines whether a given list is batchable or not.
-        A batchable list consists only FlytePickle objects.
+        This function evaluates whether the provided type is batchable or not.
+        It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
         """
         from flytekit.types.pickle import FlytePickle
 
@@ -985,12 +985,12 @@ class ListTransformer(TypeTransformer[T]):
         return False
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        from flytekit.types.pickle import FlytePickle
-
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
         if ListTransformer.is_batchable(python_type):
+            from flytekit.types.pickle import FlytePickle
+
             batchSize = len(python_val)  # default batch size
             # parse annotated to get the number of items saved in a pickle file.
             if get_origin(python_type) is Annotated:
@@ -1005,13 +1005,13 @@ class ListTransformer(TypeTransformer[T]):
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
-        from flytekit.types.pickle import FlytePickle
-
         try:
             lits = lv.collection.literals
         except AttributeError:
             raise TypeTransformerFailedError()
         if self.is_batchable(expected_python_type):
+            from flytekit.types.pickle import FlytePickle
+
             batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
             return [item for batch in batch_list for item in batch]
         else:

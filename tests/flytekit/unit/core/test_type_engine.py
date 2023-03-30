@@ -1576,6 +1576,18 @@ def test_file_ext_with_flyte_file_wrong_type():
     assert str(e.value) == "Underlying type of File Extension must be of type <str>"
 
 
+def test_is_batchable():
+    assert ListTransformer.is_batchable(typing.List[int]) is False
+    assert ListTransformer.is_batchable(typing.List[str]) is False
+    assert ListTransformer.is_batchable(typing.List[typing.Dict]) is False
+    assert ListTransformer.is_batchable(typing.List[typing.Dict[str, FlytePickle]]) is False
+    assert ListTransformer.is_batchable(typing.List[typing.List[FlytePickle]]) is False
+
+    assert ListTransformer.is_batchable(typing.List[FlytePickle]) is True
+    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], 3]) is True
+    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), 3]) is True
+
+
 @pytest.mark.parametrize(
     "python_val, python_type, expected_list_length",
     [
