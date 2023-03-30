@@ -359,7 +359,6 @@ class SecretsManager(object):
         Returns a path that matches the file to look for the secrets
         """
         self.check_group_key(group)
-        #  group, group version, key
         l = [k.lower() for k in filter(None, (group, group_version, key))]
         l[-1] = f"{self._file_prefix}{l[-1]}"
         return os.path.join(self._base_dir, *l)
