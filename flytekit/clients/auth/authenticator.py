@@ -165,6 +165,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         cfg_store: ClientConfigStore,
         header_key: typing.Optional[str] = None,
         scopes: typing.Optional[typing.List[str]] = None,
+        verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
@@ -174,10 +175,12 @@ class ClientCredentialsAuthenticator(Authenticator):
         self._scopes = scopes or cfg.scopes
         self._client_id = client_id
         self._client_secret = client_secret
+        self._verify = verify
         super().__init__(endpoint, cfg.header_key or header_key)
 
     @staticmethod
-    def get_token(token_endpoint: str, authorization_header: str, scopes: typing.List[str]) -> typing.Tuple[str, int]:
+    def get_token(token_endpoint: str, authorization_header: str, scopes: typing.List[str],
+                  verify: typing.Optional[typing.Union[bool, str]] = None) -> typing.Tuple[str, int]:
         """
         :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
                 in seconds
@@ -193,7 +196,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         }
         if scopes is not None:
             body["scope"] = ",".join(scopes)
-        response = requests.post(token_endpoint, data=body, headers=headers)
+        response = requests.post(token_endpoint, data=body, headers=headers, verify=verify)
         if response.status_code != 200:
             logging.error("Non-200 ({}) received from IDP: {}".format(response.status_code, response.text))
             raise AuthenticationError("Non-200 received from IDP")
@@ -232,6 +235,6 @@ class ClientCredentialsAuthenticator(Authenticator):
         # Note that unlike the Pkce flow, the client ID does not come from Admin.
         logging.debug(f"Basic authorization flow with client id {self._client_id} scope {scopes}")
         authorization_header = self.get_basic_authorization_header(self._client_id, self._client_secret)
-        token, expires_in = self.get_token(token_endpoint, authorization_header, scopes)
+        token, expires_in = self.get_token(token_endpoint, authorization_header, scopes, self._verify)
         logging.info("Retrieved new token, expires in {}".format(expires_in))
         self._creds = Credentials(token)
