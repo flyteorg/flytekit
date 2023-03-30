@@ -1,4 +1,7 @@
+import base64
+import json
 import logging
+import os
 import ssl
 
 import grpc
@@ -44,6 +47,15 @@ class RemoteClientConfigStore(ClientConfigStore):
         )
 
 
+def decode_api_key(api_key: str) -> dict:
+    """
+    Decodes the api key from base64
+    """
+    decoded = base64.b64decode(api_key).decode("utf-8")
+    # json unmarshal the decoded string
+    return json.loads(decoded)
+
+
 def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Authenticator:
     """
     Returns a new authenticator based on the platform config.
@@ -56,7 +68,16 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             logging.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
             cfg_auth = AuthType.STANDARD
 
-    if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
+    if cfg_auth == AuthType.APIKEY:
+        api_key = decode_api_key(cfg.api_key)
+        return ClientCredentialsAuthenticator(
+            endpoint=cfg.endpoint,
+            client_id=api_key["client_id"],
+            client_secret=api_key["client_secret"],
+            cfg_store=cfg_store,
+            scopes=cfg.scopes,
+        )
+    elif cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
         verify = None
         if cfg.insecure_skip_verify:
             verify = False

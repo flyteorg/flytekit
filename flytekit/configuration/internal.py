@@ -85,6 +85,17 @@ class Credentials(object):
     password from a mounted file.
     """
 
+    API_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "api_key"), YamlConfigEntry("admin.apiKey"))
+    """
+    API key used for authentication.
+    """
+
+    API_KEY_LOCATION = ConfigEntry(LegacyConfigEntry(SECTION, "api_key_location"),
+                                   YamlConfigEntry("admin.apiKeyLocation"))
+    """
+    API key used for authentication.
+    """
+
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
 
     AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"), YamlConfigEntry("admin.authType"))

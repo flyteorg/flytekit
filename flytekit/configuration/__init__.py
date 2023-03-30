@@ -148,7 +148,8 @@ from docker_image import reference
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
+from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists, \
+    _exists
 from flytekit.loggers import logger
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
@@ -344,6 +345,7 @@ class AuthType(enum.Enum):
     CLIENTSECRET = "ClientSecret"
     PKCE = "Pkce"
     EXTERNALCOMMAND = "ExternalCommand"
+    APIKEY = "ApiKey"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -374,6 +376,7 @@ class PlatformConfig(object):
     command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
+    api_key: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
     auth_mode: AuthType = AuthType.STANDARD
     rpc_retries: int = 3
@@ -393,6 +396,24 @@ class PlatformConfig(object):
         )
         kwargs = set_if_exists(kwargs, "ca_cert_file_path", _internal.Platform.CA_CERT_FILE_PATH.read(config_file))
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
+
+        api_key_location = _internal.Credentials.API_KEY_LOCATION.read(config_file)
+        api_key_set = False
+        if _exists(api_key_location):
+            api_key_str = read_file_if_exists(
+                _internal.Credentials.API_KEY_LOCATION.read(config_file)
+            )
+
+            logger.info(f"Using API Key from file [{api_key_location}].")
+            kwargs["api_key"] = api_key_str
+            api_key_set = True
+
+        api_key = _internal.Credentials.API_KEY.read(config_file)
+        if _exists(api_key):
+            logger.info(f"Using API Key from config/env.")
+            kwargs["api_key"] = api_key
+            api_key_set = True
+
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
@@ -409,8 +430,13 @@ class PlatformConfig(object):
             "client_credentials_secret",
             client_credentials_secret,
         )
+
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
-        kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
+        auth_mode = _internal.Credentials.AUTH_MODE.read(config_file)
+        kwargs = set_if_exists(kwargs, "auth_mode", auth_mode)
+        # default to APIKEY if it's set and no auth_mode is set
+        if not _exists(auth_mode) and api_key_set:
+            kwargs["auth_mode"] = AuthType.APIKEY
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
         return PlatformConfig(**kwargs)
