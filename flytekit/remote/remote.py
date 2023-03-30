@@ -20,7 +20,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
 import requests
-from botocore.exceptions import UnauthorizedSSOTokenError
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
@@ -233,9 +232,9 @@ class FlyteRemote(object):
             remote_logger.debug(f"Resolved flyte url from {flyte_uri} to {resolved}")
             with ctx.file_access.get_filesystem_for_path(resolved).open(resolved, "rb") as r:
                 read_data = r.read()
-        # Catch some exceptions, this can happen if you're not authorized to S3 locally.
-        # In this case we can try to use the data proxy service to get
-        except UnauthorizedSSOTokenError:
+        # Catch all exceptions and retry with the data proxy layer.
+        # Ketan wants to remove this and call a GetData endpoint directly.
+        except Exception:
             remote_logger.info("Unable to retrieve results locally, trying remote link")
             download_links = self.client.get_signed_download_link(flyte_uri)
             if len(download_links) == 0:
