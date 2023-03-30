@@ -19,7 +19,7 @@ from flytekit.clients.auth.authenticator import (
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
-from flytekit.configuration import AuthType, PlatformConfig
+from flytekit.configuration import AuthType, PlatformConfig, decode_api_key
 
 
 class RemoteClientConfigStore(ClientConfigStore):
@@ -45,15 +45,6 @@ class RemoteClientConfigStore(ClientConfigStore):
             scopes=public_client_config.scopes,
             header_key=public_client_config.authorization_metadata_key or None,
         )
-
-
-def decode_api_key(api_key: str) -> dict:
-    """
-    Decodes the api key from base64
-    """
-    decoded = base64.b64decode(api_key).decode("utf-8")
-    # json unmarshal the decoded string
-    return json.loads(decoded)
 
 
 def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Authenticator:
