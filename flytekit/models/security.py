@@ -54,11 +54,10 @@ class Secret(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _sec.Secret) -> "Secret":
-        # todo: write test for this
         return cls(
             group=pb2_object.group,
             group_version=pb2_object.group_version if pb2_object.group_version else None,
-            key=pb2_object.key,
+            key=pb2_object.key if pb2_object.key else None,
             mount_requirement=Secret.MountType(pb2_object.mount_requirement),
         )
 
