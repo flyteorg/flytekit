@@ -1,4 +1,5 @@
 import os
+import sys
 
 from click.testing import CliRunner
 
@@ -20,6 +21,7 @@ def test_build():
         os.makedirs("core", exist_ok=True)
         with open(os.path.join("core", "sample.py"), "w") as f:
             f.write(sample_file_contents)
+        sys.path.append(os.path.join(os.getcwd(), "core"))
         result = runner.invoke(pyflyte.main, ["build", "--file", "core/sample.py"])
         assert result.output == ""
         assert result.exit_code == 0
