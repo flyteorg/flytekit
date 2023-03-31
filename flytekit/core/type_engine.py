@@ -235,7 +235,8 @@ class DataclassTransformer(TypeTransformer[T]):
             transformer.assert_type(field.type, sub_val)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        ## There doesn't appear to be a LiteralMapType but that doesn't appear to matter either...
+        ## There doesn't appear to be a way to specify a map with variable values but that doesn't appear
+        # to matter either...
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT,
                                         structure=TypeStructure(tag=tag_from_type(t)))
 
