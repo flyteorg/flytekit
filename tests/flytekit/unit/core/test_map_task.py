@@ -1,3 +1,4 @@
+import functools
 import typing
 from collections import OrderedDict
 
@@ -6,7 +7,7 @@ import pytest
 import flytekit.configuration
 from flytekit import LaunchPlan, map_task
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.map_task import MapPythonTask
+from flytekit.core.map_task import MapPythonTask, MapTaskResolver
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
@@ -34,6 +35,11 @@ def t1(a: int) -> str:
 def t2(a: int) -> str:
     b = a + 2
     return str(b)
+
+
+@task(cache=True, cache_version="1")
+def t3(a: int, b: str, c: float) -> str:
+    pass
 
 
 # This test is for documentation.
@@ -87,8 +93,12 @@ def test_serialization(serialization_settings):
         "--prev-checkpoint",
         "{{.prevCheckpointPrefix}}",
         "--resolver",
-        "flytekit.core.python_auto_container.default_task_resolver",
+        "MapTaskResolver",
         "--",
+        "vars",
+        "",
+        "resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
         "task-module",
         "tests.flytekit.unit.core.test_map_task",
         "task-name",
@@ -177,15 +187,42 @@ def test_inputs_outputs_length():
     def many_inputs(a: int, b: str, c: float) -> str:
         return f"{a} - {b} - {c}"
 
-    with pytest.raises(ValueError):
-        _ = map_task(many_inputs)
+    m = map_task(many_inputs)
+    assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_24c08b3a2f9c2e389ad9fc6a03482cf9"
+    r_m = MapPythonTask(many_inputs)
+    assert str(r_m.python_interface) == str(m.python_interface)
+
+    p1 = functools.partial(many_inputs, c=1.0)
+    m = map_task(p1)
+    assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": float}
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_697aa7389996041183cf6cfd102be4f7"
+    r_m = MapPythonTask(many_inputs, bound_inputs=set("c"))
+    assert str(r_m.python_interface) == str(m.python_interface)
+
+    p2 = functools.partial(p1, b="hello")
+    m = map_task(p2)
+    assert m.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_cc18607da7494024a402a5fa4b3ea5c6"
+    r_m = MapPythonTask(many_inputs, bound_inputs={"c", "b"})
+    assert str(r_m.python_interface) == str(m.python_interface)
+
+    p3 = functools.partial(p2, a=1)
+    m = map_task(p3)
+    assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_52fe80b04781ea77ef6f025f4b49abef"
+    r_m = MapPythonTask(many_inputs, bound_inputs={"a", "c", "b"})
+    assert str(r_m.python_interface) == str(m.python_interface)
+
+    with pytest.raises(TypeError):
+        m(a=[1, 2, 3])
 
     @task
     def many_outputs(a: int) -> (int, str):
         return a, f"{a}"
 
     with pytest.raises(ValueError):
-        _ = map_task(many_inputs)
+        _ = map_task(many_outputs)
 
 
 def test_map_task_metadata():
@@ -194,3 +231,34 @@ def test_map_task_metadata():
     assert mapped_1.metadata is map_meta
     mapped_2 = map_task(t2)
     assert mapped_2.metadata is t2.metadata
+
+
+def test_map_task_resolver(serialization_settings):
+    list_outputs = {"o0": typing.List[str]}
+    mt = map_task(t3)
+    assert mt.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
+    assert mt.python_interface.outputs == list_outputs
+    mtr = MapTaskResolver()
+    assert mtr.name() == "MapTaskResolver"
+    args = mtr.loader_args(serialization_settings, mt)
+    t = mtr.load_task(loader_args=args)
+    assert t.python_interface.inputs == mt.python_interface.inputs
+    assert t.python_interface.outputs == mt.python_interface.outputs
+
+    mt = map_task(functools.partial(t3, b="hello", c=1.0))
+    assert mt.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
+    assert mt.python_interface.outputs == list_outputs
+    mtr = MapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+    t = mtr.load_task(loader_args=args)
+    assert t.python_interface.inputs == mt.python_interface.inputs
+    assert t.python_interface.outputs == mt.python_interface.outputs
+
+    mt = map_task(functools.partial(t3, b="hello"))
+    assert mt.python_interface.inputs == {"a": typing.List[int], "b": str, "c": typing.List[float]}
+    assert mt.python_interface.outputs == list_outputs
+    mtr = MapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+    t = mtr.load_task(loader_args=args)
+    assert t.python_interface.inputs == mt.python_interface.inputs
+    assert t.python_interface.outputs == mt.python_interface.outputs

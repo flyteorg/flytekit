@@ -1,5 +1,6 @@
 import gzip
 import hashlib
+import importlib
 import os
 import shutil
 import tarfile
@@ -7,8 +8,12 @@ import tempfile
 import typing
 from pathlib import Path
 
+from flytekit import PythonFunctionTask
+from flytekit.core.tracker import get_full_module_path
+from flytekit.core.workflow import WorkflowBase
 
-def compress_single_script(source_path: str, destination: str, full_module_name: str):
+
+def compress_scripts(source_path: str, destination: str, module_name: str):
     """
     Compresses the single script while maintaining the folder structure for that file.
 
@@ -33,39 +38,64 @@ def compress_single_script(source_path: str, destination: str, full_module_name:
     │       ├── example.py
     │       └── __init__.py
 
-    Note how `another_example.py` and `yet_another_example.py` were not copied to the destination.
+    Note: If `example.py` didn't import tasks or workflows from `another_example.py` and `yet_another_example.py`, these files were not copied to the destination..
+
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
         destination_path = os.path.join(tmp_dir, "code")
-        # This is the script relative path to the root of the project
-        script_relative_path = Path()
-        # For each package in pkgs, create a directory and copy the __init__.py in it.
-        # Skip the last package as that is the script file.
-        pkgs = full_module_name.split(".")
-        for p in pkgs[:-1]:
-            os.makedirs(os.path.join(destination_path, p))
-            source_path = os.path.join(source_path, p)
-            destination_path = os.path.join(destination_path, p)
-            script_relative_path = Path(script_relative_path, p)
-            init_file = Path(os.path.join(source_path, "__init__.py"))
-            if init_file.exists():
-                shutil.copy(init_file, Path(os.path.join(tmp_dir, "code", script_relative_path, "__init__.py")))
 
-        # Ensure destination path exists to cover the case of a single file and no modules.
-        os.makedirs(destination_path, exist_ok=True)
-        script_file = Path(source_path, f"{pkgs[-1]}.py")
-        script_file_destination = Path(destination_path, f"{pkgs[-1]}.py")
-        # Build the final script relative path and copy it to a known place.
-        shutil.copy(
-            script_file,
-            script_file_destination,
-        )
+        visited: typing.List[str] = []
+        copy_module_to_destination(source_path, destination_path, module_name, visited)
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w") as tar:
             tar.add(os.path.join(tmp_dir, "code"), arcname="", filter=tar_strip_file_attributes)
         with gzip.GzipFile(filename=destination, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
                 gzipped.write(tar_file.read())
+
+
+def copy_module_to_destination(
+    original_source_path: str, original_destination_path: str, module_name: str, visited: typing.List[str]
+):
+    """
+    Copy the module (file) to the destination directory. If the module relative imports other modules, flytekit will
+    recursively copy them as well.
+    """
+    mod = importlib.import_module(module_name)
+    full_module_name = get_full_module_path(mod, mod.__name__)
+    if full_module_name in visited:
+        return
+    visited.append(full_module_name)
+
+    source_path = original_source_path
+    destination_path = original_destination_path
+    pkgs = full_module_name.split(".")
+
+    for p in pkgs[:-1]:
+        os.makedirs(os.path.join(destination_path, p), exist_ok=True)
+        destination_path = os.path.join(destination_path, p)
+        source_path = os.path.join(source_path, p)
+        init_file = Path(os.path.join(source_path, "__init__.py"))
+        if init_file.exists():
+            shutil.copy(init_file, Path(os.path.join(destination_path, "__init__.py")))
+
+    # Ensure destination path exists to cover the case of a single file and no modules.
+    os.makedirs(destination_path, exist_ok=True)
+    script_file = Path(source_path, f"{pkgs[-1]}.py")
+    script_file_destination = Path(destination_path, f"{pkgs[-1]}.py")
+    # Build the final script relative path and copy it to a known place.
+    shutil.copy(
+        script_file,
+        script_file_destination,
+    )
+
+    # Try to copy other files to destination if tasks or workflows aren't in the same file
+    for flyte_entity_name in mod.__dict__:
+        flyte_entity = mod.__dict__[flyte_entity_name]
+        if isinstance(flyte_entity, (PythonFunctionTask, WorkflowBase)) and flyte_entity.instantiated_in:
+            copy_module_to_destination(
+                original_source_path, original_destination_path, flyte_entity.instantiated_in, visited
+            )
 
 
 # Takes in a TarInfo and returns the modified TarInfo:
