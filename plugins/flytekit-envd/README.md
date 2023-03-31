@@ -2,9 +2,12 @@
 
 [envd](https://github.com/tensorchord/envd) is a command-line tool that helps you create the container-based development environment for AI/ML.
 
-Development environments are full of python and system dependencies, CUDA, BASH scripts, Dockerfiles, SSH configurations, Kubernetes YAMLs, and many other clunky things that are always breaking. envd is to solve the problem:
+Environments built with envd provide the following features out-of-the-box:
+- Knowledge reuse in your team
+- BuiltKit native, build up to 6x faster
+- Smaller and leaner images
 
-With `flytekitplugins-envd`, people easily create a docker image for the workflow without writing a docker file.
+With `flytekitplugins-envd`, people easily create a docker image for the workflows without writing a docker file.
 
 To install the plugin, run the following command:
 
@@ -14,11 +17,10 @@ pip install flytekitplugins-envd
 
 Example
 ```python
-# from flytekit import task, workflow
+# from flytekit import task
+# from flytekitplugins.envd import EnvdImageSpec
 #
-# @task(image_spec=ImageSpec(packages=["pandas", "numpy"], registry="pingsutw"))
+# @task(image_spec=ImageSpec(packages=["pandas", "numpy"], apt_packages=["git"], registry="flyteorg"))
 # def t1() -> str:
-#     print("hello")
-#     print("hello")
 #     return "hello"
 ```

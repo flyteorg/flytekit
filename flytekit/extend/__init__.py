@@ -42,5 +42,6 @@ from flytekit.core.interface import Interface
 from flytekit.core.promise import Promise
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
+from flytekit.core.task import TaskPlugins
 from flytekit.core.type_engine import DictTransformer, T, TypeEngine, TypeTransformer
 from flytekit.tools.translator import get_serializable

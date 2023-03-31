@@ -20,12 +20,12 @@ def test_image_spec():
         contents
         == """# syntax=v1
 
-    def build():
-        base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
-        install.python_packages(name = ["pandas", ])
-        install.apt_packages(name = ["git", ])
-        install.python(version="3.8")
-    """
+def build():
+    base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
+    install.python_packages(name = ["pandas", ])
+    install.apt_packages(name = ["git", ])
+    install.python(version="3.8")
+"""
     )
 
     hash_value = calculate_hash_from_image_spec(image_spec)
