@@ -14,6 +14,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from flyteidl.core import types_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -237,15 +238,26 @@ class DataclassTransformer(TypeTransformer[T]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         ## There doesn't appear to be a way to specify a map with variable values but that doesn't appear
         # to matter either...
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT,
+        subtypes = {}
+        for field, transformer in self._transformers:
+            subtypes[field.name] = _json_format.MessageToDict(
+                transformer.get_literal_type(field.type).to_flyte_idl())
+
+        return _type_models.LiteralType(map_value_type=LiteralType(),
+                                        metadata=subtypes,
                                         structure=TypeStructure(tag=tag_from_type(t)))
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        del expected  # Unused... it's not clear why we need this
+        subtypes = {
+            k: LiteralType.from_flyte_idl(
+                _json_format.ParseDict(expected_subtype, types_pb2.LiteralType()))
+            for k, expected_subtype in expected.metadata.items()
+        }
+
         literals = {}
         for field, transformer in self._transformers:
             sub_val = getattr(python_val, field.name)
-            literal = transformer.to_literal(ctx, sub_val, field.type, transformer.get_literal_type(field.type))
+            literal = transformer.to_literal(ctx, sub_val, field.type, subtypes[field.name])
             literals[field.name] = literal
 
         return Literal(map=LiteralMap(literals=literals))
