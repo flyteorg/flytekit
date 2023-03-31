@@ -4,7 +4,7 @@ PLUGIN_NAME = "envd"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.4.0,<2.0.0,==0.0.0+develop", "envd"]
+plugin_requires = ["flytekit", "envd"]
 
 __version__ = "0.0.0+develop"
 
