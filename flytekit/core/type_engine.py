@@ -29,7 +29,7 @@ from typing_extensions import Annotated, get_args, get_origin
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
-from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.core.type_helpers import load_type_from_tag, tag_from_type
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -217,28 +217,44 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
         raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
 
 
-class DataclassTransformer(TypeTransformer[object]):
+class DataclassTransformer(TypeTransformer[T]):
 
-    def __init__(self, registry: Type[TypeEngine]):
-        super().__init__(name='dataclass', t=object, enable_type_assertions=True)
-        self._registry = registry
+    def __init__(self, dataclass_type: Type[T]):
+        super().__init__(name=f'Dataclass[{dataclass_type.__name__}]', t=dataclass_type, enable_type_assertions=True)
+        self._dataclass_type = dataclass_type
+        self._transformers = tuple(
+            (field, TypeEngine.get_transformer(field.type))
+            for field in dataclasses.fields(dataclass_type)
+        )
 
-    @property
-    def registry(self) -> Type[TypeEngine]:
-        return self._registry
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        tag = tag_from_type(self._dataclass_type)
+        if literal_type.structure.tag == tag:
+            return self._dataclass_type
+
+        raise ValueError(f'Type tag {literal_type.structure.tag} does not match import path of dataclass {tag}')
 
     def assert_type(self, t: Type[T], v: T):
         if not dataclasses.is_dataclass(v):
             raise TypeTransformerFailedError(f'Object {v} must be a dataclass')
 
+        for field, transformer in self._transformers:
+            sub_val = getattr(v, field.name)
+            transformer.assert_type(field.type, type(sub_val))
+
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        fields = {}
+        for field, transformer in self._transformers:
+            fields[field.name] = transformer(field.type).get_literal_type(field.type)
+
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT,
+                                        metadata=fields,
+                                        structure=TypeStructure(tag=tag_from_type(t)))
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         fields = {}
-        for field in dataclasses.fields(python_type):
+        for field, transformer in self._transformers:
             sub_val = getattr(python_val, field.name)
-            transformer = self.registry.get_transformer(field.type)
             fields[field.name] = transformer.to_literal(sub_val).to_flyte_idl()
 
         struct = _struct.Struct()
@@ -249,9 +265,8 @@ class DataclassTransformer(TypeTransformer[object]):
         fields = {}
         struct: _struct.Struct = lv.scalar.generic
 
-        for field in dataclasses.fields(expected_python_type):
+        for field, transformer in self._transformers:
             if struct.HasField(field.name):
-                transformer = self.registry.get_transformer(field.type)
                 fields[field.name] = transformer.to_python_value(
                     ctx=ctx,
                     lv=Literal.from_flyte_idl(struct[field.name]),
@@ -668,12 +683,8 @@ class ProtobufTransformer(TypeTransformer[Message]):
     def __init__(self):
         super().__init__("Protobuf-Transformer", Message)
 
-    @staticmethod
-    def tag(expected_python_type: Type[T]) -> str:
-        return f"{expected_python_type.__module__}.{expected_python_type.__name__}"
-
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
+        return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: tag_from_type(t)})
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         struct = Struct()
@@ -761,14 +772,16 @@ class TypeEngine(typing.Generic[T]):
         Step 2:
             find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
 
+        Step 4:
+            if v is of type data class, use the dataclass transformer, or register one if it does not exist
+
         Step 3:
             Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
             This is potentially non-deterministic - will depend on the registration pattern.
 
             TODO lets make this deterministic by using an ordered dict
 
-        Step 4:
-            if v is of type data class, use the dataclass transformer
+
         """
 
         # Step 1
@@ -790,7 +803,18 @@ class TypeEngine(typing.Generic[T]):
 
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
+
         # Step 3
+        if dataclasses.is_dataclass(python_type):
+            if isinstance(python_type, DataClassJsonMixin):
+                logging.warning('dataclasses no longer require `dataclasses_json.dataclasses` annotation')
+                return cls._JSON_DATACLASS_TRANSFORMER
+            else:
+                cls._REGISTRY[python_type] = DataclassTransformer(python_type)
+                return cls._REGISTRY[python_type]
+
+
+        # Step 4
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
         for base_type in cls._REGISTRY.keys():
@@ -806,13 +830,7 @@ class TypeEngine(typing.Generic[T]):
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
 
-        # Step 4
-        if dataclasses.is_dataclass(python_type):
-            if isinstance(python_type, DataClassJsonMixin):
-                logging.warning('dataclasses no longer require `dataclasses_json.dataclasses` annotation')
-                return cls._JSON_DATACLASS_TRANSFORMER
-            else:
-                return DataclassTransformer(registry=cls)
+
 
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 

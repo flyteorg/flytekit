@@ -24,3 +24,7 @@ def load_type_from_tag(tag: str) -> typing.Type[T]:
         raise ValueError(f"Could not find the protobuf named: {name} @ {module}.")
 
     return getattr(pb_module, name)
+
+
+def tag_from_type(expected_python_type: typing.Type[T]) -> str:
+    return f"{expected_python_type.__module__}.{expected_python_type.__name__}"
