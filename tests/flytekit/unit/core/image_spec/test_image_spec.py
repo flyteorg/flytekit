@@ -1,15 +1,7 @@
-from pathlib import Path
-
 import pytest
 
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import (
-    IMAGE_LOCK,
-    build_docker_image,
-    calculate_hash_from_image_spec,
-    image_exist,
-    update_lock_file,
-)
+from flytekit.image_spec.image_spec import build_docker_image, calculate_hash_from_image_spec, image_exist
 
 
 def test_image_spec():
@@ -30,10 +22,3 @@ def test_image_spec():
     hash_value = calculate_hash_from_image_spec(image_spec)
     assert hash_value == "KwGID--5A8Cb1SH8UUwESA.."
     assert image_exist("fake_registry", "epkr42Fd9H")
-
-
-def test_update_lock_file():
-    # create a temp file
-    global IMAGE_LOCK
-    IMAGE_LOCK = Path("temp.lock").__str__()
-    update_lock_file("registry", "tag")

@@ -697,6 +697,7 @@ class SerializationSettings(object):
         fast_serialization_settings (Optional[FastSerializationSettings]): If the code is being serialized so that it
             can be fast registered (and thus omit building a Docker image) this object contains additional parameters
             for serialization.
+        source_root (Optional[str]): The root directory of the source code.
     """
 
     image_config: ImageConfig

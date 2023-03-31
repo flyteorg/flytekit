@@ -15,7 +15,7 @@ pip install flytekitplugins-envd
 Example
 ```python
 # from flytekit import task, workflow
-# 
+#
 # @task(image_spec=ImageSpec(packages=["pandas", "numpy"], registry="pingsutw"))
 # def t1() -> str:
 #     print("hello")

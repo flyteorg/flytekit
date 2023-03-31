@@ -19,7 +19,7 @@ def test_image_spec():
     assert (
         contents
         == """# syntax=v1
-    
+
     def build():
         base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
         install.python_packages(name = ["pandas", ])

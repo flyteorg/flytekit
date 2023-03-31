@@ -12,7 +12,7 @@ from flytekit.image_spec import ImageSpec
 
 
 class EnvdImageSpec(ImageSpec, ABC):
-    def build_image(self, name: str, tag: str, fast_register: bool, source_root: str):
+    def build_image(self, name: str, tag: str, fast_register: bool, source_root: Optional[str] = None):
         cfg_path = self.create_envd_config(fast_register, source_root)
         click.secho("Building image...", fg="blue")
         command = f"envd build --path {pathlib.Path(cfg_path).parent}"
@@ -49,13 +49,13 @@ class EnvdImageSpec(ImageSpec, ABC):
             apt_packages_list += f'"{pkg}", '
 
         envd_config = f"""# syntax=v1
-    
-    def build():
-        base(image="{self.base_image}", dev=False)
-        install.python_packages(name = [{packages_list}])
-        install.apt_packages(name = [{apt_packages_list}])
-        install.python(version="{self.python_version}")
-    """
+
+def build():
+    base(image="{self.base_image}", dev=False)
+    install.python_packages(name = [{packages_list}])
+    install.apt_packages(name = [{apt_packages_list}])
+    install.python(version="{self.python_version}")
+"""
 
         ctx = context_manager.FlyteContextManager.current_context()
         cfg_path = ctx.file_access.get_random_local_path("build.envd")

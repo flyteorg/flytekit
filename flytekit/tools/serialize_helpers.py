@@ -77,6 +77,7 @@ def get_registrable_entities(
             return -1
         return 1
 
+    # Sort the entities so that workflows are always registered first.
     flyte_entities = sorted(flyte_entities, key=cmp_to_key(compare))
 
     for entity in flyte_entities:
