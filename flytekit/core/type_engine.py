@@ -240,36 +240,30 @@ class DataclassTransformer(TypeTransformer[T]):
 
         for field, transformer in self._transformers:
             sub_val = getattr(v, field.name)
-            transformer.assert_type(field.type, type(sub_val))
+            transformer.assert_type(field.type, sub_val)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        fields = {}
-        for field, transformer in self._transformers:
-            fields[field.name] = transformer(field.type).get_literal_type(field.type)
-
+        ## There doesn't appear to be a LiteralMapType but that doesn't appear to matter either...
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT,
-                                        metadata=fields,
                                         structure=TypeStructure(tag=tag_from_type(t)))
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        fields = {}
+        del expected  # Unused... it's not clear why we need this
+        literals = {}
         for field, transformer in self._transformers:
             sub_val = getattr(python_val, field.name)
-            fields[field.name] = transformer.to_literal(sub_val).to_flyte_idl()
+            literal = transformer.to_literal(ctx, sub_val, field.type, transformer.get_literal_type(field.type))
+            literals[field.name] = literal
 
-        struct = _struct.Struct()
-        struct.update(fields)
-        return Literal(scalar=Scalar(generic=struct))
+        return Literal(map=LiteralMap(literals=literals))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
         fields = {}
-        struct: _struct.Struct = lv.scalar.generic
-
         for field, transformer in self._transformers:
-            if struct.HasField(field.name):
+            if field.name in lv.map.literals:
                 fields[field.name] = transformer.to_python_value(
                     ctx=ctx,
-                    lv=Literal.from_flyte_idl(struct[field.name]),
+                    lv=lv.map.literals[field.name],
                     expected_python_type=field.type)
 
         return expected_python_type(**fields)
