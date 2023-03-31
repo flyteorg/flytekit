@@ -1,35 +1,39 @@
 from pathlib import Path
 
+import pytest
+
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import calculate_hash_from_image_spec, create_envd_config, should_build_image
+from flytekit.image_spec.image_spec import (
+    IMAGE_LOCK,
+    build_docker_image,
+    calculate_hash_from_image_spec,
+    image_exist,
+    update_lock_file,
+)
 
 
 def test_image_spec():
     image_spec = ImageSpec(
         packages=["pandas"],
         apt_packages=["git"],
-        python_version="3.9",
+        python_version="3.8",
         registry="",
+        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
     )
 
-    config_path = create_envd_config(
-        image_spec,
-        True,
-    )
-    contents = Path(config_path).read_text()
-    assert (
-        contents
-        == """# syntax=v1
+    with pytest.raises(NotImplementedError):
+        build_docker_image(image_spec, "name", "tag", True)
 
-def build():
-    base(image="cr.flyte.org/flyteorg/flytekit:py3.9-latest", dev=False)
-    install.python_packages(name = ["pandas", ])
-    install.apt_packages(name = ["git", ])
-    install.python(version="3.9")
-"""
-    )
+    with pytest.raises(NotImplementedError):
+        image_spec.build_image("name", "tag", True)
 
     hash_value = calculate_hash_from_image_spec(image_spec)
-    assert hash_value == "epkr42Fd9HJB-diDDGT8hA.."
+    assert hash_value == "KwGID--5A8Cb1SH8UUwESA.."
+    assert image_exist("fake_registry", "epkr42Fd9H")
 
-    assert should_build_image("fake_registry", "epkr42Fd9H")
+
+def test_update_lock_file():
+    # create a temp file
+    global IMAGE_LOCK
+    IMAGE_LOCK = Path("temp.lock").__str__()
+    update_lock_file("registry", "tag")

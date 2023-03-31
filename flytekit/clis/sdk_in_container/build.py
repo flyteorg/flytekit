@@ -40,4 +40,10 @@ def build(_: click.Context, file: str):
         if image_spec is None:
             continue
         image_name = f"{image_spec.registry}/flytekit"
-        build_docker_image(image_spec, name=image_name, tag=calculate_hash_from_image_spec(image_spec), fast_register=False, source_root=project_root)
+        build_docker_image(
+            image_spec,
+            name=image_name,
+            tag=calculate_hash_from_image_spec(image_spec),
+            fast_register=False,
+            source_root=project_root,
+        )
