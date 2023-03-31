@@ -1,8 +1,12 @@
 from typing import Dict, Optional
 
 import grpc
-from flyteidl.service import plugin_system_pb2
-from flyteidl.service.plugin_system_pb2 import TaskGetResponse
+from flyteidl.service.external_plugin_service_pb2 import (
+    SUCCEEDED,
+    TaskCreateResponse,
+    TaskDeleteResponse,
+    TaskGetResponse,
+)
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset
@@ -21,15 +25,15 @@ pythonTypeToBigQueryType: Dict[type, str] = {
 
 class BigQueryPlugin(BackendPluginBase):
     def __init__(self):
-        super().__init__(task_type="bigquery")
+        super().__init__(task_type="bigquery_query_job_task")
 
     def create(
         self,
         context: grpc.ServicerContext,
-        inputs: Optional[LiteralMap],
         output_prefix: str,
         task_template: TaskTemplate,
-    ) -> plugin_system_pb2.TaskCreateResponse:
+        inputs: Optional[LiteralMap] = None,
+    ) -> TaskCreateResponse:
 
         ctx = FlyteContextManager.current_context()
         python_interface_inputs = {
@@ -48,15 +52,15 @@ class BigQueryPlugin(BackendPluginBase):
         client = bigquery.Client(project=custom["ProjectID"], location=custom["Location"])
         query_job = client.query(task_template.sql.statement, job_config=job_config)
 
-        return plugin_system_pb2.TaskCreateResponse(job_id=query_job.job_id)
+        return TaskCreateResponse(job_id=query_job.job_id)
 
-    def get(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, context: grpc.ServicerContext, job_id: str) -> TaskGetResponse:
         client = bigquery.Client()
         job = client.get_job(job_id)
         cur_state = convert_to_flyte_state(str(job.state))
         res = None
 
-        if cur_state == plugin_system_pb2.SUCCEEDED:
+        if cur_state == SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             output_location = f"bq://{job.destination.project}:{job.destination.dataset_id}.{job.destination.table_id}"
             res = literals.LiteralMap(
@@ -72,10 +76,10 @@ class BigQueryPlugin(BackendPluginBase):
 
         return TaskGetResponse(state=cur_state, outputs=res)
 
-    def delete(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskDeleteResponse:
+    def delete(self, context: grpc.ServicerContext, job_id: str) -> TaskDeleteResponse:
         client = bigquery.Client()
         client.cancel_job(job_id)
-        return plugin_system_pb2.TaskDeleteResponse()
+        return TaskDeleteResponse()
 
 
 BackendPluginRegistry.register(BigQueryPlugin())

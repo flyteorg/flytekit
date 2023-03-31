@@ -2,12 +2,11 @@ from concurrent import futures
 
 import click
 import grpc
-from flyteidl.service.plugin_system_pb2_grpc import add_BackendPluginServiceServicer_to_server
+from flyteidl.service.external_plugin_service_pb2_grpc import add_ExternalPluginServiceServicer_to_server
 
-from flytekit.extend.backend.grpc_server import BackendPluginServer
-from flytekit.loggers import cli_logger
+from flytekit.extend.backend.external_plugin_service import BackendPluginServer
 
-_serve_help = """Start a grpc server for the backend plugin system."""
+_serve_help = """Start a grpc server for the external plugin service."""
 
 
 @click.command("serve", help=_serve_help)
@@ -20,9 +19,9 @@ _serve_help = """Start a grpc server for the backend plugin system."""
 )
 @click.pass_context
 def serve(_: click.Context, port):
-    cli_logger.info("Starting a grpc server for the flyteplugins service.")
+    click.secho(f"Starting the external plugin service...", fg="blue")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    add_BackendPluginServiceServicer_to_server(BackendPluginServer(), server)
+    add_ExternalPluginServiceServicer_to_server(BackendPluginServer(), server)
 
     server.add_insecure_port(f"[::]:{port}")
     server.start()

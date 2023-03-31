@@ -39,9 +39,6 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
-          pip install "git+https://github.com/flyteorg/flytekit@backend-plugin-system-grpc#egg=flytekitplugins-bigquery&subdirectory=plugins/flytekit-bigquery"
-          pip install "git+https://github.com/flyteorg/flytekit@backend-plugin-system-grpc"
-          pip install "git+https://github.com/flyteorg/flyteidl@backend-plugin-system"
           pip freeze
       - name: Test with coverage
         run: |
@@ -154,7 +151,6 @@ jobs:
           pip install -r requirements.txt
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
-          pip install "git+https://github.com/flyteorg/flyteidl@backend-plugin-system"
           pip freeze
       - name: Test with coverage
         run: |

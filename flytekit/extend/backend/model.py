@@ -1,4 +1,4 @@
-from flyteidl.service import plugin_system_pb2
+from flyteidl.service import external_plugin_service_pb2
 
 from flytekit.models import common, task
 from flytekit.models.literals import LiteralMap
@@ -18,7 +18,7 @@ class TaskCreateRequest(common.FlyteIdlEntity):
         return self._template
 
     def to_flyte_idl(self):
-        return plugin_system_pb2.TaskCreateRequest(
+        return external_plugin_service_pb2.TaskCreateRequest(
             inputs=self.inputs.to_flyte_idl(), template=self.template.to_flyte_idl()
         )
 

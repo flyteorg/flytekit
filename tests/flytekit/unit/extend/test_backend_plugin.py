@@ -1,7 +1,14 @@
 import typing
+from unittest.mock import MagicMock
 
 import grpc
-from flyteidl.service import plugin_system_pb2
+from flyteidl.service.external_plugin_service_pb2 import (
+    SUCCEEDED,
+    TaskCreateRequest,
+    TaskCreateResponse,
+    TaskDeleteResponse,
+    TaskGetResponse,
+)
 
 from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry
 from flytekit.models.literals import LiteralMap
@@ -21,14 +28,14 @@ class DummyPlugin(BackendPluginBase):
         inputs: typing.Optional[LiteralMap],
         output_prefix: str,
         task_template: TaskTemplate,
-    ) -> plugin_system_pb2.TaskCreateResponse:
-        return plugin_system_pb2.TaskCreateResponse(job_id="dummy_id")
+    ) -> TaskCreateResponse:
+        return TaskCreateResponse(job_id="dummy_id")
 
-    def get(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskGetResponse:
-        return plugin_system_pb2.TaskGetResponse(state=plugin_system_pb2.SUCCEEDED)
+    def get(self, context: grpc.ServicerContext, job_id: str) -> TaskGetResponse:
+        return TaskGetResponse(state=SUCCEEDED)
 
-    def delete(self, context: grpc.ServicerContext, job_id) -> plugin_system_pb2.TaskDeleteResponse:
-        return plugin_system_pb2.TaskDeleteResponse()
+    def delete(self, context: grpc.ServicerContext, job_id) -> TaskDeleteResponse:
+        return TaskDeleteResponse()
 
 
 BackendPluginRegistry.register(DummyPlugin())
@@ -37,13 +44,15 @@ BackendPluginRegistry.register(DummyPlugin())
 def test_base_plugin():
     p = BackendPluginBase(task_type="dummy")
     assert p.task_type == "dummy"
-    p.create(None, "/tmp", None)
-    p.get("id")
-    p.delete("id")
+    ctx = MagicMock(spec=grpc.ServicerContext)
+    p.create(ctx, None, "/tmp", None)
+    p.get(ctx, "id")
+    p.delete(ctx, "id")
 
 
 def test_dummy_plugin():
     p = BackendPluginRegistry.get_plugin("dummy")
-    assert p.create(None, "/tmp", None).job_id == "dummy_id"
-    assert p.get("id").state == plugin_system_pb2.SUCCEEDED
-    assert p.delete("id") == plugin_system_pb2.TaskDeleteResponse()
+    ctx = MagicMock(spec=grpc.ServicerContext)
+    assert p.create(ctx, None, "/tmp", None).job_id == "dummy_id"
+    assert p.get(ctx, "id").state == SUCCEEDED
+    assert p.delete(ctx, "id") == TaskDeleteResponse()

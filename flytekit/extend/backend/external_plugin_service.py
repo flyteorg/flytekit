@@ -1,13 +1,20 @@
 import grpc
-from flyteidl.service import plugin_system_pb2
-from flyteidl.service.plugin_system_pb2_grpc import BackendPluginServiceServicer
+from flyteidl.service.external_plugin_service_pb2 import (
+    TaskCreateRequest,
+    TaskCreateResponse,
+    TaskDeleteRequest,
+    TaskDeleteResponse,
+    TaskGetRequest,
+    TaskGetResponse,
+)
+from flyteidl.service.external_plugin_service_pb2_grpc import ExternalPluginServiceServicer
 
 from flytekit.extend.backend.base_plugin import BackendPluginRegistry
 from flytekit.extend.backend.model import TaskCreateRequest
 
 
-class BackendPluginServer(BackendPluginServiceServicer):
-    def CreateTask(self, request: plugin_system_pb2.TaskCreateRequest, context) -> plugin_system_pb2.TaskCreateResponse:
+class BackendPluginServer(ExternalPluginServiceServicer):
+    def CreateTask(self, request: TaskCreateRequest, context) -> TaskCreateResponse:
         try:
             req = TaskCreateRequest.from_flyte_idl(request)
             plugin = BackendPluginRegistry.get_plugin(req.template.type)
@@ -18,7 +25,7 @@ class BackendPluginServer(BackendPluginServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to create task with error {e}")
 
-    def GetTask(self, request: plugin_system_pb2.TaskGetRequest, context) -> plugin_system_pb2.TaskGetResponse:
+    def GetTask(self, request: TaskGetRequest, context) -> TaskGetResponse:
         try:
             plugin = BackendPluginRegistry.get_plugin(request.task_type)
             return plugin.get(context=context, job_id=request.job_id)
@@ -26,7 +33,7 @@ class BackendPluginServer(BackendPluginServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to get task with error {e}")
 
-    def DeleteTask(self, request: plugin_system_pb2.TaskDeleteRequest, context) -> plugin_system_pb2.TaskDeleteResponse:
+    def DeleteTask(self, request: TaskDeleteRequest, context) -> TaskDeleteResponse:
         try:
             plugin = BackendPluginRegistry.get_plugin(request.task_type)
             return plugin.delete(context=context, job_id=request.job_id)

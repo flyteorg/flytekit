@@ -3,7 +3,15 @@ from abc import abstractmethod
 
 import grpc
 from flyteidl.core.tasks_pb2 import TaskTemplate
-from flyteidl.service import plugin_system_pb2
+from flyteidl.service.external_plugin_service_pb2 import (
+    RETRYABLE_FAILURE,
+    RUNNING,
+    SUCCEEDED,
+    State,
+    TaskCreateResponse,
+    TaskDeleteResponse,
+    TaskGetResponse,
+)
 
 from flytekit.models.literals import LiteralMap
 
@@ -20,18 +28,18 @@ class BackendPluginBase:
     def create(
         self,
         context: grpc.ServicerContext,
-        inputs: typing.Optional[LiteralMap],
         output_prefix: str,
         task_template: TaskTemplate,
-    ) -> plugin_system_pb2.TaskCreateResponse:
+        inputs: typing.Optional[LiteralMap] = None,
+    ) -> TaskCreateResponse:
         pass
 
     @abstractmethod
-    def get(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskGetResponse:
+    def get(self, context: grpc.ServicerContext, job_id: str) -> TaskGetResponse:
         pass
 
     @abstractmethod
-    def delete(self, context: grpc.ServicerContext, job_id: str) -> plugin_system_pb2.TaskDeleteResponse:
+    def delete(self, context: grpc.ServicerContext, job_id: str) -> TaskDeleteResponse:
         pass
 
 
@@ -47,11 +55,11 @@ class BackendPluginRegistry(object):
         return BackendPluginRegistry._REGISTRY[task_type]
 
 
-def convert_to_flyte_state(state: str) -> plugin_system_pb2.State:
+def convert_to_flyte_state(state: str) -> State:
     if state.lower() in ["failed"]:
-        return plugin_system_pb2.FAILED
+        return RETRYABLE_FAILURE
     if state.lower() in ["done", "succeeded"]:
-        return plugin_system_pb2.SUCCEEDED
+        return SUCCEEDED
     if state.lower() in ["running"]:
-        return plugin_system_pb2.RUNNING
+        return RUNNING
     raise ValueError("Unrecognize state")
