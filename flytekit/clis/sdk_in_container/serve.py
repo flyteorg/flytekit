@@ -29,7 +29,7 @@ def serve(_: click.Context, port, timeout):
     """
     Start a grpc server for the external plugin service.
     """
-    click.secho(f"Starting the external plugin service.", fg="blue")
+    click.secho("Starting the external plugin service...", fg="blue")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_ExternalPluginServiceServicer_to_server(BackendPluginServer(), server)
 
