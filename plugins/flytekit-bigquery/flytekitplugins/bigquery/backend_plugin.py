@@ -25,7 +25,7 @@ pythonTypeToBigQueryType: Dict[type, str] = {
 
 class BigQueryPlugin(BackendPluginBase):
     def __init__(self):
-        super().__init__(task_type="bigquery_query_job_task")
+        super().__init__(task_type="bigquery_query_job_task1")
 
     def create(
         self,

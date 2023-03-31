@@ -56,10 +56,11 @@ class BackendPluginRegistry(object):
 
 
 def convert_to_flyte_state(state: str) -> State:
-    if state.lower() in ["failed"]:
+    state = state.lower()
+    if state in ["failed"]:
         return RETRYABLE_FAILURE
-    if state.lower() in ["done", "succeeded"]:
+    elif state in ["done", "succeeded"]:
         return SUCCEEDED
-    if state.lower() in ["running"]:
+    elif state in ["running"]:
         return RUNNING
     raise ValueError("Unrecognize state")
