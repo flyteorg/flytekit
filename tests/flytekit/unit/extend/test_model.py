@@ -37,7 +37,7 @@ def test_create_request():
             {},
         ),
     )
-    req = TaskCreateRequest(inputs=inputs, template=template)
+    req = TaskCreateRequest(output_prefix="s3://bucket/key", template=template, inputs=inputs)
     assert req.inputs == inputs
     assert req.template == template
     assert req == TaskCreateRequest.from_flyte_idl(req.to_flyte_idl())

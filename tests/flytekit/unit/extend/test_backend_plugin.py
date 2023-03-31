@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 import grpc
 from flyteidl.service.external_plugin_service_pb2 import (
     SUCCEEDED,
-    TaskCreateRequest,
     TaskCreateResponse,
     TaskDeleteResponse,
     TaskGetResponse,
@@ -25,9 +24,9 @@ class DummyPlugin(BackendPluginBase):
     def create(
         self,
         context: grpc.ServicerContext,
-        inputs: typing.Optional[LiteralMap],
         output_prefix: str,
         task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
     ) -> TaskCreateResponse:
         return TaskCreateResponse(job_id="dummy_id")
 
@@ -45,7 +44,7 @@ def test_base_plugin():
     p = BackendPluginBase(task_type="dummy")
     assert p.task_type == "dummy"
     ctx = MagicMock(spec=grpc.ServicerContext)
-    p.create(ctx, None, "/tmp", None)
+    p.create(ctx, "/tmp", None)
     p.get(ctx, "id")
     p.delete(ctx, "id")
 
@@ -53,6 +52,6 @@ def test_base_plugin():
 def test_dummy_plugin():
     p = BackendPluginRegistry.get_plugin("dummy")
     ctx = MagicMock(spec=grpc.ServicerContext)
-    assert p.create(ctx, None, "/tmp", None).job_id == "dummy_id"
+    assert p.create(ctx, "/tmp", None).job_id == "dummy_id"
     assert p.get(ctx, "id").state == SUCCEEDED
     assert p.delete(ctx, "id") == TaskDeleteResponse()
