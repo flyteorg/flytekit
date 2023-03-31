@@ -18,6 +18,7 @@ SOURCES = {
     "flytekitplugins-dbt": "flytekit-dbt",
     "flytekitplugins-dolt": "flytekit-dolt",
     "flytekitplugins-duckdb": "flytekit-duckdb",
+    "flytekitplugins-envd": "flytekit-envd",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
     "flytekitplugins-hive": "flytekit-hive",
     "flytekitplugins-pod": "flytekit-k8s-pod",

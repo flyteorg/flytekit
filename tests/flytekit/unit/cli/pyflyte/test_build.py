@@ -21,4 +21,5 @@ def test_build():
         with open(os.path.join("core", "sample.py"), "w") as f:
             f.write(sample_file_contents)
         result = runner.invoke(pyflyte.main, ["build", "--file", "core/sample.py"])
+        assert result.output == ""
         assert result.exit_code == 0
