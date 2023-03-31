@@ -12,6 +12,7 @@ from flytekit.clients.auth.authenticator import (
     ClientConfigStore,
     ClientCredentialsAuthenticator,
     CommandAuthenticator,
+    DeviceCodeAuthenticator,
     PKCEAuthenticator,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
@@ -41,6 +42,7 @@ class RemoteClientConfigStore(ClientConfigStore):
             client_id=public_client_config.client_id,
             scopes=public_client_config.scopes,
             header_key=public_client_config.authorization_metadata_key or None,
+            device_authorization_endpoint=oauth2_metadata.device_authorization_endpoint,
         )
 
 
@@ -79,6 +81,8 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             command=cfg.command,
             header_key=client_cfg.header_key if client_cfg else None,
         )
+    elif cfg_auth == AuthType.DEVICEFLOW:
+        return DeviceCodeAuthenticator(endpoint=cfg.endpoint, cfg_store=cfg_store, audience=cfg.audience)
     else:
         raise ValueError(
             f"Invalid auth mode [{cfg_auth}] specified." f"Please update the creds config to use a valid value"
