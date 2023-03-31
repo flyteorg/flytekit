@@ -12,6 +12,9 @@ from flytekit.image_spec import ImageSpec
 
 
 class EnvdImageSpec(ImageSpec, ABC):
+    """
+    This class is used to build a docker image using envd.
+    """
     def build_image(self, name: str, tag: str, fast_register: bool, source_root: Optional[str] = None):
         cfg_path = self.create_envd_config(fast_register, source_root)
         click.secho("Building image...", fg="blue")
