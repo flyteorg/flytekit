@@ -14,7 +14,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.constants import SdkTaskType
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import TrackedInstance
@@ -23,6 +23,11 @@ from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql
 from flytekit.tools.module_loader import load_object_from_module
+
+
+class DuplicateEntityException(Exception):
+    def __init__(self, entity: "MapPythonTask"):
+        self.entity = entity
 
 
 class MapPythonTask(PythonTask):
@@ -74,6 +79,11 @@ class MapPythonTask(PythonTask):
         _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
         name = f"{mod}.map_{f}_{h}"
+
+        for t in FlyteEntities.entities:
+            if isinstance(t, Task):
+                if t.name == name:
+                    raise DuplicateEntityException(t)
 
         self._cmd_prefix: typing.Optional[typing.List[str]] = None
         self._max_concurrency: typing.Optional[int] = concurrency
@@ -270,7 +280,7 @@ def map_task(
     concurrency: int = 0,
     min_success_ratio: float = 1.0,
     **kwargs,
-):
+) -> MapPythonTask:
     """
     Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
     any individual :py:class:`flytekit.PythonFunctionTask`.
@@ -316,7 +326,10 @@ def map_task(
         successfully before terminating this task and marking it successful.
 
     """
-    return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+    try:
+        return MapPythonTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+    except DuplicateEntityException as e:
+        return e.entity
 
 
 class MapTaskResolver(TrackedInstance, TaskResolverMixin):
