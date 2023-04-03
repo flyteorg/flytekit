@@ -12,9 +12,6 @@ from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
 from flytekit.models import common as _common
-from flytekit.core.pod_template import PodTemplate, PRIMARY_CONTAINER_DEFAULT_NAME
-from kubernetes.client.models import V1PodSpec, V1Volume, V1EmptyDirVolumeSource, V1Container, V1VolumeMount
-from flytekit.lnkd.pod_template import LIPodTemplate
 from flytekit.tools.translator import get_command_prefix_for_fast_execute 
 
 class MPIJobModel(_common.FlyteIdlEntity):
