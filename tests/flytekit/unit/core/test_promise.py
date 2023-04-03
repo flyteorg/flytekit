@@ -16,6 +16,7 @@ from flytekit.core.promise import (
 )
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.types.pickle import FlytePickle
+from flytekit.types.pickle.pickle import BatchSize
 
 
 def test_create_and_link_node():
@@ -104,7 +105,7 @@ def test_translate_inputs_to_literals(input):
         a: typing.List[str]
 
     @task
-    def t1(a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[FlytePickle], 2]]):
+    def t1(a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[FlytePickle], BatchSize(2)]]):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
