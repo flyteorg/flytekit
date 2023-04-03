@@ -51,7 +51,7 @@ from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
-from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
@@ -1584,8 +1584,11 @@ def test_is_batchable():
     assert ListTransformer.is_batchable(typing.List[typing.List[FlytePickle]]) is False
 
     assert ListTransformer.is_batchable(typing.List[FlytePickle]) is True
-    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], 3]) is True
-    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), 3]) is True
+    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], BatchSize(3)]) is True
+    assert (
+        ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(3)])
+        is True
+    )
 
 
 @pytest.mark.parametrize(
@@ -1600,12 +1603,12 @@ def test_is_batchable():
         # After converting to literal, the result will be
         # [batched_FlytePickle(2 items), batched_FlytePickle(2 items), batched_FlytePickle(1 item)].
         # Therefore, the expected list length is [3].
-        (["foo"] * 5, Annotated[typing.List[FlytePickle], HashMethod(function=str), 2], [3]),
+        (["foo"] * 5, Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(2)], [3]),
         # Case 3: Nested list of FlytePickle objects with batch size 2.
         # After converting to literal, the result will be
         # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
         # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
-        ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], 3]], [2, 1]),
+        ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]], [2, 1]),
     ],
 )
 def test_batch_pickle_list(python_val, python_type, expected_list_length):
@@ -1630,6 +1633,6 @@ def test_batch_pickle_list(python_val, python_type, expected_list_length):
         # to the original input values. This is used to simulate the following case:
         # @workflow
         # def wf():
-        #     data = task0()  # task0() -> Annotated[typing.List[FlytePickle], 2]
+        #     data = task0()  # task0() -> Annotated[typing.List[FlytePickle], BatchSize(2)]
         #     task1(data=data)  # task1(data: typing.List[FlytePickle])
         assert pv == python_val

@@ -989,14 +989,14 @@ class ListTransformer(TypeTransformer[T]):
             raise TypeTransformerFailedError("Expected a list")
 
         if ListTransformer.is_batchable(python_type):
-            from flytekit.types.pickle import FlytePickle
+            from flytekit.types.pickle.pickle import BatchSize, FlytePickle
 
             batchSize = len(python_val)  # default batch size
             # parse annotated to get the number of items saved in a pickle file.
             if get_origin(python_type) is Annotated:
                 for annotation in get_args(python_type)[1:]:
-                    if isinstance(annotation, int):
-                        batchSize = annotation
+                    if isinstance(annotation, BatchSize):
+                        batchSize = annotation.val
                         break
             lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batchSize], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
         else:
@@ -1013,7 +1013,11 @@ class ListTransformer(TypeTransformer[T]):
             from flytekit.types.pickle import FlytePickle
 
             batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
-            return [item for batch in batch_list for item in batch]
+            if len(batch_list) > 0 and type(batch_list[0]) is list:
+                # Make it have backward compatibility. The upstream task may use old version of Flytekit that
+                # won't merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
+                return [item for batch in batch_list for item in batch]
+            return batch_list
         else:
             st = self.get_sub_type(expected_python_type)
             return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
