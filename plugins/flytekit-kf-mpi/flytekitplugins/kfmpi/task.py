@@ -12,7 +12,10 @@ from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
 from flytekit.models import common as _common
-
+from flytekit.core.pod_template import PodTemplate, PRIMARY_CONTAINER_DEFAULT_NAME
+from kubernetes.client.models import V1PodSpec, V1Volume, V1EmptyDirVolumeSource, V1Container, V1VolumeMount
+from flytekit.lnkd.pod_template import LIPodTemplate
+from flytekit.tools.translator import get_command_prefix_for_fast_execute 
 
 class MPIJobModel(_common.FlyteIdlEntity):
     """Model definition for MPI the plugin
@@ -80,7 +83,6 @@ class MPIJob(object):
     num_launcher_replicas: int = 1
     num_workers: int = 1
 
-
 class MPIFunctionTask(PythonFunctionTask[MPIJob]):
     """
     Plugin that submits a MPIJob (see https://github.com/kubeflow/mpi-operator)
@@ -133,5 +135,71 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
         return MessageToDict(job.to_flyte_idl())
 
 
+@dataclass
+class HorovodJob(object):
+    slots: int
+    num_launcher_replicas: int = 1
+    num_workers: int = 1
+
+class HorovodFunctionTask(PythonFunctionTask[HorovodJob]):
+    """
+    For more info, check out https://github.com/horovod/horovod
+    """
+    _MPI_JOB_TASK_TYPE = "mpi"
+
+    # Customize your setup here. Please ensure the cmd, path, volume, etc are available in the pod.
+    ssh_command = "/usr/sbin/sshd -De -f /home/jobuser/.sshd_config"
+    ssh_auth_mount_path = "/home/jobuser/.ssh"
+    discovery_script_path = "/etc/mpi/discover_hosts.sh"
+
+    def __init__(self, task_config: MPIJob, task_function: Callable, **kwargs):
+
+        super().__init__(
+            task_config=task_config,
+            task_function=task_function,
+            task_type=self._MPI_JOB_TASK_TYPE,
+            **kwargs,
+        )
+
+    def get_command(self, settings: SerializationSettings) -> List[str]:
+        cmd = super().get_command(settings)
+        mpi_cmd = self._get_horovod_prefix() + cmd
+        return mpi_cmd
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        job = MPIJobModel(
+            num_workers=self.task_config.num_workers,
+            num_launcher_replicas=self.task_config.num_launcher_replicas,
+            slots=self.task_config.slots,
+        )
+        return MessageToDict(job.to_flyte_idl())
+    
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        config = super().get_config(settings)
+        return {**config, "worker_spec_command": self.ssh_command}
+    
+    def _get_horovod_prefix(self) -> List[str]:
+        np = self.task_config.num_workers * self.task_config.slots
+        base_cmd = [
+            "horovodrun",
+            "-np",
+            f"{np}",
+            "--verbose",
+            "--log-level",
+            "INFO",
+            "--network-interface",
+            "eth0",
+            "--min-np",
+            f"{np}",
+            "--max-np",
+            f"{np}",
+            "--slots-per-host",
+            f"{self.task_config.slots}",
+            "--host-discovery-script",
+            self.discovery_script_path,
+        ]
+        return base_cmd 
+
 # Register the MPI Plugin into the flytekit core plugin system
 TaskPlugins.register_pythontask_plugin(MPIJob, MPIFunctionTask)
+TaskPlugins.register_pythontask_plugin(HorovodJob, HorovodFunctionTask)
