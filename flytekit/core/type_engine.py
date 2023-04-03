@@ -238,11 +238,11 @@ class DataclassTransformer(TypeTransformer[T]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         ## There doesn't appear to be a way to specify a map with variable values but that doesn't appear
         # to matter either...
-        subtypes = {}
-        for field, transformer in self._transformers:
-            subtypes[field.name] = _json_format.MessageToDict(
+        subtypes = {
+            field.name: _json_format.MessageToDict(
                 transformer.get_literal_type(field.type).to_flyte_idl())
-
+            for field, transformer in self._transformers
+        }
         return _type_models.LiteralType(map_value_type=LiteralType(),
                                         metadata=subtypes,
                                         structure=TypeStructure(tag=tag_from_type(t)))
