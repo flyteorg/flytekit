@@ -12,7 +12,6 @@ from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
 from flytekit.models import common as _common
-from flytekit.tools.translator import get_command_prefix_for_fast_execute 
 
 class MPIJobModel(_common.FlyteIdlEntity):
     """Model definition for MPI the plugin
@@ -146,7 +145,6 @@ class HorovodFunctionTask(PythonFunctionTask[HorovodJob]):
 
     # Customize your setup here. Please ensure the cmd, path, volume, etc are available in the pod.
     ssh_command = "/usr/sbin/sshd -De -f /home/jobuser/.sshd_config"
-    ssh_auth_mount_path = "/home/jobuser/.ssh"
     discovery_script_path = "/etc/mpi/discover_hosts.sh"
 
     def __init__(self, task_config: MPIJob, task_function: Callable, **kwargs):
