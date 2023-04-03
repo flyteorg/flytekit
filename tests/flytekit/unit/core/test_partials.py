@@ -187,7 +187,7 @@ def test_everything():
 
     @dynamic
     def dt1(a: typing.List[int], a2: typing.List[pd.DataFrame], sl: typing.List[float]) -> str:
-        i = mt1(a=a, a2=a2, c=[[1.1, 2.0, 3.0],[1.1, 2.0, 3.0]], d=[sl, sl])
+        i = mt1(a=a, a2=a2, c=[[1.1, 2.0, 3.0], [1.1, 2.0, 3.0]], d=[sl, sl])
         mt_in2 = map_task(t3_bind_b2)
         dfs = get_list_of_pd(s=3)
         j = mt_in2(a=[3, 4, 5], a2=dfs, c=[[1.0], [2.0], [3.0]], d=[sl, sl, sl])
