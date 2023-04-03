@@ -54,6 +54,10 @@ class MapPythonTask(PythonTask):
         """
         self._partial = None
         if isinstance(python_function_task, functools.partial):
+            # TODO: We should be able to support partial tasks with lists as inputs
+            for arg in python_function_task.keywords.values():
+                if isinstance(arg, list):
+                    raise ValueError("Map tasks do not support partial tasks with lists as inputs. ")
             self._partial = python_function_task
             actual_task = self._partial.func
         else:
