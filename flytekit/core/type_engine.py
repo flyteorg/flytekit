@@ -13,7 +13,7 @@ import typing
 from abc import ABC, abstractmethod
 from typing import Dict, NamedTuple, Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin, dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from flyteidl.core import types_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -399,7 +399,6 @@ class TypeEngine(typing.Generic[T]):
 
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
-
         # Step 3
         if dataclasses.is_dataclass(python_type):
             if isinstance(python_type, DataClassJsonMixin):
@@ -407,7 +406,6 @@ class TypeEngine(typing.Generic[T]):
 
             cls._REGISTRY[python_type] = DataclassTransformer(python_type)
             return cls._REGISTRY[python_type]
-
 
         # Step 4
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
@@ -424,8 +422,6 @@ class TypeEngine(typing.Generic[T]):
                 # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
-
-
 
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
@@ -1051,74 +1047,6 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
-
-
-def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:  # type: ignore
-    """
-    Generate a model class based on the provided JSON Schema
-    :param schema: dict representing valid JSON schema
-    :param schema_name: dataclass name of return type
-    """
-    attribute_list = []
-    for property_key, property_val in schema[schema_name]["properties"].items():
-        property_type = property_val["type"]
-        # Handle list
-        if property_val["type"] == "array":
-            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
-        # Handle dataclass and dict
-        elif property_type == "object":
-            if property_val.get("$ref"):
-                name = property_val["$ref"].split("/")[-1]
-                attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
-            elif property_val.get("additionalProperties"):
-                attribute_list.append(
-                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
-                )
-            else:
-                attribute_list.append((property_key, typing.Dict[str, _get_element_type(property_val)]))  # type: ignore
-        # Handle int, float, bool or str
-        else:
-            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
-
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
-
-
-def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
-    element_type = element_property["type"]
-    element_format = element_property["format"] if "format" in element_property else None
-
-    if type(element_type) == list:
-        # Element type of Optional[int] is [integer, None]
-        return typing.Optional[_get_element_type({"type": element_type[0]})]  # type: ignore
-
-    if element_type == "string":
-        return str
-    elif element_type == "integer":
-        return int
-    elif element_type == "boolean":
-        return bool
-    elif element_type == "number":
-        if element_format == "integer":
-            return int
-        else:
-            return float
-    return str
-
-
-def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.Any:
-    """
-    Utility function to construct a dataclass object from dict
-    """
-    field_types_lookup = {field.name: field.type for field in dataclasses.fields(cls)}
-
-    constructor_inputs = {}
-    for field_name, value in src.items():
-        if dataclasses.is_dataclass(field_types_lookup[field_name]):
-            constructor_inputs[field_name] = dataclass_from_dict(field_types_lookup[field_name], value)
-        else:
-            constructor_inputs[field_name] = value
-
-    return cls(**constructor_inputs)
 
 
 def _check_and_covert_float(lv: Literal) -> float:

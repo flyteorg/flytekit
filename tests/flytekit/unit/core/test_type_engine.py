@@ -145,81 +145,6 @@ def test_list_of_dict_getting_python_value():
     assert isinstance(pv, list)
 
 
-def test_list_of_single_dataclass():
-    @dataclass_json
-    @dataclass()
-    class Bar(object):
-        v: typing.Optional[typing.List[int]]
-        w: typing.Optional[typing.List[float]]
-
-    @dataclass_json
-    @dataclass()
-    class Foo(object):
-        a: typing.Optional[typing.List[str]]
-        b: Bar
-
-    foo = Foo(a=["abc", "def"], b=Bar(v=[1, 2, 99], w=[3.1415, 2.7182]))
-    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
-    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
-
-    transformer = TypeEngine.get_transformer(typing.List)
-    ctx = FlyteContext.current_context()
-
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
-    assert pv[0].a == ["abc", "def"]
-    assert pv[0].b == Bar(v=[1, 2, 99], w=[3.1415, 2.7182])
-
-
-def test_list_of_dataclass_getting_python_value():
-    @dataclass_json
-    @dataclass()
-    class Bar(object):
-        v: typing.Union[int, None]
-        w: typing.Optional[str]
-        x: float
-        y: str
-        z: typing.Dict[str, bool]
-
-    @dataclass_json
-    @dataclass()
-    class Foo(object):
-        u: typing.Optional[int]
-        v: typing.Optional[int]
-        w: int
-        x: typing.List[int]
-        y: typing.Dict[str, str]
-        z: Bar
-
-    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}))
-    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
-    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
-
-    transformer = TypeEngine.get_transformer(typing.List)
-    ctx = FlyteContext.current_context()
-
-    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
-
-    guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
-    assert isinstance(guessed_pv, list)
-    assert guessed_pv[0].u == pv[0].u
-    assert guessed_pv[0].v == pv[0].v
-    assert guessed_pv[0].w == pv[0].w
-    assert guessed_pv[0].x == pv[0].x
-    assert guessed_pv[0].y == pv[0].y
-    assert guessed_pv[0].z.x == pv[0].z.x
-    assert type(guessed_pv[0].u) == int
-    assert guessed_pv[0].v is None
-    assert type(guessed_pv[0].w) == int
-    assert type(guessed_pv[0].z.v) == int
-    assert type(guessed_pv[0].z.x) == float
-    assert guessed_pv[0].z.v == pv[0].z.v
-    assert guessed_pv[0].z.y == pv[0].z.y
-    assert guessed_pv[0].z.z == pv[0].z.z
-    assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
-
-
 def test_file_no_downloader_default():
     # The idea of this test is to assert that if a FlyteFile is created with no download specified,
     # then it should return the set path itself. This matches if we use open method
@@ -328,23 +253,6 @@ def test_dict_transformer():
         Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
         typing.Dict[str, int],
     )
-
-
-def test_convert_json_schema_to_python_class():
-    @dataclass_json
-    @dataclass
-    class Foo(object):
-        x: int
-        y: str
-
-    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
-    foo = foo_class(x=1, y="hello")
-    foo.x = 2
-    assert foo.x == 2
-    assert foo.y == "hello"
-    with pytest.raises(AttributeError):
-        _ = foo.c
 
 
 def test_list_transformer():

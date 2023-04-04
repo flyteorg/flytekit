@@ -1,11 +1,15 @@
 import enum
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Annotated
 
+import pandas as pd
 from dataclasses_json import dataclass_json
 
+from flytekit import kwtypes, StructuredDataset, current_context
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.structured.structured_dataset import PARQUET
 
 
 def test_dataclass():
@@ -68,12 +72,21 @@ def test_dataclass_complex_types():
     class AppParamAndEnum:
         app_params: AppParams
         enum: AnEnum
+        dir: FlyteDirectory
+        dataset: Annotated[StructuredDataset, kwtypes(column=str), PARQUET]
 
     @task
     def t1() -> AppParamAndEnum:
         ap = AppParamAndEnum(
-            app_params=AppParams(snapshotDate="4/5/2063", region="us-west-3", preprocess=False, listKeys=["a", "b"]),
-            enum=AnEnum.ONE)
+            app_params=AppParams(snapshotDate="4/5/2063",
+                                 region="us-west-3",
+                                 preprocess=False,
+                                 listKeys=["a", "b"]),
+            enum=AnEnum.ONE,
+            dir=FlyteDirectory(path=current_context().working_directory),
+            dataset=StructuredDataset(dataframe=pd.DataFrame(dict(
+                column=['foo', 'bar'])))
+        )
         return ap
 
     @workflow
