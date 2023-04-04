@@ -86,6 +86,12 @@ def translate_inputs_to_literals(
                 if len(input_val) == 0:
                     raise
                 sub_type = type(input_val[0])
+            # To maintain consistency between translate_inputs_to_literals and ListTransformer.to_literal for batchable types,
+            # directly call ListTransformer.to_literal to batch process the list items. This is necessary because processing
+            # each list item separately could lead to errors since ListTransformer.to_python_value may treat the literal
+            # as it is batched for batchable types.
+            if ListTransformer.is_batchable(python_type):
+                return TypeEngine.to_literal(ctx, input_val, python_type, lt)
             literal_list = [extract_value(ctx, v, sub_type, lt.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
