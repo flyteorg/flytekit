@@ -44,24 +44,6 @@ def _should_register_with_admin(entity) -> bool:
     ) and not isinstance(entity, RemoteEntity)
 
 
-def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Set[task_models.TaskSpec]:
-    """
-    Given a list of `TaskSpec`, this function returns a set containing the duplicated `TaskSpec` if any exists.
-    """
-    seen: typing.Dict[_identifier. Identifier, task_models.TaskSpec] = {}
-    duplicate_tasks: typing.Dict[_identifier. Identifier, task_models.TaskSpec] = {}
-    for task in tasks:
-        if task.template.id not in seen:
-            seen[task.template.id] = task
-        else:
-            existing = seen[task.template.id]
-            if existing != task:
-                duplicate_tasks[task.template.id] = task
-            else:
-                print("duplicate but same")
-    return set(list(duplicate_tasks.values()))
-
-
 def get_registrable_entities(
     ctx: flyte_context.FlyteContext, options: typing.Optional[Options] = None
 ) -> typing.List[FlyteControlPlaneEntity]:
@@ -85,16 +67,6 @@ def get_registrable_entities(
     serializable_tasks: typing.List[task_models.TaskSpec] = [
         entity for entity in entities_to_be_serialized if isinstance(entity, task_models.TaskSpec)
     ]
-    # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same
-    # metadata identifiers (see :py:class:`flytekit.common.core.identifier.Identifier`). Duplicate
-    # tasks are considered invalid at registration
-    # time and usually indicate user error, so we catch this common mistake at serialization time.
-    duplicate_tasks = _find_duplicate_tasks(serializable_tasks)
-    if len(duplicate_tasks) > 0:
-        duplicate_task_names = [task.template.id.name for task in duplicate_tasks]
-        raise FlyteValidationException(
-            f"Multiple definitions of the following tasks were found: {duplicate_task_names}"
-        )
 
     return entities_to_be_serialized
 
