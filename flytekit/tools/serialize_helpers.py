@@ -48,14 +48,18 @@ def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Se
     """
     Given a list of `TaskSpec`, this function returns a set containing the duplicated `TaskSpec` if any exists.
     """
-    seen: typing.Set[_identifier.Identifier] = set()
-    duplicate_tasks: typing.Set[task_models.TaskSpec] = set()
+    seen: typing.Dict[_identifier. Identifier, task_models.TaskSpec] = {}
+    duplicate_tasks: typing.Dict[_identifier. Identifier, task_models.TaskSpec] = {}
     for task in tasks:
         if task.template.id not in seen:
-            seen.add(task.template.id)
+            seen[task.template.id] = task
         else:
-            duplicate_tasks.add(task)
-    return duplicate_tasks
+            existing = seen[task.template.id]
+            if existing != task:
+                duplicate_tasks[task.template.id] = task
+            else:
+                print("duplicate but same")
+    return set(list(duplicate_tasks.values()))
 
 
 def get_registrable_entities(
