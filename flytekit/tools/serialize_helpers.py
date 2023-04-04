@@ -10,12 +10,10 @@ from flytekit import LaunchPlan
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import WorkflowBase
-from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
-from flytekit.models.core import identifier as _identifier
 from flytekit.models.task import TaskSpec
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options, get_serializable
@@ -64,9 +62,6 @@ def get_registrable_entities(
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
-    serializable_tasks: typing.List[task_models.TaskSpec] = [
-        entity for entity in entities_to_be_serialized if isinstance(entity, task_models.TaskSpec)
-    ]
 
     return entities_to_be_serialized
 

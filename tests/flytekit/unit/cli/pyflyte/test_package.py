@@ -1,7 +1,6 @@
 import os
 import shutil
 
-import pytest
 from click.testing import CliRunner
 
 import flytekit
@@ -10,7 +9,6 @@ import flytekit.tools.serialize_helpers
 from flytekit import TaskMetadata
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.core import context_manager
-from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core.identifier import Identifier, ResourceType
 from flytekit.models.launch_plan import LaunchPlan
