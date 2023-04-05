@@ -13,6 +13,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
 from flytekit.models import common as _common
 
+
 class MPIJobModel(_common.FlyteIdlEntity):
     """Model definition for MPI the plugin
 
@@ -79,6 +80,7 @@ class MPIJob(object):
     num_launcher_replicas: int = 1
     num_workers: int = 1
 
+
 class MPIFunctionTask(PythonFunctionTask[MPIJob]):
     """
     Plugin that submits a MPIJob (see https://github.com/kubeflow/mpi-operator)
@@ -137,6 +139,7 @@ class HorovodJob(object):
     num_launcher_replicas: int = 1
     num_workers: int = 1
 
+
 class HorovodFunctionTask(MPIFunctionTask):
     """
     For more info, check out https://github.com/horovod/horovod
@@ -158,11 +161,11 @@ class HorovodFunctionTask(MPIFunctionTask):
         cmd = super().get_command(settings)
         mpi_cmd = self._get_horovod_prefix() + cmd
         return mpi_cmd
-    
+
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         config = super().get_config(settings)
         return {**config, "worker_spec_command": self.ssh_command}
-    
+
     def _get_horovod_prefix(self) -> List[str]:
         np = self.task_config.num_workers * self.task_config.slots
         base_cmd = [
@@ -184,6 +187,7 @@ class HorovodFunctionTask(MPIFunctionTask):
             self.discovery_script_path,
         ]
         return base_cmd
+
 
 # Register the MPI Plugin into the flytekit core plugin system
 TaskPlugins.register_pythontask_plugin(MPIJob, MPIFunctionTask)

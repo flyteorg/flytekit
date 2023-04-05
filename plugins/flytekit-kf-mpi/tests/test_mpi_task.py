@@ -1,4 +1,4 @@
-from flytekitplugins.kfmpi.task import MPIJob, HorovodJob, MPIJobModel
+from flytekitplugins.kfmpi.task import HorovodJob, MPIJob, MPIJobModel
 
 from flytekit import Resources, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -41,6 +41,7 @@ def test_mpi_task():
 
     assert my_mpi_task.get_custom(settings) == {"numLauncherReplicas": 10, "numWorkers": 10, "slots": 1}
     assert my_mpi_task.task_type == "mpi"
+
 
 def test_horovod_task():
     @task(
