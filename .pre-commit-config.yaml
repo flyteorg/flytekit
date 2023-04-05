@@ -22,3 +22,11 @@ repos:
   rev: v0.8.0.4
   hooks:
   - id: shellcheck
+- repo: https://github.com/pycqa/pydocstyle
+  rev: 4.0.0
+  hooks:
+  - id: pydocstyle
+    files: ^(flytekit|plugins)/.+\.py$
+    exclude: tests/
+    # args:
+    #   - --select=D100
