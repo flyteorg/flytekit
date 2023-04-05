@@ -37,7 +37,9 @@ user_space_logger = child_loggers["user_space"]
 try:
     from rich.logging import RichHandler
 
-    handler = RichHandler(rich_tracebacks=True, omit_repeated_times=False, keywords=["[flytekit]"])
+    handler = RichHandler(
+        rich_tracebacks=True, omit_repeated_times=False, keywords=["[flytekit]"], log_time_format="%Y-%m-%d %H:%M:%S,%f"
+    )
 except ImportError:
     handler = logging.StreamHandler()
 
@@ -76,7 +78,7 @@ if logging_fmt == "json":
 else:
     formatter = logging.Formatter(fmt="[%(name)s] %(message)s")
 
-# add formatter to ch
+# add formatter to the handler
 handler.setFormatter(formatter)
 
 # add ch to logger
