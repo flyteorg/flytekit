@@ -301,6 +301,6 @@ load_implicit_plugins()
 try:
     from rich import traceback
 
-    traceback.install()
+    traceback.install(width=None)
 except ImportError:
     pass
