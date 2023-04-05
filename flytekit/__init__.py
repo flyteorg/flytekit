@@ -26,6 +26,7 @@ These are the essentials needed to get started writing tasks and workflows. The 
    map_task
    ~core.workflow.ImperativeWorkflow
    ~core.node_creation.create_node
+   ~core.promise.NodeOutput
    FlyteContextManager
 
 Running Locally
