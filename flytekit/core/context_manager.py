@@ -725,7 +725,7 @@ class FlyteContextManager(object):
     FlyteContextManager manages the execution context within Flytekit. It holds global state of either compilation
     or Execution. It is not thread-safe and can only be run as a single threaded application currently.
     Context's within Flytekit is useful to manage compilation state and execution state. Refer to ``CompilationState``
-    and ``ExecutionState`` for for information. FlyteContextManager provides a singleton stack to manage these contexts.
+    and ``ExecutionState`` for more information. FlyteContextManager provides a singleton stack to manage these contexts.
 
     Typical usage is
 

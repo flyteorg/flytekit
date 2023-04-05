@@ -1,7 +1,10 @@
+import contextlib
+import datetime
 import os
 import typing
 from typing import Optional
 
+import pandas
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
@@ -77,6 +80,53 @@ class Deck:
     @property
     def html(self) -> str:
         return self._html
+
+
+class TimeLineDeck(Deck):
+    """
+    The TimeLineDeck class is designed to render the execution time of each part of a task.
+    Unlike deck classe, the conversion of data to HTML is delayed until the html property is accessed.
+    This approach is taken because rendering a timeline graph with partial data would not provide meaningful insights.
+    Instead, the complete data set is used to create a comprehensive visualization of the execution time of each part of the task.
+    """
+
+    def __init__(self, name: str, html: Optional[str] = ""):
+        super().__init__(name, html)
+        self.time_info = []
+
+    def append_time_info(self, info: dict):
+        assert isinstance(info, dict)
+        self.time_info.append(info)
+
+    @property
+    def html(self) -> str:
+        from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
+
+        df = pandas.DataFrame(self.time_info)
+        return GanttChartRenderer().to_html(df) + "\n" + TableRenderer().to_html(df)
+
+
+@contextlib.contextmanager
+def measure_execution_time(part: str):
+    """
+    A context manager that measures the execution time of the wrapped code block and
+    appends the timing information to TimeLineDeck.
+
+    :param part: A string that describes the part of the task being executed.
+    """
+    start_time = datetime.datetime.utcnow()
+    try:
+        yield
+    finally:
+        end_time = datetime.datetime.utcnow()
+        time_line_deck = None
+        for deck in FlyteContextManager.current_context().user_space_params.decks:
+            if deck.name == "time line of task":
+                time_line_deck = deck
+                break
+        if time_line_deck is None:
+            time_line_deck = TimeLineDeck("time line of task")
+        time_line_deck.append_time_info(dict(Part=part, Start=start_time, Finish=end_time))
 
 
 def _ipython_check() -> bool:
