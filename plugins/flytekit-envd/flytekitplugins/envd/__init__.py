@@ -10,4 +10,4 @@ This plugin enables seamless integration between Flyte and mlflow.
    EnvdImageSpec
 """
 
-from .image_spec import EnvdImageSpec
+from .image_spec import ImageSpec

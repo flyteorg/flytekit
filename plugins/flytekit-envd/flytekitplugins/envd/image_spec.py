@@ -11,7 +11,7 @@ from flytekit.core import context_manager
 from flytekit.image_spec import ImageSpec
 
 
-class EnvdImageSpec(ImageSpec, ABC):
+class ImageSpec(ImageSpec, ABC):
     """
     This class is used to build a docker image using envd.
     """

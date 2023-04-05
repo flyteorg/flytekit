@@ -85,7 +85,7 @@ def task(
     interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[_datetime.timedelta, int] = 0,
-    container_image: Optional[str] = None,
+    container_image: Optional[Union[str, ImageSpec]] = None,
     image_spec: Optional[ImageSpec] = None,
     environment: Optional[Dict[str, str]] = None,
     requests: Optional[Resources] = None,
