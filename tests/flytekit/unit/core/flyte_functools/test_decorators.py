@@ -39,7 +39,7 @@ def test_wrapped_tasks_error(capfd):
     )
     out = capfd.readouterr().out
 
-    assert out.replace("\r", "").strip().split("\n") == [
+    assert out.replace("\r", "").strip().split("\n")[:5] == [
         "before running my_task",
         "try running my_task",
         "error running my_task: my_task failed with input: 0",

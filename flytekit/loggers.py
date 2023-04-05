@@ -36,11 +36,8 @@ user_space_logger = child_loggers["user_space"]
 # create console handler
 try:
     from rich.logging import RichHandler
-    handler = RichHandler(
-        rich_tracebacks=True,
-        omit_repeated_times=False,
-        keywords=["[flytekit]"]
-    )
+
+    handler = RichHandler(rich_tracebacks=True, omit_repeated_times=False, keywords=["[flytekit]"])
 except ImportError:
     handler = logging.StreamHandler()
 

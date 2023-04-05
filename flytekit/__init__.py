@@ -194,7 +194,6 @@ Documentation
 import sys
 from typing import Generator
 
-
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
@@ -301,6 +300,7 @@ load_implicit_plugins()
 # Pretty-print exception messages
 try:
     from rich import traceback
+
     traceback.install()
 except ImportError:
     pass
