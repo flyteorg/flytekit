@@ -1,6 +1,6 @@
 import enum
 from dataclasses import dataclass
-from typing import List, Dict, Annotated
+from typing import List, Dict, Annotated, Any
 
 import pandas as pd
 from dataclasses_json import dataclass_json
@@ -68,16 +68,21 @@ def test_dataclass_complex_types():
         preprocess: bool
         listKeys: List[str]
 
+    class Foo(object):
+        def __init__(self, number: int):
+            self.number = number
+
     @dataclass
-    class AppParamAndEnum:
+    class ComplexTypes:
         app_params: AppParams
         enum: AnEnum
         dir: FlyteDirectory
         dataset: Annotated[StructuredDataset, kwtypes(column=str), PARQUET]
+        pickle_data: Foo
 
     @task
-    def t1() -> AppParamAndEnum:
-        ap = AppParamAndEnum(
+    def t1() -> ComplexTypes:
+        ap = ComplexTypes(
             app_params=AppParams(snapshotDate="4/5/2063",
                                  region="us-west-3",
                                  preprocess=False,
@@ -85,12 +90,13 @@ def test_dataclass_complex_types():
             enum=AnEnum.ONE,
             dir=FlyteDirectory(path=current_context().working_directory),
             dataset=StructuredDataset(dataframe=pd.DataFrame(dict(
-                column=['foo', 'bar'])))
+                column=['foo', 'bar']))),
+            pickle_data=Foo(1)
         )
         return ap
 
     @workflow
-    def wf() -> AppParamAndEnum:
+    def wf() -> ComplexTypes:
         return t1()
 
     res = wf()

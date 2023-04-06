@@ -2,7 +2,7 @@ import datetime
 import os
 import tempfile
 import typing
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 
@@ -36,9 +36,7 @@ from flytekit.core.type_engine import (
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
-    UnionTransformer,
-    convert_json_schema_to_python_class,
-    dataclass_from_dict,
+    UnionTransformer
 )
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
