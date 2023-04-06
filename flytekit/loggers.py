@@ -2,6 +2,8 @@ import logging
 import os
 
 from pythonjsonlogger import jsonlogger
+from rich.console import Console
+from rich.logging import RichHandler
 
 # Note:
 # The environment variable controls exposed to affect the individual loggers should be considered to be beta.
@@ -34,14 +36,13 @@ entrypoint_logger = child_loggers["entrypoint"]
 user_space_logger = child_loggers["user_space"]
 
 # create console handler
-try:
-    from rich.logging import RichHandler
-
-    handler = RichHandler(
-        rich_tracebacks=True, omit_repeated_times=False, keywords=["[flytekit]"], log_time_format="%Y-%m-%d %H:%M:%S,%f"
-    )
-except ImportError:
-    handler = logging.StreamHandler()
+handler = RichHandler(
+    rich_tracebacks=True,
+    omit_repeated_times=False,
+    keywords=["[flytekit]"],
+    log_time_format="%Y-%m-%d %H:%M:%S,%f",
+    console=Console(width=os.get_terminal_size().columns),
+)
 
 handler.setLevel(logging.DEBUG)
 
@@ -72,7 +73,7 @@ for log_name, child_logger in child_loggers.items():
             child_logger.setLevel(logging.WARNING)
 
 # create formatter
-logging_fmt = os.environ.get(LOGGING_FMT_ENV_VAR, "")
+logging_fmt = os.environ.get(LOGGING_FMT_ENV_VAR, "json")
 if logging_fmt == "json":
     formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s")
 else:

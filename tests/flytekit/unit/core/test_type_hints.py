@@ -1630,8 +1630,8 @@ def test_error_messages():
     with pytest.raises(
         TypeError,
         match=(
-            "Failed to convert inputs in task 'tests.flytekit.unit.core.test_type_hints.foo':\n  "
-            "Value 'hello' of type <class 'str'> is not an instance of <class 'int'>"
+            "Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.foo':\n"
+            "  Failed argument 'a': Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
         ),
     ):
         foo(a="hello", b=10)  # type: ignore
@@ -1639,8 +1639,8 @@ def test_error_messages():
     with pytest.raises(
         TypeError,
         match=(
-            "Failed to convert outputs of task 'tests.flytekit.unit.core.test_type_hints.foo2' at position 0:\n  "
-            "Value 'hello' of type <class 'str'> is not an instance of <class 'int'>"
+            "Failed to convert outputs of task 'tests.flytekit.unit.core.test_type_hints.foo2' at position 0:\n"
+            "  Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
         ),
     ):
         foo2(a=10, b="hello")
@@ -1685,9 +1685,9 @@ def test_union_type():
     with pytest.raises(
         TypeError,
         match=re.escape(
-            "Error encountered while executing 'wf2':\n  "
-            "Failed to convert inputs in task 'tests.flytekit.unit.core.test_type_hints.t2':\n  "
-            'Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
+            "Error encountered while executing 'wf2':\n"
+            "  Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.t2':\n"
+            '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
             'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'
         ),
     ):

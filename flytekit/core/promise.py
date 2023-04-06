@@ -19,7 +19,7 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
+from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -141,7 +141,11 @@ def translate_inputs_to_literals(
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = flyte_interface_types[k]
         t = native_types[k]
-        result[k] = extract_value(ctx, v, t, var.type)
+        try:
+            result[k] = extract_value(ctx, v, t, var.type)
+        except TypeTransformerFailedError as exc:
+            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
+
 
     return result
 

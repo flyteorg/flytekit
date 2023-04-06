@@ -253,7 +253,7 @@ class Task(object):
                 native_types=self.get_input_types(),  # type: ignore
             )
         except TypeTransformerFailedError as exc:
-            msg = f"Failed to convert inputs in task '{self.name}':\n  {exc}"
+            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
             logger.error(msg)
             raise TypeError(msg) from exc
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
@@ -525,7 +525,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     exec_ctx, input_literal_map, self.python_interface.inputs
                 )
             except Exception as exc:
-                msg = f"Failed to convert inputs in task '{self.name}':\n  {exc}"
+                msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
                 logger.error(msg)
                 raise TypeError(msg) from exc
 

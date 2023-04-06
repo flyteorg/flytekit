@@ -263,7 +263,7 @@ class WorkflowBase(object):
         try:
             return flyte_entity_call_handler(self, *args, **input_kwargs)
         except TypeError as exc:
-            raise TypeError(f"Failed to convert outputs in workflow '{self.name}':\n  {exc}") from exc
+            raise TypeError(f"Encountered error while executing workflow '{self.name}':\n  {exc}") from exc
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
@@ -280,7 +280,9 @@ class WorkflowBase(object):
                 try:
                     kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
                 except TypeTransformerFailedError as exc:
-                    raise TypeError(f"Failed to convert inputs in workflow '{self.name}':\n  {exc}") from exc
+                    raise TypeError(
+                        f"Failed to convert input argument '{k}' of workflow '{self.name}':\n  {exc}"
+                    ) from exc
 
         # The output of this will always be a combination of Python native values and Promises containing Flyte
         # Literals.
