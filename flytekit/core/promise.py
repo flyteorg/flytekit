@@ -146,7 +146,6 @@ def translate_inputs_to_literals(
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
-
     return result
 
 

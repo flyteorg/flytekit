@@ -4,7 +4,8 @@ from string import ascii_lowercase
 from typing import Tuple
 
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from flytekit import task, workflow
 
@@ -16,7 +17,7 @@ def int_to_float(n: int) -> float:
 
 @task
 def task_incorrect_output(a: float) -> int:
-    return str(a)
+    return str(a)  # type: ignore [return-value]
 
 
 @task
@@ -55,7 +56,7 @@ def test_task_input_error(incorrect_input):
         match=(
             r"Failed to convert inputs of task '{}':\n"
             r"  Failed argument 'a': Expected value of type \<class 'float'\> but got .+ of type .+"
-        ).format(task_correct_output.name)
+        ).format(task_correct_output.name),
     ):
         task_correct_output(a=incorrect_input)
 
@@ -67,7 +68,7 @@ def test_task_output_error(correct_input):
         match=(
             r"Failed to convert outputs of task '{}' at position 0:\n"
             r"  Expected value of type \<class 'int'\> but got .+ of type .+"
-        ).format(task_incorrect_output.name)
+        ).format(task_incorrect_output.name),
     ):
         task_incorrect_output(a=correct_input)
 
@@ -81,7 +82,7 @@ def test_workflow_with_task_error(correct_input):
             r"  Error encountered while executing 'wf_with_task_error':\n"
             r"  Failed to convert outputs of task '.+' at position 0:\n"
             r"  Expected value of type \<class 'int'\> but got .+ of type .+"
-        ).format(wf_with_task_error.name)
+        ).format(wf_with_task_error.name),
     ):
         wf_with_task_error(a=correct_input)
 
@@ -116,7 +117,7 @@ def test_workflow_with_output_error(correct_input):
     [
         (wf_with_multioutput_error0, 0),
         (wf_with_multioutput_error1, 1),
-    ]
+    ],
 )
 @given(st.integers())
 def test_workflow_with_multioutput_error(workflow, position, correct_input):
@@ -125,6 +126,6 @@ def test_workflow_with_multioutput_error(workflow, position, correct_input):
         match=(
             r"Encountered error while executing workflow '{}':\n  "
             r"Failed to convert output in position {} of value .+, expected type \<class 'int'\>"
-        ).format(workflow.name, position)
+        ).format(workflow.name, position),
     ):
         workflow(a=correct_input, b=correct_input)
