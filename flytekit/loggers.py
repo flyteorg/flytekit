@@ -36,12 +36,17 @@ entrypoint_logger = child_loggers["entrypoint"]
 user_space_logger = child_loggers["user_space"]
 
 # create console handler
+try:
+    console = Console(width=os.get_terminal_size().columns)
+except OSError:
+    console = None
+
 handler = RichHandler(
     rich_tracebacks=True,
     omit_repeated_times=False,
     keywords=["[flytekit]"],
     log_time_format="%Y-%m-%d %H:%M:%S,%f",
-    console=Console(width=os.get_terminal_size().columns),
+    console=console,
 )
 
 handler.setLevel(logging.DEBUG)
