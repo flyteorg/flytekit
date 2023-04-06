@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 
 from pythonjsonlogger import jsonlogger
 from rich.console import Console
@@ -37,17 +38,15 @@ user_space_logger = child_loggers["user_space"]
 
 # create console handler
 try:
-    console = Console(width=os.get_terminal_size().columns)
+    handler = RichHandler(
+        rich_tracebacks=True,
+        omit_repeated_times=False,
+        keywords=["[flytekit]"],
+        log_time_format="%Y-%m-%d %H:%M:%S,%f",
+        console=Console(width=shutil.get_terminal_size().columns),
+    )
 except OSError:
-    console = None
-
-handler = RichHandler(
-    rich_tracebacks=True,
-    omit_repeated_times=False,
-    keywords=["[flytekit]"],
-    log_time_format="%Y-%m-%d %H:%M:%S,%f",
-    console=console,
-)
+    handler = logging.StreamHandler()
 
 handler.setLevel(logging.DEBUG)
 
