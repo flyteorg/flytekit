@@ -1,4 +1,5 @@
-FROM python:3.9-slim-buster
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim-buster
 
 WORKDIR /app
 ENV VENV /opt/venv
@@ -12,7 +13,7 @@ RUN pip install gsutil
 ARG VERSION
 
 # Virtual environment
-RUN python3.9 -m venv ${VENV}
+RUN python3.10 -m venv ${VENV}
 RUN ${VENV}/bin/pip install wheel
 
 RUN ${VENV}/bin/pip install sqlalchemy psycopg2-binary pymysql flytekitplugins-sqlalchemy==$VERSION flytekit==$VERSION
