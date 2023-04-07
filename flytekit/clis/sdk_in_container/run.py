@@ -136,77 +136,20 @@ class DurationParamType(click.ParamType):
         return datetime.timedelta(seconds=parse(value))
 
 
-T = TypeVar('T')
+@dataclass
+class DefaultConverter(object):
+    click_type: click.ParamType
+    primitive_type: typing.Optional[str] = None
+    scalar_type: typing.Optional[str] = None
 
-class DataclassParamType(click.ParamType):
+    def convert(self, value: typing.Any, python_type_hint: typing.Optional[typing.Type] = None) -> Scalar:
+        if self.primitive_type:
+            return Scalar(primitive=Primitive(**{self.primitive_type: value}))
+        if self.scalar_type:
+            return Scalar(**{self.scalar_type: value})
 
-    def __init__(self, python_type: Type[T]):
-        self.name = python_type.__name__
-        self._subparams = {
-            field: ParamTypeRegistry.get_param(field.type)
-            for field in dataclasses.fields(python_type)
-        }
+        raise NotImplementedError("Not implemented yet!")
 
-    def convert(
-        self, value: Any, param: Optional[Parameter], ctx: Optional[Context]
-    ) -> T:
-
-
-
-
-class ParamTypeRegistry:
-
-    _REGISTRY: typing.Dict[Type, click.ParamType] = {}
-
-    @classmethod
-    def register(cls, python_type: Type, param_type: click.ParamType):
-        cls._REGISTRY[python_type] = param_type
-
-    @classmethod
-    def get_param(cls, python_type: Type) -> click.ParamType:
-        """Mirror the logic in `TypeEngine.get_transformer`"""
-        # Step 1
-        if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
-
-        if python_type in cls._REGISTRY:
-            return cls._REGISTRY[python_type]
-
-        # Step 2
-        if hasattr(python_type, "__origin__"):
-            # Handling of annotated generics, eg:
-            # Annotated[typing.List[int], 'foo']
-            if get_origin(python_type) is Annotated:
-                return cls.get_param(get_args(python_type)[0])
-
-            if python_type.__origin__ in cls._REGISTRY:
-                return cls._REGISTRY[python_type.__origin__]
-
-            raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
-
-        # Step 3
-        if dataclasses.is_dataclass(python_type):
-            cls._REGISTRY[python_type] = DataclassParamType(python_type)
-            return cls._REGISTRY[python_type]
-
-        # Step 4
-        # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
-        # parent.
-        for base_type in cls._REGISTRY.keys():
-            if base_type is None:
-                continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
-            try:
-                if isinstance(python_type, base_type) or (
-                    inspect.isclass(python_type) and issubclass(python_type, base_type)
-                ):
-                    return cls._REGISTRY[base_type]
-            except TypeError:
-                # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
-                # is the case for one of the restricted types, namely NamedTuple.
-                logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
-
-        # Step 5
-        raise ValueError(f'No ParamType found for {python_type}, Pickle types are not supported in PyFlyte")
 
 
 class FlyteLiteralConverter(object):
@@ -225,6 +168,7 @@ class FlyteLiteralConverter(object):
         self,
         ctx: click.Context,
         flyte_ctx: FlyteContext,
+        literal_type: LiteralType,
         python_type: typing.Type,
         get_upload_url_fn: typing.Callable,
     ):
@@ -352,11 +296,12 @@ class FlyteLiteralConverter(object):
                 # Here we use click converter to convert the input in command line to native python type,
                 # and then use flyte converter to convert it to literal.
                 python_val = converter._click_type.convert(value, param, ctx)
+                literal = converter.convert_to_literal(ctx, param, python_val)
+
             except (Exception or AttributeError) as e:
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
                 continue
 
-            literal = converter.convert_to_literal(ctx, param, python_val)
             return Literal(scalar=Scalar(union=Union(literal, variant)))
 
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
@@ -434,20 +379,20 @@ class FlyteLiteralConverter(object):
 
 
 def to_click_option(
-    ctx: click.Context,
-    flyte_ctx: FlyteContext,
-    input_name: str,
-    literal_var: Variable,
-    python_type: typing.Type,
-    default_val: typing.Any,
-    get_upload_url_fn: typing.Callable,
+        ctx: click.Context,
+        flyte_ctx: FlyteContext,
+        input_name: str,
+        literal_var: Variable,
+        python_type: typing.Type,
+        default_val: typing.Any,
+        get_upload_url_fn: typing.Callable,
 ) -> click.Option:
     """
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
-    param: click.ParamType = ParamTypeRegistry.get_param(
-        ctx, flyte_ctx, python_type=python_type, get_upload_url_fn=get_upload_url_fn
+    literal_converter = FlyteLiteralConverter(
+        ctx, flyte_ctx, literal_type=literal_var.type, python_type=python_type, get_upload_url_fn=get_upload_url_fn
     )
 
     if literal_converter.is_bool() and not default_val:
@@ -455,8 +400,8 @@ def to_click_option(
 
     return click.Option(
         param_decls=[f"--{input_name}"],
-        type=param,
-        is_flag=param.is,
+        type=literal_converter.click_type,
+        is_flag=literal_converter.is_bool(),
         default=default_val,
         show_default=True,
         required=default_val is None,
