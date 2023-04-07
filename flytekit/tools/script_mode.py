@@ -149,4 +149,4 @@ def _find_project_root(source_path) -> str:
     path = Path(source_path).parent.resolve()
     while os.path.exists(os.path.join(path, "__init__.py")):
         path = path.parent
-    return path
+    return path.__str__()

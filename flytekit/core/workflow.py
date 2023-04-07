@@ -171,7 +171,6 @@ class WorkflowBase(object):
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
         docs: Optional[Documentation] = None,
-        image_spec: Optional[ImageSpec] = None,
         **kwargs,
     ):
         self._name = name
@@ -184,7 +183,6 @@ class WorkflowBase(object):
         self._nodes: List[Node] = []
         self._output_bindings: List[_literal_models.Binding] = []
         self._docs = docs
-        self._image_spec = image_spec
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -210,10 +208,6 @@ class WorkflowBase(object):
     @property
     def docs(self):
         return self._docs
-
-    @property
-    def image_spec(self) -> ImageSpec:
-        return self._image_spec
 
     @property
     def short_name(self) -> str:
@@ -610,7 +604,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         default_metadata: WorkflowMetadataDefaults,
         docstring: Optional[Docstring] = None,
         docs: Optional[Documentation] = None,
-        image_spec: Optional[ImageSpec] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
@@ -626,7 +619,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata_defaults=default_metadata,
             python_interface=native_interface,
             docs=docs,
-            image_spec=image_spec,
         )
         self.compiled = False
 
@@ -736,7 +728,6 @@ def workflow(
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     docs: Optional[Documentation] = None,
-    image_spec: Optional[ImageSpec] = None,
 ) -> WorkflowBase:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -766,7 +757,6 @@ def workflow(
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
     :param docs: Description entity for the workflow
-    :param image_spec: image definition for the workflow
     """
 
     def wrapper(fn):
@@ -780,7 +770,6 @@ def workflow(
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
             docs=docs,
-            image_spec=image_spec,
         )
         update_wrapper(workflow_instance, fn)
         return workflow_instance

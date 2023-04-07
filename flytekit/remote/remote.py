@@ -19,6 +19,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import click
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
@@ -42,7 +43,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
-from flytekit.image_spec.image_spec import build_docker_image, calculate_hash_from_image_spec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, calculate_hash_from_image_spec
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
@@ -98,21 +99,6 @@ class ResolvedIdentifiers:
     domain: str
     name: str
     version: str
-
-
-def _update_entity_image(settings: SerializationSettings, entity: FlyteLocalEntity):
-    if not isinstance(entity, (PythonAutoContainerTask, WorkflowBase)) or not entity.image_spec:
-        return
-    if settings.fast_serialization_settings.enabled:
-        tag = calculate_hash_from_image_spec(entity.image_spec)
-        settings.fast_serialization_settings.destination_dir = entity.image_spec.destination_dir
-    else:
-        tag = settings.version or uuid.UUID(int=random.getrandbits(128)).hex
-    image_name = f"{entity.image_spec.registry}/flytekit"
-    build_docker_image(
-        entity.image_spec, image_name, tag, settings.fast_serialization_settings.enabled, settings.source_root
-    )
-    settings.image_config = ImageConfig.create_from(default_image=Image(name="default", fqn=image_name, tag=tag))
 
 
 def _get_latest_version(list_entities_method: typing.Callable, project: str, domain: str, name: str):
@@ -854,7 +840,6 @@ class FlyteRemote(object):
                 distribution_location=upload_native_url,
             ),
         )
-        _update_entity_image(serialization_settings, entity)
 
         if version is None:
             # The md5 version that we send to S3/GCS has to match the file contents exactly,

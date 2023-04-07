@@ -1,13 +1,13 @@
 """
 .. currentmodule:: flytekitplugins.envd
 
-This plugin enables seamless integration between Flyte and mlflow.
+This plugin enables seamless integration between Flyte and envd.
 
 .. autosummary::
    :template: custom.rst
    :toctree: generated/
 
-   EnvdImageSpec
+   ImageSpec
 """
 
-from .image_spec import ImageSpec
+from .image_builder import EnvdImageSpecBuilder

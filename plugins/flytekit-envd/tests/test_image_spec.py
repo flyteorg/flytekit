@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from flytekitplugins.envd.image_spec import EnvdImageSpec
+from flytekitplugins.envd.image_spec import EnvdImageSpecBuilder
 
-from flytekit.image_spec.image_spec import calculate_hash_from_image_spec, image_exist
+from flytekit.image_spec.image_spec import ImageSpec
 
 
 def test_image_spec():
-    image_spec = EnvdImageSpec(
+    image_spec = ImageSpec(
         packages=["pandas"],
         apt_packages=["git"],
         python_version="3.8",
@@ -14,7 +14,8 @@ def test_image_spec():
         base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
     )
 
-    config_path = image_spec.create_envd_config(True, None)
+    EnvdImageSpecBuilder().build_image(image_spec, "test")
+    config_path = EnvdImageSpecBuilder().create_envd_config(image_spec)
     contents = Path(config_path).read_text()
     assert (
         contents
@@ -22,12 +23,9 @@ def test_image_spec():
 
 def build():
     base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
-    install.python_packages(name = ["pandas", ])
-    install.apt_packages(name = ["git", ])
+    install.python_packages(name = ["pandas"])
+    install.apt_packages(name = ["git"])
     install.python(version="3.8")
+    runtime.environ(env={'PYTHONPATH': '/root'})
 """
     )
-
-    hash_value = calculate_hash_from_image_spec(image_spec)
-    assert hash_value == "KwGID--5A8Cb1SH8UUwESA.."
-    assert image_exist("fake_registry", "epkr42Fd9H")

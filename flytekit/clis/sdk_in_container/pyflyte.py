@@ -85,7 +85,7 @@ class ErrorHandlingCommand(click.Group):
             raise SystemExit(e)
 
 
-@click.group("pyflyte", invoke_without_command=True, cls=ErrorHandlingCommand)
+@click.group("pyflyte", invoke_without_command=True)
 @click.option(
     "--verbose", required=False, default=False, is_flag=True, help="Show verbose messages and exception traces"
 )
