@@ -1,28 +1,26 @@
+import typing
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from flytekit import FlyteContextManager, PythonFunctionTask
-from flytekit.core.context_manager import ExecutionParameters
-from flytekit.extend import TaskPlugins
+import cloudpickle
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
-from torch.distributed.run import parse_min_max_nnodes
+
+from flytekit import PythonFunctionTask
+from flytekit.extend import TaskPlugins
 
 
 @dataclass
 class Elastic(object):
-    min_replicas: int
-    max_replicas: int
+    min_replicas: int = 1
+    max_replicas: int = 1
+    nproc_per_node: typing.Union[int, str] = "auto"
     start_method: str = "spawn"
 
 
 def mp_helper(fn, kwargs):
     print("Using start method spawn")
-    import dill
-
-    fn = dill.loads(fn)
-
+    fn = cloudpickle.loads(fn)
     return_val = fn(**kwargs)
-
     return return_val
 
 
@@ -64,27 +62,25 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
         if self.task_config.start_method == "spawn":
             """
-            If the user wants to use spawn, we use dill to serialize the task function.
+            If the user wants to use spawn, we use cloudpickle to serialize the task function.
             We then tell the torch elastic launcher to launch the mp_helper function (which is pickleable)
             instead of the task function. This helper function, in the child-process, then deserializes
-            the task function, again with dill, and executes it.
+            the task function, again with cloudpickle, and executes it.
             
             Note from a few weeks later:
             We might be able to pass the string representation of the task which is used by the task
             resolver to the helper function. In the child process, the task resolver could retrieve the task.
             But we would need a way to not start further child processes from the child process but just execute
             the task function. But the idea basically is: pass task name to child process and use task resolver
-            instead of dill serialisation.
+            instead of cloudpickle serialisation.
             """
             launcher_target_func = mp_helper
 
-            import dill
-
-            dumped_target_function = dill.dumps(self._task_function)
+            dumped_target_function = cloudpickle.dumps(self._task_function)
             launcher_args = (dumped_target_function, kwargs)
         elif self.task_config.start_method == "fork":
             """
-            If the user wants to do fork, we don't have to serialize the task function with dill.
+            If the user wants to do fork, we don't have to serialize the task function with cloudpickle.
             However, the torch elastic launcher doesn't support passing kwargs to the target function,
             only args. Flyte only works with kwargs.
             Thus, we create a closure which already has the task kwargs bound. We tell the torch elastic
@@ -110,8 +106,6 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         )(*launcher_args)
 
         return out[0]
-
-        # return super().execute(**kwargs)
 
 
 TaskPlugins.register_pythontask_plugin(Elastic, PytorchElasticFunctionTask)
