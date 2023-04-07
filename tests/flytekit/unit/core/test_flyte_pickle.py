@@ -10,11 +10,11 @@ import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.task import task
+from flytekit.core.type_engine import FlytePickleTransformer
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
-from flytekit.types.pickle.pickle import FlytePickle, FlytePickleTransformer
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(

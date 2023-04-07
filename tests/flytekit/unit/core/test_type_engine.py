@@ -30,13 +30,14 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
+    FlytePickleTransformer,
     ListTransformer,
     LiteralsResolver,
     SimpleTransformer,
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
-    UnionTransformer
+    UnionTransformer,
 )
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
@@ -48,8 +49,6 @@ from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
-from flytekit.types.pickle import FlytePickle
-from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
@@ -86,10 +85,8 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
-    assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
 
-    with pytest.raises(ValueError):
-        TypeEngine.get_transformer(typing.Any)
+    assert type(TypeEngine.get_transformer(typing.Any)) == FlytePickleTransformer
 
 
 def test_file_formats_getting_literal_type():
@@ -324,7 +321,6 @@ def test_guessing_basic():
         )
     )
     pt = TypeEngine.guess_python_type(lt)
-    assert pt is FlytePickle
 
 
 def test_guessing_containers():
@@ -1109,12 +1105,12 @@ def test_pickle_type():
         def __init__(self, number: int):
             self.number = number
 
-    lt = TypeEngine.to_literal_type(FlytePickle)
+    lt = TypeEngine.to_literal_type(Foo)
     assert lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
     assert lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
 
     ctx = FlyteContextManager.current_context()
-    lv = TypeEngine.to_literal(ctx, Foo(1), FlytePickle, lt)
+    lv = TypeEngine.to_literal(ctx, Foo(1), Foo, lt)
     assert flyte_tmp_dir in lv.scalar.blob.uri
 
     transformer = FlytePickleTransformer()

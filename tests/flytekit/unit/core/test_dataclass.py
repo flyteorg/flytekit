@@ -1,11 +1,11 @@
 import enum
 from dataclasses import dataclass
-from typing import List, Dict, Annotated, Any
+from typing import Annotated, Dict, List
 
 import pandas as pd
 from dataclasses_json import dataclass_json
 
-from flytekit import kwtypes, StructuredDataset, current_context
+from flytekit import StructuredDataset, current_context, kwtypes
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.types.directory import FlyteDirectory
@@ -56,10 +56,9 @@ def test_dataclass_no_json():
 
 
 def test_dataclass_complex_types():
-
     class AnEnum(enum.Enum):
-        ONE = 'one'
-        TWO = 'two'
+        ONE = "one"
+        TWO = "two"
 
     @dataclass
     class AppParams:
@@ -83,15 +82,11 @@ def test_dataclass_complex_types():
     @task
     def t1() -> ComplexTypes:
         ap = ComplexTypes(
-            app_params=AppParams(snapshotDate="4/5/2063",
-                                 region="us-west-3",
-                                 preprocess=False,
-                                 listKeys=["a", "b"]),
+            app_params=AppParams(snapshotDate="4/5/2063", region="us-west-3", preprocess=False, listKeys=["a", "b"]),
             enum=AnEnum.ONE,
             dir=FlyteDirectory(path=current_context().working_directory),
-            dataset=StructuredDataset(dataframe=pd.DataFrame(dict(
-                column=['foo', 'bar']))),
-            pickle_data=Foo(1)
+            dataset=StructuredDataset(dataframe=pd.DataFrame(dict(column=["foo", "bar"]))),
+            pickle_data=Foo(1),
         )
         return ap
 
@@ -113,13 +108,16 @@ def test_dataclass_dict():
 
     @task
     def first(params: Dict[str, AppParams]) -> AppParams:
-        return params['first']
+        return params["first"]
+
     @workflow
     def wf(params: Dict[str, AppParams]) -> AppParams:
         return first(params=params)
 
-    res = wf(params={
-        'first': AppParams(snapshotDate="4/5/2063", region="us-west-3", preprocess=False, listKeys=["a", "b"]),
-        'later': AppParams(snapshotDate="4/6/2063", region="us-west-3", preprocess=False, listKeys=["a", "b"])
-    })
+    res = wf(
+        params={
+            "first": AppParams(snapshotDate="4/5/2063", region="us-west-3", preprocess=False, listKeys=["a", "b"]),
+            "later": AppParams(snapshotDate="4/6/2063", region="us-west-3", preprocess=False, listKeys=["a", "b"]),
+        }
+    )
     assert res.snapshotDate == "4/5/2063"

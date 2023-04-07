@@ -1,20 +1,22 @@
+import dataclasses
 import datetime
 import functools
 import importlib
+import inspect
 import json
 import logging
 import os
 import pathlib
 import typing
 from dataclasses import dataclass
-from typing import cast
 
 import click
-from dataclasses_json import DataClassJsonMixin
+from click import Parameter, Context
 from pytimeparse import parse
-from typing_extensions import get_args
+from typing_extensions import get_args, get_origin, Annotated
+from typing import Any, Type, TypeVar, Optional
 
-from flytekit import BlobType, Literal, Scalar
+from flytekit import BlobType, Literal, Scalar, logger
 from flytekit.clis.sdk_in_container.constants import (
     CTX_CONFIG_FILE,
     CTX_DOMAIN,
@@ -37,7 +39,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.interface import Variable
-from flytekit.models.literals import Blob, BlobMetadata, Primitive, Union
+from flytekit.models.literals import Blob, BlobMetadata, LiteralMap, Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
@@ -134,19 +136,77 @@ class DurationParamType(click.ParamType):
         return datetime.timedelta(seconds=parse(value))
 
 
-@dataclass
-class DefaultConverter(object):
-    click_type: click.ParamType
-    primitive_type: typing.Optional[str] = None
-    scalar_type: typing.Optional[str] = None
+T = TypeVar('T')
 
-    def convert(self, value: typing.Any, python_type_hint: typing.Optional[typing.Type] = None) -> Scalar:
-        if self.primitive_type:
-            return Scalar(primitive=Primitive(**{self.primitive_type: value}))
-        if self.scalar_type:
-            return Scalar(**{self.scalar_type: value})
+class DataclassParamType(click.ParamType):
 
-        raise NotImplementedError("Not implemented yet!")
+    def __init__(self, python_type: Type[T]):
+        self.name = python_type.__name__
+        self._subparams = {
+            field: ParamTypeRegistry.get_param(field.type)
+            for field in dataclasses.fields(python_type)
+        }
+
+    def convert(
+        self, value: Any, param: Optional[Parameter], ctx: Optional[Context]
+    ) -> T:
+
+
+
+
+class ParamTypeRegistry:
+
+    _REGISTRY: typing.Dict[Type, click.ParamType] = {}
+
+    @classmethod
+    def register(cls, python_type: Type, param_type: click.ParamType):
+        cls._REGISTRY[python_type] = param_type
+
+    @classmethod
+    def get_param(cls, python_type: Type) -> click.ParamType:
+        """Mirror the logic in `TypeEngine.get_transformer`"""
+        # Step 1
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
+
+        if python_type in cls._REGISTRY:
+            return cls._REGISTRY[python_type]
+
+        # Step 2
+        if hasattr(python_type, "__origin__"):
+            # Handling of annotated generics, eg:
+            # Annotated[typing.List[int], 'foo']
+            if get_origin(python_type) is Annotated:
+                return cls.get_param(get_args(python_type)[0])
+
+            if python_type.__origin__ in cls._REGISTRY:
+                return cls._REGISTRY[python_type.__origin__]
+
+            raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
+
+        # Step 3
+        if dataclasses.is_dataclass(python_type):
+            cls._REGISTRY[python_type] = DataclassParamType(python_type)
+            return cls._REGISTRY[python_type]
+
+        # Step 4
+        # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
+        # parent.
+        for base_type in cls._REGISTRY.keys():
+            if base_type is None:
+                continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
+            try:
+                if isinstance(python_type, base_type) or (
+                    inspect.isclass(python_type) and issubclass(python_type, base_type)
+                ):
+                    return cls._REGISTRY[base_type]
+            except TypeError:
+                # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
+                # is the case for one of the restricted types, namely NamedTuple.
+                logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
+
+        # Step 5
+        raise ValueError(f'No ParamType found for {python_type}, Pickle types are not supported in PyFlyte")
 
 
 class FlyteLiteralConverter(object):
@@ -165,7 +225,6 @@ class FlyteLiteralConverter(object):
         self,
         ctx: click.Context,
         flyte_ctx: FlyteContext,
-        literal_type: LiteralType,
         python_type: typing.Type,
         get_upload_url_fn: typing.Callable,
     ):
@@ -293,11 +352,30 @@ class FlyteLiteralConverter(object):
                 # Here we use click converter to convert the input in command line to native python type,
                 # and then use flyte converter to convert it to literal.
                 python_val = converter._click_type.convert(value, param, ctx)
-                literal = converter.convert_to_literal(ctx, param, python_val)
-                return Literal(scalar=Scalar(union=Union(literal, variant)))
             except (Exception or AttributeError) as e:
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
+                continue
+
+            literal = converter.convert_to_literal(ctx, param, python_val)
+            return Literal(scalar=Scalar(union=Union(literal, variant)))
+
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
+
+    def convert_to_dataclass(
+                             self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: dict
+    ) -> Literal:
+        literals = {}
+        for field in dataclasses.fields(self._python_type):
+            if field.name in value:
+                converter = FlyteLiteralConverter(
+                    ctx,
+                    self._flyte_ctx,
+                    TypeEngine.to_literal_type(field.type),
+                    field.type,
+                    self._create_upload_fn,
+                )
+                literals[field.name] = converter.convert_to_literal(ctx, param, value[field.name])
+        return Literal(map=LiteralMap(literals=literals))
 
     def convert_to_literal(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
@@ -308,14 +386,23 @@ class FlyteLiteralConverter(object):
         if self._literal_type.blob:
             return self.convert_to_blob(ctx, param, value)
 
-        if self._literal_type.collection_type or self._literal_type.map_value_type:
+        if self._literal_type.map_value_type:
             # TODO Does not support nested flytefile, flyteschema types
             v = json.loads(value) if isinstance(value, str) else value
-            if self._literal_type.collection_type and not isinstance(v, list):
-                raise click.BadParameter(f"Expected json list '[...]', parsed value is {type(v)}")
-            if self._literal_type.map_value_type and not isinstance(v, dict):
-                raise click.BadParameter("Expected json map '{}', parsed value is {%s}" % type(v))
-            return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
+            if not isinstance(v, dict):
+                raise click.BadParameter(f"Expected json dict '{...}', parsed value is {v} of type {type(v)}")
+
+            if dataclasses.is_dataclass(self._python_type):
+                return self.convert_to_dataclass(ctx, param, v)
+            else:
+                return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
+
+        if self._literal_type.collection_type:
+            v = json.loads(value) if isinstance(value, str) else value
+            if isinstance(v, list):
+                return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
+
+            raise click.BadParameter(f"Expected json list '[...]', parsed value is {v} of type {type(v)}")
 
         if self._literal_type.union_type:
             return self.convert_to_union(ctx, param, value)
@@ -327,8 +414,6 @@ class FlyteLiteralConverter(object):
                         # The type of default value is dict, so we have to convert it to json string
                         value = json.dumps(value)
                     o = json.loads(value)
-                elif type(value) != self._python_type:
-                    o = cast(DataClassJsonMixin, self._python_type).from_json(value)
                 else:
                     o = value
                 return TypeEngine.to_literal(self._flyte_ctx, o, self._python_type, self._literal_type)
@@ -361,8 +446,8 @@ def to_click_option(
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
-    literal_converter = FlyteLiteralConverter(
-        ctx, flyte_ctx, literal_type=literal_var.type, python_type=python_type, get_upload_url_fn=get_upload_url_fn
+    param: click.ParamType = ParamTypeRegistry.get_param(
+        ctx, flyte_ctx, python_type=python_type, get_upload_url_fn=get_upload_url_fn
     )
 
     if literal_converter.is_bool() and not default_val:
@@ -370,8 +455,8 @@ def to_click_option(
 
     return click.Option(
         param_decls=[f"--{input_name}"],
-        type=literal_converter.click_type,
-        is_flag=literal_converter.is_bool(),
+        type=param,
+        is_flag=param.is,
         default=default_val,
         show_default=True,
         required=default_val is None,

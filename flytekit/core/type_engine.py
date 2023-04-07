@@ -8,11 +8,13 @@ import inspect
 import json as _json
 import logging
 import mimetypes
+import os
 import textwrap
 import typing
 from abc import ABC, abstractmethod
-from typing import Dict, NamedTuple, Optional, Type, cast
+from typing import Any, Dict, NamedTuple, Optional, Type, cast
 
+from cloudpickle import cloudpickle
 from dataclasses_json import DataClassJsonMixin
 from flyteidl.core import types_pb2
 from google.protobuf import json_format as _json_format
@@ -34,6 +36,8 @@ from flytekit.models import types as _type_models
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import (
+    Blob,
+    BlobMetadata,
     Literal,
     LiteralCollection,
     LiteralMap,
@@ -211,27 +215,24 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 
 
 class DataclassTransformer(TypeTransformer[T]):
-
     def __init__(self, dataclass_type: Type[T]):
-        super().__init__(name=f'Dataclass[{dataclass_type.__name__}]', t=dataclass_type, enable_type_assertions=True)
-        self._dataclass_type = dataclass_type
-        self._transformers = tuple(
-            (field, TypeEngine.get_transformer(field.type))
-            for field in dataclasses.fields(dataclass_type)
-        )
+        super().__init__(name=f"Dataclass[{dataclass_type.__name__}]", t=dataclass_type, enable_type_assertions=True)
+        self._transformers: Dict[dataclasses.Field, TypeTransformer[Any]] = {
+            field: TypeEngine.get_transformer(field.type) for field in dataclasses.fields(dataclass_type)
+        }
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
-        tag = tag_from_type(self._dataclass_type)
+        tag = tag_from_type(self.python_type)
         if literal_type.structure.tag == tag:
-            return self._dataclass_type
+            return self.python_type
 
-        raise ValueError(f'Type tag {literal_type.structure.tag} does not match import path of dataclass {tag}')
+        raise ValueError(f"Type tag {literal_type.structure.tag} does not match import path of dataclass {tag}")
 
     def assert_type(self, t: Type[T], v: T):
         if not dataclasses.is_dataclass(v):
-            raise TypeTransformerFailedError(f'Object {v} must be a dataclass')
+            raise TypeTransformerFailedError(f"Object {v} must be a dataclass")
 
-        for field, transformer in self._transformers:
+        for field, transformer in self._transformers.items():
             sub_val = getattr(v, field.name)
             transformer.assert_type(field.type, sub_val)
 
@@ -239,23 +240,21 @@ class DataclassTransformer(TypeTransformer[T]):
         ## There doesn't appear to be a way to specify a map with variable values but that doesn't appear
         # to matter either...
         subtypes = {
-            field.name: _json_format.MessageToDict(
-                transformer.get_literal_type(field.type).to_flyte_idl())
-            for field, transformer in self._transformers
+            field.name: _json_format.MessageToDict(transformer.get_literal_type(field.type).to_flyte_idl())
+            for field, transformer in self._transformers.items()
         }
-        return _type_models.LiteralType(map_value_type=LiteralType(),
-                                        metadata=subtypes,
-                                        structure=TypeStructure(tag=tag_from_type(t)))
+        return _type_models.LiteralType(
+            map_value_type=LiteralType(), metadata=subtypes, structure=TypeStructure(tag=tag_from_type(t))
+        )
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         subtypes = {
-            k: LiteralType.from_flyte_idl(
-                _json_format.ParseDict(expected_subtype, types_pb2.LiteralType()))
+            k: LiteralType.from_flyte_idl(_json_format.ParseDict(expected_subtype, types_pb2.LiteralType()))
             for k, expected_subtype in expected.metadata.items()
         }
 
         literals = {}
-        for field, transformer in self._transformers:
+        for field, transformer in self._transformers.items():
             sub_val = getattr(python_val, field.name)
             literal = transformer.to_literal(ctx, sub_val, field.type, subtypes[field.name])
             literals[field.name] = literal
@@ -264,12 +263,11 @@ class DataclassTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
         fields = {}
-        for field, transformer in self._transformers:
+        for field, transformer in self._transformers.items():
             if field.name in lv.map.literals:
                 fields[field.name] = transformer.to_python_value(
-                    ctx=ctx,
-                    lv=lv.map.literals[field.name],
-                    expected_python_type=field.type)
+                    ctx=ctx, lv=lv.map.literals[field.name], expected_python_type=field.type
+                )
 
         return expected_python_type(**fields)
 
@@ -309,6 +307,64 @@ class ProtobufTransformer(TypeTransformer[Message]):
             tag = literal_type.metadata[self.PB_FIELD_KEY]
             return load_type_from_tag(tag)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+
+class FlytePickleTransformer(TypeTransformer[T]):
+    PYTHON_PICKLE_FORMAT = "PythonPickle"
+
+    def __init__(self, pickled_type: Type[T]):
+        super().__init__(name=f"Pickled[{pickled_type.__name__}]", t=pickled_type)
+
+    def assert_type(self, t: Type[T], v: T):
+        # Every type can serialize to pickle, so we don't need to check the type here.
+        ...
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        uri = lv.scalar.blob.uri
+        # Deserialize the pickle, and return data in the pickle,
+        # and download pickle file to local first if file is not in the local file systems.
+        if ctx.file_access.is_remote(uri):
+            local_path = ctx.file_access.get_random_local_path()
+            ctx.file_access.get_data(uri, local_path, False)
+            uri = local_path
+        with open(uri, "rb") as infile:
+            data = cloudpickle.load(infile)
+        return data
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        meta = BlobMetadata(
+            type=_core_types.BlobType(
+                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+            )
+        )
+        # Dump the task output into pickle
+        local_dir = ctx.file_access.get_random_local_directory()
+        os.makedirs(local_dir, exist_ok=True)
+        local_path = ctx.file_access.get_random_local_path()
+        uri = os.path.join(local_dir, local_path)
+        with open(uri, "w+b") as outfile:
+            cloudpickle.dump(python_val, outfile)
+
+        remote_path = ctx.file_access.get_random_remote_path(uri)
+        ctx.file_access.put_data(uri, remote_path, is_multipart=False)
+        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
+
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[T]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+        ):
+            return self.python_type
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        return LiteralType(
+            blob=_core_types.BlobType(
+                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+            )
+        )
 
 
 class TypeEngine(typing.Generic[T]):
@@ -374,10 +430,10 @@ class TypeEngine(typing.Generic[T]):
         Step 4:
             Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
             This is potentially non-deterministic - will depend on the registration pattern.
-
             TODO lets make this deterministic by using an ordered dict
 
-
+        Step 5:
+            Fall back to pickling.
         """
 
         # Step 1
@@ -402,7 +458,7 @@ class TypeEngine(typing.Generic[T]):
         # Step 3
         if dataclasses.is_dataclass(python_type):
             if isinstance(python_type, DataClassJsonMixin):
-                logging.warning('dataclasses no longer require `dataclasses_json.dataclasses` annotation')
+                logging.warning("dataclasses no longer require `dataclasses_json.dataclasses` annotation")
 
             cls._REGISTRY[python_type] = DataclassTransformer(python_type)
             return cls._REGISTRY[python_type]
@@ -423,7 +479,11 @@ class TypeEngine(typing.Generic[T]):
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
 
-        raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
+        # Step 5
+        # Fall back to pickle
+        logger.warning(f"No applicable TypeTransformer found. Falling back to pickling for type {python_type}.")
+        cls._REGISTRY[python_type] = FlytePickleTransformer(python_type)
+        return cls._REGISTRY[python_type]
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
@@ -581,6 +641,8 @@ class TypeEngine(typing.Generic[T]):
                 return transformer.guess_python_type(flyte_type)
             except ValueError:
                 logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
+
+        raise ValueError(f"No type found for {flyte_type}")
 
 
 class ListTransformer(TypeTransformer[T]):
@@ -804,7 +866,7 @@ class UnionTransformer(TypeTransformer[T]):
             try:
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(v)
                 if union_tag is not None:
-                    if trans.name != union_tag:
+                    if trans.name != union_tag and not dataclasses.is_dataclass(v):
                         continue
 
                     expected_literal_type = TypeEngine.to_literal_type(v)

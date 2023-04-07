@@ -134,6 +134,7 @@ def test_union_type2(input):
     result = runner.invoke(
         pyflyte.main,
         [
+            "--verbose",
             "run",
             os.path.join(DIR_NAME, "workflow.py"),
             "test_union2",
