@@ -48,11 +48,11 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     envd_config = f"""# syntax=v1
 
 def build():
-base(image="{image_spec.base_image}", dev=False)
-install.python_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', image_spec.packages)))}])
-install.apt_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', image_spec.apt_packages)))}])
-install.python(version="{image_spec.python_version}")
-runtime.environ(env={image_spec.env})
+    base(image="{image_spec.base_image}", dev=False)
+    install.python_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', image_spec.packages)))}])
+    install.apt_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', image_spec.apt_packages)))}])
+    install.python(version="{image_spec.python_version}")
+    runtime.environ(env={image_spec.env})
 """
 
     ctx = context_manager.FlyteContextManager.current_context()
