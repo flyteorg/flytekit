@@ -38,7 +38,7 @@ jobs:
           tags: |
             py${{ matrix.python-version }}-latest
             py${{ matrix.python-version }}-${{ github.sha }}
-            py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
+            py${{ matrix.python-version }}-1.5.0
       - name: Build & Push Flytekit Python${{ matrix.python-version }} Docker Image to Github Registry
         uses: docker/build-push-action@v2
         with:
