@@ -2,7 +2,6 @@ import dataclasses
 import datetime
 import functools
 import importlib
-import inspect
 import json
 import logging
 import os
@@ -11,12 +10,10 @@ import typing
 from dataclasses import dataclass
 
 import click
-from click import Parameter, Context
 from pytimeparse import parse
-from typing_extensions import get_args, get_origin, Annotated
-from typing import Any, Type, TypeVar, Optional
+from typing_extensions import get_args
 
-from flytekit import BlobType, Literal, Scalar, logger
+from flytekit import BlobType, Literal, Scalar
 from flytekit.clis.sdk_in_container.constants import (
     CTX_CONFIG_FILE,
     CTX_DOMAIN,
@@ -149,7 +146,6 @@ class DefaultConverter(object):
             return Scalar(**{self.scalar_type: value})
 
         raise NotImplementedError("Not implemented yet!")
-
 
 
 class FlyteLiteralConverter(object):
@@ -307,7 +303,7 @@ class FlyteLiteralConverter(object):
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
 
     def convert_to_dataclass(
-                             self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: dict
+        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: dict
     ) -> Literal:
         literals = {}
         for field in dataclasses.fields(self._python_type):
@@ -379,13 +375,13 @@ class FlyteLiteralConverter(object):
 
 
 def to_click_option(
-        ctx: click.Context,
-        flyte_ctx: FlyteContext,
-        input_name: str,
-        literal_var: Variable,
-        python_type: typing.Type,
-        default_val: typing.Any,
-        get_upload_url_fn: typing.Callable,
+    ctx: click.Context,
+    flyte_ctx: FlyteContext,
+    input_name: str,
+    literal_var: Variable,
+    python_type: typing.Type,
+    default_val: typing.Any,
+    get_upload_url_fn: typing.Callable,
 ) -> click.Option:
     """
     This handles converting workflow input types to supported click parameters with callbacks to initialize

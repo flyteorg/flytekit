@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import os
 import tempfile
@@ -11,12 +12,7 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
-from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
-from google.protobuf import json_format as _json_format
-from google.protobuf import struct_pb2 as _struct
-from marshmallow_enum import LoadDumpOptions
-from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated
 
@@ -43,7 +39,17 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
+from flytekit.models.literals import (
+    Blob,
+    BlobMetadata,
+    Literal,
+    LiteralCollection,
+    LiteralMap,
+    Primitive,
+    Scalar,
+    Union,
+    Void,
+)
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
@@ -191,7 +197,6 @@ def test_dict_transformer():
 
     # Type inference
     assert_struct(d.get_literal_type(dict))
-    assert_struct(d.get_literal_type(typing.Dict[int, int]))
     recursive_assert(d.get_literal_type(typing.Dict[str, str]), LiteralType(simple=SimpleType.STRING))
     recursive_assert(d.get_literal_type(typing.Dict[str, int]), LiteralType(simple=SimpleType.INTEGER))
     recursive_assert(d.get_literal_type(typing.Dict[str, datetime.datetime]), LiteralType(simple=SimpleType.DATETIME))
@@ -203,11 +208,6 @@ def test_dict_transformer():
         expected_depth=2,
     )
     recursive_assert(
-        d.get_literal_type(typing.Dict[str, typing.Dict[int, str]]),
-        LiteralType(simple=SimpleType.STRUCT),
-        expected_depth=2,
-    )
-    recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[str, str]]]),
         LiteralType(simple=SimpleType.STRING),
         expected_depth=3,
@@ -216,11 +216,6 @@ def test_dict_transformer():
         d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[str, dict]]]),
         LiteralType(simple=SimpleType.STRUCT),
         expected_depth=3,
-    )
-    recursive_assert(
-        d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[int, dict]]]),
-        LiteralType(simple=SimpleType.STRUCT),
-        expected_depth=2,
     )
 
     ctx = FlyteContext.current_context()
@@ -239,9 +234,15 @@ def test_dict_transformer():
     with pytest.raises(TypeError):
         d.to_python_value(ctx, Literal(), dict)
     with pytest.raises(TypeError):
-        d.to_python_value(ctx, Literal(map=LiteralMap(literals={"x": None})), dict)
+        d.to_python_value(
+            ctx, Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=5)))})), dict
+        )
     with pytest.raises(TypeError):
-        d.to_python_value(ctx, Literal(map=LiteralMap(literals={"x": None})), typing.Dict[int, str])
+        d.to_python_value(
+            ctx,
+            Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=5)))})),
+            typing.Dict[str, str],
+        )
 
     d.to_python_value(
         ctx,
@@ -345,7 +346,6 @@ def test_zero_floats():
     assert TypeEngine.to_python_value(ctx, l1, float) == 0
 
 
-@dataclass_json
 @dataclass
 class InnerStruct(object):
     a: int
@@ -353,30 +353,26 @@ class InnerStruct(object):
     c: typing.List[int]
 
 
-@dataclass_json
 @dataclass
 class TestStruct(object):
     s: InnerStruct
     m: typing.Dict[str, str]
 
 
-@dataclass_json
 @dataclass
 class TestStructB(object):
     s: InnerStruct
-    m: typing.Dict[int, str]
+    m: typing.Dict[str, str]
     n: typing.Optional[typing.List[typing.List[int]]] = None
-    o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
+    o: typing.Optional[typing.Dict[str, typing.Dict[str, int]]] = None
 
 
-@dataclass_json
 @dataclass
 class TestStructC(object):
     s: InnerStruct
     m: typing.Dict[str, int]
 
 
-@dataclass_json
 @dataclass
 class TestStructD(object):
     s: InnerStruct
@@ -388,85 +384,41 @@ class UnsupportedSchemaType:
         self._a = "Hello"
 
 
-@dataclass_json
 @dataclass
 class UnsupportedNestedStruct(object):
     a: int
     s: UnsupportedSchemaType
 
 
-def test_dataclass_transformer():
-    schema = {
-        "$ref": "#/definitions/TeststructSchema",
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-            "InnerstructSchema": {
-                "additionalProperties": False,
-                "properties": {
-                    "a": {"title": "a", "type": "integer"},
-                    "b": {"default": None, "title": "b", "type": ["string", "null"]},
-                    "c": {
-                        "items": {"title": "c", "type": "integer"},
-                        "title": "c",
-                        "type": "array",
-                    },
-                },
-                "type": "object",
-            },
-            "TeststructSchema": {
-                "additionalProperties": False,
-                "properties": {
-                    "m": {"additionalProperties": {"title": "m", "type": "string"}, "title": "m", "type": "object"},
-                    "s": {"$ref": "#/definitions/InnerstructSchema", "field_many": False, "type": "object"},
-                },
-                "type": "object",
-            },
-        },
-    }
-    tf = DataclassTransformer()
-    t = tf.get_literal_type(TestStruct)
-    assert t is not None
-    assert t.simple is not None
-    assert t.simple == SimpleType.STRUCT
-    assert t.metadata is not None
-    assert t.metadata == schema
-
-    t = TypeEngine.to_literal_type(TestStruct)
-    assert t is not None
-    assert t.simple is not None
-    assert t.simple == SimpleType.STRUCT
-    assert t.metadata is not None
-    assert t.metadata == schema
-
-    t = tf.get_literal_type(UnsupportedNestedStruct)
-    assert t is not None
-    assert t.simple is not None
-    assert t.simple == SimpleType.STRUCT
-    assert t.metadata is None
-
-
 def test_dataclass_int_preserving():
     ctx = FlyteContext.current_context()
 
     o = InnerStruct(a=5, b=None, c=[1, 2, 3])
-    tf = DataclassTransformer()
+    tf = DataclassTransformer(InnerStruct)
     lv = tf.to_literal(ctx, o, InnerStruct, tf.get_literal_type(InnerStruct))
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=InnerStruct)
     assert ot == o
 
     o = TestStructB(
-        s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={5: "b"}, n=[[1, 2, 3], [4, 5, 6]], o={1: {2: 3}, 4: {5: 6}}
+        s=InnerStruct(a=5, b=None, c=[1, 2, 3]),
+        m={"5": "b"},
+        n=[[1, 2, 3], [4, 5, 6]],
+        o={"1": {"2": 3}, "4": {"5": 6}},
     )
+    tf = DataclassTransformer(TestStructB)
     lv = tf.to_literal(ctx, o, TestStructB, tf.get_literal_type(TestStructB))
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructB)
     assert ot == o
 
     o = TestStructC(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": 5})
+    tf = DataclassTransformer(TestStructC)
+
     lv = tf.to_literal(ctx, o, TestStructC, tf.get_literal_type(TestStructC))
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructC)
     assert ot == o
 
     o = TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})
+    tf = DataclassTransformer(TestStructD)
     lv = tf.to_literal(ctx, o, TestStructD, tf.get_literal_type(TestStructD))
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestStructD)
     assert ot == o
@@ -476,12 +428,10 @@ def test_dataclass_int_preserving():
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
     mock_upload_dir.return_value = True
 
-    @dataclass_json
     @dataclass
     class A(object):
         a: int
 
-    @dataclass_json
     @dataclass
     class TestFileStruct(object):
         a: FlyteFile
@@ -502,7 +452,8 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
     remote_path = "s3://tmp/file"
     with tempfile.TemporaryFile() as f:
         f.write(b"abc")
-        f1 = FlyteFile("f1", remote_path=remote_path)
+        f1 = FlyteFile("f1")
+        f1._remote_source = remote_path
         o = TestFileStruct(
             a=f1,
             b=f1,
@@ -519,45 +470,38 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         )
 
         ctx = FlyteContext.current_context()
-        tf = DataclassTransformer()
+        tf = DataclassTransformer(TestFileStruct)
         lt = tf.get_literal_type(TestFileStruct)
         lv = tf.to_literal(ctx, o, TestFileStruct, lt)
 
-        assert lv.scalar.generic["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["b"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["b_prime"] is None
-        assert lv.scalar.generic["c"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["d"].values[0].struct_value.fields["path"].string_value == remote_path
-        assert lv.scalar.generic["e"].values[0].struct_value.fields["path"].string_value == remote_path
-        assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
-        assert lv.scalar.generic["f"]["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["g"]["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["g_prime"]["a"] is None
-        assert lv.scalar.generic["h"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["h_prime"] is None
-        assert lv.scalar.generic["i"].fields["a"].number_value == 42
-        assert lv.scalar.generic["i_prime"].fields["a"].number_value == 99
+        assert lv.map.literals["a"].scalar.blob.uri == remote_path
+        assert lv.map.literals["b"].scalar.union.value.scalar.blob.uri == remote_path
+        assert lv.map.literals["b_prime"].scalar.union.value.scalar.none_type
+        assert lv.map.literals["c"].scalar.union.value.scalar.blob.uri == remote_path
+        assert lv.map.literals["d"].collection.literals[0].scalar.blob.uri == remote_path
+        assert lv.map.literals["e"].collection.literals[0].scalar.union.value.scalar.blob.uri == remote_path
+        assert lv.map.literals["e_prime"].collection.literals[0].scalar.union.value.scalar.none_type
+        assert lv.map.literals["f"].map.literals["a"].scalar.blob.uri == remote_path
+        assert lv.map.literals["g"].map.literals["a"].scalar.union.value.scalar.blob.uri == remote_path
+        assert lv.map.literals["g_prime"].map.literals["a"].scalar.union.value.scalar.none_type
+        assert lv.map.literals["h"].scalar.union.value.scalar.blob.uri == remote_path
+        assert lv.map.literals["h_prime"].scalar.union.value.scalar.none_type
+        assert lv.map.literals["i"].scalar.union.value.map.literals["a"].scalar.primitive.value == 42
+        assert lv.map.literals["i_prime"].scalar.union.value.map.literals["a"].scalar.primitive.value == 99
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
 
-        assert o.a.path == ot.a.remote_source
-        assert o.b.path == ot.b.remote_source
-        assert ot.b_prime is None
-        assert o.c.path == ot.c.remote_source
-        assert o.d[0].path == ot.d[0].remote_source
-        assert o.e[0].path == ot.e[0].remote_source
-        assert o.e_prime == [None]
-        assert o.f["a"].path == ot.f["a"].remote_source
-        assert o.g["a"].path == ot.g["a"].remote_source
-        assert o.g_prime == {"a": None}
-        assert o.h.path == ot.h.remote_source
-        assert ot.h_prime is None
-        assert o.i == ot.i
-        assert o.i_prime == A(a=99)
+        for field in dataclasses.fields(o):
+            val = getattr(o, field.name)
+            new_val = getattr(ot, field.name)
+
+            assert type(val) == type(new_val)
+
+            if isinstance(val, FlyteFile):
+                assert val.remote_source == new_val.remote_source
 
 
 def test_flyte_file_in_dataclass():
-    @dataclass_json
     @dataclass
     class TestInnerFileStruct(object):
         a: JPEGImageFile
@@ -566,7 +510,6 @@ def test_flyte_file_in_dataclass():
         d: typing.List[FlyteFile]
         e: typing.Dict[str, FlyteFile]
 
-    @dataclass_json
     @dataclass
     class TestFileStruct(object):
         a: FlyteFile
@@ -582,7 +525,7 @@ def test_flyte_file_in_dataclass():
     )
 
     ctx = FlyteContext.current_context()
-    tf = DataclassTransformer()
+    tf = DataclassTransformer(TestFileStruct)
     lt = tf.get_literal_type(TestFileStruct)
     lv = tf.to_literal(ctx, o, TestFileStruct, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
@@ -602,7 +545,6 @@ def test_flyte_file_in_dataclass():
 
 
 def test_flyte_directory_in_dataclass():
-    @dataclass_json
     @dataclass
     class TestInnerFileStruct(object):
         a: TensorboardLogs
@@ -611,7 +553,6 @@ def test_flyte_directory_in_dataclass():
         d: typing.List[FlyteDirectory]
         e: typing.Dict[str, FlyteDirectory]
 
-    @dataclass_json
     @dataclass
     class TestFileStruct(object):
         a: FlyteDirectory
@@ -628,7 +569,7 @@ def test_flyte_directory_in_dataclass():
     )
 
     ctx = FlyteContext.current_context()
-    tf = DataclassTransformer()
+    tf = DataclassTransformer(TestFileStruct)
     lt = tf.get_literal_type(TestFileStruct)
     lv = tf.to_literal(ctx, o, TestFileStruct, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
@@ -653,14 +594,12 @@ def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)]
 
-    @dataclass_json
     @dataclass
     class InnerDatasetStruct(object):
         a: StructuredDataset
         b: typing.List[Annotated[StructuredDataset, "parquet"]]
         c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
 
-    @dataclass_json
     @dataclass
     class DatasetStruct(object):
         a: People
@@ -670,7 +609,7 @@ def test_structured_dataset_in_dataclass():
     o = DatasetStruct(a=sd, b=InnerDatasetStruct(a=sd, b=[sd], c={"hello": sd}))
 
     ctx = FlyteContext.current_context()
-    tf = DataclassTransformer()
+    tf = DataclassTransformer(DatasetStruct)
     lt = tf.get_literal_type(DatasetStruct)
     lv = tf.to_literal(ctx, o, DatasetStruct, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=DatasetStruct)
@@ -808,13 +747,11 @@ def test_union_type():
 
 
 def test_assert_dataclass_type():
-    @dataclass_json
     @dataclass
     class Args(object):
         x: int
         y: typing.Optional[str]
 
-    @dataclass_json
     @dataclass
     class Schema(object):
         x: typing.Optional[Args] = None
@@ -823,19 +760,8 @@ def test_assert_dataclass_type():
     lt = TypeEngine.to_literal_type(pt)
     gt = TypeEngine.guess_python_type(lt)
     pv = Schema(x=Args(x=3, y="hello"))
-    DataclassTransformer().assert_type(gt, pv)
-    DataclassTransformer().assert_type(Schema, pv)
-
-    @dataclass_json
-    @dataclass
-    class Bar(object):
-        x: int
-
-    pv = Bar(x=3)
-    with pytest.raises(
-        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
-    ):
-        DataclassTransformer().assert_type(gt, pv)
+    DataclassTransformer(Schema).assert_type(gt, pv)
+    DataclassTransformer(Schema).assert_type(Schema, pv)
 
 
 def test_union_transformer():
@@ -1113,32 +1039,27 @@ def test_pickle_type():
     lv = TypeEngine.to_literal(ctx, Foo(1), Foo, lt)
     assert flyte_tmp_dir in lv.scalar.blob.uri
 
-    transformer = FlytePickleTransformer()
+    transformer = FlytePickleTransformer(Foo)
     gt = transformer.guess_python_type(lt)
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert Foo(1).number == pv.number
 
 
 def test_enum_in_dataclass():
-    @dataclass_json
     @dataclass
     class Datum(object):
         x: int
         y: Color
 
     lt = TypeEngine.to_literal_type(Datum)
-    schema = Datum.schema()
-    schema.fields["y"].load_by = LoadDumpOptions.name
-    assert lt.metadata == JSONSchema().dump(schema)
-
-    transformer = DataclassTransformer()
+    transformer = DataclassTransformer(Datum)
     ctx = FlyteContext.current_context()
     datum = Datum(5, Color.RED)
     lv = transformer.to_literal(ctx, datum, Datum, lt)
     gt = transformer.guess_python_type(lt)
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum.x == pv.x
-    assert datum.y.value == pv.y
+    assert datum.y is pv.y
 
 
 @pytest.mark.parametrize(
@@ -1183,14 +1104,46 @@ def test_enum_in_dataclass():
             LiteralMap(
                 literals={
                     "p1": Literal(
-                        scalar=Scalar(
-                            generic=_json_format.Parse(
-                                typing.cast(
-                                    DataClassJsonMixin,
-                                    TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]}),
-                                ).to_json(),
-                                _struct.Struct(),
-                            )
+                        map=LiteralMap(
+                            literals={
+                                "s": Literal(
+                                    map=LiteralMap(
+                                        literals={
+                                            "a": Literal(scalar=Scalar(primitive=Primitive(integer=5))),
+                                            "b": Literal(
+                                                scalar=Scalar(
+                                                    union=Union(
+                                                        value=Literal(scalar=Scalar(none_type=Void())),
+                                                        stored_type=LiteralType(
+                                                            simple=SimpleType.NONE, structure=TypeStructure(tag="none")
+                                                        ),
+                                                    )
+                                                )
+                                            ),
+                                            "c": Literal(
+                                                collection=LiteralCollection(
+                                                    literals=[
+                                                        Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                                                        Literal(scalar=Scalar(primitive=Primitive(integer=2))),
+                                                        Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                                                    ]
+                                                )
+                                            ),
+                                        }
+                                    )
+                                ),
+                                "m": Literal(
+                                    map=LiteralMap(
+                                        literals={
+                                            "a": Literal(
+                                                collection=LiteralCollection(
+                                                    literals=[Literal(scalar=Scalar(primitive=Primitive(integer=5)))]
+                                                )
+                                            )
+                                        }
+                                    )
+                                ),
+                            }
                         )
                     )
                 }
@@ -1218,7 +1171,6 @@ def test_enum_in_dataclass():
 )
 def test_dict_to_literal_map(python_value, python_types, expected_literal_map):
     ctx = FlyteContext.current_context()
-
     assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
 
 
@@ -1353,17 +1305,12 @@ def test_type_alias():
 
 
 def test_unsupported_complex_literals():
-    t = typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})]
+    t = typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})]
     with pytest.raises(ValueError):
         TypeEngine.to_literal_type(t)
 
     # Enum.
     t = typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})]
-    with pytest.raises(ValueError):
-        TypeEngine.to_literal_type(t)
-
-    # Dataclass.
-    t = typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})]
     with pytest.raises(ValueError):
         TypeEngine.to_literal_type(t)
 
@@ -1377,14 +1324,12 @@ def test_multiple_annotations():
 TestSchema = FlyteSchema[kwtypes(some_str=str)]  # type: ignore
 
 
-@dataclass_json
 @dataclass
 class InnerResult:
     number: int
     schema: TestSchema  # type: ignore
 
 
-@dataclass_json
 @dataclass
 class Result:
     result: InnerResult
@@ -1397,7 +1342,7 @@ def test_schema_in_dataclass():
     schema.open().write(df)
     o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
     ctx = FlyteContext.current_context()
-    tf = DataclassTransformer()
+    tf = DataclassTransformer(Result)
     lt = tf.get_literal_type(Result)
     lv = tf.to_literal(ctx, o, Result, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
@@ -1406,7 +1351,6 @@ def test_schema_in_dataclass():
 
 
 def test_guess_of_dataclass():
-    @dataclass_json
     @dataclass()
     class Foo(object):
         x: int

@@ -304,24 +304,6 @@ def test_transform_interface_to_typed_interface_with_docstring():
     assert typed_interface.outputs.get("y_int").description == "description for y_int"
 
 
-def test_parameter_change_to_pickle_type():
-    ctx = context_manager.FlyteContext.current_context()
-
-    class Foo:
-        def __init__(self, name):
-            self.name = name
-
-    def z(a: Foo) -> Foo:
-        ...
-
-    our_interface = transform_function_to_interface(z)
-    params = transform_inputs_to_parameters(ctx, our_interface)
-    assert params.parameters["a"].required
-    assert params.parameters["a"].default is None
-    assert our_interface.outputs["o0"].__origin__ == Foo
-    assert our_interface.inputs["a"].__origin__ == Foo
-
-
 def test_doc_string():
     @task
     def t1(a: int) -> int:
