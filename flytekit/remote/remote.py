@@ -546,6 +546,8 @@ class FlyteRemote(object):
             return None
 
         if isinstance(cp_entity, task_models.TaskSpec):
+            if isinstance(cp_entity, FlyteTask):
+                version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
             try:
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)

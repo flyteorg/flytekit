@@ -7,7 +7,7 @@ This plugin enables seamless integration between Flyte and envd.
    :template: custom.rst
    :toctree: generated/
 
-   ImageSpec
+   EnvdImageSpecBuilder
 """
 
 from .image_builder import EnvdImageSpecBuilder

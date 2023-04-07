@@ -16,7 +16,7 @@ from flytekit.tools.translator import Options, get_serializable
 
 def get_workflow_command_base_params() -> typing.List[click.Option]:
     """
-    Return the set of base parameters added to every pyflyte run workflow subcommand.
+    Return the set of base parameters added to every pyflyte build workflow subcommand.
     """
     return [
         click.Option(
@@ -104,7 +104,7 @@ class WorkflowCommand(click.MultiCommand):
 
 class BuildCommand(click.MultiCommand):
     """
-    A click command group for registering and executing flyte workflows & tasks in a file.
+    A click command group for building a image for flyte workflows & tasks in a file.
     """
 
     def __init__(self, *args, **kwargs):

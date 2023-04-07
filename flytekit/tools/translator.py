@@ -167,6 +167,7 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
+
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
@@ -230,6 +231,7 @@ def get_serializable_workflow(
         # Ignore start nodes
         if n.id == _common_constants.GLOBAL_INPUT_NODE_ID:
             continue
+
         # Recursively serialize the node
         serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
 

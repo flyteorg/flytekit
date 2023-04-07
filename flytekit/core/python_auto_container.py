@@ -7,7 +7,7 @@ from typing import Callable, Dict, List, Optional, TypeVar, Union
 
 import click
 import docker
-from docker.errors import APIError
+from docker.errors import APIError, ImageNotFound
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
@@ -255,7 +255,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 default_task_resolver = DefaultTaskResolver()
 
 
-def get_registerable_container_image(img: Optional[str, ImageSpec], cfg: ImageConfig) -> str:
+def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig) -> str:
     """
     :param img: Configured image or image spec
     :param cfg: Registration configuration
@@ -263,18 +263,24 @@ def get_registerable_container_image(img: Optional[str, ImageSpec], cfg: ImageCo
     """
     if isinstance(img, ImageSpec):
         tag = calculate_hash_from_image_spec(img)
-        container_image = f"{img.registry}/{img.name}:{tag}"
+        container_image = f"{img.name}:{tag}"
+        if img.registry:
+            container_image = f"{img.registry}/{container_image}"
         client = docker.from_env()
         try:
-            client.images.get_registry_data(container_image)
+            client.images.get(container_image)
             click.secho(f"Image {container_image} found. Skipping build.", fg="blue")
         except APIError as e:
             if e.response.status_code == 404:
                 click.secho(f"Image {container_image} not found. Building...", fg="blue")
                 ImageBuildEngine.build(img, tag)
+                return container_image
             if e.response.status_code == 403:
                 click.secho("Permission denied. Please login you docker registry first.", fg="red")
             raise e
+        except ImageNotFound as e:
+            click.secho(f"Image {container_image} not found. Building...", fg="blue")
+            ImageBuildEngine.build(img, tag)
         return container_image
 
     if img is not None and img != "":

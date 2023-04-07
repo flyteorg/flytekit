@@ -18,7 +18,7 @@ pip install flytekitplugins-envd
 Example
 ```python
 # from flytekit import task
-# from flytekitplugins.envd import EnvdImageSpec
+# from flytekit.image_spec import ImageSpec
 #
 # @task(image_spec=ImageSpec(packages=["pandas", "numpy"], apt_packages=["git"], registry="flyteorg"))
 # def t1() -> str:

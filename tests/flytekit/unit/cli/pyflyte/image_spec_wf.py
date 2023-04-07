@@ -1,7 +1,7 @@
 from flytekit import task, workflow
 from flytekit.image_spec import ImageSpec
 
-image_spec = ImageSpec(packages=["numpy", "pandas"], apt_packages=["git"], registry="")
+image_spec = ImageSpec(packages=["numpy", "pandas"], apt_packages=["git"], registry="", builder="test")
 
 
 @task(container_image=image_spec)
