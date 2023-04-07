@@ -6,6 +6,7 @@ but in Python object form.
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
 import os
 import pathlib
@@ -33,6 +34,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
+from flytekit.core.task import ReferenceTask
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as user_exceptions
@@ -1025,6 +1027,7 @@ class FlyteRemote(object):
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: bool = None,
+        interactive: bool = False,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1105,6 +1108,7 @@ class FlyteRemote(object):
                 image_config=image_config,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
+                interactive=interactive,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1209,6 +1213,7 @@ class FlyteRemote(object):
         image_config: typing.Optional[ImageConfig] = None,
         wait: bool = False,
         overwrite_cache: bool = None,
+        interactive: bool = False,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @task-decorated function or TaskTemplate task.
@@ -1228,19 +1233,39 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
-        try:
-            flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
-        except FlyteEntityNotExistException:
-            if isinstance(entity, PythonAutoContainerTask):
-                if not image_config:
-                    raise ValueError(f"PythonTask {entity.name} not already registered, but image_config missing")
-            ss = SerializationSettings(
-                image_config=image_config,
-                project=project or self.default_project,
-                domain=domain or self._default_domain,
-                version=version,
-            )
-            flyte_task: FlyteTask = self.register_task(entity, ss)
+        if interactive: # Ignore reference tasks
+            print("Interactive mode!!")
+            import cloudpickle
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                dest = pathlib.Path(os.path.join(tmp_dir, "pkl.gz"))
+                with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
+                    cloudpickle.dump(entity, gzipped)
+                md5_bytes, upload_native_url = self._upload_file(
+                    dest, project or self.default_project, domain or self.default_domain
+                )
+                ss = SerializationSettings(
+                    image_config=image_config or ImageConfig.auto_default_image(),
+                    project=project or self.default_project,
+                    domain=domain or self._default_domain,
+                    version=version,
+                    fast_serialization_settings=FastSerializationSettings(
+                        enabled=True, pickled=True, distribution_location=upload_native_url),
+                )
+                flyte_task: FlyteTask = self.register_task(entity, ss)
+        else:
+            try:
+                flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
+            except FlyteEntityNotExistException:
+                if isinstance(entity, PythonAutoContainerTask):
+                    if not image_config:
+                        raise ValueError(f"PythonTask {entity.name} not already registered, but image_config missing")
+                ss = SerializationSettings(
+                    image_config=image_config,
+                    project=project or self.default_project,
+                    domain=domain or self._default_domain,
+                    version=version,
+                )
+                flyte_task: FlyteTask = self.register_task(entity, ss)
 
         return self.execute(
             flyte_task,
