@@ -1,7 +1,4 @@
-import pytest
-
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import calculate_hash_from_image_spec
 
 
 def test_image_spec():

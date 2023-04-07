@@ -3,7 +3,6 @@ import os as _os
 import sys
 import typing
 from collections import OrderedDict
-from functools import cmp_to_key
 
 import click
 

@@ -35,7 +35,6 @@ from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
-from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
