@@ -1,40 +1,42 @@
 .. _design-authoring:
 
-#######################
+###################
 Authoring Structure
-#######################
+###################
 
 .. tags:: Design, Basic
 
-One of the core features of Flytekit is to enable users to write tasks and workflows. In this section, we will understand how it works internally.
-
-.. note::
-
-    Please refer to the `design doc <https://docs.google.com/document/d/17rNKg6Uvow8CrECaPff96Tarr87P2fn4ilf_Tv2lYd4/edit#>`__.
+Flytekit's main focus is to provide users with the ability to create their own tasks and workflows.
+In this section, we'll take a closer look at how it works under the hood.
 
 *********************
 Types and Type Engine
 *********************
-Flyte has its own type system, which is codified `in the IDL <https://github.com/flyteorg/flyteidl>`__. Python has its own type system despite being a dynamic language, which is primarily explained in `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_. Flytekit needs to build a medium to bridge the gap between these two type systems.
 
-Type Engine
-=============
-This primariliy happens through the :py:class:`flytekit.extend.TypeEngine`. This engine works by invoking a series of :py:class:`TypeTransformers <flytekit.extend.TypeTransformer>`. Each transformer is responsible for providing the functionality that the engine requires for a given native Python type.
+Flyte uses its own type system, which is defined in the `IDL <https://github.com/flyteorg/flyteidl>`__.
+Despite being a dynamic language, Python also has its own type system which is primarily explained in `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`__.
+Therefore, Flytekit needs to establish a means of bridging the gap between these two type systems.
+This is primariliy accomplished through the use of :py:class:`flytekit.extend.TypeEngine`.
+The ``TypeEngine`` works by invoking a series of :py:class:`TypeTransformers <flytekit.extend.TypeTransformer>`.
+Each transformer is responsible for providing the functionality that the engine requires for a given native Python type.
 
 *****************
 Callable Entities
 *****************
-:ref:`Tasks <divedeep-tasks>`, :ref:`workflows <divedeep-workflows>`, and :ref:`launch plans <divedeep-launchplans>`  form the core of the Flyte user experience. Each of these concepts is backed by one or more Python classes. These classes in turn, are instantiated by decorators (in the case of tasks and workflow) or a regular Python call (in the case of launch plans).
+
+The Flyte user experience is built around three main concepts: :ref:`Tasks <divedeep-tasks>`, :ref:`workflows <divedeep-workflows>`, and :ref:`launch plans <divedeep-launchplans>`.
+Each of these concepts is supported by one or more Python classes, which are instantiated by decorators (in the case of tasks and workflows) or a regular Python call (in the case of launch plans).
 
 Tasks
 =====
-This is the current task class hierarchy:
+
+Here is the existing hierarchy of task classes:
 
 .. inheritance-diagram:: flytekit.core.python_function_task.PythonFunctionTask flytekit.core.python_function_task.PythonInstanceTask flytekit.extras.sqlite3.task.SQLite3Task
-   :parts: 1
    :top-classes: flytekit.core.base_task.Task
+   :parts: 1
 
-Please see the documentation on each of the classes for details.
+For more information on each of the classes, please refer to the corresponding documentation.
 
 .. autoclass:: flytekit.core.base_task.Task
    :noindex:
@@ -48,10 +50,10 @@ Please see the documentation on each of the classes for details.
 .. autoclass:: flytekit.core.python_function_task.PythonFunctionTask
    :noindex:
 
-
 Workflows
 ==========
-There are two workflow classes, and both inherit from the :py:class:`WorkflowBase <flytekit.core.workflow.WorkflowBase>` class.
+
+There exist two workflow classes, both of which derive from the ``WorkflowBase`` class.
 
 .. autoclass:: flytekit.core.workflow.PythonFunctionWorkflow
    :noindex:
@@ -59,10 +61,10 @@ There are two workflow classes, and both inherit from the :py:class:`WorkflowBas
 .. autoclass:: flytekit.core.workflow.ImperativeWorkflow
    :noindex:
 
+Launch Plans
+============
 
-Launch Plan
-===========
-There is only one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPlan>` class.
+There exists one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPlan>` class.
 
 .. autoclass:: flytekit.core.launch_plan.LaunchPlan
    :noindex:
@@ -72,12 +74,13 @@ There is only one :py:class:`LaunchPlan <flytekit.core.launch_plan.LaunchPlan>` 
 ******************
 Exception Handling
 ******************
-Exception handling takes place along two dimensions:
 
-* System vs. User: We try to differentiate between user exceptions and Flytekit/system-level exceptions. For instance, if Flytekit fails to upload its outputs, that's a system exception. If the user raises a ``ValueError`` because of an unexpected input in the task code, that's a user exception.
-* Recoverable vs. Non-recoverable: Recoverable errors will be retried and counted against the task's retry count. Non-recoverable errors will simply fail. System exceptions are by default recoverable (since there's a good chance it was just a blip).
+Exception handling occurs along two dimensions:
 
-Here's the user exception tree. Feel free to raise any of these exception classes. Note that the ``FlyteRecoverableException`` is the only recoverable exception. All others, along with all the non-Flytekit defined exceptions, are non-recoverable.
+* System vs. User: We distinguish between Flytekit/system-level exceptions and user exceptions. For instance, if Flytekit encounters an issue while uploading outputs, it is considered a system exception. On the other hand, if a user raises a ``ValueError`` due to an unexpected input in the task code, it is classified as a user exception.
+* Recoverable vs. Non-recoverable: Recoverable errors are retried and counted towards the task's retry count, while non-recoverable errors simply fail. System exceptions are recoverable by default since they are usually temporary.
+
+The following is the user exception tree, which users can raise as needed. It is important to note that only ``FlyteRecoverableException`` is a recoverable exception. All other exceptions, including non-Flytekit defined exceptions, are non-recoverable.
 
 .. inheritance-diagram:: flytekit.exceptions.user.FlyteValidationException flytekit.exceptions.user.FlyteEntityAlreadyExistsException flytekit.exceptions.user.FlyteValueException flytekit.exceptions.user.FlyteTimeout flytekit.exceptions.user.FlyteAuthenticationException flytekit.exceptions.user.FlyteRecoverableException
    :parts: 1
@@ -85,36 +88,42 @@ Here's the user exception tree. Feel free to raise any of these exception classe
 
 Implementation
 ==============
-For those who want to dig deeper, take a look at the :py:class:`flytekit.common.exceptions.scopes.FlyteScopedException` classes.
-There are two decorators that are interspersed throughout the codebase.
+
+If you wish to delve deeper, you can explore the ``FlyteScopedException`` classes.
+
+There are two decorators that are used throughout the codebase.
 
 .. autofunction:: flytekit.exceptions.scopes.system_entry_point
 
 .. autofunction:: flytekit.exceptions.scopes.user_entry_point
 
-**************
+*************
 Call Patterns
-**************
-The above-mentioned entities (tasks, workflows, and launch plan) are callable. They can be invoked to yield a unit (or units) of work in Flyte.
+*************
 
-In Pythonic terms, when you add ``()`` to the end of one of the entities, it invokes the ``__call__`` method on the object.
+The entities mentioned above (tasks, workflows, and launch plans) are callable and can be invoked to generate one or more units of work in Flyte.
 
-What happens when a callable entity is called depends on the current context, specifically the current :py:class:`flytekit.FlyteContext`
+In Pythonic terminology, adding ``()`` to the end of an entity invokes the ``__call__`` method on the object.
 
-Raw Task Execution
-===================
-This is what happens when a task is just run as part of a unit test. The ``@task`` decorator actually turns the decorated function into an instance of the ``PythonFunctionTask`` object, but when a user calls the ``task()`` outside of a workflow, the original function is called without any interference by Flytekit.
+The behavior that occurs when a callable entity is invoked is dependent on the current context, specifically the current :py:class:`flytekit.FlyteContext`.
 
-Task Execution Inside Workflow
-===============================
-When a workflow is run locally (say as a part of a unit test), certain changes occur in the ``task``.
+Raw task execution
+==================
 
-Before going further, there is a special object that's worth mentioning, the :py:class:`flytekit.extend.Promise`.
+When a task is executed as part of a unit test, the ``@task`` decorator transforms the decorated function into an instance of the ``PythonFunctionTask`` object.
+However, when a user invokes the ``task()`` function outside of a workflow, the original function is called without any intervention from Flytekit.
+
+Task execution inside a workflow
+================================
+
+When a workflow is executed locally (for instance, as part of a unit test), some modifications are made to the task.
+
+Before proceeding, it is worth noting a special object, the :py:class:`flytekit.extend.Promise`.
 
 .. autoclass:: flytekit.core.promise.Promise
    :noindex:
 
-Let's assume we have a workflow like ::
+Consider the following workflow: ::
 
     @task
     def t1(a: int) -> Tuple[int, str]:
@@ -130,19 +139,23 @@ Let's assume we have a workflow like ::
         d = t2(a=y, b=b)
         return x, d
 
-As discussed in the Promise object's documentation, when a task is called from inside a workflow, the Python native values returned by the raw underlying functions are first converted into Flyte IDL literals and then wrapped inside ``Promise`` objects. One ``Promise`` is created for every return variable.
+As stated in the documentation for the Promise object, when a task is invoked within a workflow, the Python native values returned by the underlying functions are first converted into Flyte IDL literals and then encapsulated inside Promise objects.
+One Promise object is created for each return variable.
 
-When the next task is called, the logic is triggered to unwrap these Promises.
+When the next task is invoked, the values are extracted from these Promises.
 
 Compilation
 ===========
-When a workflow is compiled, instead of producing Promise objects that wrap literal values, they wrap a :py:class:`flytekit.core.promise.NodeOutput` instead. This helps track data dependency between tasks.
+
+During the workflow compilation process, instead of generating Promise objects that encapsulate literal values, the workflow encapsulates a :py:class:`flytekit.core.promise.NodeOutput`.
+This approach aids in tracking the data dependencies between tasks.
 
 Branch Skip
 ===========
-If a :py:func:`flytekit.conditional` is determined to be false, then Flytekit will skip calling the task. This avoids running the unintended task.
 
+If the condition specified in a :py:func:`flytekit.conditional` evaluates to ``False``, Flytekit will avoid invoking the corresponding task.
+This prevents the unintended execution of the task.
 
 .. note::
 
-    We discussed about a task's execution pattern above. The same pattern can be applied to workflows and launch plans too!
+    The execution pattern that we discussed for tasks can be applied to workflows and launch plans as well!
