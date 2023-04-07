@@ -137,6 +137,7 @@ jobs:
           tags: ${{ steps.sqlalchemy-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./plugins/flytekit-sqlalchemy/Dockerfile.py${{ matrix.python-version }}
+            PYTHON_VERSION=${{ matrix.python-version }}
+          file: ./plugins/flytekit-sqlalchemy/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
