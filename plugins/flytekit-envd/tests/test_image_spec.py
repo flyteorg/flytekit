@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flytekitplugins.envd.image_spec import EnvdImageSpecBuilder
+from flytekitplugins.envd.image_builder import EnvdImageSpecBuilder, create_envd_config
 
 from flytekit.image_spec.image_spec import ImageSpec
 
@@ -15,7 +15,7 @@ def test_image_spec():
     )
 
     EnvdImageSpecBuilder().build_image(image_spec, "test")
-    config_path = EnvdImageSpecBuilder().create_envd_config(image_spec)
+    config_path = create_envd_config(image_spec)
     contents = Path(config_path).read_text()
     assert (
         contents

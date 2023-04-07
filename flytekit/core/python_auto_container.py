@@ -278,7 +278,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             if e.response.status_code == 403:
                 click.secho("Permission denied. Please login you docker registry first.", fg="red")
             raise e
-        except ImageNotFound as e:
+        except ImageNotFound:
             click.secho(f"Image {container_image} not found. Building...", fg="blue")
             ImageBuildEngine.build(img, tag)
         return container_image
