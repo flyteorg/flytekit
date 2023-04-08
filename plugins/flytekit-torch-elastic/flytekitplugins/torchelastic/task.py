@@ -3,8 +3,10 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 import cloudpickle
+from torch.distributed import run
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
+import flytekit
 from flytekit import PythonFunctionTask
 from flytekit.extend import TaskPlugins
 
@@ -15,6 +17,8 @@ class Elastic(object):
     max_replicas: int = 1
     nproc_per_node: typing.Union[int, str] = "auto"
     start_method: str = "spawn"
+    monitor_interval: int = 5  # Interval, in seconds, to monitor the state of workers.
+    max_restarts: int = 10  # Maximum number of worker group restarts before failing.
 
 
 def mp_helper(fn, kwargs):
@@ -49,13 +53,18 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         """
         All this is mocked.
         """
+        if isinstance(self.task_config.nproc_per_node, str):
+            nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
+        else:
+            nproc = self.task_config.nproc_per_node
         config = LaunchConfig(
-            run_id="none",
+            run_id=flytekit.current_context().execution_id.name,
             min_nodes=min_nodes,
             max_nodes=max_nodes,
-            nproc_per_node=4,
-            rdzv_backend="c10d",
-            max_restarts=1,
+            nproc_per_node=nproc,
+            rdzv_backend="c10d", # rdzv settings
+            max_restarts=self.task_config.max_restarts,
+            monitor_interval=self.task_config.monitor_interval,
             # rdzv_endpoint = "foo"
             start_method=self.task_config.start_method,
         )
