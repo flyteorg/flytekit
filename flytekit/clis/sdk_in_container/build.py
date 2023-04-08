@@ -11,7 +11,7 @@ from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.tools.script_mode import _find_project_root
-from flytekit.tools.translator import Options, get_serializable
+from flytekit.tools.translator import get_serializable
 
 
 def get_workflow_command_base_params() -> typing.List[click.Option]:
@@ -38,9 +38,6 @@ def build_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflo
         m = OrderedDict()
         options = None
         run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
-        service_account = run_level_params.get("service_account")
-        if service_account:
-            options = Options.default_from(k8s_service_account=service_account)
 
         project, domain = run_level_params.get("project"), run_level_params.get("domain")
         serialization_settings = SerializationSettings(

@@ -268,9 +268,13 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             container_image = f"{img.registry}/{container_image}"
         client = docker.from_env()
         try:
-            client.images.get(container_image)
+            if img.registry:
+                client.images.get_registry_data(container_image)
+            else:
+                client.images.get(container_image)
             click.secho(f"Image {container_image} found. Skipping build.", fg="blue")
         except APIError as e:
+            print(e)
             if e.response.status_code == 404:
                 click.secho(f"Image {container_image} not found. Building...", fg="blue")
                 ImageBuildEngine.build(img, tag)

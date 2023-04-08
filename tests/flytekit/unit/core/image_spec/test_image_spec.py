@@ -25,10 +25,10 @@ def test_image_spec():
 
     class DummyImageSpecBuilder(ImageSpecBuilder):
         def build_image(self, img, tag):
-            return "fake_registry/epkr42Fd9H"
+            ...
 
     ImageBuildEngine.register("dummy", DummyImageSpecBuilder())
-    assert ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec, "tag") == "fake_registry/epkr42Fd9H"
+    ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec, "tag")
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == "yZ8jICcDTLoDArmNHbWNwg.."
 

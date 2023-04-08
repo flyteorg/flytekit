@@ -41,16 +41,13 @@ class ImageSpec:
 
 class ImageSpecBuilder:
     @abstractmethod
-    def build_image(self, image_spec: ImageSpec, tag: str) -> str:
+    def build_image(self, image_spec: ImageSpec, tag: str):
         """
         Build the docker image and push it to the registry.
 
         Args:
             image_spec: image spec of the task.
             tag: tag of the image.
-
-        Returns:
-            The image urn.
         """
         raise NotImplementedError("This method is not implemented in the base class.")
 
