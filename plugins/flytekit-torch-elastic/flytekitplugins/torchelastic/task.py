@@ -13,8 +13,7 @@ from flytekit.extend import TaskPlugins
 
 @dataclass
 class Elastic(object):
-    min_replicas: int = 1
-    max_replicas: int = 1
+    nnodes: typing.Union[int, str] = 1
     nproc_per_node: typing.Union[int, str] = "auto"
     start_method: str = "spawn"
     monitor_interval: int = 5  # Interval, in seconds, to monitor the state of workers.
@@ -48,11 +47,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         This method will be invoked to execute the task. If you do decide to override this method you must also
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
-        min_nodes, max_nodes = 1, 1
-        
-        """
-        All this is mocked.
-        """
+        min_nodes, max_nodes = run.parse_min_max_nnodes(str(self.task_config.nnodes))
+
         if isinstance(self.task_config.nproc_per_node, str):
             nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
         else:
