@@ -13,15 +13,43 @@ from flytekit.extend import TaskPlugins
 
 @dataclass
 class Elastic(object):
+    """
+    Configuration for `torch elastic training <https://pytorch.org/docs/stable/elastic/run.html>`_.
+    
+    Use this to run single- or multi-node distributed pytorch elastic training on k8s.
+
+    Single-node elastic training is executed in a k8s pod when `nnodes` is set to 1.
+    Multi-node training is executed otherwise using a `Pytorch Job <https://github.com/kubeflow/training-operator>`_.
+
+    Args:
+        nnodes (Union[int, str]): Number of nodes, or the range of nodes in form <minimum_nodes>:<maximum_nodes>.
+        nproc_per_node (Union[int, str]): Number of workers per node. Supported values are [auto, cpu, gpu, int].
+        start_method (str): Multiprocessing start method to use when creating workers.
+        monitor_interval (int): Interval, in seconds, to monitor the state of workers.
+        max_restarts (int): Maximum number of worker group restarts before failing.
+    """    
     nnodes: typing.Union[int, str] = 1
     nproc_per_node: typing.Union[int, str] = "auto"
     start_method: str = "spawn"
-    monitor_interval: int = 5  # Interval, in seconds, to monitor the state of workers.
-    max_restarts: int = 10  # Maximum number of worker group restarts before failing.
+    monitor_interval: int = 5
+    max_restarts: int = 10
 
 
-def mp_helper(fn, kwargs):
-    print("Using start method spawn")
+def spawn_helper(fn: bytes, kwargs) -> Any:
+    """Help to spawn worker processes.
+    
+    The purpose of this function is to 1) be pickleable so that it can be used with
+    the multiprocessing start method `spawn` and 2) to call a cloudpickle-serialized
+    function passed to it. This function itself doesn't have to be pickleable. Without
+    such a helper task functions, which are not pickleable, couldn't be used with the
+    start method `spawn`.
+
+    Args:
+        fn (bytes): Cloudpickle-serialized target function to be executed in the worker process.
+
+    Returns:
+        The return value of the received target function.
+    """
     fn = cloudpickle.loads(fn)
     return_val = fn(**kwargs)
     return return_val
@@ -29,7 +57,8 @@ def mp_helper(fn, kwargs):
 
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
     """
-    Actual Plugin that transforms the local python code for execution within a spark context
+    Plugin for distributed training with torch elastic/torchrun (see
+    https://pytorch.org/docs/stable/elastic/run.html).
     """
 
     _ELASTIC_TASK_TYPE = "torch-elastic"
@@ -46,6 +75,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         """
         This method will be invoked to execute the task. If you do decide to override this method you must also
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
+
+        Returns:
+            The result of rank zero.
         """
         min_nodes, max_nodes = run.parse_min_max_nnodes(str(self.task_config.nnodes))
 
@@ -61,39 +93,30 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             rdzv_backend="c10d", # rdzv settings
             max_restarts=self.task_config.max_restarts,
             monitor_interval=self.task_config.monitor_interval,
-            # rdzv_endpoint = "foo"
             start_method=self.task_config.start_method,
         )
 
         if self.task_config.start_method == "spawn":
             """
-            If the user wants to use spawn, we use cloudpickle to serialize the task function.
-            We then tell the torch elastic launcher to launch the mp_helper function (which is pickleable)
+            We use cloudpickle to serialize the non-pickleable task function.
+            The torch elastic launcher then launches the spawn_helper function (which is pickleable)
             instead of the task function. This helper function, in the child-process, then deserializes
             the task function, again with cloudpickle, and executes it.
-            
-            Note from a few weeks later:
-            We might be able to pass the string representation of the task which is used by the task
-            resolver to the helper function. In the child process, the task resolver could retrieve the task.
-            But we would need a way to not start further child processes from the child process but just execute
-            the task function. But the idea basically is: pass task name to child process and use task resolver
-            instead of cloudpickle serialisation.
             """
-            launcher_target_func = mp_helper
+            launcher_target_func = spawn_helper
 
             dumped_target_function = cloudpickle.dumps(self._task_function)
             launcher_args = (dumped_target_function, kwargs)
         elif self.task_config.start_method == "fork":
             """
-            If the user wants to do fork, we don't have to serialize the task function with cloudpickle.
-            However, the torch elastic launcher doesn't support passing kwargs to the target function,
-            only args. Flyte only works with kwargs.
-            Thus, we create a closure which already has the task kwargs bound. We tell the torch elastic
-            launcher to start this function in the child processes.
+            The torch elastic launcher doesn't support passing kwargs to the target function,
+            only args. Flyte only works with kwargs. Thus, we create a closure which already has
+            the task kwargs bound. We tell the torch elastic launcher to start this function in
+            the child processes.
             """
 
             def fn_partial():
-                print("Using start method fork")
+                """Closure of the task function with kwargs already bound."""
                 return self._task_function(**kwargs)
 
             launcher_target_func = fn_partial
