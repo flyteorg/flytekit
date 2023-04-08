@@ -315,6 +315,8 @@ class FileAccessProvider(object):
         :param is_multipart:
         """
         try:
+            if isinstance(local_path, os.PathLike):
+                local_path = str(local_path)
             with PerformanceTimer(f"Writing ({local_path} -> {remote_path})"):
                 self.put(cast(str, local_path), remote_path, recursive=is_multipart)
         except Exception as ex:
