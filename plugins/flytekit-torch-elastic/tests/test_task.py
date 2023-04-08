@@ -22,15 +22,6 @@ def init_model() -> torch.nn.Module:
     return model
 
 
-"""
-This doesn't start a kubelfow pytorch job yet but a single python task Pod which then
-runs a local worker group in sub-processes.
-The changes in the flyteidl protobuf definitions, the flytekit python api, and the
-flytepropeller (operator) which we need to actually make this distributed on multiple nodes
-are easy (see RFC document linked in PR description).
-"""
-
-
 @task(task_config=Elastic())
 def train(config: Config, model: torch.nn.Module) -> tuple[str, Config, torch.nn.Module]:
     import os
@@ -39,8 +30,8 @@ def train(config: Config, model: torch.nn.Module) -> tuple[str, Config, torch.nn
 
     local_rank = os.environ["LOCAL_RANK"]
 
-    out_model = torch.nn.Linear(1000, int(local_rank) * 2000 + 1)
-    print(f"Training with config {config}")
+    out_model = torch.nn.Linear(1000, int(local_rank) + 1)
+    
     config.name = "modified"
     return f"result from local rank {local_rank}", config, out_model
 
@@ -54,5 +45,6 @@ def wf(config: Config = Config()) -> tuple[str, Config, torch.nn.Module]:
 def test_end_to_end():
     r, cfg, m = wf()
     assert "result from local rank 0" in r
-    assert cfg
-    assert m
+    assert cfg.name == "modified"
+    assert m.in_features == 1000
+    assert m.out_features == 1
