@@ -322,7 +322,6 @@ class FlyteLiteralConverter(object):
             lt = Literal(collection=LiteralCollection([]))
             for v in python_value:
                 click_val = converter._click_type.convert(v, param, ctx)
-                print(click_val)
                 lt.collection.literals.append(converter.convert_to_literal(ctx, param, click_val))
             return lt
         if self._literal_type.map_value_type:

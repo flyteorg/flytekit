@@ -103,7 +103,6 @@ def test_pyflyte_run_cli():
             json.dumps([{"x": parquet_file}]),
             "--o",
             json.dumps({"x": [parquet_file]}),
-            # f'["{os.path.join(DIR_NAME, "testdata/df.parquet")}"]',
         ],
         catch_exceptions=False,
     )
