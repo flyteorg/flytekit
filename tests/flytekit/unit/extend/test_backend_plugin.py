@@ -49,10 +49,7 @@ class DummyPlugin(BackendPluginBase):
 
 BackendPluginRegistry.register(DummyPlugin())
 
-
-task_id = Identifier(
-    resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
-)
+task_id = Identifier(resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version")
 task_metadata = task.TaskMetadata(
     True,
     task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
@@ -64,33 +61,25 @@ task_metadata = task.TaskMetadata(
     True,
     "A",
 )
-task_config = {
-    "Location": "us-central1",
-    "ProjectID": "dummy_project",
-}
 
 int_type = types.LiteralType(types.SimpleType.INTEGER)
 interfaces = interface_models.TypedInterface(
     {
         "a": interface_models.Variable(int_type, "description1"),
-        "b": interface_models.Variable(int_type, "description2"),
     },
     {},
 )
 task_inputs = literals.LiteralMap(
     {
         "a": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1))),
-        "b": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1))),
     },
 )
 
 dummy_template = TaskTemplate(
     id=task_id,
-    custom=task_config,
     metadata=task_metadata,
     interface=interfaces,
     type="dummy",
-    sql=Sql("SELECT 1"),
 )
 
 

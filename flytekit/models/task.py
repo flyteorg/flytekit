@@ -329,7 +329,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         type,
         metadata,
         interface,
-        custom,
+        custom=None,
         container=None,
         task_type_version=0,
         security_context=None,
