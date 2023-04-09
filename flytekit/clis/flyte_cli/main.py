@@ -1167,7 +1167,6 @@ def terminate_execution(host, insecure, cause, urn=None):
                 raise _click.UsageError('Missing option "-u" / "--urn" or missing pipe inputs.')
         except KeyboardInterrupt:
             _sys.stdout.flush()
-            pass
     else:
         _terminate_one_execution(client, urn, cause)
 
