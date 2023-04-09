@@ -25,7 +25,7 @@ pythonTypeToBigQueryType: Dict[type, str] = {
 
 class BigQueryPlugin(BackendPluginBase):
     def __init__(self):
-        super().__init__(task_type="bigquery_query_job_task1")
+        super().__init__(task_type="bigquery_query_job_task")
 
     def create(
         self,
@@ -34,25 +34,26 @@ class BigQueryPlugin(BackendPluginBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> TaskCreateResponse:
+        job_config = None
+        if inputs:
+            ctx = FlyteContextManager.current_context()
+            python_interface_inputs = {
+                name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
+            }
+            native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
 
-        ctx = FlyteContextManager.current_context()
-        python_interface_inputs = {
-            name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
-        }
-        native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
-
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter(name, pythonTypeToBigQueryType[python_interface_inputs[name]], val)
-                for name, val in native_inputs.items()
-            ]
-        )
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter(name, pythonTypeToBigQueryType[python_interface_inputs[name]], val)
+                    for name, val in native_inputs.items()
+                ]
+            )
 
         custom = task_template.custom
         client = bigquery.Client(project=custom["ProjectID"], location=custom["Location"])
         query_job = client.query(task_template.sql.statement, job_config=job_config)
 
-        return TaskCreateResponse(job_id=query_job.job_id)
+        return TaskCreateResponse(job_id=str(query_job.job_id))
 
     def get(self, context: grpc.ServicerContext, job_id: str) -> TaskGetResponse:
         client = bigquery.Client()
@@ -74,7 +75,7 @@ class BigQueryPlugin(BackendPluginBase):
                 }
             )
 
-        return TaskGetResponse(state=cur_state, outputs=res)
+        return TaskGetResponse(state=cur_state, outputs=res.to_flyte_idl())
 
     def delete(self, context: grpc.ServicerContext, job_id: str) -> TaskDeleteResponse:
         client = bigquery.Client()

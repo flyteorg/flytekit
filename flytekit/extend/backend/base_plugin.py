@@ -63,4 +63,4 @@ def convert_to_flyte_state(state: str) -> State:
         return SUCCEEDED
     elif state in ["running"]:
         return RUNNING
-    raise ValueError("Unrecognize state")
+    raise ValueError(f"Unrecognize state: {state}")
