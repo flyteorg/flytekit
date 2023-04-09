@@ -64,8 +64,8 @@ class MapPythonTask(PythonTask):
         else:
             actual_task = python_function_task
 
-        if not isinstance(actual_task, PythonFunctionTask):
-            raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
+        if not isinstance(actual_task, (PythonFunctionTask, ContainerTask)):
+            raise ValueError("Map tasks can only compose of Python Function or Container Tasks currently")
 
         if len(actual_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
