@@ -19,7 +19,7 @@ from flytekit.extend.backend.external_plugin_service import BackendPluginServer
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import Identifier, ResourceType
 from flytekit.models.literals import LiteralMap
-from flytekit.models.task import Sql, TaskTemplate
+from flytekit.models.task import TaskTemplate
 
 dummy_id = "dummy_id"
 
