@@ -1,15 +1,11 @@
-from datetime import timedelta
 from unittest import mock
 from unittest.mock import MagicMock
 
 import grpc
 from flyteidl.service.external_plugin_service_pb2 import SUCCEEDED
 
-import flytekit.models.interface as interface_models
 from flytekit.extend.backend.base_plugin import BackendPluginRegistry
-from flytekit.models import literals, task, types
-from flytekit.models.core.identifier import Identifier, ResourceType
-from flytekit.models.task import Sql, TaskTemplate
+from tests.flytekit.unit.extend.test_backend_plugin import dummy_template, task_inputs
 
 
 @mock.patch("google.cloud.bigquery.job.QueryJob")
@@ -37,51 +33,11 @@ def test_bigquery_plugin(mock_client, mock_query_job):
     mock_instance.query.return_value = MockJob()
     mock_instance.cancel_job.return_value = MockJob()
 
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
-    )
-    task_metadata = task.TaskMetadata(
-        True,
-        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
-        timedelta(days=1),
-        literals.RetryStrategy(3),
-        True,
-        "0.1.1b0",
-        "This is deprecated!",
-        True,
-        "A",
-    )
-    task_config = {
-        "Location": "us-central1",
-        "ProjectID": "dummy_project",
-    }
-
-    int_type = types.LiteralType(types.SimpleType.INTEGER)
-    interfaces = interface_models.TypedInterface(
-        {
-            "a": interface_models.Variable(int_type, "description1"),
-            "b": interface_models.Variable(int_type, "description2"),
-        },
-        {},
-    )
-    inputs = literals.LiteralMap(
-        {
-            "a": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1))),
-            "b": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1))),
-        },
-    )
-
     p = BackendPluginRegistry.get_plugin("bigquery_query_job_task")
     ctx = MagicMock(spec=grpc.ServicerContext)
-    template = TaskTemplate(
-        id=task_id,
-        custom=task_config,
-        metadata=task_metadata,
-        interface=interfaces,
-        type="bigquery_query_job_task",
-        sql=Sql("SELECT 1"),
-    )
-    assert p.create(ctx, "/tmp", template, inputs).job_id == job_id
+    dummy_template.type = "bigquery_query_job_task"
+
+    assert p.create(ctx, "/tmp", dummy_template, task_inputs).job_id == job_id
     res = p.get(ctx, job_id)
     assert res.state == SUCCEEDED
     assert (

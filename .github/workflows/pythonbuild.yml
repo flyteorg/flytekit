@@ -42,7 +42,6 @@ jobs:
           pip freeze
       - name: Test with coverage
         run: |
-          export GRPC_VERBOSITY=debug
           make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
