@@ -202,6 +202,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 max_restarts=self.task_config.max_restarts,
             )
             job = DistributedPyTorchTrainingTask(
+                workers=self.task_config.nnodes,
                 elastic_config=elastic_config,
             )
             return MessageToDict(job)
