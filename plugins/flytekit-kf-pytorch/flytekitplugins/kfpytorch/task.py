@@ -2,10 +2,12 @@
 This Plugin adds the capability of running distributed pytorch training to Flyte using backend plugins, natively on
 Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_ Plugin from kubeflow.
 """
+import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union
 
 import cloudpickle
+import flytekit
 from google.protobuf.json_format import MessageToDict
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
@@ -139,6 +141,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             max_nodes=self.max_nodes,
             nproc_per_node=nproc,
             rdzv_backend=self.rdzv_backend, # rdzv settings
+            rdzv_endpoint=os.environ.get("PET_RDZV_ENDPOINT", f"localhost:0"),
             max_restarts=self.task_config.max_restarts,
             monitor_interval=self.task_config.monitor_interval,
             start_method=self.task_config.start_method,
