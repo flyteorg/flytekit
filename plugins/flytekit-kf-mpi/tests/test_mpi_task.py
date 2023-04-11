@@ -63,4 +63,4 @@ def test_horovod_task():
     config = my_horovod_task.get_config(settings)
     assert "/usr/sbin/sshd" in config["worker_spec_command"]
     custom = my_horovod_task.get_custom(settings)
-    assert isinstance(custom, dict) == True
+    assert isinstance(custom, dict) is True
