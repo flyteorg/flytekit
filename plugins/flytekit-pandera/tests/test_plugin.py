@@ -60,7 +60,7 @@ def test_pandera_dataframe_type_hints():
         match=(
             "^Encountered error while executing workflow 'test_plugin.wf_with_df_input':\n"
             "  expected series 'col2' to have type float64, got object"
-        )
+        ),
     ):
         wf_with_df_input(df=invalid_df)
 
