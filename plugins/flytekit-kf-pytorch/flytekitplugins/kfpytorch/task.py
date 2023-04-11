@@ -12,8 +12,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
 from torch.distributed import run
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
-
-from .models import ElasticConfig, PyTorchJob
+from flyteidl.plugins.pytorch_pb2 import DistributedPyTorchTrainingTask, ElasticConfig
 
 
 @dataclass
@@ -72,8 +71,8 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        job = PyTorchJob(workers_count=self.task_config.num_workers)
-        return MessageToDict(job.to_flyte_idl())
+        job = DistributedPyTorchTrainingTask(workers=self.task_config.num_workers)
+        return MessageToDict(job)
 
 
 # Register the Pytorch Plugin into the flytekit core plugin system
@@ -199,10 +198,10 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 nproc_per_node=self.task_config.nproc_per_node,
                 max_restarts=self.task_config.max_restarts,
             )
-            job = PyTorchJob(
+            job = DistributedPyTorchTrainingTask(
                 elastic_config=elastic_config,
             )
-            return MessageToDict(job.to_flyte_idl())
+            return MessageToDict(job)
 
 
 # Register the PytorchElastic Plugin into the flytekit core plugin system
