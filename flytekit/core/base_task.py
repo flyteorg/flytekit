@@ -527,7 +527,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             except Exception as exc:
                 msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
                 logger.error(msg)
-                raise TypeError(msg) from exc
+                raise type(exc)(msg) from exc
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc

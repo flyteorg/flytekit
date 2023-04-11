@@ -262,8 +262,9 @@ class WorkflowBase(object):
         self.compile()
         try:
             return flyte_entity_call_handler(self, *args, **input_kwargs)
-        except TypeError as exc:
-            raise TypeError(f"Encountered error while executing workflow '{self.name}':\n  {exc}") from exc
+        except Exception as exc:
+            exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
+            raise exc
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
