@@ -1,7 +1,7 @@
 import click
-from flytekit.models.launch_plan import LaunchPlanState
 
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.models.launch_plan import LaunchPlanState
 
 _activate_launchplan_help = """
 The activate-launchplan command activates a specified or the latest version of the launchplan and disables a previous version.
