@@ -14,7 +14,7 @@ from flytekit.extend.backend.base_plugin import BackendPluginRegistry
 
 
 class BackendPluginServer(ExternalPluginServiceServicer):
-    def CreateTask(self, context: grpc.ServicerContext, request: TaskCreateRequest) -> TaskCreateResponse:
+    def CreateTask(self, request: TaskCreateRequest, context: grpc.ServicerContext) -> TaskCreateResponse:
         try:
             req = model.TaskCreateRequest.from_flyte_idl(request)
             plugin = BackendPluginRegistry.get_plugin(req.template.type)
@@ -25,7 +25,7 @@ class BackendPluginServer(ExternalPluginServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to create task with error {e}")
 
-    def GetTask(self, context: grpc.ServicerContext, request: TaskGetRequest) -> TaskGetResponse:
+    def GetTask(self, request: TaskGetRequest, context: grpc.ServicerContext) -> TaskGetResponse:
         try:
             plugin = BackendPluginRegistry.get_plugin(request.task_type)
             return plugin.get(context=context, job_id=request.job_id)
@@ -33,7 +33,7 @@ class BackendPluginServer(ExternalPluginServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to get task with error {e}")
 
-    def DeleteTask(self, context: grpc.ServicerContext, request: TaskDeleteRequest) -> TaskDeleteResponse:
+    def DeleteTask(self, request: TaskDeleteRequest, context: grpc.ServicerContext) -> TaskDeleteResponse:
         try:
             plugin = BackendPluginRegistry.get_plugin(request.task_type)
             return plugin.delete(context=context, job_id=request.job_id)
