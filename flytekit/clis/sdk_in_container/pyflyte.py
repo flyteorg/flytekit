@@ -134,6 +134,7 @@ main.add_command(run)
 main.add_command(register)
 main.add_command(backfill)
 main.add_command(serve)
+main.epilog
 
 if __name__ == "__main__":
     main()
