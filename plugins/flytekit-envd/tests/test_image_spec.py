@@ -14,7 +14,7 @@ def test_image_spec():
         base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
     )
 
-    EnvdImageSpecBuilder().build_image(image_spec, "test")
+    EnvdImageSpecBuilder().build_image(image_spec)
     config_path = create_envd_config(image_spec)
     contents = Path(config_path).read_text()
     assert (
