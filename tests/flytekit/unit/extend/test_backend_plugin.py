@@ -107,9 +107,9 @@ def test_backend_plugin_server():
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=dummy_template.to_flyte_idl()
     )
 
-    assert server.CreateTask(ctx, request).job_id == dummy_id
-    assert server.GetTask(ctx, TaskGetRequest(task_type="dummy", job_id=dummy_id)).state == SUCCEEDED
-    assert server.DeleteTask(ctx, TaskDeleteRequest(task_type="dummy", job_id=dummy_id)) == TaskDeleteResponse()
+    assert server.CreateTask(request, ctx).job_id == dummy_id
+    assert server.GetTask(TaskGetRequest(task_type="dummy", job_id=dummy_id), ctx).state == SUCCEEDED
+    assert server.DeleteTask(TaskDeleteRequest(task_type="dummy", job_id=dummy_id), ctx) == TaskDeleteResponse()
 
-    res = server.GetTask(ctx, TaskGetRequest(task_type="fake", job_id=dummy_id))
+    res = server.GetTask(TaskGetRequest(task_type="fake", job_id=dummy_id), ctx)
     assert res is None
