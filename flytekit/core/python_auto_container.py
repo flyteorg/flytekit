@@ -5,10 +5,6 @@ import re
 from abc import ABC
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 
-import click
-import docker
-from docker.errors import APIError, ImageNotFound
-
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
@@ -17,7 +13,7 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, calculate_hash_from_image_spec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext

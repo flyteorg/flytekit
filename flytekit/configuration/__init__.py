@@ -209,7 +209,7 @@ class Image(object):
         :rtype: Text
         """
         if pathlib.Path(tag).is_file():
-            with open(tag, 'r') as f:
+            with open(tag, "r") as f:
                 image_spec_dict = yaml.safe_load(f)
                 image_spec = ImageSpec(**image_spec_dict)
                 ImageBuildEngine.build(image_spec)
