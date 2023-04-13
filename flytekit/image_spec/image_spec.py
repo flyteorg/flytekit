@@ -5,9 +5,13 @@ import sys
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import List, Optional
 
+import click
+import docker
 from dataclasses_json import dataclass_json
+from docker.errors import APIError, ImageNotFound
 
 
 @dataclass_json
@@ -38,16 +42,49 @@ class ImageSpec:
     apt_packages: Optional[List[str]] = None
     base_image: Optional[str] = None
 
+    def image_name(self) -> str:
+        """
+        return full image name with tag.
+        """
+        tag = calculate_hash_from_image_spec(self)
+        container_image = f"{self.name}:{tag}"
+        if self.registry:
+            container_image = f"{self.registry}/{container_image}"
+        return container_image
+
+    def exist(self) -> bool:
+        """
+        Check if the image exists in the registry.
+        """
+        client = docker.from_env()
+        try:
+            if self.registry:
+                client.images.get_registry_data(self.image_name())
+            else:
+                client.images.get(self.image_name())
+            return True
+        except APIError as e:
+            if e.response.status_code == 404:
+                return False
+            if e.response.status_code == 403:
+                click.secho("Permission denied. Please login you docker registry first.", fg="red")
+                raise e
+            return False
+        except ImageNotFound:
+            return False
+
+    def __hash__(self):
+        return hash(self.to_json())
+
 
 class ImageSpecBuilder:
     @abstractmethod
-    def build_image(self, image_spec: ImageSpec, tag: str):
+    def build_image(self, image_spec: ImageSpec):
         """
         Build the docker image and push it to the registry.
 
         Args:
             image_spec: image spec of the task.
-            tag: tag of the image.
         """
         raise NotImplementedError("This method is not implemented in the base class.")
 
@@ -64,13 +101,17 @@ class ImageBuildEngine:
         cls._REGISTRY[builder_type] = image_spec_builder
 
     @classmethod
-    def build(cls, image_spec: ImageSpec, tag: str):
+    def build(cls, image_spec: ImageSpec):
         if image_spec.builder not in cls._REGISTRY:
             raise Exception(f"Builder {image_spec.builder} is not registered.")
+        if not image_spec.exist():
+            click.secho(f"Image {image_spec.image_name()} not found. Building...", fg="blue")
+            cls._REGISTRY[image_spec.builder].build_image(image_spec)
+        else:
+            click.secho(f"Image {image_spec.image_name()} found. Skip building.", fg="blue")
 
-        cls._REGISTRY[image_spec.builder].build_image(image_spec, tag)
 
-
+@lru_cache(maxsize=None)
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     Calculate the hash from the image spec.

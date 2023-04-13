@@ -69,7 +69,7 @@ def test_container_image_conversion():
     assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
 
     class TestImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img, tag):
+        def build_image(self, img):
             ...
 
     ImageBuildEngine.register("test", TestImageSpecBuilder())

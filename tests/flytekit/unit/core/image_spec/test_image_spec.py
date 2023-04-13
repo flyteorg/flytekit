@@ -24,14 +24,14 @@ def test_image_spec():
     assert image_spec.env is None
 
     class DummyImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img, tag):
+        def build_image(self, img):
             ...
 
     ImageBuildEngine.register("dummy", DummyImageSpecBuilder())
-    ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec, "tag")
+    ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec)
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == "yZ8jICcDTLoDArmNHbWNwg.."
 
     with pytest.raises(Exception):
         image_spec.builder = "flyte"
-        ImageBuildEngine.build(image_spec, "tag")
+        ImageBuildEngine.build(image_spec)
