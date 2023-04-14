@@ -8,9 +8,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
-import numpy as _np
-import pandas as pd
-import pyarrow as pa
+import lazy_import
 from dataclasses_json import config, dataclass_json
 from fsspec.utils import get_protocol
 from marshmallow import fields
@@ -24,6 +22,9 @@ from flytekit.models import literals
 from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
+
+pd = lazy_import.lazy_module("pandas")
+pa = lazy_import.lazy_module("pyarrow")
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
@@ -291,16 +292,8 @@ def convert_schema_type_to_structured_dataset_type(
         raise AssertionError(f"Unrecognized SchemaColumnType: {column_type}")
 
 
-class DuplicateHandlerError(ValueError):
-    ...
-
-
-class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
-    """
-    Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
-    If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
-    registering with the main type engine, you should register with this transformer instead.
-    """
+def get_supported_types():
+    import numpy as _np
 
     _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {
         _np.int32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
@@ -322,6 +315,19 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
     }
+    return _SUPPORTED_TYPES
+
+
+class DuplicateHandlerError(ValueError):
+    ...
+
+
+class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
+    """
+    Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
+    If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
+    registering with the main type engine, you should register with this transformer instead.
+    """
 
     ENCODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetEncoder]]] = {}
     DECODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetDecoder]]] = {}
@@ -798,8 +804,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return result
 
     def _get_dataset_column_literal_type(self, t: Type) -> type_models.LiteralType:
-        if t in self._SUPPORTED_TYPES:
-            return self._SUPPORTED_TYPES[t]
+        if t in get_supported_types():
+            return get_supported_types()[t]
         if hasattr(t, "__origin__") and t.__origin__ == list:
             return type_models.LiteralType(collection_type=self._get_dataset_column_literal_type(t.__args__[0]))
         if hasattr(t, "__origin__") and t.__origin__ == dict:

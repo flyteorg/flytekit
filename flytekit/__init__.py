@@ -229,6 +229,12 @@ from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types import directory, file
+from flytekit.types.structured.structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetFormat,
+    StructuredDatasetTransformerEngine,
+    StructuredDatasetType,
+)
 
 __version__ = "0.0.0+develop"
 

@@ -786,12 +786,9 @@ class TypeEngine(typing.Generic[T]):
         elif name == "sklearn":
             from flytekit.extras import sklearn  # noqa: F401
         elif name in ["pandas", "pyarrow"]:
-            from flytekit.types.structured.structured_dataset import (  # noqa: F401
-                StructuredDataset,
-                StructuredDatasetFormat,
-                StructuredDatasetTransformerEngine,
-                StructuredDatasetType,
-            )
+            from flytekit.types.structured import register_handlers
+
+            register_handlers(name)
         elif name == "numpy":
             from flytekit.types import numpy  # noqa: F401
 
@@ -824,6 +821,7 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
         """
+        cls.lazy_import_transformers(python_type)
         if python_val is None and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
@@ -855,6 +853,7 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a Literal value with an expected python type into a python value.
         """
+        cls.lazy_import_transformers(expected_python_type)
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
 

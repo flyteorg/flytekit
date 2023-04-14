@@ -14,7 +14,6 @@ from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.models import task as task_models
-from flytekit.types.schema import FlyteSchema
 
 
 def unarchive_file(local_path: str, to_dir: str):
@@ -78,12 +77,14 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
         query_template: str,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         task_config: typing.Optional[SQLite3Config] = None,
-        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+        output_schema_type: typing.Optional[typing.Type["FlyteSchema"]] = None,  # type: ignore
         container_image: typing.Optional[str] = None,
         **kwargs,
     ):
         if task_config is None or task_config.uri is None:
             raise ValueError("SQLite DB uri is required.")
+        from flytekit.types.schema import FlyteSchema
+
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
         super().__init__(
             name=name,
