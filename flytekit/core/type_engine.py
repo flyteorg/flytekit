@@ -789,6 +789,7 @@ class TypeEngine(typing.Generic[T]):
         if "sklearn" in modules:
             from flytekit.extras import sklearn  # noqa: F401
         if "pandas" in modules:
+            from flytekit.types import schema  # noqa: F401
             register_handlers("pandas")
         if "pyarrow" in modules:
             register_handlers("pyarrow")
