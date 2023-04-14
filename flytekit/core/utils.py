@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 import lazy_import
 from flyteidl.core import tasks_pb2 as _core_task
+
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
 

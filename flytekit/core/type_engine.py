@@ -780,20 +780,20 @@ class TypeEngine(typing.Generic[T]):
             return
         name = python_type.__name__
         if name == "tensorflow":
-            from flytekit.extras import tensorflow
+            from flytekit.extras import tensorflow  # type: ignore
         elif name == "torch":
-            from flytekit.extras import pytorch
+            from flytekit.extras import pytorch  # type: ignore
         elif name == "sklearn":
-            from flytekit.extras import sklearn
+            from flytekit.extras import sklearn  # type: ignore
         elif name in ["pandas", "pyarrow"]:
-            from flytekit.types.structured.structured_dataset import (
+            from flytekit.types.structured.structured_dataset import (  # type: ignore
                 StructuredDataset,
                 StructuredDatasetFormat,
                 StructuredDatasetTransformerEngine,
                 StructuredDatasetType,
             )
         elif name == "numpy":
-            from flytekit.types import numpy
+            from flytekit.types import numpy  # type: ignore
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:

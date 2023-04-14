@@ -195,8 +195,6 @@ Documentation
 import sys
 from typing import Generator
 
-import lazy_import
-
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
