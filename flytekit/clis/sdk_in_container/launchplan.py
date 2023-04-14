@@ -3,15 +3,16 @@ import click
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.models.launch_plan import LaunchPlanState
 
-_activate_launchplan_help = """
-The activate-launchplan command activates a specified or the latest version of the launchplan and disables a previous version.
+_launchplan_help = """
+The launchplan command activates or deactivates a specified or the latest version of the launchplan.
+If ``--activate`` is chosen then the previous version of the launchplan will be deactivated.
 
 - ``launchplan`` refers to the name of the Launchplan
 - ``launchplan_version`` is optional and should be a valid version for a Launchplan version. If not specified the latest will be used.
 """
 
 
-@click.command("activate-launchplan", help=_activate_launchplan_help)
+@click.command("launchplan", help=_launchplan_help)
 @click.option(
     "-p",
     "--project",
@@ -28,6 +29,13 @@ The activate-launchplan command activates a specified or the latest version of t
     default="development",
     help="Fetch launchplan from this domain",
 )
+@click.option(
+    "--activate/--deactivate",
+    required=True,
+    type=bool,
+    is_flag=True,
+    help="Activate or Deactivate the launchplan",
+)
 @click.argument(
     "launchplan",
     required=True,
@@ -40,10 +48,11 @@ The activate-launchplan command activates a specified or the latest version of t
     default=None,
 )
 @click.pass_context
-def activate_launchplan(
+def launchplan(
     ctx: click.Context,
     project: str,
     domain: str,
+    activate: bool,
     launchplan: str,
     launchplan_version: str,
 ):
@@ -55,7 +64,8 @@ def activate_launchplan(
             name=launchplan,
             version=launchplan_version,
         )
-        remote.client.update_launch_plan(id=launchplan.id, state=LaunchPlanState.ACTIVE)
-        click.secho(f"\n Launchplan was activated: {launchplan.name}:{launchplan.id.version}", fg="green")
+        state = LaunchPlanState.ACTIVE if activate else LaunchPlanState.INACTIVE
+        remote.client.update_launch_plan(id=launchplan.id, state=state)
+        click.secho(f"\n Launchplan was set to {LaunchPlanState.enum_to_string(state)}: {launchplan.name}:{launchplan.id.version}", fg="green")
     except StopIteration as e:
         click.secho(f"{e.value}", fg="red")
