@@ -66,6 +66,9 @@ def launchplan(
         )
         state = LaunchPlanState.ACTIVE if activate else LaunchPlanState.INACTIVE
         remote.client.update_launch_plan(id=launchplan.id, state=state)
-        click.secho(f"\n Launchplan was set to {LaunchPlanState.enum_to_string(state)}: {launchplan.name}:{launchplan.id.version}", fg="green")
+        click.secho(
+            f"\n Launchplan was set to {LaunchPlanState.enum_to_string(state)}: {launchplan.name}:{launchplan.id.version}",
+            fg="green",
+        )
     except StopIteration as e:
         click.secho(f"{e.value}", fg="red")

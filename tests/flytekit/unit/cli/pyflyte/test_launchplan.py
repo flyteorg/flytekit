@@ -1,10 +1,9 @@
+import pytest
 from click.testing import CliRunner
 from mock import mock
 
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.remote import FlyteRemote
-import pytest
-
 
 
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
@@ -12,7 +11,7 @@ import pytest
     ("action", "expected_state"),
     [
         ("activate", "ACTIVE"),
-        ("deactivate", "INACTIVE")
+        ("deactivate", "INACTIVE"),
     ],
 )
 def test_pyflyte_launchplan(mock_remote, action, expected_state):
