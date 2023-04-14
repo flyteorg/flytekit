@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
-from kubernetes.client.models import V1PodSpec
+import lazy_import
 
 from flytekit.exceptions import user as _user_exceptions
+
+V1PodSpec = lazy_import.lazy_module("V1PodSpec")
 
 PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
 

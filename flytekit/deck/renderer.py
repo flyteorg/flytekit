@@ -1,8 +1,10 @@
 from typing import Any
 
-import pandas
+import lazy_import
 import pyarrow
 from typing_extensions import Protocol, runtime_checkable
+
+pandas = lazy_import.lazy_module("pandas")
 
 
 @runtime_checkable
@@ -27,7 +29,7 @@ class TopFrameRenderer:
         self._max_rows = max_rows
         self._max_cols = max_cols
 
-    def to_html(self, df: pandas.DataFrame) -> str:
+    def to_html(self, df: "pandas.DataFrame") -> str:
         assert isinstance(df, pandas.DataFrame)
         return df.to_html(max_rows=self._max_rows, max_cols=self._max_cols)
 

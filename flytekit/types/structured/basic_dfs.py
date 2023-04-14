@@ -13,8 +13,7 @@ from fsspec.utils import get_protocol
 from flytekit import FlyteContext, logger
 from flytekit.configuration import DataConfig
 from flytekit.core.data_persistence import s3_setup_args
-from flytekit.deck import TopFrameRenderer
-from flytekit.deck.renderer import ArrowRenderer
+from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType

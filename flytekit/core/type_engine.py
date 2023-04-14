@@ -22,7 +22,6 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
-from marshmallow_jsonschema import JSONSchema
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
@@ -326,6 +325,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
                 if isinstance(v, EnumField):
                     v.load_by = LoadDumpOptions.name
+            from marshmallow_jsonschema import JSONSchema
+
             schema = JSONSchema().dump(s)
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
@@ -769,10 +770,28 @@ class TypeEngine(typing.Generic[T]):
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
+    def lazy_import_transformers(cls, module: Type):
+        """
+        Only load the transformers if needed. For example, flytekit load the tensorflow transformer only when they import tensorflow in the workflow code.
+        """
+        module_name = module.__name__
+        if module_name == "tensorflow":
+            pass
+        elif module_name == "torch":
+            pass
+        elif module_name == "sklearn":
+            pass
+        elif module_name in ["pandas", "StructuredDataset"]:
+            pass
+        elif module_name == "numpy":
+            pass
+
+    @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
         """
         Converts a python type into a flyte specific ``LiteralType``
         """
+        cls.lazy_import_transformers(python_type)
         transformer = cls.get_transformer(python_type)
         res = transformer.get_literal_type(python_type)
         data = None

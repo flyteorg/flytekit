@@ -1,7 +1,8 @@
-import markdown
-import pandas
-import plotly.express as px
-from ydata_profiling import ProfileReport
+import lazy_import
+
+ydata_profiling = lazy_import.lazy_module("ydata_profiling")
+pandas = lazy_import.lazy_module("pandas")
+markdown = lazy_import.lazy_module("markdown")
 
 
 class FrameProfilingRenderer:
@@ -12,9 +13,9 @@ class FrameProfilingRenderer:
     def __init__(self, title: str = "Pandas Profiling Report"):
         self._title = title
 
-    def to_html(self, df: pandas.DataFrame) -> str:
+    def to_html(self, df: "pandas.DataFrame") -> str:
         assert isinstance(df, pandas.DataFrame)
-        profile = ProfileReport(df, title=self._title)
+        profile = ydata_profiling.ProfileReport(df, title=self._title)
         return profile.to_html()
 
 
@@ -45,6 +46,8 @@ class BoxRenderer:
     def __init__(self, column_name):
         self._column_name = column_name
 
-    def to_html(self, df: pandas.DataFrame) -> str:
+    def to_html(self, df: "pandas.DataFrame") -> str:
+        import plotly.express as px
+
         fig = px.box(df, y=self._column_name)
         return fig.to_html()

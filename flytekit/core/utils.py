@@ -6,14 +6,13 @@ from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
+import lazy_import
 from flyteidl.core import tasks_pb2 as _core_task
-from kubernetes.client import ApiClient
-from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
-from flytekit.models import task as _task_model
-from flytekit.models import task as task_models
+
+task_models = lazy_import.lazy_module("flytekit.models.task")
 
 
 def _dnsify(value: str) -> str:
@@ -131,11 +130,14 @@ def _get_container_definition(
     )
 
 
-def _sanitize_resource_name(resource: _task_model.Resources.ResourceEntry) -> str:
+def _sanitize_resource_name(resource: task_models.Resources.ResourceEntry) -> str:
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
-def _serialize_pod_spec(pod_template: PodTemplate, primary_container: _task_model.Container) -> Dict[str, Any]:
+def _serialize_pod_spec(pod_template: PodTemplate, primary_container: task_models.Container) -> Dict[str, Any]:
+    from kubernetes.client import ApiClient
+    from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+
     containers = cast(PodTemplate, pod_template).pod_spec.containers
     primary_exists = False
 
