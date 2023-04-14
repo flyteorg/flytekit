@@ -8,6 +8,7 @@ import enum
 import inspect
 import json as _json
 import mimetypes
+import sys
 import textwrap
 import typing
 from abc import ABC, abstractmethod
@@ -670,6 +671,7 @@ class TypeEngine(typing.Generic[T]):
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
+    has_lazy_import = False
 
     @classmethod
     def register(
@@ -770,26 +772,27 @@ class TypeEngine(typing.Generic[T]):
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
-    def lazy_import_transformers(cls, python_type: Type):
+    def lazy_import_transformers(cls):
         """
         Only load the transformers if needed.
         """
-        if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
-        if not hasattr(python_type, "__name__"):
+        if cls.has_lazy_import:
             return
-        name = python_type.__name__
-        if name == "tensorflow":
-            from flytekit.extras import tensorflow  # noqa: F401
-        elif name == "torch":
-            from flytekit.extras import pytorch  # noqa: F401
-        elif name == "sklearn":
-            from flytekit.extras import sklearn  # noqa: F401
-        elif name in ["pandas", "pyarrow"]:
-            from flytekit.types.structured import register_handlers
+        cls.has_lazy_import = True
+        modules = sys.modules.keys()
+        from flytekit.types.structured import register_handlers
 
-            register_handlers(name)
-        elif name == "numpy":
+        if "tensorflow" in modules:
+            from flytekit.extras import tensorflow  # noqa: F401
+        if "torch" in modules:
+            from flytekit.extras import pytorch  # noqa: F401
+        if "sklearn" in modules:
+            from flytekit.extras import sklearn  # noqa: F401
+        if "pandas" in modules:
+            register_handlers("pandas")
+        if "pyarrow" in modules:
+            register_handlers("pyarrow")
+        if "numpy" in modules:
             from flytekit.types import numpy  # noqa: F401
 
     @classmethod
@@ -797,7 +800,7 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a python type into a flyte specific ``LiteralType``
         """
-        cls.lazy_import_transformers(python_type)
+        cls.lazy_import_transformers()
         transformer = cls.get_transformer(python_type)
         res = transformer.get_literal_type(python_type)
         data = None
@@ -821,7 +824,7 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
         """
-        cls.lazy_import_transformers(python_type)
+        cls.lazy_import_transformers()
         if python_val is None and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
@@ -853,7 +856,7 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a Literal value with an expected python type into a python value.
         """
-        cls.lazy_import_transformers(expected_python_type)
+        cls.lazy_import_transformers()
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
