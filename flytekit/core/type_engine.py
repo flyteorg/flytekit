@@ -772,27 +772,27 @@ class TypeEngine(typing.Generic[T]):
     @classmethod
     def lazy_import_transformers(cls, python_type: Type):
         """
-        Only load the transformers if needed. For example, flytekit load the tensorflow transformer only when they import tensorflow in the workflow code.
+        Only load the transformers if needed.
         """
         if get_origin(python_type) is Annotated:
             python_type = get_args(python_type)[0]
         if not hasattr(python_type, "__name__"):
             return
-        module_name = python_type.__name__
-        if module_name == "tensorflow":
+        name = python_type.__name__
+        if name == "tensorflow":
             from flytekit.extras import tensorflow
-        elif module_name == "torch":
+        elif name == "torch":
             from flytekit.extras import pytorch
-        elif module_name == "sklearn":
+        elif name == "sklearn":
             from flytekit.extras import sklearn
-        elif module_name in ["pandas", "pyarrow"]:
+        elif name in ["pandas", "pyarrow"]:
             from flytekit.types.structured.structured_dataset import (
                 StructuredDataset,
                 StructuredDatasetFormat,
                 StructuredDatasetTransformerEngine,
                 StructuredDatasetType,
             )
-        elif module_name == "numpy":
+        elif name == "numpy":
             from flytekit.types import numpy
 
     @classmethod
