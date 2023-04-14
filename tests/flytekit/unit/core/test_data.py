@@ -176,7 +176,7 @@ def test_s3_setup_args_env_empty(mock_os, mock_get_config_file):
     mock_os.get.return_value = None
     s3c = S3Config.auto()
     kwargs = s3_setup_args(s3c)
-    assert kwargs == {}
+    assert kwargs == {"cache_regions": True}
 
 
 @mock.patch("flytekit.configuration.get_config_file")
@@ -191,7 +191,7 @@ def test_s3_setup_args_env_both(mock_os, mock_get_config_file):
     }
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     kwargs = s3_setup_args(S3Config.auto())
-    assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
+    assert kwargs == {"key": "flyte", "secret": "flyte-secret", "cache_regions": True}
 
 
 @mock.patch("flytekit.configuration.get_config_file")
@@ -204,7 +204,7 @@ def test_s3_setup_args_env_flyte(mock_os, mock_get_config_file):
     }
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     kwargs = s3_setup_args(S3Config.auto())
-    assert kwargs == {"key": "flyte", "secret": "flyte-secret"}
+    assert kwargs == {"key": "flyte", "secret": "flyte-secret", "cache_regions": True}
 
 
 @mock.patch("flytekit.configuration.get_config_file")
@@ -218,7 +218,7 @@ def test_s3_setup_args_env_aws(mock_os, mock_get_config_file):
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     kwargs = s3_setup_args(S3Config.auto())
     # not explicitly in kwargs, since fsspec/boto3 will use these env vars by default
-    assert kwargs == {}
+    assert kwargs == {"cache_regions": True}
 
 
 def test_crawl_local_nt(source_folder):
