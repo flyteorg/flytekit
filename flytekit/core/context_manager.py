@@ -40,9 +40,10 @@ from flytekit.loggers import logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
+    from flytekit.clients import friendly as friendly_client
     from flytekit.deck.deck import Deck
-
-friendly_client = lazy_import.lazy_module("flytekit.clients.friendly")
+else:
+    friendly_client = lazy_import.lazy_module("flytekit.clients.friendly")
 
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin

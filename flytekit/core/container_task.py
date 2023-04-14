@@ -2,9 +2,9 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from flytekit.configuration import SerializationSettings
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
-from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.models import task as _task_model
@@ -49,7 +49,7 @@ class ContainerTask(PythonTask):
         metadata_format: MetadataFormat = MetadataFormat.JSON,
         io_strategy: Optional[IOStrategy] = None,
         secret_requests: Optional[List[Secret]] = None,
-        pod_template: Optional[PodTemplate] = None,
+        pod_template: Optional["PodTemplate"] = None,
         pod_template_name: Optional[str] = None,
         **kwargs,
     ):

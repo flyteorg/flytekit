@@ -93,7 +93,7 @@ def task(
     task_resolver: Optional[TaskResolverMixin] = None,
     docs: Optional[Documentation] = None,
     disable_deck: bool = True,
-    pod_template: Optional[PodTemplate] = None,
+    pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
 ) -> Union[Callable, PythonFunctionTask]:
     """

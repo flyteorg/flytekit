@@ -2,7 +2,8 @@ import mock
 import pandas as pd
 from typing_extensions import Annotated
 
-from flytekit import StructuredDataset, kwtypes, task, workflow
+from flytekit import kwtypes, task, workflow
+from flytekit.types.structured import StructuredDataset
 
 pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 my_cols = kwtypes(Name=str, Age=int)

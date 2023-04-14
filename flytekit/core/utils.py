@@ -4,15 +4,17 @@ import tempfile as _tempfile
 import time as _time
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 import lazy_import
 from flyteidl.core import tasks_pb2 as _core_task
-
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
 
-task_models = lazy_import.lazy_module("flytekit.models.task")
+if TYPE_CHECKING:
+    from flytekit.models import task as task_models
+else:
+    task_models = lazy_import.lazy_module("flytekit.models.task")
 
 
 def _dnsify(value: str) -> str:
@@ -134,7 +136,7 @@ def _sanitize_resource_name(resource: task_models.Resources.ResourceEntry) -> st
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
-def _serialize_pod_spec(pod_template: PodTemplate, primary_container: task_models.Container) -> Dict[str, Any]:
+def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: task_models.Container) -> Dict[str, Any]:
     from kubernetes.client import ApiClient
     from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 

@@ -3,9 +3,9 @@ import pytest
 from mock import mock
 
 import flytekit
-from flytekit import Deck, FlyteContextManager, task
-from flytekit.deck import TopFrameRenderer
-from flytekit.deck.deck import _output_deck
+from flytekit import FlyteContextManager, task
+from flytekit.deck.deck import Deck, _output_deck
+from flytekit.deck.renderer import TopFrameRenderer
 
 
 def test_deck():

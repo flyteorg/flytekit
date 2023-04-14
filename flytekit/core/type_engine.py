@@ -374,7 +374,7 @@ class DataclassTransformer(TypeTransformer[object]):
     def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T:
         # In python 3.7, 3.8, DataclassJson will deserialize Annotated[StructuredDataset, kwtypes(..)] to a dict,
         # so here we convert it back to the Structured Dataset.
-        from flytekit import StructuredDataset
+        from flytekit.types.structured import StructuredDataset
 
         if python_type == StructuredDataset and type(python_val) == dict:
             return StructuredDataset(**python_val)
@@ -770,21 +770,30 @@ class TypeEngine(typing.Generic[T]):
         raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
-    def lazy_import_transformers(cls, module: Type):
+    def lazy_import_transformers(cls, python_type: Type):
         """
         Only load the transformers if needed. For example, flytekit load the tensorflow transformer only when they import tensorflow in the workflow code.
         """
-        module_name = module.__name__
+        if get_origin(python_type) is Annotated:
+            python_type = get_args(python_type)[0]
+        if not hasattr(python_type, "__name__"):
+            return
+        module_name = python_type.__name__
         if module_name == "tensorflow":
-            pass
+            from flytekit.extras import tensorflow
         elif module_name == "torch":
-            pass
+            from flytekit.extras import pytorch
         elif module_name == "sklearn":
-            pass
-        elif module_name in ["pandas", "StructuredDataset"]:
-            pass
+            from flytekit.extras import sklearn
+        elif module_name in ["pandas", "pyarrow"]:
+            from flytekit.types.structured.structured_dataset import (
+                StructuredDataset,
+                StructuredDatasetFormat,
+                StructuredDatasetTransformerEngine,
+                StructuredDatasetType,
+            )
         elif module_name == "numpy":
-            pass
+            from flytekit.types import numpy
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:

@@ -728,9 +728,6 @@ def workflow(
     interruptible: bool = False,
     docs: Optional[Documentation] = None,
 ) -> WorkflowBase:
-    import sys
-
-    print("workflow", "pandas" in sys.modules)
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.

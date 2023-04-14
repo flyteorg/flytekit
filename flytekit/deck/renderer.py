@@ -1,10 +1,10 @@
 from typing import Any
 
 import lazy_import
-import pyarrow
 from typing_extensions import Protocol, runtime_checkable
 
 pandas = lazy_import.lazy_module("pandas")
+pyarrow = lazy_import.lazy_module("pyarrow")
 
 
 @runtime_checkable
@@ -39,6 +39,6 @@ class ArrowRenderer:
     Render a Arrow dataframe as an HTML table.
     """
 
-    def to_html(self, df: pyarrow.Table) -> str:
+    def to_html(self, df: "pyarrow.Table") -> str:
         assert isinstance(df, pyarrow.Table)
         return df.to_string()
