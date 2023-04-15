@@ -137,7 +137,7 @@ def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
     return h.digest(), h.hexdigest()
 
 
-def _find_project_root(source_path) -> Path:
+def _find_project_root(source_path) -> str:
     """
     Find the root of the project.
     The root of the project is considered to be the first ancestor from source_path that does
@@ -149,4 +149,4 @@ def _find_project_root(source_path) -> Path:
     path = Path(source_path).parent.resolve()
     while os.path.exists(os.path.join(path, "__init__.py")):
         path = path.parent
-    return path
+    return str(path)
