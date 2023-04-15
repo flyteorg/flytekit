@@ -65,6 +65,7 @@ jobs:
           - flytekit-deck-standard
           - flytekit-dolt
           - flytekit-duckdb
+          - flytekit-envd
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-k8s-pod
