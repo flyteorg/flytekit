@@ -108,7 +108,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
     """
 
     _ELASTIC_TASK_TYPE = "pytorch"
-    _ELASTIC_TASK_TYPE_STANDALONE = "container"
+    _ELASTIC_TASK_TYPE_STANDALONE = "python-task"
 
     def __init__(self, task_config: Elastic, task_function: Callable, **kwargs):
         task_type = self._ELASTIC_TASK_TYPE_STANDALONE if task_config.nnodes == 1 else self._ELASTIC_TASK_TYPE
@@ -122,10 +122,10 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         self.rdzv_backend = "c10d"
         self.min_nodes, self.max_nodes = run.parse_min_max_nnodes(str(self.task_config.nnodes))
 
-    def execute(self, **kwargs) -> Any:
+    def _execute(self, **kwargs) -> Any:
         """
-        This method will be invoked to execute the task. If you do decide to override this method you must also
-        handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
+        This helper method will be invoked to execute the task.
+
 
         Returns:
             The result of rank zero.
@@ -184,7 +184,25 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             entrypoint=launcher_target_func,
         )(*launcher_args)
 
-        return out[0]
+        # `out` is a dictionary of rank (not local rank) -> result
+        # Rank 0 returns the result of the task function
+        if 0 in out:
+            return out[0]
+        else:
+            raise flytekit.core.base_task.IgnoreOutputs()
+
+    def execute(self, **kwargs) -> Any:
+        """
+        This method will be invoked to execute the task.
+
+        Handles the exception scope for the `_execute` method.
+        """
+        from flytekit.exceptions import scopes as exception_scopes
+
+        if self.execution_mode == self.ExecutionBehavior.DEFAULT:
+            return exception_scopes.user_entry_point(self._execute)(**kwargs)
+        elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+            return self.dynamic_execute(self._execute, **kwargs)
     
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         if self.task_config.nnodes == 1:
