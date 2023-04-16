@@ -119,6 +119,15 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             task_function=task_function,
             **kwargs,
         )
+
+        """
+        c10d is the backend recommended by torch elastic.
+        https://pytorch.org/docs/stable/elastic/run.html#note-on-rendezvous-backend
+
+        For c10d, no backend server has to be deployed.
+        https://pytorch.org/docs/stable/elastic/run.html#deployment
+        Instead, the workers will use the master's address as the rendezvous point.
+        """
         self.rdzv_backend = "c10d"
         self.min_nodes, self.max_nodes = run.parse_min_max_nnodes(str(self.task_config.nnodes))
 
