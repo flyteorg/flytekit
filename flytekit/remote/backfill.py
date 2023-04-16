@@ -72,6 +72,16 @@ def create_backfill_workflow(
     prev_node = None
     actual_start = None
     actual_end = None
+    if for_lp.interface.inputs and len(for_lp.interface.inputs.keys()) > 1:
+        raise ValueError(
+            f"LaunchPlan({for_lp.name}) should have either no or exactly one input, but found more "
+            f"- {for_lp.interface.inputs.keys()}"
+        )
+
+    input_name: typing.Optional[str] = None
+    if for_lp.interface.inputs and len(for_lp.interface.inputs.keys()) == 1:
+        input_name = list(for_lp.interface.inputs.keys())[0]
+
     while True:
         next_start_date = date_iter.get_next()
         if not actual_start:
@@ -79,7 +89,10 @@ def create_backfill_workflow(
         if next_start_date >= end_date:
             break
         actual_end = next_start_date
-        next_node = wf.add_launch_plan(for_lp, t=next_start_date)
+        inputs = {}
+        if input_name:
+            inputs[input_name] = next_start_date
+        next_node = wf.add_launch_plan(for_lp, **inputs)
         next_node = next_node.with_overrides(
             name=f"b-{next_start_date}", retries=per_node_retries, timeout=per_node_timeout
         )
