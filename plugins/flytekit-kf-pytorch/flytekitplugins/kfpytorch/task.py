@@ -176,9 +176,6 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         else:
             raise Exception("Bad start method")
 
-        # put the try catch here
-        # https://github.com/flyteorg/flytekit/blob/47ac6ac2a547fdd2b46654db5163493b4f33dbb2/flytekit/core/python_function_task.py#L164
-
         out = elastic_launch(
             config=config,
             entrypoint=launcher_target_func,
