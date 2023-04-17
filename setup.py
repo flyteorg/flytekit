@@ -77,6 +77,7 @@ setup(
         "numpy<1.24.0",
         "gitpython",
         "kubernetes>=12.0.1",
+        "rich",
     ],
     extras_require=extras_require,
     scripts=[

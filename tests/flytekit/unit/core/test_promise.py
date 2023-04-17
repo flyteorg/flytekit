@@ -77,7 +77,7 @@ def test_create_and_link_node_from_remote_ignore():
 
     # without providing the _inputs_not_allowed or _ignorable_inputs, all inputs to lp become required,
     # which is incorrect
-    with pytest.raises(FlyteAssertion, match="Missing input `i` type `simple: INTEGER"):
+    with pytest.raises(FlyteAssertion, match="Missing input `i` type `<FlyteLiteral simple: INTEGER>`"):
         create_and_link_node_from_remote(ctx, lp)
 
     # Even if j is not provided it will default
@@ -114,7 +114,7 @@ def test_translate_inputs_to_literals(input):
 
 def test_translate_inputs_to_literals_with_wrong_types():
     ctx = context_manager.FlyteContext.current_context()
-    with pytest.raises(TypeError, match="Not a map type union_type"):
+    with pytest.raises(TypeError, match="Not a map type <FlyteLiteral union_type"):
 
         @task
         def t1(a: typing.Union[float, typing.List[int]]):
@@ -122,7 +122,7 @@ def test_translate_inputs_to_literals_with_wrong_types():
 
         translate_inputs_to_literals(ctx, {"a": {"a": 3}}, t1.interface.inputs, t1.python_interface.inputs)
 
-    with pytest.raises(TypeError, match="Not a collection type union_type"):
+    with pytest.raises(TypeError, match="Not a collection type <FlyteLiteral union_type"):
 
         @task
         def t1(a: typing.Union[float, typing.Dict[str, int]]):

@@ -32,7 +32,7 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
@@ -258,7 +258,11 @@ class WorkflowBase(object):
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
         self.compile()
-        return flyte_entity_call_handler(self, *args, **input_kwargs)
+        try:
+            return flyte_entity_call_handler(self, *args, **input_kwargs)
+        except Exception as exc:
+            exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
+            raise exc
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
@@ -272,7 +276,12 @@ class WorkflowBase(object):
         for k, v in kwargs.items():
             if not isinstance(v, Promise):
                 t = self.python_interface.inputs[k]
-                kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
+                try:
+                    kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
+                except TypeTransformerFailedError as exc:
+                    raise TypeError(
+                        f"Failed to convert input argument '{k}' of workflow '{self.name}':\n  {exc}"
+                    ) from exc
 
         # The output of this will always be a combination of Python native values and Promises containing Flyte
         # Literals.

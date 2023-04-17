@@ -88,7 +88,7 @@ class TypeTransformer(typing.Generic[T]):
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, t):
-            raise TypeTransformerFailedError(f"Type of Val '{v}' is not an instance of {t}")
+            raise TypeTransformerFailedError(f"Expected value of type {t} but got '{v}' of type {type(v)}")
 
     @abstractmethod
     def get_literal_type(self, t: Type[T]) -> LiteralType:
@@ -166,7 +166,9 @@ class SimpleTransformer(TypeTransformer[T]):
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if type(python_val) != self._type:
-            raise TypeTransformerFailedError(f"Expected value of type {self._type} but got type {type(python_val)}")
+            raise TypeTransformerFailedError(
+                f"Expected value of type {self._type} but got '{python_val}' of type {type(python_val)}"
+            )
         return self._to_literal_transformer(python_val)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -185,7 +187,7 @@ class SimpleTransformer(TypeTransformer[T]):
             return res
         except AttributeError:
             # Assume that this is because a property on `lv` was None
-            raise TypeTransformerFailedError(f"Cannot convert literal {lv}")
+            raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.simple is not None and literal_type.simple == self._lt.simple:
@@ -852,7 +854,13 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError(
                 f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
             )
-        return {k: TypeEngine.to_python_value(ctx, lm.literals[k], python_types[k]) for k, v in lm.literals.items()}
+        kwargs = {}
+        for i, k in enumerate(lm.literals):
+            try:
+                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_types[k])
+            except TypeTransformerFailedError as exc:
+                raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from exc
+        return kwargs
 
     @classmethod
     def dict_to_literal_map(

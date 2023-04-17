@@ -3,12 +3,12 @@ import datetime
 import functools
 import os
 import random
+import re
 import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
-from textwrap import dedent
 
 import pandas
 import pandas as pd
@@ -1629,16 +1629,28 @@ def test_error_messages():
     def foo3(a: typing.Dict) -> typing.Dict:
         return a
 
-    with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
+    with pytest.raises(
+        TypeError,
+        match=(
+            "Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.foo':\n"
+            "  Failed argument 'a': Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
+        ),
+    ):
         foo(a="hello", b=10)  # type: ignore
 
     with pytest.raises(
         TypeError,
-        match="Failed to convert return value for var o0 for " "function tests.flytekit.unit.core.test_type_hints.foo2",
+        match=(
+            "Failed to convert outputs of task 'tests.flytekit.unit.core.test_type_hints.foo2' at position 0:\n"
+            "  Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
+        ),
     ):
         foo2(a=10, b="hello")
 
-    with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
+    with pytest.raises(
+        TypeError,
+        match="Not a collection type <FlyteLiteral simple: STRUCT> but got a list \\[{'hello': 2}\\]",
+    ):
         foo3(a=[{"hello": 2}])  # type: ignore
 
 
@@ -1674,28 +1686,12 @@ def test_union_type():
 
     with pytest.raises(
         TypeError,
-        match=dedent(
-            r"""
-            Cannot convert from scalar {
-              union {
-                value {
-                  scalar {
-                    primitive {
-                      string_value: "2"
-                    }
-                  }
-                }
-                type {
-                  simple: STRING
-                  structure {
-                    tag: "str"
-                  }
-                }
-              }
-            }
-             to typing.Union\[float, dict\] \(using tag str\)
-        """
-        )[1:-1],
+        match=re.escape(
+            "Error encountered while executing 'wf2':\n"
+            "  Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.t2':\n"
+            '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
+            'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'
+        ),
     ):
         assert wf2(a="2") == "2"
 

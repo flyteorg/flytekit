@@ -32,3 +32,4 @@ htmlcov
 *.ipynb
 *dat
 docs/source/_tags/
+.hypothesis

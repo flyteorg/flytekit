@@ -1,5 +1,6 @@
 import abc as _abc
 import json as _json
+import re
 
 from flyteidl.admin import common_pb2 as _common_pb2
 from google.protobuf import json_format as _json_format
@@ -57,7 +58,8 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         :rtype: Text
         """
-        return str(self.to_flyte_idl())
+        literal_str = re.sub(r"\s+", " ", str(self.to_flyte_idl())).strip()
+        return f"<FlyteLiteral {literal_str}>"
 
     def verbose_string(self):
         """

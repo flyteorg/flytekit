@@ -13,7 +13,7 @@ from flytekit.core import type_engine
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
+from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -141,7 +141,10 @@ def translate_inputs_to_literals(
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = flyte_interface_types[k]
         t = native_types[k]
-        result[k] = extract_value(ctx, v, t, var.type)
+        try:
+            result[k] = extract_value(ctx, v, t, var.type)
+        except TypeTransformerFailedError as exc:
+            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
     return result
 
@@ -477,10 +480,14 @@ def create_native_named_tuple(
 
     if isinstance(promises, Promise):
         k, v = [(k, v) for k, v in entity_interface.outputs.items()][0]  # get output native type
+        # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+        key = k if k != "o0" else 0
         try:
             return TypeEngine.to_python_value(ctx, promises.val, v)
         except Exception as e:
-            raise AssertionError(f"Failed to convert value of output {k}, expected type {v}.") from e
+            raise TypeError(
+                f"Failed to convert output in position {key} of value {promises.val}, expected type {v}."
+            ) from e
 
     if len(promises) == 0:
         return None
@@ -490,7 +497,7 @@ def create_native_named_tuple(
         named_tuple_name = entity_interface.output_tuple_name
 
     outputs = {}
-    for p in promises:
+    for i, p in enumerate(cast(Tuple[Promise], promises)):
         if not isinstance(p, Promise):
             raise AssertionError(
                 "Workflow outputs can only be promises that are returned by tasks. Found a value of"
@@ -500,7 +507,9 @@ def create_native_named_tuple(
         try:
             outputs[p.var] = TypeEngine.to_python_value(ctx, p.val, t)
         except Exception as e:
-            raise AssertionError(f"Failed to convert value of output {p.var}, expected type {t}.") from e
+            # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+            key = p.var if p.var != f"o{i}" else i
+            raise TypeError(f"Failed to convert output in position {key} of value {p.val}, expected type {t}.") from e
 
     # Should this class be part of the Interface?
     t = collections.namedtuple(named_tuple_name, list(outputs.keys()))
@@ -1055,7 +1064,7 @@ def flyte_entity_call_handler(entity: SupportsNodeCreation, *args, **kwargs):
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
             raise ValueError(
-                f"Received unexpected keyword argument {k} in function {cast(SupportsNodeCreation, entity).name}"
+                f"Received unexpected keyword argument '{k}' in function '{cast(SupportsNodeCreation, entity).name}'"
             )
 
     ctx = FlyteContextManager.current_context()
