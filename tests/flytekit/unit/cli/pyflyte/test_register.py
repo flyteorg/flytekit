@@ -92,7 +92,7 @@ def test_non_fast_register(mock_client, mock_remote):
 def test_non_fast_register_require_version(mock_client, mock_remote):
     mock_remote._client = mock_client
     mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
-    mock_remote.return_value._upload_file.return_value = "dummy_md5_bytes", "dummy_native_url"
+    mock_remote.return_value.upload_file.return_value = "dummy_md5_bytes", "dummy_native_url"
     runner = CliRunner()
     context_manager.FlyteEntities.entities.clear()
     with runner.isolated_filesystem():
