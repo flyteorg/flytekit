@@ -143,11 +143,14 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from typing import Dict, List, Optional
 
+import yaml
 from dataclasses_json import dataclass_json
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
+from flytekit.image_spec import ImageSpec
+from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
@@ -205,6 +208,12 @@ class Image(object):
         :rtype: Text
         """
         from docker_image import reference
+        if pathlib.Path(tag).is_file():
+            with open(tag, "r") as f:
+                image_spec_dict = yaml.safe_load(f)
+                image_spec = ImageSpec(**image_spec_dict)
+                ImageBuildEngine.build(image_spec)
+                tag = image_spec.image_name()
 
         ref = reference.Reference.parse(tag)
         if not optional_tag and ref["tag"] is None:
@@ -700,6 +709,7 @@ class SerializationSettings(object):
         fast_serialization_settings (Optional[FastSerializationSettings]): If the code is being serialized so that it
             can be fast registered (and thus omit building a Docker image) this object contains additional parameters
             for serialization.
+        source_root (Optional[str]): The root directory of the source code.
     """
 
     image_config: ImageConfig
@@ -711,6 +721,7 @@ class SerializationSettings(object):
     python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
+    source_root: Optional[str] = None
 
     def __post_init__(self):
         if self.flytekit_virtualenv_root is None:

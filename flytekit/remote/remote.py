@@ -621,6 +621,10 @@ class FlyteRemote(object):
                 version=version,
             )
             is_dummy_serialization_setting = True
+
+        if serialization_settings.version is None:
+            serialization_settings.version = version
+
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None
@@ -710,9 +714,9 @@ class FlyteRemote(object):
         md5_bytes, _ = hash_file(pathlib.Path(zip_file))
 
         # Upload zip file to Admin using FlyteRemote.
-        return self._upload_file(pathlib.Path(zip_file))
+        return self.upload_file(pathlib.Path(zip_file))
 
-    def _upload_file(
+    def upload_file(
         self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
     ) -> typing.Tuple[bytes, str]:
         """
@@ -820,7 +824,7 @@ class FlyteRemote(object):
         with tempfile.TemporaryDirectory() as tmp_dir:
             archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
             compress_scripts(source_path, str(archive_fname), module_name)
-            md5_bytes, upload_native_url = self._upload_file(
+            md5_bytes, upload_native_url = self.upload_file(
                 archive_fname, project or self.default_project, domain or self.default_domain
             )
 
