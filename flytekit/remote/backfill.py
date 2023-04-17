@@ -68,20 +68,12 @@ def create_backfill_workflow(
 
     logging.info(f"Generating backfill from {start_date} -> {end_date}. Parallel?[{parallel}]")
     wf = ImperativeWorkflow(name=f"backfill-{for_lp.name}")
+
+    input_name = schedule.kickoff_time_input_arg
     date_iter = croniter(cron_schedule.schedule, start_time=start_date, ret_type=datetime)
     prev_node = None
     actual_start = None
     actual_end = None
-    if for_lp.interface.inputs and len(for_lp.interface.inputs.keys()) > 1:
-        raise ValueError(
-            f"LaunchPlan({for_lp.name}) should have either no or exactly one input, but found more "
-            f"- {for_lp.interface.inputs.keys()}"
-        )
-
-    input_name: typing.Optional[str] = None
-    if for_lp.interface.inputs and len(for_lp.interface.inputs.keys()) == 1:
-        input_name = list(for_lp.interface.inputs.keys())[0]
-
     while True:
         next_start_date = date_iter.get_next()
         if not actual_start:

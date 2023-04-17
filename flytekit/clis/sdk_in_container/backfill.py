@@ -168,7 +168,7 @@ def backfill(
             execute=execute,
             parallel=parallel,
         )
-        if entity:
+        if not dry_run:
             console_url = remote.generate_console_url(entity)
             if execute:
                 click.secho(f"\n Execution launched {console_url} to see execution in the console.", fg="green")
