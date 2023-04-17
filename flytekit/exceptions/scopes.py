@@ -194,10 +194,13 @@ def user_entry_point(wrapped, instance, args, kwargs):
         _CONTEXT_STACK.append(_USER_CONTEXT)
         if _is_base_context():
             # See comment at this location for system_entry_point
+            fn_name = wrapped.__name__
             try:
                 return wrapped(*args, **kwargs)
-            except FlyteScopedException as ex:
-                raise ex.value
+            except FlyteScopedException as exc:
+                raise exc.type(f"Error encountered while executing '{fn_name}':\n  {exc.value}") from exc
+            except Exception as exc:
+                raise type(exc)(f"Error encountered while executing '{fn_name}':\n  {exc}") from exc
         else:
             try:
                 return wrapped(*args, **kwargs)
