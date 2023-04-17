@@ -41,6 +41,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
+from flytekit.remote.pydantic_workflow_interface import PydanticWorkflowModel, create_workflow_model
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
@@ -319,6 +320,28 @@ class FlyteRemote(object):
 
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
+    def fetch_pydantic_workflow(
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
+    ) -> PydanticWorkflowModel:
+        if name is None:
+            raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
+        workflow_id = _get_entity_identifier(
+            self.client.list_workflows_paginated,
+            ResourceType.WORKFLOW,
+            project or self.default_project,
+            domain or self.default_domain,
+            name,
+            version,
+        )
+        model = create_workflow_model(
+            workflow_id.project, 
+            workflow_id.domain, 
+            workflow_id.name, 
+            workflow_id.version, 
+            remote=self
+        )
+        return model
+    
     def fetch_launch_plan(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> FlyteLaunchPlan:
