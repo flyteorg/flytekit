@@ -1,5 +1,6 @@
 import datetime
 import os
+import platform
 import string
 import subprocess
 import typing
@@ -70,10 +71,10 @@ class _PythonFStringInterpolizer:
             return super().format_field(value, format_spec)
 
     def interpolate(
-        self,
-        tmpl: str,
-        inputs: typing.Optional[typing.Dict[str, str]] = None,
-        outputs: typing.Optional[typing.Dict[str, str]] = None,
+            self,
+            tmpl: str,
+            inputs: typing.Optional[typing.Dict[str, str]] = None,
+            outputs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> str:
         """
         Interpolate python formatted string templates with variables from the input and output
@@ -101,15 +102,15 @@ class ShellTask(PythonInstanceTask[T]):
     """ """
 
     def __init__(
-        self,
-        name: str,
-        debug: bool = False,
-        script: typing.Optional[str] = None,
-        script_file: typing.Optional[str] = None,
-        task_config: T = None,
-        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        output_locs: typing.Optional[typing.List[OutputLocation]] = None,
-        **kwargs,
+            self,
+            name: str,
+            debug: bool = False,
+            script: typing.Optional[str] = None,
+            script_file: typing.Optional[str] = None,
+            task_config: T = None,
+            inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+            output_locs: typing.Optional[typing.List[OutputLocation]] = None,
+            **kwargs,
     ):
         """
         Args:
@@ -213,6 +214,9 @@ class ShellTask(PythonInstanceTask[T]):
             print("\n==============================================\n")
 
         try:
+            if platform.system() == "Windows" and os.environ["ComSpec"] is None:
+                # https://github.com/python/cpython/issues/101283
+                os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
             subprocess.check_call(gen_script, shell=True)
         except subprocess.CalledProcessError as e:
             files = os.listdir(".")
@@ -245,15 +249,15 @@ class RawShellTask(ShellTask):
     """ """
 
     def __init__(
-        self,
-        name: str,
-        debug: bool = False,
-        script: typing.Optional[str] = None,
-        script_file: typing.Optional[str] = None,
-        task_config: T = None,
-        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        output_locs: typing.Optional[typing.List[OutputLocation]] = None,
-        **kwargs,
+            self,
+            name: str,
+            debug: bool = False,
+            script: typing.Optional[str] = None,
+            script_file: typing.Optional[str] = None,
+            task_config: T = None,
+            inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+            output_locs: typing.Optional[typing.List[OutputLocation]] = None,
+            **kwargs,
     ):
         """
         The `RawShellTask` is a minimal extension of the existing `ShellTask`. It's purpose is to support wrapping a
@@ -356,7 +360,6 @@ class RawShellTask(ShellTask):
 # This utility function allows for the specification of env variables, arguments, and the actual script within the
 # workflow definition rather than at `RawShellTask` instantiation
 def get_raw_shell_task(name: str) -> RawShellTask:
-
     return RawShellTask(
         name=name,
         debug=True,
