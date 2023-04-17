@@ -729,7 +729,7 @@ class TypeEngine(typing.Generic[T]):
         Step 4:
             if v is of type data class, use the dataclass transformer
         """
-
+        cls.lazy_import_transformers()
         # Step 1
         if get_origin(python_type) is Annotated:
             python_type = get_args(python_type)[0]
@@ -780,7 +780,11 @@ class TypeEngine(typing.Generic[T]):
             return
         cls.has_lazy_import = True
         modules = sys.modules.keys()
-        from flytekit.types.structured import register_handlers
+        from flytekit.types.structured import (
+            register_arrow_handlers,
+            register_bigquery_handlers,
+            register_pandas_handlers,
+        )
 
         if "tensorflow" in modules:
             from flytekit.extras import tensorflow  # noqa: F401
@@ -790,9 +794,12 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.extras import sklearn  # noqa: F401
         if "pandas" in modules:
             from flytekit.types import schema  # noqa: F401
-            register_handlers("pandas")
+
+            register_pandas_handlers()
         if "pyarrow" in modules:
-            register_handlers("pyarrow")
+            register_arrow_handlers()
+        if "google.cloud.bigquery" in modules:
+            register_bigquery_handlers()
         if "numpy" in modules:
             from flytekit.types import numpy  # noqa: F401
 
@@ -801,7 +808,6 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a python type into a flyte specific ``LiteralType``
         """
-        cls.lazy_import_transformers()
         transformer = cls.get_transformer(python_type)
         res = transformer.get_literal_type(python_type)
         data = None
@@ -825,7 +831,6 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
         """
-        cls.lazy_import_transformers()
         if python_val is None and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
@@ -857,7 +862,6 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a Literal value with an expected python type into a python value.
         """
-        cls.lazy_import_transformers()
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
 

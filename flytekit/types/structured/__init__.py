@@ -44,23 +44,24 @@ except ImportError:
     )
 
 
-def register_handlers(python_type: str):
-    """
-    Register handlers for structured dataset
-    """
-    if python_type == "pandas":
-        import pandas as pd
+def register_pandas_handlers():
+    import pandas as pd
 
-        StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(), default_format_for_type=True)
-        StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(), default_format_for_type=True)
-        StructuredDatasetTransformerEngine.register(PandasToBQEncodingHandlers())
-        StructuredDatasetTransformerEngine.register(BQToPandasDecodingHandler())
-        StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
-    elif python_type == "pyarrow":
-        import pyarrow as pa
+    StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(), default_format_for_type=True)
+    StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(), default_format_for_type=True)
+    StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
 
-        StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(), default_format_for_type=True)
-        StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(), default_format_for_type=True)
-        StructuredDatasetTransformerEngine.register(ArrowToBQEncodingHandlers())
-        StructuredDatasetTransformerEngine.register(BQToArrowDecodingHandler())
-        StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())
+
+def register_arrow_handlers():
+    import pyarrow as pa
+
+    StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(), default_format_for_type=True)
+    StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(), default_format_for_type=True)
+    StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())
+
+
+def register_bigquery_handlers():
+    StructuredDatasetTransformerEngine.register(PandasToBQEncodingHandlers())
+    StructuredDatasetTransformerEngine.register(BQToPandasDecodingHandler())
+    StructuredDatasetTransformerEngine.register(ArrowToBQEncodingHandlers())
+    StructuredDatasetTransformerEngine.register(BQToArrowDecodingHandler())

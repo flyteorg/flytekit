@@ -23,8 +23,12 @@ from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 
-pd = lazy_import.lazy_module("pandas")
-pa = lazy_import.lazy_module("pyarrow")
+if typing.TYPE_CHECKING:
+    import pandas as pd
+    import pyarrow as pa
+else:
+    pd = lazy_import.lazy_module("pandas")
+    pa = lazy_import.lazy_module("pyarrow")
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type

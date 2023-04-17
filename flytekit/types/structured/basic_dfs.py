@@ -21,9 +21,14 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
 )
 
-pd = lazy_import.lazy_module("pandas")
-pa = lazy_import.lazy_module("pyarrow")
-pq = lazy_import.lazy_module("pyarrow.parquet")
+if typing.TYPE_CHECKING:
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+else:
+    pd = lazy_import.lazy_module("pandas")
+    pa = lazy_import.lazy_module("pyarrow")
+    pq = lazy_import.lazy_module("pyarrow.parquet")
 
 T = TypeVar("T")
 
