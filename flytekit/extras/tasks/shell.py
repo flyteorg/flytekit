@@ -71,10 +71,10 @@ class _PythonFStringInterpolizer:
             return super().format_field(value, format_spec)
 
     def interpolate(
-            self,
-            tmpl: str,
-            inputs: typing.Optional[typing.Dict[str, str]] = None,
-            outputs: typing.Optional[typing.Dict[str, str]] = None,
+        self,
+        tmpl: str,
+        inputs: typing.Optional[typing.Dict[str, str]] = None,
+        outputs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> str:
         """
         Interpolate python formatted string templates with variables from the input and output
@@ -102,15 +102,15 @@ class ShellTask(PythonInstanceTask[T]):
     """ """
 
     def __init__(
-            self,
-            name: str,
-            debug: bool = False,
-            script: typing.Optional[str] = None,
-            script_file: typing.Optional[str] = None,
-            task_config: T = None,
-            inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-            output_locs: typing.Optional[typing.List[OutputLocation]] = None,
-            **kwargs,
+        self,
+        name: str,
+        debug: bool = False,
+        script: typing.Optional[str] = None,
+        script_file: typing.Optional[str] = None,
+        task_config: T = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        output_locs: typing.Optional[typing.List[OutputLocation]] = None,
+        **kwargs,
     ):
         """
         Args:
@@ -249,15 +249,15 @@ class RawShellTask(ShellTask):
     """ """
 
     def __init__(
-            self,
-            name: str,
-            debug: bool = False,
-            script: typing.Optional[str] = None,
-            script_file: typing.Optional[str] = None,
-            task_config: T = None,
-            inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-            output_locs: typing.Optional[typing.List[OutputLocation]] = None,
-            **kwargs,
+        self,
+        name: str,
+        debug: bool = False,
+        script: typing.Optional[str] = None,
+        script_file: typing.Optional[str] = None,
+        task_config: T = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        output_locs: typing.Optional[typing.List[OutputLocation]] = None,
+        **kwargs,
     ):
         """
         The `RawShellTask` is a minimal extension of the existing `ShellTask`. It's purpose is to support wrapping a
