@@ -22,3 +22,7 @@ repos:
   rev: v0.8.0.4
   hooks:
   - id: shellcheck
+- repo: https://github.com/conorfalvey/check_pdb_hook
+  rev: 0.0.9
+  hooks:
+    - id: check_pdb_hook
