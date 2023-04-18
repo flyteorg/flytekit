@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flytekit import PythonFunctionTask
 from flytekit.core.tracker import get_full_module_path
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.workflow import WorkflowBase, ImperativeWorkflow
 
 
 def compress_scripts(source_path: str, destination: str, module_name: str):
@@ -94,7 +94,7 @@ def copy_module_to_destination(
         flyte_entity = mod.__dict__[flyte_entity_name]
         if (
             isinstance(flyte_entity, (PythonFunctionTask, WorkflowBase))
-            and hasattr(flyte_entity, "instantiated_in")
+            and not isinstance(flyte_entity, ImperativeWorkflow)
             and flyte_entity.instantiated_in
         ):
             copy_module_to_destination(
