@@ -208,6 +208,7 @@ class Image(object):
         :rtype: Text
         """
         from docker_image import reference
+
         if pathlib.Path(tag).is_file():
             with open(tag, "r") as f:
                 image_spec_dict = yaml.safe_load(f)
