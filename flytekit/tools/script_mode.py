@@ -92,7 +92,11 @@ def copy_module_to_destination(
     # Try to copy other files to destination if tasks or workflows aren't in the same file
     for flyte_entity_name in mod.__dict__:
         flyte_entity = mod.__dict__[flyte_entity_name]
-        if isinstance(flyte_entity, (PythonFunctionTask, WorkflowBase)) and flyte_entity.instantiated_in:
+        if (
+            isinstance(flyte_entity, (PythonFunctionTask, WorkflowBase))
+            and hasattr(flyte_entity, "instantiated_in")
+            and flyte_entity.instantiated_in
+        ):
             copy_module_to_destination(
                 original_source_path, original_destination_path, flyte_entity.instantiated_in, visited
             )
