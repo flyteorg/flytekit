@@ -1,5 +1,6 @@
 import datetime
 import os
+import platform
 import string
 import subprocess
 import typing
@@ -120,7 +121,8 @@ class ShellTask(PythonInstanceTask[T]):
             task_config: T Configuration for the task, can be either a Pod (or coming soon, BatchJob) config
             inputs: A Dictionary of input names to types
             output_locs: A list of :py:class:`OutputLocations`
-            **kwargs: Other arguments that can be passed to :ref:class:`PythonInstanceTask`
+            **kwargs: Other arguments that can be passed to
+                :py:class:`~flytekit.core.python_function_task.PythonInstanceTask`
         """
         if script and script_file:
             raise ValueError("Only either of script or script_file can be provided")
@@ -212,6 +214,9 @@ class ShellTask(PythonInstanceTask[T]):
             print("\n==============================================\n")
 
         try:
+            if platform.system() == "Windows" and os.environ.get("ComSpec") is None:
+                # https://github.com/python/cpython/issues/101283
+                os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
             subprocess.check_call(gen_script, shell=True)
         except subprocess.CalledProcessError as e:
             files = os.listdir(".")
@@ -355,7 +360,6 @@ class RawShellTask(ShellTask):
 # This utility function allows for the specification of env variables, arguments, and the actual script within the
 # workflow definition rather than at `RawShellTask` instantiation
 def get_raw_shell_task(name: str) -> RawShellTask:
-
     return RawShellTask(
         name=name,
         debug=True,

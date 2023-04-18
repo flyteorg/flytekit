@@ -1,4 +1,5 @@
 import functools
+import json
 import os
 import pathlib
 import typing
@@ -27,6 +28,7 @@ from flytekit.clis.sdk_in_container.run import (
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
 from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteRemote
 
@@ -64,6 +66,7 @@ def test_imperative_wf():
 
 def test_pyflyte_run_cli():
     runner = CliRunner()
+    parquet_file = os.path.join(DIR_NAME, "testdata/df.parquet")
     result = runner.invoke(
         pyflyte.main,
         [
@@ -83,7 +86,7 @@ def test_pyflyte_run_cli():
             "--f",
             '{"x":1.0, "y":2.0}',
             "--g",
-            os.path.join(DIR_NAME, "testdata/df.parquet"),
+            parquet_file,
             "--i",
             "2020-05-01",
             "--j",
@@ -97,6 +100,10 @@ def test_pyflyte_run_cli():
             "--image",
             os.path.join(DIR_NAME, "testdata"),
             "--h",
+            "--n",
+            json.dumps([{"x": parquet_file}]),
+            "--o",
+            json.dumps({"x": [parquet_file]}),
         ],
         catch_exceptions=False,
     )
@@ -239,6 +246,17 @@ ic_result_3 = ImageConfig(
     images=[Image(name="xyz", fqn="ghcr.io/asdf/asdf", tag="latest"), Image(name="abc", fqn="docker.io/abc", tag=None)],
 )
 
+ic_result_4 = ImageConfig(
+    default_image=Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+    images=[
+        Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+        Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
+        Image(name="abc", fqn="docker.io/abc", tag=None),
+    ],
+)
+
+IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpec.yaml")
+
 
 @pytest.mark.parametrize(
     "image_string, leaf_configuration_file_name, final_image_config",
@@ -246,9 +264,16 @@ ic_result_3 = ImageConfig(
         ("ghcr.io/flyteorg/mydefault:py3.9-latest", "no_images.yaml", ic_result_1),
         ("asdf=ghcr.io/asdf/asdf:latest", "sample.yaml", ic_result_2),
         ("xyz=ghcr.io/asdf/asdf:latest", "sample.yaml", ic_result_3),
+        (IMAGE_SPEC, "sample.yaml", ic_result_4),
     ],
 )
 def test_pyflyte_run_run(image_string, leaf_configuration_file_name, final_image_config):
+    class TestImageSpecBuilder(ImageSpecBuilder):
+        def build_image(self, img):
+            ...
+
+    ImageBuildEngine.register("test", TestImageSpecBuilder())
+
     @task
     def a():
         ...

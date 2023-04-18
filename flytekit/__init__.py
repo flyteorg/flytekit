@@ -26,6 +26,7 @@ These are the essentials needed to get started writing tasks and workflows. The 
    map_task
    ~core.workflow.ImperativeWorkflow
    ~core.node_creation.create_node
+   ~core.promise.NodeOutput
    FlyteContextManager
 
 Running Locally
@@ -194,6 +195,8 @@ Documentation
 import sys
 from typing import Generator
 
+from rich import traceback
+
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
@@ -205,7 +208,6 @@ from flytekit.core.checkpointer import Checkpoint
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.hash import HashMethod
@@ -223,7 +225,6 @@ from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
 from flytekit.extras import pytorch, sklearn, tensorflow
-from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
 from flytekit.loggers import logger
 from flytekit.models.common import Annotations, AuthRole, Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
@@ -298,3 +299,6 @@ def load_implicit_plugins():
 
 # Load all implicit plugins
 load_implicit_plugins()
+
+# Pretty-print exception messages
+traceback.install(width=None, extra_lines=0)

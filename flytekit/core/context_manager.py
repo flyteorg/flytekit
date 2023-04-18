@@ -84,7 +84,7 @@ class ExecutionParameters(object):
         decks: List[Deck]
         raw_output_prefix: Optional[str] = None
         execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier] = None
-        working_dir: typing.Optional[utils.AutoDeletingTempDir] = None
+        working_dir: typing.Optional[str] = None
         checkpoint: typing.Optional[Checkpoint] = None
         execution_date: typing.Optional[datetime] = None
         logging: Optional[_logging.Logger] = None
@@ -202,12 +202,10 @@ class ExecutionParameters(object):
         return self._raw_output_prefix
 
     @property
-    def working_directory(self) -> utils.AutoDeletingTempDir:
+    def working_directory(self) -> str:
         """
         A handle to a special working directory for easily producing temporary files.
-
         TODO: Usage examples
-        TODO: This does not always return a AutoDeletingTempDir
         """
         return self._working_directory
 
@@ -331,13 +329,13 @@ class SecretsManager(object):
         """
         return self._GroupSecrets(item, self)
 
-    def get(self, group: str, key: str) -> str:
+    def get(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         """
-        self.check_group_key(group, key)
-        env_var = self.get_secrets_env_var(group, key)
-        fpath = self.get_secrets_file(group, key)
+        self.check_group_key(group)
+        env_var = self.get_secrets_env_var(group, key, group_version)
+        fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
         if v is not None:
             return v
@@ -348,26 +346,27 @@ class SecretsManager(object):
             f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
-    def get_secrets_env_var(self, group: str, key: str) -> str:
+    def get_secrets_env_var(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
-        self.check_group_key(group, key)
-        return f"{self._env_prefix}{group.upper()}_{key.upper()}"
+        self.check_group_key(group)
+        l = [k.upper() for k in filter(None, (group, group_version, key))]
+        return f"{self._env_prefix}{'_'.join(l)}"
 
-    def get_secrets_file(self, group: str, key: str) -> str:
+    def get_secrets_file(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
         """
         Returns a path that matches the file to look for the secrets
         """
-        self.check_group_key(group, key)
-        return os.path.join(self._base_dir, group.lower(), f"{self._file_prefix}{key.lower()}")
+        self.check_group_key(group)
+        l = [k.lower() for k in filter(None, (group, group_version, key))]
+        l[-1] = f"{self._file_prefix}{l[-1]}"
+        return os.path.join(self._base_dir, *l)
 
     @staticmethod
-    def check_group_key(group: str, key: str):
+    def check_group_key(group: str):
         if group is None or group == "":
             raise ValueError("secrets group is a mandatory field.")
-        if key is None or key == "":
-            raise ValueError("secrets key is a mandatory field.")
 
 
 @dataclass(frozen=True)

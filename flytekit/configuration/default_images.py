@@ -7,6 +7,7 @@ class PythonVersion(enum.Enum):
     PYTHON_3_8 = (3, 8)
     PYTHON_3_9 = (3, 9)
     PYTHON_3_10 = (3, 10)
+    PYTHON_3_11 = (3, 11)
 
 
 class DefaultImages(object):
@@ -18,6 +19,7 @@ class DefaultImages(object):
         PythonVersion.PYTHON_3_8: "cr.flyte.org/flyteorg/flytekit:py3.8-",
         PythonVersion.PYTHON_3_9: "cr.flyte.org/flyteorg/flytekit:py3.9-",
         PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-",
+        PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-",
     }
 
     @classmethod
@@ -36,6 +38,7 @@ class DefaultImages(object):
             version_suffix = __version__
         if python_version is None:
             python_version = PythonVersion((sys.version_info.major, sys.version_info.minor))
+
         return cls._DEFAULT_IMAGE_PREFIXES[python_version] + (
             flytekit_version.replace("v", "") if flytekit_version else version_suffix
         )

@@ -37,7 +37,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.interface import Variable
-from flytekit.models.literals import Blob, BlobMetadata, Primitive, Union
+from flytekit.models.literals import Blob, BlobMetadata, LiteralCollection, LiteralMap, Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
@@ -81,7 +81,7 @@ class DirParamType(click.ParamType):
                 raise ValueError(
                     f"Currently only directories containing one file are supported, found [{len(files)}] files found in {p.resolve()}"
                 )
-            return Directory(dir_path=value, local_file=files[0].resolve())
+            return Directory(dir_path=str(p), local_file=files[0].resolve())
         raise click.BadParameter(f"parameter should be a valid directory path, {value}")
 
 
@@ -215,16 +215,18 @@ class FlyteLiteralConverter(object):
             return self._literal_type.simple == SimpleType.BOOLEAN
         return False
 
-    def get_uri_for_dir(self, value: Directory, remote_filename: typing.Optional[str] = None):
+    def get_uri_for_dir(
+        self, ctx: typing.Optional[click.Context], value: Directory, remote_filename: typing.Optional[str] = None
+    ):
         uri = value.dir_path
 
         if self._remote and value.local:
             md5, _ = script_mode.hash_file(value.local_file)
             if not remote_filename:
                 remote_filename = value.local_file.name
-            df_remote_location = self._create_upload_fn(filename=remote_filename, content_md5=md5)
-            self._flyte_ctx.file_access.put_data(value.local_file, df_remote_location.signed_url)
-            uri = df_remote_location.native_url[: -len(remote_filename)]
+            remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+            _, native_url = remote.upload_file(value.local_file)
+            uri = native_url[: -len(remote_filename)]
 
         return uri
 
@@ -232,7 +234,7 @@ class FlyteLiteralConverter(object):
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: Directory
     ) -> Literal:
 
-        uri = self.get_uri_for_dir(value, "00000.parquet")
+        uri = self.get_uri_for_dir(ctx, value, "00000.parquet")
 
         lit = Literal(
             scalar=Scalar(
@@ -254,15 +256,13 @@ class FlyteLiteralConverter(object):
         value: typing.Union[Directory, FileParam],
     ) -> Literal:
         if isinstance(value, Directory):
-            uri = self.get_uri_for_dir(value)
+            uri = self.get_uri_for_dir(ctx, value)
         else:
             uri = value.filepath
             if self._remote and value.local:
                 fp = pathlib.Path(value.filepath)
-                md5, _ = script_mode.hash_file(value.filepath)
-                df_remote_location = self._create_upload_fn(filename=fp.name, content_md5=md5)
-                self._flyte_ctx.file_access.put_data(fp, df_remote_location.signed_url)
-                uri = df_remote_location.native_url
+                remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+                _, uri = remote.upload_file(fp)
 
         lit = Literal(
             scalar=Scalar(
@@ -308,14 +308,38 @@ class FlyteLiteralConverter(object):
         if self._literal_type.blob:
             return self.convert_to_blob(ctx, param, value)
 
-        if self._literal_type.collection_type or self._literal_type.map_value_type:
-            # TODO Does not support nested flytefile, flyteschema types
-            v = json.loads(value) if isinstance(value, str) else value
-            if self._literal_type.collection_type and not isinstance(v, list):
-                raise click.BadParameter(f"Expected json list '[...]', parsed value is {type(v)}")
-            if self._literal_type.map_value_type and not isinstance(v, dict):
-                raise click.BadParameter("Expected json map '{}', parsed value is {%s}" % type(v))
-            return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
+        if self._literal_type.collection_type:
+            python_value = json.loads(value) if isinstance(value, str) else value
+            if not isinstance(python_value, list):
+                raise click.BadParameter(f"Expected json list '[...]', parsed value is {type(python_value)}")
+            converter = FlyteLiteralConverter(
+                ctx,
+                self._flyte_ctx,
+                self._literal_type.collection_type,
+                type(python_value[0]),
+                self._create_upload_fn,
+            )
+            lt = Literal(collection=LiteralCollection([]))
+            for v in python_value:
+                click_val = converter._click_type.convert(v, param, ctx)
+                lt.collection.literals.append(converter.convert_to_literal(ctx, param, click_val))
+            return lt
+        if self._literal_type.map_value_type:
+            python_value = json.loads(value) if isinstance(value, str) else value
+            if not isinstance(python_value, dict):
+                raise click.BadParameter("Expected json map '{}', parsed value is {%s}" % type(python_value))
+            converter = FlyteLiteralConverter(
+                ctx,
+                self._flyte_ctx,
+                self._literal_type.map_value_type,
+                type(python_value[next(iter(python_value))]),
+                self._create_upload_fn,
+            )
+            lt = Literal(map=LiteralMap({}))
+            for k, v in python_value.items():
+                click_val = converter._click_type.convert(v, param, ctx)
+                lt.map.literals[k] = converter.convert_to_literal(ctx, param, click_val)
+            return lt
 
         if self._literal_type.union_type:
             return self.convert_to_union(ctx, param, value)
@@ -447,14 +471,14 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             required=False,
             is_flag=True,
             default=False,
-            help="Whether wait for the execution to finish",
+            help="Whether to wait for the execution to finish",
         ),
         click.Option(
             param_decls=["--dump-snippet", "dump_snippet"],
             required=False,
             is_flag=True,
             default=False,
-            help="Whether dump a code snippet instructing how to load the workflow execution using flyteremote",
+            help="Whether to dump a code snippet instructing how to load the workflow execution using flyteremote",
         ),
     ]
 
@@ -673,12 +697,12 @@ class RunCommand(click.MultiCommand):
 
 
 _run_help = """
-This command can execute either a workflow or a task from the commandline, for fully self-contained scripts.
-Tasks and workflows cannot be imported from other files currently. Please use `pyflyte package` or
-`pyflyte register` to handle those and then launch from the Flyte UI or `flytectl`
+This command can execute either a workflow or a task from the command line, for fully self-contained scripts.
+Tasks and workflows cannot be imported from other files currently. Please use ``pyflyte package`` or
+``pyflyte register`` to handle those and then launch from the Flyte UI or ``flytectl``.
 
 Note: This command only works on regular Python packages, not namespace packages. When determining
-      the root of your project, it finds the first folder that does not have an __init__.py file.
+the root of your project, it finds the first folder that does not have an ``__init__.py`` file.
 """
 
 run = RunCommand(
