@@ -25,7 +25,7 @@ import os
 import pathlib
 import tempfile
 import typing
-from typing import Union, cast
+from typing import Any, Dict, Union, cast
 from uuid import UUID
 
 import fsspec
@@ -46,7 +46,9 @@ _ANON = "anon"
 
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
-    kwargs = {}
+    kwargs: Dict[str, Any] = {
+        "cache_regions": True,
+    }
     if s3_cfg.access_key_id:
         kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
 
