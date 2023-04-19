@@ -10,4 +10,4 @@ This package contains things that are useful when extending Flytekit.
    MPIJob
 """
 
-from .task import MPIJob
+from .task import HorovodJob, MPIJob

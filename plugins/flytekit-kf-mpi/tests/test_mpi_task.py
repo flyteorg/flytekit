@@ -1,4 +1,4 @@
-from flytekitplugins.kfmpi.task import MPIJob, MPIJobModel
+from flytekitplugins.kfmpi.task import HorovodJob, MPIJob, MPIJobModel
 
 from flytekit import Resources, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -41,3 +41,26 @@ def test_mpi_task():
 
     assert my_mpi_task.get_custom(settings) == {"numLauncherReplicas": 10, "numWorkers": 10, "slots": 1}
     assert my_mpi_task.task_type == "mpi"
+
+
+def test_horovod_task():
+    @task(
+        task_config=HorovodJob(num_workers=5, num_launcher_replicas=5, slots=1),
+    )
+    def my_horovod_task():
+        ...
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+    cmd = my_horovod_task.get_command(settings)
+    assert "horovodrun" in cmd
+    config = my_horovod_task.get_config(settings)
+    assert "/usr/sbin/sshd" in config["worker_spec_command"]
+    custom = my_horovod_task.get_custom(settings)
+    assert isinstance(custom, dict) is True
