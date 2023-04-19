@@ -56,9 +56,7 @@ def _compute_array_job_index():
     if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
         offset = int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
     if os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-        return offset + int(
-            os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"))
-        )
+        return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
     return offset
 
 
@@ -83,23 +81,17 @@ def _dispatch_execute(
         # Step1
         local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = utils.load_proto_from_file(
-            _literals_pb2.LiteralMap, local_inputs_file
-        )
+        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
         # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
         # of the FlyteScopedExceptions
-        outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(
-            ctx, idl_input_literals
-        )
+        outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
         # Step3a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
-            output_file_dict = {
-                _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})
-            }
+            output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
             output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
@@ -118,16 +110,11 @@ def _dispatch_execute(
     # Handle user-scoped errors
     except _scoped_exceptions.FlyteScopedUserException as e:
         if isinstance(e.value, IgnoreOutputs):
-            logger.warning(
-                f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!"
-            )
+            logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                e.error_code,
-                e.verbose_message,
-                e.kind,
-                _execution_models.ExecutionError.ErrorKind.USER,
+                e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.USER
             )
         )
         logger.error("!! Begin User Error Captured by Flyte !!")
@@ -137,16 +124,11 @@ def _dispatch_execute(
     # Handle system-scoped errors
     except _scoped_exceptions.FlyteScopedSystemException as e:
         if isinstance(e.value, IgnoreOutputs):
-            logger.warning(
-                f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!"
-            )
+            logger.warning(f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                e.error_code,
-                e.verbose_message,
-                e.kind,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.SYSTEM
             )
         )
         logger.error("!! Begin System Error Captured by Flyte !!")
@@ -166,30 +148,19 @@ def _dispatch_execute(
                 _execution_models.ExecutionError.ErrorKind.SYSTEM,
             )
         )
-        logger.error(
-            f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}"
-        )
+        logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
         logger.error("!! Begin Unknown System Error Captured by Flyte !!")
         logger.error(exc_str)
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
-        utils.write_proto_to_file(
-            v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k)
-        )
+        utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
 
-    ctx.file_access.put_data(
-        ctx.execution_state.engine_dir, output_prefix, is_multipart=True
-    )
-    logger.info(
-        f"Engine folder written successfully to the output prefix {output_prefix}"
-    )
+    ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
+    logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
     logger.debug("Finished _dispatch_execute")
 
-    if (
-        os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true"
-        and _constants.ERROR_FILE_NAME in output_file_dict
-    ):
+    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
         # This env is set by the flytepropeller
         # AWS batch job get the status from the exit code, so once we catch the error,
         # we should return the error code here
@@ -249,12 +220,8 @@ def setup_execution(
 
     checkpointer = None
     if checkpoint_path is not None:
-        checkpointer = SyncCheckpoint(
-            checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint
-        )
-        logger.debug(
-            f"Checkpointer created with source {prev_checkpoint} and dest {checkpoint_path}"
-        )
+        checkpointer = SyncCheckpoint(checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint)
+        logger.debug(f"Checkpointer created with source {prev_checkpoint} and dest {checkpoint_path}")
 
     execution_parameters = ExecutionParameters(
         execution_id=_identifier.WorkflowExecutionIdentifier(
@@ -281,9 +248,7 @@ def setup_execution(
         tmp_dir=user_workspace_dir,
         raw_output_prefix=raw_output_data_prefix,
         checkpoint=checkpointer,
-        task_id=_identifier.Identifier(
-            _identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version
-        ),
+        task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
 
     try:
@@ -292,9 +257,7 @@ def setup_execution(
             raw_output_prefix=raw_output_data_prefix,
         )
     except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
-        logger.error(
-            f"No data plugin found for raw output prefix {raw_output_data_prefix}"
-        )
+        logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
         raise
 
     es = ctx.new_execution_state().with_params(
@@ -320,7 +283,6 @@ def setup_execution(
     debugger_on = get_one_of("FLYTE_INTERNAL_START_DEBUGPY", "__FF_DBGPY")
     if debugger_on:
         import debugpy
-
         debug_port = int(get_one_of("FLYTE_INTERNAL_DEBUGPY_PORT", "__FF_DBGPY_PORT") or 5678)
         debugpy.listen(("0.0.0.0", debug_port))
         debugpy.wait_for_client()
@@ -433,16 +395,10 @@ def _execute_map_task(
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
-        raw_output_data_prefix,
-        checkpoint_path,
-        prev_checkpoint,
-        dynamic_addl_distro,
-        dynamic_dest_dir,
+        raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         mtr = MapTaskResolver()
-        map_task = mtr.load_task(
-            loader_args=resolver_args, max_concurrency=max_concurrency
-        )
+        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         task_index = _compute_array_job_index()
         output_prefix = os.path.join(output_prefix, str(task_index))
@@ -459,9 +415,7 @@ def _execute_map_task(
 
 
 def normalize_inputs(
-    raw_output_data_prefix: Optional[str],
-    checkpoint_path: Optional[str],
-    prev_checkpoint: Optional[str],
+    raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
 ):
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -470,11 +424,7 @@ def normalize_inputs(
         raw_output_data_prefix = None
     if checkpoint_path == "{{.checkpointOutputPrefix}}":
         checkpoint_path = None
-    if (
-        prev_checkpoint == "{{.prevCheckpointPrefix}}"
-        or prev_checkpoint == ""
-        or prev_checkpoint == '""'
-    ):
+    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "" or prev_checkpoint == '""':
         prev_checkpoint = None
 
     return raw_output_data_prefix, checkpoint_path, prev_checkpoint
@@ -543,9 +493,7 @@ def execute_task_cmd(
 @_click.option("--additional-distribution", required=False)
 @_click.option("--dest-dir", required=False)
 @_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
-def fast_execute_task_cmd(
-    additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]
-):
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
@@ -559,14 +507,7 @@ def fast_execute_task_cmd(
     cmd = []
     for arg in task_execute_cmd:
         if arg == "--resolver":
-            cmd.extend(
-                [
-                    "--dynamic-addl-distro",
-                    additional_distribution,
-                    "--dynamic-dest-dir",
-                    dest_dir,
-                ]
-            )
+            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
         cmd.append(arg)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
