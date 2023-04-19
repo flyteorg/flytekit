@@ -69,7 +69,13 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
         """
         Please see class level documentation.
         """
-        super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
+        super().__init__(
+            name=name,
+            task_config=task_config,
+            task_type=task_type,
+            task_resolver=task_resolver,
+            **kwargs,
+        )
 
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
@@ -114,9 +120,13 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         :param str task_type: String task type to be associated with this Task
         """
         if task_function is None:
-            raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
-        self._native_interface = transform_function_to_interface(task_function, Docstring(callable_=task_function))
-    mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
+            raise ValueError(
+                "TaskFunction is a required parameter for PythonFunctionTask"
+            )
+        self._native_interface = transform_function_to_interface(
+            task_function, Docstring(callable_=task_function)
+        )
+        mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         name, _, _, _ = extract_task_module(task_function)
         super().__init__(
             task_type=task_type,
@@ -167,11 +177,17 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
     def _create_and_cache_dynamic_workflow(self):
         if self._wf is None:
-            workflow_meta = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
-            defaults = WorkflowMetadataDefaults(
-                interruptible=self.metadata.interruptible if self.metadata.interruptible is not None else False
+            workflow_meta = WorkflowMetadata(
+                on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY
             )
-            self._wf = PythonFunctionWorkflow(self._task_function, metadata=workflow_meta, default_metadata=defaults)
+            defaults = WorkflowMetadataDefaults(
+                interruptible=self.metadata.interruptible
+                if self.metadata.interruptible is not None
+                else False
+            )
+            self._wf = PythonFunctionWorkflow(
+                self._task_function, metadata=workflow_meta, default_metadata=defaults
+            )
 
     def compile_into_workflow(
         self, ctx: FlyteContext, task_function: Callable, **kwargs
@@ -208,7 +224,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             if len(workflow_spec.template.nodes) == 0:
                 return _literal_models.LiteralMap(
                     literals={
-                        binding.var: binding.binding.to_literal_model() for binding in workflow_spec.template.outputs
+                        binding.var: binding.binding.to_literal_model()
+                        for binding in workflow_spec.template.outputs
                     }
                 )
 
@@ -217,14 +234,18 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             for entity, model in model_entities.items():
                 # We only care about gathering tasks here. Launch plans are handled by
                 # propeller. Subworkflows should already be in the workflow spec.
-                if not isinstance(entity, Task) and not isinstance(entity, task_models.TaskSpec):
+                if not isinstance(entity, Task) and not isinstance(
+                    entity, task_models.TaskSpec
+                ):
                     continue
 
                 # We are currently not supporting reference tasks since these will
                 # require a network call to flyteadmin to populate the TaskTemplate
                 # model
                 if isinstance(entity, ReferenceTask):
-                    raise Exception("Reference tasks are currently unsupported within dynamic tasks")
+                    raise Exception(
+                        "Reference tasks are currently unsupported within dynamic tasks"
+                    )
 
                 if not isinstance(model, task_models.TaskSpec):
                     raise TypeError(
@@ -258,7 +279,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         representing that newly generated workflow, instead of executing it.
         """
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if (
+            ctx.execution_state
+            and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+        ):
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
@@ -268,8 +292,14 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
                 return VoidPromise(self.name)
 
-            if len(cast(PythonFunctionWorkflow, self._wf).python_interface.outputs) == 0:
-                raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
+            if (
+                len(cast(PythonFunctionWorkflow, self._wf).python_interface.outputs)
+                == 0
+            ):
+                raise FlyteValueException(
+                    function_outputs,
+                    "Interface output should've been VoidPromise or None.",
+                )
 
             # TODO: This will need to be cleaned up when we revisit top-level tuple support.
             expected_output_names = list(self.python_interface.outputs.keys())
@@ -278,13 +308,16 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 # length one. That convention is used for naming outputs - and single-length-NamedTuples are
                 # particularly troublesome but elegant handling of them is not a high priority
                 # Again, we're using the output_tuple_name as a proxy.
-                if self.python_interface.output_tuple_name and isinstance(function_outputs, tuple):
+                if self.python_interface.output_tuple_name and isinstance(
+                    function_outputs, tuple
+                ):
                     wf_outputs_as_map = {expected_output_names[0]: function_outputs[0]}
                 else:
                     wf_outputs_as_map = {expected_output_names[0]: function_outputs}
             else:
                 wf_outputs_as_map = {
-                    expected_output_names[i]: function_outputs[i] for i, _ in enumerate(function_outputs)
+                    expected_output_names[i]: function_outputs[i]
+                    for i, _ in enumerate(function_outputs)
                 }
 
             # In a normal workflow, we'd repackage the promises coming from tasks into new Promises matching the
@@ -297,10 +330,18 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             )
             return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)
 
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+        if (
+            ctx.execution_state
+            and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        ):
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
+        if (
+            ctx.execution_state
+            and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
+        ):
             return exception_scopes.user_entry_point(task_function)(**kwargs)
 
-        raise ValueError(f"Invalid execution provided, execution state: {ctx.execution_state}")
+        raise ValueError(
+            f"Invalid execution provided, execution state: {ctx.execution_state}"
+        )
