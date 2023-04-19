@@ -45,7 +45,7 @@ setup(
         "importlib-metadata",
         "fsspec>=2023.3.0",
         "adlfs",
-        "s3fs",
+        "s3fs>=0.6.0",
         "gcsfs",
         "pyopenssl",
         "joblib",
