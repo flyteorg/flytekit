@@ -4,9 +4,6 @@ import typing
 from abc import abstractmethod
 from pathlib import Path
 
-from cloudpickle import dump, load
-
-
 class Checkpoint(object):
     """
     Base class for Checkpoint system. Checkpoint system allows reading and writing custom checkpoints from user
@@ -83,6 +80,13 @@ class Checkpoint(object):
         """
         raise NotImplementedError("Use one of the derived classes")
 
+    @property
+    def value(self):
+
+        raise NotImplementedError("Use one of the derived classes")
+    @value.setter
+    def value(self, v):
+        raise NotImplementedError("Use one of the derived classes")
 
 class SyncCheckpoint(Checkpoint):
     """
@@ -103,11 +107,11 @@ class SyncCheckpoint(Checkpoint):
             checkpoint_src: If a previous checkpoint should exist, this path should be set to the folder that contains the checkpoint information
             checkpoint_dest: Location where the new checkpoint should be copied to
         """
+        self._checkpoint = None
         self._checkpoint_dest = checkpoint_dest
         self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
         self._td = tempfile.TemporaryDirectory()
         self._prev_download_path: typing.Optional[Path] = None
-        self._checkpoints = {}
 
     def __del__(self):
         self._td.cleanup()
@@ -183,44 +187,3 @@ class SyncCheckpoint(Checkpoint):
         p = io.BytesIO(b)
         f = typing.cast(io.BufferedReader, p)
         self.save(f)
-
-    def __contains__(self, item: str):
-        return self._checkpoints[item] is not None
-
-    def __setitem__(self, key: str, value: any):
-
-        # We have to lazy load, until we fix the imports
-        from flytekit.core.context_manager import FlyteContextManager
-        fa = FlyteContextManager.current_context().file_access
-
-        p = Path(self._td.name)
-        local_path = p.joinpath(self.DICT_TMP_DST_PATH)
-        local_path = local_path.joinpath(key)
-        local_path.parent.mkdir(parents=True, exist_ok=True)
-        remote_path = fa._default_remote.sep.join([str(self._checkpoint_dest), self.DICT_TMP_DST_PATH, key])
-        with local_path.open("wb") as f:
-            dump(value, f)
-        fa.upload(str(local_path), str(remote_path))
-        self._checkpoints[key] = False
-
-    def __getitem__(self, key: str) -> any:
-
-        # We have to lazy load, until we fix the imports
-        from flytekit.core.context_manager import FlyteContextManager
-        fa = FlyteContextManager.current_context().file_access
-
-        if key not in self._checkpoints:
-            raise ValueError(f"Key {key} not found in checkpoint")
-        elif self._checkpoints[key] is False:
-            p = Path(self._td.name)
-            local_path = p.joinpath(self.DICT_TMP_DST_PATH)
-            local_path = local_path.joinpath(key)
-            remote_path = fa._default_remote.sep.join([str(self._checkpoint_dest), self.DICT_TMP_DST_PATH, key])
-            if not local_path.exists():
-                fa.download(str(remote_path), str(local_path))
-            with local_path.open("rb") as f:
-                output = load(f)
-            self._checkpoints[key] = output
-        return self._checkpoints[key]
-
-
