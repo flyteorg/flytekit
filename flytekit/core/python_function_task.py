@@ -20,12 +20,24 @@ from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
 from flytekit.core.base_task import Task, TaskResolverMixin
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import (
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+)
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.promise import VoidPromise, translate_inputs_to_literals
-from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
-from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
+from flytekit.core.python_auto_container import (
+    PythonAutoContainerTask,
+    default_task_resolver,
+)
+from flytekit.core.tracker import (
+    extract_task_module,
+    is_functools_wrapped_module_level,
+    isnested,
+    istestfunction,
+)
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
     WorkflowFailurePolicy,
