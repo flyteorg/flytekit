@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flytekit import PythonFunctionTask
 from flytekit.core.tracker import get_full_module_path
-from flytekit.core.workflow import WorkflowBase, ImperativeWorkflow
+from flytekit.core.workflow import ImperativeWorkflow, WorkflowBase
 
 
 def compress_scripts(source_path: str, destination: str, module_name: str):
