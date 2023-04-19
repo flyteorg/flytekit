@@ -1,4 +1,5 @@
 import functools
+import json
 import os
 import pathlib
 import typing
@@ -65,6 +66,7 @@ def test_imperative_wf():
 
 def test_pyflyte_run_cli():
     runner = CliRunner()
+    parquet_file = os.path.join(DIR_NAME, "testdata/df.parquet")
     result = runner.invoke(
         pyflyte.main,
         [
@@ -84,7 +86,7 @@ def test_pyflyte_run_cli():
             "--f",
             '{"x":1.0, "y":2.0}',
             "--g",
-            os.path.join(DIR_NAME, "testdata/df.parquet"),
+            parquet_file,
             "--i",
             "2020-05-01",
             "--j",
@@ -98,6 +100,10 @@ def test_pyflyte_run_cli():
             "--image",
             os.path.join(DIR_NAME, "testdata"),
             "--h",
+            "--n",
+            json.dumps([{"x": parquet_file}]),
+            "--o",
+            json.dumps({"x": [parquet_file]}),
         ],
         catch_exceptions=False,
     )
