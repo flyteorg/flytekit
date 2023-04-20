@@ -13,6 +13,19 @@ def my_wf() -> str:
     return "hello world"
 """
 
+IMPERATIVE_WORKFLOW = """
+from flytekit import Workflow, task
+
+@task
+def t1(a: int):
+    print(a)
+
+
+wf = Workflow(name="my.imperative.workflow.example")
+wf.add_workflow_input("a", int)
+node_t1 = wf.add_entity(t1, a=wf.inputs["a"])
+"""
+
 T1_TASK = """
 from flytekit import task
 from wf2.test import t2
@@ -44,6 +57,9 @@ def test_deterministic_hash(tmp_path):
     workflow_file = workflows_dir / "hello_world.py"
     workflow_file.write_text(MAIN_WORKFLOW)
 
+    imperative_workflow_file = workflows_dir / "imperative_wf.py"
+    imperative_workflow_file.write_text(IMPERATIVE_WORKFLOW)
+
     t1_dir = tmp_path / "wf1"
     t1_dir.mkdir()
     open(t1_dir / "__init__.py", "a").close()
@@ -58,7 +74,6 @@ def test_deterministic_hash(tmp_path):
 
     destination = tmp_path / "destination"
 
-    print(workflows_dir)
     sys.path.append(str(workflows_dir.parent))
     compress_scripts(str(workflows_dir.parent), str(destination), "workflows.hello_world")
 
@@ -81,3 +96,5 @@ def test_deterministic_hash(tmp_path):
     )
     result.check_returncode()
     assert len(next(os.walk(test_dir))[1]) == 3
+
+    compress_scripts(str(workflows_dir.parent), str(destination), "workflows.imperative_wf")
