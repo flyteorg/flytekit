@@ -54,7 +54,7 @@ class ImageSpec:
             container_image = f"{self.registry}/{container_image}"
         return container_image
 
-    def inside(self) -> bool:
+    def is_inside(self) -> bool:
         if os.environ.get(FLYTE_IMAGE_NAME):
             return os.environ.get(FLYTE_IMAGE_NAME) == self.image_name()
         return True
