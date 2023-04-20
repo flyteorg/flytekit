@@ -111,7 +111,7 @@ class ImageBuildEngine:
     def build(cls, image_spec: ImageSpec):
         if image_spec.builder not in cls._REGISTRY:
             raise Exception(f"Builder {image_spec.builder} is not registered.")
-        if image_spec.exist():
+        if not image_spec.exist():
             click.secho(f"Image {image_spec.image_name()} not found. Building...", fg="blue")
             cls._REGISTRY[image_spec.builder].build_image(image_spec)
         else:
