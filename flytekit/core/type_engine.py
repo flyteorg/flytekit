@@ -987,14 +987,17 @@ class ListTransformer(TypeTransformer[T]):
         if ListTransformer.is_batchable(python_type):
             from flytekit.types.pickle.pickle import BatchSize, FlytePickle
 
-            batchSize = len(python_val)  # default batch size
+            batch_size = len(python_val)  # default batch size
             # parse annotated to get the number of items saved in a pickle file.
             if get_origin(python_type) is Annotated:
                 for annotation in get_args(python_type)[1:]:
                     if isinstance(annotation, BatchSize):
-                        batchSize = annotation.val
+                        batch_size = annotation.val
                         break
-            lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batchSize], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batchSize)]  # type: ignore
+            if batch_size > 0:
+                lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batch_size)]  # type: ignore
+            else:
+                lit_list = []
         else:
             t = self.get_sub_type(python_type)
             lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
