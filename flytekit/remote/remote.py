@@ -221,34 +221,33 @@ class FlyteRemote(object):
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
 
-    def retrieve(self, flyte_uri: typing.Optional[str] = None) -> LiteralsResolver:
-        if flyte_uri is None:
+    def get(self, flyte_url: typing.Optional[str] = None) -> typing.Optional[typing.Union[LiteralsResolver, str]]:
+        if flyte_url is None:
             raise user_exceptions.FlyteUserException("flyte_uri cannot be empty")
         ctx = self._ctx or FlyteContextManager.current_context()
-        plm = literals_pb2.LiteralMap()
-        read_data = None
         try:
-            resolved = self.client.resolve_artifact(flyte_uri)
-            remote_logger.debug(f"Resolved flyte url from {flyte_uri} to {resolved}")
-            with ctx.file_access.get_filesystem_for_path(resolved).open(resolved, "rb") as r:
-                read_data = r.read()
-        # Catch all exceptions and retry with the data proxy layer.
-        # Ketan wants to remove this and call a GetData endpoint directly.
-        except Exception:
-            remote_logger.info("Unable to retrieve results locally, trying remote link")
-            download_links = self.client.get_signed_download_link(flyte_uri)
-            if len(download_links) == 0:
-                raise user_exceptions.FlyteValueException(
-                    f"No signed download links retrieved from Admin for " f"{flyte_uri}"
-                )
-            d = download_links[0]  # protocol returns a list of links, just need the first one
-            with ctx.file_access.get_filesystem_for_path(d).open(d, "rb") as r:
-                read_data = r.read()
-                remote_logger.debug(f"Read {len(read_data)} from download link {d}")
+            data_response = self.client.get_data(flyte_url)
 
-        plm.ParseFromString(read_data)
-        lm = LiteralMap.from_flyte_idl(plm)
-        return LiteralsResolver(lm.literals)
+            if data_response.HasField("literal_map"):
+                lm = LiteralMap.from_flyte_idl(data_response.literal_map)
+                return LiteralsResolver(lm.literals)
+            elif data_response.HasField("flyte_deck_download_link"):
+                if len(data_response.flyte_deck_download_link.signed_url) == 0:
+                    raise ValueError(f"Flyte url {flyte_url} resolved to empty download link")
+                d = data_response.flyte_deck_download_link.signed_url[0]
+                remote_logger.debug(f"Attempting to download {d} resolved from flyte url {flyte_url}")
+                fs = ctx.file_access.get_filesystem_for_path(d)
+                with fs.open(d, "rb") as r:
+                    html = ctx.file_access.get_random_local_path()
+                    with open(html, "wb") as w:
+                        remote_logger.info(f"Writing Flyte deck to local file {html}")
+                        w.write(r.read())
+                    return html
+
+        except user_exceptions.FlyteUserException as e:
+            remote_logger.info(f"Error from Flyte backend when trying to fetch data: {e.__cause__}")
+
+        remote_logger.debug(f"Nothing found from {flyte_url}")
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""

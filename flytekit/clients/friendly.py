@@ -1019,16 +1019,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
-    def get_signed_download_link(self, flyte_uri: str) -> typing.List[str]:
-        # doesn't matter if this is input or output actually, encoded in the string itself.
-        req = _data_proxy_pb2.CreateDownloadLinkRequest(
-            artifact_type=_data_proxy_pb2.ARTIFACT_TYPE_INPUT, expires_in=None, flyte_url=flyte_uri
-        )
-        resp = super().create_download_link(create_download_link_request=req)
-        return [x for x in resp.signed_url]
+    def get_data(self, flyte_url: str) -> _data_proxy_pb2.GetDataResponse:
+        req = _data_proxy_pb2.GetDataRequest(flyte_url=flyte_url)
 
-    def resolve_artifact(self, flyte_uri: str) -> str:
-        req = _data_proxy_pb2.ResolveArtifactRequest(flyte_url=flyte_uri)
-        resp = self._dataproxy_stub.ResolveArtifact(req, metadata=self._metadata)
-        print(f"Response {resp}")
-        return resp.native_url
+        resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
+        return resp

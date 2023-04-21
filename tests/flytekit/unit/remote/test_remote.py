@@ -338,3 +338,25 @@ def test_launch_backfill(remote):
 
     wf = remote.launch_backfill("p", "d", start_date, end_date, "daily2", "v1", dry_run=True)
     assert wf
+
+
+@pytest.mark.sandbox_test
+def test_local_server():
+    """
+    the local config has
+    admin:
+      endpoint: localhost:8089
+      insecure: true
+    console:
+      endpoint: http://localhost:8088
+    """
+    from flytekit.configuration import Config
+    from flytekit.remote.remote import FlyteRemote
+
+    rr = FlyteRemote(
+        Config.auto(config_file="/Users/ytong/.flyte/local_admin.yaml"),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+    # lm = rr.get("flyte://v1/flytesnacks/development/at95kpg4rz7sfqjtmmd7/n0-0-n0-n1-0-dn3/i")
+    lm = rr.get("flyte://v1/flytesnacks/development/f6988c7bdad554a4da7a/n0/d")
