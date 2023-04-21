@@ -1,6 +1,6 @@
 import typing
 
-import click
+import rich_click as click
 import grpc
 from google.protobuf.json_format import MessageToJson
 
@@ -74,7 +74,7 @@ def pretty_print_exception(e: Exception):
     click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
 
 
-class ErrorHandlingCommand(click.Group):
+class ErrorHandlingCommand(click.RichGroup):
     def invoke(self, ctx: click.Context) -> typing.Any:
         try:
             return super().invoke(ctx)

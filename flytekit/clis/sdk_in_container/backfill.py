@@ -1,7 +1,7 @@
 import typing
 from datetime import datetime, timedelta
 
-import click
+import rich_click as click
 
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.run import DateTimeType, DurationParamType
@@ -10,8 +10,8 @@ _backfill_help = """
 The backfill command generates and registers a new workflow based on the input launchplan to run an
 automated backfill. The workflow can be managed using the Flyte UI and can be canceled, relaunched, and recovered.
 
-- ``launchplan`` refers to the name of the Launchplan
-- ``launchplan_version`` is optional and should be a valid version for a Launchplan version.
+    - ``launchplan`` refers to the name of the Launchplan
+    - ``launchplan_version`` is optional and should be a valid version for a Launchplan version.
 """
 
 
