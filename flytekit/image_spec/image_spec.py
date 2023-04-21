@@ -25,9 +25,9 @@ class ImageSpec:
     Args:
         name: name of the image.
         python_version: python version of the image.
+        builder: Type of plugin to build the image. Use envd by default.
         source_root: source root of the image.
         env: environment variables of the image.
-        destination_dir: destination directory of the image.
         registry: registry of the image.
         packages: list of python packages to install.
         apt_packages: list of apt packages to install.
@@ -54,7 +54,7 @@ class ImageSpec:
             container_image = f"{self.registry}/{container_image}"
         return container_image
 
-    def is_inside(self) -> bool:
+    def is_container(self) -> bool:
         if os.environ.get(FLYTE_IMAGE_NAME):
             return os.environ.get(FLYTE_IMAGE_NAME) == self.image_name()
         return True

@@ -26,6 +26,6 @@ def build():
     install.python_packages(name = ["pandas"])
     install.apt_packages(name = ["git"])
     install.python(version="3.8")
-    runtime.environ(env={'PYTHONPATH': '/root'})
+    runtime.environ(env={'PYTHONPATH': '/root', 'FLYTE_IMAGE_NAME': 'flytekit:yZ8jICcDTLoDArmNHbWNwg..'})
 """
     )

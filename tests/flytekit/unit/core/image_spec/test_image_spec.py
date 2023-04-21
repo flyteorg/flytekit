@@ -29,10 +29,10 @@ def test_image_spec():
     assert image_spec.builder == "envd"
     assert image_spec.source_root is None
     assert image_spec.env is None
-    assert image_spec.is_inside() is True
+    assert image_spec.is_container() is True
     assert image_spec.image_name() == "flytekit:yZ8jICcDTLoDArmNHbWNwg.."
     os.environ[FLYTE_IMAGE_NAME] = "flytekit:123"
-    assert image_spec.is_inside() is False
+    assert image_spec.is_container() is False
 
     class DummyImageSpecBuilder(ImageSpecBuilder):
         def build_image(self, img):
