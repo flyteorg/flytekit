@@ -13,7 +13,7 @@ import docker
 from dataclasses_json import dataclass_json
 from docker.errors import APIError, ImageNotFound
 
-FLYTE_IMAGE_NAME = "FLYTE_IMAGE_NAME"
+_F_IMG_ID = "_F_IMG_ID"
 
 
 @dataclass_json
@@ -55,8 +55,8 @@ class ImageSpec:
         return container_image
 
     def is_container(self) -> bool:
-        if os.environ.get(FLYTE_IMAGE_NAME):
-            return os.environ.get(FLYTE_IMAGE_NAME) == self.image_name()
+        if os.environ.get(_F_IMG_ID):
+            return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
     def exist(self) -> bool:

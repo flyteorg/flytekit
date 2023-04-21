@@ -3,12 +3,7 @@ import os
 import pytest
 
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import (
-    FLYTE_IMAGE_NAME,
-    ImageBuildEngine,
-    ImageSpecBuilder,
-    calculate_hash_from_image_spec,
-)
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpecBuilder, calculate_hash_from_image_spec
 
 
 def test_image_spec():
@@ -31,7 +26,7 @@ def test_image_spec():
     assert image_spec.env is None
     assert image_spec.is_container() is True
     assert image_spec.image_name() == "flytekit:yZ8jICcDTLoDArmNHbWNwg.."
-    os.environ[FLYTE_IMAGE_NAME] = "flytekit:123"
+    os.environ[_F_IMG_ID] = "flytekit:123"
     assert image_spec.is_container() is False
 
     class DummyImageSpecBuilder(ImageSpecBuilder):
