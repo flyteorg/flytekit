@@ -68,6 +68,8 @@ def create_backfill_workflow(
 
     logging.info(f"Generating backfill from {start_date} -> {end_date}. Parallel?[{parallel}]")
     wf = ImperativeWorkflow(name=f"backfill-{for_lp.name}")
+
+    input_name = schedule.kickoff_time_input_arg
     date_iter = croniter(cron_schedule.schedule, start_time=start_date, ret_type=datetime)
     prev_node = None
     actual_start = None
@@ -79,7 +81,10 @@ def create_backfill_workflow(
         if next_start_date >= end_date:
             break
         actual_end = next_start_date
-        next_node = wf.add_launch_plan(for_lp, t=next_start_date)
+        inputs = {}
+        if input_name:
+            inputs[input_name] = next_start_date
+        next_node = wf.add_launch_plan(for_lp, **inputs)
         next_node = next_node.with_overrides(
             name=f"b-{next_start_date}", retries=per_node_retries, timeout=per_node_timeout
         )
