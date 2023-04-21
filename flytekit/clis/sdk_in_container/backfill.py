@@ -168,11 +168,12 @@ def backfill(
             execute=execute,
             parallel=parallel,
         )
-        if entity:
-            console_url = remote.generate_console_url(entity)
-            if execute:
-                click.secho(f"\n Execution launched {console_url} to see execution in the console.", fg="green")
-                return
-            click.secho(f"\n Workflow registered at {console_url}", fg="green")
+        if dry_run:
+            return
+        console_url = remote.generate_console_url(entity)
+        if execute:
+            click.secho(f"\n Execution launched {console_url} to see execution in the console.", fg="green")
+            return
+        click.secho(f"\n Workflow registered at {console_url}", fg="green")
     except StopIteration as e:
         click.secho(f"{e.value}", fg="red")
