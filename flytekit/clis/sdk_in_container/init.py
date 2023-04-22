@@ -1,4 +1,4 @@
-import click
+import rich_click as click
 from cookiecutter.main import cookiecutter
 
 

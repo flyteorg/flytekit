@@ -9,7 +9,7 @@ import typing
 from dataclasses import dataclass
 from typing import cast
 
-import click
+import rich_click as click
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 from typing_extensions import get_args
@@ -610,7 +610,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     return _run
 
 
-class WorkflowCommand(click.MultiCommand):
+class WorkflowCommand(click.RichGroup):
     """
     click multicommand at the python file layer, subcommands should be all the workflows in the file.
     """
@@ -678,7 +678,7 @@ class WorkflowCommand(click.MultiCommand):
         return cmd
 
 
-class RunCommand(click.MultiCommand):
+class RunCommand(click.RichGroup):
     """
     A click command group for registering and executing flyte workflows & tasks in a file.
     """
