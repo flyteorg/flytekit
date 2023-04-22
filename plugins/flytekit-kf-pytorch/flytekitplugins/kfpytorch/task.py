@@ -39,17 +39,22 @@ class Elastic(object):
     
     Use this to run single- or multi-node distributed pytorch elastic training on k8s.
 
-    Single-node elastic training is executed in a k8s pod when `nnodes` is set to 1.
+    Single-node elastic training is executed in a k8s pod when `replicas` is set to 1.
     Multi-node training is executed otherwise using a `Pytorch Job <https://github.com/kubeflow/training-operator>`_.
 
     Args:
-        nnodes (Union[int, str]): Number of nodes, or the range of nodes in form <minimum_nodes>:<maximum_nodes>.
+        replicas int: Number of nodes
+        min_replicas int: Lower limit for the number of replicas to which the training job can scale down
+        max_replicas int: Upper limit for the number of replicas to which the training job can scale up.
+            Cannot be smaller than min_replicas.
         nproc_per_node (Union[int, str]): Number of workers per node. Supported values are [auto, cpu, gpu, int].
         start_method (str): Multiprocessing start method to use when creating workers.
         monitor_interval (int): Interval, in seconds, to monitor the state of workers.
         max_restarts (int): Maximum number of worker group restarts before failing.
     """
-    nnodes: Union[int, str] = 1
+    replicas: int = 1
+    min_replicas: Optional[int] = None
+    max_replicas: Optional[int] = None
     nproc_per_node: Union[int, str] = "auto"
     start_method: str = "spawn"
     monitor_interval: int = 5
@@ -111,7 +116,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
     _ELASTIC_TASK_TYPE_STANDALONE = "python-task"
 
     def __init__(self, task_config: Elastic, task_function: Callable, **kwargs):
-        task_type = self._ELASTIC_TASK_TYPE_STANDALONE if task_config.nnodes == 1 else self._ELASTIC_TASK_TYPE
+        task_type = self._ELASTIC_TASK_TYPE_STANDALONE if task_config.replicas == 1 else self._ELASTIC_TASK_TYPE
 
         super(PytorchElasticFunctionTask, self).__init__(
             task_config=task_config,
@@ -119,6 +124,13 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             task_function=task_function,
             **kwargs,
         )
+        self.min_replicas = self.task_config.min_replicas or self.task_config.replicas
+        self.max_replicas = self.task_config.max_replicas or self.task_config.replicas
+
+        if not (self.min_replicas <= self.task_config.replicas <= self.max_replicas):
+            raise ValueError(
+                "Replica config violates `min_replicas <= replicas <= max_replicas`."
+            )
 
         """
         c10d is the backend recommended by torch elastic.
@@ -129,7 +141,6 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         Instead, the workers will use the master's address as the rendezvous point.
         """
         self.rdzv_backend = "c10d"
-        self.min_nodes, self.max_nodes = run.parse_min_max_nnodes(str(self.task_config.nnodes))
 
     def _execute(self, **kwargs) -> Any:
         """
@@ -144,10 +155,11 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
         else:
             nproc = self.task_config.nproc_per_node
+
         config = LaunchConfig(
             run_id=flytekit.current_context().execution_id.name,
-            min_nodes=self.min_nodes,
-            max_nodes=self.max_nodes,
+            min_nodes=self.min_replicas,
+            max_nodes=self.max_replicas,
             nproc_per_node=nproc,
             rdzv_backend=self.rdzv_backend, # rdzv settings
             rdzv_endpoint=os.environ.get("PET_RDZV_ENDPOINT", f"localhost:0"),
@@ -211,7 +223,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             return self.dynamic_execute(self._execute, **kwargs)
     
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
-        if self.task_config.nnodes == 1:
+        if self.task_config.replicas == 1:
             """
             Torch elastic distributed training is executed in a normal k8s pod so that this
             works without the kubeflow train operator.
@@ -220,13 +232,13 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         else:
             elastic_config = ElasticConfig(
                 rdzv_backend=self.rdzv_backend,
-                min_replicas=self.min_nodes,
-                max_replicas=self.max_nodes,
+                min_replicas=self.min_replicas,
+                max_replicas=self.max_replicas,
                 nproc_per_node=self.task_config.nproc_per_node,
                 max_restarts=self.task_config.max_restarts,
             )
             job = DistributedPyTorchTrainingTask(
-                workers=self.task_config.nnodes,
+                workers=self.task_config.replicas,
                 elastic_config=elastic_config,
             )
             return MessageToDict(job)
