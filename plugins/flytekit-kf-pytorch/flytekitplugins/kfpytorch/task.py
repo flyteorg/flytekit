@@ -56,7 +56,7 @@ class Elastic(object):
     nproc_per_node: Union[int, str] = "auto"
     start_method: str = "spawn"
     monitor_interval: int = 5
-    max_restarts: int = 10
+    max_restarts: int = 0
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
