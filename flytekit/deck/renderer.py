@@ -10,7 +10,7 @@ pyarrow = lazy_import.lazy_module("pyarrow")
 @runtime_checkable
 class Renderable(Protocol):
     def to_html(self, python_value: Any) -> str:
-        """Convert a object(markdown, pandas.dataframe) to HTML and return HTML as a unicode string.
+        """Convert an object(markdown, pandas.dataframe) to HTML and return HTML as a unicode string.
         Returns: An HTML document as a string.
         """
         raise NotImplementedError

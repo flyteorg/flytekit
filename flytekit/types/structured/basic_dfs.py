@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 from pathlib import Path
 from typing import TypeVar
@@ -21,7 +22,8 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
 )
 
-if typing.TYPE_CHECKING:
+if typing.TYPE_CHECKING or "pytest" in sys.modules:
+    # Always import these modules in type-checking mode or when running pytest
     import pandas as pd
     import pyarrow as pa
     import pyarrow.parquet as pq
