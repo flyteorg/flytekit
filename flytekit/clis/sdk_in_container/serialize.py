@@ -5,7 +5,6 @@ from enum import Enum as _Enum
 
 import rich_click as click
 
-
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
@@ -125,7 +124,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
 
-@click.command("workflows",  cls=click.RichCommand)
+@click.command("workflows", cls=click.RichCommand)
 # For now let's just assume that the directory needs to exist. If you're docker run -v'ing, docker will create the
 # directory for you so it shouldn't be a problem.
 @click.option("-f", "--folder", type=click.Path(exists=True))

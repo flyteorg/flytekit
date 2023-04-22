@@ -3,7 +3,6 @@ import pathlib
 import typing
 
 import rich_click as click
-
 from typing_extensions import OrderedDict
 
 from flytekit.clis.sdk_in_container.constants import CTX_MODULE, CTX_PROJECT_ROOT

@@ -1,7 +1,7 @@
 import typing
 
-import rich_click as click
 import grpc
+import rich_click as click
 from google.protobuf.json_format import MessageToJson
 
 from flytekit import configuration

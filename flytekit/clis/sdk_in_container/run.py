@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import cast
 
 import rich_click as click
-
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 from typing_extensions import get_args

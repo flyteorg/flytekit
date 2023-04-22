@@ -3,7 +3,6 @@ from typing import Optional
 
 import rich_click as click
 
-
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
 from flytekit.configuration import Config, ImageConfig, get_config_file
 from flytekit.loggers import cli_logger

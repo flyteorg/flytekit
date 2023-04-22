@@ -3,7 +3,6 @@ import typing
 
 import rich_click as click
 
-
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
