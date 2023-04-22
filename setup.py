@@ -74,6 +74,7 @@ setup(
         "gitpython",
         "kubernetes>=12.0.1",
         "rich",
+        "rich_click",
     ],
     extras_require=extras_require,
     scripts=[

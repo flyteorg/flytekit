@@ -1,7 +1,7 @@
 from dataclasses import replace
 from typing import Optional
 
-import click
+import rich_click as click
 
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
 from flytekit.configuration import Config, ImageConfig, get_config_file
