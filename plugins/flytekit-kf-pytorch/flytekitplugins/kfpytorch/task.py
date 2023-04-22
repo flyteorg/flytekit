@@ -12,8 +12,6 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
-from torch.distributed import run
-from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 from flyteidl.plugins.pytorch_pb2 import DistributedPyTorchTrainingTask, ElasticConfig
 
 
@@ -150,6 +148,13 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         Returns:
             The result of rank zero.
         """
+        try:
+            from torch.distributed import run
+            from torch.distributed.launcher.api import LaunchConfig, elastic_launch
+        except ImportError:
+            raise ImportError(
+                "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
+            )
 
         if isinstance(self.task_config.nproc_per_node, str):
             nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
