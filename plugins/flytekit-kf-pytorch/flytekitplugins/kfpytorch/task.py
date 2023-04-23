@@ -7,12 +7,13 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union
 
 import cloudpickle
-import flytekit
+from flyteidl.plugins.pytorch_pb2 import DistributedPyTorchTrainingTask, ElasticConfig
 from google.protobuf.json_format import MessageToDict
+
+import flytekit
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
-from flyteidl.plugins.pytorch_pb2 import DistributedPyTorchTrainingTask, ElasticConfig
 
 
 @dataclass
@@ -34,7 +35,7 @@ class PyTorch(object):
 class Elastic(object):
     """
     Configuration for `torch elastic training <https://pytorch.org/docs/stable/elastic/run.html>`_.
-    
+
     Use this to run single- or multi-node distributed pytorch elastic training on k8s.
 
     Single-node elastic training is executed in a k8s pod when `replicas` is set to 1.
@@ -50,6 +51,7 @@ class Elastic(object):
         monitor_interval (int): Interval, in seconds, to monitor the state of workers.
         max_restarts (int): Maximum number of worker group restarts before failing.
     """
+
     replicas: int = 1
     min_replicas: Optional[int] = None
     max_replicas: Optional[int] = None
@@ -86,7 +88,7 @@ TaskPlugins.register_pythontask_plugin(PyTorch, PyTorchFunctionTask)
 
 def spawn_helper(fn: bytes, kwargs) -> Any:
     """Help to spawn worker processes.
-    
+
     The purpose of this function is to 1) be pickleable so that it can be used with
     the multiprocessing start method `spawn` and 2) to call a cloudpickle-serialized
     function passed to it. This function itself doesn't have to be pickleable. Without
@@ -126,9 +128,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         self.max_replicas = self.task_config.max_replicas or self.task_config.replicas
 
         if not (self.min_replicas <= self.task_config.replicas <= self.max_replicas):
-            raise ValueError(
-                "Replica config violates `min_replicas <= replicas <= max_replicas`."
-            )
+            raise ValueError("Replica config violates `min_replicas <= replicas <= max_replicas`.")
 
         """
         c10d is the backend recommended by torch elastic.
@@ -152,9 +152,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             from torch.distributed import run
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
         except ImportError:
-            raise ImportError(
-                "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
-            )
+            raise ImportError("PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`.")
 
         if isinstance(self.task_config.nproc_per_node, str):
             nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
@@ -166,8 +164,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             min_nodes=self.min_replicas,
             max_nodes=self.max_replicas,
             nproc_per_node=nproc,
-            rdzv_backend=self.rdzv_backend, # rdzv settings
-            rdzv_endpoint=os.environ.get("PET_RDZV_ENDPOINT", f"localhost:0"),
+            rdzv_backend=self.rdzv_backend,  # rdzv settings
+            rdzv_endpoint=os.environ.get("PET_RDZV_ENDPOINT", "localhost:0"),
             max_restarts=self.task_config.max_restarts,
             monitor_interval=self.task_config.monitor_interval,
             start_method=self.task_config.start_method,
@@ -226,7 +224,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             return exception_scopes.user_entry_point(self._execute)(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._execute, **kwargs)
-    
+
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         if self.task_config.replicas == 1:
             """

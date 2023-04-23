@@ -1,13 +1,13 @@
 import os
 from dataclasses import dataclass
 
+import pytest
 import torch
 import torch.distributed as dist
-import pytest
 from dataclasses_json import dataclass_json
+from flytekitplugins.kfpytorch.task import Elastic
 
 from flytekit import task, workflow
-from flytekitplugins.kfpytorch.task import Elastic
 
 
 @dataclass_json
@@ -68,6 +68,6 @@ def test_end_to_end(start_method: str) -> None:
 
 def test_bad_replica_config() -> None:
     """Test that bad replica config is caught."""
-    
+
     with pytest.raises(ValueError):
         task(train, task_config=Elastic(replicas=1, min_replicas=2))

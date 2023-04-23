@@ -4,10 +4,7 @@ PLUGIN_NAME = "kfpytorch"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = [
-    "cloudpickle",
-    "flytekit>=1.3.0,<2.0.0"
-]
+plugin_requires = ["cloudpickle", "flytekit>=1.3.0,<2.0.0"]
 
 __version__ = "0.0.0+develop"
 
