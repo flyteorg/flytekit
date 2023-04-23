@@ -1609,6 +1609,8 @@ def test_is_batchable():
         # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
         # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
         ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]], [2, 1]),
+        # Case 4: Empty list
+        ([[], typing.List[FlytePickle], []]),
     ],
 )
 def test_batch_pickle_list(python_val, python_type, expected_list_length):

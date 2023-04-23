@@ -9,9 +9,7 @@ from functools import lru_cache
 from typing import List, Optional
 
 import click
-import docker
 from dataclasses_json import dataclass_json
-from docker.errors import APIError, ImageNotFound
 
 
 @dataclass_json
@@ -56,6 +54,9 @@ class ImageSpec:
         """
         Check if the image exists in the registry.
         """
+        import docker
+        from docker.errors import APIError, ImageNotFound
+
         client = docker.from_env()
         try:
             if self.registry:

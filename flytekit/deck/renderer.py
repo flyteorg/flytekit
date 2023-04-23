@@ -36,7 +36,7 @@ class TopFrameRenderer:
 
 class ArrowRenderer:
     """
-    Render a Arrow dataframe as an HTML table.
+    Render an Arrow dataframe as an HTML table.
     """
 
     def to_html(self, df: "pyarrow.Table") -> str:
