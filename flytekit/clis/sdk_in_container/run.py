@@ -55,10 +55,6 @@ def remove_prefix(text, prefix):
     return text
 
 
-class JsonParamType(click.ParamType):
-    name = "json object"
-
-
 @dataclass
 class Directory(object):
     dir_path: str
@@ -132,6 +128,24 @@ class DurationParamType(click.ParamType):
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Duration type.")
         return datetime.timedelta(seconds=parse(value))
+
+
+class JsonParamType(click.ParamType):
+    name = "json object or file path"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        if value is None:
+            raise click.BadParameter("None value cannot be converted to a Json type.")
+        try:
+            return json.loads(value)
+        except Exception as e:
+            # We failed to load the json, so we'll try to load it as a file
+            if os.path.exists(value):
+                with open(value, "r") as f:
+                    return json.load(f)
+            raise click.BadParameter(f"parameter should be a valid json object, {value}, error: {e}")
 
 
 @dataclass

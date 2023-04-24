@@ -2,6 +2,7 @@ import functools
 import json
 import os
 import pathlib
+import tempfile
 import typing
 from datetime import datetime, timedelta
 from enum import Enum
@@ -22,6 +23,7 @@ from flytekit.clis.sdk_in_container.run import (
     DurationParamType,
     FileParamType,
     FlyteLiteralConverter,
+    JsonParamType,
     get_entities_in_file,
     run_command,
 )
@@ -387,3 +389,17 @@ def test_datetime_type():
     v = t.convert("now", None, None)
     assert v.day == now.day
     assert v.month == now.month
+
+
+def test_json_type():
+    t = JsonParamType()
+    assert t.convert(value='{"a": "b"}', param=None, ctx=None) == {"a": "b"}
+
+    with pytest.raises(click.BadParameter):
+        t.convert(None, None, None)
+
+    # test that it loads a json file
+    with tempfile.NamedTemporaryFile("w") as f:
+        json.dump({"a": "b"}, f)
+        f.flush()
+        assert t.convert(value=f.name, param=None, ctx=None) == {"a": "b"}
