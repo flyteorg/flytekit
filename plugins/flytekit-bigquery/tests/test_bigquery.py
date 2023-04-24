@@ -6,10 +6,9 @@ from google.cloud.bigquery import QueryJobConfig
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit import kwtypes, workflow
+from flytekit import StructuredDataset, kwtypes, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable
-from flytekit.types.structured import StructuredDataset
 
 query_template = "SELECT * FROM `bigquery-public-data.crypto_dogecoin.transactions` WHERE @version = 1 LIMIT 10"
 

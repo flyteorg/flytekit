@@ -7,7 +7,7 @@ from pandas.testing import assert_frame_equal
 from typing_extensions import Annotated  # type: ignore
 
 import flytekit.configuration
-from flytekit import FlyteContextManager, kwtypes
+from flytekit import FlyteContextManager, StructuredDataset, kwtypes
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
@@ -16,7 +16,6 @@ from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, Work
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.tools.translator import get_serializable
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDataset
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
