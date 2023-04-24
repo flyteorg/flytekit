@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import cast
 
 import rich_click as click
+import yaml
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 from typing_extensions import get_args
@@ -131,7 +132,7 @@ class DurationParamType(click.ParamType):
 
 
 class JsonParamType(click.ParamType):
-    name = "json object or file path"
+    name = "json object OR json/yaml file path"
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
@@ -143,6 +144,10 @@ class JsonParamType(click.ParamType):
         except Exception as e:
             # We failed to load the json, so we'll try to load it as a file
             if os.path.exists(value):
+                # if the value is a yaml file, we'll try to load it as yaml
+                if value.endswith(".yaml") or value.endswith(".yml"):
+                    with open(value, "r") as f:
+                        return yaml.safe_load(f)
                 with open(value, "r") as f:
                     return json.load(f)
             raise click.BadParameter(f"parameter should be a valid json object, {value}, error: {e}")
