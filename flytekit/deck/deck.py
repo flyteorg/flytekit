@@ -141,17 +141,14 @@ def log_on_deck(fn):
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        old_out, old_err = sys.stdout, sys.stderr
-        out = [StringIO(), StringIO()]
-        sys.stdout, sys.stderr = out
+        new_stdout = StringIO()
+        sys.stdout = new_stdout
         stdout_handler = logging.StreamHandler(stream=sys.stdout)
         logger.addHandler(stdout_handler)
         output = fn(*args, **kwargs)
-        sys.stdout, sys.stderr = old_out, old_err
-        out[0] = out[0].getvalue()
-        out[1] = out[1].getvalue()
+        sys.stdout = sys.__stdout__
         stdout_deck = flytekit.Deck("Stdout")
-        stdout_deck.append("<p>" + out[0].replace("\n", "<br>") + "</p>")
+        stdout_deck.append("<p>" + new_stdout.getvalue().replace("\n", "<br>").replace("\t", "<br>") + "</p>")
         return output
 
     return wrapper
