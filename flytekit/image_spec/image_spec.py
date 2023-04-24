@@ -10,8 +10,9 @@ from typing import List, Optional
 
 import click
 import docker
+import requests
 from dataclasses_json import dataclass_json
-from docker.errors import APIError
+from docker.errors import APIError, DockerException, ImageNotFound
 
 
 @dataclass_json
@@ -70,9 +71,16 @@ class ImageSpec:
                 click.secho("Permission denied. Please login you docker registry first.", fg="red")
                 raise e
             return False
-        except Exception as e:
-            click.secho(f"Failed to check image with error {e}.", fg="red")
+        except ImageNotFound:
             return False
+        except DockerException as e:
+            click.secho(f"Docker engine is not running", fg="red")
+            response = requests.get(
+                f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{calculate_hash_from_image_spec(self)}"
+            )
+            if response.status_code == 200:
+                return True
+        return False
 
     def __hash__(self):
         return hash(self.to_json())
