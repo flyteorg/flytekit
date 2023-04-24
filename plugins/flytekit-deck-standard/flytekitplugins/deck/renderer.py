@@ -99,10 +99,9 @@ class TableRenderer:
             <style>
                 .table-class {{
                     border: 1px solid #ccc;  /* Add a thin border around the table */
-                    border-collapse: collapse;  /* Collapse the borders so they don't overlap */
+                    border-collapse: collapse; 
                     font-family: Arial, sans-serif;
                     color: #333;
-                    width: {table_width}px; /* Set fixed width for the table */
                     {f'width: {table_width}px;' if table_width is not None else ''}
                 }}
 
