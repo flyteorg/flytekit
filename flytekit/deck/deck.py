@@ -1,9 +1,14 @@
+import logging
 import os
+import sys
 import typing
+from functools import wraps
+from io import StringIO
 from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+import flytekit
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 
@@ -27,9 +32,9 @@ class Deck:
     Flyte context saves a list of deck objects, and we use renderers in those decks to render
     the data and create an HTML file when those tasks are executed
 
-    Each task has a least three decks (input, output, default). Input/output decks are
+    Each task has at least three decks (input, output, default). Input/output decks are
     used to render tasks' input/output data, and the default deck is used to render line plots,
-    scatter plots or markdown text. In addition, users can create new decks to render
+    scatter plots or Markdown text. In addition, users can create new decks to render
     their data with custom renderers.
 
     .. warning::
@@ -61,7 +66,6 @@ class Deck:
 
     def __init__(self, name: str, html: Optional[str] = ""):
         self._name = name
-        # self.renderers = renderers if isinstance(renderers, list) else [renderers]
         self._html = html
         FlyteContextManager.current_context().user_space_params.decks.append(self)
 
@@ -119,6 +123,26 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     with open(deck_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
     logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
+
+
+def log_on_deck(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
+        old_out, old_err = sys.stdout, sys.stderr
+        out = [StringIO(), StringIO()]
+        sys.stdout, sys.stderr = out
+        output = fn(*args, **kwargs)
+        sys.stdout, sys.stderr = old_out, old_err
+        out[0] = out[0].getvalue()
+        out[1] = out[1].getvalue()
+        stdout_deck = flytekit.Deck("Stdout")
+        stdout_deck.append("<p>" + out[0].replace("\n", "<br>") + "</p>")
+        stderr_deck = flytekit.Deck("Stderr")
+        stderr_deck.append("<p>" + out[1].replace("\n", "<br>") + "</p>")
+        return output
+
+    return wrapper
 
 
 root = os.path.dirname(os.path.abspath(__file__))
