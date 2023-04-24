@@ -1,10 +1,9 @@
-import sys
 from typing import TYPE_CHECKING, Any
 
 import lazy_import
 from typing_extensions import Protocol, runtime_checkable
 
-if TYPE_CHECKING or "pytest" in sys.modules:
+if TYPE_CHECKING:
     # Always import these modules in type-checking mode or when running pytest
     import pandas
     import pyarrow
