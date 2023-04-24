@@ -1,11 +1,11 @@
 from typing import Optional
 
-import lazy_import
 from diskcache import Cache
 
+from flytekit import lazy_module
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap
 
-joblib = lazy_import.lazy_module("joblib")
+joblib = lazy_module("joblib")
 
 # Location on the filesystem where serialized objects will be stored
 # TODO: read from config

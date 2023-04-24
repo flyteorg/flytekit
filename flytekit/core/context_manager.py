@@ -27,8 +27,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Generator, List, Optional, Union
 
-import lazy_import
-
+from flytekit import lazy_module
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
@@ -43,7 +42,7 @@ if typing.TYPE_CHECKING:
     from flytekit.clients import friendly as friendly_client
     from flytekit.deck.deck import Deck
 else:
-    friendly_client = lazy_import.lazy_module("flytekit.clients.friendly")
+    friendly_client = lazy_module("flytekit.clients.friendly")
 
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin

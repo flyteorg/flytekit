@@ -193,13 +193,11 @@ Documentation
 
 """
 import sys
-
-if "pytest" in sys.modules:
-    # This is a hack to make sure that modin test won't fail in the pytest.
-    import pandas  # noqa: F401
 from typing import Generator
 
 from rich import traceback
+
+from flytekit.lazy_import.lazy_module import lazy_module
 
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points

@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Union
 
-import lazy_import
-
+from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
 
 if TYPE_CHECKING:
@@ -10,10 +9,10 @@ if TYPE_CHECKING:
     import plotly.express as px
     from PIL import Image
 else:
-    pd = lazy_import.lazy_module("pandas")
-    markdown = lazy_import.lazy_module("markdown")
-    px = lazy_import.lazy_module("plotly.express")
-    Image = lazy_import.lazy_module("PIL.Image")
+    pd = lazy_module("pandas")
+    markdown = lazy_module("markdown")
+    px = lazy_module("plotly.express")
+    Image = lazy_module("PIL.Image")
 
 
 class FrameProfilingRenderer:

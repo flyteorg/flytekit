@@ -1,15 +1,16 @@
 from typing import TYPE_CHECKING, Any
 
-import lazy_import
 from typing_extensions import Protocol, runtime_checkable
+
+from flytekit import lazy_module
 
 if TYPE_CHECKING:
     # Always import these modules in type-checking mode or when running pytest
     import pandas
     import pyarrow
 else:
-    pandas = lazy_import.lazy_module("pandas")
-    pyarrow = lazy_import.lazy_module("pyarrow")
+    pandas = lazy_module("pandas")
+    pyarrow = lazy_module("pyarrow")
 
 
 @runtime_checkable

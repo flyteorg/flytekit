@@ -8,12 +8,12 @@ from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
-import lazy_import
 from dataclasses_json import config, dataclass_json
 from fsspec.utils import get_protocol
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
+from flytekit import lazy_module
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.deck.renderer import Renderable
@@ -27,8 +27,8 @@ if typing.TYPE_CHECKING:
     import pandas as pd
     import pyarrow as pa
 else:
-    pd = lazy_import.lazy_module("pandas")
-    pa = lazy_import.lazy_module("pyarrow")
+    pd = lazy_module("pandas")
+    pa = lazy_module("pyarrow")
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type

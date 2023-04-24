@@ -6,16 +6,16 @@ from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
-import lazy_import
 from flyteidl.core import tasks_pb2 as _core_task
 
+from flytekit import lazy_module
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
 
 if TYPE_CHECKING:
     from flytekit.models import task as task_models
 else:
-    task_models = lazy_import.lazy_module("flytekit.models.task")
+    task_models = lazy_module("flytekit.models.task")
 
 
 def _dnsify(value: str) -> str:
