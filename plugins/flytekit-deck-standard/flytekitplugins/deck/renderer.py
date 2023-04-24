@@ -6,7 +6,6 @@ import markdown
 import pandas as pd
 import plotly.express as px
 from PIL import Image
-from plotly.figure_factory import create_table
 from ydata_profiling import ProfileReport
 
 from flytekit.types.file import FlyteFile
@@ -83,39 +82,84 @@ class ImageRenderer:
         img.save(buffered, format="PNG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
         return f'<img src="data:image/png;base64,{img_base64}" alt="Rendered Image" />'
+
+
 class TableRenderer:
-    def to_html(self, df: pandas.DataFrame) -> str:
-        fig = create_table(df)
-        fig.update_layout(
-            autosize=True,
-        )
-        return fig.to_html()
+    """
+    Convert a pandas DataFrame into an HTML table.
+    """
+
+    def to_html(self, df: pd.DataFrame, header_labels: list = None, table_width: int = None) -> str:
+        # Check if custom labels are provided and have the correct length
+        if header_labels is not None and len(header_labels) == len(df.columns):
+            df = df.copy()
+            df.columns = header_labels
+
+        style = f"""
+            <style>
+                .table-class {{
+                    border: 1px solid #ccc;  /* Add a thin border around the table */
+                    border-collapse: collapse;  /* Collapse the borders so they don't overlap */
+                    font-family: Arial, sans-serif;
+                    color: #333;
+                    width: {table_width}px; /* Set fixed width for the table */
+                    {f'width: {table_width}px;' if table_width is not None else ''}
+                }}
+
+                .table-class th, .table-class td {{
+                    border: 1px solid #ccc;  /* Add a thin border around each cell */
+                    padding: 8px;  /* Add some padding inside each cell */
+                }}
+
+                /* Set the background color for even rows */
+                .table-class tr:nth-child(even) {{
+                    background-color: #f2f2f2;
+                }}
+
+                /* Add a hover effect to the rows */
+                .table-class tr:hover {{
+                    background-color: #ddd;
+                }}
+
+                /* Center the column headers */
+                .table-class th {{
+                    text-align: center;
+                }}
+            </style>
+        """
+        return style + df.to_html(classes="table-class", index=False)
 
 
 class GanttChartRenderer:
-    def to_html(self, df: pandas.DataFrame) -> str:
+    """
+    This renderer is primarily used by the timeline deck. The input DataFrame should
+    have at least the following columns:
+    - "Start": datetime.datetime (represents the start time)
+    - "Finish": datetime.datetime (represents the end time)
+    - "Name": string (the name of the task or event)
+    """
 
-        fig = px.timeline(df, x_start="Start", x_end="Finish", y="Part", color="Part")
-        fig.update_yaxes(autorange="reversed")
-        # fig.update_xaxes(tickformat="%S.%f")  # fig.update_yaxes(autorange="reversed")
-        time_dif = df["Finish"].max() - df["Start"].min()
-
-        if time_dif < pandas.Timedelta(seconds=1):
-            time_format = "%5f"
-        elif time_dif < pandas.Timedelta(minutes=1):
-            time_format = "%S:%f"
-        elif time_dif < pandas.Timedelta(hours=1):
-            time_format = "%M:%S:%f"
-        else:
-            time_format = "%H:%M:%S:%f"
+    def to_html(self, df: pd.DataFrame, chart_width: int = None) -> str:
+        fig = px.timeline(df, x_start="Start", x_end="Finish", y="Name", color="Name", width=chart_width)
 
         fig.update_xaxes(
             tickangle=90,
-            tickformat=time_format,
+            rangeslider_visible=True,
+            tickformatstops=[
+                dict(dtickrange=[None, 1], value="%3f ms"),
+                dict(dtickrange=[1, 60], value="%S:%3f s"),
+                dict(dtickrange=[60, 3600], value="%M:%S m"),
+                dict(dtickrange=[3600, None], value="%H:%M h"),
+            ],
         )
+
+        # Remove y-axis tick labels and title since the time line deck space is limited.
+        fig.update_yaxes(showticklabels=False, title="")
 
         fig.update_layout(
             autosize=True,
+            # Set the orientation of the legend to horizontal and move the legend anchor 2% beyond the top of the timeline graph's vertical axis
+            legend=dict(orientation="h", y=1.02),
         )
 
         return fig.to_html()

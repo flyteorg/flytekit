@@ -1,10 +1,7 @@
-import contextlib
-import datetime
 import os
 import typing
 from typing import Optional
 
-import pandas
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
@@ -12,6 +9,7 @@ from flytekit.loggers import logger
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
+
 
 try:
     from IPython.core.display import HTML
@@ -85,7 +83,7 @@ class Deck:
 class TimeLineDeck(Deck):
     """
     The TimeLineDeck class is designed to render the execution time of each part of a task.
-    Unlike deck classe, the conversion of data to HTML is delayed until the html property is accessed.
+    Unlike deck class, the conversion of data to HTML is delayed until the html property is accessed.
     This approach is taken because rendering a timeline graph with partial data would not provide meaningful insights.
     Instead, the complete data set is used to create a comprehensive visualization of the execution time of each part of the task.
     """
@@ -100,33 +98,38 @@ class TimeLineDeck(Deck):
 
     @property
     def html(self) -> str:
-        from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
+        try:
+            from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
+        except ImportError:
+            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
+            logger.warning(warning_info)
+            return warning_info
+
+        if len(self.time_info) == 0:
+            return ""
+
+        import pandas
 
         df = pandas.DataFrame(self.time_info)
-        return GanttChartRenderer().to_html(df) + "\n" + TableRenderer().to_html(df)
+        note = """
+            <p><strong>Note:</strong></p>
+            <ol>
+                <li>if the time duration is too small(< 1ms), it may be difficult to see on the time line graph.</li>
+                <li>For accurate execution time measurements, users should refer to wall time and process time.</li>
+            </ol>
+        """
+        # set the accuracy to microsecond
+        df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
+        df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
 
-
-@contextlib.contextmanager
-def measure_execution_time(part: str):
-    """
-    A context manager that measures the execution time of the wrapped code block and
-    appends the timing information to TimeLineDeck.
-
-    :param part: A string that describes the part of the task being executed.
-    """
-    start_time = datetime.datetime.utcnow()
-    try:
-        yield
-    finally:
-        end_time = datetime.datetime.utcnow()
-        time_line_deck = None
-        for deck in FlyteContextManager.current_context().user_space_params.decks:
-            if deck.name == "time line of task":
-                time_line_deck = deck
-                break
-        if time_line_deck is None:
-            time_line_deck = TimeLineDeck("time line of task")
-        time_line_deck.append_time_info(dict(Part=part, Start=start_time, Finish=end_time))
+        width = 1400
+        gantt_chart_html = GanttChartRenderer().to_html(df, chart_width=width)
+        time_table_html = TableRenderer().to_html(
+            df[["Name", "WallTime", "ProcessTime"]],
+            header_labels=["Name", "Wall Time(s)", "Process Time(s)"],
+            table_width=width,
+        )
+        return gantt_chart_html + time_table_html + note
 
 
 def _ipython_check() -> bool:
