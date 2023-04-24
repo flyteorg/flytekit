@@ -136,6 +136,41 @@ def test_sub_wf_multi_named_tuple():
     assert x == (7, 7)
 
 
+def test_sub_wf_multi_named_tuple_list():
+    nt = typing.NamedTuple("Multi", [("named1", int), ("named2", int)])
+
+    @task
+    def t1(a: int) -> nt:
+        a = a + 2
+        return nt(a, a)
+
+    @task
+    def t1l(a: typing.List[int]) -> nt:
+        return nt(len(a), 5)
+
+    @task
+    def get_int() -> int:
+        return 1
+
+    @workflow
+    def subwf(a: typing.List[int]) -> nt:
+        return t1l(a=a)
+
+    @workflow
+    def subwf2(b: typing.Dict[str, int]):
+        print(b)
+
+    @workflow
+    def wf() -> nt:
+        ll = [get_int(), get_int()]
+        out = subwf(a=ll)
+        subwf2(b={"b": get_int()})
+        return t1(a=out.named1)
+
+    x = wf()
+    print(x)
+
+
 def test_unexpected_outputs():
     @task
     def t1(a: int) -> int:

@@ -276,7 +276,13 @@ class WorkflowBase(object):
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
         for k, v in kwargs.items():
-            if not isinstance(v, Promise):
+            if type(v) == list and isinstance(v[0], Promise):
+                continue
+            elif type(v) == dict and (
+                isinstance(list(v.keys())[0], Promise) or isinstance(list(v.values())[0], Promise)
+            ):
+                continue
+            elif not isinstance(v, Promise):
                 t = self.python_interface.inputs[k]
                 try:
                     kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
