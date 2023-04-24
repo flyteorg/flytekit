@@ -11,7 +11,7 @@ from typing import List, Optional
 import click
 import docker
 from dataclasses_json import dataclass_json
-from docker.errors import APIError, ImageNotFound
+from docker.errors import APIError
 
 
 @dataclass_json
@@ -56,8 +56,8 @@ class ImageSpec:
         """
         Check if the image exists in the registry.
         """
-        client = docker.from_env()
         try:
+            client = docker.from_env()
             if self.registry:
                 client.images.get_registry_data(self.image_name())
             else:
@@ -70,7 +70,8 @@ class ImageSpec:
                 click.secho("Permission denied. Please login you docker registry first.", fg="red")
                 raise e
             return False
-        except ImageNotFound:
+        except Exception as e:
+            click.secho(f"Failed to check image with error {e}.", fg="red")
             return False
 
     def __hash__(self):

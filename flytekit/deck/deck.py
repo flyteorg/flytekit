@@ -126,20 +126,32 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
 
 
 def log_on_deck(fn):
+    """
+    Decorator to log stdout to deck. For example.
+
+    .. code-block:: python
+
+        @task(disable_deck=True)
+        @log_on_deck
+        def t1(ff: FlyteFile):
+            print("hello")
+            logger.error("world")
+
+    """
+
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
         old_out, old_err = sys.stdout, sys.stderr
         out = [StringIO(), StringIO()]
         sys.stdout, sys.stderr = out
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        logger.addHandler(stdout_handler)
         output = fn(*args, **kwargs)
         sys.stdout, sys.stderr = old_out, old_err
         out[0] = out[0].getvalue()
         out[1] = out[1].getvalue()
         stdout_deck = flytekit.Deck("Stdout")
         stdout_deck.append("<p>" + out[0].replace("\n", "<br>") + "</p>")
-        stderr_deck = flytekit.Deck("Stderr")
-        stderr_deck.append("<p>" + out[1].replace("\n", "<br>") + "</p>")
         return output
 
     return wrapper
