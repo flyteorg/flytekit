@@ -99,7 +99,7 @@ class TableRenderer:
             <style>
                 .table-class {{
                     border: 1px solid #ccc;  /* Add a thin border around the table */
-                    border-collapse: collapse; 
+                    border-collapse: collapse;
                     font-family: Arial, sans-serif;
                     color: #333;
                     {f'width: {table_width}px;' if table_width is not None else ''}
