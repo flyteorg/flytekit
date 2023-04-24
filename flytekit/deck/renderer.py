@@ -1,10 +1,16 @@
-from typing import Any
+import sys
+from typing import TYPE_CHECKING, Any
 
 import lazy_import
 from typing_extensions import Protocol, runtime_checkable
 
-pandas = lazy_import.lazy_module("pandas")
-pyarrow = lazy_import.lazy_module("pyarrow")
+if TYPE_CHECKING or "pytest" in sys.modules:
+    # Always import these modules in type-checking mode or when running pytest
+    import pandas
+    import pyarrow
+else:
+    pandas = lazy_import.lazy_module("pandas")
+    pyarrow = lazy_import.lazy_module("pyarrow")
 
 
 @runtime_checkable

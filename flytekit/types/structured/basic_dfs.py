@@ -1,10 +1,11 @@
 import os
-import sys
 import typing
 from pathlib import Path
 from typing import TypeVar
 
-import lazy_import
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from botocore.exceptions import NoCredentialsError
 from fsspec.core import split_protocol, strip_protocol
 from fsspec.utils import get_protocol
@@ -21,16 +22,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
-
-if typing.TYPE_CHECKING or "pytest" in sys.modules:
-    # Always import these modules in type-checking mode or when running pytest
-    import pandas as pd
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-else:
-    pd = lazy_import.lazy_module("pandas")
-    pa = lazy_import.lazy_module("pyarrow")
-    pq = lazy_import.lazy_module("pyarrow.parquet")
 
 T = TypeVar("T")
 
@@ -78,7 +69,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> "pd.DataFrame":
+    ) -> pd.DataFrame:
         uri = flyte_value.uri
         columns = None
         kwargs = get_storage_options(ctx.file_access.data_config, uri)
@@ -120,7 +111,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> "pa.Table":
+    ) -> pa.Table:
         uri = flyte_value.uri
         if not ctx.file_access.is_remote(uri):
             Path(uri).parent.mkdir(parents=True, exist_ok=True)

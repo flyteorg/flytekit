@@ -1,9 +1,10 @@
 import re
 import typing
 
-import lazy_import
 import pandas as pd
 import pyarrow as pa
+from google.cloud import bigquery, bigquery_storage
+from google.cloud.bigquery_storage_v1 import types
 
 from flytekit import FlyteContext
 from flytekit.models import literals
@@ -14,10 +15,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetMetadata,
 )
-
-bigquery = lazy_import.lazy_module("google.cloud.bigquery")
-bigquery_storage = lazy_import.lazy_module("google.cloud.bigquery_storage")
-types = lazy_import.lazy_module("google.cloud.bigquery_storage_v1.types")
 
 BIGQUERY = "bq"
 
@@ -33,7 +30,7 @@ def _write_to_bq(structured_dataset: StructuredDataset):
 
 def _read_from_bq(
     flyte_value: literals.StructuredDataset, current_task_metadata: StructuredDatasetMetadata
-) -> "pd.DataFrame":
+) -> pd.DataFrame:
     path = flyte_value.uri
     _, project_id, dataset_id, table_id = re.split("\\.|://|:", path)
     client = bigquery_storage.BigQueryReadClient()
@@ -81,7 +78,7 @@ class BQToPandasDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> "pd.DataFrame":
+    ) -> pd.DataFrame:
         return _read_from_bq(flyte_value, current_task_metadata)
 
 
@@ -110,5 +107,5 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> "pa.Table":
+    ) -> pa.Table:
         return pa.Table.from_pandas(_read_from_bq(flyte_value, current_task_metadata))
