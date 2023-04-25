@@ -1,6 +1,6 @@
 import base64
 from io import BytesIO
-from typing import Union
+from typing import List, Optional, Union
 
 import markdown
 import pandas as pd
@@ -89,7 +89,7 @@ class TableRenderer:
     Convert a pandas DataFrame into an HTML table.
     """
 
-    def to_html(self, df: pd.DataFrame, header_labels: list = None, table_width: int = None) -> str:
+    def to_html(self, df: pd.DataFrame, header_labels: Optional[List] = None, table_width: Optional[int] = None) -> str:
         # Check if custom labels are provided and have the correct length
         if header_labels is not None and len(header_labels) == len(df.columns):
             df = df.copy()
@@ -138,7 +138,7 @@ class GanttChartRenderer:
     - "Name": string (the name of the task or event)
     """
 
-    def to_html(self, df: pd.DataFrame, chart_width: int = None) -> str:
+    def to_html(self, df: pd.DataFrame, chart_width: Optional[int] = None) -> str:
         fig = px.timeline(df, x_start="Start", x_end="Finish", y="Name", color="Name", width=chart_width)
 
         fig.update_xaxes(
