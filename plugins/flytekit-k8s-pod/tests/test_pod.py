@@ -343,7 +343,7 @@ def test_map_pod_task_serialization():
 
     assert len(pod_spec["containers"]) == 1
     assert pod_spec["containers"][0]["args"] == [
-        "pyflyte-map-execute",
+        "pyflyte-execute",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
@@ -354,6 +354,8 @@ def test_map_pod_task_serialization():
         "{{.checkpointOutputPrefix}}",
         "--prev-checkpoint",
         "{{.prevCheckpointPrefix}}",
+        "--max-concurrency",
+        "0",
         "--resolver",
         "MapTaskResolver",
         "--",

@@ -271,6 +271,7 @@ class FlyteRemote(object):
         """
         Similar to fetch_workflow, just that it returns a LazyEntity, which will fetch the workflow lazily.
         """
+
         if name is None:
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
 

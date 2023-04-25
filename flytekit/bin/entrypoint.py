@@ -308,6 +308,7 @@ def _execute_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    max_concurrency: Optional[int] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -330,6 +331,7 @@ def _execute_task(
         compressed code archive has been uploaded.
     :param dynamic_dest_dir: In the case of parent tasks executed using the 'fast' mode this captures where compressed
         code archives should be installed in the flyte task container.
+    :param max_concurrency: The maximum number of concurrent executions of this task.
     :return:
     """
     if len(resolver_args) < 1:
@@ -342,9 +344,17 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
-        resolver_obj = load_object_from_module(resolver)
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        _task_def: PythonTask
+        if max_concurrency is not None:
+            mtr = MapTaskResolver()
+            _task_def = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
+            task_index = _compute_array_job_index()
+            output_prefix = os.path.join(output_prefix, str(task_index))
+        else:
+            resolver_obj = load_object_from_module(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
+
         if test:
             logger.info(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
@@ -437,6 +447,7 @@ def _pass_through():
 @_click.option("--test", is_flag=True)
 @_click.option("--dynamic-addl-distro", required=False)
 @_click.option("--dynamic-dest-dir", required=False)
+@_click.option("--max-concurrency", type=int, required=False)
 @_click.option("--resolver", required=False)
 @_click.argument(
     "resolver-args",
@@ -452,6 +463,7 @@ def execute_task_cmd(
     checkpoint_path,
     dynamic_addl_distro,
     dynamic_dest_dir,
+    max_concurrency,
     resolver,
     resolver_args,
 ):
@@ -479,6 +491,7 @@ def execute_task_cmd(
         dynamic_dest_dir=dynamic_dest_dir,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        max_concurrency=max_concurrency,
     )
 
 
@@ -506,56 +519,6 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
     subprocess.run(cmd, check=True)
-
-
-@_pass_through.command("pyflyte-map-execute")
-@_click.option("--inputs", required=True)
-@_click.option("--output-prefix", required=True)
-@_click.option("--raw-output-data-prefix", required=False)
-@_click.option("--max-concurrency", type=int, required=False)
-@_click.option("--test", is_flag=True)
-@_click.option("--dynamic-addl-distro", required=False)
-@_click.option("--dynamic-dest-dir", required=False)
-@_click.option("--resolver", required=True)
-@_click.option("--checkpoint-path", required=False)
-@_click.option("--prev-checkpoint", required=False)
-@_click.argument(
-    "resolver-args",
-    type=_click.UNPROCESSED,
-    nargs=-1,
-)
-def map_execute_task_cmd(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    max_concurrency,
-    test,
-    dynamic_addl_distro,
-    dynamic_dest_dir,
-    resolver,
-    resolver_args,
-    prev_checkpoint,
-    checkpoint_path,
-):
-    logger.info(get_version_message())
-
-    raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
-        raw_output_data_prefix, checkpoint_path, prev_checkpoint
-    )
-
-    _execute_map_task(
-        inputs=inputs,
-        output_prefix=output_prefix,
-        raw_output_data_prefix=raw_output_data_prefix,
-        max_concurrency=max_concurrency,
-        test=test,
-        dynamic_addl_distro=dynamic_addl_distro,
-        dynamic_dest_dir=dynamic_dest_dir,
-        resolver=resolver,
-        resolver_args=resolver_args,
-        checkpoint_path=checkpoint_path,
-        prev_checkpoint=prev_checkpoint,
-    )
 
 
 if __name__ == "__main__":

@@ -106,7 +106,7 @@ class MapPythonTask(PythonTask):
         """
         mt = MapTaskResolver()
         container_args = [
-            "pyflyte-map-execute",
+            "pyflyte-execute",
             "--inputs",
             "{{.input}}",
             "--output-prefix",
@@ -117,6 +117,8 @@ class MapPythonTask(PythonTask):
             "{{.checkpointOutputPrefix}}",
             "--prev-checkpoint",
             "{{.prevCheckpointPrefix}}",
+            "--max-concurrency",
+            "0",
             "--resolver",
             mt.name(),
             "--",

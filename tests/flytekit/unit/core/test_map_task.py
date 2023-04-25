@@ -81,7 +81,7 @@ def test_serialization(serialization_settings):
     assert task_spec.template.type == "container_array"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [
-        "pyflyte-map-execute",
+        "pyflyte-execute",
         "--inputs",
         "{{.input}}",
         "--output-prefix",
@@ -94,6 +94,7 @@ def test_serialization(serialization_settings):
         "{{.prevCheckpointPrefix}}",
         "--resolver",
         "MapTaskResolver",
+        "--max_concurrency" "0",
         "--",
         "vars",
         "",
