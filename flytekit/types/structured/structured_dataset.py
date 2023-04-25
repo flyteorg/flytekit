@@ -25,10 +25,10 @@ from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 
 if typing.TYPE_CHECKING:
     import pandas as pd
-    import pyarrow as pa
+    import pyarrow.lib as pa
 else:
     pd = lazy_module("pandas")
-    pa = lazy_module("pyarrow")
+    pa = lazy_module("pyarrow.lib")
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
@@ -839,7 +839,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             columns=converted_cols,
             format=storage_format,
             external_schema_type="arrow" if pa_schema else None,
-            external_schema_bytes=typing.cast(pa.lib.Schema, pa_schema).to_string().encode() if pa_schema else None,
+            external_schema_bytes=typing.cast(pa.Schema, pa_schema).to_string().encode() if pa_schema else None,
         )
 
     def get_literal_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> LiteralType:

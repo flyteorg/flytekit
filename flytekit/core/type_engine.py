@@ -795,8 +795,10 @@ class TypeEngine(typing.Generic[T]):
         if "sklearn" in modules:
             from flytekit.extras import sklearn  # noqa: F401
         if "pandas" in modules:
-            from flytekit.types import schema  # noqa: F401
-
+            try:
+                from flytekit.types import schema  # noqa: F401
+            except ValueError:
+                logger.debug("Transformer for pandas is already registered.")
             register_pandas_handlers()
         if "pyarrow" in modules:
             register_arrow_handlers()
