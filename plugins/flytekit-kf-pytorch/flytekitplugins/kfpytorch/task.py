@@ -13,6 +13,7 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
+from flytekit.core.base_task import IgnoreOutputs
 from flytekit.extend import TaskPlugins
 
 
@@ -210,7 +211,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         if 0 in out:
             return out[0]
         else:
-            raise flytekit.core.base_task.IgnoreOutputs()
+            raise IgnoreOutputs()
 
     def execute(self, **kwargs) -> Any:
         """
