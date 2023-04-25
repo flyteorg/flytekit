@@ -415,7 +415,7 @@ def test_name_override():
 
     @workflow
     def my_wf(a: str) -> str:
-        return t1(a=a).with_overrides(name="foo")
+        return t1(a=a).with_overrides(name="foo", node_name="t_1")
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
@@ -427,6 +427,7 @@ def test_name_override():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.name == "foo"
+    assert wf_spec.template.nodes[0].id == "t-1"
 
 
 def test_config_override():

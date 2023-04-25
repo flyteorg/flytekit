@@ -84,7 +84,7 @@ class Node(object):
 
     def with_overrides(self, *args, **kwargs):
         if "node_name" in kwargs:
-            self._id = kwargs["node_name"]
+            self._id = _dnsify(kwargs["node_name"])
         if "aliases" in kwargs:
             alias_dict = kwargs["aliases"]
             if not isinstance(alias_dict, dict):
