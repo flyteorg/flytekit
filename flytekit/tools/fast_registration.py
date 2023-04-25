@@ -98,7 +98,7 @@ def get_additional_distribution_loc(remote_location: str, identifier: str) -> st
     return posixpath.join(remote_location, "{}.{}".format(identifier, "tar.gz"))
 
 
-@timeit("download distribution")
+@timeit("Download distribution")
 def download_distribution(additional_distribution: str, destination: str):
     """
     Downloads a remote code distribution and overwrites any local files.

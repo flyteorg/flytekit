@@ -534,7 +534,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             try:
-                with timeit(name="execute user level code"):
+                with timeit("Execute user level code"):
                     native_outputs = self.execute(**native_inputs)
             except Exception as e:
                 logger.exception(f"Exception when executing {e}")
@@ -572,7 +572,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
             # built into the IDL that all the values of a literal map are of the same type.
-            with timeit(name="translate the output to literals"):
+            with timeit("Translate the output to literals"):
                 literals = {}
                 for i, (k, v) in enumerate(native_outputs_as_map.items()):
                     literal_type = self._outputs_interface[k].type

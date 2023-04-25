@@ -227,7 +227,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "DefaultTaskResolver"
 
-    @timeit("load task")
+    @timeit("Load task")
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 

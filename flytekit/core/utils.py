@@ -266,10 +266,10 @@ class timeit:
     A context manager and a decorator that measures the execution time of the wrapped code block or functions.
     It will append a timing information to TimeLineDeck. For instance:
 
-    @timeit(name="function description")
+    @timeit("Function description")
     def function()
 
-    with timeit(name="wrapped code block description"):
+    with timeit("Wrapped code block description"):
         # your code
     """
 

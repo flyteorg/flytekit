@@ -857,7 +857,7 @@ class TypeEngine(typing.Generic[T]):
         return _interface_models.VariableMap(variables=variables)
 
     @classmethod
-    @timeit(name="translate literal to python value")
+    @timeit("Translate literal to python value")
     def literal_map_to_kwargs(
         cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
     ) -> typing.Dict[str, typing.Any]:

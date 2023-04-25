@@ -357,7 +357,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "MapTaskResolver"
 
-    @timeit("load map task")
+    @timeit("Load map task")
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> MapPythonTask:
         """
         Loader args should be of the form

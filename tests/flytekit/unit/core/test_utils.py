@@ -28,7 +28,7 @@ def test_timeit():
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = []
 
-    with timeit("set disable_deck to False"):
+    with timeit("Set disable_deck to False"):
         kwargs = {}
         kwargs["disable_deck"] = False
 
@@ -40,13 +40,13 @@ def test_timeit():
 
     @task(**kwargs)
     def t1() -> int:
-        @timeit("download data")
+        @timeit("Download data")
         def download_data():
             return "1"
 
         data = download_data()
 
-        with timeit("convert string to int"):
+        with timeit("Convert string to int"):
             return int(data)
 
     t1()
