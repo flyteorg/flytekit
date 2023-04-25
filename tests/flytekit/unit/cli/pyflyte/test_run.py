@@ -158,19 +158,19 @@ def test_union_type2(input):
 
 def test_union_type_with_invalid_input():
     runner = CliRunner()
-    with pytest.raises(ValueError, match="Failed to convert python type typing.Union"):
-        runner.invoke(
-            pyflyte.main,
-            [
-                "--verbose",
-                "run",
-                os.path.join(DIR_NAME, "workflow.py"),
-                "test_union2",
-                "--a",
-                "hello",
-            ],
-            catch_exceptions=False,
-        )
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "--verbose",
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "test_union2",
+            "--a",
+            "hello",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 2
 
 
 def test_get_entities_in_file():
@@ -226,6 +226,7 @@ def test_list_default_arguments(wf_path):
         ],
         catch_exceptions=False,
     )
+    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -409,8 +410,8 @@ def test_json_type():
     with tempfile.NamedTemporaryFile("w") as f:
         f.write("asdf")
         f.flush()
-        with pytest.raises(json.JSONDecodeError):
-            t.convert(value=f.name, param=None, ctx=None)
+        with pytest.raises(click.BadParameter):
+            t.convert(value=f.name, param="asdf", ctx=None)
 
     # test if the file does not exist
     with pytest.raises(click.BadParameter):
