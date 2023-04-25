@@ -39,10 +39,10 @@ from flytekit.loggers import logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
-    from flytekit.clients import friendly as friendly_client
+    from flytekit.clients.friendly import SynchronousFlyteClient
     from flytekit.deck.deck import Deck
 else:
-    friendly_client = lazy_module("flytekit.clients.friendly")
+    SynchronousFlyteClient = lazy_module("flytekit.clients.friendly.SynchronousFlyteClient")
 
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -541,7 +541,7 @@ class FlyteContext(object):
 
     file_access: FileAccessProvider
     level: int = 0
-    flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
+    flyte_client: Optional[SynchronousFlyteClient] = None
     compilation_state: Optional[CompilationState] = None
     execution_state: Optional[ExecutionState] = None
     serialization_settings: Optional[SerializationSettings] = None
@@ -650,7 +650,7 @@ class FlyteContext(object):
         level: int = 0
         compilation_state: Optional[CompilationState] = None
         execution_state: Optional[ExecutionState] = None
-        flyte_client: Optional[friendly_client.SynchronousFlyteClient] = None
+        flyte_client: Optional[SynchronousFlyteClient] = None
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
 
