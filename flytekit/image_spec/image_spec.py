@@ -57,12 +57,6 @@ class ImageSpec:
         """
         Check if the image exists in the registry.
         """
-        response = requests.get(
-            f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{calculate_hash_from_image_spec(self)}"
-        )
-        if response.status_code == 200:
-            return True
-
         try:
             client = docker.from_env()
             if self.registry:
@@ -70,18 +64,11 @@ class ImageSpec:
             else:
                 client.images.get(self.image_name())
             return True
-        except APIError as e:
-            if e.response.status_code == 404:
-                return False
-            if e.response.status_code == 403:
-                click.secho("Permission denied. Please login you docker registry first.", fg="red")
-                raise e
-            return False
         except ImageNotFound:
             return False
         except Exception as e:
-            click.secho(f"Unknown error: {e}", fg="red")
-            # Skip building the image if there is an unknown error.
+            click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
+            click.secho(f"Flytekit assumes that the image already exists.", fg="blue")
             return True
 
     def __hash__(self):
