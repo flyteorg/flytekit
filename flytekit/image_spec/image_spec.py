@@ -11,7 +11,7 @@ from typing import List, Optional
 import click
 import docker
 from dataclasses_json import dataclass_json
-from docker.errors import ImageNotFound
+from docker.errors import APIError, ImageNotFound
 
 
 @dataclass_json
@@ -63,6 +63,9 @@ class ImageSpec:
             else:
                 client.images.get(self.image_name())
             return True
+        except APIError as e:
+            if e.response.status_code == 404:
+                return False
         except ImageNotFound:
             return False
         except Exception as e:
