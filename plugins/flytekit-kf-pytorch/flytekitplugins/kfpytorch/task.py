@@ -13,7 +13,8 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
-from flytekit.extend import IgnoreOutputs, TaskPlugins
+from flytekit.core.base_task import IgnoreOutputs
+from flytekit.extend import TaskPlugins
 
 
 @dataclass
@@ -140,7 +141,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         """
         self.rdzv_backend = "c10d"
 
-    def execute(self, **kwargs) -> Any:
+    def _execute(self, **kwargs) -> Any:
         """
         This helper method will be invoked to execute the task.
 
@@ -211,6 +212,19 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             return out[0]
         else:
             raise IgnoreOutputs()
+
+    def execute(self, **kwargs) -> Any:
+        """
+        This method will be invoked to execute the task.
+
+        Handles the exception scope for the `_execute` method.
+        """
+        from flytekit.exceptions import scopes as exception_scopes
+
+        if self.execution_mode == self.ExecutionBehavior.DEFAULT:
+            return exception_scopes.user_entry_point(self._execute)(**kwargs)
+        elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+            return self.dynamic_execute(self._execute, **kwargs)
 
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         if self.task_config.replicas == 1:
