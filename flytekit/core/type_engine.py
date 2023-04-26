@@ -30,6 +30,7 @@ from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.exceptions import user as user_exceptions
+from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
@@ -788,23 +789,23 @@ class TypeEngine(typing.Generic[T]):
             register_pandas_handlers,
         )
 
-        if "tensorflow" in modules:
+        if is_imported("tensorflow"):
             from flytekit.extras import tensorflow  # noqa: F401
-        if "torch" in modules:
+        if is_imported("torch"):
             from flytekit.extras import pytorch  # noqa: F401
-        if "sklearn" in modules:
+        if is_imported("sklearn"):
             from flytekit.extras import sklearn  # noqa: F401
-        if "pandas" in modules:
+        if is_imported("pandas"):
             try:
                 from flytekit.types import schema  # noqa: F401
             except ValueError:
                 logger.debug("Transformer for pandas is already registered.")
             register_pandas_handlers()
-        if "pyarrow" in modules:
+        if is_imported("pyarrow"):
             register_arrow_handlers()
-        if "google.cloud.bigquery" in modules:
+        if is_imported("google.cloud.bigquery"):
             register_bigquery_handlers()
-        if "numpy" in modules:
+        if is_imported("numpy"):
             from flytekit.types import numpy  # noqa: F401
 
     @classmethod
