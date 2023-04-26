@@ -13,8 +13,7 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
-from flytekit.core.base_task import IgnoreOutputs
-from flytekit.extend import TaskPlugins
+from flytekit.extend import TaskPlugins, IgnoreOutputs
 
 
 @dataclass
