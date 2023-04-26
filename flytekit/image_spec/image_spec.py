@@ -10,9 +10,8 @@ from typing import List, Optional
 
 import click
 import docker
-import requests
 from dataclasses_json import dataclass_json
-from docker.errors import APIError, ImageNotFound
+from docker.errors import ImageNotFound
 
 
 @dataclass_json
@@ -68,7 +67,7 @@ class ImageSpec:
             return False
         except Exception as e:
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
-            click.secho(f"Flytekit assumes that the image already exists.", fg="blue")
+            click.secho("Flytekit assumes that the image already exists.", fg="blue")
             return True
 
     def __hash__(self):
